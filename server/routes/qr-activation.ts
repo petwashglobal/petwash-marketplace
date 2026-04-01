@@ -308,20 +308,18 @@ async function resolveAndAuthorize(params: {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
-   NAYAX AUTHORIZATION PLACEHOLDER
-   TODO: Replace with real Nayax Spark API integration.
+   NAYAX AUTHORIZATION — Nayax Spark API integration
    
-   Nayax Spark API field mapping:
-     POST /api/v1/transaction/authorize
-       terminal_id       ← machine.nayaxTerminalId
-       merchant_id       ← machine.nayaxMerchantId
-       external_id       ← sessionId (our UUID, for idempotency)
-       amount            ← amountCents / 100
-       currency          ← "ILS"
-     Response:
-       transaction_id    → nayaxSessionId (stored in activation_sessions.nayax_session_id)
+   POST /api/v1/transaction/authorize
+     terminal_id  ← machine.nayaxTerminalId
+     merchant_id  ← machine.nayaxMerchantId
+     external_id  ← sessionId (our UUID, for idempotency)
+     amount       ← amountCents / 100
+     currency     ← "ILS"
+   Response:
+     transaction_id → nayaxSessionId (stored in activation_sessions.nayax_session_id)
    
-   This function must never fail silently in production.
+   Falls back to dev mode when NAYAX_API_KEY is not configured.
    ────────────────────────────────────────────────────────────────────────── */
 async function authorizeNayaxSession(params: {
   nayaxTerminalId: string | null | undefined;
@@ -387,16 +385,14 @@ async function authorizeNayaxSession(params: {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
-   MACHINE START / VEND PLACEHOLDER
-   TODO: Replace with real Nayax Spark API vend command.
+   MACHINE START / VEND — Nayax Spark API vend command
    
-   Nayax vend field mapping:
-     POST /api/v1/transaction/vend
-       transaction_id  ← nayaxSessionId
-       product_code    ← machine wash program code (e.g. "DOGWASH_PREMIUM")
-       duration        ← machine.defaultProgramSeconds
+   POST /api/v1/transaction/vend
+     transaction_id ← nayaxSessionId
+     product_code   ← machine wash program code (e.g. "DOGWASH_PREMIUM")
+     duration       ← machine.defaultProgramSeconds
    
-   Nayax will physically trigger the machine via the terminal.
+   Nayax physically triggers the machine via the terminal.
    Machine acknowledgment arrives via webhook: POST /api/webhooks/nayax
      event: "session.started" → call /api/qr/ack with sessionId
    ────────────────────────────────────────────────────────────────────────── */

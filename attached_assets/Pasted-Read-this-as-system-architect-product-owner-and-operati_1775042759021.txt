@@ -1,0 +1,488 @@
+Read this as system architect, product owner, and operating engineer - not just developer.
+
+We are NOT building isolated screens or forms.
+We are building a real operating system for PetWash.
+
+That means every flow must answer 5 questions:
+1. Who is the user?
+2. What platform are they in?
+3. What state are they currently in?
+4. What are they allowed to do next?
+5. What must the system create, lock, log, or notify?
+
+If you cannot answer those 5 questions for a feature, it is not ready to build.
+
+==================================================
+1. THINK IN USER JOURNEYS, NOT PAGES
+==================================================
+
+The system has different user families.
+Do not mix them.
+
+A. External club members / loyalty members
+These are public users.
+They need:
+- fast signup
+- low friction
+- mobile-first
+- no KYC
+- wallet auto-created
+- loyalty membership auto-attached
+- clear consent step
+- instant access to dashboard after verification
+
+B. Providers
+These are high-trust users.
+They need:
+- separate signup entry
+- separate onboarding state machine
+- ID/selfie/KYC only for them
+- async processing
+- review queue when needed
+- provider dashboard only after approval
+
+C. Support / operations
+They need:
+- queue
+- status clarity
+- messaging
+- notes
+- audit
+- clear action buttons
+- no guessing
+
+D. Management
+They need:
+- analytics
+- trends
+- stuck items
+- fraud spikes
+- revenue / queue / conversion visibility
+- not operational clutter
+
+Every one of these users must have a different first screen, different permissions, and different state logic.
+
+==================================================
+2. PUBLIC CLUB MEMBER REGISTRATION MUST BE THE EASIEST FLOW
+==================================================
+
+Public loyalty member signup is your growth engine.
+It must be simpler than provider signup.
+
+Correct logic:
+
+Step 1
+User chooses:
+- mobile
+- Apple / Face ID
+- Google
+- email
+
+Step 2
+System verifies identity method:
+- phone OTP
+- email verification
+- Apple / Google trusted sign-in
+
+Step 3
+Backend creates one unified user record
+
+Step 4
+Backend automatically creates:
+- wallet
+- loyalty membership
+- default role = loyalty_member
+- default reward state
+
+Step 5
+Consent screen must be explicit:
+- terms
+- privacy
+- optional marketing
+
+Step 6
+User lands in loyalty dashboard
+
+Do NOT:
+- send public users into provider onboarding
+- ask for KYC
+- block them because wallet does not exist
+- require credit before account exists
+- silently fail on mobile formatting or consent gaps
+
+Public signup should feel:
+- fast
+- safe
+- premium
+- obvious
+
+==================================================
+3. PROVIDER SIGNUP IS A DIFFERENT PRODUCT
+==================================================
+
+Provider signup is not "extended public signup".
+It is a separate operating flow.
+
+Correct provider logic:
+
+submitted
+→ processing
+→ approved / pending_review / pending_resubmission / rejected
+
+Rules:
+- submit must save immediately
+- external APIs must run async
+- provider must never lose application because Vision or OCR failed
+- every transition writes audit
+- pending_review creates queue item
+- pending_resubmission keeps same application ID
+- support can message applicant
+- applicant can respond
+- all files versioned
+
+Provider onboarding must feel:
+- serious
+- secure
+- professional
+- explainable
+
+==================================================
+4. ALWAYS BUILD A REAL STATE MACHINE
+==================================================
+
+Do not build "status strings" loosely.
+Build proper state transitions.
+
+Examples:
+
+Public user:
+new
+→ verified
+→ active_loyalty_member
+→ suspended / closed
+
+Provider:
+submitted
+→ processing
+→ pending_review
+→ pending_resubmission
+→ approved
+→ rejected
+→ expired
+→ withdrawn
+
+Booking:
+draft
+→ reserved
+→ confirmed
+→ completed
+→ cancelled
+→ refunded
+
+Wallet:
+available
+reserved
+pending
+
+Coupon:
+draft
+active
+paused
+archived
+
+If the allowed transitions are not documented, the code will become inconsistent.
+
+==================================================
+5. BACKEND IS THE AUTHORITY, FRONTEND IS ONLY A GUIDE
+==================================================
+
+Frontend can:
+- collect input
+- show status
+- display warnings
+- help the user
+
+Backend must:
+- validate
+- decide
+- reserve
+- lock
+- create
+- audit
+- notify
+
+Never trust frontend for:
+- permissions
+- coupon eligibility
+- booking confirmation
+- wallet sufficiency
+- provider approval
+- legal consent truth
+
+==================================================
+6. ONE USER, ONE CORE IDENTITY
+==================================================
+
+A user can enter by:
+- phone
+- Apple
+- Google
+- email
+
+But internally they must become one unified account.
+
+You must prevent:
+- duplicate accounts from same person
+- broken half-created profiles
+- auth success with no backend row
+- backend row with no wallet
+- provider role leaking into public flows
+
+The system should always be able to answer:
+- who is this person?
+- what role(s) do they have?
+- are they verified?
+- do they have wallet?
+- what dashboards should they see?
+
+==================================================
+7. WALLET IS A FINANCIAL ENGINE, NOT A UI BALANCE
+==================================================
+
+Wallet logic must be identical across platforms.
+
+Needed states:
+- available balance
+- reserved balance
+- pending balance
+
+Use cases:
+- wash dog at kiosk
+- book sitter for a week
+- use wallet credit
+- use egift credit
+- combine with allowed coupon
+- charge external processor for remainder
+
+Hard rule:
+No booking or service starts without guaranteed funds.
+
+That means:
+- validate funds
+- reserve funds
+- create booking/order
+- commit or release
+- log every movement
+
+If this is weak, the entire business becomes unreliable.
+
+==================================================
+8. BUILD SYSTEMS FOR FAILURE, NOT ONLY HAPPY PATH
+==================================================
+
+Every flow must define:
+- what if OTP fails?
+- what if email fails?
+- what if wallet missing?
+- what if KYC times out?
+- what if two admins click approve?
+- what if coupon gets redeemed twice?
+- what if kiosk callback comes twice?
+- what if user cancels after coupon use?
+- what if applicant uploads bad files again?
+
+A real system is not "what happens when everything goes right".
+A real system is "what happens when something goes wrong and we still stay safe".
+
+==================================================
+9. COMMUNICATION IS PART OF THE PRODUCT
+==================================================
+
+Messages are not decoration.
+They are operational infrastructure.
+
+Every important flow needs:
+- clear notification
+- thread history
+- delivery status
+- internal notes where needed
+- applicant-visible messages where needed
+
+Examples:
+- provider submitted
+- under review
+- resubmission required
+- approved
+- rejected
+- booking confirmed
+- booking changed
+- wallet top-up confirmed
+- receipt / invoice notice
+- egift delivered
+
+Support must be able to see the full story without opening ten systems.
+
+==================================================
+10. PERMISSIONS MUST BE TIGHT AND BORING
+==================================================
+
+Good permission design is boring.
+Nothing surprising happens.
+
+Public loyalty member:
+- sees only their own profile, wallet, benefits, bookings
+
+Provider:
+- sees own onboarding and provider tools only after approval
+
+Support:
+- sees operational queues and can act within support powers
+
+Admin:
+- can make final approval/rejection decisions
+
+Management:
+- sees analytics and oversight, not noisy operations by default
+
+If management and support are blurred, the system will become messy.
+If public and provider are blurred, security and UX break.
+
+==================================================
+11. GOOGLE TOOLS ARE HELPERS, NOT THE SYSTEM
+==================================================
+
+Google Forms:
+- optional intake / fallback only
+
+Google Sheets:
+- reporting only
+
+Google Drive:
+- backup / archive only
+
+System of record must stay:
+- PostgreSQL / DB
+- object storage
+- backend audit trail
+- internal dashboards
+
+Never let Forms or Sheets become the real workflow.
+
+==================================================
+12. MAKE MOBILE THE FIRST-CLASS EXPERIENCE
+==================================================
+
+Most public users will come from mobile.
+So mobile is not "responsive later".
+It is primary.
+
+Public signup must work beautifully on:
+- iPhone Safari
+- Android Chrome
+
+Support review must still function on:
+- iPhone
+- iPad
+- desktop
+
+Management dashboards can be more desktop-heavy, but still readable on tablet.
+
+If a flow only works well on desktop, it is not finished.
+
+==================================================
+13. PREMIUM DESIGN IS PART OF TRUST
+==================================================
+
+PetWash must feel premium.
+
+That means:
+- pure white base
+- elegant typography
+- modern spacing
+- high-end layout
+- no cheap icons
+- no generic gradients
+- clear hierarchy
+- premium but calm
+
+Users decide whether to trust a wallet, booking, or provider system partly by visual confidence.
+Cheap-looking flows reduce trust.
+
+==================================================
+14. ALWAYS LEAVE AN AUDIT TRAIL
+==================================================
+
+For sensitive operations, system must record:
+- who acted
+- what changed
+- when
+- why
+- related record IDs
+- before / after if relevant
+
+Especially for:
+- provider decisions
+- resubmission requests
+- wallet movements
+- coupon redemption
+- cancellations
+- admin edits
+- finance communications
+
+If it cannot be audited, it is not a real business system.
+
+==================================================
+15. WHAT "REAL SYSTEM" MEANS
+==================================================
+
+A real system is one where:
+
+- new public users can enter smoothly
+- providers can onboard safely
+- support can operate confidently
+- management can see truth
+- wallet never lies
+- coupons never double-burn
+- messages are traceable
+- legal identity is correct
+- failures do not destroy records
+- permissions are predictable
+
+That is the standard.
+
+==================================================
+16. WHAT I NEED FROM YOU NEXT
+==================================================
+
+Work in this order:
+
+1. Fix public loyalty signup completely
+- mobile
+- Apple / Face ID
+- phone
+- consent
+- wallet auto-create
+- role auto-attach
+- route to correct loyalty dashboard
+
+2. Keep provider flow separate
+- no KYC in public signup
+- no provider leakage into public routing
+
+3. Prove the flows with real outputs
+- route proof
+- DB before/after
+- permission proof
+- race-condition proof
+
+4. Only then move to polish / expansion
+
+Do not build more features on a broken entry flow.
+
+This platform grows or dies at:
+- entry
+- trust
+- wallet truth
+- role separation
+
+That is the real system logic.

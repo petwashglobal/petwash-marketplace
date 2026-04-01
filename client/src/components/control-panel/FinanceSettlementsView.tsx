@@ -113,10 +113,10 @@ export default function FinanceSettlementsView() {
   };
 
   const exportSettlement = (settlementId: string) => {
-    // TODO: Trigger CSV export
+    window.open(`/api/finance/settlements/${settlementId}/export`, '_blank');
     toast({
       title: "Exporting Settlement",
-      description: `Generating CSV for settlement ${settlementId}...`,
+      description: `CSV download started for settlement ${settlementId}`,
     });
   };
 

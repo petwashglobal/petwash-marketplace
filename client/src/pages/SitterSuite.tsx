@@ -45,8 +45,6 @@ const SERVICES_OPTIONS = [
   'Pet Medication',
 ];
 
-// No mock data - only real sitters from API
-const MOCK_SITTERS: SitterProfile[] = [];
 
 export default function SitterSuite() {
   const { user } = useFirebaseAuth();
@@ -82,8 +80,7 @@ export default function SitterSuite() {
     queryKey: ['/api/sitter-suite/sitters', selectedCity],
   });
 
-  // Use API data if available, otherwise fallback to mock data
-  const sitters = sittersFromAPI && sittersFromAPI.length > 0 ? sittersFromAPI : MOCK_SITTERS;
+  const sitters = sittersFromAPI || [];
 
   const filteredSitters = sitters?.filter(sitter => {
     const matchesSearch = sitter.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||

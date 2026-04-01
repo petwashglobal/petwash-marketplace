@@ -59,8 +59,6 @@ const SPECIALTIES = [
   'Jogging/Running',
 ];
 
-// No mock data - only real walkers from API
-const MOCK_WALKERS: WalkerProfile[] = [];
 
 export default function WalkMyPet() {
   const { user } = useFirebaseAuth();
@@ -97,8 +95,7 @@ export default function WalkMyPet() {
     queryKey: ['/api/walkers/search', selectedCity],
   });
 
-  // Use API data if available, otherwise fall back to mock data
-  const walkers = walkersFromApi && walkersFromApi.length > 0 ? walkersFromApi : MOCK_WALKERS;
+  const walkers = walkersFromApi || [];
 
   const filteredWalkers = walkers?.filter(walker => {
     const matchesSearch = walker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||

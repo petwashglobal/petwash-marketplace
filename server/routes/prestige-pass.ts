@@ -16297,8 +16297,8 @@ router.post('/admin/wallet/test-retry-safety', async (req, res) => {
     if (hit) {
       return res.json({ idempotent: true, duplicate: true, originalResponseHash: responseHash, message: 'Duplicate request detected — returning cached result' });
     }
-    // Simulate a safe operation
-    const response = { idempotent: true, duplicate: false, processedAt: new Date().toISOString(), testValue: Math.random().toFixed(6) };
+    // Generate a unique test value from current timestamp (base-36 encoding gives compact alphanumeric string)
+    const response = { idempotent: true, duplicate: false, processedAt: new Date().toISOString(), testValue: Date.now().toString(36) };
     await recordIdempotency(idempotencyKey, endpoint, JSON.stringify(response));
     return res.json(response);
   } catch (err: any) {
@@ -16915,7 +16915,7 @@ router.post('/admin/system/alerts/test', async (req, res) => {
         '{"source": "alert_delivery_test"}'::jsonb)
     `).catch(() => {});
 
-    const responseTimeMs = Date.now() - start + Math.floor(Math.random() * 40 + 10); // add realistic jitter
+    const responseTimeMs = Date.now() - start;
     const delivered = true; // UI channel always succeeds; email would check SMTP
 
     const r = await pool.query(`
@@ -17048,7 +17048,7 @@ router.post('/admin/system/drill/run', async (req, res) => {
       completedAt: new Date(startTime + i * 800).toISOString(),
     }));
 
-    const recoveryTimeSeconds = Math.floor((Date.now() - startTime) / 1000) + Math.floor(Math.random() * 30 + 10);
+    const recoveryTimeSeconds = Math.max(1, Math.ceil((Date.now() - startTime) / 1000));
     const success = true; // All simulated drills succeed; real drills measure actual response
 
     const r = await pool.query(`

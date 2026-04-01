@@ -136,157 +136,17 @@ export default function WalkerDashboard() {
     enabled: !!user && activeTab === 'achievements',
   });
 
-  // Mock data fallback for earnings with detailed breakdown
-  const mockEarnings: WalkerEarnings = {
-    today: 285,
-    thisWeek: 1840,
-    thisMonth: 7240,
-    totalEarnings: 28950,
-    completedWalks: 147,
-    rating: 4.92,
-    totalReviews: 98,
-    basePay: 21600,
-    tips: 4820,
-    bonuses: 3250,
-    platformFees: -2720,
-    acceptanceRate: 94,
-    completionRate: 99,
-    avgResponseTime: 8,
+  // Zero-state defaults — shown while API data loads or when walker is new (no fake numbers)
+  const defaultEarnings: WalkerEarnings = {
+    today: 0, thisWeek: 0, thisMonth: 0, totalEarnings: 0,
+    completedWalks: 0, rating: 0, totalReviews: 0,
+    basePay: 0, tips: 0, bonuses: 0, platformFees: 0,
+    acceptanceRate: 0, completionRate: 0, avgResponseTime: 0,
   };
 
-  // Mock reviews data
-  const mockReviews: CustomerReview[] = [
-    {
-      id: '1',
-      ownerName: 'Sarah Cohen',
-      petName: 'Max',
-      rating: 5,
-      comment: 'Amazing walker! Max loves him. Very professional and always sends photos during the walk. Highly recommend!',
-      date: '2025-10-28T14:30:00Z',
-      walkDuration: 45,
-    },
-    {
-      id: '2',
-      ownerName: 'David Levi',
-      petName: 'Bella',
-      rating: 5,
-      comment: 'Bella had such a great time! The GPS tracking gave me peace of mind. Will definitely book again.',
-      date: '2025-10-27T10:15:00Z',
-      walkDuration: 60,
-    },
-    {
-      id: '3',
-      ownerName: 'Rachel Mizrahi',
-      petName: 'Charlie',
-      rating: 5,
-      comment: 'Perfect walker for my reactive dog. Very patient and knowledgeable. Charlie was calm and happy after the walk.',
-      date: '2025-10-26T16:45:00Z',
-      walkDuration: 30,
-    },
-    {
-      id: '4',
-      ownerName: 'Michael Peretz',
-      petName: 'Luna',
-      rating: 4,
-      comment: 'Great experience overall. Luna enjoyed the walk. Only minor issue was being 5 minutes late to pickup.',
-      date: '2025-10-25T09:00:00Z',
-      walkDuration: 45,
-    },
-    {
-      id: '5',
-      ownerName: 'Noa Goldstein',
-      petName: 'Rocky',
-      rating: 5,
-      comment: 'Rocky came back exhausted and happy! Exactly what we needed. The vital stats tracking is amazing.',
-      date: '2025-10-24T13:20:00Z',
-      walkDuration: 60,
-    },
-    {
-      id: '6',
-      ownerName: 'Yoni Shapira',
-      petName: 'Milo',
-      rating: 5,
-      comment: 'Best dog walker we\'ve found! Milo gets so excited when he sees you. Thank you for the excellent service!',
-      date: '2025-10-23T11:30:00Z',
-      walkDuration: 45,
-    },
-  ];
-
-  // Mock achievements data
-  const mockAchievements: Achievement[] = [
-    {
-      id: '1',
-      title: 'First Steps',
-      description: 'Complete your first walk',
-      icon: '🐾',
-      unlocked: true,
-      unlockedDate: '2025-08-15T10:00:00Z',
-    },
-    {
-      id: '2',
-      title: 'Century Club',
-      description: 'Complete 100 walks',
-      icon: '💯',
-      unlocked: true,
-      unlockedDate: '2025-10-20T14:30:00Z',
-    },
-    {
-      id: '3',
-      title: 'Five Star Pro',
-      description: 'Maintain a 5.0 rating for 50 walks',
-      icon: '⭐',
-      unlocked: true,
-      unlockedDate: '2025-09-12T09:15:00Z',
-    },
-    {
-      id: '4',
-      title: 'Speed Demon',
-      description: 'Average response time under 10 minutes',
-      icon: '⚡',
-      unlocked: true,
-      unlockedDate: '2025-09-25T16:45:00Z',
-    },
-    {
-      id: '5',
-      title: 'Tipping Point',
-      description: 'Earn ₪5,000 in tips',
-      icon: '💰',
-      unlocked: false,
-      progress: 4820,
-      maxProgress: 5000,
-    },
-    {
-      id: '6',
-      title: 'Marathon Master',
-      description: 'Complete 250 walks',
-      icon: '🏃',
-      unlocked: false,
-      progress: 147,
-      maxProgress: 250,
-    },
-    {
-      id: '7',
-      title: 'Perfect Month',
-      description: 'Complete 30 days with 100% acceptance rate',
-      icon: '📅',
-      unlocked: false,
-      progress: 18,
-      maxProgress: 30,
-    },
-    {
-      id: '8',
-      title: 'Community Champion',
-      description: 'Walk 10 different dogs in one week',
-      icon: '🏆',
-      unlocked: true,
-      unlockedDate: '2025-09-30T12:00:00Z',
-    },
-  ];
-
-  // Use API data if available, otherwise use mock data
-  const earnings = earningsFromApi || mockEarnings;
-  const reviews = reviewsFromApi && reviewsFromApi.length > 0 ? reviewsFromApi : mockReviews;
-  const achievements = achievementsFromApi && achievementsFromApi.length > 0 ? achievementsFromApi : mockAchievements;
+  const earnings = earningsFromApi || defaultEarnings;
+  const reviews = reviewsFromApi || [];
+  const achievements = achievementsFromApi || [];
 
   // Accept walk mutation
   const acceptMutation = useMutation({

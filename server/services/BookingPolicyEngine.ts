@@ -334,7 +334,26 @@ export class BookingPolicyEngineService {
       .where(eq(disputeResolutions.id, disputeId))
       .returning();
 
-    // TODO: Send notification to legal team
+    // Persist a governance alert so the legal team sees the escalation in the admin dashboard
+    await pool.query(`
+      INSERT INTO governance_alerts (type, severity, message, triggered_by)
+      VALUES (
+        'dispute_escalated',
+        'high',
+        $1,
+        $2::jsonb
+      )
+    `, [
+      `Dispute #${disputeId} escalated for legal review: ${escalationReason}`,
+      JSON.stringify({ source: 'BookingPolicyEngine', disputeId, escalationReason }),
+    ]).catch((err: any) => {
+      logger.warn('[BookingPolicyEngine] Could not write governance alert for escalation', { error: err.message });
+    });
+
+    logger.warn('[BookingPolicyEngine] Dispute escalated to legal review', {
+      disputeId,
+      escalationReason,
+    });
 
     return updated;
   }
@@ -365,12 +384,31 @@ export class BookingPolicyEngineService {
    * Validate cancellation eligibility
    */
   async validateCancellation(
-    bookingId: number,
-    userId: number
+    bookingId: number | string,
+    userId: number | string
   ): Promise<{ valid: boolean; reason?: string }> {
-    // TODO: Check if booking exists and belongs to user
-    // TODO: Check if booking is not already cancelled
-    // TODO: Check if service is not already completed
+    const result = await pool.query(
+      `SELECT id, user_id, status FROM bookings WHERE id = $1::text LIMIT 1`,
+      [String(bookingId)]
+    );
+
+    if (result.rows.length === 0) {
+      return { valid: false, reason: 'Booking not found' };
+    }
+
+    const booking = result.rows[0];
+
+    if (booking.user_id !== String(userId)) {
+      return { valid: false, reason: 'Booking does not belong to this user' };
+    }
+
+    if (booking.status === 'cancelled') {
+      return { valid: false, reason: 'Booking is already cancelled' };
+    }
+
+    if (booking.status === 'completed') {
+      return { valid: false, reason: 'Cannot cancel a completed booking' };
+    }
 
     return { valid: true };
   }

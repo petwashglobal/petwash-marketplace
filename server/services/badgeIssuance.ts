@@ -356,7 +356,43 @@ export async function deactivateExpiredCertifications(): Promise<void> {
         await revokeBadge(badge.badgeId, 'Certification expired');
         deactivatedCount++;
 
-        // TODO: Send renewal reminder to contractor
+        // Send renewal reminder notification to contractor
+        try {
+          const profileRow = await db
+            .select({ email: contractorProfiles.email, userId: contractorProfiles.userId })
+            .from(contractorProfiles)
+            .where(eq(contractorProfiles.id, badge.contractorId))
+            .limit(1);
+          const contractorEmail = profileRow[0]?.email || '';
+          const contractorUserId = profileRow[0]?.userId || badge.contractorId;
+
+          await dispatchNotifications({
+            userId: contractorUserId,
+            eventType: 'badge_renewal_required',
+            templateKey: `badge_renewal_${badge.badgeCategory}`,
+            channels: ['push', 'email'],
+            push: {
+              userId: contractorUserId,
+              title: `⚠️ Certification Expired: ${badge.badgeName}`,
+              body: `Your "${badge.badgeName}" certification has expired. Renew it to continue offering this service.`,
+              data: { type: 'badge_renewal_required', badgeId: badge.badgeId, badgeCategory: badge.badgeCategory },
+            },
+            ...(contractorEmail && {
+              email: {
+                to: contractorEmail,
+                subject: `⚠️ תעודה פגת תוקף: ${badge.badgeName} — PetWash™`,
+                html: `<p>שלום,</p>
+<p>תעודת <strong>${badge.badgeName}</strong> שלך פגה. אנא חדש אותה כדי להמשיך להציע שירות זה.</p>
+<p>לחידוש: היכנס לפאנל הספק שלך באפליקציית PetWash™.</p>
+<p>— צוות PetWash™</p>`,
+                text: `שלום, תעודת "${badge.badgeName}" שלך פגה. אנא חדש אותה דרך פאנל הספק. — צוות PetWash™`,
+              },
+            }),
+            idempotencyKey: `badge_renewal:${badge.badgeId}:${contractorUserId}`,
+          });
+        } catch (notifErr: any) {
+          logger.warn('[BadgeIssuance] Renewal reminder notification failed (non-blocking)', { error: notifErr.message, badgeId: badge.badgeId });
+        }
       }
     }
 
