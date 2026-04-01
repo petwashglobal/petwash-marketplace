@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { users } from '@shared/schema';
+import { users, walletAccounts } from '@shared/schema';
 import { loyaltyProfiles, pointsTransactions } from '../../shared/schema-loyalty';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -7,6 +7,7 @@ import { redis } from './redis';
 import { auth as firebaseAdmin } from '../lib/firebase-admin';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import crypto from 'crypto';
+import { nanoid } from 'nanoid';
 
 export class AuthService {
   private hashToken(token: string): string {
@@ -115,6 +116,7 @@ export class AuthService {
       await this.invalidateUserCache(user.id);
 
       await this.ensureLoyaltyProfile(user.id);
+      await this.ensureWalletAccount(user.id);
 
       return user;
     } catch (error: any) {
@@ -175,6 +177,39 @@ export class AuthService {
         return;
       }
       logger.error('[AuthService] Failed to auto-create loyalty profile (non-blocking)', error, { userId });
+    }
+  }
+
+  async ensureWalletAccount(userId: string): Promise<void> {
+    try {
+      const [existing] = await db.select({ walletId: walletAccounts.walletId })
+        .from(walletAccounts)
+        .where(eq(walletAccounts.userId, userId))
+        .limit(1);
+      if (existing) return;
+
+      const walletId = `WALLET-${nanoid(10).toUpperCase()}`;
+      await db.insert(walletAccounts).values({
+        walletId,
+        userId,
+        egiftBalanceCents: 0,
+        washPackageCredits: 0,
+        loyaltyPointsBalance: 0,
+        promoBalanceCents: 0,
+        referralBalanceCents: 0,
+        loyaltyTier: 'bronze',
+        tierPointsThisYear: 0,
+        preferredCurrency: 'ILS',
+        autoApplyCredits: true,
+        isActive: true,
+      });
+      logger.info('[AuthService] ✅ Wallet account auto-created for new user', { userId, walletId });
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        logger.info('[AuthService] Wallet account already exists (concurrent creation)', { userId });
+        return;
+      }
+      logger.warn('[AuthService] Failed to auto-create wallet account (non-blocking)', { userId, error: error?.message });
     }
   }
 

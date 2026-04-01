@@ -1848,7 +1848,7 @@ router.post('/my/messages', async (req: Request, res: Response) => {
 
     const appId: number = appRow.rows[0].id;
     const { logProviderMessage, incrementUnreadCount } = await import('../services/providerMessageLog');
-    const { writeAuditEvent } = await import('../services/providerAudit');
+    const { writeProviderAudit } = await import('../services/providerAudit');
 
     await logProviderMessage({
       applicationId: appId,
@@ -1862,7 +1862,7 @@ router.post('/my/messages', async (req: Request, res: Response) => {
 
     await incrementUnreadCount(appId);
 
-    await writeAuditEvent({
+    await writeProviderAudit({
       applicationId: appId,
       eventType: 'applicant_message_sent',
       actorUserId: decodedToken.uid,

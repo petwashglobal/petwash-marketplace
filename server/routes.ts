@@ -10702,27 +10702,39 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
+      const callerIpForCaptcha = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
       if (!captchaToken) {
-        logger.warn('[CreateProfile] Missing captchaToken in signup request');
-        return res.status(400).json({ success: false, error: 'Security verification token required.', errorCode: 'CAPTCHA_REQUIRED' });
-      }
-      const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
-      if (!captchaResult.valid) {
-        logger.warn('[CreateProfile] reCAPTCHA rejected token', { reason: captchaResult.reason, source: captchaResult.source });
-        return res.status(400).json({ success: false, error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
-      }
-      if (captchaResult.suspicious) {
+        // reCAPTCHA failed to load on client (ad blocker / restrictive mobile browser).
+        // Accept the request if Turnstile passed; block if neither token is available.
         if (createProfileTurnstileToken) {
-          const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
-          const tsResult = await verifyTurnstileToken(createProfileTurnstileToken, tip);
+          const tsResult = await verifyTurnstileToken(createProfileTurnstileToken, callerIpForCaptcha);
           if (!tsResult.valid) {
-            logger.warn('[CreateProfile] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score });
+            logger.warn('[CreateProfile] No captchaToken and Turnstile rejected', { reason: tsResult.reason });
+            return res.status(400).json({ success: false, error: 'Security verification failed. Please try again.', errorCode: 'CAPTCHA_REQUIRED' });
+          }
+          logger.info('[CreateProfile] Accepted with Turnstile only (reCAPTCHA unavailable on client)', { traceId });
+        } else {
+          logger.warn('[CreateProfile] Missing both captchaToken and turnstileToken');
+          return res.status(400).json({ success: false, error: 'Security verification token required.', errorCode: 'CAPTCHA_REQUIRED' });
+        }
+      } else {
+        const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
+        if (!captchaResult.valid) {
+          logger.warn('[CreateProfile] reCAPTCHA rejected token', { reason: captchaResult.reason, source: captchaResult.source });
+          return res.status(400).json({ success: false, error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
+        }
+        if (captchaResult.suspicious) {
+          if (createProfileTurnstileToken) {
+            const tsResult = await verifyTurnstileToken(createProfileTurnstileToken, callerIpForCaptcha);
+            if (!tsResult.valid) {
+              logger.warn('[CreateProfile] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score });
+              return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+            }
+            logger.info('[CreateProfile] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score });
+          } else {
+            logger.warn('[CreateProfile] Suspicious traffic on signup — step-up required', { score: captchaResult.score });
             return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
           }
-          logger.info('[CreateProfile] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score });
-        } else {
-          logger.warn('[CreateProfile] Suspicious traffic on signup — step-up required', { score: captchaResult.score });
-          return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
         }
       }
       

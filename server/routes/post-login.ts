@@ -185,9 +185,33 @@ export async function postLoginDecider(req: Request, res: Response) {
       return res.status(401).json({ error: "AUTH_REQUIRED" });
     }
 
-    const user = await storage.getUser(userId);
+    let user = await storage.getUser(userId);
     if (!user) {
-      return res.status(404).json({ error: "USER_NOT_FOUND" });
+      // Race condition: session cookie set before background ensureUserInPostgres completed.
+      // Attempt synchronous recovery for social/phone users before giving up.
+      try {
+        const { authService } = await import('../services/AuthService');
+        const fbAdminModule = await import('../lib/firebase-admin');
+        const fbAuth = fbAdminModule.auth;
+        if (fbAuth) {
+          const fbUser = await fbAuth.getUser(userId);
+          const syncResult = await authService.ensureUserInPostgres(fbUser.uid, fbUser.email || undefined, {
+            firstName: (fbUser.displayName || '').split(' ')[0] || undefined,
+            lastName: (fbUser.displayName || '').split(' ').slice(1).join(' ') || undefined,
+            phone: fbUser.phoneNumber || undefined,
+            profileImageUrl: fbUser.photoURL || undefined,
+          });
+          if (syncResult?.user) {
+            user = syncResult.user as any;
+            logger.info('[PostLogin] ✅ Race-condition recovery: user created synchronously', { userId });
+          }
+        }
+      } catch (recoveryErr) {
+        logger.warn('[PostLogin] Race-condition recovery failed', { userId, error: String(recoveryErr) });
+      }
+      if (!user) {
+        return res.status(404).json({ error: "USER_NOT_FOUND" });
+      }
     }
 
     // Canonical cross-store sync: if termsAcceptedAt is missing in PostgreSQL,
