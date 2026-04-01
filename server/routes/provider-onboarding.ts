@@ -986,10 +986,51 @@ router.post('/apply', upload.fields([
             }
           }
         } catch (asyncErr: any) {
-          logger.warn('[KYC2026] Verification failed — application stays pending for admin review', {
+          logger.error('[KYC2026] Verification exception — rescuing application to pending_review', {
             applicationId,
             error: asyncErr?.message,
           });
+          // CRITICAL RECOVERY: A KYC exception must never silently trap an application
+          // in `processing` forever. Rescue it to pending_review so support can see it.
+          try {
+            await pool.query(
+              `UPDATE provider_applications
+                  SET status = 'pending_review',
+                      sub_status = 'kyc_exception_rescued',
+                      manual_decision_reason = $1
+                WHERE application_id = $2
+                  AND status = 'processing'`,
+              [`KYC engine exception: ${asyncErr?.message?.slice(0, 200) || 'unknown error'}`, applicationId]
+            );
+            // Create queue entry so support can find it
+            await pool.query(
+              `INSERT INTO provider_review_queue
+                 (application_id, status, priority, review_reasons, created_at)
+               SELECT id, 'open', 'urgent',
+                      $1::jsonb, NOW()
+                 FROM provider_applications
+                WHERE application_id = $2
+               ON CONFLICT (application_id) DO NOTHING`,
+              [JSON.stringify(['kyc_engine_exception']), applicationId]
+            );
+            // Emit critical monitoring event
+            emitProviderEvent({
+              applicationId: (application as any).id,
+              eventName: 'kyc_exception_rescued',
+              severity: 'critical',
+              payload: { applicationId, error: asyncErr?.message?.slice(0, 500) },
+            }).catch(() => {});
+            // Write audit event
+            writeProviderAudit({
+              applicationId: (application as any).id,
+              eventType: 'kyc_exception_rescued',
+              actorUserId: 'system',
+              actorRole: 'system',
+              payload: { error: asyncErr?.message?.slice(0, 500) },
+            }).catch(() => {});
+          } catch (rescueErr: any) {
+            logger.error('[KYC2026] Rescue to pending_review also failed', { applicationId, error: rescueErr?.message });
+          }
         }
       });
     }
@@ -1184,19 +1225,29 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
     const randomId = randomBytes(5).toString('hex').toUpperCase();
     const providerId = `${providerPrefix}-${randomId}`;
 
-    // Update application — lock row by matching current status
-    await db
-      .update(providerApplications)
-      .set({
-        status: 'approved',
-        reviewedBy: adminUid || 'admin',
-        reviewedAt: new Date(),
-        approvedAsProviderId: providerId,
-        internalNotes: internalNotes || null,
-        backgroundCheckStatus: 'passed',
-        backgroundCheckDate: new Date(),
-      })
-      .where(eq(providerApplications.applicationId, applicationId));
+    // Atomic conditional UPDATE — only succeeds if status is still actionable.
+    // This is optimistic concurrency control: no explicit lock needed because
+    // the WHERE status clause makes this a no-op if another admin already acted.
+    const approveResult = await pool.query(
+      `UPDATE provider_applications
+          SET status = 'approved',
+              reviewed_by = $1,
+              reviewed_at = NOW(),
+              approved_as_provider_id = $2,
+              internal_notes = $3,
+              background_check_status = 'passed',
+              background_check_date = NOW()
+        WHERE application_id = $4
+          AND status IN ('pending', 'pending_review', 'pending_resubmission')`,
+      [adminUid || 'admin', providerId, internalNotes || null, applicationId]
+    );
+
+    if (approveResult.rowCount === 0) {
+      return res.status(409).json({
+        error: 'This application was already processed by another reviewer.',
+        errorCode: 'CONCURRENT_ACTION_CONFLICT',
+      });
+    }
 
     // Audit + queue completion
     writeProviderAudit({
@@ -1290,22 +1341,27 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
       return res.status(400).json({ error: 'Application already processed', errorCode: 'APPLICATION_ALREADY_PROCESSED' });
     }
 
-    await db
-      .update(providerApplications)
-      .set({
-        status: 'rejected',
-        reviewedBy: adminUid || 'admin',
-        reviewedAt: new Date(),
-        rejectionReason,
-        internalNotes: internalNotes || null,
-      })
-      .where(eq(providerApplications.applicationId, applicationId));
+    // Atomic conditional UPDATE — only succeeds if status is still actionable.
+    // Same optimistic concurrency control as approve: status clause prevents double-processing.
+    const rejectResult = await pool.query(
+      `UPDATE provider_applications
+          SET status = 'rejected',
+              reviewed_by = $1,
+              reviewed_at = NOW(),
+              rejection_reason = $2,
+              internal_notes = $3,
+              manual_decision_reason = $4
+        WHERE application_id = $5
+          AND status IN ('pending', 'pending_review', 'pending_resubmission')`,
+      [adminUid || 'admin', rejectionReason, internalNotes || null, rejectionReason, applicationId]
+    );
 
-    // Store manual_decision_reason in new column (raw SQL, not in Drizzle schema yet)
-    pool.query(
-      `UPDATE provider_applications SET manual_decision_reason = $1 WHERE application_id = $2`,
-      [rejectionReason, applicationId]
-    ).catch(() => {});
+    if (rejectResult.rowCount === 0) {
+      return res.status(409).json({
+        error: 'This application was already processed by another reviewer.',
+        errorCode: 'CONCURRENT_ACTION_CONFLICT',
+      });
+    }
 
     // Audit + queue completion
     writeProviderAudit({

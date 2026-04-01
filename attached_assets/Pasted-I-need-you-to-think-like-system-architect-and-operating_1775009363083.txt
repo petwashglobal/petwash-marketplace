@@ -1,0 +1,180 @@
+I need you to think like system architect and operating engineer, not only coder.
+
+The direction is good, but I am worried you are not yet proving the system as a full operating workflow.
+
+Do not give me another implementation summary.
+I need proof and architecture discipline.
+
+=====================================
+1. NON-NEGOTIABLE PRINCIPLE
+=====================================
+
+This is not one feature.
+This is one connected operating system across:
+- public loyalty members
+- providers
+- support
+- management
+- kiosks
+- wallet
+- communications
+- audit
+- monitoring
+
+Every part must match the whole system.
+
+=====================================
+2. I NEED PROOF, NOT CLAIMS
+=====================================
+
+Before I trust this, I want proof for these areas:
+
+A. Route proof
+Show real responses for all workflow routes:
+- applicant submit
+- applicant status
+- applicant messages
+- admin queue
+- admin detail
+- assign reviewer
+- approve
+- reject
+- request resubmission
+- send message
+- audit trail
+
+B. Scenario proof
+Run these 6 end-to-end scenarios:
+1. clean auto-approve
+2. pending_review
+3. pending_resubmission
+4. manual approve
+5. manual reject
+6. processing failure fallback
+
+For each one I want:
+- DB state
+- queue state
+- audit events
+- messages written
+- email actions triggered
+- final frontend-visible state
+
+C. Permission proof
+Show:
+- public user cannot access provider review
+- provider cannot access admin routes
+- support can review
+- management can see management dashboard only
+- no role leakage
+
+D. Race condition proof
+Show what happens if:
+- two admins open same application
+- one approves while another rejects
+- stale page tries to submit second action
+- resubmission is requested twice
+
+E. File handling proof
+Show:
+- image preview
+- PDF preview
+- zoom/fullscreen
+- download original
+- version history
+- compare previous vs latest resubmission
+
+F. Mobile proof
+Show screenshots or real renders for:
+- small iPhone
+- Android
+- iPad
+- desktop
+
+For these pages:
+- admin queue
+- admin application detail
+- applicant status page
+
+=====================================
+3. SYSTEM QUESTIONS YOU MUST ANSWER
+=====================================
+
+I want exact answers to these:
+
+1. What is the single source of truth for each of these:
+- application state
+- communication thread
+- review decision
+- audit trail
+- file history
+- wallet data
+
+2. Which exact states are allowed to transition into which states?
+I want the full state machine.
+
+3. Which actions are idempotent?
+Example:
+- approve
+- reject
+- request resubmission
+- resend email
+- send message
+
+4. What exact DB locks are used to prevent conflicting review actions?
+
+5. What happens when external systems fail?
+- KYC timeout
+- object storage failure
+- email provider failure
+
+6. Which fields are still only in raw SQL and not yet synced into schema definitions?
+
+=====================================
+4. I AM STILL WORRIED ABOUT THESE GAPS
+=====================================
+
+Please address these directly:
+
+1. Inbox model
+I need exact explanation for outbound + inbound + internal notes.
+Not generic.
+
+2. Management dashboard
+I need exact route and exact data model, not only future idea.
+
+3. Support vs management separation
+I need exact permission matrix.
+
+4. Resubmission lifecycle
+I need exact rules:
+- max attempts
+- expiry
+- old file visibility
+- audit continuity
+- same application ID continuity
+
+5. Monitoring
+I need real alert thresholds:
+- processing stuck
+- review overdue
+- resubmission overdue
+- rejection spike
+- email failure spike
+
+=====================================
+5. FINAL ACCEPTANCE RULE
+=====================================
+
+Do not tell me “implemented”.
+Do not tell me “wired”.
+
+Tell me only when you can prove:
+- flow works
+- roles are isolated
+- failures are handled
+- mobile works
+- data stays consistent
+- audit is complete
+
+That is the level required here.
