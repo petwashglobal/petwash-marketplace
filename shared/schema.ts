@@ -14815,3 +14815,111 @@ export const insertStationSettlementSchema = createInsertSchema(stationSettlemen
 });
 export type InsertStationSettlement = z.infer<typeof insertStationSettlementSchema>;
 export type StationSettlement = typeof stationSettlements.$inferSelect;
+
+// =========================================================
+// PAW FINDER TABLES - Added via raw SQL, types here for TypeScript
+// =========================================================
+
+export const pawFinderPosts = pgTable("paw_finder_posts", {
+  id: serial("id").primaryKey(),
+  postKey: varchar("post_key", { length: 48 }).notNull().unique(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  postType: varchar("post_type", { length: 8 }).notNull(),
+  petType: varchar("pet_type", { length: 16 }).notNull(),
+  petName: varchar("pet_name", { length: 100 }),
+  breed: varchar("breed", { length: 100 }),
+  colorPrimary: varchar("color_primary", { length: 60 }),
+  colorSecondary: varchar("color_secondary", { length: 60 }),
+  sizeCategory: varchar("size_category", { length: 16 }).default("unknown"),
+  sex: varchar("sex", { length: 16 }).default("unknown"),
+  description: text("description").notNull(),
+  rewardAmount: numeric("reward_amount", { precision: 10, scale: 2 }),
+  contactPreference: varchar("contact_preference", { length: 32 }).default("inbox_first"),
+  contactPhone: varchar("contact_phone", { length: 32 }),
+  city: varchar("city", { length: 100 }).notNull(),
+  area: varchar("area", { length: 100 }),
+  addressText: varchar("address_text", { length: 255 }),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }),
+  longitude: numeric("longitude", { precision: 10, scale: 7 }),
+  eventDate: varchar("event_date", { length: 16 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  moderationStatus: varchar("moderation_status", { length: 20 }).default("pending"),
+  moderationReason: text("moderation_reason"),
+  moderationConfidence: integer("moderation_confidence"),
+  matchedPostCount: integer("matched_post_count").default(0),
+  finalPublishCheckedAt: timestamp("final_publish_checked_at"),
+  publishedAt: timestamp("published_at"),
+  resolvedAt: timestamp("resolved_at"),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type PawFinderPost = typeof pawFinderPosts.$inferSelect;
+
+export const pawFinderMedia = pgTable("paw_finder_media", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => pawFinderPosts.id),
+  mediaRole: varchar("media_role", { length: 16 }).default("primary"),
+  filePath: text("file_path").notNull(),
+  mimeType: varchar("mime_type", { length: 64 }),
+  geminiImageStatus: varchar("gemini_image_status", { length: 16 }).default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PawFinderMedia = typeof pawFinderMedia.$inferSelect;
+
+export const pawFinderMatches = pgTable("paw_finder_matches", {
+  id: serial("id").primaryKey(),
+  lostPostId: integer("lost_post_id").notNull().references(() => pawFinderPosts.id),
+  foundPostId: integer("found_post_id").notNull().references(() => pawFinderPosts.id),
+  distanceKm: numeric("distance_km", { precision: 8, scale: 3 }),
+  dateGapDays: integer("date_gap_days"),
+  similarityScore: integer("similarity_score").notNull().default(0),
+  similarityReasons: jsonb("similarity_reasons").default([]),
+  status: varchar("status", { length: 16 }).default("suggested"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type PawFinderMatch = typeof pawFinderMatches.$inferSelect;
+
+export const pawFinderContactRequests = pgTable("paw_finder_contact_requests", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => pawFinderPosts.id),
+  requesterUserId: varchar("requester_user_id", { length: 128 }).notNull(),
+  ownerUserId: varchar("owner_user_id", { length: 128 }).notNull(),
+  messageText: text("message_text").notNull(),
+  status: varchar("status", { length: 16 }).default("pending"),
+  revealPhone: boolean("reveal_phone").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type PawFinderContactRequest = typeof pawFinderContactRequests.$inferSelect;
+
+export const pawFinderModerationEvents = pgTable("paw_finder_moderation_events", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").references(() => pawFinderPosts.id),
+  stage: varchar("stage", { length: 32 }).notNull(),
+  verdict: varchar("verdict", { length: 16 }).notNull(),
+  confidence: integer("confidence"),
+  flags: jsonb("flags").default([]),
+  rawSummary: jsonb("raw_summary").default({}),
+  actorUserId: varchar("actor_user_id", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PawFinderModerationEvent = typeof pawFinderModerationEvents.$inferSelect;
+
+export const pawFinderEvents = pgTable("paw_finder_events", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").references(() => pawFinderPosts.id),
+  eventName: varchar("event_name", { length: 100 }).notNull(),
+  severity: varchar("severity", { length: 16 }).default("info"),
+  actorUserId: varchar("actor_user_id", { length: 128 }),
+  payload: jsonb("payload").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PawFinderEvent = typeof pawFinderEvents.$inferSelect;

@@ -1,434 +1,281 @@
 /**
- * ⁦Paw Finder™⁩ Routes
- * FREE COMMUNITY SERVICE
- * Connect Lost Pets with Finders - Open to ALL registered users
- * NO platform fees - ⁦Pet Wash™⁩ just facilitates the connection
+ * Paw Finder™ Routes — PostgreSQL + Gemini Moderation + Haversine Matching
+ * Public browsing | Active-member posting | Safe contact flow
  */
 
 import { Router } from 'express';
-import admin, { db as firestore } from '../lib/firebase-admin';
-import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { pool } from '../db';
 import { requireAuth } from '../customAuth';
-import { geocodeAddress } from '../services/location/MapsService';
-import { buildAllNavigationLinks } from '../utils/navigation';
+import { requireLoyaltyMember } from '../middleware/loyalty';
+import {
+  createAndPublishPost,
+  resolvePost,
+  createContactRequest,
+} from '../services/PawFinderService';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
-// Validation schemas
-const reportPetSchema = z.object({
-  type: z.enum(['lost', 'found']),
-  pet: z.object({
-    species: z.string().min(1, 'Pet species is required'),
-    name: z.string().min(1, 'Pet name is required'),
-    color: z.string().optional(),
-    breed: z.string().optional(),
-    age: z.number().optional(),
-    description: z.string().optional(),
-  }),
-  lastSeen: z.object({
-    city: z.string().min(1, 'City is required'),
-    coords: z.array(z.number()).length(2).optional(), // [longitude, latitude]
-    address: z.string().optional(),
-    timestamp: z.string().optional(),
-  }),
-  contact: z.object({
-    name: z.string().min(1, 'Contact name is required'),
-    phone: z.string().min(1, 'Contact phone is required'),
-    email: z.string().email().optional(),
-  }),
-  reward: z.string().optional(),
-  photos: z.array(z.string()).optional(),
-  lang: z.enum(['he', 'en']).default('en'),
+/* -----------------------------------------------------------------------
+   INPUT SCHEMAS
+----------------------------------------------------------------------- */
+
+const createPostSchema = z.object({
+  postType: z.enum(['lost', 'found']),
+  petType: z.enum(['dog', 'cat', 'bird', 'other']),
+  petName: z.string().max(100).optional(),
+  breed: z.string().max(100).optional(),
+  colorPrimary: z.string().max(60).optional(),
+  colorSecondary: z.string().max(60).optional(),
+  sizeCategory: z.enum(['tiny', 'small', 'medium', 'large', 'giant', 'unknown']).default('unknown'),
+  sex: z.enum(['male', 'female', 'unknown']).default('unknown'),
+  description: z.string().min(10).max(2000),
+  rewardAmount: z.number().min(0).max(10000).optional(),
+  contactPreference: z.enum(['inbox_first', 'reveal_phone_after_accept']).default('inbox_first'),
+  contactPhone: z.string().max(32).optional(),
+  city: z.string().min(1).max(100),
+  area: z.string().max(100).optional(),
+  addressText: z.string().max(255).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  mediaFiles: z.array(z.object({
+    filePath: z.string().min(1),
+    mimeType: z.string().optional(),
+    mediaRole: z.enum(['primary', 'extra']).default('primary'),
+  })).min(1).max(8),
 });
 
-const searchPetsSchema = z.object({
-  species: z.string().optional(),
-  city: z.string().optional(),
-  status: z.enum(['active', 'resolved', 'expired']).optional(),
-  type: z.enum(['lost', 'found']).optional(),
-  limit: z.number().int().min(1).max(100).default(50),
+const contactSchema = z.object({
+  messageText: z.string().min(5).max(1000),
 });
 
-/**
- * POST /api/paw-finder/reports
- * Submit a lost or found pet report (FREE - any registered user)
- */
-router.post('/reports', requireAuth, async (req, res) => {
-  try {
-    const data = reportPetSchema.parse(req.body);
-    const authUser = (req as any).user;
+/* -----------------------------------------------------------------------
+   HELPERS
+----------------------------------------------------------------------- */
 
-    // Geocode the location using Google Maps (using shared MapsService)
-    let geocodedLocation = null;
-    if (data.lastSeen?.city || data.lastSeen?.address) {
-      const addressString = `${data.lastSeen.address || ''}, ${data.lastSeen.city || ''}`.trim();
-      geocodedLocation = await geocodeAddress(addressString, data.lang || 'en');
-    }
-
-    // Create Firestore document
-    const reportRef = await firestore.collection('pawFinderReports').add({
-      ...data,
-      status: 'active', // active, resolved, expired
-      reportedBy: {
-        userId: authUser?.uid || 'anonymous',
-        email: authUser?.email || '',
-      },
-      location: geocodedLocation ? {
-        lat: geocodedLocation.lat,
-        lng: geocodedLocation.lng,
-        formattedAddress: geocodedLocation.formattedAddress,
-        city: data.lastSeen.city,
-        originalAddress: data.lastSeen.address,
-      } : null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      views: 0,
-      contactAttempts: 0,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-
-    logger.info('[Paw Finder] New report submitted', {
-      reportId: reportRef.id,
-      type: data.type,
-      species: data.pet.species,
-      city: data.lastSeen.city,
-      userId: authUser?.uid,
-      hasLocation: !!geocodedLocation,
-    });
-
-    // Send location-based alerts to nearby loyalty members
-    if (geocodedLocation) {
-      // Fire-and-forget notification to nearby users (within 5km radius)
-      notifyNearbyMembers(geocodedLocation, data.type, data.pet.species).catch(err => {
-        logger.warn('[Paw Finder] Nearby member notification failed (non-critical)', {
-          error: err.message,
-        });
-      });
-    }
-
-    // Generate navigation links using shared utilities
-    const navigationLinks = geocodedLocation 
-      ? buildAllNavigationLinks({
-          lat: geocodedLocation.lat,
-          lng: geocodedLocation.lng,
-          label: `${data.type === 'lost' ? 'Lost' : 'Found'} ${data.pet.species}: ${data.pet.name}`,
-        })
-      : null;
-
-    res.status(201).json({
-      success: true,
-      id: reportRef.id,
-      location: geocodedLocation,
-      navigation: navigationLinks,
-      message: data.lang === 'he'
-        ? 'הדיווח נשלח בהצלחה! שלחנו התראות לחברי נאמנות באזור.'
-        : 'Report submitted successfully! We\'ve alerted loyalty members in your area.',
-    });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: error.errors,
-      });
-    }
-
-    logger.error('[Paw Finder] Report submission error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to submit report',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * Notify nearby loyalty members about lost/found pet
- */
-async function notifyNearbyMembers(location: { lat: number; lng: number }, type: string, species: string) {
-  try {
-    // Get all loyalty members with FCM tokens
-    const firestore = admin.firestore();
-    const usersSnapshot = await firestore.collection('users')
-      .where('fcmToken', '!=', null)
-      .get();
-    
-    const notifications: Promise<any>[] = [];
-    
-    const NOTIFY_RADIUS_KM = 5;
-
-    usersSnapshot.forEach((doc) => {
-      const userData = doc.data();
-
-      // Haversine distance filter — only notify members within 5 km
-      if (userData.latitude != null && userData.longitude != null) {
-        const R = 6371;
-        const toRad = (d: number) => (d * Math.PI) / 180;
-        const dLat = toRad(userData.latitude - location.lat);
-        const dLon = toRad(userData.longitude - location.lng);
-        const a =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos(toRad(location.lat)) * Math.cos(toRad(userData.latitude)) *
-          Math.sin(dLon / 2) ** 2;
-        const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        if (distKm > NOTIFY_RADIUS_KM) return;
-      }
-      
-      const messaging = admin.messaging();
-      const message = {
-        token: userData.fcmToken,
-        notification: {
-          title: type === 'lost' 
-            ? `🔍 ${species} אבוד באזור שלך / Lost ${species} in Your Area`
-            : `🐾 ${species} נמצא באזור שלך / Found ${species} in Your Area`,
-          body: type === 'lost'
-            ? 'עזור למצוא חיית מחמד אבודה / Help find a lost pet'
-            : 'עזור לאחד חיית מחמד עם הבעלים / Help reunite a pet with their family',
-        },
-        data: {
-          type: 'paw_finder_alert',
-          reportType: type,
-          species,
-          lat: location.lat.toString(),
-          lng: location.lng.toString(),
-        },
-        android: {
-          priority: 'high' as const,
-        },
-        apns: {
-          headers: {
-            'apns-priority': '10',
-          },
-        },
-      };
-      
-      notifications.push(messaging.send(message));
-    });
-    
-    await Promise.allSettled(notifications);
-    
-    logger.info('[Paw Finder] Nearby member notifications sent', {
-      recipientCount: notifications.length,
-      type,
-      species,
-    });
-  } catch (error: any) {
-    logger.error('[Paw Finder] Nearby notification failed', {
-      error: error.message,
-    });
-  }
+function uid(req: any): string {
+  return req.user?.uid || req.firebaseUser?.uid || '';
 }
 
-/**
- * GET /api/paw-finder/reports
- * Search and list pet reports (LOYALTY MEMBERS ONLY)
- */
-router.get('/reports', requireAuth, async (req, res) => {
+/* -----------------------------------------------------------------------
+   PUBLIC ROUTES — no auth required
+----------------------------------------------------------------------- */
+
+/** GET /api/paw-finder/posts — browse published posts */
+router.get('/posts', async (req, res) => {
   try {
-    const params = searchPetsSchema.parse({
-      species: req.query.species,
-      city: req.query.city,
-      status: req.query.status || 'active',
-      type: req.query.type,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
-    });
+    const postType = req.query.postType as string | undefined;
+    const city     = req.query.city     as string | undefined;
+    const pet      = req.query.petType  as string | undefined;
+    const limit    = Math.min(Number(req.query.limit || 60), 100);
 
-    let query = firestore.collection('pawFinderReports')
-      .where('status', '==', params.status)
-      .orderBy('createdAt', 'desc')
-      .limit(params.limit);
+    const { rows } = await pool.query(
+      `SELECT
+         p.id, p.post_key, p.post_type, p.pet_type, p.pet_name,
+         p.breed, p.color_primary, p.size_category, p.sex,
+         p.city, p.area, p.description, p.reward_amount,
+         p.event_date, p.status, p.matched_post_count,
+         p.latitude, p.longitude, p.published_at,
+         (SELECT m.file_path
+          FROM paw_finder_media m
+          WHERE m.post_id = p.id
+          ORDER BY CASE WHEN m.media_role = 'primary' THEN 0 ELSE 1 END, m.id
+          LIMIT 1) AS primary_media
+       FROM paw_finder_posts p
+       WHERE p.status IN ('published','matched')
+         AND ($1::text IS NULL OR p.post_type = $1)
+         AND ($2::text IS NULL OR LOWER(p.city) = LOWER($2))
+         AND ($3::text IS NULL OR p.pet_type = $3)
+       ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
+       LIMIT $4`,
+      [postType || null, city || null, pet || null, limit],
+    );
 
-    // Note: Firestore has limitations on compound queries
-    // For production, you'd need composite indexes or client-side filtering
-    
-    const snapshot = await query.get();
-    let reports = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    // Client-side filtering for additional criteria
-    if (params.type) {
-      reports = reports.filter(r => r.type === params.type);
-    }
-    if (params.species) {
-      reports = reports.filter(r => r.pet?.species?.toLowerCase().includes(params.species!.toLowerCase()));
-    }
-    if (params.city) {
-      reports = reports.filter(r => r.lastSeen?.city?.toLowerCase().includes(params.city!.toLowerCase()));
-    }
-
-    res.json({
-      success: true,
-      count: reports.length,
-      reports,
-    });
-  } catch (error: any) {
-    logger.error('[Paw Finder] Search error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to search reports',
-      message: error.message,
-    });
+    res.json({ rows });
+  } catch (err: any) {
+    logger.error('[PawFinder] GET /posts failed', { error: err.message });
+    res.status(500).json({ error: 'internal_error' });
   }
 });
 
-/**
- * GET /api/paw-finder/reports/:id
- * Get a specific pet report (LOYALTY MEMBERS ONLY)
- */
-router.get('/reports/:id', requireAuth, async (req, res) => {
+/** GET /api/paw-finder/posts/:id — single post with media + matches */
+router.get('/posts/:id', async (req, res) => {
   try {
-    const reportRef = firestore.collection('pawFinderReports').doc(req.params.id);
-    const doc = await reportRef.get();
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid_id' });
 
-    if (!doc.exists) {
-      return res.status(404).json({
-        success: false,
-        error: 'Report not found',
-      });
-    }
+    const postRes = await pool.query(
+      `SELECT p.* FROM paw_finder_posts p
+       WHERE p.id = $1 AND p.status NOT IN ('rejected','archived')
+       LIMIT 1`,
+      [id],
+    );
+    const post = postRes.rows[0];
+    if (!post) return res.status(404).json({ error: 'not_found' });
 
-    // Increment view count
-    await reportRef.update({
-      views: (doc.data()?.views || 0) + 1,
-    });
+    const [mediaRes, matchRes] = await Promise.all([
+      pool.query(
+        `SELECT id, media_role, file_path, mime_type FROM paw_finder_media WHERE post_id = $1 ORDER BY id ASC`,
+        [id],
+      ),
+      pool.query(
+        `SELECT m.*, lp.pet_name AS lost_pet_name, lp.city AS lost_city, lp.event_date AS lost_date,
+                fp.pet_name AS found_pet_name, fp.city AS found_city, fp.event_date AS found_date
+         FROM paw_finder_matches m
+         JOIN paw_finder_posts lp ON lp.id = m.lost_post_id
+         JOIN paw_finder_posts fp ON fp.id = m.found_post_id
+         WHERE (m.lost_post_id = $1 OR m.found_post_id = $1) AND m.status = 'suggested'
+         ORDER BY m.similarity_score DESC LIMIT 20`,
+        [id],
+      ),
+    ]);
 
-    res.json({
-      success: true,
-      report: {
-        id: doc.id,
-        ...doc.data(),
-      },
-    });
-  } catch (error: any) {
-    logger.error('[Paw Finder] Get report error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get report',
-      message: error.message,
-    });
+    const safePost = { ...post };
+    delete safePost.contact_phone;
+
+    res.json({ post: safePost, media: mediaRes.rows, matches: matchRes.rows });
+  } catch (err: any) {
+    logger.error('[PawFinder] GET /posts/:id failed', { error: err.message });
+    res.status(500).json({ error: 'internal_error' });
   }
 });
 
-/**
- * POST /api/paw-finder/reports/:id/contact
- * Record contact attempt (LOYALTY MEMBERS ONLY)
- */
-router.post('/reports/:id/contact', requireAuth, async (req, res) => {
-  try {
-    const reportRef = firestore.collection('pawFinderReports').doc(req.params.id);
-    const doc = await reportRef.get();
+/* -----------------------------------------------------------------------
+   MEMBER ROUTES — requireAuth + requireLoyaltyMember for posting
+----------------------------------------------------------------------- */
 
-    if (!doc.exists) {
-      return res.status(404).json({
-        success: false,
-        error: 'Report not found',
-      });
+/** POST /api/paw-finder/posts — create + auto-publish (loyalty members only) */
+router.post('/posts', requireAuth, requireLoyaltyMember, async (req, res) => {
+  try {
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+
+    const parsed = createPostSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
     }
 
-    // Increment contact attempts
-    await reportRef.update({
-      contactAttempts: (doc.data()?.contactAttempts || 0) + 1,
-    });
+    const result = await createAndPublishPost(userId, parsed.data);
 
-    logger.info('[Paw Finder] Contact attempt recorded', {
-      reportId: req.params.id,
-    });
+    const statusCode =
+      result.status === 'published'      ? 201 :
+      result.status === 'pending_review' ? 202 : 422;
 
-    res.json({
-      success: true,
-      message: 'Contact recorded',
-    });
-  } catch (error: any) {
-    logger.error('[Paw Finder] Contact error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to record contact',
-      message: error.message,
-    });
+    res.status(statusCode).json(result);
+  } catch (err: any) {
+    logger.error('[PawFinder] POST /posts failed', { error: err.message });
+    const code =
+      ['DESCRIPTION_REQUIRED','CITY_REQUIRED','EVENT_DATE_REQUIRED','PRIMARY_MEDIA_REQUIRED'].includes(err.message)
+        ? 400 : 500;
+    res.status(code).json({ error: err.message || 'create_failed' });
   }
 });
 
-/**
- * PATCH /api/paw-finder/reports/:id/resolve
- * Mark a report as resolved (LOYALTY MEMBERS ONLY)
- */
-router.patch('/reports/:id/resolve', requireAuth, async (req, res) => {
+/** POST /api/paw-finder/posts/:id/contact — safe contact (any logged-in user) */
+router.post('/posts/:id/contact', requireAuth, async (req, res) => {
   try {
-    const { resolved, note } = req.body;
-    const reportRef = firestore.collection('pawFinderReports').doc(req.params.id);
-    const doc = await reportRef.get();
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: 'not_authenticated' });
 
-    if (!doc.exists) {
-      return res.status(404).json({
-        success: false,
-        error: 'Report not found',
-      });
+    const postId = Number(req.params.id);
+    const parsed = contactSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
     }
 
-    const newStatus = resolved === true ? 'resolved' : 'active';
-    
-    await reportRef.update({
-      status: newStatus,
-      resolvedAt: resolved === true ? new Date().toISOString() : null,
-      resolvedNote: note || (resolved === true ? 'Pet reunited' : null),
-      updatedAt: new Date().toISOString(),
-    });
-
-    logger.info('[Paw Finder] Report status updated', {
-      reportId: req.params.id,
-      newStatus,
-    });
-
-    res.json({
-      success: true,
-      status: newStatus,
-      message: resolved === true ? 'Report marked as resolved' : 'Report reopened',
-    });
-  } catch (error: any) {
-    logger.error('[Paw Finder] Resolve error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update report',
-      message: error.message,
-    });
+    const result = await createContactRequest(postId, userId, parsed.data.messageText);
+    res.json(result);
+  } catch (err: any) {
+    const status =
+      err.message === 'POST_NOT_FOUND'         ? 404 :
+      err.message === 'POST_NOT_CONTACTABLE'   ? 409 :
+      err.message === 'CANNOT_CONTACT_OWN_POST'? 400 :
+      err.message === 'MESSAGE_REQUIRED'        ? 400 : 500;
+    res.status(status).json({ error: err.message || 'contact_failed' });
   }
 });
 
-/**
- * GET /api/paw-finder/stats
- * Get Paw Finder statistics (success stories, active reports, etc.)
- */
-router.get('/stats', async (req, res) => {
+/** GET /api/paw-finder/my/posts — user's own posts (all statuses) */
+router.get('/my/posts', requireAuth, async (req, res) => {
   try {
-    const activeSnapshot = await firestore.collection('pawFinderReports')
-      .where('status', '==', 'active')
-      .get();
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: 'not_authenticated' });
 
-    const resolvedSnapshot = await firestore.collection('pawFinderReports')
-      .where('status', '==', 'resolved')
-      .get();
+    const { rows } = await pool.query(
+      `SELECT p.*,
+              (SELECT m.file_path FROM paw_finder_media m WHERE m.post_id = p.id ORDER BY id LIMIT 1) AS primary_media,
+              COALESCE((SELECT COUNT(*)::int FROM paw_finder_contact_requests cr
+                        WHERE cr.post_id = p.id AND cr.status = 'pending'), 0) AS pending_contacts
+       FROM paw_finder_posts p
+       WHERE p.user_id = $1 AND p.status <> 'archived'
+       ORDER BY p.created_at DESC`,
+      [userId],
+    );
 
-    res.json({
-      success: true,
-      stats: {
-        activeReports: activeSnapshot.size,
-        resolvedReports: resolvedSnapshot.size,
-        successRate: resolvedSnapshot.size > 0
-          ? Math.round((resolvedSnapshot.size / (activeSnapshot.size + resolvedSnapshot.size)) * 100)
-          : 0,
-      },
-    });
-  } catch (error: any) {
-    logger.error('[Paw Finder] Stats error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get stats',
-      message: error.message,
-    });
+    res.json({ rows });
+  } catch (err: any) {
+    logger.error('[PawFinder] GET /my/posts failed', { error: err.message });
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/** POST /api/paw-finder/my/posts/:id/resolve — mark as resolved */
+router.post('/my/posts/:id/resolve', requireAuth, async (req, res) => {
+  try {
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+
+    const result = await resolvePost(userId, Number(req.params.id));
+    res.json(result);
+  } catch (err: any) {
+    const status =
+      err.message === 'POST_NOT_FOUND'  ? 404 :
+      err.message === 'NOT_POST_OWNER'  ? 403 :
+      err.message === 'ALREADY_RESOLVED'? 409 : 500;
+    res.status(status).json({ error: err.message || 'resolve_failed' });
+  }
+});
+
+/** GET /api/paw-finder/my/contacts — incoming contact requests on my posts */
+router.get('/my/contacts', requireAuth, async (req, res) => {
+  try {
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+
+    const { rows } = await pool.query(
+      `SELECT cr.*, p.pet_name, p.pet_type, p.post_type, p.city
+       FROM paw_finder_contact_requests cr
+       JOIN paw_finder_posts p ON p.id = cr.post_id
+       WHERE cr.owner_user_id = $1
+       ORDER BY cr.created_at DESC LIMIT 100`,
+      [userId],
+    );
+    res.json({ rows });
+  } catch (err: any) {
+    logger.error('[PawFinder] GET /my/contacts failed', { error: err.message });
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/** POST /api/paw-finder/my/contacts/:id/accept */
+router.post('/my/contacts/:id/accept', requireAuth, async (req, res) => {
+  try {
+    const userId = uid(req);
+    const crId = Number(req.params.id);
+
+    const { rows } = await pool.query(
+      `UPDATE paw_finder_contact_requests
+       SET status = 'accepted', reveal_phone = TRUE, updated_at = NOW()
+       WHERE id = $1 AND owner_user_id = $2 AND status = 'pending'
+       RETURNING id`,
+      [crId, userId],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'not_found_or_already_handled' });
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'internal_error' });
   }
 });
 
