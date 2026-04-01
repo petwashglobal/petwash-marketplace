@@ -17,7 +17,7 @@ import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import { emailSpendGuard } from '../services/EmailSpendGuard';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
-const FROM_NAME = '⁦Pet Wash™⁩ Team';
+const FROM_NAME = 'Pet Wash™';
 
 let sgMail: MailService | null = isSendGridConfigured() ? createMailService() : null;
 

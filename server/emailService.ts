@@ -14,8 +14,8 @@ const mailService = createMailService();
 
 export class EmailService {
   private static readonly FROM_EMAIL = 'noreply@petwash.co.il';
-  private static readonly SUPPORT_EMAIL = 'Support@PetWash.co.il'; // Using real business email
-  private static readonly REPORTS_EMAIL = process.env.REPORTS_EMAIL_TO || 'Support@PetWash.co.il';
+  private static readonly SUPPORT_EMAIL = 'support@petwash.co.il';
+  private static readonly REPORTS_EMAIL = process.env.REPORTS_EMAIL_TO || 'support@petwash.co.il';
   private static readonly REPORTS_CC = process.env.REPORTS_EMAIL_CC || '';
   private static readonly UNSUBSCRIBE_URL = 'https://petwash.co.il/unsubscribe';
   
@@ -104,7 +104,7 @@ export class EmailService {
   /**
    * Check if customer consents to receiving emails
    */
-  private static async checkEmailConsent(email: string, messageType: 'transactional' | 'marketing' | 'reminder'): Promise<boolean> {
+  static async checkEmailConsent(email: string, messageType: 'transactional' | 'marketing' | 'reminder'): Promise<boolean> {
     try {
       // Import storage dynamically to avoid circular dependency
       const { storage } = await import('./storage');
@@ -202,7 +202,7 @@ export class EmailService {
   /**
    * Production-safe rate limiting check
    */
-  private static checkRateLimit(email: string): boolean {
+  static checkRateLimit(email: string): boolean {
     const now = Date.now();
     const userLimit = this.sendCounts.get(email);
     
@@ -421,21 +421,16 @@ export class EmailService {
       // Sanitize content
       const htmlContent = this.sanitizeEmailContent(IsraeliTaxService.formatInvoiceHTML(invoice));
       
-      // Generate unsubscribe token
-      const unsubscribeToken = this.generateUnsubscribeToken(invoice.customerEmail);
-      const unsubscribeUrl = `${this.UNSUBSCRIBE_URL}?token=${unsubscribeToken}`;
-      
+      // TAX INVOICE — no unsubscribe header permitted.
+      // Israeli Tax Invoice (חשבונית מס) is a required legal/transactional document.
+      // Adding List-Unsubscribe would misrepresent it as commercial/promotional mail
+      // and may invalidate the document under VAT Law 5735-1975.
       const msg = {
         to: invoice.customerEmail,
         from: this.FROM_EMAIL,
-        subject: `חשבונית מס ${invoice.invoiceNumber} - ⁦Pet Wash™⁩`,
+        subject: `חשבונית מס ${invoice.invoiceNumber} - Pet Wash™`,
         html: htmlContent,
-        // CRITICAL: List-Unsubscribe headers for legal compliance
-        headers: {
-          'List-Unsubscribe': `<${unsubscribeUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-        },
-        // Add BCC to support for record keeping
+        // BCC support for immutable record keeping
         bcc: this.SUPPORT_EMAIL
       };
       
@@ -669,7 +664,8 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐾 Pet Wash Ltd - דוח מע״מ אוטומטי</h1>
+      <h1>Pet Wash™ - דוח מע״מ אוטומטי</h1>
+      <p style="margin:4px 0 0;font-size:13px;opacity:.8;">פט ווש בע"מ | PetWash Ltd | ח.פ. 516047073</p>
     </div>
     <div class="content">
       <h2>דוח מע״מ חודשי</h2>
@@ -763,11 +759,12 @@ export class EmailService {
   <style>
     body { font-family: Arial, sans-serif; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { padding: 30px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 0 0 10px 10px; }
-    .badge { display: inline-block; padding: 8px 16px; background: #667eea; color: white; border-radius: 20px; font-size: 14px; margin: 10px 0; }
-    .details { background: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #667eea; }
-    .amount { font-size: 32px; font-weight: bold; color: #667eea; margin: 15px 0; }
+    .header { background: #1a1a1a; color: white; padding: 28px 30px; text-align: center; }
+    .header-sub { font-size: 11px; color: #888; margin-top: 6px; letter-spacing: 1px; }
+    .content { padding: 30px; background: #ffffff; border: 1px solid #e0e0e0; }
+    .badge { display: inline-block; padding: 6px 14px; background: #c9a96e; color: #1a1a1a; border-radius: 2px; font-size: 12px; font-weight: 600; margin: 10px 0; letter-spacing: 1px; }
+    .details { background: #f9f9f9; padding: 20px; margin: 20px 0; border-left: 3px solid #c9a96e; }
+    .amount { font-size: 32px; font-weight: bold; color: #1a1a1a; margin: 15px 0; }
     table { width: 100%; border-collapse: collapse; margin: 15px 0; }
     td { padding: 12px; border-bottom: 1px solid #e0e0e0; }
     td:first-child { font-weight: bold; color: #666; width: 40%; }
@@ -777,8 +774,9 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐾 ⁦PetWash™⁩ Expense Center</h1>
-      <div class="badge">New Expense Submission</div>
+      <h1 style="font-size:22px;font-weight:700;letter-spacing:2px;margin:0;">PET WASH™</h1>
+      <p class="header-sub">פט ווש בע"מ | ח.פ. 516047073</p>
+      <div class="badge">EXPENSE SUBMISSION</div>
     </div>
     <div class="content">
       <h2>Employee Expense Approval Required</h2>
@@ -818,8 +816,8 @@ export class EmailService {
       </p>
     </div>
     <div class="footer">
-      <p>PetWash Ltd (חברת פטוואש בע״מ) - Premium Organic Pet Care Platform</p>
-      <p>This is an automated notification from your expense management system.</p>
+      <p><strong>Pet Wash™</strong> | פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073</p>
+      <p>זוהי הודעה אוטומטית ממערכת ניהול ההוצאות / This is an automated notification from the expense management system.</p>
     </div>
   </div>
 </body>
@@ -871,8 +869,8 @@ export class EmailService {
   <style>
     body { font-family: Arial, sans-serif; }
     .container { max-width: 700px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; }
-    .form-container { background: white; padding: 40px; margin: 20px 0; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .header { background: #1a1a1a; color: white; padding: 36px 40px; text-align: center; }
+    .form-container { background: white; padding: 40px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .form-group { margin: 25px 0; }
     .form-label { font-weight: bold; color: #333; display: block; margin-bottom: 8px; font-size: 14px; }
     .form-input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: #fafafa; }
@@ -880,7 +878,7 @@ export class EmailService {
     .form-textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; min-height: 80px; font-family: Arial; background: #fafafa; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
-    .section-title { background: #667eea; color: white; padding: 12px 20px; margin: 30px -40px 25px; }
+    .section-title { background: #1a1a1a; color: #c9a96e; padding: 12px 20px; margin: 30px -40px 25px; letter-spacing: 1px; font-size: 13px; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 13px; }
     .watermark { text-align: center; color: #999; font-size: 12px; margin: 10px 0; }
   </style>
@@ -888,8 +886,9 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐾 ⁦PetWash™⁩ Employee Expense Form</h1>
-      <p style="font-size: 18px; margin-top: 10px;">Premium 7-Star Expense Management System</p>
+      <h1 style="font-size:22px;font-weight:700;letter-spacing:3px;margin:0;">PET WASH™</h1>
+      <p style="font-size:11px;color:#888;margin:8px 0 0;letter-spacing:1px;">פט ווש בע"מ | PetWash Ltd | ח.פ. 516047073</p>
+      <p style="font-size:14px;margin:12px 0 0;font-weight:600;color:#c9a96e;">Employee Expense Form — טופס הוצאות</p>
     </div>
     
     <div class="form-container">
@@ -986,8 +985,8 @@ export class EmailService {
       </div>
       
       <div style="text-align: center; margin-top: 30px;">
-        <button style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;">
-          ✓ Submit & Continue
+        <button style="background: #1a1a1a; color: #c9a96e; border: none; padding: 14px 40px; font-size: 14px; font-weight: 600; letter-spacing: 2px; cursor: pointer; text-transform: uppercase;">
+          SUBMIT &amp; CONTINUE
         </button>
       </div>
       
@@ -1000,7 +999,7 @@ export class EmailService {
       <p><strong>Nir Hadad (CEO) & Ido Shakarzi (National Operations Director)</strong></p>
       <p>This blank draft showcases the employee expense form layout and fields.</p>
       <p>Employees can easily fill and submit expenses of any type - the form auto-resets after each submission.</p>
-      <p style="margin-top: 15px;">PetWash Ltd (חברת פטוואש בע״מ) - www.petwash.co.il</p>
+      <p style="margin-top: 15px;"><strong>Pet Wash™</strong> | פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073 | www.petwash.co.il</p>
     </div>
   </div>
 </body>
@@ -1082,11 +1081,11 @@ export class EmailService {
         <table style="background: white;">
           <tr>
             <td>שם החברה / Company Name:</td>
-            <td><strong>חברת פטוואש בע״מ / PetWash Ltd</strong></td>
+            <td><strong>פט ווש בע"מ / PetWash Ltd</strong></td>
           </tr>
           <tr>
-            <td>ח.פ. / Company ID:</td>
-            <td>PETWASH_LTD</td>
+            <td>ח.פ. / Company Registration:</td>
+            <td><strong>516047073</strong></td>
           </tr>
           <tr>
             <td>כתובת / Address:</td>
@@ -1185,8 +1184,8 @@ export class EmailService {
     </div>
     
     <div class="footer">
-      <p><strong>PetWash Ltd (חברת פטוואש בע״מ)</strong></p>
-      <p>www.petwash.co.il | nir.h@petwash.co.il | ido.s@petwash.co.il</p>
+      <p><strong>Pet Wash™</strong> | פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073</p>
+      <p>www.petwash.co.il | support@petwash.co.il</p>
       <p style="margin-top: 15px;">
         This sample demonstrates the format of VAT declarations submitted to the Israeli Tax Authority.<br>
         The system automatically calculates Output VAT (collected) - Input VAT (paid) and determines refund eligibility.
@@ -1286,17 +1285,15 @@ export class EmailService {
 </body>
 </html>`;
       
+      // GIFT CARD DELIVERY — no unsubscribe header permitted.
+      // This is a paid-for transactional delivery. Including List-Unsubscribe
+      // implies the recipient can opt out of receiving their purchased gift —
+      // which is commercially and legally incorrect.
       const msg = {
         to: recipientEmail,
         from: this.FROM_EMAIL,
-        subject: `🎁 ⁦Pet Wash™⁩ Gift Card - ${voucherCode}`,
+        subject: `Pet Wash™ Gift Card - ${voucherCode}`,
         html: htmlContent,
-        // CRITICAL: List-Unsubscribe headers for legal compliance  
-        headers: {
-          'List-Unsubscribe': `<${this.UNSUBSCRIBE_URL}?token=${this.generateUnsubscribeToken(recipientEmail)}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-        },
-        // BCC support for record keeping
         bcc: this.SUPPORT_EMAIL
       };
       
@@ -1378,13 +1375,12 @@ export class EmailService {
       const msg = {
         to: invoice.customerEmail,
         from: this.FROM_EMAIL,
-        subject: `Purchase Confirmation ${invoice.invoiceNumber} - ⁦Pet Wash™⁩`,
+        // PURCHASE CONFIRMATION — no unsubscribe header permitted.
+        // This is a required post-transaction notification (קבלה/אישור רכישה).
+        // Israeli Consumer Protection Law requires delivery of purchase confirmations
+        // regardless of marketing opt-out status.
+        subject: `Purchase Confirmation ${invoice.invoiceNumber} - Pet Wash™`,
         html: this.sanitizeEmailContent(htmlContent),
-        // CRITICAL: List-Unsubscribe headers for legal compliance
-        headers: {
-          'List-Unsubscribe': `<${this.UNSUBSCRIBE_URL}?token=${this.generateUnsubscribeToken(invoice.customerEmail)}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-        }
       };
       
       await mailService.send(msg);
@@ -2255,192 +2251,182 @@ export class EmailService {
         logger.warn('️ Could not load template from Firestore, using fallback:', templateError);
         usedFallback = true;
         
-        // Fallback to enhanced branded template with hero image
+        // Fallback: luxury white design — consistent with 2026 brand system
+        const greeting = language === 'he'
+          ? (firstName ? `ברוכים הבאים, ${firstName}` : 'ברוכים הבאים')
+          : (firstName ? `Welcome, ${firstName}` : 'Welcome');
+
         hebrewTemplate = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ברוכים הבאים ל-⁦Pet Wash™⁩</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; margin: 0; }
-        .container { max-width: 600px; margin: 0 auto; background: white; overflow: hidden; }
-        .hero { width: 100%; height: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; }
-        .hero-logo { font-size: 48px; font-weight: 700; margin-bottom: 10px; }
-        .hero-subtitle { font-size: 18px; opacity: 0.95; }
-        .content { padding: 40px 30px; }
-        .greeting { font-size: 28px; color: #667eea; margin-bottom: 20px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 18px; line-height: 1.8; margin-bottom: 30px; text-align: center; }
-        .cta-container { margin: 40px 0; text-align: center; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px 36px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; margin: 8px; transition: transform 0.3s, box-shadow 0.3s; }
-        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4); }
-        .features { background: #f7fafc; padding: 30px; border-radius: 15px; margin: 30px 0; }
-        .feature-item { margin: 20px 0; padding: 15px; border-right: 4px solid #667eea; background: white; border-radius: 8px; }
-        .feature-title { font-size: 20px; font-weight: 600; color: #2d3748; margin-bottom: 8px; }
-        .feature-desc { color: #718096; font-size: 15px; }
-        .paw-prints { text-align: center; font-size: 32px; margin: 30px 0; opacity: 0.3; }
-        .footer { background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white; padding: 40px 30px; text-align: center; }
-        .footer-brand { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
-        .footer-info { font-size: 14px; opacity: 0.9; margin: 5px 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ברוכים הבאים ל-Pet Wash™</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#f5f5f0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#1a1a1a; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="hero">
-            <div class="hero-logo">🐾 ⁦Pet Wash™⁩</div>
-            <div class="hero-subtitle">שירותי רחיצה פרימיום אורגניים</div>
-        </div>
-        
-        <div class="content">
-            <div class="greeting">
-                ${firstName ? `ברוכים הבאים ${firstName}!` : 'ברוכים הבאים!'}
-            </div>
-            
-            <div class="message">
-                <strong>תודה רבה שהצטרפת למשפחת ⁦Pet Wash™⁩!</strong><br><br>
-                אנחנו נרגשים שבחרת בנו לטפל בחיית המחמד האהובה עליך. 
-                ⁦Pet Wash™⁩ מציעה את השירות המתקדם והאיכותי ביותר עם מוצרים אורגניים פרימיום.
-            </div>
-
-            <div class="features">
-                <div class="feature-item">
-                    <div class="feature-title">✨ מוצרים אורגניים פרימיום</div>
-                    <div class="feature-desc">מוצרי טיפוח איכותיים וידידותיים לעור רגיש</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-title">🎁 תוכנית נאמנות 5 דרגות</div>
-                    <div class="feature-desc">NEW → SILVER → GOLD → PLATINUM → DIAMOND עם הנחות עד 25%</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-title">📱 ניהול דיגיטלי מלא</div>
-                    <div class="feature-desc">נהל הכל מהנייד - פרופיל, היסטוריה, קופונים ועוד</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-title">🤖 עוזר AI חכם</div>
-                    <div class="feature-desc">תמיכה 24/7 בעברית ואנגלית</div>
-                </div>
-            </div>
-
-            <div class="cta-container">
-                <a href="https://petwash.co.il/dashboard" class="cta-button">
-                    📝 השלם את הפרופיל
-                </a>
-                <a href="https://petwash.co.il/packages" class="cta-button">
-                    🐕 הזמן רחיצה עכשיו
-                </a>
-                <a href="https://wa.me/972549833355" class="cta-button">
-                    💬 הצטרף לוואטסאפ
-                </a>
-            </div>
-
-            <div class="message" style="margin-top: 50px;">
-                <div class="paw-prints">🐾 🐾 🐾</div>
-                <p><strong>יש לך שאלות?</strong></p>
-                <p>אנחנו כאן בשבילך 24/7!</p>
-            </div>
-        </div>
-
-        <div class="footer">
-            <div class="footer-brand">🐾 ⁦Pet Wash™⁩</div>
-            <div class="footer-info">שירותי רחיצה פרימיום אורגניים לחיות מחמד</div>
-            <div class="footer-info">Support@PetWash.co.il | www.petwash.co.il</div>
-            <div class="footer-info">📞 054-983-3355 | WhatsApp זמין 24/7</div>
-        </div>
-    </div>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f0;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#fff;box-shadow:0 2px 24px rgba(0,0,0,.06);">
+        <!-- Header -->
+        <tr><td style="background:#1a1a1a;padding:28px 36px;">
+          <div style="display:inline-block;padding:8px 16px;border:1px solid #333;">
+            <span style="font-family:'Helvetica Neue',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">PET WASH™</span>
+          </div>
+          <div style="font-size:10px;color:#555;margin-top:6px;">פט ווש בע"מ | ח.פ. 516047073</div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px 36px;">
+          <p style="font-size:11px;color:#c9a96e;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">ברוכים הבאים / Welcome</p>
+          <h1 style="font-size:28px;font-weight:300;color:#1a1a1a;margin-bottom:24px;line-height:1.3;">${greeting}</h1>
+          <p style="font-size:16px;line-height:1.8;color:#4a4a4a;margin-bottom:32px;">
+            תודה שהצטרפת ל-Pet Wash™ — פלטפורמת טיפוח חיות המחמד הפרימיום של ישראל.<br>
+            אנחנו מחכים לפנק את חיית המחמד שלך עם מוצרים אורגניים ושירות ברמה הגבוהה ביותר.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+            <tr>
+              <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">מוצרים אורגניים פרימיום</p>
+                <p style="font-size:13px;color:#6b7280;">מוצרי טיפוח איכותיים וידידותיים לעור רגיש</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">תוכנית נאמנות — 5 רמות</p>
+                <p style="font-size:13px;color:#6b7280;">NEW → SILVER → GOLD → PLATINUM → DIAMOND עם הנחות עד 25%</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">ניהול דיגיטלי מלא</p>
+                <p style="font-size:13px;color:#6b7280;">פרופיל, היסטוריה, קופונים — הכל מהנייד</p>
+              </td>
+            </tr>
+          </table>
+          <a href="https://petwash.co.il/dashboard"
+             style="display:inline-block;background:#1a1a1a;color:#c9a96e;padding:14px 32px;
+                    text-decoration:none;font-size:12px;font-weight:600;letter-spacing:2px;
+                    text-transform:uppercase;margin-bottom:32px;">
+            כניסה לחשבון
+          </a>
+          <p style="font-size:13px;color:#6b7280;line-height:1.8;">
+            שאלות? אנחנו כאן בשבילך —
+            <a href="mailto:support@petwash.co.il" style="color:#1a1a1a;font-weight:600;">support@petwash.co.il</a>
+          </p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:0 36px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f0f0f0;">
+            <tr><td style="padding:24px 0 8px;font-size:11px;color:#bbb;line-height:1.8;">
+              <strong style="color:#999;">Pet Wash™</strong> &mdash; פט ווש בע"מ / PetWash Ltd<br>
+              ח.פ. / Company No. 516047073<br>
+              <a href="https://petwash.co.il" style="color:#bbb;text-decoration:none;">petwash.co.il</a>
+              &nbsp;·&nbsp;
+              <a href="mailto:support@petwash.co.il" style="color:#bbb;text-decoration:none;">support@petwash.co.il</a>
+            </td></tr>
+            <tr><td style="padding:0 0 8px;font-size:10px;color:#bbb;">
+              <a href="https://petwash.co.il/accessibility" style="color:#bbb;text-decoration:none;">נגישות</a>
+              &nbsp;·&nbsp;
+              <a href="https://petwash.co.il/privacy" style="color:#bbb;text-decoration:none;">פרטיות</a>
+              &nbsp;·&nbsp;
+              <a href="https://petwash.co.il/terms" style="color:#bbb;text-decoration:none;">תנאי שימוש</a>
+            </td></tr>
+            <tr><td style="padding:4px 0 24px;font-size:10px;color:#bbb;">&copy; ${new Date().getFullYear()} פט ווש בע"מ. כל הזכויות שמורות.</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
 
       const englishTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to ⁦Pet Wash™⁩</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; margin: 0; }
-        .container { max-width: 600px; margin: 0 auto; background: white; overflow: hidden; }
-        .hero { width: 100%; height: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; }
-        .hero-logo { font-size: 48px; font-weight: 700; margin-bottom: 10px; }
-        .hero-subtitle { font-size: 18px; opacity: 0.95; }
-        .content { padding: 40px 30px; }
-        .greeting { font-size: 28px; color: #667eea; margin-bottom: 20px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 18px; line-height: 1.8; margin-bottom: 30px; text-align: center; }
-        .cta-container { margin: 40px 0; text-align: center; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px 36px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; margin: 8px; transition: transform 0.3s, box-shadow 0.3s; }
-        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4); }
-        .features { background: #f7fafc; padding: 30px; border-radius: 15px; margin: 30px 0; }
-        .feature-item { margin: 20px 0; padding: 15px; border-left: 4px solid #667eea; background: white; border-radius: 8px; }
-        .feature-title { font-size: 20px; font-weight: 600; color: #2d3748; margin-bottom: 8px; }
-        .feature-desc { color: #718096; font-size: 15px; }
-        .paw-prints { text-align: center; font-size: 32px; margin: 30px 0; opacity: 0.3; }
-        .footer { background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white; padding: 40px 30px; text-align: center; }
-        .footer-brand { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
-        .footer-info { font-size: 14px; opacity: 0.9; margin: 5px 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Pet Wash™</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#f5f5f0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#1a1a1a; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="hero">
-            <div class="hero-logo">🐾 ⁦Pet Wash™⁩</div>
-            <div class="hero-subtitle">Premium Organic Pet Wash Services</div>
-        </div>
-        
-        <div class="content">
-            <div class="greeting">
-                ${firstName ? `Welcome ${firstName}!` : 'Welcome!'}
-            </div>
-            
-            <div class="message">
-                <strong>Thank you for joining the ⁦Pet Wash™⁩ family!</strong><br><br>
-                We're thrilled you chose us to care for your beloved pet. 
-                ⁦Pet Wash™⁩ offers the most advanced and quality service with premium organic products.
-            </div>
-
-            <div class="features">
-                <div class="feature-item">
-                    <div class="feature-title">✨ Premium Organic Products</div>
-                    <div class="feature-desc">Quality grooming products gentle on sensitive skin</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-title">🎁 7-Tier Luxury Loyalty Program</div>
-                    <div class="feature-desc">Bronze → Silver → Gold → Platinum → Diamond → Emerald → Royal with up to 50% discounts</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-title">📱 Full Digital Management</div>
-                    <div class="feature-desc">Manage everything from your phone - profile, history, coupons & more</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-title">🤖 Smart AI Assistant</div>
-                    <div class="feature-desc">24/7 support in Hebrew and English</div>
-                </div>
-            </div>
-
-            <div class="cta-container">
-                <a href="https://petwash.co.il/dashboard" class="cta-button">
-                    📝 Complete Profile
-                </a>
-                <a href="https://petwash.co.il/packages" class="cta-button">
-                    🐕 Book a Wash Now
-                </a>
-                <a href="https://wa.me/972549833355" class="cta-button">
-                    💬 Join WhatsApp
-                </a>
-            </div>
-
-            <div class="message" style="margin-top: 50px;">
-                <div class="paw-prints">🐾 🐾 🐾</div>
-                <p><strong>Have questions?</strong></p>
-                <p>We're here for you 24/7!</p>
-            </div>
-        </div>
-
-        <div class="footer">
-            <div class="footer-brand">🐾 ⁦Pet Wash™⁩</div>
-            <div class="footer-info">Premium Organic Pet Wash Services</div>
-            <div class="footer-info">Support@PetWash.co.il | www.petwash.co.il</div>
-            <div class="footer-info">📞 +972-54-983-3355 | WhatsApp Available 24/7</div>
-        </div>
-    </div>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f0;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#fff;box-shadow:0 2px 24px rgba(0,0,0,.06);">
+        <!-- Header -->
+        <tr><td style="background:#1a1a1a;padding:28px 36px;">
+          <div style="display:inline-block;padding:8px 16px;border:1px solid #333;">
+            <span style="font-family:'Helvetica Neue',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">PET WASH™</span>
+          </div>
+          <div style="font-size:10px;color:#555;margin-top:6px;">PetWash Ltd | Company No. 516047073</div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px 36px;">
+          <p style="font-size:11px;color:#c9a96e;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">Welcome / ברוכים הבאים</p>
+          <h1 style="font-size:28px;font-weight:300;color:#1a1a1a;margin-bottom:24px;line-height:1.3;">${greeting}</h1>
+          <p style="font-size:16px;line-height:1.8;color:#4a4a4a;margin-bottom:32px;">
+            Thank you for joining Pet Wash™ — Israel's premium pet care platform.<br>
+            We look forward to pampering your pet with organic products and top-tier service.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+            <tr>
+              <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">Premium Organic Products</p>
+                <p style="font-size:13px;color:#6b7280;">Quality grooming products gentle on sensitive skin</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">5-Tier Loyalty Program</p>
+                <p style="font-size:13px;color:#6b7280;">NEW → SILVER → GOLD → PLATINUM → DIAMOND with up to 25% discounts</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">Full Digital Management</p>
+                <p style="font-size:13px;color:#6b7280;">Profile, history, coupons — everything from your phone</p>
+              </td>
+            </tr>
+          </table>
+          <a href="https://petwash.co.il/dashboard"
+             style="display:inline-block;background:#1a1a1a;color:#c9a96e;padding:14px 32px;
+                    text-decoration:none;font-size:12px;font-weight:600;letter-spacing:2px;
+                    text-transform:uppercase;margin-bottom:32px;">
+            Go to Dashboard
+          </a>
+          <p style="font-size:13px;color:#6b7280;line-height:1.8;">
+            Questions? We're here —
+            <a href="mailto:support@petwash.co.il" style="color:#1a1a1a;font-weight:600;">support@petwash.co.il</a>
+          </p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:0 36px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f0f0f0;">
+            <tr><td style="padding:24px 0 8px;font-size:11px;color:#bbb;line-height:1.8;">
+              <strong style="color:#999;">Pet Wash™</strong> &mdash; פט ווש בע"מ / PetWash Ltd<br>
+              ח.פ. / Company No. 516047073<br>
+              <a href="https://petwash.co.il" style="color:#bbb;text-decoration:none;">petwash.co.il</a>
+              &nbsp;·&nbsp;
+              <a href="mailto:support@petwash.co.il" style="color:#bbb;text-decoration:none;">support@petwash.co.il</a>
+            </td></tr>
+            <tr><td style="padding:0 0 8px;font-size:10px;color:#bbb;">
+              <a href="https://petwash.co.il/accessibility" style="color:#bbb;text-decoration:none;">Accessibility</a>
+              &nbsp;·&nbsp;
+              <a href="https://petwash.co.il/privacy" style="color:#bbb;text-decoration:none;">Privacy</a>
+              &nbsp;·&nbsp;
+              <a href="https://petwash.co.il/terms" style="color:#bbb;text-decoration:none;">Terms</a>
+            </td></tr>
+            <tr><td style="padding:4px 0 24px;font-size:10px;color:#bbb;">&copy; ${new Date().getFullYear()} PetWash Ltd. All rights reserved.</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
       }

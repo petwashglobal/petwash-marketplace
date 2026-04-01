@@ -1004,7 +1004,7 @@ router.post('/apply', upload.fields([
                 // ── Notify support team ─────────────────────────────────────
                 await sgMail.send({
                   to: 'support@petwash.co.il',
-                  from: { email: 'noreply@petwash.co.il', name: 'PetWash Provider Onboarding' },
+                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ Providers' },
                   subject: `[ACTION REQUIRED] Provider review — ${applicantName} / ${applicationId}`,
                   html: `
                     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
@@ -1041,7 +1041,7 @@ router.post('/apply', upload.fields([
                 // ── Notify applicant: resubmission needed ───────────────────
                 await sgMail.send({
                   to: authenticatedUser.email,
-                  from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
                   subject: `Additional documents needed — Application ${applicationId}`,
                   html: `
                     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
@@ -1067,7 +1067,7 @@ router.post('/apply', upload.fields([
                 // ── Notify applicant: approved ──────────────────────────────
                 await sgMail.send({
                   to: authenticatedUser.email,
-                  from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
                   subject: 'Your provider application has been approved',
                   html: `
                     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
@@ -1085,7 +1085,7 @@ router.post('/apply', upload.fields([
                 // ── Notify applicant: rejected ──────────────────────────────
                 await sgMail.send({
                   to: authenticatedUser.email,
-                  from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
                   subject: 'Update on your provider application',
                   html: `
                     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
@@ -1402,7 +1402,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         const providerTypeLabel = application.providerType === 'walker' ? 'Dog Walker' : application.providerType === 'sitter' ? 'Pet Sitter' : 'Station Operator';
         await sgMail.send({
           to: application.email,
-          from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
           subject: 'Your provider application has been approved',
           html: `
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
@@ -1497,7 +1497,7 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
       try {
         await sgMail.send({
           to: application.email,
-          from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
           subject: 'Update on your provider application',
           html: `
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
@@ -1632,7 +1632,7 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
     if (isSendGridConfigured() && app.email) {
       sgMail.send({
         to: app.email,
-        from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
         subject: `We need updated documents — Application ${app.application_id}`,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
@@ -1713,7 +1713,7 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
     if (direction === 'outbound' && providerVisible && toAddress && isSendGridConfigured()) {
       sgMail.send({
         to: toAddress,
-        from: { email: 'noreply@petwash.co.il', name: 'PetWash Support' },
+        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ Support' },
         subject: 'Update on your provider application',
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px"><p>${body}</p><p style="color:#9ca3af;font-size:12px">PetWash Provider Onboarding Team</p></div>`,
       }).catch(() => {});
@@ -2028,7 +2028,7 @@ router.post(
       if (isSendGridConfigured() && app.email) {
         sgMail.send({
           to: app.email,
-          from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
           subject: `Documents received — Application ${applicationId}`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">

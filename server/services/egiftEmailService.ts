@@ -1,10 +1,8 @@
-import sgMail from '@sendgrid/mail';
 import { logger } from '../lib/logger';
+import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
+import { EmailService } from '../emailService';
 
-const API_KEY = (process.env.SENDGRID_API_KEY || '').replace(/[\s\r\n\t]+/g, '');
-if (API_KEY && API_KEY.startsWith('SG.')) {
-  sgMail.setApiKey(API_KEY);
-}
+const mailService = createMailService();
 
 interface EGiftEmailConfig {
   senderName: string;
@@ -52,9 +50,24 @@ function formatCurrency(value: number, currency: string): string {
 }
 
 export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Promise<void> {
-  if (!API_KEY || !API_KEY.startsWith('SG.')) {
+  if (!isSendGridConfigured()) {
     logger.warn('[EGiftEmail] SendGrid not configured - skipping email');
     return;
+  }
+
+  // Consent check — sender purchased this e-gift, so it is transactional.
+  // We still verify they haven't hard-bounced or unsubscribed.
+  const senderConsent = await EmailService.checkEmailConsent(config.senderEmail, 'transactional');
+  if (!senderConsent) {
+    logger.info('[EGiftEmail] Sender consent check failed, skipping sender confirmation', { to: config.senderEmail });
+    // Do not abort — still attempt recipient delivery below.
+  }
+
+  // Rate limiting guard
+  const senderRateOk = EmailService.checkRateLimit(config.senderEmail);
+  if (!senderRateOk) {
+    logger.warn('[EGiftEmail] Rate limit exceeded for sender', { to: config.senderEmail });
+    // Non-fatal — proceed to recipient
   }
 
   const tier = getTier(config.value);
@@ -290,26 +303,41 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
     .replace(`>${t.heading}<`, `>${recipientHeading}<`)
     .replace(`>${t.subheading}<`, `>${recipientSubheading}<`);
 
-  try {
-    await sgMail.send({
-      to: config.senderEmail,
-      from: { email: 'noreply@petwash.co.il', name: '⁦Pet Wash™⁩' },
-      subject: t.subject,
-      html,
-    });
-    logger.info('[EGiftEmail] Sender confirmation sent', { to: config.senderEmail });
-  } catch (err) {
-    logger.warn('[EGiftEmail] Failed to send sender confirmation:', err);
+  // Sender confirmation — only if consent passed and rate-limit ok
+  if (senderConsent && senderRateOk) {
+    try {
+      await mailService.send({
+        to: config.senderEmail,
+        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
+        subject: t.subject,
+        html,
+      });
+      logger.info('[EGiftEmail] Sender confirmation sent', { to: config.senderEmail });
+    } catch (err) {
+      logger.warn('[EGiftEmail] Failed to send sender confirmation:', err);
+    }
+  }
+
+  // Recipient delivery — e-gift delivery to recipient is always transactional.
+  // The recipient has not interacted with the system before, so we skip
+  // our internal consent table (they're not a registered user yet) but
+  // we must still rate-limit per address to prevent abuse.
+  const recipientRateOk = EmailService.checkRateLimit(config.recipientEmail);
+  if (!recipientRateOk) {
+    logger.warn('[EGiftEmail] Rate limit exceeded for recipient — e-gift delivery skipped', { to: config.recipientEmail });
+    return;
   }
 
   try {
     const recipientSubject = isHe
-      ? `${emoji} ${config.senderName} שלח/ה לך כרטיס מתנה של ⁦Pet Wash™⁩!`
-      : `${emoji} ${config.senderName} sent you a ⁦Pet Wash™⁩ E-Gift Card!`;
-    
-    await sgMail.send({
+      ? `${emoji} ${config.senderName} שלח/ה לך כרטיס מתנה של Pet Wash™!`
+      : `${emoji} ${config.senderName} sent you a Pet Wash™ E-Gift Card!`;
+
+    // E-gift delivery to recipient must NOT include unsubscribe headers.
+    // This is a paid delivery, not a marketing email (Israeli Spam Law §2(5)(a)).
+    await mailService.send({
       to: config.recipientEmail,
-      from: { email: 'noreply@petwash.co.il', name: '⁦Pet Wash™⁩' },
+      from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
       subject: recipientSubject,
       html: recipientHtml,
     });
