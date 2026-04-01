@@ -230,6 +230,28 @@ export async function dispatchNotifications(job: NotificationJob): Promise<void>
       }
 
       // ── 1. Write backend record FIRST (status = 'queued') ─────────────────
+      // CRITICAL: payload must contain everything needed to RETRY this send
+      // without re-generating the template. RetryService reads these fields.
+      const retryPayload: Record<string, unknown> = {
+        ...(channel === 'email' && job.email ? {
+          emailTo:      job.email.to,
+          emailSubject: job.email.subject,
+          emailHtml:    job.email.html,
+          emailText:    job.email.text ?? null,
+        } : {}),
+        ...(channel === 'sms' && job.sms ? {
+          smsTo:   job.sms.to,
+          smsText: job.sms.text,
+        } : {}),
+        ...(channel === 'push' && job.push ? {
+          pushUserId: job.push.userId,
+          pushTitle:  job.push.title,
+          pushBody:   job.push.body,
+          pushData:   job.push.data ?? null,
+        } : {}),
+        ...(job.debugPayload ?? {}),
+      };
+
       const [logRow] = await db.insert(notificationLogs).values({
         templateKey: job.templateKey,
         channel,
@@ -237,7 +259,7 @@ export async function dispatchNotifications(job: NotificationJob): Promise<void>
         recipientEmail: channel === 'email' ? job.email?.to ?? null : null,
         recipientPhone: channel === 'sms'   ? job.sms?.to   ?? null : null,
         status: 'queued',
-        payload: job.debugPayload ?? {},
+        payload: retryPayload,
         bookingId: job.bookingId ?? null,
         transactionId: job.transactionId ?? null,
         eventType: job.eventType,

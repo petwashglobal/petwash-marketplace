@@ -50,10 +50,29 @@ async function retryRow(row: {
 
   try {
     if (row.channel === 'email') {
-      // Re-sending email requires the original payload — skip if no stored template data
-      // In a future pass, store subject+html in payload and re-render here
-      logger.info('[RetryService] Email retry deferred — full payload not stored', { id: row.id });
-      failureReason = 'Email retry deferred — template re-render not yet implemented';
+      const payload = row.payload as Record<string, any> | null;
+      const emailTo      = payload?.emailTo      as string | undefined;
+      const emailSubject = payload?.emailSubject as string | undefined;
+      const emailHtml    = payload?.emailHtml    as string | undefined;
+      const emailText    = payload?.emailText    as string | undefined;
+
+      if (emailTo && emailSubject && emailHtml) {
+        const sg = createMailService();
+        const ok = await sg.send({ to: emailTo, subject: emailSubject, html: emailHtml, text: emailText });
+        sent = ok;
+        if (!sent) failureReason = 'SendGrid returned failure on retry';
+      } else if (row.recipientEmail && emailSubject && emailHtml) {
+        // Fallback: to address from dedicated column
+        const sg = createMailService();
+        const ok = await sg.send({ to: row.recipientEmail, subject: emailSubject, html: emailHtml, text: emailText });
+        sent = ok;
+        if (!sent) failureReason = 'SendGrid returned failure on retry (fallback to column)';
+      } else {
+        failureReason = 'Email payload incomplete — emailTo/emailSubject/emailHtml missing from payload';
+        logger.warn('[RetryService] Email retry skipped — payload missing email fields', {
+          id: row.id, hasTo: !!emailTo, hasSubject: !!emailSubject, hasHtml: !!emailHtml,
+        });
+      }
     }
 
     if (row.channel === 'sms' && row.recipientPhone && row.recipientUserId) {
