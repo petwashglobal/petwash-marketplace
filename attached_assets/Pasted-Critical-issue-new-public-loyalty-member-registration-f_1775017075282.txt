@@ -1,0 +1,210 @@
+Critical issue: new public loyalty member registration flow is not working correctly.
+
+This is NOT provider onboarding.
+This is the public loyalty rewards member flow only.
+
+You need to trace the full registration stream end-to-end and fix it properly, not patch one field at a time.
+
+=====================================
+1. USER TYPE
+=====================================
+
+This case is:
+- public user
+- loyalty rewards member
+- not provider
+- no KYC
+- no selfie
+- no ID
+- no provider review queue
+
+So the flow must stay simple and fast.
+
+=====================================
+2. CURRENT PROBLEM
+=====================================
+
+New public registration appears blocked or broken around:
+- mobile
+- name
+- email
+- possibly validation / duplicate checks / profile creation
+
+User cannot cleanly complete basic signup.
+
+This is a core growth issue.
+It must be treated as high priority.
+
+=====================================
+3. REQUIRED PUBLIC REGISTRATION FLOW
+=====================================
+
+Correct flow should be:
+
+Step 1
+User chooses public / loyalty signup
+
+Step 2
+User enters:
+- first name
+- last name or full name
+- email
+- mobile with country code
+- password or social login
+- accepts terms / privacy
+
+Step 3
+System validates:
+- email format
+- mobile format
+- duplicates
+- required fields
+
+Step 4
+Verification:
+- email verification
+- mobile verification / OTP if enabled for this flow
+
+Step 5
+Profile created successfully
+
+Step 6
+User is routed directly to loyalty member dashboard
+
+Step 7
+Wallet and loyalty profile initialized automatically
+
+No KYC.
+No provider detours.
+No complete-profile loop unless genuinely needed.
+
+=====================================
+4. WHAT I NEED YOU TO CHECK
+=====================================
+
+Trace the exact full path for public signup:
+
+A. Frontend
+- signup form state
+- field validation
+- disabled buttons
+- hidden blockers
+- required field mismatch
+- country code handling for mobile
+- whether mobile input formatting breaks submission
+- whether name/email are being trimmed or rejected incorrectly
+
+B. Auth layer
+- Firebase / auth provider result
+- whether session is created correctly
+- whether social vs email flows differ
+- whether termsAcceptedAt is written correctly
+
+C. Backend profile creation
+- user row creation
+- duplicate email handling
+- duplicate mobile handling
+- phone unique constraint behavior
+- whether backend returns 409 vs generic 500
+- whether public users are incorrectly routed into provider or incomplete-profile logic
+
+D. Post-login routing
+- public loyalty users must go to the correct public dashboard
+- they must NOT be sent into provider onboarding
+- they must NOT be blocked by missing provider-only fields
+
+E. Wallet / loyalty setup
+- wallet row creation
+- loyalty profile initialization
+- rewards defaults
+- default 5% loyalty setup if relevant
+
+=====================================
+5. I WANT A FULL DEBUG REPORT
+=====================================
+
+Do not say "fixed" generally.
+
+I want:
+
+1. exact failing point
+- frontend
+- auth
+- backend
+- post-login routing
+- wallet init
+
+2. exact error
+- validation error
+- route error
+- DB conflict
+- blocked by wrong logic
+- hidden UI blocker
+
+3. exact files involved
+
+4. exact fix
+
+5. proof after fix:
+- successful public signup
+- successful email/password signup
+- successful mobile flow if supported
+- successful routing to loyalty dashboard
+- wallet / loyalty row created
+
+=====================================
+6. IMPORTANT LOGIC RULES
+=====================================
+
+Public loyalty signup must be:
+
+- fast
+- minimal
+- mobile friendly
+- no provider logic
+- no KYC
+- no admin review
+- no hidden blockers
+
+If mobile is required:
+- make formatting tolerant
+- accept +972 / +61 / +1 etc correctly
+- store normalized number
+- show clear validation message
+
+If email is required:
+- do not silently reject
+- show exact field error
+- do not trap user in a broken loop
+
+=====================================
+7. SCENARIOS TO TEST
+=====================================
+
+You must test these explicitly:
+
+1. New user with email + mobile
+2. New user with international mobile format
+3. Existing email
+4. Existing mobile
+5. Missing name
+6. Invalid email
+7. Social signup as public user
+8. Email verified but profile row missing
+9. Profile row exists but wallet missing
+10. Public user after signup lands in correct loyalty dashboard
+
+=====================================
+8. DELIVERABLE
+=====================================
+
+Reply with:
+- root cause
+- files changed
+- exact flow before
+- exact flow after
+- proof of successful public registration
+- proof that provider flow remains separate
+
+This is a critical public growth flow.
+Treat it as core business, not a side bug.
