@@ -457,7 +457,9 @@ router.get("/:bookingId", requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const userId = req.user!.uid;
-    const admin = await isSuperAdmin(req);
+    // BUG FIX: isSuperAdmin takes an email string, not a req object.
+    // Using req as the argument caused a runtime crash: "email.toLowerCase is not a function".
+    const admin = isSuperAdmin(((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase());
 
     const doc = await db.collection("bookings").doc(bookingId).get();
 
@@ -635,7 +637,8 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
     const { bookingId } = req.params;
     const { reason } = req.body;
     const userId = req.user!.uid;
-    const admin = await isSuperAdmin(req);
+    // BUG FIX: isSuperAdmin expects an email string — was incorrectly passed req object.
+    const admin = isSuperAdmin(((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase());
 
     // 1. Fetch booking and guard against missing
     const bookingDoc = await db.collection("bookings").doc(bookingId).get();

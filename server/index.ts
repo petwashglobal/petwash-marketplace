@@ -25,6 +25,34 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
     console.warn('\n' + warnings.join('\n') + '\n');
   }
 
+  // ── ADMIN_SECRET / PETWASH_ADMIN_SECRET weak-value guard ─────────────────────
+  // Multiple routes gate admin-only actions behind these secrets.
+  // A weak, missing, or default value gives any caller full admin access.
+  const WEAK_ADMIN_SECRETS = new Set([
+    '', 'change_me', 'changeme', 'secret', 'admin', 'password',
+    'petwash', 'test', 'default', '123456', 'admin123',
+  ]);
+  const MIN_ADMIN_SECRET_LENGTH = 16;
+  for (const key of ['ADMIN_SECRET', 'PETWASH_ADMIN_SECRET']) {
+    const val = (process.env[key] || '').trim();
+    if (!val) {
+      const msg = `[startup] SECURITY: ${key} is not set — admin-protected routes will deny all requests`;
+      process.env.NODE_ENV === 'production' ? console.error(msg) : console.warn(msg);
+    } else if (WEAK_ADMIN_SECRETS.has(val.toLowerCase())) {
+      const msg = `[startup] CRITICAL SECURITY: ${key} is set to a known-weak value — rotate immediately!`;
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(msg);
+      }
+      console.error(msg);
+    } else if (val.length < MIN_ADMIN_SECRET_LENGTH) {
+      const msg = `[startup] SECURITY: ${key} is shorter than ${MIN_ADMIN_SECRET_LENGTH} characters — use a longer secret`;
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(msg);
+      }
+      console.warn(msg);
+    }
+  }
+
   // ── reCAPTCHA key unification — fatal if frontend and backend keys diverge ──
   function extractSiteKey(raw: string): string {
     if (!raw) return '';

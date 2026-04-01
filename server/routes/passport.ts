@@ -14,27 +14,42 @@ import { eq } from 'drizzle-orm';
 
 const router = Router();
 
-// Configure multer for image uploads (memory storage)
+// Configure multer for passport image uploads
+// SECURITY: explicit allowlist — image/* is intentionally NOT used because it would
+// allow image/svg+xml (XSS vector) and image/x-icon etc.
+const PASSPORT_ALLOWED_MIMES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
   },
   fileFilter: (req, file, cb) => {
-    // Accept only images
-    if (file.mimetype.startsWith('image/')) {
+    if (PASSPORT_ALLOWED_MIMES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error(`File type '${file.mimetype}' is not allowed for passport upload. Use JPEG, PNG, WebP, or HEIC.`));
     }
   },
 });
+
+// Wrap multer so file-type rejections return 400 and oversized files return 413
+// instead of falling through to the global 500 error handler.
+function runPassportUpload(uploadMiddleware: ReturnType<typeof upload.single>) {
+  return (req: any, res: any, next: any) => {
+    uploadMiddleware(req, res, (err: any) => {
+      if (!err) return next();
+      const isLimitError = err.code && err.code.startsWith('LIMIT_');
+      const status = isLimitError ? 413 : 400;
+      return res.status(status).json({ success: false, error: 'INVALID_FILE', message: err.message });
+    });
+  };
+}
 
 /**
  * POST /api/passport/verify
  * Upload and verify passport using Google Vision API
  */
-router.post('/verify', upload.single('passport'), async (req: Request, res: Response) => {
+router.post('/verify', runPassportUpload(upload.single('passport')), async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) {

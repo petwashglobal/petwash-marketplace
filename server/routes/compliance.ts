@@ -40,8 +40,14 @@ import {
 import { complianceControlTower } from "../services/ComplianceControlTower";
 import { nanoid } from "nanoid";
 import { createHash } from "crypto";
+import { requireAuth, requireRole } from "../middleware/gates";
 
 const router = Router();
+
+// ── SECURITY: All compliance routes require authentication + admin/compliance role ──
+// Previous state: every POST/PUT/DELETE was unauthenticated — anyone could write
+// compliance documents, policies, disputes, board resolutions.
+router.use(requireAuth, requireRole('admin', 'compliance', 'legal'));
 
 // =================== AUTHORITY DOCUMENTS ===================
 
