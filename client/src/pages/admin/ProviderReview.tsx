@@ -162,6 +162,14 @@ export default function ProviderReview() {
   });
   const applicants: Applicant[] = listResponse?.applications || [];
 
+  // KYC2026 applications awaiting manual review
+  const { data: kycQueueData } = useQuery<{ applications: any[]; count: number }>({
+    queryKey: ['/api/provider-onboarding/admin/applications/pending-review'],
+    refetchInterval: 60000,
+  });
+  const kycPendingList = kycQueueData?.applications || [];
+  const kycPendingCount = kycPendingList.length;
+
   const detailUrl = selectedApplicant ? `/api/provider-applications/admin/${selectedApplicant.id}` : '';
   const { data: detailResponse, isLoading: isLoadingDetails } = useQuery<{ application: ApplicantDetails; documents: any[]; tasks: any[]; backgroundChecks: any[]; transitions: any[] }>({
     queryKey: [detailUrl],
@@ -332,6 +340,68 @@ export default function ProviderReview() {
             </CardContent>
           </Card>
         </div>
+
+        {/* KYC2026 Pending Review Queue */}
+        {kycPendingCount > 0 && (
+          <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950">
+            <CardHeader className="pb-2 pt-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  {isHebrew ? 'ממתינים לאישור ידני — KYC2026' : 'KYC2026 Manual Review Queue'}
+                  <Badge className="bg-amber-500 text-white ml-2">{kycPendingCount}</Badge>
+                </CardTitle>
+                <Link href="/admin/providers/review">
+                  <span className="text-xs text-amber-700 hover:underline cursor-pointer">
+                    {isHebrew ? 'ראה הכל' : 'View all'} →
+                  </span>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <div className="space-y-2">
+                {kycPendingList.slice(0, 5).map((app: any) => {
+                  const flags: string[] = app.kycDecisionFlags ? JSON.parse(app.kycDecisionFlags) : [];
+                  const fraudRisk = app.kycFraudRiskLevel;
+                  return (
+                    <Link key={app.applicationId} href={`/admin/providers/review/${app.applicationId}`}>
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-amber-200 rounded-lg px-4 py-3 hover:shadow-sm cursor-pointer transition-shadow">
+                        <div className="flex items-center gap-3">
+                          <User className="h-4 w-4 text-amber-600 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {app.firstName} {app.lastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">{app.applicationId}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {fraudRisk && fraudRisk !== 'low' && (
+                            <Badge variant="destructive" className="text-xs uppercase">{fraudRisk}</Badge>
+                          )}
+                          {flags.length > 0 && (
+                            <Badge variant="outline" className="text-xs border-amber-400 text-amber-800">
+                              {flags.length} {isHebrew ? 'דגלים' : 'flags'}
+                            </Badge>
+                          )}
+                          <span className="text-sm font-semibold text-slate-700">
+                            {parseFloat(app.biometricMatchScore || '0').toFixed(0)}/100
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+                {kycPendingCount > 5 && (
+                  <p className="text-xs text-center text-amber-700 pt-1">
+                    +{kycPendingCount - 5} {isHebrew ? 'נוספים' : 'more in queue'}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters & Search */}
         <Card>

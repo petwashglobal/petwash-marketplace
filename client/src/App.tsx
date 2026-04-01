@@ -320,6 +320,7 @@ const GroomingReviews = lazy(() => import("@/pages/GroomingReviews"));
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
+const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 
@@ -1793,6 +1794,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <ProviderReview />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Admin KYC review — single application deep-dive */}
+        <Route path="/admin/providers/review/:applicationId">
+          {(params) => (
+            <AdminRouteGuard>
+              <ProviderKycReview />
             </AdminRouteGuard>
           )}
         </Route>

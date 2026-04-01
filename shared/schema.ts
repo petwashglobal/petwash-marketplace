@@ -4977,6 +4977,7 @@ export const providerApplications = pgTable("provider_applications", {
   kycOcrConfidence: decimal("kyc_ocr_confidence", { precision: 5, scale: 2 }), // 0-100 OCR text confidence
   kycLivenessScore: decimal("kyc_liveness_score", { precision: 5, scale: 2 }), // 0-100 heuristic liveness confidence
   kycDecisionFlags: text("kyc_decision_flags"), // JSON array — flags that forced pending_review (e.g. ["ocr_name_missing","expiry_missing"])
+  kycFraudRiskLevel: varchar("kyc_fraud_risk_level", { length: 20 }), // low | medium | high | critical
 
   // Admin Notes
   internalNotes: text("internal_notes"), // Only visible to admins

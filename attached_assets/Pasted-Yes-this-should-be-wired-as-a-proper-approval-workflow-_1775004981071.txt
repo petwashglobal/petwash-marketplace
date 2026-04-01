@@ -1,0 +1,184 @@
+Yes - this should be wired as a proper approval workflow, not random manual checking.
+
+The right backend logic
+
+1. Provider submits application
+
+System should:
+	•	save application in DB
+	•	upload selfie + ID
+	•	run async verification
+	•	calculate:
+	•	face score
+	•	liveness score
+	•	OCR completeness
+	•	document type
+	•	quality flags
+	•	fraud flags later
+
+Then backend decides:
+	•	approved if all strong
+	•	rejected if clearly bad
+	•	pending_review if borderline / incomplete / flagged
+
+So approval is not done inside Google.
+Google Vision is only an analysis tool.
+Your backend is the authority.
+
+⸻
+
+2. What happens when status = pending_review
+
+At that moment backend should do 3 things automatically:
+
+A. Write a review task
+
+Create a row in something like:
+	•	provider_review_queue
+or use the existing application row with:
+	•	status = pending_review
+	•	review_reasons
+	•	assigned_to
+	•	review_due_at
+
+B. Send notification email
+
+Send email to:
+
+support@petwash.co.il
+
+Subject example:
+Provider application pending review - {fullName} - {applicationId}
+
+Body should include:
+	•	applicant name
+	•	phone
+	•	email
+	•	provider type
+	•	review reasons
+	•	score summary
+	•	direct admin link
+
+C. Optional admin notification
+
+Also:
+	•	in-app admin notification
+	•	dashboard badge
+	•	optional SMS / Slack later
+
+Email alone is not enough.
+There should also be a visible queue in admin.
+
+⸻
+
+3. Direct approval link
+
+The email should contain a secure link like:
+
+https://petwash.co.il/admin/providers/review/{applicationId}
+
+That page should show:
+	•	selfie
+	•	ID image
+	•	OCR results
+	•	face score
+	•	liveness score
+	•	flags
+	•	approve button
+	•	reject button
+	•	notes box
+
+Buttons should call backend:
+	•	POST /api/admin/provider-applications/:id/approve
+	•	POST /api/admin/provider-applications/:id/reject
+
+Only admin / support roles can use them.
+
+⸻
+
+4. Approval action at backend
+
+When support clicks approve:
+
+Backend should:
+	•	verify user has admin/support permission
+	•	lock the application row
+	•	verify status still pending_review
+	•	update:
+	•	status = approved
+	•	reviewed_by = admin_user_id
+	•	reviewed_at = now()
+	•	manual_decision_reason = approved_by_support
+	•	create provider account / activate provider role if not already active
+	•	write audit log event
+
+When reject:
+	•	status = rejected
+	•	store rejection reason
+	•	store reviewed_by / reviewed_at
+	•	audit log event
+
+⸻
+
+5. Notifications after decision
+
+After approve/reject backend should also send email to applicant:
+
+Approved
+	•	“Your provider application has been approved”
+
+Rejected
+	•	“Your provider application was not approved”
+	•	optionally generic reason, not too much detail
+
+⸻
+
+6. Smart business logic
+
+The best model is:
+
+Auto-approve
+
+Only if:
+	•	face score high
+	•	liveness pass
+	•	OCR complete
+	•	no fraud flags
+	•	no mismatches
+
+Auto-reject
+
+Only if:
+	•	face score very low
+	•	liveness hard fail
+	•	document unreadable
+	•	serious fraud signal
+
+Pending review
+
+Everything in the middle goes here.
+
+That means support only sees the important edge cases, not everything.
+
+⸻
+
+7. Is this “Google forms” or “Google firms”?
+
+No.
+
+This should not be Google Forms.
+
+Correct structure is:
+	•	Google Vision = analysis
+	•	Your DB = truth
+	•	Your backend = decision engine
+	•	Your admin panel = approval control
+	•	Email = notification only
+
+So Google is just one component, not the system owner.
+
+⸻
+
+8. What to ask Replit
+
+Send this exactly:
