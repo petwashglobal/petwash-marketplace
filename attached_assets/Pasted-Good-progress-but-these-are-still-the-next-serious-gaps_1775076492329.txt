@@ -1,0 +1,196 @@
+Good progress, but these are still the next serious gaps I want you to review and harden across the system.
+
+Priority 1 - entry and identity
+1. Public loyalty signup flow
+- mobile signup
+- phone OTP signup
+- Apple / Face ID path
+- Google path
+- consent screen
+- wallet auto-create
+- loyalty role auto-attach
+- correct dashboard routing
+- no duplicate user creation
+This is one of the most important weak points.
+
+2. Identity linking / duplicate accounts
+- same person with phone + Apple + Google
+- prevent split identities
+- prevent backend row missing after auth success
+- ensure one real core user identity
+
+Priority 2 - booking and money truth
+3. Full cancellation / refund proof
+- customer cancel
+- provider cancel
+- walker reject
+- no-show
+- completed booking cannot be cancelled
+- already-cancelled booking cannot be cancelled again
+- wallet refund proof
+- notification proof
+Not just code. I want DB proof.
+
+4. Booking creation race conditions
+- two providers accepting same booking
+- same user double-clicking booking confirm
+- same time slot double-booked
+- duplicate processor callback
+Need locks / idempotency / state guards everywhere.
+
+5. Wallet consistency audit
+- available balance
+- reserved balance
+- pending balance
+- refund flows
+- egift credit flows
+- package credit flows
+- no negative balances
+- no orphan ledger rows
+
+Priority 3 - authorization and security
+6. Ownership checks everywhere
+Review every route for:
+- read own resource only
+- update own resource only
+- cancel own resource only
+- provider only sees provider items
+- support only sees support items
+- management analytics only
+This is usually where hidden legal damage happens.
+
+7. Admin / support separation
+- support can review and operate
+- admin can approve / reject / override
+- management reads analytics, not operational clutter
+- super admin actions logged separately
+Need a clean permission matrix.
+
+8. File upload security
+- MIME validation
+- file size limits
+- image / PDF only where expected
+- virus / unsafe file screening if possible
+- signed URL expiry
+- no public accidental exposure
+- no executable uploads
+
+9. Secrets and environment hardening
+- all secrets only in env / secret store
+- no fallback weak defaults in production
+- no debug keys live
+- no test sender addresses in production
+- reCAPTCHA / App Check correctly enforced
+
+Priority 4 - provider system
+10. Provider onboarding proof
+- one approval
+- one rejection
+- one resubmission
+- role assignment after approval
+- blocked access before approval
+- provider notification proof
+- audit trail proof
+
+11. Provider availability and booking integrity
+- provider cannot receive jobs before approval
+- provider cannot be double-booked
+- unavailable dates respected
+- date-to-date bookings saved correctly
+
+Priority 5 - communications and compliance
+12. Messaging consent audit
+- transactional vs marketing classification
+- no marketing to non-consenting users
+- all key notifications logged
+- delivery / failure status where possible
+- legal sender identity consistent everywhere
+
+13. Finance document consistency
+- receipts
+- tax invoices
+- egift purchase confirmations
+- cancellation confirmations
+- refund confirmations
+- all use correct legal entity and number
+- all are stored / reproducible if needed
+
+Priority 6 - e-gift and promotion abuse
+14. E-gift business logic proof
+- purchase
+- delivery
+- claim
+- wallet credit
+- redemption
+- no double claim
+- no QR replay
+- no balance mismatch
+- full stamp / ledger proof
+
+15. Coupon / discount abuse checks
+- brute-force codes
+- duplicate first-order use
+- device farming
+- payment-method farming
+- cancellation then re-use exploitation
+- stackability truth with wallet / egift / loyalty
+
+Priority 7 - operational monitoring
+16. Stuck-state watchdogs
+Detect and alert for:
+- provider apps stuck in processing
+- bookings stuck in reserved
+- refunds stuck pending
+- messages failed repeatedly
+- payouts / settlements stuck
+- moderation queue backlog
+
+17. Real metrics, no fake metrics
+- no Math.random
+- no placeholder dashboards
+- all admin metrics from DB truth
+- per platform stats from real records only
+
+Priority 8 - scale and resilience
+18. 50-user and concurrency test
+I want actual test runs for:
+- signup burst
+- booking burst
+- cancel burst
+- coupon burst
+- wallet burst
+- no crashes
+- no duplicate financial effects
+Do not claim scale readiness without this.
+
+19. Background job safety
+- retries idempotent
+- failed jobs recover cleanly
+- no duplicate sends
+- no duplicate refunds
+- no duplicate approvals
+
+Priority 9 - Paw Finder before launch
+20. If you build Paw Finder
+- member-only posting enforced
+- moderation twice
+- safe contact flow
+- no direct phone exposure by default
+- match suggestions logged
+- admin moderation queue
+- resolved lifecycle
+- abuse / spam controls
+
+Please come back with:
+1. gap list by severity
+2. what is already fixed
+3. what is not fixed
+4. proof plan for each critical item
+5. the first 5 items you will harden next
+
+Most important next focus:
+- public loyalty signup
+- booking / wallet truth
+- authorization audit
+- provider onboarding proof
+- e-gift / coupon truth
