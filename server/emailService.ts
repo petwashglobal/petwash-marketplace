@@ -9,6 +9,7 @@ import { logger } from './lib/logger';
 import { replaceTemplates, validateTemplate, type TemplateContext } from './lib/template-engine';
 import { createMailService, isSendGridConfigured } from './lib/sendgrid';
 import { emailSpendGuard } from './services/EmailSpendGuard';
+import { wrapEmailShell, buildLegalFooter, SENDERS, DESIGN, COMPANY_TAX_ID, LEGAL_NAME_HE, LEGAL_NAME_EN } from './email/brand-identity';
 
 const mailService = createMailService();
 
@@ -1332,45 +1333,83 @@ export class EmailService {
         logger.info(`Rate limit exceeded for purchase confirmation: ${invoice.customerEmail}`);
         return false;
       }
-      const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Purchase Confirmation - ⁦Pet Wash™⁩</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }
-        .section { margin-bottom: 20px; }
-        .voucher-code { font-size: 1.2em; font-weight: bold; background-color: #f0f0f0; padding: 10px; border-radius: 5px; text-align: center; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>⁦Pet Wash™⁩ Purchase Confirmation</h1>
-        <p>Thank you for your purchase!</p>
-    </div>
-    
-    <div class="section">
-        <h3>Order Details:</h3>
-        <p><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
-        <p><strong>Package:</strong> ${invoice.packageName}</p>
-        <p><strong>Amount Paid:</strong> ₪${invoice.totalAmount.toFixed(2)}</p>
-        <p><strong>Payment Method:</strong> ${invoice.paymentMethod}</p>
-    </div>
-    
-    <div class="section">
-        <h3>Your Voucher Code:</h3>
-        <div class="voucher-code">${voucherCode}</div>
-        <p>Present this code at any ⁦Pet Wash™⁩ station to redeem your wash.</p>
-    </div>
-    
-    <div class="section">
-        <p>A detailed tax invoice has been sent to you separately.</p>
-        <p>For any questions, contact: ${EmailService.SUPPORT_EMAIL}</p>
-    </div>
-</body>
-</html>`;
+      const bodyHtml = `
+        <p style="font-size:11px;letter-spacing:2px;text-transform:uppercase;
+          color:${DESIGN.gold};font-weight:600;margin:0 0 12px;
+          font-family:${DESIGN.fontStack};">Purchase Confirmation — אישור רכישה</p>
+
+        <p style="font-size:18px;font-weight:300;color:${DESIGN.black};
+          margin:0 0 20px;font-family:${DESIGN.fontStack};line-height:1.4;">
+          Thank you for your purchase / תודה על רכישתך
+        </p>
+
+        <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
+          <tr>
+            <td style="padding:10px 12px;background:#f9f9f9;font-size:13px;
+              font-weight:600;color:#1a1a1a;font-family:${DESIGN.fontStack};width:40%;">
+              Invoice / חשבונית
+            </td>
+            <td style="padding:10px 12px;background:#f9f9f9;font-size:13px;
+              color:#4a4a4a;font-family:${DESIGN.fontStack};">
+              ${invoice.invoiceNumber}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;font-size:13px;font-weight:600;
+              color:#1a1a1a;font-family:${DESIGN.fontStack};">Package / חבילה</td>
+            <td style="padding:10px 12px;font-size:13px;color:#4a4a4a;
+              font-family:${DESIGN.fontStack};">${invoice.packageName}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;background:#f9f9f9;font-size:13px;
+              font-weight:600;color:#1a1a1a;font-family:${DESIGN.fontStack};">
+              Amount Paid / סכום ששולם
+            </td>
+            <td style="padding:10px 12px;background:#f9f9f9;font-size:13px;
+              color:#4a4a4a;font-family:${DESIGN.fontStack};">
+              ₪${invoice.totalAmount.toFixed(2)}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;font-size:13px;font-weight:600;
+              color:#1a1a1a;font-family:${DESIGN.fontStack};">Payment / תשלום</td>
+            <td style="padding:10px 12px;font-size:13px;color:#4a4a4a;
+              font-family:${DESIGN.fontStack};">${invoice.paymentMethod}</td>
+          </tr>
+        </table>
+
+        <p style="font-size:13px;font-weight:600;color:#1a1a1a;
+          margin:0 0 10px;font-family:${DESIGN.fontStack};">
+          Your Voucher Code / קוד השובר שלך:
+        </p>
+        <div style="background:#1a1a1a;color:#ffffff;font-family:'Courier New',monospace;
+          font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;
+          padding:18px 24px;border-radius:4px;margin:0 0 24px;">
+          ${voucherCode}
+        </div>
+        <p style="font-size:14px;color:#4a4a4a;line-height:1.8;
+          margin:0 0 20px;font-family:${DESIGN.fontStack};">
+          Present this code at any Pet Wash™ station to redeem your wash.<br>
+          הציגו קוד זה בכל תחנת Pet Wash™ לממש את השטיפה.
+        </p>
+
+        <p style="font-size:13px;color:#888;line-height:1.7;
+          margin:0 0 6px;font-family:${DESIGN.fontStack};">
+          A detailed tax invoice (חשבונית מס) has been sent to you separately.
+        </p>
+        <p style="font-size:13px;color:#888;line-height:1.7;
+          margin:0;font-family:${DESIGN.fontStack};">
+          Questions? <a href="mailto:support@petwash.co.il"
+            style="color:${DESIGN.gold};text-decoration:none;">support@petwash.co.il</a>
+        </p>
+      `;
+
+      const htmlContent = wrapEmailShell({
+        title: `Purchase Confirmation ${invoice.invoiceNumber} — Pet Wash™`,
+        bodyHtml,
+        language: 'en',
+        footerOptions: { includeUnsubscribe: false, includeAccessibility: false },
+      });
       
       const msg = {
         to: invoice.customerEmail,
@@ -2602,11 +2641,11 @@ export class EmailService {
         צריכים עזרה? צוות התמיכה שלנו כאן בשבילכם 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:Support@PetWash.co.il" style="color: #667eea; text-decoration: none;">Support@PetWash.co.il</a> | 
+        📧 <a href="mailto:support@petwash.co.il" style="color: #667eea; text-decoration: none;">support@petwash.co.il</a> | 
         📱 <a href="tel:+972549833355" style="color: #667eea; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} ⁦Pet Wash™⁩ - All Rights Reserved
+        © ${new Date().getFullYear()} פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073
       </p>
     </div>
   </div>
@@ -2683,11 +2722,11 @@ export class EmailService {
         Need help? Our support team is here for you 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:Support@PetWash.co.il" style="color: #667eea; text-decoration: none;">Support@PetWash.co.il</a> | 
+        📧 <a href="mailto:support@petwash.co.il" style="color: #667eea; text-decoration: none;">support@petwash.co.il</a> | 
         📱 <a href="tel:+972549833355" style="color: #667eea; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} ⁦Pet Wash™⁩ - All Rights Reserved
+        © ${new Date().getFullYear()} PetWash Ltd | Company No. 516047073
       </p>
     </div>
   </div>
@@ -2778,11 +2817,11 @@ export class EmailService {
         שאלות? אנחנו כאן בשבילך 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:Support@PetWash.co.il" style="color: #10b981; text-decoration: none;">Support@PetWash.co.il</a> | 
+        📧 <a href="mailto:support@petwash.co.il" style="color: #10b981; text-decoration: none;">support@petwash.co.il</a> | 
         📱 <a href="tel:+972549833355" style="color: #10b981; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} ⁦Pet Wash™⁩
+        © ${new Date().getFullYear()} פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073
       </p>
     </div>
   </div>
@@ -2835,11 +2874,11 @@ export class EmailService {
         Questions? We're here for you 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:Support@PetWash.co.il" style="color: #10b981; text-decoration: none;">Support@PetWash.co.il</a> | 
+        📧 <a href="mailto:support@petwash.co.il" style="color: #10b981; text-decoration: none;">support@petwash.co.il</a> | 
         📱 <a href="tel:+972549833355" style="color: #10b981; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} ⁦Pet Wash™⁩
+        © ${new Date().getFullYear()} PetWash Ltd | Company No. 516047073
       </p>
     </div>
   </div>

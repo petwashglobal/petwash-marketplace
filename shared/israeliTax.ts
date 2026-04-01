@@ -10,10 +10,10 @@ export interface IsraeliTaxConfig {
 export const ISRAELI_TAX_CONFIG: IsraeliTaxConfig = {
   VAT_RATE: 0.18, // 18% Israeli VAT (מע״מ)
   PROCESSING_FEE_RATE: 0.0175, // 1.75% Nayax transaction fee
-  COMPANY_TAX_ID: process.env.COMPANY_TAX_ID || '517145033', // Pet Wash Ltd company number
-  COMPANY_NAME: 'Pet Wash Ltd',
-  COMPANY_ADDRESS: 'Israel', // Will be updated with actual address
-  SUPPORT_EMAIL: 'Support@PetWash.co.il'
+  COMPANY_TAX_ID: process.env.COMPANY_TAX_ID || '516047073', // פט ווש בע"מ — ח.פ. 516047073
+  COMPANY_NAME: 'פט ווש בע"מ / PetWash Ltd',
+  COMPANY_ADDRESS: 'ישראל',
+  SUPPORT_EMAIL: 'support@petwash.co.il'
 };
 
 export interface TaxCalculation {
@@ -200,9 +200,9 @@ export class IsraeliTaxService {
     <div class="company-info">
         <h3>פרטי החברה:</h3>
         <p><strong>${invoice.companyName}</strong></p>
-        <p>רשום עוסק: ${invoice.companyTaxId}</p>
+        <p>ח.פ.: ${invoice.companyTaxId}</p>
         <p>כתובת: ${invoice.companyAddress}</p>
-        <p>אימייל: ${ISRAELI_TAX_CONFIG.SUPPORT_EMAIL}</p>
+        <p>דוא"ל: ${ISRAELI_TAX_CONFIG.SUPPORT_EMAIL}</p>
     </div>
     
     <div class="customer-info">

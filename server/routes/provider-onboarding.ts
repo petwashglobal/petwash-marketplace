@@ -23,6 +23,18 @@ import { logProviderMessage } from '../services/providerMessageLog';
 import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFromDecision as _queuePriority } from '../services/providerQueue';
 import { decideProviderKyc } from '../services/providerDecisionEngine';
 import { pool } from '../db';
+import {
+  buildAdminReviewAlertEmail,
+  buildResubmissionNeededEmail,
+  buildKycApprovedEmail,
+  buildKycRejectedEmail,
+  buildAdminApprovedEmail,
+  buildAdminRejectedEmail,
+  buildAdminResubmitRequestEmail,
+  buildSupportMessageEmail,
+  buildDocumentsReceivedEmail,
+  PROVIDER_SENDER,
+} from '../email/templates/provider-workflow-emails';
 
 const router = Router();
 
@@ -1002,100 +1014,69 @@ router.post('/apply', upload.fields([
             try {
               if (outcomeStatus === 'pending_review') {
                 // ── Notify support team ─────────────────────────────────────
+                const adminAlert = buildAdminReviewAlertEmail({
+                  applicationId,
+                  applicantName,
+                  applicantEmail: authenticatedUser.email || '—',
+                  phoneNumber,
+                  providerTypeLabel,
+                  faceScore,
+                  livenessScore,
+                  livenessPass,
+                  ocrConfidence,
+                  ocrFields,
+                  fraudRiskLevel,
+                  flagsHtml,
+                  reviewUrl,
+                });
                 await sgMail.send({
                   to: 'support@petwash.co.il',
-                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ Providers' },
-                  subject: `[ACTION REQUIRED] Provider review — ${applicantName} / ${applicationId}`,
-                  html: `
-                    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
-                      <h2 style="color:#0f172a;margin-top:0">Provider Application Pending Review</h2>
-                      <p style="color:#6b7280;margin-top:0">A provider application requires manual review. Please assess and take action within 48 hours.</p>
-                      <table style="width:100%;border-collapse:collapse;margin:16px 0">
-                        <tr><td style="padding:8px;background:#f9fafb;font-weight:600;width:160px">Applicant</td><td style="padding:8px">${applicantName}</td></tr>
-                        <tr><td style="padding:8px;font-weight:600">Email</td><td style="padding:8px">${authenticatedUser.email || '—'}</td></tr>
-                        <tr><td style="padding:8px;background:#f9fafb;font-weight:600">Mobile</td><td style="padding:8px">${phoneNumber}</td></tr>
-                        <tr><td style="padding:8px;font-weight:600">Provider Type</td><td style="padding:8px">${providerTypeLabel}</td></tr>
-                        <tr><td style="padding:8px;background:#f9fafb;font-weight:600">Application ID</td><td style="padding:8px;font-family:monospace">${applicationId}</td></tr>
-                      </table>
-                      <h3 style="color:#0f172a">KYC Score Summary</h3>
-                      <table style="width:100%;border-collapse:collapse;margin:8px 0">
-                        <tr><td style="padding:8px;background:#f9fafb;width:180px">Face Match Score</td><td style="padding:8px"><strong>${faceScore.toFixed(1)}/100</strong></td></tr>
-                        <tr><td style="padding:8px">Liveness Score</td><td style="padding:8px"><strong>${livenessScore.toFixed(0)}%</strong> — ${livenessPass ? '✓ Passed' : '✗ Failed'}</td></tr>
-                        <tr><td style="padding:8px;background:#f9fafb">OCR Confidence</td><td style="padding:8px"><strong>${ocrConfidence.toFixed(0)}%</strong></td></tr>
-                        <tr><td style="padding:8px">OCR Completeness</td><td style="padding:8px">Name: ${ocrFields.nameDetected ? '✓' : '✗'} | DOB: ${ocrFields.birthDateDetected ? '✓' : '✗'} | Expiry: ${ocrFields.expiryDateDetected ? '✓' : '✗'} | ID#: ${ocrFields.idNumberDetected ? '✓' : '✗'}</td></tr>
-                        <tr><td style="padding:8px;background:#f9fafb">Fraud Risk</td><td style="padding:8px"><strong style="color:${fraudRiskLevel === 'low' ? '#059669' : fraudRiskLevel === 'medium' ? '#d97706' : '#dc2626'}">${fraudRiskLevel.toUpperCase()}</strong></td></tr>
-                      </table>
-                      <h3 style="color:#0f172a">Review Flags</h3>
-                      <ul style="margin:0;padding-left:20px">${flagsHtml}</ul>
-                      <div style="margin-top:24px">
-                        <a href="${reviewUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Review Application →</a>
-                      </div>
-                      <p style="color:#9ca3af;font-size:12px;margin-top:24px">This is an automated notification from the PetWash KYC2026 engine.</p>
-                    </div>
-                  `,
+                  from: PROVIDER_SENDER,
+                  replyTo: PROVIDER_SENDER.replyTo,
+                  subject: adminAlert.subject,
+                  html: adminAlert.html,
                 });
                 logger.info(`[KYC2026] Support email sent for pending_review`, { applicationId });
               }
 
               if (outcomeStatus === 'pending_resubmission' && authenticatedUser.email) {
                 // ── Notify applicant: resubmission needed ───────────────────
+                const resubEmail = buildResubmissionNeededEmail({
+                  firstName,
+                  applicationId,
+                  qualityIssues,
+                });
                 await sgMail.send({
                   to: authenticatedUser.email,
-                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-                  subject: `Additional documents needed — Application ${applicationId}`,
-                  html: `
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
-                      <h2 style="color:#d97706">We need better documents</h2>
-                      <p>Hi ${firstName},</p>
-                      <p>We were unable to process your provider application automatically because the uploaded images could not be read clearly.</p>
-                      <p><strong>Issues detected:</strong> ${qualityIssues.join(', ')}</p>
-                      <p>Please log back in to your provider dashboard and upload clearer photos of your ID document and selfie. Make sure:</p>
-                      <ul>
-                        <li>Lighting is good — no shadows or glare</li>
-                        <li>Your full face is clearly visible in the selfie</li>
-                        <li>The ID document is flat and all text is readable</li>
-                      </ul>
-                      <p>Your application ID: <strong style="font-family:monospace">${applicationId}</strong></p>
-                      <p style="color:#6b7280;font-size:13px">Need help? Contact us at <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
-                    </div>
-                  `,
+                  from: PROVIDER_SENDER,
+                  replyTo: PROVIDER_SENDER.replyTo,
+                  subject: resubEmail.subject,
+                  html: resubEmail.html,
                 });
                 logger.info(`[KYC2026] Resubmission email sent`, { applicationId });
               }
 
               if (outcomeStatus === 'approved' && authenticatedUser.email) {
                 // ── Notify applicant: approved ──────────────────────────────
+                const approvedEmail = buildKycApprovedEmail({ firstName, applicationId, providerTypeLabel });
                 await sgMail.send({
                   to: authenticatedUser.email,
-                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-                  subject: 'Your provider application has been approved',
-                  html: `
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-                      <h2 style="color:#059669">Application Approved ✓</h2>
-                      <p>Hi ${firstName},</p>
-                      <p>Great news — your provider application as a <strong>${providerTypeLabel}</strong> on PetWash has been approved.</p>
-                      <p>Your account is now active. You can log in and start setting up your provider profile.</p>
-                      <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId}</p>
-                    </div>
-                  `,
+                  from: PROVIDER_SENDER,
+                  replyTo: PROVIDER_SENDER.replyTo,
+                  subject: approvedEmail.subject,
+                  html: approvedEmail.html,
                 });
               }
 
               if (outcomeStatus === 'rejected' && authenticatedUser.email) {
                 // ── Notify applicant: rejected ──────────────────────────────
+                const rejectedEmail = buildKycRejectedEmail({ firstName, applicationId });
                 await sgMail.send({
                   to: authenticatedUser.email,
-                  from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-                  subject: 'Update on your provider application',
-                  html: `
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-                      <h2 style="color:#0f172a">Application Update</h2>
-                      <p>Hi ${firstName},</p>
-                      <p>After reviewing your provider application, we were unable to approve it at this time.</p>
-                      <p>If you believe this is an error or would like to reapply with updated documents, please contact us at <a href="mailto:support@petwash.co.il">support@petwash.co.il</a>.</p>
-                      <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId}</p>
-                    </div>
-                  `,
+                  from: PROVIDER_SENDER,
+                  replyTo: PROVIDER_SENDER.replyTo,
+                  subject: rejectedEmail.subject,
+                  html: rejectedEmail.html,
                 });
               }
             } catch (emailErr: any) {
@@ -1400,19 +1381,18 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
     if (isSendGridConfigured() && application.email) {
       try {
         const providerTypeLabel = application.providerType === 'walker' ? 'Dog Walker' : application.providerType === 'sitter' ? 'Pet Sitter' : 'Station Operator';
+        const approvedEmail = buildAdminApprovedEmail({
+          firstName: application.firstName,
+          applicationId,
+          providerId,
+          providerTypeLabel,
+        });
         await sgMail.send({
           to: application.email,
-          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-          subject: 'Your provider application has been approved',
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-              <h2 style="color:#059669">Application Approved ✓</h2>
-              <p>Hi ${application.firstName},</p>
-              <p>Your provider application as a <strong>${providerTypeLabel}</strong> on PetWash has been approved by our team.</p>
-              <p>Your account is now active. You can log in and start setting up your provider profile.</p>
-              <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId} &bull; Provider ID: ${providerId}</p>
-            </div>
-          `,
+          from: PROVIDER_SENDER,
+          replyTo: PROVIDER_SENDER.replyTo,
+          subject: approvedEmail.subject,
+          html: approvedEmail.html,
         });
       } catch (emailErr: any) {
         logger.warn('[Provider Onboarding] Approval email failed (non-fatal)', { error: emailErr?.message });
@@ -1495,19 +1475,17 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
     // Email applicant
     if (isSendGridConfigured() && application.email) {
       try {
+        const rejectedEmail = buildAdminRejectedEmail({
+          firstName: application.firstName,
+          applicationId,
+          rejectionReason,
+        });
         await sgMail.send({
           to: application.email,
-          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-          subject: 'Update on your provider application',
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-              <h2 style="color:#0f172a">Application Update</h2>
-              <p>Hi ${application.firstName},</p>
-              <p>After reviewing your provider application, we were unable to approve it at this time.</p>
-              <p>If you believe this is an error or would like to reapply with updated documents, please contact us at <a href="mailto:support@petwash.co.il">support@petwash.co.il</a>.</p>
-              <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId}</p>
-            </div>
-          `,
+          from: PROVIDER_SENDER,
+          replyTo: PROVIDER_SENDER.replyTo,
+          subject: rejectedEmail.subject,
+          html: rejectedEmail.html,
         });
       } catch (emailErr: any) {
         logger.warn('[Provider Onboarding] Rejection email failed (non-fatal)', { error: emailErr?.message });
@@ -1630,24 +1608,19 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
     const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
     const uploadUrl = `${appUrl}/provider-application/resubmit?token=${token}`;
     if (isSendGridConfigured() && app.email) {
+      const resubRequestEmail = buildAdminResubmitRequestEmail({
+        firstName: app.first_name,
+        applicationId: app.application_id,
+        reasons,
+        uploadUrl,
+        resubmissionCount: (app.resubmission_count || 0) + 1,
+      });
       sgMail.send({
         to: app.email,
-        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-        subject: `We need updated documents — Application ${app.application_id}`,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
-            <h2 style="color:#d97706">Updated documents needed</h2>
-            <p>Hi ${app.first_name},</p>
-            <p>Our team has reviewed your provider application and needs you to re-upload clearer files.</p>
-            <p><strong>Reasons:</strong></p>
-            <ul>${reasons.map((r: string) => `<li>${r}</li>`).join('')}</ul>
-            <p>Please upload your updated documents using the link below. This link expires in 5 days.</p>
-            <div style="margin:24px 0">
-              <a href="${uploadUrl}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Upload Updated Documents →</a>
-            </div>
-            <p style="color:#6b7280;font-size:13px">Application ID: ${app.application_id} &bull; Questions? <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
-          </div>
-        `,
+        from: PROVIDER_SENDER,
+        replyTo: PROVIDER_SENDER.replyTo,
+        subject: resubRequestEmail.subject,
+        html: resubRequestEmail.html,
       }).catch(() => {});
     }
 
@@ -1711,11 +1684,13 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
 
     // Emit outbound email if visible to provider
     if (direction === 'outbound' && providerVisible && toAddress && isSendGridConfigured()) {
+      const supportEmail = buildSupportMessageEmail({ body, applicationId: String(applicationId) });
       sgMail.send({
         to: toAddress,
-        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ Support' },
-        subject: 'Update on your provider application',
-        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px"><p>${body}</p><p style="color:#9ca3af;font-size:12px">PetWash Provider Onboarding Team</p></div>`,
+        from: PROVIDER_SENDER,
+        replyTo: PROVIDER_SENDER.replyTo,
+        subject: supportEmail.subject,
+        html: supportEmail.html,
       }).catch(() => {});
     }
 
@@ -2026,18 +2001,16 @@ router.post(
 
       // ── 6. Send confirmation email to applicant ───────────────────────────
       if (isSendGridConfigured() && app.email) {
+        const docsEmail = buildDocumentsReceivedEmail({
+          firstName: app.first_name,
+          applicationId,
+        });
         sgMail.send({
           to: app.email,
-          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
-          subject: `Documents received — Application ${applicationId}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
-              <h2 style="color:#0f172a">Documents received ✓</h2>
-              <p>Hi ${app.first_name},</p>
-              <p>We received your updated documents and have begun re-verifying your application. You will hear from us within 24 hours.</p>
-              <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId} &bull; Questions? <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
-            </div>
-          `,
+          from: PROVIDER_SENDER,
+          replyTo: PROVIDER_SENDER.replyTo,
+          subject: docsEmail.subject,
+          html: docsEmail.html,
         }).catch(() => {});
       }
 
