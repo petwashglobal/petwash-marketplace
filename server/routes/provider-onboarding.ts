@@ -635,18 +635,36 @@ router.post('/apply', upload.fields([
           const photoQuality    = kycResult.photoQuality;
 
           // ── 3. Decision logic ─────────────────────────────────────────────
+          // Step A: base outcome from face score + liveness
           let outcomeStatus: string;
           let decisionReason: string;
+          const forceReviewFlags: string[] = [];
 
           if (faceScore >= 78 && livenessPass) {
-            outcomeStatus = 'approved';
-            decisionReason = `KYC2026: face match ${faceScore.toFixed(1)}/100 (match), liveness passed (${livenessScore.toFixed(0)}%)`;
+            // Step B: even with a passing score, check OCR completeness and quality.
+            // Any gap forces pending_review — admin must confirm identity manually.
+            if (!ocrFields.nameDetected)          forceReviewFlags.push('ocr_name_missing');
+            if (!ocrFields.birthDateDetected)     forceReviewFlags.push('ocr_dob_missing');
+            if (!ocrFields.expiryDateDetected)    forceReviewFlags.push('ocr_expiry_missing');
+            if (!ocrFields.idNumberDetected)      forceReviewFlags.push('ocr_id_number_missing');
+            if (!ocrFields.documentTypeInferred)  forceReviewFlags.push('document_type_unknown');
+            if (ocrConfidence < 50)               forceReviewFlags.push('ocr_confidence_low');
+            if (photoQuality.idQuality === 'poor')     forceReviewFlags.push('id_document_poor_quality');
+            if (photoQuality.selfieQuality === 'poor') forceReviewFlags.push('selfie_poor_quality');
+
+            if (forceReviewFlags.length > 0) {
+              outcomeStatus = 'pending_review';
+              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match) + liveness passed, but forced to manual review — ${forceReviewFlags.join(', ')}`;
+            } else {
+              outcomeStatus = 'approved';
+              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete, quality good`;
+            }
           } else if (faceScore >= 55) {
             outcomeStatus = 'pending_review';
-            decisionReason = `KYC2026: face match ${faceScore.toFixed(1)}/100 (inconclusive) — manual review required${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
+            decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (inconclusive)${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
           } else {
             outcomeStatus = 'rejected';
-            decisionReason = `KYC2026: face match ${faceScore.toFixed(1)}/100 (mismatch/error)${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
+            decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (mismatch)${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
           }
 
           // ── 4. Build DB update payload ────────────────────────────────────
@@ -656,6 +674,12 @@ router.post('/apply', upload.fields([
             biometricMatchScore: faceScore.toString(),
             biometricFailureReason: outcomeStatus !== 'approved' ? decisionReason : null,
             biometricVerifiedAt: new Date(),
+            // Queryable KYC fields (promoted out of JSON for admin filtering + analytics)
+            kycDocumentType: ocrFields.documentTypeInferred || null,
+            kycIdLastFour: ocrFields.idNumberLastFour || null,
+            kycOcrConfidence: ocrConfidence.toFixed(2),
+            kycLivenessScore: livenessScore.toFixed(2),
+            kycDecisionFlags: forceReviewFlags.length > 0 ? JSON.stringify(forceReviewFlags) : null,
             backgroundCheckNotes: JSON.stringify({
               engine: 'KYC2026',
               faceMatch: {

@@ -4971,6 +4971,13 @@ export const providerApplications = pgTable("provider_applications", {
   reviewedAt: timestamp("reviewed_at"),
   rejectionReason: text("rejection_reason"),
   
+  // KYC2026 Queryable Fields (promoted from backgroundCheckNotes for admin filtering + analytics)
+  kycDocumentType: varchar("kyc_document_type"), // passport | national_id | drivers_license | disability_certificate | retirement_certificate
+  kycIdLastFour: varchar("kyc_id_last_four", { length: 4 }), // last 4 digits of document number (redacted)
+  kycOcrConfidence: decimal("kyc_ocr_confidence", { precision: 5, scale: 2 }), // 0-100 OCR text confidence
+  kycLivenessScore: decimal("kyc_liveness_score", { precision: 5, scale: 2 }), // 0-100 heuristic liveness confidence
+  kycDecisionFlags: text("kyc_decision_flags"), // JSON array — flags that forced pending_review (e.g. ["ocr_name_missing","expiry_missing"])
+
   // Admin Notes
   internalNotes: text("internal_notes"), // Only visible to admins
   
