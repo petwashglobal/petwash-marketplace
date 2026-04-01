@@ -666,7 +666,7 @@ export class EmailService {
   <div class="container">
     <div class="header">
       <h1>Pet Wash™ - דוח מע״מ אוטומטי</h1>
-      <p style="margin:4px 0 0;font-size:13px;opacity:.8;">פט ווש בע"מ | PetWash Ltd | ח.פ. 516047073</p>
+      <p style="margin:4px 0 0;font-size:13px;opacity:.8;">פט וואש בע"מ | PET WASH LTD | ח.פ. 517145033</p>
     </div>
     <div class="content">
       <h2>דוח מע״מ חודשי</h2>
@@ -776,7 +776,7 @@ export class EmailService {
   <div class="container">
     <div class="header">
       <h1 style="font-size:22px;font-weight:700;letter-spacing:2px;margin:0;">PET WASH™</h1>
-      <p class="header-sub">פט ווש בע"מ | ח.פ. 516047073</p>
+      <p class="header-sub">פט וואש בע"מ | ח.פ. 517145033</p>
       <div class="badge">EXPENSE SUBMISSION</div>
     </div>
     <div class="content">
@@ -817,7 +817,7 @@ export class EmailService {
       </p>
     </div>
     <div class="footer">
-      <p><strong>Pet Wash™</strong> | פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073</p>
+      <p><strong>Pet Wash™</strong> | פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033</p>
       <p>זוהי הודעה אוטומטית ממערכת ניהול ההוצאות / This is an automated notification from the expense management system.</p>
     </div>
   </div>
@@ -888,7 +888,7 @@ export class EmailService {
   <div class="container">
     <div class="header">
       <h1 style="font-size:22px;font-weight:700;letter-spacing:3px;margin:0;">PET WASH™</h1>
-      <p style="font-size:11px;color:#888;margin:8px 0 0;letter-spacing:1px;">פט ווש בע"מ | PetWash Ltd | ח.פ. 516047073</p>
+      <p style="font-size:11px;color:#888;margin:8px 0 0;letter-spacing:1px;">פט וואש בע"מ | PET WASH LTD | ח.פ. 517145033</p>
       <p style="font-size:14px;margin:12px 0 0;font-weight:600;color:#c9a96e;">Employee Expense Form — טופס הוצאות</p>
     </div>
     
@@ -1000,7 +1000,7 @@ export class EmailService {
       <p><strong>Nir Hadad (CEO) & Ido Shakarzi (National Operations Director)</strong></p>
       <p>This blank draft showcases the employee expense form layout and fields.</p>
       <p>Employees can easily fill and submit expenses of any type - the form auto-resets after each submission.</p>
-      <p style="margin-top: 15px;"><strong>Pet Wash™</strong> | פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073 | www.petwash.co.il</p>
+      <p style="margin-top: 15px;"><strong>Pet Wash™</strong> | פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033 | www.petwash.co.il</p>
     </div>
   </div>
 </body>
@@ -1040,7 +1040,7 @@ export class EmailService {
     }
 
     try {
-      const subject = 'Sample VAT Declaration - PetWash Ltd to Israeli Tax Authority - דוגמה';
+      const subject = 'Sample VAT Declaration - PET WASH LTD to Israeli Tax Authority - דוגמה';
       
       const html = `
 <!DOCTYPE html>
@@ -1082,11 +1082,11 @@ export class EmailService {
         <table style="background: white;">
           <tr>
             <td>שם החברה / Company Name:</td>
-            <td><strong>פט ווש בע"מ / PetWash Ltd</strong></td>
+            <td><strong>פט וואש בע"מ / PET WASH LTD</strong></td>
           </tr>
           <tr>
             <td>ח.פ. / Company Registration:</td>
-            <td><strong>516047073</strong></td>
+            <td><strong>517145033</strong></td>
           </tr>
           <tr>
             <td>כתובת / Address:</td>
@@ -1185,7 +1185,7 @@ export class EmailService {
     </div>
     
     <div class="footer">
-      <p><strong>Pet Wash™</strong> | פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073</p>
+      <p><strong>Pet Wash™</strong> | פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033</p>
       <p>www.petwash.co.il | support@petwash.co.il</p>
       <p style="margin-top: 15px;">
         This sample demonstrates the format of VAT declarations submitted to the Israeli Tax Authority.<br>
@@ -2315,7 +2315,7 @@ export class EmailService {
           <div style="display:inline-block;padding:8px 16px;border:1px solid #333;">
             <span style="font-family:'Helvetica Neue',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">PET WASH™</span>
           </div>
-          <div style="font-size:10px;color:#555;margin-top:6px;">פט ווש בע"מ | ח.פ. 516047073</div>
+          <div style="font-size:10px;color:#555;margin-top:6px;">פט וואש בע"מ | ח.פ. 517145033</div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:40px 36px;">
@@ -2360,8 +2360,8 @@ export class EmailService {
         <tr><td style="padding:0 36px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f0f0f0;">
             <tr><td style="padding:24px 0 8px;font-size:11px;color:#bbb;line-height:1.8;">
-              <strong style="color:#999;">Pet Wash™</strong> &mdash; פט ווש בע"מ / PetWash Ltd<br>
-              ח.פ. / Company No. 516047073<br>
+              <strong style="color:#999;">Pet Wash™</strong> &mdash; פט וואש בע"מ / PET WASH LTD<br>
+              ח.פ. / Company No. 517145033<br>
               <a href="https://petwash.co.il" style="color:#bbb;text-decoration:none;">petwash.co.il</a>
               &nbsp;·&nbsp;
               <a href="mailto:support@petwash.co.il" style="color:#bbb;text-decoration:none;">support@petwash.co.il</a>
@@ -2373,7 +2373,7 @@ export class EmailService {
               &nbsp;·&nbsp;
               <a href="https://petwash.co.il/terms" style="color:#bbb;text-decoration:none;">תנאי שימוש</a>
             </td></tr>
-            <tr><td style="padding:4px 0 24px;font-size:10px;color:#bbb;">&copy; ${new Date().getFullYear()} פט ווש בע"מ. כל הזכויות שמורות.</td></tr>
+            <tr><td style="padding:4px 0 24px;font-size:10px;color:#bbb;">&copy; ${new Date().getFullYear()} פט וואש בע"מ. כל הזכויות שמורות.</td></tr>
           </table>
         </td></tr>
       </table>
@@ -2402,7 +2402,7 @@ export class EmailService {
           <div style="display:inline-block;padding:8px 16px;border:1px solid #333;">
             <span style="font-family:'Helvetica Neue',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">PET WASH™</span>
           </div>
-          <div style="font-size:10px;color:#555;margin-top:6px;">PetWash Ltd | Company No. 516047073</div>
+          <div style="font-size:10px;color:#555;margin-top:6px;">PET WASH LTD | Company No. 517145033</div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:40px 36px;">
@@ -2447,8 +2447,8 @@ export class EmailService {
         <tr><td style="padding:0 36px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f0f0f0;">
             <tr><td style="padding:24px 0 8px;font-size:11px;color:#bbb;line-height:1.8;">
-              <strong style="color:#999;">Pet Wash™</strong> &mdash; פט ווש בע"מ / PetWash Ltd<br>
-              ח.פ. / Company No. 516047073<br>
+              <strong style="color:#999;">Pet Wash™</strong> &mdash; פט וואש בע"מ / PET WASH LTD<br>
+              ח.פ. / Company No. 517145033<br>
               <a href="https://petwash.co.il" style="color:#bbb;text-decoration:none;">petwash.co.il</a>
               &nbsp;·&nbsp;
               <a href="mailto:support@petwash.co.il" style="color:#bbb;text-decoration:none;">support@petwash.co.il</a>
@@ -2460,7 +2460,7 @@ export class EmailService {
               &nbsp;·&nbsp;
               <a href="https://petwash.co.il/terms" style="color:#bbb;text-decoration:none;">Terms</a>
             </td></tr>
-            <tr><td style="padding:4px 0 24px;font-size:10px;color:#bbb;">&copy; ${new Date().getFullYear()} PetWash Ltd. All rights reserved.</td></tr>
+            <tr><td style="padding:4px 0 24px;font-size:10px;color:#bbb;">&copy; ${new Date().getFullYear()} PET WASH LTD. All rights reserved.</td></tr>
           </table>
         </td></tr>
       </table>
@@ -2645,7 +2645,7 @@ export class EmailService {
         📱 <a href="tel:+972549833355" style="color: #667eea; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073
+        © ${new Date().getFullYear()} פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033
       </p>
     </div>
   </div>
@@ -2726,7 +2726,7 @@ export class EmailService {
         📱 <a href="tel:+972549833355" style="color: #667eea; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} PetWash Ltd | Company No. 516047073
+        © ${new Date().getFullYear()} PET WASH LTD | Company No. 517145033
       </p>
     </div>
   </div>
@@ -2821,7 +2821,7 @@ export class EmailService {
         📱 <a href="tel:+972549833355" style="color: #10b981; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073
+        © ${new Date().getFullYear()} פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033
       </p>
     </div>
   </div>
@@ -2878,7 +2878,7 @@ export class EmailService {
         📱 <a href="tel:+972549833355" style="color: #10b981; text-decoration: none;">+972-54-983-3355</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
-        © ${new Date().getFullYear()} PetWash Ltd | Company No. 516047073
+        © ${new Date().getFullYear()} PET WASH LTD | Company No. 517145033
       </p>
     </div>
   </div>
@@ -2987,7 +2987,7 @@ export class EmailService {
       <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
         <h4 style="margin: 0 0 10px 0; color: #991b1b; font-size: 16px;">⚠️ Compliance Risk:</h4>
         <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
-          Failure to maintain up-to-date legal documents may expose Pet Wash Ltd to regulatory penalties, 
+          Failure to maintain up-to-date legal documents may expose PET WASH LTD to regulatory penalties, 
           consumer lawsuits, and non-compliance fines. Israeli law requires businesses to update Terms & Privacy 
           policies when legal changes occur.
         </p>
@@ -3018,7 +3018,7 @@ export class EmailService {
         This is an automated reminder from your legal compliance monitoring system.
       </p>
       <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.7;">
-        © ${new Date().getFullYear()} Pet Wash Ltd | Company Number: 517145033
+        © ${new Date().getFullYear()} PET WASH LTD | Company Number: 517145033
       </p>
     </div>
   </div>

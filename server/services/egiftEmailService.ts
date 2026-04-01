@@ -286,7 +286,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
       </p>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid #f5f5f5;">
         <p style="font-size:10px;color:#ccc;margin:0;">
-          © ${new Date().getFullYear()} פט ווש בע"מ / PetWash Ltd | ח.פ. 516047073 | ${t.allRights}
+          © ${new Date().getFullYear()} פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033 | ${t.allRights}
         </p>
       </div>
     </div>

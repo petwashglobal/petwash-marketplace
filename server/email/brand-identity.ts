@@ -19,16 +19,16 @@
 // ─── Legal entity ─────────────────────────────────────────────────────────────
 
 /** Registered Hebrew name — exact legal form as in ח.פ. registry */
-export const LEGAL_NAME_HE = 'פט ווש בע"מ';
+export const LEGAL_NAME_HE = 'פט וואש בע"מ';
 
 /** Registered English name */
-export const LEGAL_NAME_EN = 'PetWash Ltd';
+export const LEGAL_NAME_EN = 'PET WASH LTD';
 
 /** Brand display name (trademark symbol, no RTL embedding) */
 export const BRAND_NAME = 'Pet Wash™';
 
 /** Company registration number (ח.פ.) issued by Israel Companies Registrar */
-export const COMPANY_TAX_ID = '516047073';
+export const COMPANY_TAX_ID = '517145033';
 
 /** Registered address */
 export const COMPANY_ADDRESS_HE = 'ישראל';

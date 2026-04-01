@@ -24,7 +24,7 @@ const SUPPORT_EMAIL = 'support@petwash.co.il';
 const SITE_URL = 'https://petwash.co.il';
 const ISRAEL_VAT_RATE = 0.18;
 const COMPANY_NAME_HE = 'פט וואש בע"מ';
-const COMPANY_TAX_ID = '516047073';
+const COMPANY_TAX_ID = '517145033';
 
 const SERVICE_NAMES: Record<string, { en: string; he: string }> = {
   K9000_WASH: { en: 'Self-Service Dog Wash', he: 'רחצת כלב עצמאית – K9000' },
