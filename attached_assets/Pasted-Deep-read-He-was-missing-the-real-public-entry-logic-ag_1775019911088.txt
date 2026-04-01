@@ -1,0 +1,65 @@
+Deep read:
+
+He was missing the real public entry logic again, but the important part is this: the root causes are now identified and the right fixes are clear.
+
+What was actually broken in public loyalty signup
+	1.	reCAPTCHA was hard-blocking mobile signup
+On some mobile browsers or with blockers, the reCAPTCHA script does not load. The frontend stopped before profile creation, so the user looked “blocked” even before backend logic really started.
+	2.	Consent was wrong
+The terms checkbox was effectively pre-checked instead of being a real explicit approval step. That is both bad product logic and bad legal logic.
+	3.	Wallet was not created immediately
+New loyalty users were getting their user profile, but wallet creation was lazy. That means any part of the system expecting a wallet right after signup could fail or behave inconsistently.
+	4.	Social signup was bypassing proper onboarding completion
+Google and similar flows were creating partial identity state without fully guaranteeing the same post-signup setup as normal signup, especially wallet and clean role/consent completion.
+	5.	Post-login race condition
+Phone and social users could authenticate successfully, but the PostgreSQL user row could still be missing at the exact moment post-login routing ran. That creates loops, broken routing, or users landing in the wrong place.
+
+What the correct logic is
+
+Public loyalty member signup must be the easiest and cleanest flow in the whole system.
+
+The right flow is:
+	•	user chooses phone / Apple / Google / email
+	•	verification succeeds
+	•	backend creates the real user row
+	•	backend creates wallet immediately
+	•	backend assigns default role loyalty_member
+	•	backend stamps explicit legal consent only after user actually agreed
+	•	user lands directly in loyalty dashboard
+	•	provider flow stays completely separate
+
+No KYC.
+No provider queue.
+No review logic.
+No hidden blocking dependency.
+
+What was fixed
+
+The fixes described are the right ones:
+	•	wallet now auto-creates at signup
+	•	consent is no longer pre-checked
+	•	mobile signup is no longer blocked just because reCAPTCHA script failed to load
+	•	backend accepts Turnstile-only path correctly
+	•	post-login now recovers if auth succeeded before DB user creation completed
+
+That is the correct direction.
+
+What still matters now
+
+I would tell him not to say “fixed” yet until he proves these 6 flows with real outputs:
+	1.	email signup as new public loyalty user
+	2.	phone signup as new public loyalty user
+	3.	Google signup as new public loyalty user
+	4.	duplicate email handling
+	5.	duplicate mobile handling
+	6.	successful landing in loyalty dashboard with wallet row present
+
+And for each one I want proof of:
+	•	auth success
+	•	DB user row created
+	•	wallet row created
+	•	role assigned
+	•	consent recorded
+	•	final route correct
+
+What I’d send him now
