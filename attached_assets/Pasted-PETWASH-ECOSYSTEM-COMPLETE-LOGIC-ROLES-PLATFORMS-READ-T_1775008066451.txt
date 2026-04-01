@@ -1,0 +1,414 @@
+PETWASH ECOSYSTEM - COMPLETE LOGIC + ROLES + PLATFORMS
+READ THIS BEFORE WRITING ANY CODE
+
+If you misunderstand this document, you will build the wrong system.
+
+This is not one app.
+This is a multi-platform business with different users, different permissions, and different behaviors.
+
+You must understand ALL parts before implementing ANY part.
+
+=====================================
+1. BIG PICTURE - WHAT WE ARE BUILDING
+=====================================
+
+PetWash is a unified system that connects:
+
+- physical dog wash kiosks (real machines)
+- mobile/web application (users + providers)
+- internal SaaS (support + management)
+- marketplace (services like grooming, walking, sitting)
+- loyalty club (wallet + discounts)
+
+Everything is connected to ONE backend.
+
+The backend is the brain.
+Everything else is just an interface.
+
+=====================================
+2. PLATFORMS (SEPARATE BUT CONNECTED)
+=====================================
+
+You must NEVER mix these.
+
+-------------------------------------
+A) PetWash.co.il (CORE PLATFORM)
+-------------------------------------
+
+This is the main system.
+
+It includes:
+- user app (mobile + web)
+- provider onboarding
+- wallet
+- loyalty club
+- marketplace
+- admin dashboards
+- kiosk integration
+
+This is:
+SYSTEM OF RECORD
+
+All logic lives here:
+- database
+- decisions
+- permissions
+- audit
+
+-------------------------------------
+B) PHYSICAL KIOSK PLATFORM
+-------------------------------------
+
+Real-world machines.
+
+Users:
+- pay
+- wash dog
+- session starts
+
+Connected to backend:
+- wallet deduction
+- usage logs
+- analytics
+
+Kiosk NEVER decides anything.
+Backend controls everything.
+
+-------------------------------------
+C) INTERNAL SaaS PLATFORM
+-------------------------------------
+
+Used only by company.
+
+Includes:
+- support dashboard
+- management dashboard
+- review systems
+- communication tools
+
+NOT visible to public users.
+
+-------------------------------------
+D) PETTREK (FROZEN)
+-------------------------------------
+
+PetTrek exists but is NOT active.
+
+Rules:
+- all actions blocked
+- show "Coming soon"
+- no backend processing
+- no bookings allowed
+
+Do NOT build features here.
+
+-------------------------------------
+E) GOOGLE TOOLS (LIMITED USE)
+-------------------------------------
+
+Google Forms:
+- optional intake only
+
+Google Sheets:
+- reporting only
+
+Google Drive:
+- backup/archive only
+
+NEVER use these as core system.
+
+=====================================
+3. USER TYPES (VERY STRICT)
+=====================================
+
+You MUST separate these completely.
+
+-------------------------------------
+1) CLIENTS (PUBLIC USERS)
+-------------------------------------
+
+These are pet owners.
+
+What they do:
+- register quickly
+- no KYC
+- get wallet
+- get 5% discount
+- some get 10% (manual approval)
+
+Use cases:
+- use kiosks
+- buy packages
+- manage wallet
+
+They must NOT:
+- upload ID
+- go through provider flow
+- see admin data
+
+-------------------------------------
+2) PROVIDERS (PROFESSIONALS)
+-------------------------------------
+
+These are service providers.
+
+Types:
+- groomers
+- dog walkers
+- pet sitters
+- trainers
+- mobile service providers
+
+-------------------------------------
+
+Before approval:
+- must pass KYC
+- upload selfie + ID
+
+After approval:
+- can work in system
+- can offer services (future)
+
+-------------------------------------
+
+IMPORTANT:
+Providers are HIGH TRUST.
+KYC is mandatory.
+
+-------------------------------------
+3) TRAINEES (NEW / LIMITED PROVIDERS)
+-------------------------------------
+
+These are beginner providers.
+
+Rules:
+- may have limited permissions
+- may require extra review
+- may not be fully trusted yet
+
+Examples:
+- new groomers
+- trainee walkers
+- junior sitters
+
+System must support:
+- role differentiation
+- limited access
+- gradual upgrade
+
+-------------------------------------
+4) SUPPORT (OPERATIONS TEAM)
+-------------------------------------
+
+They run daily operations.
+
+They can:
+- review applications
+- approve / reject
+- request resubmission
+- communicate with applicants
+- assign queue items
+
+They must NOT:
+- change system logic
+- access management analytics
+
+-------------------------------------
+5) MANAGEMENT
+-------------------------------------
+
+They do NOT operate daily tasks.
+
+They:
+- see analytics
+- see trends
+- see fraud patterns
+- see performance
+
+They must NOT:
+- manually review every case
+
+=====================================
+4. PROVIDER ONBOARDING (CORE FLOW)
+=====================================
+
+STEP 1 - SUBMISSION
+- user uploads selfie + ID
+- data saved immediately
+- status = submitted
+
+IMPORTANT:
+NEVER block on external APIs.
+
+-------------------------------------
+
+STEP 2 - PROCESSING (ASYNC)
+- KYC2026 runs
+- face match
+- liveness
+- OCR
+- quality check
+
+-------------------------------------
+
+STEP 3 - SYSTEM DECISION
+
+Possible:
+- approved
+- rejected
+- pending_review
+- pending_resubmission
+
+-------------------------------------
+
+STEP 4 - HUMAN REVIEW (IF NEEDED)
+Support:
+- opens application
+- sees everything
+- decides
+
+-------------------------------------
+
+STEP 5 - FINAL STATE
+- provider activated
+OR
+- rejected
+OR
+- resubmitted
+
+=====================================
+5. BUSINESS RULES (CRITICAL)
+=====================================
+
+- Backend is ALWAYS authority
+- KYC is advisory only
+- No frontend decisions
+- Everything logged
+- No silent failures
+- Every state must be explainable
+
+=====================================
+6. DASHBOARD LOGIC
+=====================================
+
+-------------------------------------
+SUPPORT DASHBOARD
+-------------------------------------
+
+Operational view.
+
+Must show:
+- applications queue
+- scores
+- flags
+- priority
+- unread messages
+- SLA timing
+
+-------------------------------------
+
+MANAGEMENT DASHBOARD
+-------------------------------------
+
+Strategic view.
+
+Must show:
+- approval rates
+- rejection rates
+- processing time
+- fraud trends
+- system health
+
+-------------------------------------
+
+PROVIDER DASHBOARD
+-------------------------------------
+
+Must show:
+- application status
+- messages
+- upload requests
+- (later) provider tools
+
+-------------------------------------
+
+CLIENT DASHBOARD (LOYALTY)
+-------------------------------------
+
+Must show:
+- wallet
+- credits
+- discounts
+- history
+
+=====================================
+7. FILES & DOCUMENTS
+=====================================
+
+Support must be able to:
+- preview images
+- preview PDFs
+- zoom
+- download
+- compare versions
+
+Never store files publicly.
+
+=====================================
+8. COMMUNICATION SYSTEM
+=====================================
+
+Every application has a thread.
+
+Includes:
+- emails
+- messages
+- internal notes
+
+Must support:
+- inbound replies
+- outbound messages
+- delivery status
+
+=====================================
+9. SECURITY
+=====================================
+
+Must include:
+- RBAC (role-based access)
+- signed URLs
+- file validation
+- audit logs
+- rate limits
+- anti-duplicate logic
+- race condition protection
+
+=====================================
+10. THINKING RULE
+=====================================
+
+Before writing ANY code, always ask:
+
+- Which platform is this?
+- Which user type is this?
+- What are they allowed to see?
+- What are they allowed to do?
+- What happens if it fails?
+
+If you cannot answer all:
+STOP and ask.
+
+=====================================
+FINAL RULE
+=====================================
+
+Do NOT build based on examples.
+Do NOT guess missing logic.
+
+This is a real business system:
+- real users
+- real payments
+- real machines
+
+If you break separation or logic:
+you break the entire system.
