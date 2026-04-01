@@ -1,0 +1,91 @@
+We need to add Paw Finder as a real community platform inside PetWash.
+
+Business purpose:
+- help owners find lost pets
+- strengthen community trust
+- increase loyalty member engagement
+- create meaningful repeat usage beyond wash/booking flows
+
+Core product:
+Two posting types only:
+1. Lost Pet
+2. Found Pet
+
+Required fields:
+- pet photo
+- pet type
+- breed / size / color
+- city / area
+- map pin
+- date lost or found
+- contact method
+- short description
+- optional reward amount
+
+Core system logic:
+- posting should be available to registered loyalty members
+- public viewing can be allowed if desired
+- every post goes through moderation before going live
+- Gemini should scan both text and image before publish
+- if confidence is unsafe or unclear, route to manual review
+
+Gemini moderation must detect and block or review:
+- sexual content
+- drugs
+- political content
+- hate / race / religion abuse
+- violence / threats
+- spam / scam patterns
+- abusive reward wording
+- unsafe personal content
+
+Smart matching logic:
+The system should suggest likely matches between Lost and Found posts based on:
+- city / area
+- map radius
+- pet type
+- color / breed
+- date proximity
+
+Example:
+Lost brown dog in Tel Aviv near Dizengoff
++
+Found brown dog in central Tel Aviv same day
+=
+possible match suggestion
+
+User experience:
+- pure white premium PetWash style
+- clean cards
+- map + list layout
+- mobile-first
+- no clutter
+- support for small mobile and large desktop
+
+Safety / trust:
+- support/admin can approve / reject / hide posts
+- posts can be marked resolved
+- contact flow should be safe
+- optional masked contact flow before exposing phone number
+- reward is user-offered only, not guaranteed by PetWash
+
+Role logic:
+- loyalty members can create posts
+- support/admin can moderate
+- management can view analytics only
+- providers do not need special access unless future business logic requires it
+
+Important:
+PetTrek remains frozen with Coming Soon.
+Paw Finder is separate and active.
+
+Please return:
+1. DB schema
+2. backend routes
+3. moderation flow with Gemini
+4. matching logic
+5. admin moderation dashboard
+6. member posting UI
+7. map/list UI
+8. resolved lifecycle
+9. notification logic for likely matches

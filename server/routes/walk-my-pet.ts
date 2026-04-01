@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { randomInt, randomBytes } from 'crypto';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { 
   walkerProfiles, 
   walkBookings, 
@@ -38,6 +38,7 @@ import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
+import { dispatchNotifications, buildBookingCancelledSms } from '../services/PetWashNotificationEngine';
 
 const router = Router();
 
@@ -1806,7 +1807,48 @@ router.post('/walker/reject/:walkId', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Walk request not found or cannot be rejected' });
     }
 
-    res.json({ success: true });
+    // Refund customer's wallet (full refund — walker declined before service started)
+    const customerId: string | null = updated.ownerId ?? null;
+    const refundCents: number = updated.totalCents ?? 0;
+
+    if (customerId && refundCents > 0) {
+      try {
+        await pool.query(
+          `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
+           VALUES ($1, $2, 0)
+           ON CONFLICT (wallet_id) DO NOTHING`,
+          [`WALLET-${customerId.slice(0, 20)}`, customerId],
+        );
+        await pool.query(
+          `UPDATE wallet_accounts
+           SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
+               updated_at = NOW()
+           WHERE user_id = $2`,
+          [refundCents, customerId],
+        );
+        logger.info('[Walk My Pet] Wallet refund on walker reject', { customerId, refundCents, walkId });
+      } catch (walletErr: any) {
+        logger.error('[Walk My Pet] Wallet refund failed on reject', { walkId, error: walletErr.message });
+      }
+    }
+
+    // Notify customer that their walk was cancelled by the walker
+    if (customerId) {
+      const smsBody = buildBookingCancelledSms({
+        bookingRef: walkId.slice(0, 8).toUpperCase(),
+        serviceName: 'טיול כלבים',
+      });
+      dispatchNotifications({
+        event: 'booking_cancelled',
+        entityId: walkId,
+        channels: ['sms'],
+        userId: customerId,
+        smsBody,
+        idempotencyKey: `walk-rejected-customer-${walkId}`,
+      }).catch(e => logger.warn('[Walk My Pet] Customer rejection SMS failed', e));
+    }
+
+    return res.json({ success: true });
   } catch (error) {
     logger.error('[Walker Dashboard] Error rejecting walk', error);
     res.status(500).json({ error: 'Failed to reject walk' });

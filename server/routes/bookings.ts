@@ -1,6 +1,6 @@
 import express from "express";
 import { db } from "../lib/firebase-admin";
-import { db as pgDb } from "../db";
+import { db as pgDb, pool } from "../db";
 import { requireAuth } from "../customAuth";
 import VATCalculatorService from "../services/VATCalculatorService";
 import EscrowService from "../services/EscrowService";
@@ -15,6 +15,9 @@ import { computeAndPersistSettlement } from "../services/SettlementEngine";
 import { stations } from "@shared/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
 import { resolveStationRole } from "../middleware/stationAuth";
+import { bookingLimiter } from "../middleware/rateLimiter";
+import { bookingPolicyEngine } from "../services/BookingPolicyEngine";
+import { dispatchNotifications, buildBookingCancelledSms } from "../services/PetWashNotificationEngine";
 
 const router = express.Router();
 
@@ -453,13 +456,25 @@ router.get("/availability", async (req, res) => {
 router.get("/:bookingId", requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const userId = req.user!.uid;
+    const admin = await isSuperAdmin(req);
+
     const doc = await db.collection("bookings").doc(bookingId).get();
 
     if (!doc.exists) {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    res.json({ booking: doc.data() });
+    const data = doc.data()!;
+    const isOwner = data.userId === userId || data.customerId === userId;
+    const isProvider = data.providerId === userId;
+
+    if (!admin && !isOwner && !isProvider) {
+      logger.warn("[Bookings] Unauthorized read attempt", { userId, bookingId });
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    res.json({ booking: data });
   } catch (error: any) {
     console.error("[Bookings] Error fetching booking:", error);
     res.status(500).json({ error: error.message });
@@ -615,32 +630,161 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/:bookingId/cancel", requireAuth, async (req, res) => {
+router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { reason } = req.body;
     const userId = req.user!.uid;
+    const admin = await isSuperAdmin(req);
 
+    // 1. Fetch booking and guard against missing
     const bookingDoc = await db.collection("bookings").doc(bookingId).get();
-    const booking = bookingDoc.data();
+    if (!bookingDoc.exists) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    const booking = bookingDoc.data()!;
 
+    // 2. Ownership check — customer OR provider OR admin
+    const isCustomer = booking.userId === userId || booking.customerId === userId;
+    const isProvider = booking.providerId === userId;
+    if (!admin && !isCustomer && !isProvider) {
+      logger.warn("[Bookings] Unauthorized cancel attempt", { userId, bookingId });
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // 3. Terminal-state guard — cannot cancel a booking that's already done
+    const terminalStates = ["cancelled", "completed", "refunded"];
+    if (terminalStates.includes(booking.status)) {
+      return res.status(409).json({
+        error: `Cannot cancel a booking with status: ${booking.status}`,
+      });
+    }
+
+    // 4. Calculate cancellation refund via policy engine
+    const bookingAmount = booking.totalAmount || booking.priceILS || 0;
+    const bookingDate = booking.serviceDate?.toDate?.() ?? new Date(booking.serviceDate || Date.now());
+    const serviceType = booking.platform === "sitter-suite" ? "sitter" :
+                        booking.platform === "walk-my-pet"  ? "walk"   : "wash";
+
+    const cancellationResult = await bookingPolicyEngine.calculateCancellation(
+      serviceType,
+      bookingAmount,
+      bookingDate,
+    ).catch(() => ({
+      canCancel: true,
+      refundPercent: 100,
+      refundAmount: bookingAmount,
+      cancellationFee: 0,
+      refundMethod: "wallet",
+      processingDays: 1,
+      policyTier: "flexible",
+    }));
+
+    const netRefundILS = Math.max(0, cancellationResult.refundAmount);
+    const netRefundCents = Math.round(netRefundILS * 100);
+
+    // 5. Mark booking as cancelled in Firestore
+    const cancelledBy: "customer" | "provider" | "admin" = admin ? "admin" : isProvider ? "provider" : "customer";
     await db.collection("bookings").doc(bookingId).update({
       status: "cancelled",
       cancelledAt: new Date(),
-      cancelledBy: userId,
-      cancellationReason: reason,
+      cancelledBy,
+      cancellationReason: reason || "User requested",
+      refundAmount: netRefundILS,
+      refundPolicy: cancellationResult.policyTier,
     });
 
-    if (booking?.platform === "sitter-suite") {
+    // 6. Escrow refund (all platforms, not just sitter-suite)
+    try {
       const escrows = await EscrowService.getEscrowsByBooking(bookingId);
       for (const escrow of escrows) {
         if (escrow.status === "held") {
-          await EscrowService.refundEscrowPayment(escrow.id, reason, userId);
+          await EscrowService.refundEscrowPayment(escrow.id, reason || "cancellation", userId);
+        }
+      }
+    } catch (escrowErr: any) {
+      logger.warn("[Bookings] Escrow refund failed (non-blocking)", { bookingId, error: escrowErr.message });
+    }
+
+    // 7. Credit wallet for non-escrow refund (pet-wash-hub and walk-my-pet cash payments)
+    if (netRefundCents > 0 && booking.platform !== "sitter-suite") {
+      const customerId: string | null = booking.userId ?? booking.customerId ?? null;
+      if (customerId) {
+        try {
+          await pool.query(
+            `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
+             VALUES ($1, $2, 0)
+             ON CONFLICT (wallet_id) DO NOTHING`,
+            [`WALLET-${customerId.slice(0, 20)}`, customerId],
+          );
+          await pool.query(
+            `UPDATE wallet_accounts
+             SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
+                 updated_at = NOW()
+             WHERE user_id = $2`,
+            [netRefundCents, customerId],
+          );
+          logger.info("[Bookings] Wallet refund credited", { customerId, netRefundCents, bookingId });
+        } catch (walletErr: any) {
+          logger.error("[Bookings] Wallet credit failed", { bookingId, error: walletErr.message });
         }
       }
     }
 
-    res.json({ success: true });
+    // 8. Notify customer (SMS via notification engine)
+    const customerId: string | null = booking.userId ?? booking.customerId ?? null;
+    if (customerId) {
+      const platformLabel =
+        booking.platform === "sitter-suite" ? "סיטר" :
+        booking.platform === "walk-my-pet"  ? "טיול" : "רחצה";
+
+      const smsBody = buildBookingCancelledSms({
+        bookingRef: bookingId.slice(0, 8).toUpperCase(),
+        serviceName: platformLabel,
+      });
+
+      dispatchNotifications({
+        event: "booking_cancelled",
+        entityId: bookingId,
+        channels: ["sms"],
+        userId: customerId,
+        smsBody,
+        idempotencyKey: `booking-cancelled-customer-${bookingId}`,
+      }).catch(e => logger.warn("[Bookings] Customer cancellation SMS failed", e));
+    }
+
+    // 9. Notify provider (SMS via notification engine)
+    if (booking.providerId && cancelledBy !== "provider") {
+      const providerSms = buildBookingCancelledSms({
+        bookingRef: bookingId.slice(0, 8).toUpperCase(),
+        serviceName: "הזמנה שלך",
+      });
+      dispatchNotifications({
+        event: "booking_cancelled",
+        entityId: bookingId,
+        channels: ["sms"],
+        userId: booking.providerId,
+        smsBody: providerSms,
+        idempotencyKey: `booking-cancelled-provider-${bookingId}`,
+      }).catch(e => logger.warn("[Bookings] Provider cancellation SMS failed", e));
+    }
+
+    logger.info("[Bookings] Booking cancelled", {
+      bookingId,
+      cancelledBy,
+      refundILS: netRefundILS,
+      policyTier: cancellationResult.policyTier,
+    });
+
+    return res.json({
+      success: true,
+      refundAmount: netRefundILS,
+      refundPolicy: cancellationResult.policyTier,
+      refundMethod: netRefundILS > 0 ? "wallet" : "none",
+      message: netRefundILS > 0
+        ? `ההזמנה בוטלה. זיכוי של ₪${netRefundILS.toFixed(2)} נוסף לארנק.`
+        : "ההזמנה בוטלה. אין החזר לפי מדיניות הביטול.",
+    });
   } catch (error: any) {
     console.error("[Bookings] Error cancelling:", error);
     res.status(500).json({ error: error.message });
