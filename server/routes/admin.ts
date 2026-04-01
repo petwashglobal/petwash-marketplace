@@ -691,24 +691,45 @@ router.get('/analytics/overview', validateFirebaseToken, requireAdminOrViewer, a
 
 /**
  * GET /api/admin/analytics/revenue
- * Get revenue time series data
+ * Get revenue time series data — real nayax_transactions aggregated per day
  * Accessible by: Admins + Viewers
  */
 router.get('/analytics/revenue', validateFirebaseToken, requireAdminOrViewer, async (req, res) => {
   try {
-    // Generate last 30 days revenue data
-    const days = 30;
-    const data = Array.from({ length: days }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (days - i - 1));
-      return {
-        date: date.toISOString().split('T')[0],
-        revenue: Math.floor(3000 + Math.random() * 2000),
-        transactions: Math.floor(80 + Math.random() * 40)
-      };
-    });
+    const days = parseInt(req.query.days as string) || 30;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days + 1);
+    startDate.setHours(0, 0, 0, 0);
 
-    res.json({ success: true, data, days });
+    // Real aggregation from nayax_transactions per calendar day (ILS)
+    const rows = await db.execute(sql`
+      SELECT
+        DATE_TRUNC('day', created_at AT TIME ZONE 'Asia/Jerusalem') AS day,
+        COALESCE(SUM(amount::numeric), 0)                           AS revenue,
+        COUNT(*)                                                     AS transactions
+      FROM nayax_transactions
+      WHERE created_at >= ${startDate}
+        AND status NOT IN ('voided', 'failed')
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `);
+
+    // Build a full date range so days with zero revenue still appear
+    const rowMap = new Map<string, { revenue: number; transactions: number }>();
+    for (const r of rows.rows as any[]) {
+      const key = new Date(r.day).toISOString().split('T')[0];
+      rowMap.set(key, { revenue: parseFloat(r.revenue), transactions: parseInt(r.transactions) });
+    }
+
+    const data: { date: string; revenue: number; transactions: number }[] = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().split('T')[0];
+      data.push({ date: key, ...(rowMap.get(key) ?? { revenue: 0, transactions: 0 }) });
+    }
+
+    res.json({ success: true, data, days, source: 'nayax_transactions' });
   } catch (error) {
     logger.error('[Admin] Error fetching revenue data', error);
     res.status(500).json({ error: 'Failed to fetch revenue data' });

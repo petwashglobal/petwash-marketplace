@@ -192,20 +192,101 @@ router.post('/generate-from-preset', async (req, res) => {
       return res.status(404).json({ error: 'Preset not found' });
     }
     
-    logger.info('[Plush Lab AI] Preset selected', { 
-      presetId, 
+    logger.info('[Plush Lab AI] Preset selected', {
+      presetId,
       petName: petName.trim(),
-      style: preset.style 
+      style: preset.style,
     });
-    
-    // TODO: Implement Gemini 2.5 Flash Image generation when available
-    // For now, return a styled response indicating the feature is coming soon
-    
+
+    // ── Build Hebrew-style Gemini imagen prompt ──────────────────────────────
+    const styleDescriptions: Record<string, string> = {
+      kawaii:    'super cute kawaii chibi anime style, pastel colors, big shiny eyes, rounded shapes',
+      royal:     'regal royal portrait style, golden frame, jewel tones, ornate background',
+      wild:      'wild nature adventure style, lush jungle background, dramatic lighting',
+      cosmic:    'cosmic space fantasy style, nebula background, glowing magical aura',
+      cartoon:   'bold colorful cartoon style, clean outlines, bright saturated colors',
+      watercolor:'soft watercolor painting style, dreamy pastel washes, loose brushstrokes',
+    };
+
+    const styleDesc = styleDescriptions[preset.style as string] || `${preset.style} illustration style`;
+    const paletteDesc = Array.isArray(preset.palette) ? preset.palette.join(', ') : 'vibrant colors';
+
+    const prompt = [
+      `A professional pet avatar illustration of a pet named "${petName.trim()}" in ${styleDesc}.`,
+      `Color palette: ${paletteDesc}.`,
+      `The pet wears a name tag or collar tag showing the name "${petName.trim()}".`,
+      `Digital art, high quality, centered composition, white background, suitable as a profile avatar.`,
+      `No humans. Single pet subject. Clean professional finish.`,
+    ].join(' ');
+
+    // ── Call Imagen 3 via Google GenAI SDK ───────────────────────────────────
+    let imageBase64: string | null = null;
+    let mimeType = 'image/png';
+
+    try {
+      const imgResult = await genAI.models.generateImages({
+        model: 'imagen-3.0-generate-002',
+        prompt,
+        config: { numberOfImages: 1, aspectRatio: '1:1', safetyFilterLevel: 'BLOCK_LOW_AND_ABOVE' },
+      });
+
+      const firstImage = imgResult?.generatedImages?.[0];
+      if (firstImage?.image?.imageBytes) {
+        imageBase64 = firstImage.image.imageBytes;
+        mimeType = firstImage.image.mimeType || 'image/png';
+      }
+    } catch (genErr: any) {
+      logger.warn('[Plush Lab AI] Imagen generation failed, trying Gemini 2.0 Flash', { error: genErr.message });
+
+      // Fallback: Gemini 2.0 Flash with image output
+      try {
+        const flashResult = await genAI.models.generateContent({
+          model: 'gemini-2.0-flash-exp',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: { responseModalities: ['IMAGE', 'TEXT'] },
+        });
+
+        for (const part of flashResult?.candidates?.[0]?.content?.parts ?? []) {
+          if ((part as any).inlineData?.mimeType?.startsWith('image/')) {
+            imageBase64 = (part as any).inlineData.data;
+            mimeType = (part as any).inlineData.mimeType;
+            break;
+          }
+        }
+      } catch (fallbackErr: any) {
+        logger.error('[Plush Lab AI] Both AI models failed', { error: fallbackErr.message });
+      }
+    }
+
+    if (!imageBase64) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI image generation temporarily unavailable. Please upload your pet photo instead.',
+      });
+    }
+
+    // ── Upload generated image to Firebase Storage ───────────────────────────
+    const avatarId = nanoid();
+    const bucket = storage.bucket();
+    const fileName = `avatars/ai-generated/${avatarId}.png`;
+    const file = bucket.file(fileName);
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+    await file.save(imageBuffer, {
+      metadata: { contentType: mimeType, cacheControl: 'public, max-age=604800' },
+      resumable: false,
+    });
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+    logger.info('[Plush Lab AI] AI avatar generated and uploaded', { avatarId, presetId, petName: petName.trim() });
+
     res.status(200).json({
       success: true,
       avatar: {
-        id: 'ai-preview-coming-soon',
+        id: avatarId,
         petName: petName.trim(),
+        imageUrl: publicUrl,
         preset: {
           id: preset.id,
           label_en: preset.label_en,
@@ -213,8 +294,7 @@ router.post('/generate-from-preset', async (req, res) => {
           style: preset.style,
           palette: preset.palette,
         },
-        status: 'pending',
-        message: 'AI avatar generation coming soon! For now, upload your pet photo.',
+        status: 'ready',
       },
     });
   } catch (error) {

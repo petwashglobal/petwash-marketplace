@@ -81,7 +81,21 @@ router.get("/metrics", async (req, res) => {
         },
         events: {
           today: eventsToday[0]?.count || 0,
-          change: "+12%", // TODO: Calculate actual change from yesterday
+          change: await (async () => {
+            try {
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              const [yRow] = await db
+                .select({ count: count() })
+                .from(domainEvents)
+                .where(and(gte(domainEvents.occurredAt, yesterday), lte(domainEvents.occurredAt, today)));
+              const todayCnt  = eventsToday[0]?.count || 0;
+              const yesterdayCnt = yRow?.count || 0;
+              if (yesterdayCnt === 0) return todayCnt > 0 ? '+100%' : '0%';
+              const pct = Math.round(((todayCnt - yesterdayCnt) / yesterdayCnt) * 100);
+              return (pct >= 0 ? '+' : '') + pct + '%';
+            } catch { return 'N/A'; }
+          })(),
         },
         alerts: {
           active: criticalAlerts,

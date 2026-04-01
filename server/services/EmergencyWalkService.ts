@@ -471,27 +471,66 @@ export class EmergencyWalkService {
   }
 
   /**
-   * Get active walks in area (for demand calculation)
+   * Get active walks in area using Haversine distance on walk_bookings
    */
   private static async getActiveWalksInArea(
     location: { latitude: number; longitude: number },
     radiusKm: number
   ): Promise<number> {
-    // TODO: Query database with geospatial index
-    // For now, return mock data
-    return Math.floor(Math.random() * 10);
+    try {
+      const result = await db.execute(sql`
+        SELECT COUNT(*) AS cnt
+        FROM walk_bookings wb
+        WHERE wb.status IN ('confirmed', 'in_progress', 'walker_en_route')
+          AND wb.walk_date >= CURRENT_DATE
+          AND wb.owner_lat IS NOT NULL
+          AND wb.owner_lng IS NOT NULL
+          AND (
+            6371 * acos(
+              cos(radians(${location.latitude})) *
+              cos(radians(wb.owner_lat::float)) *
+              cos(radians(wb.owner_lng::float) - radians(${location.longitude})) +
+              sin(radians(${location.latitude})) *
+              sin(radians(wb.owner_lat::float))
+            )
+          ) <= ${radiusKm}
+      `);
+      return parseInt((result.rows[0] as any)?.cnt ?? '0');
+    } catch {
+      return 0;
+    }
   }
 
   /**
-   * Get available walkers in area (for demand calculation)
+   * Get available walkers in area using Haversine distance on users/providers
    */
   private static async getAvailableWalkersInArea(
     location: { latitude: number; longitude: number },
     radiusKm: number
   ): Promise<number> {
-    // TODO: Query database with geospatial index
-    // For now, return mock data
-    return Math.floor(Math.random() * 15) + 5; // 5-20 walkers
+    try {
+      const result = await db.execute(sql`
+        SELECT COUNT(DISTINCT u.id) AS cnt
+        FROM users u
+        WHERE u.user_type IN ('walker', 'provider')
+          AND u.is_active = true
+          AND u.current_latitude  IS NOT NULL
+          AND u.current_longitude IS NOT NULL
+          AND u.is_available_for_emergency = true
+          AND (
+            6371 * acos(
+              cos(radians(${location.latitude})) *
+              cos(radians(u.current_latitude::float)) *
+              cos(radians(u.current_longitude::float) - radians(${location.longitude})) +
+              sin(radians(${location.latitude})) *
+              sin(radians(u.current_latitude::float))
+            )
+          ) <= ${radiusKm}
+      `);
+      return parseInt((result.rows[0] as any)?.cnt ?? '0');
+    } catch {
+      return 0;
+    }
   }
 
   /**

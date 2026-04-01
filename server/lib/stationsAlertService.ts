@@ -282,12 +282,83 @@ async function sendRenewalNotifications(alerts: ExpiringUtility[]): Promise<void
 export async function syncStationsToGoogleSheets(): Promise<void> {
   try {
     logger.info('[Stations] Google Sheets sync started...');
-    
-    // TODO: Implement Google Sheets sync with googleapis
-    // Will sync 3 tabs: Stations, Inventory, Alerts
-    
-    logger.warn('[Stations] Google Sheets sync not yet implemented');
+
+    const { appendFormSubmission } = await import('../services/googleSheetsIntegration');
+    const { pool } = await import('../db');
+
+    // ── Tab 1: Stations ────────────────────────────────────────────────────
+    const stationsResult = await pool.query(`
+      SELECT id, name, address, city, status, last_service_at, created_at
+      FROM stations
+      ORDER BY name ASC
+    `);
+    for (const row of stationsResult.rows) {
+      await appendFormSubmission('Stations', {
+        'Station ID':    row.id,
+        'Name':          row.name,
+        'Address':       row.address,
+        'City':          row.city,
+        'Status':        row.status,
+        'Last Service':  row.last_service_at ?? '',
+        'Created':       row.created_at,
+        'Synced At':     new Date().toISOString(),
+      });
+    }
+    logger.info('[Stations] Stations tab synced', { count: stationsResult.rows.length });
+
+    // ── Tab 2: Inventory (station_supplies) ────────────────────────────────
+    const inventoryResult = await pool.query(`
+      SELECT ss.station_id, s.name AS station_name, ss.supply_name, ss.quantity,
+             ss.unit, ss.low_threshold, ss.last_restocked_at
+      FROM station_supplies ss
+      LEFT JOIN stations s ON s.id::text = ss.station_id::text
+      ORDER BY ss.station_id, ss.supply_name
+    `).catch(() => ({ rows: [] as any[] }));
+    for (const row of inventoryResult.rows) {
+      await appendFormSubmission('Inventory', {
+        'Station ID':     row.station_id,
+        'Station Name':   row.station_name ?? '',
+        'Supply':         row.supply_name,
+        'Quantity':       row.quantity,
+        'Unit':           row.unit ?? '',
+        'Low Threshold':  row.low_threshold ?? '',
+        'Last Restocked': row.last_restocked_at ?? '',
+        'Synced At':      new Date().toISOString(),
+      });
+    }
+    logger.info('[Stations] Inventory tab synced', { count: inventoryResult.rows.length });
+
+    // ── Tab 3: Alerts (station_alerts) ─────────────────────────────────────
+    const alertsResult = await pool.query(`
+      SELECT sa.station_id, s.name AS station_name, sa.alert_type, sa.severity,
+             sa.message, sa.resolved, sa.created_at
+      FROM station_alerts sa
+      LEFT JOIN stations s ON s.id::text = sa.station_id::text
+      WHERE sa.created_at >= NOW() - INTERVAL '7 days'
+      ORDER BY sa.created_at DESC
+      LIMIT 500
+    `).catch(() => ({ rows: [] as any[] }));
+    for (const row of alertsResult.rows) {
+      await appendFormSubmission('Alerts', {
+        'Station ID':   row.station_id,
+        'Station Name': row.station_name ?? '',
+        'Alert Type':   row.alert_type,
+        'Severity':     row.severity ?? '',
+        'Message':      row.message ?? '',
+        'Resolved':     row.resolved ? 'Yes' : 'No',
+        'Created At':   row.created_at,
+        'Synced At':    new Date().toISOString(),
+      });
+    }
+    logger.info('[Stations] Alerts tab synced', { count: alertsResult.rows.length });
+
+    logger.info('[Stations] Google Sheets sync complete', {
+      stations: stationsResult.rows.length,
+      inventory: inventoryResult.rows.length,
+      alerts: alertsResult.rows.length,
+    });
   } catch (error) {
     logger.error('[Stations] Error syncing to Google Sheets', error);
+    throw error;
   }
 }

@@ -21,7 +21,7 @@ import { logger } from '../lib/logger';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
 import { paymentIntents, bookings, bookingStatusHistory } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from '../services/googleSheetsIntegration';
@@ -262,14 +262,89 @@ router.post(
         transactionCount: transactions?.length || 0,
       });
       
-      // TODO: Implement settlement reconciliation
-      // - Compare against local payment_intents records
-      // - Flag discrepancies
-      // - Update accounting ledger
-      
+      // ── Compare Nayax settlement against local nayax_transactions ─────────
+      const discrepancies: Array<{ nayaxTxId: string; issue: string; nayaxAmount?: number; localAmount?: number }> = [];
+      let matchedCount = 0;
+
+      if (Array.isArray(transactions) && transactions.length > 0) {
+        for (const nayaxTx of transactions) {
+          const localRecords = await db
+            .select()
+            .from(paymentIntents)
+            .where(eq(paymentIntents.transactionId, nayaxTx.transactionId || nayaxTx.id))
+            .limit(1);
+
+          if (localRecords.length === 0) {
+            discrepancies.push({
+              nayaxTxId: nayaxTx.transactionId || nayaxTx.id,
+              issue: 'not_found_locally',
+              nayaxAmount: nayaxTx.amount,
+            });
+          } else {
+            const local = localRecords[0];
+            const nayaxAmountAgorot = Math.round((nayaxTx.amount || 0) * 100);
+            if (Math.abs(nayaxAmountAgorot - (local.amount || 0)) > 1) {
+              discrepancies.push({
+                nayaxTxId: nayaxTx.transactionId || nayaxTx.id,
+                issue: 'amount_mismatch',
+                nayaxAmount: nayaxTx.amount,
+                localAmount: (local.amount || 0) / 100,
+              });
+            } else {
+              // Mark local payment_intent as settled
+              await db
+                .update(paymentIntents)
+                .set({ status: 'settled' })
+                .where(eq(paymentIntents.transactionId, nayaxTx.transactionId || nayaxTx.id));
+              matchedCount++;
+            }
+          }
+        }
+      }
+
+      // ── Persist reconciliation result to nayax_settlement_reports ────────
+      try {
+        await db.execute(sql`
+          INSERT INTO nayax_settlement_reports (
+            settlement_id, date, total_amount_nayax, currency,
+            transaction_count, matched_count, discrepancy_count,
+            discrepancies_json, status, created_at, updated_at
+          ) VALUES (
+            ${settlementId}, ${date ? date : new Date().toISOString().slice(0,10)},
+            ${totalAmount || 0}, ${currency || 'ILS'},
+            ${transactions?.length || 0}, ${matchedCount},
+            ${discrepancies.length},
+            ${JSON.stringify(discrepancies)},
+            ${discrepancies.length > 0 ? 'discrepancy' : 'matched'},
+            NOW(), NOW()
+          )
+          ON CONFLICT (settlement_id) DO UPDATE SET
+            matched_count      = EXCLUDED.matched_count,
+            discrepancy_count  = EXCLUDED.discrepancy_count,
+            discrepancies_json = EXCLUDED.discrepancies_json,
+            status             = EXCLUDED.status,
+            updated_at         = NOW()
+        `);
+      } catch (insertErr: any) {
+        logger.warn('[NayaxWebhook] Could not persist settlement record', { error: insertErr.message });
+      }
+
+      logger.info('[NayaxWebhook] Settlement reconciliation complete', {
+        settlementId,
+        total: transactions?.length || 0,
+        matched: matchedCount,
+        discrepancies: discrepancies.length,
+      });
+
       res.status(200).json({
         received: true,
         settlementId,
+        reconciliation: {
+          total: transactions?.length || 0,
+          matched: matchedCount,
+          discrepancies: discrepancies.length,
+          status: discrepancies.length > 0 ? 'discrepancy' : 'matched',
+        },
       });
     } catch (error) {
       logger.error('[NayaxWebhook] Settlement error', error);

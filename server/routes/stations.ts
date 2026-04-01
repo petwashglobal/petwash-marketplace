@@ -747,21 +747,15 @@ router.get('/alerts/pending', requireAdmin, async (req: Request, res: Response) 
 // GOOGLE SHEETS SYNC (Placeholder)
 // ============================================
 
-// POST /api/admin/sheets/sync - Sync data to Google Sheets
+// POST /api/admin/sheets/sync - Sync data to Google Sheets (Stations, Inventory, Alerts)
 router.post('/sheets/sync', requireAdmin, async (req: Request, res: Response) => {
   try {
-    // TODO: Implement Google Sheets sync with googleapis
-    // Will sync 3 tabs: Stations, Inventory, Alerts
-    
-    logger.warn('[Stations] Google Sheets sync not yet implemented');
-    
-    res.json({ 
-      success: false, 
-      message: 'Google Sheets sync not yet implemented' 
-    });
-  } catch (error) {
+    const { syncStationsToGoogleSheets } = await import('../lib/stationsAlertService');
+    await syncStationsToGoogleSheets();
+    res.json({ success: true, message: 'Stations, Inventory, and Alerts synced to Google Sheets' });
+  } catch (error: any) {
     logger.error('[Stations] Error syncing to Google Sheets', error);
-    res.status(500).json({ error: 'Failed to sync to Google Sheets' });
+    res.status(500).json({ error: 'Failed to sync to Google Sheets', detail: error.message });
   }
 });
 

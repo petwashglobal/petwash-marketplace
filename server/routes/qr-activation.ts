@@ -11,6 +11,7 @@ import {
   assertValidQrPayload,
   assertValidStaticStickerPayload,
 } from '../utils/generateQrPayload';
+import { NayaxSparkService } from '../services/NayaxSparkService';
 
 const router = Router();
 
@@ -390,24 +391,37 @@ async function sendVendCommand(params: {
   nayaxSessionId: string;
   nayaxTerminalId: string | null | undefined;
 }): Promise<{ success: boolean; message?: string }> {
-  logger.info('[QRActivation] Vend command placeholder', {
-    machineId: params.machineId,
-    sessionId: params.sessionId,
-    nayaxSessionId: params.nayaxSessionId,
-  });
+  // Resolve terminal ID: prefer explicit terminalId; fall back to machineId
+  const terminalId = params.nayaxTerminalId || params.machineId;
 
-  /* TODO: Real Nayax vend command:
-       const response = await fetch(`${NAYAX_BASE_URL}/api/v1/transaction/vend`, {
-         method: 'POST',
-         headers: { 'X-API-Key': NAYAX_API_KEY, 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-           transaction_id: params.nayaxSessionId,
-           product_code:   'DOGWASH_PREMIUM',
-         }),
-       });
-       return { success: response.ok };
-  */
-  return { success: true, message: 'Vend command sent (placeholder)' };
+  if (!terminalId) {
+    logger.error('[QRActivation] sendVendCommand: no terminalId available', params);
+    return { success: false, message: 'No terminal ID available for vend command' };
+  }
+
+  try {
+    const result = await NayaxSparkService.executeRemoteVend({
+      terminalId,
+      productCode: 'DOGWASH_PREMIUM',
+      transactionId: params.nayaxSessionId,
+    });
+
+    const success = result.Status === 'SUCCESS';
+    logger.info('[QRActivation] Nayax remote vend result', {
+      sessionId: params.sessionId,
+      terminalId,
+      status: result.Status,
+      message: result.Message,
+    });
+    return { success, message: result.Message };
+  } catch (err: any) {
+    logger.error('[QRActivation] Nayax remote vend failed', {
+      sessionId: params.sessionId,
+      terminalId,
+      error: err.message,
+    });
+    return { success: false, message: err.message };
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────

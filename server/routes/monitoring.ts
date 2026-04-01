@@ -161,28 +161,69 @@ router.get('/database/connections', async (req, res) => {
 });
 
 /**
- * Get slow query log
+ * Get slow query log from pg_stat_statements (if enabled) or pg_stat_activity
  */
 router.get('/database/slow-queries', async (req, res) => {
   try {
-    // This would query pg_stat_statements if enabled
-    // For now, return mock data
-    res.json({
-      success: true,
-      slowQueries: [
-        {
-          query: 'SELECT * FROM bookings WHERE...',
-          avgTime: 523,
-          calls: 45,
-        },
-      ],
-    });
+    // Try pg_stat_statements first (most accurate — requires shared_preload_libraries)
+    let slowQueries: any[] = [];
+    let source = 'pg_stat_statements';
+
+    try {
+      const result = await db.execute(sql`
+        SELECT
+          LEFT(query, 200)                                  AS query,
+          ROUND((mean_exec_time)::numeric, 2)               AS avg_time_ms,
+          calls,
+          ROUND((total_exec_time)::numeric, 2)              AS total_time_ms,
+          ROUND((stddev_exec_time)::numeric, 2)             AS stddev_ms,
+          ROUND((rows / NULLIF(calls, 0))::numeric, 1)      AS avg_rows
+        FROM pg_stat_statements
+        WHERE query NOT LIKE '%pg_stat%'
+          AND query NOT LIKE '%BEGIN%'
+          AND calls > 5
+        ORDER BY mean_exec_time DESC
+        LIMIT 20
+      `);
+      slowQueries = (result.rows as any[]).map(r => ({
+        query:      r.query,
+        avgTime:    parseFloat(r.avg_time_ms),
+        calls:      parseInt(r.calls),
+        totalTime:  parseFloat(r.total_time_ms),
+        stddev:     parseFloat(r.stddev_ms),
+        avgRows:    parseFloat(r.avg_rows),
+      }));
+    } catch {
+      // pg_stat_statements not available — fall back to long-running queries in pg_stat_activity
+      source = 'pg_stat_activity';
+      const result = await db.execute(sql`
+        SELECT
+          LEFT(query, 200)                                       AS query,
+          EXTRACT(EPOCH FROM (now() - query_start)) * 1000       AS elapsed_ms,
+          state,
+          wait_event_type,
+          wait_event
+        FROM pg_stat_activity
+        WHERE state != 'idle'
+          AND query NOT LIKE '%pg_stat_activity%'
+          AND query_start IS NOT NULL
+        ORDER BY elapsed_ms DESC NULLS LAST
+        LIMIT 20
+      `);
+      slowQueries = (result.rows as any[]).map(r => ({
+        query:   r.query,
+        avgTime: parseFloat(r.elapsed_ms ?? '0'),
+        calls:   1,
+        state:   r.state,
+        waitEventType: r.wait_event_type,
+        waitEvent:     r.wait_event,
+      }));
+    }
+
+    res.json({ success: true, source, slowQueries });
   } catch (error: any) {
     logger.error('[Monitoring] Failed to get slow queries', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

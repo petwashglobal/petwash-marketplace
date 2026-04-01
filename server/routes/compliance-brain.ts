@@ -11,8 +11,11 @@ import {
   complianceDecisions,
   complianceAuditLogs,
   assignments,
+  providerAvailability,
+  walkBookings,
+  sitterBookings,
 } from "@shared/schema";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import {
   evaluateAssignmentEligibility,
@@ -280,13 +283,67 @@ router.post("/contractors/:id/evaluate-eligibility", authMiddleware, async (req:
       return res.status(404).json({ error: "NOT_FOUND", message: "Contractor not found" });
     }
 
+    // ── Load real availability for requested date ────────────────────────────
+    const targetDate = requestedTime
+      ? new Date(requestedTime).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+
+    const [availRow] = await db
+      .select()
+      .from(providerAvailability)
+      .where(
+        and(
+          eq(providerAvailability.providerId, contractorId),
+          eq(providerAvailability.date, targetDate)
+        )
+      )
+      .limit(1);
+
+    const availability = availRow
+      ? {
+          date: availRow.date,
+          isAvailable: availRow.isAvailable ?? true,
+          maxBookings: availRow.maxBookings ?? 1,
+          currentBookings: availRow.currentBookings ?? 0,
+          timeSlot: availRow.timeSlot ?? null,
+        }
+      : null;
+
+    // ── Load real same-day bookings across platforms ─────────────────────────
+    const sameDayWalks = await db
+      .select({ bookingId: walkBookings.bookingId, status: walkBookings.status })
+      .from(walkBookings)
+      .where(
+        and(
+          eq(walkBookings.walkerId, contractorId),
+          sql`DATE(${walkBookings.walkDate}) = ${targetDate}`,
+          sql`${walkBookings.status} NOT IN ('cancelled', 'completed')`
+        )
+      );
+
+    const sameDaySitters = await db
+      .select({ bookingId: sitterBookings.bookingId, status: sitterBookings.status })
+      .from(sitterBookings)
+      .where(
+        and(
+          eq(sitterBookings.sitterId, contractorId),
+          sql`DATE(${sitterBookings.startDate}) = ${targetDate}`,
+          sql`${sitterBookings.status} NOT IN ('cancelled', 'completed')`
+        )
+      );
+
+    const existingJobsSameDay = [
+      ...sameDayWalks.map(j => ({ id: j.bookingId, type: 'walk', status: j.status })),
+      ...sameDaySitters.map(j => ({ id: j.bookingId, type: 'sitting', status: j.status })),
+    ];
+
     // Evaluate using Global Compliance Brain
     const result = evaluateAssignmentEligibility({
       contractor: data.contractor,
       identity: data.identity,
       driverProfile: data.driver,
-      availability: null, // TODO: Load from availability table
-      existingJobsSameDay: [], // TODO: Load from assignments
+      availability,
+      existingJobsSameDay,
       ratings: data.ratings,
       incidents: data.incidents,
       requestedTime: requestedTime || new Date().toISOString(),

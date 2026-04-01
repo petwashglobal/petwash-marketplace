@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { FIRESTORE_PATHS, userInboxMessageSchema } from '@shared/firestore-schema';
 import sanitizeHtml from 'sanitize-html';
 import { logger } from '../lib/logger';
+import { pool } from '../db';
+import { nanoid } from 'nanoid';
 
 const router = Router();
 
@@ -382,20 +384,75 @@ router.post('/admin/broadcast-users', validateFirebaseToken, isAdmin, async (req
     
     const data = validation.data;
     const cleanHtml = sanitizeHtml(data.bodyHtml, sanitizeConfig);
-    
-    // TODO: Get user list based on segment
-    // For now, return success (implement batch sending later)
-    
-    logger.info('Admin broadcast initiated', {
+
+    // ── Resolve recipient user IDs based on segment ──────────────────────────
+    let userQuery: string;
+    if (data.segment === 'active') {
+      userQuery = `SELECT id FROM users WHERE is_active = true AND last_login_at >= NOW() - INTERVAL '90 days'`;
+    } else if (data.segment === 'inactive') {
+      userQuery = `SELECT id FROM users WHERE is_active = true AND (last_login_at IS NULL OR last_login_at < NOW() - INTERVAL '90 days')`;
+    } else {
+      userQuery = `SELECT id FROM users WHERE is_active = true`;
+    }
+
+    const usersResult = await pool.query(userQuery);
+    const userIds: string[] = usersResult.rows.map((r: any) => r.id);
+
+    const jobId = `broadcast-${nanoid(10)}`;
+    const sentAt = new Date();
+    let delivered = 0;
+    let failed = 0;
+
+    // ── Write Firestore inbox message to each recipient in batches ───────────
+    const BATCH_SIZE = 400; // Firestore batch limit is 500 ops
+    for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+      const chunk = userIds.slice(i, i + BATCH_SIZE);
+      const batch = (firestore as any).batch ? (firestore as any).batch() : null;
+
+      for (const uid of chunk) {
+        const msgRef = firestore.collection(FIRESTORE_PATHS.USER_INBOX(uid)).doc();
+        const msgData = {
+          id: msgRef.id,
+          title: data.title,
+          bodyHtml: cleanHtml,
+          type: data.type,
+          locale: data.locale,
+          ctaText: data.ctaText ?? null,
+          ctaUrl: data.ctaUrl ?? null,
+          segment: data.segment,
+          jobId,
+          sentAt,
+          readAt: null,
+          requiresAck: false,
+        };
+        if (batch) {
+          batch.set(msgRef, msgData);
+        } else {
+          try { await msgRef.set(msgData); delivered++; } catch { failed++; }
+        }
+      }
+
+      if (batch) {
+        try { await batch.commit(); delivered += chunk.length; }
+        catch (e: any) { failed += chunk.length; logger.error('[Inbox] Batch commit failed', { error: e.message }); }
+      }
+    }
+
+    logger.info('[Inbox] Admin broadcast complete', {
       admin: req.firebaseUser!.email,
       segment: data.segment,
       type: data.type,
+      total: userIds.length,
+      delivered,
+      failed,
+      jobId,
     });
-    
-    res.json({ 
-      success: true, 
-      message: 'Broadcast queued for processing',
-      // TODO: Return job ID for status tracking
+
+    res.json({
+      success: true,
+      jobId,
+      message: `Broadcast sent to ${delivered} users`,
+      stats: { total: userIds.length, delivered, failed, segment: data.segment },
     });
   } catch (error) {
     logger.error('Error broadcasting message', error);

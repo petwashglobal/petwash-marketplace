@@ -513,20 +513,20 @@ router.post('/dashboard/apply-discount', async (req, res) => {
       ? `K9000-${nanoid(8).toUpperCase()}` 
       : null;
     
-    // Store discount in database (TODO: Create k9000_station_discounts table)
-    const discountRecord = {
-      id: nanoid(),
-      stationId,
-      discountType, // 'percentage' | 'fixed_amount' | 'free_wash'
-      discountValue,
-      couponCode,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      active: true,
-      createdAt: new Date(),
-      createdBy: req.firebaseUser?.uid || req.user?.uid || 'admin'
-    };
-    
-    logger.info('[K9000 Dashboard] Discount applied to station', discountRecord);
+    // Persist discount in k9000_station_discounts table
+    const discountId = nanoid();
+    const createdBy  = req.firebaseUser?.uid || (req as any).user?.uid || 'admin';
+    await db.execute(sql`
+      INSERT INTO k9000_station_discounts (id, station_id, discount_type, discount_value, coupon_code, expires_at, active, created_by, created_at, updated_at)
+      VALUES (
+        ${discountId}, ${stationId}, ${discountType}, ${discountValue ?? 0},
+        ${couponCode}, ${expiresAt ? new Date(expiresAt) : null},
+        true, ${createdBy}, NOW(), NOW()
+      )
+    `);
+
+    const discountRecord = { id: discountId, stationId, discountType, discountValue, couponCode, expiresAt, createdBy };
+    logger.info('[K9000 Dashboard] Discount persisted', discountRecord);
     
     // Log to audit trail
     await db.insert(auditLedger).values({
@@ -611,11 +611,32 @@ router.get('/dashboard/stats', async (req, res) => {
             )
           );
         
-        // Average wash duration (from telemetry)
-        const avgDuration = 12; // minutes (TODO: Calculate from actual wash cycle data)
-        
-        // Uptime percentage
-        const uptimePercent = 98.5; // TODO: Calculate from offline events
+        // Average wash duration — from nayax_telemetry wash_duration_sec
+        const durationResult = await db.execute(sql`
+          SELECT ROUND(AVG(wash_duration_sec) / 60.0, 1) AS avg_min
+          FROM nayax_telemetry
+          WHERE station_id = ${station.stationId}
+            AND wash_duration_sec IS NOT NULL
+            AND wash_duration_sec > 0
+            AND created_at >= ${startTime}
+        `);
+        const avgDuration = parseFloat((durationResult.rows[0] as any)?.avg_min ?? '12') || 12;
+
+        // Uptime percentage — computed from station_downtime offline periods
+        const periodSeconds = (Date.now() - startTime.getTime()) / 1000;
+        const downtimeResult = await db.execute(sql`
+          SELECT COALESCE(SUM(
+            EXTRACT(EPOCH FROM (COALESCE(end_at, NOW()) - GREATEST(start_at, ${startTime})))
+          ), 0) AS downtime_sec
+          FROM station_downtime
+          WHERE station_id::text = ${station.stationId}
+            AND start_at < NOW()
+            AND (end_at IS NULL OR end_at > ${startTime})
+        `);
+        const downtimeSec = parseFloat((downtimeResult.rows[0] as any)?.downtime_sec ?? '0');
+        const uptimePercent = periodSeconds > 0
+          ? Math.max(0, Math.min(100, Math.round(((periodSeconds - downtimeSec) / periodSeconds) * 1000) / 10))
+          : 100;
         
         return {
           stationId: station.stationId,
