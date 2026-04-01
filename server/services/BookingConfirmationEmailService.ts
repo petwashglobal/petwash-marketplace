@@ -19,7 +19,7 @@ import {
 } from './PetWashNotificationEngine';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
-const FROM_NAME = '⁦Pet Wash™⁩';
+const FROM_NAME = 'Pet Wash™';
 const SUPPORT_EMAIL = 'support@petwash.co.il';
 const SITE_URL = 'https://petwash.co.il';
 const ISRAEL_VAT_RATE = 0.18;

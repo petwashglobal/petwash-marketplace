@@ -2697,7 +2697,7 @@ export class EmailService {
 
       await mailService.send({
         to: email,
-        from: { email: this.FROM_EMAIL, name: '⁦Pet Wash™⁩' },
+        from: { email: this.FROM_EMAIL, name: 'Pet Wash™' },
         subject,
         html: htmlContent
       });
@@ -2849,7 +2849,7 @@ export class EmailService {
 
       await mailService.send({
         to: email,
-        from: { email: this.FROM_EMAIL, name: '⁦Pet Wash™⁩' },
+        from: { email: this.FROM_EMAIL, name: 'Pet Wash™' },
         subject,
         html: htmlContent
       });
@@ -2989,7 +2989,7 @@ export class EmailService {
 
       await mailService.send({
         to: adminEmail,
-        from: { email: this.FROM_EMAIL, name: '⁦Pet Wash™⁩ Legal Compliance' },
+        from: { email: this.FROM_EMAIL, name: 'Pet Wash™ Legal' },
         subject,
         html: htmlContent
       });
@@ -3108,7 +3108,7 @@ export class EmailService {
         if (mailService) {
           await mailService.send({
             to: email,
-            from: { email: this.FROM_EMAIL, name: '⁦Pet Wash™⁩ Team' },
+            from: { email: this.FROM_EMAIL, name: 'Pet Wash™' },
             subject: `הזמנה לצוות ⁦Pet Wash™⁩ - ${roleTitle.he}`,
             html: htmlContent
           });
@@ -3286,7 +3286,7 @@ export class EmailService {
 
       const msg = {
         to: email,
-        from: { email: this.FROM_EMAIL, name: '⁦Pet Wash™⁩' },
+        from: { email: this.FROM_EMAIL, name: 'Pet Wash™' },
         subject: t.subject,
         html: this.sanitizeEmailContent(htmlContent),
         headers: {
