@@ -10,7 +10,7 @@ import {
   marketingAssetSchema,
 } from '@shared/firestore-schema';
 import { users, nayaxTransactions, eVouchers, customers } from '@shared/schema';
-import { count, sql, gte } from 'drizzle-orm';
+import { count, sql, gte, eq, and, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
@@ -88,33 +88,77 @@ router.post('/broadcast/users', validateFirebaseToken, requireAdmin, async (req,
       },
     });
 
+    // Marketing messages MUST only go to users with marketing_consent=true.
+    // Transactional types ('system', 'security', 'booking_update') bypass consent.
+    const isMarketingBroadcast = !['system', 'security', 'booking_update'].includes(type || 'system');
+
     // Get target users based on segment
     let userIds: string[] = [];
     
     if (targetUserIds && targetUserIds.length > 0) {
-      userIds = targetUserIds;
+      if (isMarketingBroadcast) {
+        // Filter the provided list against consent — never trust caller to pre-filter
+        const consentedRows = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(
+            inArray(users.id, targetUserIds),
+            eq(users.marketingConsent, true)
+          ));
+        userIds = consentedRows.map(u => u.id);
+        logger.info('[Admin broadcast] Consent filter applied to targetUserIds', {
+          requested: targetUserIds.length,
+          consented: userIds.length,
+        });
+      } else {
+        userIds = targetUserIds;
+      }
     } else {
       // Query Firestore for user profiles based on segment
       const usersRef = firestore.collection('userProfiles');
-      let query = usersRef;
 
       if (segmentType === 'pet_owners') {
-        // Get users who have pets
+        // Get users who have pets — then apply consent guard for marketing
         const petsSnapshot = await firestore.collection('pets').get();
-        const petOwnerUids = new Set(petsSnapshot.docs.map(doc => doc.ref.parent.parent?.id).filter(Boolean));
-        userIds = Array.from(petOwnerUids) as string[];
+        const petOwnerUids = Array.from(
+          new Set(petsSnapshot.docs.map(doc => doc.ref.parent.parent?.id).filter(Boolean))
+        ) as string[];
+        if (isMarketingBroadcast && petOwnerUids.length > 0) {
+          const consentedPetOwners = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(and(
+              inArray(users.id, petOwnerUids),
+              eq(users.marketingConsent, true)
+            ));
+          userIds = consentedPetOwners.map(u => u.id);
+        } else {
+          userIds = petOwnerUids;
+        }
       } else if (segmentType === 'active') {
-        // Get users with activity in the last 30 days (via lastLoginAt)
+        // Get users with activity in the last 30 days — apply consent guard for marketing
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const activeUsers = await db
           .select({ id: users.id })
           .from(users)
-          .where(gte(users.lastLoginAt, thirtyDaysAgo));
+          .where(
+            isMarketingBroadcast
+              ? and(gte(users.lastLoginAt, thirtyDaysAgo), eq(users.marketingConsent, true))
+              : gte(users.lastLoginAt, thirtyDaysAgo)
+          );
         userIds = activeUsers.map(u => u.id);
       } else {
-        // All users
-        const snapshot = await query.get();
-        userIds = snapshot.docs.map(doc => doc.id);
+        // All users — for marketing, only consented; for system, all
+        if (isMarketingBroadcast) {
+          const consentedAll = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.marketingConsent, true));
+          userIds = consentedAll.map(u => u.id);
+        } else {
+          const snapshot = await usersRef.get();
+          userIds = snapshot.docs.map(doc => doc.id);
+        }
       }
     }
 

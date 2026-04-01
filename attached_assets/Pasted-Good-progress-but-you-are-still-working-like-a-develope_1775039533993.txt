@@ -1,0 +1,168 @@
+Good progress, but you are still working like a developer fixing code, not like someone delivering a real production system.
+
+I do NOT care only that the server is clean or mocks are removed.
+
+I care about one thing:
+👉 Can a real customer use this with real money, real bookings, real failures - without anything breaking?
+
+Right now you are fixing pieces.
+I need you to validate the FULL system.
+
+==================================================
+STOP PATCHING FILES - START SYSTEM VALIDATION
+==================================================
+
+From now on, your job is NOT:
+- “fix stubs”
+- “clean logs”
+- “remove mocks”
+
+Your job is:
+👉 Prove the system works end-to-end like a real business.
+
+==================================================
+WHAT YOU MUST DO NEXT (NO EXCEPTIONS)
+==================================================
+
+Run FULL REAL FLOW TESTS with DB proof.
+
+I want these exact scenarios executed and proven:
+
+--------------------------------------------------
+1. REAL USER SIGNUP (ALL METHODS)
+--------------------------------------------------
+- mobile (OTP)
+- email + password
+- Google
+
+Proof required:
+- user row created
+- wallet_accounts row created immediately
+- role = loyalty_member
+- consent stored correctly (NOT auto-checked)
+- user lands correctly (no loops)
+
+--------------------------------------------------
+2. REAL BOOKING WITH MONEY
+--------------------------------------------------
+Flow:
+- user selects service
+- applies coupon
+- uses wallet (if available)
+- completes payment
+
+Proof:
+- correct final price calculation
+- coupon NOT consumed before confirmation
+- coupon consumed AFTER success
+- wallet deducted correctly
+- ledger entries correct
+
+--------------------------------------------------
+3. FAILED PAYMENT / FAILED BOOKING
+--------------------------------------------------
+Simulate:
+- payment fails
+OR
+- booking fails after validation
+
+Proof:
+- coupon NOT burned
+- wallet NOT deducted
+- no inconsistent state
+
+--------------------------------------------------
+4. KIOSK FLOW (CRITICAL)
+--------------------------------------------------
+Flow:
+- scan QR
+- pre-validation token created
+- payment/session confirmed
+- coupon consumed
+
+Test also:
+- retry same request
+- duplicate callback
+
+Proof:
+- no double redemption
+- idempotency working
+- restore works on failure
+
+--------------------------------------------------
+5. RACE CONDITION TEST
+--------------------------------------------------
+- send 2 parallel requests using same coupon
+
+Proof:
+- only 1 succeeds
+- second is rejected or deduped
+- DB shows correct state
+
+--------------------------------------------------
+6. RESTORE FLOW
+--------------------------------------------------
+- cancel booking / no-show / kiosk failure
+
+Proof:
+- coupon restored
+- wallet restored if used
+- user can reuse if policy allows
+
+--------------------------------------------------
+7. NOTIFICATIONS + CONSENT
+--------------------------------------------------
+Test:
+- send SMS campaign
+- send email
+- send push
+
+Proof:
+- only users with consent receive messages
+- logs show delivery events
+- no non-consenting user receives anything
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT send me:
+- “everything is wired”
+- “server clean”
+- “looks correct”
+
+Send me:
+- request
+- response
+- DB BEFORE
+- DB AFTER
+
+for each scenario.
+
+==================================================
+MINDSET CHANGE
+==================================================
+
+Think like this:
+
+“If 1,000 users use this tomorrow with real money,
+will anything break, double-charge, or lose data?”
+
+If the answer is not 100% safe → it is NOT done.
+
+==================================================
+AFTER THIS
+==================================================
+
+Only after all flows are proven,
+we move to:
+- financial ownership rules
+- campaign automation
+- dashboards
+
+But FIRST:
+👉 prove the system works like a real company
+
+==================================================
+
+Start with scenario 1 and continue through all 7 without stopping.
