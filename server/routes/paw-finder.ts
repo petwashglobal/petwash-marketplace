@@ -11,7 +11,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { pool } from '../db';
 import { requireAuth } from '../customAuth';
-import { requireLoyaltyMember } from '../middleware/loyalty';
+import { requireVerifiedClubMember } from '../middleware/loyalty';
 import {
   createAndPublishPost,
   resolvePost,
@@ -277,7 +277,7 @@ router.get('/posts/:id', async (req, res) => {
 });
 
 /* -----------------------------------------------------------------------
-   MEMBER ROUTES — requireAuth + requireLoyaltyMember for posting
+   MEMBER ROUTES — requireAuth + requireVerifiedClubMember for posting
 ----------------------------------------------------------------------- */
 
 /**
@@ -286,7 +286,7 @@ router.get('/posts/:id', async (req, res) => {
  *   - Max 5 posts per user per UTC day
  *   - Image hash duplicate detection (same image + same user = blocked)
  */
-router.post('/posts', requireAuth, requireLoyaltyMember, async (req, res) => {
+router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) => {
   try {
     const userId = uid(req);
     if (!userId) return res.status(401).json({ error: 'not_authenticated' });

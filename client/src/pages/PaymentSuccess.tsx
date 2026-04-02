@@ -27,7 +27,6 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
   const [voucherDetails, setVoucherDetails] = useState<VoucherDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showGoogleReview, setShowGoogleReview] = useState(true);
   const isRTL = language === 'he';
 
   useEffect(() => {
@@ -272,36 +271,6 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
             </li>
           </ol>
         </div>
-
-        {/* Google Review — soft, dismissible, only shown once */}
-        {showGoogleReview && (
-          <div className="luxury-glass-panel p-5 rounded-2xl mb-6 luxury-animate-slide-up luxury-delay-2 border border-amber-100 bg-amber-50/60 text-center">
-            <p className="text-sm font-semibold text-amber-900 mb-1">
-              {isRTL ? '🌟 שמחנו שבחרת ב-PetWash!' : '🌟 Thanks for choosing PetWash!'}
-            </p>
-            <p className="text-xs text-amber-700 mb-3 leading-relaxed">
-              {isRTL
-                ? 'אם יש לך דקה — ביקורת ב-Google עוזרת לנו להגיע לעוד בעלי חיות אהובות ❤️'
-                : 'A quick Google review helps other pet owners find us ❤️'}
-            </p>
-            <div className="flex gap-2 justify-center flex-wrap">
-              <a
-                href="https://maps.app.goo.gl/yXgfzyiYTYwLwcNy9?g_st=ic"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-white font-semibold transition-colors shadow-sm"
-              >
-                ⭐ {isRTL ? 'בכיף, אכתוב ביקורת' : 'Leave a review'}
-              </a>
-              <button
-                onClick={() => setShowGoogleReview(false)}
-                className="text-xs px-4 py-2 rounded-xl bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors"
-              >
-                {isRTL ? 'לא עכשיו, תודה' : 'Not now, thanks'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Continue Button */}
         <div className="text-center mb-8 luxury-animate-fade-in luxury-delay-3">

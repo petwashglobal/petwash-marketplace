@@ -496,8 +496,10 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       const j = await r.json();
 
       if (!r.ok) {
-        if (j.error === 'loyalty_membership_required') {
-          toast({ variant: 'destructive', title: 'נדרש חברות לויאלטי', description: 'רק חברי לויאלטי פעילים יכולים לפרסם פוסטים.' });
+        if (j.error === 'loyalty_membership_required' || j.error === 'club_membership_required') {
+          toast({ variant: 'destructive', title: '🔐 נדרשת חברות מועדון מאומתת', description: 'כדי לפרסם ב-Paw Finder יש להיות חבר מועדון PetWash™ מאומת.' });
+        } else if (j.error === 'phone_verification_required') {
+          toast({ variant: 'destructive', title: '📱 נדרש אימות SMS', description: 'יש לאמת את מספר הטלפון לפני פרסום. גש להגדרות החשבון.' });
         } else if (j.error === 'DAILY_LIMIT_REACHED') {
           toast({ variant: 'destructive', title: 'הגעת למגבלה היומית', description: 'ניתן לפרסם עד 5 פוסטים ביום.' });
         } else if (j.error === 'DUPLICATE_IMAGE') {
@@ -1269,7 +1271,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">פוסט חדש</div>
                   <h2 className="text-2xl font-bold">הגשת דיווח</h2>
                   <p className="text-slate-500 text-sm mt-1">
-                    חינמי לחברי לויאלטי פעילים. כל פוסט עובר בדיקה אוטומטית לפני פרסום.
+                    זמין לחברי מועדון PetWash™ מאומתי SMS. כל פוסט עובר בדיקה אוטומטית לפני פרסום.
                   </p>
                 </div>
                 <div className="bg-white rounded-3xl border border-slate-200 p-6">

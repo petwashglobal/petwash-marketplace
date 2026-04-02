@@ -10,6 +10,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getLoyaltyStatus, hasTierLevel, type LoyaltyTier, type LoyaltyUser } from '../services/loyalty';
 import { logger } from '../lib/logger';
+import { pool } from '../db';
 
 // Extend Express Request to include loyaltyUser
 declare global {
@@ -137,6 +138,72 @@ export function requireTier(minimumTier: LoyaltyTier) {
       });
     }
   };
+}
+
+/**
+ * Require verified club member — stricter gate for PawFinder posting.
+ *
+ * Checks (in order):
+ *   1. Authenticated (Firebase UID present)
+ *   2. Loyalty member (any tier)
+ *   3. is_club_member = true in users table
+ *   4. Phone/SMS verified (phone_verified OR mobile_verified_at set)
+ */
+export async function requireVerifiedClubMember(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'authentication_required',
+        message: 'יש להתחבר כדי לפרסם.',
+      });
+    }
+
+    const loyaltyUser = await getLoyaltyStatus(userId);
+    if (!loyaltyUser) {
+      return res.status(403).json({
+        success: false,
+        error: 'loyalty_membership_required',
+        message: 'פרסום ב-Paw Finder מוגבל לחברי לויאלטי של PetWash™.',
+      });
+    }
+
+    // Check club membership + SMS verification directly in users table
+    const { rows } = await pool.query<{ is_club_member: boolean; phone_verified: boolean; mobile_verified_at: string | null }>(
+      'SELECT is_club_member, phone_verified, mobile_verified_at FROM users WHERE id = $1',
+      [userId]
+    );
+    const user = rows[0];
+
+    if (!user?.is_club_member) {
+      return res.status(403).json({
+        success: false,
+        error: 'club_membership_required',
+        message: 'נדרשת חברות מועדון מאומתת כדי לפרסם. הצטרף למועדון PetWash™ ואשר את חברותך.',
+      });
+    }
+
+    if (!user?.phone_verified && !user?.mobile_verified_at) {
+      return res.status(403).json({
+        success: false,
+        error: 'phone_verification_required',
+        message: 'נדרש אימות SMS. אמת את מספר הטלפון שלך בהגדרות החשבון.',
+      });
+    }
+
+    req.loyaltyUser = loyaltyUser;
+    logger.info('[LoyaltyMiddleware] Verified club member OK', { userId, tier: loyaltyUser.tier });
+    next();
+  } catch (err: any) {
+    logger.error('[LoyaltyMiddleware] requireVerifiedClubMember failed', { error: err.message });
+    res.status(500).json({ success: false, error: 'verification_failed' });
+  }
 }
 
 /**
