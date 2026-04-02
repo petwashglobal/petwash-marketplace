@@ -15,9 +15,10 @@ import { GoogleGenAI } from '@google/genai';
 const router = Router();
 
 // Initialize Gemini AI for image generation (Replit AI Integrations)
-const genAI = new GoogleGenAI(
-  process.env.AI_INTEGRATIONS_GEMINI_API_KEY || ''
-);
+const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 // Configure multer for memory storage
 const upload = multer({

@@ -64,12 +64,11 @@ interface SecurityAdvisory {
 /** Return the first candidate key that looks like a real API key (not a Replit placeholder) */
 function resolveGeminiKey(): string | null {
   const DUMMY_PATTERN = /^_DUMMY|placeholder|fake|test_key/i;
-  // NOTE: server/index.ts sets GEMINI_AI_KEY as a stable alias for GEMINI_API_KEY
-  // to avoid conflicts with GOOGLE_API_KEY (Google Maps). Check GEMINI_AI_KEY first.
+  // AI_INTEGRATIONS_GEMINI_API_KEY is Vertex AI paid — always check it first.
   const candidates = [
+    process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
     process.env.GEMINI_AI_KEY,
     process.env.GEMINI_API_KEY,
-    process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
     process.env.GOOGLE_AI_API_KEY,
   ];
   for (const k of candidates) {
@@ -89,7 +88,10 @@ async function runSecurityCheck(): Promise<void> {
   try {
     logger.info('[SecurityAdvisor] Starting Gemini security intelligence check');
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      apiKey,
+      ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+    });
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

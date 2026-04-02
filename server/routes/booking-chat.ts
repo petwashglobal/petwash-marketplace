@@ -65,7 +65,10 @@ async function checkPaymentIntent(
   if (Date.now() - lastCta < PAYMENT_CTA_COOLDOWN_MS) return;
 
   try {
-    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{
@@ -1087,7 +1090,10 @@ router.post('/:bookingId/upload', uploadMiddleware.single('image'), async (req: 
     const isProvider = conv.providerId === uid;
     if (isProvider) {
       try {
-        const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+        const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
         const imageBytes = req.file.buffer.toString('base64');
         const result = await genAI.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -1145,7 +1151,10 @@ router.post('/:bookingId/upload-audio', audioUploadMiddleware.single('audio'), a
 
     let transcript: string | null = null;
     try {
-      const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+      const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
       const audioBytes = req.file.buffer.toString('base64');
       const result = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -1218,7 +1227,10 @@ ${conversationText || '(no messages yet)'}
 
 Summary (bullet points):`;
 
-    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
     const response = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -1281,7 +1293,10 @@ ${conversationText}
 
 Draft a reply for the ${myRole}:`;
 
-    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
     const response = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -1320,7 +1335,10 @@ router.post('/:bookingId/messages/:messageId/translate', async (req, res) => {
     const LANG_NAMES: Record<string, string> = { en: 'English', he: 'Hebrew', ar: 'Arabic', ru: 'Russian' };
     const targetName = LANG_NAMES[targetLang] || 'English';
 
-    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{
@@ -1486,7 +1504,10 @@ router.post('/:bookingId/care-log', async (req, res) => {
 
     let geminiSummary: string | null = null;
     try {
-      const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+      const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
       const data = parsed.data;
       const prompt = `You are writing a warm, premium care summary for a pet owner. Be concise (2-3 sentences), emotional, and use the pet care details below. Do not mention that this was AI-generated.
 Mood: ${data.mood} (${moodText[data.mood] || data.mood})

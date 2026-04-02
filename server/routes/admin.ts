@@ -1365,7 +1365,10 @@ router.post('/financial-check', validateFirebaseToken, requireAdminOrViewer, asy
       const { GoogleGenAI } = await import('@google/genai');
       const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
       if (apiKey) {
-        const genAI = new GoogleGenAI({ apiKey });
+        const genAI = new GoogleGenAI({
+          apiKey,
+          ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+        });
         const prompt = `You are PetWash financial auditor. Analyze this Israeli pet-care transaction (VAT 18%, ILS):
 
 Transaction: ${transactionId || 'N/A'} | Service: ${serviceType} | Customer: ${customerId || 'N/A'} | Provider: ${providerId || 'N/A'}

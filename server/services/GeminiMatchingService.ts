@@ -12,8 +12,9 @@ import { providers, locations, walkerProfiles, pettrekProviders, platforms } fro
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "" 
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
 });
 
 interface ClientLocation {

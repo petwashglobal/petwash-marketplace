@@ -1108,7 +1108,10 @@ router.post('/ai-rewards-message', async (req: Request, res: Response) => {
     const { tier = 'bronze', points = 0, totalWashes = 0, nextTierPoints = 0 } = req.body;
 
     const { GoogleGenAI } = await import('@google/genai');
-    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{

@@ -70,7 +70,9 @@ const quota: QuotaState = {
 };
 
 const BACKOFF_MS     = 10 * 60 * 1000; // 10 min after quota hit
-const MAX_PER_MINUTE = IS_VERTEX ? 200 : 18; // conservative limit
+// Vertex AI paid: Flash = 1000 RPM, Pro = 300 RPM. Use 500 as safe platform-wide cap.
+// Free tier: 18/min to stay under the 20/day ceiling conservatively.
+const MAX_PER_MINUTE = IS_VERTEX ? 500 : 18;
 
 function checkQuota(): { allowed: boolean; reason?: string } {
   const now = Date.now();
