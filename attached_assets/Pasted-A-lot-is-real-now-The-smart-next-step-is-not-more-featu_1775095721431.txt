@@ -1,0 +1,118 @@
+A lot is real now. The smart next step is not “more features”. It is checking the hidden failure points that hurt trust later.
+
+For Paw Finder, I would make him check these next:
+
+1. Privacy and safety
+	•	Exact location should not always be shown publicly. For a lost pet, show general area first, not exact address.
+	•	Phone number should never leak in API responses unless the reveal rule is satisfied.
+	•	Contact requests need rate limits so one owner cannot get spammed by 100 messages.
+	•	Block scraping of posts, phone, and email.
+
+2. Real mobile upload
+This is one of the biggest gaps. Right now the UI takes a file path string, not a true phone upload flow. He needs to prove:
+	•	iPhone camera capture
+	•	Android camera capture
+	•	gallery upload
+	•	compression
+	•	retry on weak network
+	•	progress state
+	•	failure message
+	•	successful save to storage + DB
+
+3. Location truth
+Matching by city is nice, but real usefulness needs:
+	•	map pin from user location or manual pin
+	•	ability to adjust the pin
+	•	fallback when location permission denied
+	•	coarse location for privacy
+	•	no broken distance values if lat/lng missing
+
+4. Notifications
+Right now matching exists, but the system should actually notify:
+	•	owner when a possible match appears
+	•	finder when a possible match appears
+	•	owner when someone sends contact request
+	•	requester when owner accepts or rejects
+Need proof for email, push, and in-app.
+
+5. Abuse and fraud
+He should think like a bad actor:
+	•	same person posting 20 fake found pets
+	•	fake reward bait
+	•	spam links in description
+	•	duplicate posts of same image
+	•	bot creating many accounts to harvest contact
+	•	replaying contact request flow
+Need anti-spam scoring, image hash duplicate detection, and cooldowns.
+
+6. Resolved lifecycle
+What happens after “resolved”?
+He should define:
+	•	hide from public immediately?
+	•	archive after X days?
+	•	preserve audit trail?
+	•	cancel open contact requests?
+	•	close match suggestions?
+	•	remove public visibility but keep admin record?
+
+7. Admin operational flow
+Admin API exists, but he still needs:
+	•	real moderation dashboard
+	•	queue filters
+	•	open post details
+	•	image preview
+	•	approve / reject / archive buttons
+	•	moderation notes
+	•	event trail
+Without this, support cannot really operate the platform well.
+
+8. Search and filtering
+He should test every filter combination:
+	•	lost/found
+	•	city
+	•	pet type
+	•	breed
+	•	date range
+	•	reward present
+	•	matched only
+Make sure filters are real and not cosmetic.
+
+9. Performance
+He should test:
+	•	500 posts in one city
+	•	map rendering with many pins
+	•	search response speed
+	•	duplicate image load behavior
+	•	infinite scroll or pagination
+Because Paw Finder can get heavy quickly.
+
+10. Legal / Israeli internet rules
+He should think through:
+	•	takedown flow for abusive content
+	•	evidence preservation for disputes
+	•	retention policy
+	•	privacy wording for user-uploaded content
+	•	consent for showing user-supplied reward
+	•	minors and sensitive data
+	•	accessibility in Hebrew and English
+
+Outside the box, I would also make him think about these strategic upgrades:
+	•	“Pet seen nearby” quick report without full long form
+	•	“Found pet safely held” status
+	•	QR collar future integration
+	•	Municipal / vet / shelter escalation path
+	•	automatic duplicate-image detection
+	•	heatmap of lost/found zones
+	•	trust badge for verified long-time members
+	•	temporary emergency boost for newly lost pets in first 24h
+
+So if I had to tell him the next smartest priorities for Paw Finder, they would be:
+	1.	real mobile file upload
+	2.	admin moderation dashboard
+	3.	privacy-safe map/location logic
+	4.	notification flow
+	5.	abuse prevention and rate limits
+	6.	resolved/archive lifecycle
+	7.	search/filter proof at scale
+
+If you want, I can turn that into one sharp message to send him in the same proof-driven style.

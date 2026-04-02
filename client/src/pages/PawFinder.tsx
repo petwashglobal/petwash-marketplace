@@ -17,6 +17,7 @@ import {
   Search, MapPin, Heart, AlertCircle, CheckCircle2,
   Gift, Loader2, Plus, ChevronRight, Phone, MessageSquare,
   Dog, Cat, Bird, Footprints, Star, Clock, Eye,
+  Upload, Camera, Bell, BellDot, X, Filter,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -356,10 +357,89 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
   const { toast } = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+
+  // Real file upload state
+  const [uploadedFilePath, setUploadedFilePath] = useState('');
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Location state
+  const [locLoading, setLocLoading] = useState(false);
 
   const set = (k: keyof typeof EMPTY_FORM) => (e: any) =>
     setForm(prev => ({ ...prev, [k]: e.target?.value ?? e }));
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'קובץ לא תקין', description: 'יש להעלות תמונה בלבד (JPEG/PNG/WebP/HEIC).' });
+      return;
+    }
+    // Validate size (15MB)
+    if (file.size > 15 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'קובץ גדול מדי', description: 'הגודל המקסימלי הוא 15MB.' });
+      return;
+    }
+
+    // Show local preview immediately
+    setUploadPreviewUrl(URL.createObjectURL(file));
+    setUploadProgress('uploading');
+
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+
+      const r = await fetch('/api/paw-finder/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+      const j = await r.json();
+
+      if (!r.ok) {
+        setUploadProgress('error');
+        toast({ variant: 'destructive', title: 'העלאה נכשלה', description: j.message || 'נסה שוב.' });
+        return;
+      }
+
+      if (j.duplicate) {
+        toast({ title: '⚠️ תמונה כפולה', description: `תמונה זו כבר בשימוש בפוסט ${j.duplicate.post_key}. ניתן להמשיך.` });
+      }
+
+      setUploadedFilePath(j.filePath);
+      setUploadProgress('done');
+      toast({ title: '✅ תמונה הועלתה בהצלחה' });
+    } catch {
+      setUploadProgress('error');
+      toast({ variant: 'destructive', title: 'שגיאת רשת', description: 'ההעלאה נכשלה. בדוק חיבור לאינטרנט ונסה שוב.' });
+    }
+  }
+
+  function requestLocation() {
+    if (!navigator.geolocation) {
+      toast({ variant: 'destructive', title: 'GPS לא נתמך', description: 'הדפדפן שלך לא תומך במיקום.' });
+      return;
+    }
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setLocLoading(false);
+        toast({ title: '📍 מיקום נלכד', description: `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}` });
+      },
+      err => {
+        setLocLoading(false);
+        const msg = err.code === 1 ? 'אישור מיקום נדחה. אנא הזן עיר ידנית.' :
+                    err.code === 3 ? 'פסק זמן - אנא הזן עיר ידנית.' :
+                    'לא ניתן לאחזר מיקום.';
+        toast({ variant: 'destructive', title: 'שגיאת מיקום', description: msg });
+      },
+      { timeout: 8000, maximumAge: 60_000 },
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -375,8 +455,8 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       toast({ variant: 'destructive', title: 'תאריך חסר', description: 'יש לציין תאריך האירוע.' });
       return;
     }
-    if (!imageUrl.trim()) {
-      toast({ variant: 'destructive', title: 'תמונה חסרה', description: 'יש לצרף כתובת URL של תמונת החיה.' });
+    if (!uploadedFilePath) {
+      toast({ variant: 'destructive', title: 'תמונה חסרה', description: 'יש להעלות תמונה של החיה.' });
       return;
     }
 
@@ -397,7 +477,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         rewardAmount: form.rewardAmount ? Number(form.rewardAmount) : undefined,
         contactPreference: form.contactPreference,
         contactPhone: form.contactPhone || undefined,
-        mediaFiles: [{ filePath: imageUrl.trim(), mediaRole: 'primary' }],
+        mediaFiles: [{ filePath: uploadedFilePath, mediaRole: 'primary' }],
       };
 
       const r = await fetch('/api/paw-finder/posts', {
@@ -411,6 +491,10 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       if (!r.ok) {
         if (j.error === 'loyalty_membership_required') {
           toast({ variant: 'destructive', title: 'נדרש חברות לויאלטי', description: 'רק חברי לויאלטי פעילים יכולים לפרסם פוסטים.' });
+        } else if (j.error === 'DAILY_LIMIT_REACHED') {
+          toast({ variant: 'destructive', title: 'הגעת למגבלה היומית', description: 'ניתן לפרסם עד 5 פוסטים ביום.' });
+        } else if (j.error === 'DUPLICATE_IMAGE') {
+          toast({ variant: 'destructive', title: 'תמונה כפולה', description: `תמונה זו כבר בשימוש בפוסט ${j.existingPostKey}.` });
         } else {
           toast({ variant: 'destructive', title: 'שגיאה', description: j.error || 'הפרסום נכשל.' });
         }
@@ -427,7 +511,9 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       }
 
       setForm(EMPTY_FORM);
-      setImageUrl('');
+      setUploadedFilePath('');
+      setUploadPreviewUrl('');
+      setUploadProgress('idle');
       onSuccess();
     } catch {
       toast({ variant: 'destructive', title: 'שגיאת רשת', description: 'נסה שוב מאוחר יותר.' });
@@ -500,7 +586,18 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>עיר *</label>
-          <input value={form.city} onChange={set('city')} placeholder="תל אביב" className={inputCls} required />
+          <div className="flex gap-2">
+            <input value={form.city} onChange={set('city')} placeholder="תל אביב" className={`${inputCls} flex-1`} required />
+            <button
+              type="button"
+              onClick={requestLocation}
+              disabled={locLoading}
+              title="זיהוי מיקום GPS"
+              className="flex-shrink-0 flex items-center justify-center w-11 rounded-2xl border border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              {locLoading ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <MapPin className="w-4 h-4 text-slate-500" />}
+            </button>
+          </div>
         </div>
         <div>
           <label className={labelCls}>שכונה / אזור</label>
@@ -527,17 +624,86 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <div>
-        <label className={labelCls}>קישור לתמונה (URL) *</label>
+        <label className={labelCls}>תמונת החיה *</label>
         <input
-          value={imageUrl}
-          onChange={e => setImageUrl(e.target.value)}
-          placeholder="https://..."
-          className={inputCls}
-          required
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFileChange}
         />
-        {imageUrl && (
-          <img src={imageUrl} alt="preview" className="mt-2 h-24 w-24 object-cover rounded-xl border border-slate-200" />
-        )}
+        <div className="space-y-3">
+          {/* Upload buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.removeAttribute('capture');
+                  fileInputRef.current.click();
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+            >
+              <Upload className="w-4 h-4" /> בחר מהגלריה
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.setAttribute('capture', 'environment');
+                  fileInputRef.current.click();
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+            >
+              <Camera className="w-4 h-4" /> צלם עכשיו
+            </button>
+          </div>
+
+          {/* Upload status */}
+          {uploadProgress === 'uploading' && (
+            <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 rounded-xl px-3 py-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> מעלה תמונה...
+            </div>
+          )}
+          {uploadProgress === 'error' && (
+            <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 rounded-xl px-3 py-2">
+              <AlertCircle className="w-4 h-4" /> העלאה נכשלה —
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="underline font-medium"
+              >
+                נסה שוב
+              </button>
+            </div>
+          )}
+          {uploadProgress === 'done' && uploadPreviewUrl && (
+            <div className="flex items-center gap-3">
+              <img src={uploadPreviewUrl} alt="preview" className="h-24 w-24 object-cover rounded-xl border border-slate-200" />
+              <div className="flex-1">
+                <div className="flex items-center gap-1 text-sm text-emerald-600 font-medium">
+                  <CheckCircle2 className="w-4 h-4" /> תמונה הועלתה
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadedFilePath('');
+                    setUploadPreviewUrl('');
+                    setUploadProgress('idle');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-700 mt-1 flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> החלף תמונה
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-slate-400 mt-1.5">JPEG/PNG/WebP/HEIC · מקסימום 15MB · נדחס אוטומטית</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -638,6 +804,160 @@ function MyPosts() {
 
 type Tab = 'browse' | 'report' | 'my';
 
+function NotificationsTab({ user }: { user: any }) {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery<{ rows: any[]; unreadCount: number }>({
+    queryKey: ['/api/paw-finder/my/notifications'],
+    enabled: !!user,
+    refetchInterval: 30_000,
+  });
+
+  const markRead = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/paw-finder/my/notifications/read-all'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/paw-finder/my/notifications'] }),
+  });
+
+  if (!user) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-400">
+        <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-40" />
+        <p className="font-medium">עליך להתחבר כדי לצפות בהתראות.</p>
+      </div>
+    );
+  }
+
+  const notifs = data?.rows ?? [];
+  const unread = data?.unreadCount ?? 0;
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          {unread > 0 ? <BellDot className="w-5 h-5 text-amber-500" /> : <Bell className="w-5 h-5 text-slate-400" />}
+          התראות
+          {unread > 0 && <span className="text-sm font-normal text-amber-600">({unread} לא נקראו)</span>}
+        </h2>
+        {unread > 0 && (
+          <button
+            onClick={() => markRead.mutate()}
+            className="text-xs text-slate-500 hover:text-slate-800 underline"
+          >
+            סמן הכל כנקרא
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+      ) : notifs.length === 0 ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-400">
+          <Bell className="w-8 h-8 mx-auto mb-3 opacity-30" />
+          <p>אין התראות חדשות</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {notifs.map((n: any) => (
+            <div
+              key={n.id}
+              className={`rounded-2xl border p-4 transition-colors ${n.read ? 'bg-white border-slate-200' : 'bg-amber-50 border-amber-200'}`}
+            >
+              <div className="font-medium text-sm">{n.title}</div>
+              <div className="text-sm text-slate-600 mt-0.5">{n.body}</div>
+              <div className="text-xs text-slate-400 mt-1">
+                {new Date(n.created_at).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContactsTab({ user }: { user: any }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data, isLoading } = useQuery<{ rows: any[] }>({
+    queryKey: ['/api/paw-finder/my/contacts'],
+    enabled: !!user,
+  });
+
+  const acceptMut = useMutation({
+    mutationFn: (id: number) => apiRequest('POST', `/api/paw-finder/my/contacts/${id}/accept`),
+    onSuccess: () => {
+      toast({ title: '✅ קשר התקבל' });
+      qc.invalidateQueries({ queryKey: ['/api/paw-finder/my/contacts'] });
+    },
+  });
+
+  const declineMut = useMutation({
+    mutationFn: (id: number) => apiRequest('POST', `/api/paw-finder/my/contacts/${id}/decline`),
+    onSuccess: () => {
+      toast({ title: 'בקשה נדחתה' });
+      qc.invalidateQueries({ queryKey: ['/api/paw-finder/my/contacts'] });
+    },
+  });
+
+  const rows = data?.rows ?? [];
+
+  return (
+    <div className="space-y-3">
+      {isLoading ? (
+        <div className="text-center py-6 text-slate-400"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-400 text-sm">
+          <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-40" />
+          אין בקשות קשר
+        </div>
+      ) : (
+        rows.map((cr: any) => (
+          <div key={cr.id} className={`rounded-2xl border p-4 ${cr.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="text-xs text-slate-500 mb-1">
+                  {cr.post_type === 'lost' ? '🔴' : '🟢'} {cr.pet_name || cr.pet_type} · {cr.city}
+                </div>
+                <div className="text-sm font-medium text-slate-800">{cr.message_text}</div>
+                <div className="text-xs text-slate-400 mt-1">
+                  {new Date(cr.created_at).toLocaleDateString('he-IL')}
+                  {cr.contact_phone && (
+                    <span className="mr-2 text-emerald-600 font-medium flex items-center gap-1 mt-1">
+                      <Phone className="w-3.5 h-3.5" /> {cr.contact_phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {cr.status === 'pending' && (
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => acceptMut.mutate(cr.id)}
+                    disabled={acceptMut.isPending}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    קבל
+                  </button>
+                  <button
+                    onClick={() => declineMut.mutate(cr.id)}
+                    disabled={declineMut.isPending}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
+                  >
+                    דחה
+                  </button>
+                </div>
+              )}
+              {cr.status !== 'pending' && (
+                <span className={`text-xs px-2 py-1 rounded-lg ${cr.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {cr.status === 'accepted' ? 'התקבל' : 'נדחה'}
+                </span>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 export default function PawFinder({ language }: PawFinderProps) {
   const isHe = language === 'he';
   const { user } = useFirebaseAuth();
@@ -648,20 +968,34 @@ export default function PawFinder({ language }: PawFinderProps) {
   const [filterType, setFilterType] = useState<'all' | 'lost' | 'found'>('all');
   const [filterCity, setFilterCity] = useState('');
   const [filterPet, setFilterPet] = useState('');
+  const [filterBreed, setFilterBreed] = useState('');
+  const [filterReward, setFilterReward] = useState(false);
   const [contactPost, setContactPost] = useState<PawPost | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [mySubTab, setMySubTab] = useState<'posts' | 'contacts' | 'notifications'>('posts');
 
   const { data, isLoading, isFetching } = useQuery<{ rows: PawPost[] }>({
-    queryKey: ['/api/paw-finder/posts', filterType, filterCity, filterPet],
+    queryKey: ['/api/paw-finder/posts', filterType, filterCity, filterPet, filterBreed, filterReward],
     queryFn: async () => {
       const q = new URLSearchParams();
       if (filterType !== 'all') q.set('postType', filterType);
       if (filterCity.trim()) q.set('city', filterCity.trim());
       if (filterPet) q.set('petType', filterPet);
+      if (filterBreed.trim()) q.set('breed', filterBreed.trim());
+      if (filterReward) q.set('hasReward', 'true');
       const r = await fetch(`/api/paw-finder/posts?${q}`);
       return r.json();
     },
   });
+
+  // Notification count badge
+  const notifQ = useQuery<{ unreadCount: number }>({
+    queryKey: ['/api/paw-finder/my/notifications'],
+    enabled: !!user,
+    refetchInterval: 30_000,
+    select: d => ({ unreadCount: (d as any).unreadCount ?? 0 }),
+  });
+  const unreadCount = notifQ.data?.unreadCount ?? 0;
 
   const posts: PawPost[] = data?.rows ?? [];
   const selectedPost = selectedId ? posts.find(p => p.id === selectedId) : null;
@@ -671,7 +1005,7 @@ export default function PawFinder({ language }: PawFinderProps) {
   const TAB_ITEMS: { key: Tab; label: string; icon: any }[] = [
     { key: 'browse', label: 'גלה פוסטים', icon: Search },
     { key: 'report', label: 'הגשת פוסט', icon: Plus },
-    { key: 'my',     label: 'הפוסטים שלי', icon: Star },
+    { key: 'my',     label: 'האזור שלי', icon: Star },
   ];
 
   return (
@@ -773,6 +1107,27 @@ export default function PawFinder({ language }: PawFinderProps) {
                   <option value="other">🐾 אחר</option>
                 </select>
               </div>
+
+              <div className="flex items-center gap-2 min-w-[140px] bg-white border border-slate-200 rounded-2xl px-3">
+                <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <input
+                  value={filterBreed}
+                  onChange={e => setFilterBreed(e.target.value)}
+                  placeholder="גזע..."
+                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                />
+              </div>
+
+              <button
+                onClick={() => setFilterReward(!filterReward)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-sm font-medium transition-colors ${
+                  filterReward
+                    ? 'bg-amber-50 border-amber-300 text-amber-700'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Gift className="w-3.5 h-3.5" /> עם גמול
+              </button>
 
               {isFetching && <Loader2 className="w-4 h-4 animate-spin text-slate-400 self-center" />}
             </div>
@@ -893,21 +1248,50 @@ export default function PawFinder({ language }: PawFinderProps) {
           </div>
         )}
 
-        {/* -------- MY POSTS TAB -------- */}
+        {/* -------- MY TAB -------- */}
         {tab === 'my' && (
           <div className="max-w-3xl mx-auto">
             {!user ? (
               <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-400">
                 <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">עליך להתחבר כדי לצפות בפוסטים שלך.</p>
+                <p className="font-medium">עליך להתחבר כדי לצפות באזור האישי שלך.</p>
               </div>
             ) : (
               <>
                 <div className="mb-5">
-                  <h2 className="text-2xl font-bold">הפוסטים שלי</h2>
-                  <p className="text-slate-500 text-sm mt-1">נהל את הפוסטים שלך — אשר, סמן כנפתר ועוד.</p>
+                  <h2 className="text-2xl font-bold">האזור שלי</h2>
                 </div>
-                <MyPosts />
+
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-5 border-b border-slate-100">
+                  {([ 
+                    { key: 'posts' as const, label: 'הפוסטים שלי', icon: Star },
+                    { key: 'contacts' as const, label: 'בקשות קשר', icon: MessageSquare },
+                    { key: 'notifications' as const, label: 'התראות', icon: unreadCount > 0 ? BellDot : Bell, badge: unreadCount },
+                  ]).map(({ key, label, icon: Icon, badge }) => (
+                    <button
+                      key={key}
+                      onClick={() => setMySubTab(key)}
+                      className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                        mySubTab === key
+                          ? 'border-slate-900 text-slate-900'
+                          : 'border-transparent text-slate-400 hover:text-slate-700'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${key === 'notifications' && unreadCount > 0 ? 'text-amber-500' : ''}`} />
+                      {label}
+                      {badge ? (
+                        <span className="ml-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                          {badge}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+
+                {mySubTab === 'posts' && <MyPosts />}
+                {mySubTab === 'contacts' && <ContactsTab user={user} />}
+                {mySubTab === 'notifications' && <NotificationsTab user={user} />}
               </>
             )}
           </div>

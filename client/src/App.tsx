@@ -327,6 +327,7 @@ const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplication
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
+const PawFinderAdmin = lazy(() => import("@/pages/admin/PawFinderAdmin"));
 
 // Pet Wash Ltd Executive Suite - Centralized C-Suite Management
 const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
@@ -2534,6 +2535,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <GeminiFinancialMonitor />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/paw-finder">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <PawFinderAdmin />
               </Suspense>
             </AdminRouteGuard>
           )}
