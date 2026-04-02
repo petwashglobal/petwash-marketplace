@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'wouter';
-import { Home, Heart, CalendarDays, MessageCircle, User } from 'lucide-react';
+import { Home, Footprints, CalendarDays, MessageCircle, User } from 'lucide-react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 
@@ -14,11 +14,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/home',               labelHe: 'בית',      labelEn: 'Home',      Icon: Home },
-  { path: '/favourites',         labelHe: 'מועדפים',  labelEn: 'Favourites', Icon: Heart },
-  { path: '/bookings',           labelHe: 'הזמנות',   labelEn: 'Bookings',  Icon: CalendarDays },
-  { path: '/booking-chat/inbox', labelHe: 'הודעות',   labelEn: 'Messages',  Icon: MessageCircle },
-  { path: '/my-account',         labelHe: 'חשבון',    labelEn: 'Account',   Icon: User },
+  { path: '/home',               labelHe: 'בית',       labelEn: 'Home',      Icon: Home },
+  { path: '/paw-finder',         labelHe: 'מציאת חיות', labelEn: 'PawFinder', Icon: Footprints },
+  { path: '/bookings',           labelHe: 'הזמנות',    labelEn: 'Bookings',  Icon: CalendarDays },
+  { path: '/booking-chat/inbox', labelHe: 'הודעות',    labelEn: 'Messages',  Icon: MessageCircle },
+  { path: '/my-account',         labelHe: 'חשבון',     labelEn: 'Account',   Icon: User },
 ];
 
 const HIDDEN_PREFIXES = [
@@ -52,7 +52,10 @@ export function MobileBottomNav() {
     >
       <ul className="flex items-stretch h-14">
         {NAV_ITEMS.map(({ path, labelHe, labelEn, Icon }) => {
-          const isActive = location === path || location.startsWith(path + '/');
+          const pawFinderAliases = ['/find-pet', '/lost-pet', '/paw-finder'];
+          const isActive = location === path
+            || location.startsWith(path + '/')
+            || (path === '/paw-finder' && pawFinderAliases.some(a => location === a || location.startsWith(a + '/')));
           const label = isRTL ? labelHe : labelEn;
           const color = isActive ? GOLD : GRAY;
 
