@@ -458,6 +458,45 @@ router.get(
   }
 );
 
+// GET /api/platforms/:platformId/stations/:stationId - Get single station for K9000
+router.get(
+  '/:platformId/stations/:stationId',
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const platformId = req.platformContext.platformId;
+      const stationId = parseInt(req.params.stationId, 10);
+
+      if (platformId !== 'k9000') {
+        return res.status(404).json({ error: 'Stations not available for this platform' });
+      }
+
+      if (isNaN(stationId)) {
+        return res.status(400).json({ error: 'Invalid station ID' });
+      }
+
+      const { db } = await import('../db');
+      const { stations } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const [station] = await db
+        .select()
+        .from(stations)
+        .where(eq(stations.id, stationId));
+
+      if (!station) {
+        return res.status(404).json({ error: 'Station not found' });
+      }
+
+      res.json({ station });
+    } catch (error: any) {
+      logger.error('Failed to fetch station', { error: error.message });
+      res.status(500).json({ error: 'Failed to fetch station' });
+    }
+  }
+);
+
 // GET /api/platforms/:platformId/providers - Get providers for marketplace platforms
 router.get(
   '/:platformId/providers',

@@ -586,6 +586,30 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /api/booking-requests/my-completed-count - Count completed bookings for logged-in user
+ * NOTE: Must be registered BEFORE /:requestId to prevent shadowing
+ */
+router.get('/my-completed-count', async (req, res) => {
+  const userId = req.user?.uid || req.firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bookingRequests)
+      .where(
+        and(
+          eq(bookingRequests.ownerId, userId),
+          inArray(bookingRequests.status as any, ['completed', 'reviewed']),
+        ),
+      );
+    res.json({ count: result[0]?.count ?? 0 });
+  } catch (err: any) {
+    logger.warn('[BookingRequests] my-completed-count error', { error: err.message });
+    res.json({ count: 0 });
+  }
+});
+
+/**
  * GET /api/booking-requests/:requestId - Get booking details
  */
 router.get('/:requestId', async (req, res) => {

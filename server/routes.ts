@@ -4038,7 +4038,7 @@ self.addEventListener('notificationclick', (event) => {
   // User profile updates
   app.patch('/api/profile', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       const updates = req.body;
       
       // Remove sensitive fields that shouldn't be updated directly
@@ -5169,7 +5169,7 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/checkout', requireAuth, requireOnboardingComplete, async (req: any, res) => {
     try {
       const { packageId, paymentMethod } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       
       if (!packageId) {
         return res.status(400).json({ message: "Package ID is required" });
@@ -5396,7 +5396,7 @@ self.addEventListener('notificationclick', (event) => {
   // Get user's vouchers (authenticated)
   app.get('/api/my-vouchers', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       const vouchers = await VoucherService.getUserVouchers(userId);
       res.json(vouchers);
     } catch (error) {
@@ -5515,7 +5515,7 @@ self.addEventListener('notificationclick', (event) => {
       });
       
       const { code } = schema.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       
       const result = await storage.claimVoucher({
         codePlain: code,
@@ -5572,7 +5572,7 @@ self.addEventListener('notificationclick', (event) => {
       });
       
       const data = schema.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       
       const result = await storage.redeemVoucher({
         voucherId: data.voucherId,
@@ -5614,7 +5614,7 @@ self.addEventListener('notificationclick', (event) => {
   // Get user's vouchers (authenticated)
   app.get('/api/vouchers/my-vouchers', requireAuth, verifyAppCheckTokenOptional, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const cursor = req.query.cursor as string | undefined;
       
@@ -5645,7 +5645,7 @@ self.addEventListener('notificationclick', (event) => {
   // Get specific voucher (authenticated, owner only)
   app.get('/api/vouchers/:id', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       const voucherId = req.params.id;
       
       const voucher = await storage.getVoucherByIdForOwner(voucherId, userId);

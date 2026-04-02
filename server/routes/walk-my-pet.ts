@@ -202,6 +202,41 @@ router.patch('/walkers/:walkerId', async (req, res) => {
   }
 });
 
+// GET /walkers/search — Returns all active, verified walkers for client-side filtering (used by WalkMyPet listing page)
+router.get('/walkers/search', async (req, res) => {
+  try {
+    const city = (req.query.city as string) || '';
+    const walkers = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.isActive, true))
+      .orderBy(desc(walkerProfiles.averageRating))
+      .limit(200);
+
+    const mapped = walkers.map(w => ({
+      ...w,
+      fullName: w.fullName || '',
+      city: w.city || '',
+      hourlyRateIls: w.hourlyRateIls ? Number(w.hourlyRateIls) : 60,
+      rating: w.averageRating ? parseFloat(w.averageRating) : 0,
+      completedWalks: w.totalWalksCompleted || 0,
+      available: w.isAvailable ?? false,
+      verified: w.verificationStatus === 'verified',
+      instantBook: w.instantBook ?? false,
+      specialties: w.specialties || [],
+      dogSizes: w.dogSizes || [],
+      hasBodyCamera: w.hasBodyCamera ?? false,
+      hasDroneAccess: w.hasDroneAccess ?? false,
+    }));
+
+    const filtered = city ? mapped.filter(w => w.city.toLowerCase().includes(city.toLowerCase())) : mapped;
+    res.json(filtered);
+  } catch (error: any) {
+    logger.error('[Walk My Pet] GET walkers/search error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch walkers' });
+  }
+});
+
 // Search walkers by location (geolocation)
 router.post('/walkers/search', async (req, res) => {
   try {

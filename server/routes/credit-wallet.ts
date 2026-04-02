@@ -401,6 +401,37 @@ router.post('/redemptions/:sessionId/cancel', async (req, res) => {
   }
 });
 
+router.get('/redemptions/:sessionId/status', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const { sessionId } = req.params;
+    const { db } = await import('../db');
+    const { redemptionSessions } = await import('@shared/schema');
+    const { eq, and } = await import('drizzle-orm');
+
+    const [session] = await db
+      .select()
+      .from(redemptionSessions)
+      .where(and(
+        eq(redemptionSessions.sessionId, sessionId),
+        eq(redemptionSessions.userId, userId)
+      ));
+
+    if (!session) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+
+    res.json({ success: true, status: session.status, session });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Get session status error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/transactions', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;

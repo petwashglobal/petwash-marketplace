@@ -128,6 +128,9 @@ export async function apiRequest(
       }
       if (body && typeof body === 'string' && !extraHeaders["Content-Type"]) {
         extraHeaders["Content-Type"] = "application/json";
+      } else if (body && typeof body === 'object' && !(body instanceof FormData) && !(body instanceof Blob) && !(body instanceof ArrayBuffer) && !extraHeaders["Content-Type"]) {
+        body = JSON.stringify(body);
+        extraHeaders["Content-Type"] = "application/json";
       }
     } else {
       method = 'GET';

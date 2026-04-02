@@ -89,6 +89,11 @@ export default function K9000Redeem() {
     queryKey: ['/api/credit-wallet/redemptions', redemption?.sessionId, 'status'],
     enabled: step === 'qr' && !!redemption?.sessionId && secondsLeft > 0,
     refetchInterval: secondsLeft > 0 ? 3000 : false,
+    queryFn: async () => {
+      const res = await fetch(`/api/credit-wallet/redemptions/${redemption!.sessionId}/status`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch status');
+      return res.json();
+    },
   });
 
   useEffect(() => {

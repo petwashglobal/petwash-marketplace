@@ -517,6 +517,76 @@ router.patch('/sitters/location', requireAuth, async (req, res) => {
 // ==================== PET PROFILES ====================
 
 /**
+ * GET /api/sitter-suite/my-pets - Get authenticated user's pets (no userId query param needed)
+ */
+router.get('/my-pets', requireAuth, async (req: any, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const pets = await db
+      .select()
+      .from(petProfilesForSitting)
+      .where(eq(petProfilesForSitting.userId, userId));
+    res.json(pets);
+  } catch (error) {
+    logger.error('[Sitter Suite] Error fetching my-pets', error);
+    res.status(500).json({ error: 'Failed to fetch pets' });
+  }
+});
+
+/**
+ * GET /api/sitter-suite/calculate-price - Calculate booking price
+ * Query params: sitterId, service, startDate, endDate, startTimeSlot, endTimeSlot
+ */
+router.get('/calculate-price', requireAuth, async (req: any, res) => {
+  try {
+    const { sitterId, service, startDate, endDate } = req.query as Record<string, string>;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+
+    if (!sitterId || !startDate || !endDate) {
+      return res.status(400).json({ error: 'sitterId, startDate, endDate are required' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid dates' });
+    }
+
+    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+                     req.socket?.remoteAddress || '127.0.0.1';
+
+    const pricing = await sitterAdvancedBookingEngine.quotePrice({
+      providerId: sitterId,
+      serviceType: service || 'pet_sitting',
+      startDate: start,
+      endDate: end,
+      userId: userId || 'anonymous',
+      ipAddress: clientIP,
+      metadata: {},
+    });
+
+    const duration = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+
+    res.json({
+      duration,
+      subtotal: pricing.subtotal,
+      holidaySurge: pricing.holidaySurge,
+      platformFee: pricing.platformFee,
+      tax: pricing.tax,
+      totalPrice: pricing.totalPrice,
+      currency: 'ILS',
+    });
+  } catch (error) {
+    logger.error('[Sitter Suite] Error calculating price', error);
+    res.status(500).json({ error: 'Failed to calculate price' });
+  }
+});
+
+/**
  * GET /api/sitter-suite/pets - Get user's pets for sitting
  */
 router.get('/pets', async (req, res) => {

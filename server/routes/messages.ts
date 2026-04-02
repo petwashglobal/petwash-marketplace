@@ -356,6 +356,46 @@ router.post('/:messageId/star', async (req, res) => {
 });
 
 /**
+ * POST /api/messages/:messageId/read
+ * Mark a message as read
+ */
+router.post('/:messageId/read', async (req, res) => {
+  try {
+    const userId = req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const messageId = parseInt(req.params.messageId);
+
+    const [message] = await db
+      .select()
+      .from(userMessages)
+      .where(eq(userMessages.id, messageId));
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    if (message.senderId !== userId && message.recipientId !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const [updated] = await db
+      .update(userMessages)
+      .set({ isRead: true, updatedAt: new Date() })
+      .where(eq(userMessages.id, messageId))
+      .returning();
+
+    return res.json({ success: true, message: updated });
+
+  } catch (error: any) {
+    logger.error('[Secure Inbox] Failed to mark read', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * DELETE /api/messages/:messageId
  * Soft delete a message
  */

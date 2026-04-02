@@ -87,6 +87,19 @@ export default function SitterBooking() {
   const { data: pricing, isLoading: pricingLoading } = useQuery<PricingBreakdown>({
     queryKey: ['/api/sitter-suite/calculate-price', sitterId, selectedService, startDate, endDate, startTimeSlot, endTimeSlot],
     enabled: !!sitterId && !!selectedService && !!startDate && !!endDate && !!startTimeSlot && !!endTimeSlot,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        sitterId: sitterId!,
+        service: selectedService,
+        startDate: startDate!.toISOString(),
+        endDate: endDate!.toISOString(),
+        startTimeSlot,
+        endTimeSlot,
+      });
+      const res = await fetch(`/api/sitter-suite/calculate-price?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to calculate price');
+      return res.json();
+    },
   });
 
   const TIME_SLOTS = [
@@ -106,7 +119,7 @@ export default function SitterBooking() {
         title: t('sitter.bookingRequest'),
         description: t('sitter.requestDesc'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/my-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bookings/my-bookings'] });
       setLocation('/dashboard');
     },
     onError: (error: any) => {

@@ -383,7 +383,7 @@ export default function MyAccount() {
   });
 
   const addPetMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/pets', { method: 'POST', body: data }),
+    mutationFn: (data: any) => apiRequest('/api/pets', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
       setShowPetForm(false);
@@ -396,7 +396,7 @@ export default function MyAccount() {
 
   const updatePetMutation = useMutation({
     mutationFn: ({ petId, data }: { petId: string; data: any }) =>
-      apiRequest(`/api/pets/${petId}`, { method: 'PUT', body: data }),
+      apiRequest(`/api/pets/${petId}`, 'PATCH', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
       setShowPetForm(false);
