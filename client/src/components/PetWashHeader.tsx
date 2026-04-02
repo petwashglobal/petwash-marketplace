@@ -109,6 +109,8 @@ const T: Record<string, Record<string, string>> = {
   "walker.desc": { en: "Walks, play time and outdoor activities", he: "טיולים, משחקים ופעילויות חוץ", ru: "Прогулки, игры и активный отдых", fr: "Promenades, jeux et activités en plein air", es: "Paseos, juegos y actividades al aire libre", ar: "نزهات، وقت لعب وأنشطة خارجية" },
   "transport.label": { en: "Pet Transport", he: "הסעות חיות מחמד", ru: "Перевозка питомцев", fr: "Transport d'animaux", es: "Transporte de mascotas", ar: "نقل حيوانات أليفة" },
   "transport.desc": { en: "Pet taxi between home, sitter and stations (coming soon)", he: "מונית לחיות מחמד בין הבית, המטפל והתחנות (בקרוב)", ru: "Такси для питомцев между домом, няней и станциями (скоро)", fr: "Taxi pour animaux entre domicile, gardien et stations (bientôt)", es: "Taxi para mascotas entre hogar, cuidador y estaciones (próximamente)", ar: "تاكسي حيوانات بين المنزل والجليس والمحطات (قريبًا)" },
+  "pawfinder.label": { en: "PawFinder™ – Lost & Found", he: "PawFinder™ – מציאת חיות", ru: "PawFinder™ – Потерянные и найденные", fr: "PawFinder™ – Animaux perdus & trouvés", es: "PawFinder™ – Perdidos y encontrados", ar: "PawFinder™ – المفقود والموجود" },
+  "pawfinder.desc": { en: "AI-powered community lost & found for pets", he: "מציאת חיות מחמד אבודות בקהילה בעזרת בינה מלאכותית", ru: "Поиск потерянных питомцев с помощью ИИ", fr: "Animaux perdus et trouvés par la communauté, propulsé par IA", es: "Comunidad de mascotas perdidas y encontradas con IA", ar: "مجتمع إيجاد الحيوانات الضائعة بالذكاء الاصطناعي" },
   "academy.label": { en: "Pet Wash Academy", he: "אקדמיית ⁦Pet Wash™⁩", ru: "Академия ⁦Pet Wash™⁩", fr: "Académie ⁦Pet Wash™⁩", es: "Academia ⁦Pet Wash™⁩", ar: "أكاديمية ⁦Pet Wash™⁩" },
   "academy.desc": { en: "Training, certification and education for pros", he: "הכשרה, הסמכה וחינוך למקצוענים", ru: "Обучение, сертификация и образование для профессионалов", fr: "Formation, certification et éducation pour professionnels", es: "Formación, certificación y educación para profesionales", ar: "تدريب وشهادات وتعليم للمحترفين" },
   "shop.label": { en: "Pet Wash Shop", he: "חנות ⁦Pet Wash™⁩", ru: "Магазин ⁦Pet Wash™⁩", fr: "Boutique ⁦Pet Wash™⁩", es: "Tienda ⁦Pet Wash™⁩", ar: "متجر ⁦Pet Wash™⁩" },
@@ -168,6 +170,7 @@ function t(key: string, lang: string): string {
 const PLATFORM_ITEMS = [
   { id: "hub", labelKey: "hub.label", descKey: "hub.desc", href: "/hub", frozen: false },
   { id: "stations", labelKey: "stations.label", descKey: "stations.desc", href: "/stations", frozen: false },
+  { id: "pawfinder", labelKey: "pawfinder.label", descKey: "pawfinder.desc", href: "/paw-finder", frozen: false },
   { id: "sitter", labelKey: "sitter.label", descKey: "sitter.desc", href: "/sitter-suite", frozen: false },
   { id: "walker", labelKey: "walker.label", descKey: "walker.desc", href: "/walk-my-pet", frozen: false },
   { id: "transport", labelKey: "transport.label", descKey: "transport.desc", href: "/pettrek/book", frozen: true },
