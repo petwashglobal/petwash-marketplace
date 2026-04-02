@@ -256,24 +256,33 @@ export abstract class BaseLuxuryBookingEngine {
 
   /**
    * Confirm booking with payment processing and escrow
+   * @param bookingId - The booking ID
+   * @param pricing - Full pricing breakdown
+   * @param userId - The CUSTOMER's Firebase UID (who is paying)
+   * @param providerId - The PROVIDER's ID (who will receive funds). Defaults to 'pending' if not yet assigned (e.g. PetTrek dispatch).
    */
   async confirmBooking(
     bookingId: string,
     pricing: PricingBreakdown,
-    userId: string
+    userId: string,
+    providerId: string = 'pending'
   ): Promise<BookingConfirmation> {
     try {
       logger.info('[Luxury Booking] Confirming booking', {
         bookingId,
         totalPrice: pricing.totalPrice,
         currency: pricing.currency,
+        customerId: userId,
+        providerId,
       });
 
       // Process payment and move to escrow (like Airbnb)
       const escrowResult = await this.moveToEscrow(
         bookingId,
         pricing.totalPrice,
-        pricing.currency
+        pricing.currency,
+        userId,
+        providerId
       );
 
       if (!escrowResult.success) {
@@ -425,11 +434,15 @@ export abstract class BaseLuxuryBookingEngine {
 
   /**
    * Move payment to escrow (like Airbnb - hold until service completion)
+   * @param customerId - Firebase UID of the customer paying
+   * @param providerId - Firebase UID or ID of the provider receiving funds; use 'pending' for dispatch-style flows where provider is assigned later
    */
   private async moveToEscrow(
     bookingId: string,
     amount: number,
-    currency: string
+    currency: string,
+    customerId: string,
+    providerId: string
   ): Promise<{
     success: boolean;
     escrowReferenceId?: string;
@@ -437,8 +450,8 @@ export abstract class BaseLuxuryBookingEngine {
     try {
       const escrowPayment = await escrowService.createEscrowPayment(
         bookingId,
-        'system',
-        'system',
+        customerId,
+        providerId,
         amount,
         undefined,
         { currency, engine: 'BaseLuxuryBookingEngine' }

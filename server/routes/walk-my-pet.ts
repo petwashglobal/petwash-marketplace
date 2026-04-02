@@ -562,7 +562,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         await walkEliteBookingEngine.confirmBooking(
           booking.bookingId,
           pricing,
-          booking.ownerId
+          booking.ownerId,
+          walker.userId
         );
       } catch (escrowErr: any) {
         console.error(`[Walk My Pet] Escrow confirmation failed for ${bookingId}`, escrowErr);

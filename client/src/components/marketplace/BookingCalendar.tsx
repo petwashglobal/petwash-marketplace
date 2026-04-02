@@ -48,7 +48,9 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
         from: fromDate.toISOString(),
         to: toDate.toISOString(),
       });
-      const res = await fetch(getApiUrl(`/api/bookings/availability?${params}`));
+      const res = await fetch(getApiUrl(`/api/bookings/availability?${params}`), {
+        credentials: 'include',
+      });
       if (!res.ok) throw new Error('Failed to fetch availability');
       return res.json();
     },

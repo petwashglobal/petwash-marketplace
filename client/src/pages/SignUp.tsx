@@ -219,19 +219,26 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       trackEvent({ action: 'signup_success', category: 'authentication', label: `${provider}_oauth_signup`, language });
 
       if (isNewUser) {
-        await fetch(getApiUrl('/api/auth/post-login'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-          credentials: 'include',
-          body: JSON.stringify({
-            uid: result.user.uid,
-            email: result.user.email || '',
-            displayName: result.user.displayName || '',
-            photoURL: result.user.photoURL || '',
-            provider,
-            isNewUser: true,
-          }),
-        }).catch(() => {});
+        try {
+          const postLoginRes = await fetch(getApiUrl('/api/auth/post-login'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+            credentials: 'include',
+            body: JSON.stringify({
+              uid: result.user.uid,
+              email: result.user.email || '',
+              displayName: result.user.displayName || '',
+              photoURL: result.user.photoURL || '',
+              provider,
+              isNewUser: true,
+            }),
+          });
+          if (!postLoginRes.ok) {
+            logger.error('[Auth] post-login profile sync failed', { status: postLoginRes.status, provider });
+          }
+        } catch (postLoginErr: any) {
+          logger.error('[Auth] post-login profile sync network error', { error: postLoginErr.message, provider });
+        }
       }
 
       toast({

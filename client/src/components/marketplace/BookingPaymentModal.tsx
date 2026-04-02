@@ -69,6 +69,7 @@ export function BookingPaymentModal({
         headers: { 
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           paymentMethod: 'nayax',
           last4: cardNumber.slice(-4),
@@ -101,6 +102,7 @@ export function BookingPaymentModal({
         headers: { 
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ rating, review }),
       });
       if (!res.ok) throw new Error('Confirmation failed');

@@ -151,7 +151,9 @@ export default function Verify() {
       }
 
       try {
-        const response = await fetch(getApiUrl(`/api/kyc/status/${firebaseUser.uid}`));
+        const response = await fetch(getApiUrl(`/api/kyc/status/${firebaseUser.uid}`), {
+          credentials: 'include',
+        });
         if (response.ok) {
           const data = await response.json();
           setKycStatus(data);
@@ -250,6 +252,7 @@ export default function Verify() {
 
       const response = await fetch(getApiUrl('/api/kyc/upload'), {
         method: 'POST',
+        credentials: 'include',
         body: formData,
       });
 

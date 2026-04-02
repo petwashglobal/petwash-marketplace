@@ -59,6 +59,7 @@ export default function TeamCards() {
       const response = await fetch(getApiUrl('/api/wallet/business-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(member)
       });
 
@@ -93,6 +94,7 @@ export default function TeamCards() {
       const response = await fetch(getApiUrl('/api/google-wallet/business-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(member)
       });
 

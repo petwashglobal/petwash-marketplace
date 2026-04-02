@@ -42,6 +42,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
       const response = await fetch(getApiUrl('/api/checkout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           packageId: pkg.id,
           paymentMethod

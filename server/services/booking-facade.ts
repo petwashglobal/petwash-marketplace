@@ -169,22 +169,27 @@ export class UnifiedLuxuryBookingFacade {
 
   /**
    * Confirm booking with payment and escrow across any platform
+   * @param userId - CUSTOMER Firebase UID (who pays)
+   * @param providerId - PROVIDER ID (who receives funds). Pass 'pending' for dispatch-style flows.
    */
   async confirmBooking(
     platform: BookingPlatform,
     bookingId: string,
     pricing: PricingBreakdown,
-    userId: string
+    userId: string,
+    providerId: string = 'pending'
   ): Promise<BookingConfirmation> {
     try {
       logger.info('[Booking Facade] Confirming booking', {
         platform,
         bookingId,
         totalPrice: pricing.totalPrice,
+        customerId: userId,
+        providerId,
       });
 
       const engine = this.getEngine(platform);
-      const confirmation = await engine.confirmBooking(bookingId, pricing, userId);
+      const confirmation = await engine.confirmBooking(bookingId, pricing, userId, providerId);
 
       logger.info('[Booking Facade] Booking confirmed', {
         platform,

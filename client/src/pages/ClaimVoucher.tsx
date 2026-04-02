@@ -44,6 +44,11 @@ export default function ClaimVoucher() {
       setClaimedVoucher(data);
       setClaimSuccess(true);
       
+      // Invalidate voucher wallet and user account caches so UI reflects claimed voucher immediately
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/vouchers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vouchers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      
       // Track GA4 event — user.id is the Firebase UID (varchar PK in users table)
       const userId = (user as any)?.uid || (user as any)?.id;
       if (userId && data.voucherId && data.initialAmount) {

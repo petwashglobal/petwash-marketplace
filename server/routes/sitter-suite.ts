@@ -905,6 +905,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       }
 
       // Payment succeeded - confirm booking with escrow
+      // Pass sitter.userId so EscrowService can release funds to the real provider
       await sitterAdvancedBookingEngine.confirmBooking(
         booking.bookingId,
         {
@@ -916,7 +917,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           currency: 'ILS',
           breakdown: [],
         },
-        booking.ownerId
+        booking.ownerId,
+        sitter.userId
       );
 
       await db
