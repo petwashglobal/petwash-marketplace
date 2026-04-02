@@ -8,6 +8,7 @@ import { GlassmorphismCard } from '@/components/luxury/GlassmorphismCard';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
+import { usePaymentStatus } from '@/hooks/use-payment-status';
 import { useProviderDetails, useProviderReviews } from '@/services/marketplace';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
@@ -24,6 +25,7 @@ export default function ProviderDetail() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const { toast } = useToast();
+  const { paymentsEnabled } = usePaymentStatus();
 
   const [showContactInfo, setShowContactInfo] = useState(false);
 
@@ -413,15 +415,34 @@ export default function ProviderDetail() {
                       {isHebrew ? 'כולל 18% מע״מ' : 'Includes 18% VAT'}
                     </p>
                   </div>
-                  <Button 
-                    size="lg" 
-                    onClick={handleBooking}
-                    className="luxury-btn-primary luxury-shadow-xl text-white px-8 py-6 text-lg"
-                    data-testid="button-book-now"
-                  >
-                    <CalendarIcon className="w-5 h-5 mr-2" />
-                    {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
-                  </Button>
+                  {paymentsEnabled ? (
+                    <Button 
+                      size="lg" 
+                      onClick={handleBooking}
+                      className="luxury-btn-primary luxury-shadow-xl text-white px-8 py-6 text-lg"
+                      data-testid="button-book-now"
+                    >
+                      <CalendarIcon className="w-5 h-5 mr-2" />
+                      {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
+                    </Button>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Button
+                        size="lg"
+                        disabled
+                        className="w-full px-8 py-6 text-lg bg-violet-100 text-violet-700 border-2 border-violet-300 cursor-not-allowed opacity-80"
+                        data-testid="button-book-soon"
+                      >
+                        <CalendarIcon className="w-5 h-5 mr-2" />
+                        {isHebrew ? '🚀 בקרוב — מערכת הזמנות בפיתוח' : '🚀 Coming Soon — Bookings launching shortly'}
+                      </Button>
+                      <p className="text-xs text-center text-gray-500">
+                        {isHebrew
+                          ? 'ניתן ליצור קשר ישיר עם הספק בינתיים'
+                          : 'Contact the provider directly in the meantime'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Note about Availability */}

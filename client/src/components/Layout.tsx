@@ -5,7 +5,8 @@ import { NetworkOfflineBanner } from './NetworkOfflineBanner';
 import { type Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
-import { X, Rocket } from 'lucide-react';
+import { X, Rocket, Briefcase, Star } from 'lucide-react';
+import { Link } from 'wouter';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -51,21 +52,41 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
       {!paymentsEnabled && !bannerDismissed && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
-          className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white text-center py-2.5 px-4 flex items-center justify-center gap-3 text-sm font-medium z-50 relative"
+          className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white z-50 relative"
         >
-          <Rocket className="w-4 h-4 shrink-0" />
-          <span>
-            {isRTL
-              ? '🎉 PetWash™ בגרסת בטא — הצטרפות למועדון, ספקים ו-Paw Finder פעילים. תשלומים מקוונים יופעלו בקרוב!'
-              : '🎉 PetWash™ soft launch — memberships, providers & Paw Finder are live. Online payments coming soon!'}
-          </span>
-          <button
-            onClick={dismissBanner}
-            aria-label="Close"
-            className="ms-2 p-0.5 rounded hover:bg-white/20 transition-colors shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Top row — announcement */}
+          <div className="flex items-center justify-center gap-3 py-2 px-4 text-sm font-medium">
+            <Rocket className="w-4 h-4 shrink-0" />
+            <span>
+              {isRTL
+                ? '🎉 PetWash™ בגרסת בטא — הצטרפות למועדון, ספקים ו-Paw Finder פעילים. תשלומים מקוונים יופעלו בקרוב!'
+                : '🎉 PetWash™ soft launch — memberships, providers & Paw Finder are live. Online payments coming soon!'}
+            </span>
+            <button
+              onClick={dismissBanner}
+              aria-label="Close"
+              className="ms-2 p-0.5 rounded hover:bg-white/20 transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Bottom row — join CTAs */}
+          <div className="flex items-center justify-center gap-2 pb-2 px-4 flex-wrap">
+            <Link
+              href="/become-provider"
+              className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1 text-xs font-semibold text-white"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              {isRTL ? 'הצטרף כספק 👷' : 'Join as Provider 👷'}
+            </Link>
+            <Link
+              href="/loyalty/join"
+              className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1 text-xs font-semibold text-white"
+            >
+              <Star className="w-3.5 h-3.5" />
+              {isRTL ? 'הצטרף למועדון הפסטיג׳ 🐾' : 'Join Prestige Club 🐾'}
+            </Link>
+          </div>
         </div>
       )}
 
