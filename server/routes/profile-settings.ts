@@ -83,13 +83,13 @@ router.get('/settings/profile', async (req, res) => {
       emailVerified: firebaseUser.emailVerified,
       createdAt: user?.createdAt || firebaseUser.metadata.creationTime,
       notificationPreferences: {
-        pushEnabled: firestorePrefs.pushEnabled ?? true,
-        emailEnabled: firestorePrefs.emailEnabled ?? true,
-        smsEnabled: firestorePrefs.smsEnabled ?? true,
-        marketingEnabled: firestorePrefs.marketingEnabled ?? true,
-        reminderEnabled: firestorePrefs.reminderEnabled ?? true,
-        birthdayOffersEnabled: firestorePrefs.birthdayOffersEnabled ?? true,
-        loyaltyUpdatesEnabled: firestorePrefs.loyaltyUpdatesEnabled ?? true,
+        pushEnabled: firestorePrefs.pushEnabled ?? false,
+        emailEnabled: firestorePrefs.emailEnabled ?? false,
+        smsEnabled: firestorePrefs.smsEnabled ?? false,
+        marketingEnabled: firestorePrefs.marketingEnabled ?? false,
+        reminderEnabled: firestorePrefs.reminderEnabled ?? false,
+        birthdayOffersEnabled: firestorePrefs.birthdayOffersEnabled ?? false,
+        loyaltyUpdatesEnabled: firestorePrefs.loyaltyUpdatesEnabled ?? false,
       },
     };
 

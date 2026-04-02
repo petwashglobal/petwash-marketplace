@@ -525,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           await fbAdminAuth.setCustomUserClaims(req.firebaseUser.uid, {
             ...claims,
             role,
-            loyaltyMember: claims.loyaltyMember ?? true,
+            loyaltyMember: claims.loyaltyMember ?? false,
             loyaltyTier: claims.loyaltyTier || 'bronze',
             program: claims.program || 'PetWash Privilege',
           });
@@ -10849,7 +10849,7 @@ self.addEventListener('notificationclick', (event) => {
           country: country || 'IL',
           language: language || 'he',
           dateOfBirth: dob || undefined,
-          marketingConsent: marketing ?? true,
+          marketingConsent: marketing ?? false,
         });
         userId = uid;
         logger.info(`[Phase1] PostgreSQL user created`, { traceId, userId });
@@ -10924,10 +10924,10 @@ self.addEventListener('notificationclick', (event) => {
           dob: dob || '',
           country: country || 'Israel',
           lang: language || 'he',
-          loyaltyProgram: loyaltyProgram ?? true,
-          reminders: reminders ?? true,
-          marketing: marketing ?? true,
-          pushNotifications: pushNotifications ?? true,
+          loyaltyProgram: loyaltyProgram ?? false,
+          reminders: reminders ?? false,
+          marketing: marketing ?? false,
+          pushNotifications: pushNotifications ?? false,
           acceptedTerms: acceptedTerms ?? true,
           consentTimestamp: consentTimestamp || now,
           loyaltyTier: "New Member",
