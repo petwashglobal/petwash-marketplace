@@ -1,0 +1,1734 @@
+Security and Privacy Scanner
+Beta
+Run a scan to check for potential security risks and privacy leaks in your application. Scans are typically complete within minutes. Learn more
+151 potential vulnerabilities found.
+Last ran on
+ 
+6:01 pm, Apr 02, 2026
+Security
+Outdated dependencies have known vulnerabilities
+There are dependencies that have vulnerabilities and may need to be updated.
+These dependencies can be updated automatically.
+picomatch@2.3.1 -> 2.3.2
+picomatch@4.0.3 -> 4.0.4
+node-forge@1.3.3 -> 1.4.0
+node-forge@1.3.3 -> 1.4.0
+node-forge@1.3.3 -> 1.4.0
+node-forge@1.3.3 -> 1.4.0
+path-to-regexp@0.1.12 -> 0.1.13
+path-to-regexp@8.3.0 -> 8.4.0
+Security
+Generic Secret detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Generic Secret detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+.replit
+PASS_TOKEN_SECRET = "7DGDptGodOwdoNR7N3Q17w6DnFtS0aPizTwd34ZSaD511VB4VLCt7E84VHBTajkO"
+Security
+A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+.replit
+PASS_TOKEN_SECRET = "7DGDptGodOwdoNR7N3Q17w6DnFtS0aPizTwd34ZSaD511VB4VLCt7E84VHBTajkO"
+Security
+A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+client/src/pages/AdminCoupons.tsx
+  { key: 'loyalty_5_pct',  label: 'נאמנות 5%' },
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+scripts/backup-to-google-cloud-storage.ts
+        const data = await db.execute(sql.raw(`SELECT * FROM ${tableName}`));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+scripts/complete-backup-and-test.ts
+        const data = await db.execute(sql.raw(`SELECT * FROM ${tableName}`));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+scripts/migrate-bookings-to-requests.ts
+  const { rows: oldBookings } = await pool.query(`
+    SELECT
+      b.id,
+      b.booking_number,
+      b.user_id        AS owner_id,
+      p.user_id        AS provider_uid,
+      b.service_type,
+      b.start_time,
+      b.end_time,
+      b.status,
+      b.subtotal,
+      b.platform_fee,
+      b.provider_payout,
+      b.total,
+      b.currency,
+      b.payout_status,
+      b.payout_date,
+      b.special_requests,
+      b.cancellation_reason,
+      b.confirmed_at,
+      b.started_at,
+      b.completed_at,
+      b.cancelled_at,
+      b.created_at
+    FROM bookings b
+    LEFT JOIN providers p ON p.id::text = b.provider_id
+    ORDER BY b.created_at ASC
+  `);
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+scripts/migrate-bookings-to-requests.ts
+  const { rows: existingRefs } = await pool.query(
+    `SELECT request_id FROM booking_requests`,
+  );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+scripts/migrate-bookings-to-requests.ts
+    const { rows: [afterCount] } = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM booking_requests`,
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    const r = await db.execute(sql.raw(`
+      SELECT tm.role
+      FROM case_assignments ca
+      JOIN team_members tm ON tm.user_uid = ca.assigned_to_uid
+      WHERE ca.case_type   = '${safe(caseType)}'
+        AND ca.case_ref_id = '${safe(caseRefId)}'
+        AND ca.is_active   = true
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    const r = await db.execute(sql.raw(`
+      SELECT assigned_to_uid FROM case_assignments
+      WHERE case_type = '${safe(caseType)}' AND case_ref_id = '${safe(caseRefId)}' AND is_active = true
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+  await db.execute(sql.raw(`
+    UPDATE case_assignments SET is_active = false
+    WHERE case_type = '${safe(caseType)}' AND case_ref_id = '${safe(caseRefId)}' AND is_active = true
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+  await db.execute(sql.raw(`
+    INSERT INTO case_assignments
+      (case_type, case_ref_id, assigned_to_uid, assigned_by_uid, note, is_active)
+    VALUES (
+      '${safe(caseType)}',
+      '${safe(caseRefId)}',
+      '${safe(toUid)}',
+      'system',
+      'Auto-escalated: SLA of ${slaBudgetHours}h exceeded at ${Math.round(ageHours)}h',
+      true
+    )
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+  await db.execute(sql.raw(`
+    INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
+    VALUES (
+      '${safe(caseType)}',
+      '${safe(caseRefId)}',
+      'auto_escalated',
+      ${fromUid ? `'${safe(fromUid)}'` : 'NULL'},
+      '${safe(toUid)}',
+      'SLA ${slaBudgetHours}h exceeded — auto-escalated at ${Math.round(ageHours)}h'
+    )
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+  await db.execute(sql.raw(`
+    UPDATE case_sla_states
+    SET escalated_at = NOW(), escalated_to_uid = '${safe(toUid)}'
+    WHERE case_type = '${safe(caseType)}' AND case_ref_id = '${safe(caseRefId)}'
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    const prev = await db.execute(sql.raw(`
+      SELECT sla_status, escalated_at
+      FROM case_sla_states
+      WHERE case_type = '${safe(caseType)}' AND case_ref_id = '${safe(caseRefId)}'
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_sla_states
+        (case_type, case_ref_id, sla_status, sla_budget_hours, age_hours, breach_detected_at, checked_at)
+      VALUES (
+        '${safe(caseType)}', '${safe(caseRefId)}', '${slaStatus}',
+        ${slaBudgetHours}, ${Math.round(ageHours * 100) / 100},
+        ${slaStatus === 'breached' ? 'NOW()' : 'NULL'},
+        NOW()
+      )
+      ON CONFLICT (case_type, case_ref_id) DO UPDATE SET
+        sla_status       = EXCLUDED.sla_status,
+        sla_budget_hours = EXCLUDED.sla_budget_hours,
+        age_hours        = EXCLUDED.age_hours,
+        breach_detected_at = CASE
+          WHEN case_sla_states.breach_detected_at IS NULL AND EXCLUDED.sla_status = 'breached'
+          THEN NOW()
+          ELSE case_sla_states.breach_detected_at
+        END,
+        checked_at = NOW()
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+      await db.execute(sql.raw(`
+        INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, note)
+        VALUES (
+          '${safe(caseType)}', '${safe(caseRefId)}', 'sla_breached',
+          'SLA ${slaBudgetHours}h exceeded at ${Math.round(ageHours)}h'
+        )
+      `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    const dRows = await db.execute(sql.raw(`
+      SELECT
+        bd.id::text                                                     AS case_ref_id,
+        EXTRACT(EPOCH FROM (NOW() - bd.created_at)) / 3600             AS age_hours,
+        CASE WHEN bd.status = 'under_review' THEN ${SLA.DISPUTE_UNDER_REVIEW}
+             ELSE ${SLA.DISPUTE_OPEN} END                              AS sla_budget_hours
+      FROM booking_disputes bd
+      WHERE bd.status IN ('open', 'under_review')
+      LIMIT 2000
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    const mRows = await db.execute(sql.raw(`
+      SELECT
+        'mismatch-' || ss.id::text                                     AS case_ref_id,
+        EXTRACT(EPOCH FROM (NOW() - ss.created_at)) / 3600             AS age_hours,
+        ${SLA.MISMATCH}                                                AS sla_budget_hours
+      FROM station_settlements ss
+      WHERE ss.total_amount_cents
+              != (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents, 0))
+      LIMIT 2000
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/jobs/sla-monitor.ts
+    const rRows = await db.execute(sql.raw(`
+      SELECT
+        'refund-' || b.id::text                                        AS case_ref_id,
+        EXTRACT(EPOCH FROM (NOW() - b.refund_requested_at)) / 3600    AS age_hours,
+        ${SLA.REFUND}                                                  AS sla_budget_hours
+      FROM bookings b
+      WHERE b.refund_status IN ('pending', 'processing')
+        AND b.refund_requested_at IS NOT NULL
+      LIMIT 2000
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/lib/policy-engine.ts
+  const r = await db.execute(sql.raw(`
+    SELECT id, policy_type, name, case_types, conditions, actions, priority, scope_type, scope_id
+    FROM governance_policies
+    WHERE 1=1
+      ${activeFilter}
+      ${typeFilter}
+    ORDER BY priority ASC, id ASC
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/lib/policy-engine.ts
+            await db.execute(sql.raw(`
+              INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+              VALUES (
+                '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
+                'system', 'system',
+                '[Policy: ${safe(policy.name)}] ${noteText}'
+              )
+            `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/lib/policy-engine.ts
+            await db.execute(sql.raw(`
+              INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, note)
+              VALUES (
+                '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
+                'auto_escalated',
+                '[Policy: ${safe(policy.name)}] ${msg}'
+              )
+            `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/lib/policy-engine.ts
+        await db.execute(sql.raw(`
+          INSERT INTO policy_executions
+            (policy_id, case_type, case_ref_id, trigger_event, actions_taken, why_matched)
+          VALUES (
+            ${policy.policyId},
+            '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
+            '${safe(triggerEvent)}',
+            '${safe(JSON.stringify(actionsTaken))}',
+            '${whyJson}'::jsonb
+          )
+        `));
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/middleware/firebase-auth.ts
+  const bypassHeader = req.headers['x-test-user-bypass'] as string | undefined;
+  if (bypassHeader === 'playwright-test') {
+    const uid = (req.headers['x-test-user-id'] as string) || 'playwright-test-user';
+    const role = (req.headers['x-test-role'] as string) || 'customer';
+    logger.debug('[firebase-auth] DEV: playwright-test bypass accepted', { uid, role });
+    return { uid, email: `${uid}@test.local`, email_verified: true, claims: { role } };
+  }
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/admin-paw-finder.ts
+    const { rows } = await pool.query(
+      `SELECT p.*,
+              (SELECT m.file_path FROM paw_finder_media m WHERE m.post_id = p.id ORDER BY id LIMIT 1) AS primary_media,
+              (SELECT json_agg(row_to_json(me.*) ORDER BY me.created_at DESC)
+               FROM paw_finder_moderation_events me WHERE me.post_id = p.id) AS moderation_history
+       FROM paw_finder_posts p
+       WHERE p.status IN ('pending_review','draft')
+          OR p.moderation_status IN ('flagged','blocked')
+       ORDER BY p.updated_at DESC
+       LIMIT 200`,
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/admin-paw-finder.ts
+      pool.query(`
+        SELECT
+          COUNT(*)::int                                             AS total_posts,
+          COUNT(*) FILTER (WHERE status = 'published')::int        AS published,
+          COUNT(*) FILTER (WHERE status = 'matched')::int          AS matched,
+          COUNT(*) FILTER (WHERE status = 'resolved')::int         AS resolved,
+          COUNT(*) FILTER (WHERE status = 'pending_review')::int   AS pending_review,
+          COUNT(*) FILTER (WHERE status = 'rejected')::int         AS rejected,
+          COUNT(*) FILTER (WHERE post_type = 'lost')::int          AS lost_posts,
+          COUNT(*) FILTER (WHERE post_type = 'found')::int         AS found_posts,
+          COUNT(*) FILTER (WHERE moderation_status = 'flagged')::int AS flagged,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS posts_last_7d
+        FROM paw_finder_posts
+      `),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/admin-paw-finder.ts
+      pool.query(`
+        SELECT
+          COUNT(*)::int                                             AS total_matches,
+          COUNT(*) FILTER (WHERE status = 'confirmed')::int        AS confirmed_matches,
+          COUNT(*) FILTER (WHERE status = 'resolved')::int         AS resolved_matches,
+          ROUND(AVG(similarity_score), 1)                          AS avg_similarity_score
+        FROM paw_finder_matches
+      `),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/admin-paw-finder.ts
+      pool.query(`
+        SELECT city, COUNT(*)::int AS post_count
+        FROM paw_finder_posts WHERE status NOT IN ('rejected','archived')
+        GROUP BY city ORDER BY post_count DESC LIMIT 10
+      `),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/admin-paw-finder.ts
+      pool.query(`
+        SELECT event_name, COUNT(*)::int AS cnt
+        FROM paw_finder_events
+        WHERE created_at > NOW() - INTERVAL '24 hours'
+        GROUP BY event_name ORDER BY cnt DESC
+      `),
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/booking-trace.ts
+    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+      (req as any).callerRole = 'admin' as CallerRole;
+      (req as any).callerUid  = null;
+      return next();
+    }
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/case-actions.ts
+    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+      (req as any).callerCtx = { role: 'admin', uid: null, franchiseIds: [], stationIds: [] } as CallerContext;
+      return next();
+    }
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const r = await db.execute(sql.raw(`
+      SELECT
+        tm.user_uid,
+        COUNT(ca.id)::int AS active_count
+      FROM team_members tm
+      LEFT JOIN case_assignments ca
+        ON ca.assigned_to_uid = tm.user_uid AND ca.is_active = true
+      WHERE tm.team_id = ${teamId}
+      GROUP BY tm.user_uid
+      ORDER BY active_count ASC
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+  await db.execute(sql.raw(`
+    UPDATE case_assignments
+    SET is_active = false
+    WHERE case_type = '${safe(caseType)}'
+      AND case_ref_id = '${safe(caseRefId)}'
+      AND is_active = true
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+  await db.execute(sql.raw(`
+    INSERT INTO case_assignments
+      (case_type, case_ref_id, assigned_to_uid, assigned_team_id, assigned_by_uid, note, network_scope, is_active)
+    VALUES (
+      '${safe(caseType)}',
+      '${safe(caseRefId)}',
+      ${uidCol},
+      ${teamCol},
+      ${byCol},
+      ${noteCol},
+      ${scopeCol},
+      true
+    )
+  `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT
+        ca.id,
+        ca.case_type,
+        ca.case_ref_id,
+        ca.assigned_to_uid,
+        ca.assigned_team_id,
+        ca.assigned_by_uid,
+        ca.note,
+        ca.network_scope,
+        ca.assigned_at,
+        t.name AS team_name
+      FROM case_assignments ca
+      LEFT JOIN teams t ON t.id = ca.assigned_team_id
+      WHERE ca.is_active = true
+        AND (
+          (ca.case_type = 'dispute' AND EXISTS (
+            SELECT 1 FROM booking_disputes bd
+            JOIN bookings b ON b.id = bd.booking_id
+            LEFT JOIN stations st ON st.id = b.station_id
+            WHERE bd.id::text = ca.case_ref_id ${scope}
+          ))
+          OR
+          (ca.case_type = 'mismatch' AND EXISTS (
+            SELECT 1 FROM station_settlements ss
+            LEFT JOIN stations st ON st.id = ss.station_id
+            WHERE 'mismatch-' || ss.id::text = ca.case_ref_id ${scope}
+          ))
+          OR
+          (ca.case_type = 'refund' AND EXISTS (
+            SELECT 1 FROM bookings b
+            LEFT JOIN stations st ON st.id = b.station_id
+            WHERE 'refund-' || b.id = ca.case_ref_id ${scope}
+          ))
+        )
+      ORDER BY ca.assigned_at DESC
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      UPDATE case_assignments
+      SET is_active = false
+      WHERE case_type = '${safe(caseType)}'
+        AND case_ref_id = '${safe(caseRefId)}'
+        AND is_active = true
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const result = await db.execute(sql.raw(`
+      INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+      VALUES (
+        '${safe(caseType)}',
+        '${safe(caseRefId)}',
+        '${safe(callerUid)}',
+        '${safe(callerRole)}',
+        '${safe(text)}'
+      )
+      RETURNING id, created_at
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT id, author_uid, author_role, note_text, created_at
+      FROM case_notes
+      WHERE case_type   = '${safe(caseType)}'
+        AND case_ref_id = '${safe(caseRefId)}'
+      ORDER BY created_at ASC
+      LIMIT 200
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_sla_states (case_type, case_ref_id, last_action_at)
+      VALUES ('${safe(caseType)}', '${safe(caseRefId)}', NOW())
+      ON CONFLICT (case_type, case_ref_id) DO UPDATE SET last_action_at = NOW()
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const codeR = await db.execute(sql.raw(`
+      SELECT code FROM resolution_codes WHERE code = '${safe(closureReasonCode)}' LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      UPDATE booking_disputes
+      SET closure_requested     = true,
+          closure_reason_code   = '${safe(closureReasonCode)}',
+          closure_requested_at  = NOW()
+      WHERE id::text = '${disputeId}'
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+      VALUES ('dispute', '${disputeId}',
+        '${safe(ctx.uid ?? 'system')}',
+        '${safe(ctx.role)}',
+        '${safe(`CLOSURE REQUESTED [${closureReasonCode}]: ${noteText}`)}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+      await db.execute(sql.raw(`
+        UPDATE booking_disputes
+        SET status           = 'closed',
+            closure_approved = true,
+            resolved_at      = NOW(),
+            resolved_by      = 'system_governance'
+        WHERE id::text = '${safe(disputeId)}'
+      `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+      await db.execute(sql.raw(`
+        INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+        VALUES ('dispute', '${safe(disputeId)}', 'system', 'system',
+          '${safe(`AUTO-APPROVED: ${govResult.message ?? 'Governance policy auto-close'}`)}')
+      `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+      await db.execute(sql.raw(`
+        UPDATE booking_disputes
+        SET second_approval_required = true
+        WHERE id::text = '${safe(disputeId)}'
+      `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+      await db.execute(sql.raw(`
+        INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+        VALUES ('dispute', '${safe(disputeId)}', 'system', 'system',
+          '${safe(`LEVEL-2 REQUIRED: ${govResult.message ?? 'Franchise owner must approve this closure'}`)}')
+      `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+      await db.execute(sql.raw(`
+        UPDATE booking_disputes
+        SET second_approval_by = '${safe(ctx.uid ?? 'admin')}',
+            second_approved_at = NOW()
+        WHERE id::text = '${disputeId}'
+      `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      UPDATE booking_disputes
+      SET status = 'closed',
+          closure_approved = true,
+          resolved_at      = NOW(),
+          resolved_by      = '${safe(ctx.uid ?? 'admin')}'
+      WHERE id::text = '${disputeId}'
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
+      VALUES ('dispute', '${disputeId}', 'auto_escalated',
+        '${safe(ctx.uid ?? 'admin')}', NULL,
+        'Closure approved by manager')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+      VALUES ('dispute', '${disputeId}',
+        '${safe(ctx.uid ?? 'system')}',
+        '${safe(ctx.role)}',
+        '${safe(`CLOSURE APPROVED: ${noteText}`)}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      UPDATE booking_disputes
+      SET closure_requested   = false,
+          closure_reason_code = NULL
+      WHERE id::text = '${disputeId}'
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+      VALUES ('dispute', '${disputeId}',
+        '${safe(ctx.uid ?? 'system')}',
+        '${safe(ctx.role)}',
+        '${safe(`CLOSURE REJECTED: ${noteText}`)}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const codeR = await db.execute(sql.raw(`
+      SELECT code FROM reopen_codes WHERE code = '${safe(reopenCode)}' LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      UPDATE booking_disputes
+      SET status = 'open',
+          resolved_at = NULL,
+          resolved_by = NULL,
+          closure_requested   = false,
+          closure_approved    = false,
+          closure_reason_code = NULL
+      WHERE id::text = '${disputeId}'
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_sla_states (case_type, case_ref_id, sla_status, breach_detected_at, escalated_at, escalated_to_uid, last_action_at)
+      VALUES ('dispute', '${disputeId}', 'within_sla', NULL, NULL, NULL, NOW())
+      ON CONFLICT (case_type, case_ref_id) DO UPDATE SET
+        sla_status         = 'within_sla',
+        breach_detected_at = NULL,
+        escalated_at       = NULL,
+        escalated_to_uid   = NULL,
+        last_action_at     = NOW(),
+        checked_at         = NOW()
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    const foR = await db.execute(sql.raw(`
+      SELECT fo.owner_user_id
+      FROM franchise_owners fo
+      JOIN stations st ON st.franchise_id = fo.id
+      JOIN bookings b ON b.station_id = st.id
+      WHERE b.id = '${safe(bookingId)}' AND fo.status = 'active'
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
+      VALUES (
+        'dispute', '${disputeId}', 'reopened',
+        ${ctx.uid ? `'${safe(ctx.uid)}'` : 'NULL'},
+        ${assignTo ? `'${safe(assignTo)}'` : 'NULL'},
+        '${safe(`Reopened [${reopenCode}]${noteText ? ': ' + noteText : ''}`)}'
+      )
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+    await db.execute(sql.raw(`
+      INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+      VALUES ('dispute', '${disputeId}',
+        '${safe(ctx.uid ?? 'system')}',
+        '${safe(ctx.role)}',
+        '${safe(fullNote)}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+          await db.execute(sql.raw(`
+            UPDATE case_assignments SET is_active = false
+            WHERE case_type = '${safe(caseType)}' AND case_ref_id = '${safe(caseRefId)}' AND is_active = true
+          `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+          await db.execute(sql.raw(`
+            UPDATE booking_disputes SET status = 'under_review'
+            WHERE id::text = '${safe(caseRefId)}' AND status = 'open'
+          `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+            await db.execute(sql.raw(`
+              UPDATE booking_disputes
+              SET status = 'closed', resolved_at = NOW(),
+                  closure_approved = true,
+                  resolved_by = '${safe(callerUid ?? 'admin')}'
+              WHERE id::text = '${safe(caseRefId)}' AND status NOT IN ('resolved')
+            `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-actions.ts
+            await db.execute(sql.raw(`
+              UPDATE booking_disputes
+              SET closure_requested = true
+              WHERE id::text = '${safe(caseRefId)}' AND status NOT IN ('closed','resolved')
+                AND closure_requested = false
+            `));
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/case-queue.ts
+    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+      (req as any).callerCtx = { role: 'admin', uid: null, franchiseIds: [], stationIds: [] } as CallerContext;
+      return next();
+    }
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT
+        bd.id                                                          AS dispute_id,
+        bd.reason,
+        bd.description,
+        bd.status,
+        bd.admin_notes,
+        bd.resolved_by,
+        bd.resolved_at,
+        bd.created_at,
+        COALESCE(bd.closure_requested, false)                          AS closure_requested,
+        COALESCE(bd.closure_approved,  false)                         AS closure_approved,
+        bd.closure_reason_code,
+        b.id                                                           AS booking_id,
+        b.booking_number,
+        b.total::float                                                 AS total,
+        b.currency,
+        b.refund_status,
+        st.id                                                          AS station_id,
+        st.name                                                        AS station_name,
+        COALESCE(st.station_code, '')                                  AS station_code,
+        EXTRACT(EPOCH FROM (NOW() - bd.created_at)) / 3600            AS age_hours
+      FROM booking_disputes bd
+      JOIN bookings b  ON b.id  = bd.booking_id
+      LEFT JOIN stations st ON st.id = b.station_id
+      WHERE bd.status IN ('open', 'under_review')
+        ${scope}
+      ORDER BY bd.created_at ASC
+      LIMIT 500
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT
+        ss.id                                                          AS settlement_id,
+        ss.status                                                      AS settlement_status,
+        ss.total_amount_cents,
+        ss.platform_amount_cents,
+        ss.station_amount_cents,
+        COALESCE(ss.franchise_amount_cents, 0)                        AS franchise_amount_cents,
+        ss.settled_at,
+        ss.created_at,
+        b.id                                                           AS booking_id,
+        b.booking_number,
+        b.currency,
+        st.id                                                          AS station_id,
+        st.name                                                        AS station_name,
+        COALESCE(st.station_code, '')                                  AS station_code,
+        ABS(
+          ss.total_amount_cents
+          - (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents, 0))
+        )                                                              AS mismatch_cents,
+        EXTRACT(EPOCH FROM (NOW() - ss.created_at)) / 3600            AS age_hours
+      FROM station_settlements ss
+      JOIN bookings b  ON b.id  = ss.booking_id
+      LEFT JOIN stations st ON st.id = ss.station_id
+      WHERE ss.total_amount_cents
+              != (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents, 0))
+        ${scope}
+      ORDER BY mismatch_cents DESC, ss.created_at ASC
+      LIMIT 500
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT
+        b.id                                                           AS booking_id,
+        b.booking_number,
+        b.refund_amount::float                                         AS refund_amount,
+        b.refund_amount_cents,
+        b.refund_status,
+        b.refund_reason,
+        b.refund_requested_at,
+        b.refund_processed_at,
+        b.total::float                                                 AS total,
+        b.currency,
+        st.id                                                          AS station_id,
+        st.name                                                        AS station_name,
+        COALESCE(st.station_code, '')                                  AS station_code,
+        EXTRACT(EPOCH FROM (NOW() - b.refund_requested_at)) / 3600    AS age_hours
+      FROM bookings b
+      LEFT JOIN stations st ON st.id = b.station_id
+      WHERE b.refund_status IN ('pending', 'processing')
+        AND b.refund_requested_at IS NOT NULL
+        ${scope}
+      ORDER BY b.refund_requested_at ASC
+      LIMIT 500
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+      db.execute(sql.raw(`
+        SELECT
+          COUNT(*)                                                        AS total,
+          COUNT(*) FILTER (WHERE
+            (bd.status = 'open'         AND EXTRACT(EPOCH FROM (NOW()-bd.created_at))/3600 >= 48) OR
+            (bd.status = 'under_review' AND EXTRACT(EPOCH FROM (NOW()-bd.created_at))/3600 >= 72)
+          )                                                               AS breached,
+          COUNT(*) FILTER (WHERE
+            (bd.status = 'open'         AND EXTRACT(EPOCH FROM (NOW()-bd.created_at))/3600 >= 38.4) OR
+            (bd.status = 'under_review' AND EXTRACT(EPOCH FROM (NOW()-bd.created_at))/3600 >= 57.6)
+          )                                                               AS at_risk_or_breached
+        FROM booking_disputes bd
+        JOIN bookings b ON b.id = bd.booking_id
+        LEFT JOIN stations st ON st.id = b.station_id
+        WHERE bd.status IN ('open', 'under_review')
+          ${scope}
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+      db.execute(sql.raw(`
+        SELECT
+          COUNT(*)                                                        AS total,
+          COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW()-ss.created_at))/3600 >= 24) AS breached,
+          COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW()-ss.created_at))/3600 >= 19.9) AS at_risk_or_breached
+        FROM station_settlements ss
+        JOIN bookings b ON b.id = ss.booking_id
+        LEFT JOIN stations st ON st.id = ss.station_id
+        WHERE ss.total_amount_cents != (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents, 0))
+          ${scope}
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+      db.execute(sql.raw(`
+        SELECT
+          COUNT(*)                                                        AS total,
+          COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW()-b.refund_requested_at))/3600 >= 120) AS breached,
+          COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW()-b.refund_requested_at))/3600 >= 96) AS at_risk_or_breached
+        FROM bookings b
+        LEFT JOIN stations st ON st.id = b.station_id
+        WHERE b.refund_status IN ('pending', 'processing')
+          AND b.refund_requested_at IS NOT NULL
+          ${scope}
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+    const dRows = await db.execute(sql.raw(`
+      SELECT
+        'dispute'                                                       AS case_type,
+        bd.id::text                                                     AS case_ref_id,
+        b.id                                                            AS booking_id,
+        b.booking_number,
+        b.total::float                                                  AS amount,
+        b.currency,
+        st.id                                                           AS station_id,
+        st.name                                                         AS station_name,
+        COALESCE(st.station_code, '')                                   AS station_code,
+        bd.reason                                                       AS label,
+        bd.status,
+        css.age_hours,
+        css.sla_budget_hours,
+        css.breach_detected_at,
+        css.escalated_at,
+        css.escalated_to_uid,
+        (css.age_hours - css.sla_budget_hours)                         AS overdue_hours,
+        ca.assigned_to_uid,
+        bd.created_at                                                   AS opened_at
+      FROM booking_disputes bd
+      JOIN bookings b ON b.id = bd.booking_id
+      LEFT JOIN stations st ON st.id = b.station_id
+      JOIN case_sla_states css
+        ON css.case_type = 'dispute' AND css.case_ref_id = bd.id::text
+      LEFT JOIN case_assignments ca
+        ON ca.case_type = 'dispute' AND ca.case_ref_id = bd.id::text AND ca.is_active = true
+      WHERE css.sla_status = 'breached'
+        AND bd.status NOT IN ('resolved', 'rejected', 'closed')
+        ${scope}
+      LIMIT 500
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+    const mRows = await db.execute(sql.raw(`
+      SELECT
+        'mismatch'                                                      AS case_type,
+        'mismatch-' || ss.id::text                                     AS case_ref_id,
+        b.id                                                            AS booking_id,
+        b.booking_number,
+        ABS(ss.total_amount_cents - (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents,0)))::float / 100 AS amount,
+        b.currency,
+        st.id                                                           AS station_id,
+        st.name                                                         AS station_name,
+        COALESCE(st.station_code, '')                                   AS station_code,
+        'Settlement mismatch'                                           AS label,
+        ss.status,
+        css.age_hours,
+        css.sla_budget_hours,
+        css.breach_detected_at,
+        css.escalated_at,
+        css.escalated_to_uid,
+        (css.age_hours - css.sla_budget_hours)                         AS overdue_hours,
+        ca.assigned_to_uid,
+        ss.created_at                                                   AS opened_at
+      FROM station_settlements ss
+      JOIN bookings b ON b.id = ss.booking_id
+      LEFT JOIN stations st ON st.id = ss.station_id
+      JOIN case_sla_states css
+        ON css.case_type = 'mismatch' AND css.case_ref_id = 'mismatch-' || ss.id::text
+      LEFT JOIN case_assignments ca
+        ON ca.case_type = 'mismatch' AND ca.case_ref_id = 'mismatch-' || ss.id::text AND ca.is_active = true
+      WHERE css.sla_status = 'breached'
+        ${scope}
+      LIMIT 500
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/case-queue.ts
+    const rRows = await db.execute(sql.raw(`
+      SELECT
+        'refund'                                                        AS case_type,
+        'refund-' || b.id::text                                        AS case_ref_id,
+        b.id                                                            AS booking_id,
+        b.booking_number,
+        b.refund_amount::float                                          AS amount,
+        b.currency,
+        st.id                                                           AS station_id,
+        st.name                                                         AS station_name,
+        COALESCE(st.station_code, '')                                   AS station_code,
+        COALESCE(b.refund_reason, 'Refund request')                    AS label,
+        b.refund_status                                                 AS status,
+        css.age_hours,
+        css.sla_budget_hours,
+        css.breach_detected_at,
+        css.escalated_at,
+        css.escalated_to_uid,
+        (css.age_hours - css.sla_budget_hours)                         AS overdue_hours,
+        ca.assigned_to_uid,
+        b.refund_requested_at                                           AS opened_at
+      FROM bookings b
+      LEFT JOIN stations st ON st.id = b.station_id
+      JOIN case_sla_states css
+        ON css.case_type = 'refund' AND css.case_ref_id = 'refund-' || b.id::text
+      LEFT JOIN case_assignments ca
+        ON ca.case_type = 'refund' AND ca.case_ref_id = 'refund-' || b.id::text AND ca.is_active = true
+      WHERE css.sla_status = 'breached'
+        AND b.refund_status IN ('pending', 'processing')
+        ${scope}
+      LIMIT 500
+    `));
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/case-reports.ts
+    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+      (req as any).callerRole = 'admin';
+      return next();
+    }
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/coupons.ts
+        `INSERT INTO notification_preferences (user_id, ${colName}, push_device_permission_status, updated_at)
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/coupons.ts
+        `INSERT INTO notification_preferences (user_id, ${colName}, updated_at)
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/coupons.ts
+    const rows = await pool.query(`
+      SELECT c.*,
+        (SELECT COUNT(*) FROM coupon_redemptions cr WHERE cr.coupon_id = c.id AND cr.cancelled_at IS NULL) AS redemption_count,
+        (SELECT COUNT(*) FROM coupon_eligibility_rules cer WHERE cer.coupon_id = c.id)                     AS rule_count,
+        (SELECT COUNT(*) FROM coupon_issuances ci WHERE ci.coupon_id = c.id)                               AS issuance_count
+      FROM coupons c ORDER BY c.created_at DESC LIMIT 200
+    `);
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/coupons.ts
+      await pool.query(`UPDATE coupons SET ${setClauses} WHERE id = $1`, [coupon.id, ...Object.values(extra)]);
+Security
+Bracket object notation with user input is present, this might allow an attacker to access all properties of the object and even it's prototype. Use literal values for object properties.
+Bracket object notation with user input is present, this might allow an attacker to access all properties of the object and even it's prototype. Use literal values for object properties.
+server/routes/coupons.ts
+    if (req.body[camel] !== undefined) updates[key] = req.body[camel];
+Security
+Bracket object notation with user input is present, this might allow an attacker to access all properties of the object and even it's prototype. Use literal values for object properties.
+Bracket object notation with user input is present, this might allow an attacker to access all properties of the object and even it's prototype. Use literal values for object properties.
+server/routes/coupons.ts
+    else if (req.body[key] !== undefined) updates[key] = req.body[key];
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/coupons.ts
+    await pool.query(`UPDATE coupons SET ${setClauses}, updated_at = NOW() WHERE id = $1`, [couponId, ...Object.values(updates)]);
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/enterprise-corporate.ts
+    const result = await pool.query(
+      `SELECT id, first_name, last_name, email, phone, position, bio, photo_url,
+              is_active, appointed_date, termination_date, voting_rights, equity_shares,
+              created_at, updated_at
+       FROM board_members
+       ORDER BY appointed_date ASC`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/enterprise-corporate.ts
+    const result = await pool.query(
+      `SELECT m.id, m.meeting_date, m.meeting_type, m.location, m.agenda,
+              m.minutes_document, m.status, m.created_at, m.updated_at,
+              COALESCE(
+                json_agg(json_build_object(
+                  'member_id', a.board_member_id,
+                  'name', bm.first_name || ' ' || bm.last_name,
+                  'attended', a.attended
+                )) FILTER (WHERE a.id IS NOT NULL), '[]'
+              ) AS attendees
+       FROM board_meetings m
+       LEFT JOIN board_meeting_attendees a ON a.board_meeting_id = m.id
+       LEFT JOIN board_members bm ON bm.id = a.board_member_id
+       GROUP BY m.id
+       ORDER BY m.meeting_date DESC`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+    const r = await db.execute(sql.raw(`
+      SELECT role FROM user_profiles
+      WHERE firebase_uid = '${String(decoded.uid ?? '').replace(/'/g, "''").slice(0, 200)}'
+        AND is_active = true LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT trigger_event, COUNT(*) AS fires FROM policy_executions
+        WHERE created_at >= NOW() - INTERVAL '${days} days'
+        GROUP BY trigger_event ORDER BY fires DESC
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT
+          COUNT(*) AS total_executions,
+          COUNT(DISTINCT case_ref_id) AS unique_cases,
+          SUM(CASE WHEN actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved,
+          SUM(CASE WHEN actions_taken::text LIKE '%require_approval%' THEN 1 ELSE 0 END) AS flagged_for_review
+        FROM policy_executions
+        WHERE created_at >= NOW() - INTERVAL '${days} days'
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT pe.policy_id, gp.name AS policy_name, gp.policy_type,
+               COUNT(*) AS fires,
+               SUM(CASE WHEN pe.actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved
+        FROM policy_executions pe
+        LEFT JOIN governance_policies gp ON gp.id = pe.policy_id
+        WHERE pe.created_at >= NOW() - INTERVAL '${days} days'
+        GROUP BY pe.policy_id, gp.name, gp.policy_type
+        ORDER BY fires DESC
+        LIMIT 10
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT
+          DATE(breach_detected_at) AS day,
+          case_type,
+          COUNT(*) AS breaches
+        FROM case_sla_states
+        WHERE sla_status = 'breached'
+          AND breach_detected_at IS NOT NULL
+          AND breach_detected_at >= NOW() - INTERVAL '${days} days'
+        GROUP BY DATE(breach_detected_at), case_type
+        ORDER BY day ASC
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT
+          SUM(CASE WHEN breach_detected_at >= NOW() - INTERVAL '${days} days' AND sla_status = 'breached' THEN 1 ELSE 0 END) AS current_period,
+          SUM(CASE WHEN breach_detected_at >= NOW() - INTERVAL '${days * 2} days'
+                    AND breach_detected_at <  NOW() - INTERVAL '${days} days'
+                    AND sla_status = 'breached' THEN 1 ELSE 0 END) AS prior_period
+        FROM case_sla_states WHERE breach_detected_at IS NOT NULL
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+    const policyR = await db.execute(sql.raw(`
+      SELECT id, name, policy_type, is_active, created_at FROM governance_policies WHERE id = ${policyId} LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+    const versionsR = await db.execute(sql.raw(`
+      SELECT id, version_number, change_type, changed_at, changed_by
+      FROM policy_versions WHERE policy_id = ${policyId}
+      ORDER BY version_number ASC
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT COUNT(*) AS total_fires,
+               SUM(CASE WHEN actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved,
+               SUM(CASE WHEN actions_taken::text LIKE '%require_approval%' THEN 1 ELSE 0 END) AS flagged
+        FROM policy_executions
+        WHERE policy_id = ${policyId}
+          AND created_at < '${pivotDate}'::timestamptz
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT COUNT(*) AS total_fires,
+               SUM(CASE WHEN actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved,
+               SUM(CASE WHEN actions_taken::text LIKE '%require_approval%' THEN 1 ELSE 0 END) AS flagged
+        FROM policy_executions
+        WHERE policy_id = ${policyId}
+          AND created_at >= '${pivotDate}'::timestamptz
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS resolved,
+               SUM(CASE WHEN second_approval_required = true THEN 1 ELSE 0 END) AS needed_l2
+        FROM booking_disputes
+        WHERE created_at < '${pivotDate}'::timestamptz
+          AND created_at >= '${pivotDate}'::timestamptz - INTERVAL '30 days'
+      `)),
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/executive.ts
+      db.execute(sql.raw(`
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS resolved,
+               SUM(CASE WHEN second_approval_required = true THEN 1 ELSE 0 END) AS needed_l2
+        FROM booking_disputes
+        WHERE created_at >= '${pivotDate}'::timestamptz
+          AND created_at < '${pivotDate}'::timestamptz + INTERVAL '30 days'
+      `)),
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/financial-approvals.ts
+  if (req.headers['x-admin-secret'] === process.env.ADMIN_SECRET) {
+    if (ALLOWED_MACHINE_IPS_FA.length > 0) {
+      const clientIp = getClientIpFA(req);
+      if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) return 'agent'; // fall through to token auth
+    }
+    return 'admin';
+  }
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      SELECT role FROM user_profiles
+      WHERE firebase_uid = '${String(decoded.uid ?? '').replace(/'/g, "''").slice(0, 200)}'
+        AND is_active = true
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      INSERT INTO policy_versions (policy_id, version_number, snapshot, change_type, change_note, changed_by)
+      SELECT
+        id,
+        COALESCE((SELECT MAX(version_number) FROM policy_versions WHERE policy_id = ${policyId}), 0) + 1,
+        row_to_json(governance_policies.*)::jsonb,
+        '${safe(changeType)}',
+        ${changeNote ? `'${safe(changeNote)}'` : 'NULL'},
+        '${safe(changedBy)}'
+      FROM governance_policies WHERE id = ${policyId}
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      SELECT
+        id, policy_type, name, description, case_types, conditions, actions,
+        priority, is_active, scope_type, scope_id, created_by, created_at, updated_at
+      FROM governance_policies
+      WHERE 1=1 ${typeFilter} ${activeFilter}
+      ORDER BY priority ASC, policy_type, id ASC
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      INSERT INTO governance_policies
+        (policy_type, name, description, case_types, conditions, actions, priority, scope_type, scope_id, created_by)
+      VALUES (
+        '${safe(body.policy_type)}',
+        '${safe(body.name.trim())}',
+        ${body.description ? `'${safe(String(body.description))}'` : 'NULL'},
+        '${safe(caseTypes)}'::jsonb::text::text[],
+        '${safe(conditions)}'::jsonb,
+        '${safe(actions)}'::jsonb,
+        ${priority},
+        '${scopeType}',
+        ${scopeId},
+        '${safe(actorUid)}'
+      )
+      RETURNING id
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      INSERT INTO policy_audit_log (policy_id, action, actor_uid, changes)
+      VALUES (${newId}, 'created', '${safe(actorUid)}', '${safe(JSON.stringify({ name: body.name, policyType: body.policy_type }))}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`));
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const execs = await db.execute(sql.raw(`
+      SELECT case_type, case_ref_id, trigger_event, actions_taken, why_matched, created_at
+      FROM policy_executions
+      WHERE policy_id = ${id}
+      ORDER BY created_at DESC
+      LIMIT 20
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+      const cur = await db.execute(sql.raw(`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`));
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/governance.ts
+      const cur = await db.execute(sql.raw(`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      UPDATE governance_policies SET ${setParts.join(', ')} WHERE id = ${id} RETURNING id
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      INSERT INTO policy_audit_log (policy_id, action, actor_uid, changes)
+      VALUES (${id}, 'updated', '${safe(actorUid)}', '${safe(JSON.stringify(body))}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      UPDATE governance_policies SET is_active = false, updated_at = NOW()
+      WHERE id = ${id} RETURNING id
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      INSERT INTO policy_audit_log (policy_id, action, actor_uid)
+      VALUES (${id}, 'deactivated', '${safe(actorUid)}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      UPDATE governance_policies SET is_active = true, updated_at = NOW()
+      WHERE id = ${id} RETURNING id
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      INSERT INTO policy_audit_log (policy_id, action, actor_uid)
+      VALUES (${id}, 'activated', '${safe(actorUid)}')
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      SELECT
+        pe.id, pe.policy_id, gp.name AS policy_name, gp.policy_type,
+        pe.case_type, pe.case_ref_id, pe.trigger_event,
+        pe.actions_taken, pe.why_matched, pe.created_at
+      FROM policy_executions pe
+      LEFT JOIN governance_policies gp ON gp.id = pe.policy_id
+      ${whereClause}
+      ORDER BY pe.created_at DESC
+      LIMIT ${limitN}
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      SELECT
+        pe.id, pe.policy_id, gp.name AS policy_name, gp.policy_type, gp.priority,
+        pe.trigger_event, pe.actions_taken, pe.why_matched, pe.created_at
+      FROM policy_executions pe
+      LEFT JOIN governance_policies gp ON gp.id = pe.policy_id
+      WHERE pe.case_type = '${caseType}' AND pe.case_ref_id = '${caseRefId}'
+      ORDER BY pe.created_at ASC
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const r = await db.execute(sql.raw(`
+      SELECT id, version_number, change_type, change_note, changed_by, changed_at,
+             snapshot
+      FROM policy_versions
+      WHERE policy_id = ${id}
+      ORDER BY version_number DESC
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    const vr = await db.execute(sql.raw(`
+      SELECT snapshot, version_number FROM policy_versions
+      WHERE id = ${versionId} AND policy_id = ${id}
+      LIMIT 1
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      UPDATE governance_policies SET
+        policy_type = '${safe(String(snapshot.policy_type ?? ''))}',
+        name        = '${safe(String(snapshot.name ?? ''))}',
+        description = ${snapshot.description ? `'${safe(String(snapshot.description))}'` : 'NULL'},
+        case_types  = '${ctStr}'::jsonb::text::text[],
+        conditions  = '${condStr}'::jsonb,
+        actions     = '${actStr}'::jsonb,
+        priority    = ${Math.min(Math.max(1, toNum(snapshot.priority ?? 100)), 999)},
+        scope_type  = '${safe(String(snapshot.scope_type ?? 'global'))}',
+        is_active   = ${Boolean(snapshot.is_active)},
+        updated_at  = NOW()
+      WHERE id = ${id}
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/governance.ts
+    await db.execute(sql.raw(`
+      INSERT INTO policy_audit_log (policy_id, action, actor_uid, changes)
+      VALUES (${id}, 'rolled_back', '${safe(actorUid)}',
+        '${safe(JSON.stringify({ fromVersion: snap.version_number }))}')
+    `));
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/kyc.ts
+          logger.warn(`[KYC] Failed to delete ${filePath} on approve:`, delErr);
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/kyc.ts
+          logger.warn(`[KYC] Failed to delete ${filePath} on reject:`, delErr);
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/kyc.ts
+    logger.info(`KYC delete authorized for user ${uid} by ${isSelfDelete ? 'self' : 'admin'} ${authenticatedUid}`);
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/kyc.ts
+          logger.error(`Failed to delete file ${path}:`, error);
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/manager.ts
+    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+      (req as any).callerRole = 'admin';
+      return next();
+    }
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/matching-ws.ts
+      const rows = await pool.query(`
+        SELECT walker_id AS id,
+               COALESCE(display_name, first_name || ' ' || last_name) AS name,
+               COALESCE(average_rating, 0)   AS rating,
+               COALESCE(total_reviews, 0)    AS review_count,
+               profile_photo_url             AS image,
+               city                          AS location_hint
+        FROM walker_profiles
+        WHERE verification_status = 'verified'
+          AND is_accepting_bookings = true
+        ORDER BY average_rating DESC NULLS LAST
+        LIMIT 1
+      `);
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/matching-ws.ts
+      const rows = await pool.query(`
+        SELECT id::text,
+               COALESCE(display_name, business_name, first_name || ' ' || last_name) AS name,
+               COALESCE(average_rating, 0)  AS rating,
+               COALESCE(total_reviews, 0)   AS review_count,
+               profile_photo_url            AS image,
+               city                         AS location_hint
+        FROM sitter_profiles
+        WHERE verification_status = 'verified'
+          AND is_accepting_bookings = true
+        ORDER BY average_rating DESC NULLS LAST
+        LIMIT 1
+      `);
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/matching-ws.ts
+      const rows = await pool.query(`
+        SELECT id::text,
+               name,
+               COALESCE(ranking_score, 0)  AS ranking_score,
+               COALESCE(total_washes, 0)   AS total_washes,
+               photo_urls
+        FROM stations
+        WHERE is_active = true
+          AND status NOT IN ('offline','maintenance')
+        ORDER BY ranking_score DESC NULLS LAST, total_washes DESC NULLS LAST
+        LIMIT 1
+      `);
+Security
+Bracket object notation with user input is present, this might allow an attacker to access all properties of the object and even it's prototype. Use literal values for object properties.
+Bracket object notation with user input is present, this might allow an attacker to access all properties of the object and even it's prototype. Use literal values for object properties.
+server/routes/provider-console.ts
+      if (req.body[key] !== undefined) patch[key] = req.body[key];
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+server/routes/super-app-bookings.ts
+          error: `Cannot create payment intent for booking with status ${existingBooking.status}`,
+Security
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+Detected a hardcoded authentication bypass mechanism. This code checks request headers against hardcoded string literals that appear to bypass normal authentication flows. This creates a backdoor that could be exploited by attackers who discover these hardcoded values. Remove hardcoded bypass mechanisms and use Replit Secret management.
+server/routes/teams.ts
+    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+      (req as any).ctx = { role: 'admin', uid: null } as CallerCtx;
+      return next();
+    }
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/teams.ts
+    const result = await db.execute(sql.raw(`
+      INSERT INTO teams (name, type) VALUES ('${safe(name)}', '${safe(type)}')
+      RETURNING id, name, type, created_at
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/teams.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT
+        t.id, t.name, t.type,
+        tm.role AS my_role,
+        COUNT(all_members.id)::int AS member_count
+      FROM team_members tm
+      JOIN teams t ON t.id = tm.team_id
+      LEFT JOIN team_members all_members ON all_members.team_id = t.id
+      WHERE tm.user_uid = '${safe(ctx.uid)}'
+      GROUP BY t.id, t.name, t.type, tm.role
+      ORDER BY t.name
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/teams.ts
+    const rows = await db.execute(sql.raw(`
+      SELECT
+        tm.id,
+        tm.user_uid,
+        tm.role,
+        tm.created_at,
+        COUNT(ca.id)::int AS active_cases
+      FROM team_members tm
+      LEFT JOIN case_assignments ca
+        ON ca.assigned_to_uid = tm.user_uid AND ca.is_active = true
+      WHERE tm.team_id = ${teamId}
+      GROUP BY tm.id, tm.user_uid, tm.role, tm.created_at
+      ORDER BY tm.role DESC, tm.created_at ASC
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/teams.ts
+    const result = await db.execute(sql.raw(`
+      INSERT INTO team_members (team_id, user_uid, role)
+      VALUES (${teamId}, '${safe(userUid)}', '${safe(role)}')
+      ON CONFLICT (user_uid, team_id) DO UPDATE SET role = EXCLUDED.role
+      RETURNING id, user_uid, role, created_at
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/teams.ts
+    await db.execute(sql.raw(`
+      DELETE FROM team_members
+      WHERE team_id = ${teamId} AND user_uid = '${safe(uid)}'
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/routes/treasury.ts
+    const settlements = await db.execute(sql.raw(`
+      SELECT id, station_amount_cents, held_in_reserve, payout_hold_reason
+      FROM station_settlements
+      WHERE id IN (${ids.join(',')})
+    `));
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/CampaignDeliveryService.ts
+    const birthdayUsers = await pool.query(
+      `SELECT id FROM users
+       WHERE date_part('month', date_of_birth) = date_part('month', CURRENT_DATE)
+         AND date_part('day',   date_of_birth) = date_part('day',   CURRENT_DATE)
+         AND is_active = true`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/DiscountOwnershipService.ts
+    const rows = await pool.query(
+      `SELECT cdo.*, c.code AS coupon_code FROM coupon_discount_ownership cdo
+       LEFT JOIN coupons c ON c.id = cdo.coupon_id
+       ORDER BY cdo.coupon_id NULLS LAST, cdo.order_type`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/KioskCouponService.ts
+    const res = await pool.query(
+      `UPDATE kiosk_coupon_tokens SET status = 'expired'
+       WHERE status = 'pending' AND expires_at < NOW()
+       RETURNING id`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/UnifiedPricingService.ts
+    const res = await pool.query(
+      `UPDATE coupon_reservations SET status = 'expired'
+       WHERE status = 'reserved' AND expires_at < NOW()
+       RETURNING id`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/providerMonitoring.ts
+    const stuckProcessing = await pool.query(
+      `SELECT id, application_id, first_name, last_name
+         FROM provider_applications
+        WHERE status = 'processing'
+          AND updated_at < NOW() - INTERVAL '${THRESHOLDS.processing_stuck_minutes} minutes'
+          AND NOT EXISTS (
+            SELECT 1 FROM provider_workflow_events
+             WHERE application_id = provider_applications.id
+               AND event_name = 'threshold_processing_stuck'
+               AND created_at > NOW() - INTERVAL '1 hour'
+          )`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/providerMonitoring.ts
+    const overdueReview = await pool.query(
+      `SELECT id, application_id
+         FROM provider_applications
+        WHERE status = 'pending_review'
+          AND updated_at < NOW() - INTERVAL '${THRESHOLDS.pending_review_overdue_hours} hours'
+          AND NOT EXISTS (
+            SELECT 1 FROM provider_workflow_events
+             WHERE application_id = provider_applications.id
+               AND event_name = 'threshold_review_overdue'
+               AND created_at > NOW() - INTERVAL '4 hours'
+          )`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/providerMonitoring.ts
+    const expiredResubmission = await pool.query(
+      `SELECT id, application_id, email, first_name, last_name
+         FROM provider_applications
+        WHERE status = 'pending_resubmission'
+          AND last_requested_resubmission_at < NOW() - INTERVAL '${THRESHOLDS.pending_resubmission_expire_days} days'`
+    );
+Security
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
+server/services/providerQueue.ts
+  const res = await pool.query(
+    `SELECT
+       COUNT(*) FILTER (WHERE status IN ('open','assigned')) AS open,
+       COUNT(*) FILTER (WHERE status IN ('open','assigned') AND priority IN ('urgent','high')) AS urgent
+     FROM provider_review_queue`
+  );
+Vulnerability scans are enabled by the following Replit partners:
+Security scans are powered by Semgrep Community Edition.
+Privacy scans are powered by HoundDog.ai.
+Security scanning powered by Semgrep and privacy scanning powered by HoundDog.ai , both running locally on Replit infrastructure. No code or data is transmitted to any third party, including Semgrep or HoundDog.ai.
