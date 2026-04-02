@@ -15,6 +15,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { 
@@ -80,10 +81,7 @@ class GeminiWatchdogService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.genAI = new GoogleGenAI({
-        apiKey: GEMINI_API_KEY,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-      });
+      this.genAI = new GoogleGenAI(getVertexAIConfig());
       logger.info('[Gemini Watchdog] ✅ Gemini 2.5 Flash initialized');
     } else {
       logger.warn('[Gemini Watchdog] ⚠️ GEMINI_API_KEY not configured - watchdog disabled');

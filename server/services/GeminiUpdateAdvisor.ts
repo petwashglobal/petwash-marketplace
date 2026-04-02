@@ -20,6 +20,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { EmailService } from '../emailService';
 import { db } from '../lib/firebase-admin';
@@ -61,10 +62,7 @@ export class GeminiUpdateAdvisor {
         return;
       }
 
-      this.genAI = new GoogleGenAI({
-        apiKey,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-      });
+      this.genAI = new GoogleGenAI(getVertexAIConfig());
 
       this.isInitialized = true;
       logger.info('[Gemini Advisor] ✅ Gemini AI initialized for update analysis');

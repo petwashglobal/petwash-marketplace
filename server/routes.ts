@@ -1,3 +1,4 @@
+import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express } from "express";
 import path from "path";
 import { storage } from "./storage";
@@ -12910,10 +12911,7 @@ self.addEventListener('notificationclick', (event) => {
 
       // Import Google Gemini API
       const { GoogleGenAI } = await import('@google/genai');
-      const genAI = new GoogleGenAI({
-        apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-      });
+      const genAI = new GoogleGenAI(getVertexAIConfig());
 
       const petProfile = subscription.petProfile as any;
       const prompt = `You are an expert pet nutritionist and product curator. Based on the following pet profile and available products, recommend the best ${boxType.itemCount} products for this month's subscription box.

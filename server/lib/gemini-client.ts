@@ -1,52 +1,89 @@
 /**
  * server/lib/gemini-client.ts
- * Central Gemini AI client — single source of truth for all AI calls.
+ * Central Gemini AI client — routes ALL AI calls through the user's own
+ * Google Cloud project (signinpetwash) via the Firebase service account.
  *
- * Priority:
- *   1. AI_INTEGRATIONS_GEMINI_API_KEY + AI_INTEGRATIONS_GEMINI_BASE_URL
- *      → Replit-managed Vertex AI (paid, no 20/day limit)
- *   2. GOOGLE_API_KEY / GEMINI_API_KEY
- *      → Direct Gemini API (free tier, 20/day cap)
+ * Auth priority:
+ *   1. FIREBASE_SERVICE_ACCOUNT_KEY  → direct Vertex AI, user's billing
+ *   2. AI_INTEGRATIONS_GEMINI_API_KEY → Replit proxy (fallback only)
+ *   3. GEMINI_API_KEY / GOOGLE_API_KEY → free tier (last resort)
  *
  * Features:
- *   - Quota guard: tracks calls per minute in memory
- *   - Graceful fallback: returns null on 429 / quota exhausted
- *   - Usage logging: logs every call with model + caller label
- *   - Circuit breaker: backs off for 10 min after quota hit
+ *   - Writes SA credentials to /tmp at startup (Vertex AI ADC)
+ *   - Quota guard: 500 req/min on paid, 18/min on free tier
+ *   - Graceful fallback: returns null on quota/error — never throws
+ *   - Usage logging per caller label
+ *   - Circuit breaker: 10 min backoff after quota hit (free tier only)
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { writeFileSync } from 'fs';
 import { logger } from './logger';
 
-// ─── API key resolution ────────────────────────────────────────────────────────
+// ─── Vertex AI setup via Firebase service account ─────────────────────────────
 
-const INTEGRATION_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-const INTEGRATION_URL  = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
-const FALLBACK_KEY     = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+export const VERTEX_PROJECT  = 'signinpetwash';
+export const VERTEX_LOCATION = process.env.VERTEX_AI_LOCATION || 'us-central1';
+const SA_CREDS_PATH = '/tmp/google-sa.json';
 
-const API_KEY   = INTEGRATION_KEY || FALLBACK_KEY || '';
-const IS_VERTEX = !!(INTEGRATION_KEY && INTEGRATION_URL);
-
-if (!API_KEY) {
-  logger.error('[GeminiClient] No API key configured — all AI features disabled');
+function setupVertexCredentials(): boolean {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.type !== 'service_account') return false;
+    writeFileSync(SA_CREDS_PATH, raw, { mode: 0o600 });
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = SA_CREDS_PATH;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-if (IS_VERTEX) {
-  logger.info('[GeminiClient] ✅ Using Vertex AI (paid, unlimited) via Replit integration');
-} else if (API_KEY) {
-  logger.warn('[GeminiClient] ⚠️  Using free-tier Gemini API — quota: ~20 req/day. Add AI_INTEGRATIONS_GEMINI_API_KEY to upgrade.');
+export const IS_DIRECT_VERTEX = setupVertexCredentials();
+
+// Replit proxy fallback config (used when Firebase SA is unavailable)
+const PROXY_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '';
+const PROXY_URL = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL || '';
+const IS_PROXY  = !IS_DIRECT_VERTEX && !!(PROXY_KEY && PROXY_URL);
+
+export const IS_VERTEX = IS_DIRECT_VERTEX || IS_PROXY;
+
+if (IS_DIRECT_VERTEX) {
+  logger.info(`[GeminiClient] ✅ Vertex AI — project:${VERTEX_PROJECT} location:${VERTEX_LOCATION} (your Google Cloud billing)`);
+} else if (IS_PROXY) {
+  logger.info('[GeminiClient] ✅ Replit AI proxy (Vertex AI via Replit billing)');
+} else {
+  logger.warn('[GeminiClient] ⚠️  Free-tier Gemini API — 20 req/day cap');
 }
 
-// ─── Singleton client ──────────────────────────────────────────────────────────
+// ─── Client factory (exported so all services can use it) ─────────────────────
+
+/**
+ * Returns a GoogleGenAI config object ready to spread into `new GoogleGenAI(...)`.
+ * Always returns the best available backend.
+ */
+export function getVertexAIConfig(): Record<string, any> {
+  if (IS_DIRECT_VERTEX) {
+    return { vertexai: true, project: VERTEX_PROJECT, location: VERTEX_LOCATION };
+  }
+  if (IS_PROXY) {
+    return {
+      apiKey: PROXY_KEY,
+      httpOptions: { baseUrl: PROXY_URL, apiVersion: '' },
+    };
+  }
+  return {
+    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+  };
+}
 
 function buildClient(): GoogleGenAI | null {
-  if (!API_KEY) return null;
-  return new GoogleGenAI({
-    apiKey: API_KEY,
-    ...(INTEGRATION_URL
-      ? { httpOptions: { baseUrl: INTEGRATION_URL, apiVersion: '' } }
-      : {}),
-  });
+  if (!IS_DIRECT_VERTEX && !PROXY_KEY && !process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
+    logger.error('[GeminiClient] No AI credentials — all AI features disabled');
+    return null;
+  }
+  return new GoogleGenAI(getVertexAIConfig());
 }
 
 export const geminiClient: GoogleGenAI | null = buildClient();
@@ -55,8 +92,8 @@ export const geminiClient: GoogleGenAI | null = buildClient();
 
 interface QuotaState {
   callsThisMinute: number;
-  windowStart: number;       // epoch ms
-  backoffUntil: number;      // epoch ms (0 = not in backoff)
+  windowStart: number;
+  backoffUntil: number;
   totalCallsSession: number;
   totalErrorsSession: number;
 }
@@ -69,9 +106,8 @@ const quota: QuotaState = {
   totalErrorsSession: 0,
 };
 
-const BACKOFF_MS     = 10 * 60 * 1000; // 10 min after quota hit
-// Vertex AI paid: Flash = 1000 RPM, Pro = 300 RPM. Use 500 as safe platform-wide cap.
-// Free tier: 18/min to stay under the 20/day ceiling conservatively.
+const BACKOFF_MS     = 10 * 60 * 1000;
+// Vertex AI paid: Flash=1000 RPM, Pro=300 RPM. 500 = safe platform cap.
 const MAX_PER_MINUTE = IS_VERTEX ? 500 : 18;
 
 function checkQuota(): { allowed: boolean; reason?: string } {
@@ -82,7 +118,6 @@ function checkQuota(): { allowed: boolean; reason?: string } {
     return { allowed: false, reason: `quota_backoff:${secsLeft}s` };
   }
 
-  // Reset 1-min window
   if (now - quota.windowStart > 60_000) {
     quota.callsThisMinute = 0;
     quota.windowStart = now;
@@ -90,7 +125,6 @@ function checkQuota(): { allowed: boolean; reason?: string } {
 
   if (quota.callsThisMinute >= MAX_PER_MINUTE) {
     if (!IS_VERTEX) {
-      // Free tier — engage backoff
       quota.backoffUntil = now + BACKOFF_MS;
       logger.warn('[GeminiClient] Rate limit hit — backing off 10 min', { totalCalls: quota.totalCallsSession });
     }
@@ -108,14 +142,6 @@ export interface GeminiResult {
   error?: string;
 }
 
-/**
- * Safe wrapper around Gemini generateContent.
- * Returns `{ ok: false, text: null }` on quota/error — never throws.
- *
- * @param model   e.g. 'gemini-2.5-flash'
- * @param prompt  The prompt string
- * @param caller  Short label for logging, e.g. 'OctopusBrain', 'Watchdog'
- */
 export async function safeGenerate(
   model: string,
   prompt: string,
@@ -143,6 +169,7 @@ export async function safeGenerate(
       ms: Date.now() - start,
       chars: text?.length ?? 0,
       totalCalls: quota.totalCallsSession,
+      backend: IS_DIRECT_VERTEX ? 'vertex_direct' : IS_PROXY ? 'vertex_proxy' : 'free',
     });
     return { ok: true, text };
   } catch (err: any) {
@@ -165,16 +192,15 @@ export async function safeGenerate(
 
 export function getGeminiStats() {
   return {
-    backend: IS_VERTEX ? 'vertex_ai_paid' : 'gemini_free_tier',
-    apiKeyPresent: !!API_KEY,
+    backend: IS_DIRECT_VERTEX ? 'vertex_ai_direct_signinpetwash' : IS_PROXY ? 'vertex_ai_replit_proxy' : 'gemini_free_tier',
+    project: IS_DIRECT_VERTEX ? VERTEX_PROJECT : null,
+    location: IS_DIRECT_VERTEX ? VERTEX_LOCATION : null,
     totalCallsSession: quota.totalCallsSession,
     totalErrorsSession: quota.totalErrorsSession,
     callsThisMinute: quota.callsThisMinute,
     inBackoff: quota.backoffUntil > Date.now(),
-    backoffSecondsLeft: quota.backoffUntil > Date.now()
-      ? Math.ceil((quota.backoffUntil - Date.now()) / 1000)
-      : 0,
+    backoffSecondsLeft: quota.backoffUntil > Date.now() ? Math.ceil((quota.backoffUntil - Date.now()) / 1000) : 0,
     maxPerMinute: MAX_PER_MINUTE,
-    quotaMode: IS_VERTEX ? 'unlimited' : 'free_20_per_day',
+    quotaMode: IS_VERTEX ? 'paid_500rpm' : 'free_20_per_day',
   };
 }

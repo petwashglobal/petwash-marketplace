@@ -19,6 +19,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { logAuditEvent } from '../middleware/auditLog';
 
@@ -88,10 +89,7 @@ async function runSecurityCheck(): Promise<void> {
   try {
     logger.info('[SecurityAdvisor] Starting Gemini security intelligence check');
 
-    const ai = new GoogleGenAI({
-      apiKey,
-      ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-    });
+    const ai = new GoogleGenAI(getVertexAIConfig());
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

@@ -22,6 +22,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
@@ -159,10 +160,7 @@ class OctopusBrainService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.ai = new GoogleGenAI({
-        apiKey: GEMINI_API_KEY,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-      });
+      this.ai = new GoogleGenAI(getVertexAIConfig());
       logger.info('[🐙 Octopus Brain] ✅ Gemini 2.5 Flash initialized for platform orchestration');
     } else {
       logger.warn('[🐙 Octopus Brain] ⚠️ Gemini API key not configured - AI analysis disabled');

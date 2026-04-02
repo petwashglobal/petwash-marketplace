@@ -11,14 +11,12 @@ import { nanoid } from 'nanoid';
 import { storage } from '../lib/firebase-admin';
 import { getOutfitById, getAccessoryById } from '@shared/outfitLibrary';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 
 const router = Router();
 
 // Initialize Gemini AI for image generation (Replit AI Integrations)
-const genAI = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const genAI = new GoogleGenAI(getVertexAIConfig());
 
 // Configure multer for memory storage
 const upload = multer({

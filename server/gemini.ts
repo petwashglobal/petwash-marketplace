@@ -1,3 +1,4 @@
+import { getVertexAIConfig } from './lib/gemini-client';
 import { GoogleGenAI } from "@google/genai";
 import { logger } from './lib/logger';
 import {
@@ -12,10 +13,7 @@ import {
 // - Note that the newest Gemini model series is "gemini-2.5-flash" or gemini-2.5-pro"
 //   - do not change this unless explicitly requested by the user
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "",
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const ai = new GoogleGenAI(getVertexAIConfig());
 
 const KENZO_SECURITY_GUARDRAILS = `
 🚫 STRICT SECURITY RULES - NEVER VIOLATE:

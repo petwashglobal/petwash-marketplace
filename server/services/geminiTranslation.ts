@@ -1,3 +1,4 @@
+import { getVertexAIConfig } from '../lib/gemini-client';
 /**
  * Gemini AI Translation Service
  * 
@@ -10,10 +11,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { logger } from '../lib/logger';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "",
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const ai = new GoogleGenAI(getVertexAIConfig());
 
 // API Monitoring metrics
 interface TranslationMetrics {

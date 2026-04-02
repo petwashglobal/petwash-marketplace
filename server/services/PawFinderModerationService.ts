@@ -5,6 +5,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 
 export interface ModerationInput {
@@ -45,12 +46,7 @@ export class PawFinderModerationService {
   constructor() {
     const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (apiKey) {
-      this.genAI = new GoogleGenAI({
-        apiKey,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL
-          ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } }
-          : {}),
-      });
+      this.genAI = new GoogleGenAI(getVertexAIConfig());
     }
   }
 

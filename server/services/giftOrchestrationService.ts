@@ -3,11 +3,9 @@ import { domainEvents } from '@shared/schema';
 import { db } from '../db';
 import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 
-const geminiAI = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const geminiAI = new GoogleGenAI(getVertexAIConfig());
 
 export type PlatformService = 'wash' | 'sitter' | 'walk' | 'trek' | 'all';
 

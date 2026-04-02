@@ -6,15 +6,13 @@
 
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 
 const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 let genAI: GoogleGenAI | null = null;
 
 if (GEMINI_API_KEY) {
-  genAI = new GoogleGenAI({
-    apiKey: GEMINI_API_KEY,
-    ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-  });
+  genAI = new GoogleGenAI(getVertexAIConfig());
 }
 
 interface EmailValidationResult {

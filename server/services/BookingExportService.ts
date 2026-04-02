@@ -8,6 +8,7 @@
 
 import { google } from 'googleapis';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { db } from '../db';
 import { bookingRequests } from '@shared/schema';
 import { pwProviderPayouts } from '@shared/schema-payments';
@@ -19,10 +20,7 @@ const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
 const ACCOUNTING_SPREADSHEET_ID = process.env.ACCOUNTING_SPREADSHEET_ID;
 
-const ai = GEMINI_API_KEY ? new GoogleGenAI({
-  apiKey: GEMINI_API_KEY,
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-}) : null;
+const ai = GEMINI_API_KEY ? new GoogleGenAI(getVertexAIConfig()) : null;
 
 // Sheet names for accounting
 const ACCOUNTING_SHEETS = {

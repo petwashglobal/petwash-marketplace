@@ -29,11 +29,9 @@ import {
 import { eq, and, gte, lte, sql, desc, sum } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const ai = new GoogleGenAI(getVertexAIConfig());
 
 export type ServiceType = 'k9000_wash' | 'sitter_suite' | 'walk_my_pet' | 'pettrek_transport';
 export type TimeFrame = 'daily' | 'weekly' | 'monthly' | 'yearly';

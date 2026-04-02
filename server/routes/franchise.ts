@@ -3,6 +3,7 @@ import { db as firestore } from '../lib/firebase-admin';
 import { requireFranchiseAuth } from '../franchiseAuth';
 import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { 
   FIRESTORE_PATHS, 
   insertServiceTicketSchema,
@@ -684,10 +685,7 @@ router.post('/:franchiseId/ai-narrative-report', requireFranchiseAuth, async (re
       statsContext = 'Stats unavailable — generate a motivating general overview';
     }
 
-    const genAI = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+    const genAI = new GoogleGenAI(getVertexAIConfig());
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{

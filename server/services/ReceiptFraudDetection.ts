@@ -1,3 +1,4 @@
+import { getVertexAIConfig } from '../lib/gemini-client';
 /**
  * Receipt Fraud Detection Service
  * 
@@ -20,10 +21,7 @@ import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "",
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const ai = new GoogleGenAI(getVertexAIConfig());
 const visionClient = new ImageAnnotatorClient();
 
 export interface ReceiptData {

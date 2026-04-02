@@ -4,15 +4,13 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-});
+const ai = new GoogleGenAI(getVertexAIConfig());
 const visionClient = new ImageAnnotatorClient({
   credentials: process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
     ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)

@@ -1,3 +1,4 @@
+import { getVertexAIConfig } from '../lib/gemini-client';
 /**
  * Weather API Routes
  * Google Weather API integration for Pet Wash Day Planner
@@ -996,12 +997,7 @@ router.get('/booking-check', async (req, res) => {
     if (GEMINI_KEY && level !== 'safe') {
       try {
         const { GoogleGenAI } = await import('@google/genai');
-        const genAI = new GoogleGenAI({
-          apiKey: GEMINI_KEY,
-          ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL
-            ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } }
-            : {}),
-        });
+        const genAI = new GoogleGenAI(getVertexAIConfig());
 
         const langNames: Record<string, string> = {
           he: 'Hebrew (עברית)', ar: 'Arabic (العربية)', ru: 'Russian', en: 'English', fr: 'French', es: 'Spanish'

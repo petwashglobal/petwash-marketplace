@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 
 export interface BookingTriageRequest {
   startDate: Date;
@@ -34,10 +35,7 @@ export class SitterAITriageService {
       throw new Error('[Sitter AI Triage] GEMINI_API_KEY not configured');
     }
     
-    this.genAI = new GoogleGenAI({
-      apiKey,
-      ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-    });
+    this.genAI = new GoogleGenAI(getVertexAIConfig());
   }
 
   /**

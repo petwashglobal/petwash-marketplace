@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { emailSpendGuard } from './EmailSpendGuard';
 import { sendSecurityAlert } from './alerts';
@@ -62,12 +63,7 @@ class GeminiPlatformSecurityMonitor {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.genAI = new GoogleGenAI({
-        apiKey: GEMINI_API_KEY,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL
-          ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } }
-          : {}),
-      });
+      this.genAI = new GoogleGenAI(getVertexAIConfig());
       logger.info('[PlatformMonitor] ✅ Gemini 2.5 Flash initialized for platform security monitoring');
     } else {
       logger.warn('[PlatformMonitor] ⚠️ Gemini API key not configured — AI analysis disabled, threshold-only mode');

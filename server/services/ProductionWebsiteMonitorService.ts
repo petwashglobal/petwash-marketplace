@@ -14,6 +14,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
@@ -59,10 +60,7 @@ class ProductionWebsiteMonitorService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.ai = new GoogleGenAI({
-        apiKey: GEMINI_API_KEY,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-      });
+      this.ai = new GoogleGenAI(getVertexAIConfig());
       logger.info('[ProductionMonitor] ✅ Gemini AI initialized for website monitoring');
     } else {
       logger.warn('[ProductionMonitor] ⚠️ Gemini API key not configured - monitoring limited');

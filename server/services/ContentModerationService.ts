@@ -8,6 +8,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { contentModerationLogs } from '../../shared/schema';
@@ -34,10 +35,7 @@ class ContentModerationService {
   constructor() {
     const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (apiKey) {
-      this.genAI = new GoogleGenAI({
-        apiKey,
-        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-      });
+      this.genAI = new GoogleGenAI(getVertexAIConfig());
       logger.info('[ContentModeration] ✅ Gemini AI initialized');
     } else {
       logger.warn('[ContentModeration] ⚠️ Gemini API key not found - AI moderation disabled');

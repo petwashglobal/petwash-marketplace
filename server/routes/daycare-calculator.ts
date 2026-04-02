@@ -1,3 +1,4 @@
+import { getVertexAIConfig } from '../lib/gemini-client';
 /**
  * Daycare Smart Price Calculator — Gemini AI powered
  * Calculates daycare cost for dogs/cats with:
@@ -110,10 +111,7 @@ router.post('/calculate', async (req, res) => {
   let aiExplanation = null;
   try {
     const { GoogleGenAI } = await import('@google/genai');
-    const genAI = new GoogleGenAI({
-      apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-      ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
-    });
+    const genAI = new GoogleGenAI(getVertexAIConfig());
 
     const petList = pets.map(p => `${p.name || p.type} (${p.size} ${p.type})`).join(', ');
     const prompt = language === 'he'

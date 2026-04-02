@@ -107,6 +107,7 @@ import {
 } from '../services/AppleWalletService';
 import { dispatchAcademySms } from '../services/academySmsHelper';
 import { GoogleGenAI } from '@google/genai';
+import { getVertexAIConfig } from '../lib/gemini-client';
 
 const router = Router();
 
@@ -19385,7 +19386,7 @@ Write a structured incident postmortem in the following format:
 
 Write in a professional but concise style. Focus on technical accuracy. This is for internal engineering review.`;
 
-    const genAI = new GoogleGenAI({ apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY! });
+    const genAI = new GoogleGenAI(getVertexAIConfig());
     const aiRes = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
