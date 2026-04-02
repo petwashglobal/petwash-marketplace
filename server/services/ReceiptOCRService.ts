@@ -47,8 +47,11 @@ class ReceiptOCRService {
             break;
           }
         } catch {
-          // Not valid JSON — skip this env var and try next
-          logger.warn(`[ReceiptOCR] ${envKey} is not valid JSON service-account — skipping`);
+          // Only warn if the value looks like it was meant to be a JSON service account
+          if (raw.trim().startsWith('{')) {
+            logger.warn(`[ReceiptOCR] ${envKey} is not valid JSON service-account — skipping`);
+          }
+          // Otherwise it's an API key or other value in the wrong var — silently skip
         }
       }
       if (credentials) {

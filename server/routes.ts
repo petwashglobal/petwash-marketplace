@@ -140,6 +140,7 @@ import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import adminNotificationsRoutes from "./routes/admin-notifications";
 import adminPawFinderRoutes from "./routes/admin-paw-finder";
 import systemEventsAdminRoutes from "./routes/system-events";
+import spamGuardRoutes from "./routes/spam-guard";
 import winbackTrackingRouter from "./routes/winback-tracking";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
@@ -9521,6 +9522,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
+  app.use('/api/admin/spam-guard', adminLimiter, spamGuardRoutes);
 
   // ─── AI Status (Gemini quota, backend type, usage) — super-admin only ──────
   app.get('/api/admin/ai-status', requireAdmin, async (_req, res) => {

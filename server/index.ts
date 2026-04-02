@@ -820,6 +820,11 @@ if (isProduction) {
     import('./services/GeminiPlatformSecurityMonitor').then(({ geminiPlatformMonitor }) => {
       geminiPlatformMonitor.start();
     }).catch(e => console.error('[PlatformMonitor] Failed to start:', e));
+
+    // Gemini Spam Guard — AI spam detection + HQ reporting every 30 min
+    import('./services/GeminiSpamGuard').then(({ geminiSpamGuard }) => {
+      geminiSpamGuard.startScheduler();
+    }).catch(e => console.error('[SpamGuard] Failed to start scheduler:', e));
     
     // 5c. Initialize Israeli CPI data - TRULY NON-BLOCKING (fire-and-forget)
     // CRITICAL: Do NOT await - these can be slow and should not delay serverReady
