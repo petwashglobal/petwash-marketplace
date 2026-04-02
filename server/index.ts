@@ -940,6 +940,17 @@ process.on('uncaughtException', (err) => {
   console.error('❌ FATAL: Uncaught Exception:', err);
   console.error('   Stack:', err.stack);
   console.error('--------------------------------------------------');
+  // Stamp to system_events — best-effort, fire-and-forget
+  try {
+    const { SystemEventService } = require('./services/SystemEventService');
+    SystemEventService.stamp({
+      eventType: 'process_uncaught_exception',
+      severity: 'critical',
+      source: 'process',
+      message: err?.message?.slice(0, 300) ?? String(err),
+      detail: { stack: err?.stack?.slice(0, 800) },
+    });
+  } catch (_) { /* swallow — DB might be gone */ }
   // Keep the process alive (don't exit - let it recover)
   // In production, you might want to restart gracefully here
 });
@@ -950,5 +961,17 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ FATAL: Unhandled Rejection at:', promise);
   console.error('   Reason:', reason);
   console.error('--------------------------------------------------');
+  // Stamp to system_events — best-effort, fire-and-forget
+  try {
+    const { SystemEventService } = require('./services/SystemEventService');
+    const msg = reason instanceof Error ? reason.message : String(reason);
+    SystemEventService.stamp({
+      eventType: 'process_unhandled_rejection',
+      severity: 'error',
+      source: 'process',
+      message: msg?.slice(0, 300),
+      detail: { reason: msg?.slice(0, 800) },
+    });
+  } catch (_) { /* swallow */ }
   // Keep the process alive (don't exit - let it recover)
 });

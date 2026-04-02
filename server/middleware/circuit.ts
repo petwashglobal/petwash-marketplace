@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { logger } from "./requestIdAndLogs";
+import { SystemEventService } from "../services/SystemEventService";
 
 let failures = 0;
 let openUntil = 0;
@@ -30,6 +31,8 @@ export function circuit(threshold = 20, resetTimeMs = 15_000) {
         if (failures >= threshold) {
           openUntil = Date.now() + resetTimeMs;
           logger.error({ failures, openUntil, threshold }, "circuit breaker: OPEN");
+          // Stamp to DB — this is an unknown-shutdown-level event
+          SystemEventService.circuitOpen('http_circuit_breaker', failures, resetTimeMs);
           failures = 0; // Reset counter
         }
       } else {

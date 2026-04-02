@@ -4,6 +4,7 @@ import { eq, and, lt, notInArray, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
 import EscrowService from '../services/EscrowService';
+import { SystemEventService } from '../services/SystemEventService';
 
 const MAX_REASSIGNMENT_ATTEMPTS = 3;
 
@@ -74,6 +75,7 @@ async function processExpiredWalkBookings(): Promise<void> {
     await db.update(walkBookings).set({ status: 'expired', updatedAt: now })
       .where(eq(walkBookings.bookingId, booking.bookingId));
     await syncChatToBookingStatus(booking.bookingId, 'expired', 'walk_my_pet');
+    SystemEventService.bookingStuck('booking_expiry', booking.bookingId, 'pending_provider', 120);
     logger.info('[BookingExpiry] Walk hard-expired', { bookingId: booking.bookingId, attempts });
   }
 }
@@ -116,6 +118,7 @@ async function processExpiredSitterBookings(): Promise<void> {
     await db.update(sitterBookings).set({ status: 'expired', updatedAt: now })
       .where(eq(sitterBookings.bookingId, booking.bookingId));
     await syncChatToBookingStatus(booking.bookingId, 'expired', 'sitter_suite');
+    SystemEventService.bookingStuck('booking_expiry', booking.bookingId, 'pending_provider', 240);
     logger.info('[BookingExpiry] Sitter hard-expired', { bookingId: booking.bookingId, attempts });
   }
 }
@@ -131,6 +134,63 @@ async function processEscrowAutoRelease(): Promise<void> {
   }
 }
 
+/**
+ * Detect unified/academy bookings stuck in intermediate states >45 minutes.
+ * These are bookings from trainer_bookings or the unified booking engine
+ * that never transitioned out of "pending" or "payment_pending".
+ */
+async function processStuckUnifiedBookings(): Promise<void> {
+  const now = new Date();
+  try {
+    // Trainer bookings stuck in pending for >45 minutes
+    const trainerStuck = await db.execute(sql`
+      SELECT booking_id, status, created_at,
+        EXTRACT(EPOCH FROM (NOW() - created_at)) / 60 AS age_minutes
+      FROM trainer_bookings
+      WHERE status IN ('pending', 'payment_pending')
+        AND created_at < NOW() - INTERVAL '45 minutes'
+      LIMIT 50
+    `);
+    for (const row of trainerStuck.rows as any[]) {
+      SystemEventService.bookingStuck(
+        'booking_expiry_unified',
+        row.booking_id,
+        row.status,
+        Math.round(row.age_minutes),
+      );
+      logger.warn('[BookingExpiry] Trainer booking stuck', {
+        bookingId: row.booking_id, status: row.status, ageMin: Math.round(row.age_minutes),
+      });
+    }
+
+    // Orphaned wallet holds — wallet_hold_key set but booking is >45min and still pending
+    // This catches the "payment taken but booking row never created" scenario
+    const orphaned = await db.execute(sql`
+      SELECT tb.booking_id, tb.wallet_hold_cents, tb.created_at,
+        EXTRACT(EPOCH FROM (NOW() - tb.created_at)) / 60 AS age_minutes
+      FROM trainer_bookings tb
+      WHERE tb.wallet_hold_key IS NOT NULL
+        AND tb.wallet_debit_key IS NULL
+        AND tb.status IN ('pending', 'payment_pending', 'expired', 'cancelled')
+        AND tb.created_at < NOW() - INTERVAL '45 minutes'
+        AND (tb.wallet_hold_cents IS NOT NULL AND tb.wallet_hold_cents > 0)
+      LIMIT 50
+    `);
+    for (const row of orphaned.rows as any[]) {
+      SystemEventService.orphanedPaymentHold(
+        'booking_expiry_unified',
+        row.booking_id,
+        Number(row.wallet_hold_cents ?? 0),
+      );
+    }
+  } catch (err: any) {
+    // Table may not exist in some environments — swallow gracefully
+    if (!err.message?.includes('does not exist')) {
+      logger.error('[BookingExpiry] Unified stuck scan error', { error: err.message });
+    }
+  }
+}
+
 export function startBookingExpiryPoller() {
   logger.info('[BookingExpiry] Poller started — expiry/reassignment every 5m, escrow every 15m');
 
@@ -138,6 +198,7 @@ export function startBookingExpiryPoller() {
     try {
       await processExpiredWalkBookings();
       await processExpiredSitterBookings();
+      await processStuckUnifiedBookings();
     } catch (err) {
       logger.error('[BookingExpiry] Expiry/reassignment cycle error', err);
     }

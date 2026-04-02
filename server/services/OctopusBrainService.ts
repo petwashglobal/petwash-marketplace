@@ -25,6 +25,7 @@ import { GoogleGenAI } from '@google/genai';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import { SystemEventService } from './SystemEventService';
 
 const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
@@ -306,6 +307,15 @@ class OctopusBrainService {
       
       if (currentHealth.status !== 'offline') {
         this.createAlert(platform.id, 'critical', `${platform.name} is offline: ${error.message}`);
+        // Stamp to DB so operators have a queryable record
+        SystemEventService.stamp({
+          eventType: 'platform_offline',
+          severity: 'critical',
+          source: 'octopus_brain',
+          platform: platform.id,
+          message: `${platform.name} went offline: ${error.message}`,
+          detail: { platformId: platform.id, error: error.message },
+        });
       }
     }
   }
@@ -386,6 +396,17 @@ Respond in JSON format:
               analysis.recommendations?.forEach((rec: string) => {
                 logger.warn(`   → ${rec}`);
               });
+              SystemEventService.stamp({
+                eventType: 'ai_high_risk_detected',
+                severity: 'error',
+                source: 'octopus_brain',
+                message: `Gemini AI detected HIGH RISK: ${analysis.assessment}`,
+                detail: {
+                  assessment: analysis.assessment,
+                  patterns: analysis.patterns,
+                  recommendations: analysis.recommendations,
+                },
+              });
             }
           }
         } catch (parseError) {
@@ -400,8 +421,16 @@ Respond in JSON format:
         resetTime.setHours(resetTime.getHours() + 1);
         this.geminiQuotaResetTime = resetTime;
         logger.warn(`[🐙 Octopus Brain] Gemini quota exhausted - pausing AI analysis until ${resetTime.toISOString()}`);
+        SystemEventService.aiQuotaExhausted('octopus_brain', 'gemini-2.5-flash', 3600);
       } else {
         logger.warn(`[🐙 Octopus Brain] Gemini analysis failed: ${errorMsg}`);
+        SystemEventService.stamp({
+          eventType: 'ai_analysis_failed',
+          severity: 'warn',
+          source: 'octopus_brain',
+          message: `Gemini platform analysis failed: ${errorMsg.slice(0, 200)}`,
+          detail: { error: errorMsg.slice(0, 500) },
+        });
       }
     }
   }

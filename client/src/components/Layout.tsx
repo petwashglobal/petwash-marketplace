@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { PetWashHeader } from './PetWashHeader';
 import { Footer } from './Footer';
+import { NetworkOfflineBanner } from './NetworkOfflineBanner';
 import { type Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
 
@@ -33,6 +34,9 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
 
   return (
     <div className="min-h-[100dvh] bg-white">
+      {/* Offline / connectivity banner — always visible when network drops */}
+      <NetworkOfflineBanner />
+
       {/* Skip to Content for Accessibility */}
       <a 
         href="#main-content" 
