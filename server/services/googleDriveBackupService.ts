@@ -8,6 +8,7 @@
  */
 
 import { google } from 'googleapis';
+import { logger } from '../lib/logger';
 
 let connectionSettings: any;
 let serviceAccountAuth: any = null;

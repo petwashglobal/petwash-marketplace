@@ -12,13 +12,16 @@ import { storage } from '../storage';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { db } from '../db';
+import { sql } from 'drizzle-orm';
 import { 
   electronicInvoices, digitalSignatures, signedDocuments, 
   smartWashReceipts, nayaxTransactions, transactionRecords,
   biometricCertificateVerifications, providerApplications,
-  sitterProfiles, walkerProfiles
+  sitterProfiles, walkerProfiles, walkBookings, sitterBookings,
+  securityEvents,
 } from '@shared/schema';
 import { desc } from 'drizzle-orm';
+import { SystemEventService } from '../services/SystemEventService';
 
 const router = Router();
 
@@ -332,6 +335,38 @@ router.post('/full', validateFirebaseToken, requireBackupAdmin, async (req: Requ
       logger.warn('[Backup] Walker profiles backup skipped');
     }
 
+    /* ── New tables ─────────────────────────────────────────────────────── */
+    try {
+      const walks = await db.select().from(walkBookings).orderBy(desc(walkBookings.createdAt)).limit(2000);
+      if (walks.length > 0) tables.push({ name: 'walk_bookings', data: walks });
+    } catch (e) { logger.warn('[Backup] Walk bookings backup skipped'); }
+
+    try {
+      const sitters = await db.select().from(sitterBookings).orderBy(desc(sitterBookings.createdAt)).limit(2000);
+      if (sitters.length > 0) tables.push({ name: 'sitter_bookings', data: sitters });
+    } catch (e) { logger.warn('[Backup] Sitter bookings backup skipped'); }
+
+    try {
+      const secEvts = await db.select().from(securityEvents).orderBy(desc(securityEvents.createdAt)).limit(2000);
+      if (secEvts.length > 0) tables.push({ name: 'security_events', data: secEvts });
+    } catch (e) { logger.warn('[Backup] Security events backup skipped'); }
+
+    try {
+      const sysEvts = await db.execute(sql`
+        SELECT * FROM system_events ORDER BY created_at DESC LIMIT 2000
+      `);
+      if (sysEvts.rows.length > 0) tables.push({ name: 'system_events', data: sysEvts.rows as any[] });
+    } catch (e) { logger.warn('[Backup] System events backup skipped'); }
+
+    try {
+      const walletRows = await db.execute(sql`
+        SELECT id, user_uid, entry_type, amount_cents, balance_cents_after,
+               reference_id, description, created_at
+        FROM wallet_ledger ORDER BY created_at DESC LIMIT 5000
+      `);
+      if (walletRows.rows.length > 0) tables.push({ name: 'wallet_ledger', data: walletRows.rows as any[] });
+    } catch (e) { logger.warn('[Backup] Wallet ledger backup skipped'); }
+
     if (tables.length === 0) {
       return res.json({
         success: true,
@@ -345,6 +380,15 @@ router.post('/full', validateFirebaseToken, requireBackupAdmin, async (req: Requ
     const successCount = results.filter(r => r.success).length;
     const stats = await googleDriveBackupService.getBackupStats();
 
+    // Stamp the backup run to system_events
+    SystemEventService.stamp({
+      eventType: 'full_backup_completed',
+      severity: 'info',
+      source: 'backup_service',
+      message: `Full backup completed: ${successCount}/${tables.length} tables backed up to Google Drive`,
+      detail: { successCount, totalTables: tables.length, driveLink: stats.folderLink },
+    });
+
     logger.info(`[Backup] Full backup complete: ${successCount}/${tables.length} tables backed up`);
 
     res.json({
@@ -354,11 +398,109 @@ router.post('/full', validateFirebaseToken, requireBackupAdmin, async (req: Requ
       folderLink: stats.folderLink
     });
   } catch (error: any) {
+    SystemEventService.stamp({
+      eventType: 'full_backup_failed',
+      severity: 'error',
+      source: 'backup_service',
+      message: `Full backup FAILED: ${error.message?.slice(0, 200)}`,
+      detail: { error: error.message },
+    });
     res.status(500).json({
       success: false,
       error: error.message
     });
   }
 });
+
+/* ── GET /api/backup/auto-status ─────────────────────────────────────────── */
+router.get('/auto-status', validateFirebaseToken, requireBackupAdmin, (_req, res) => {
+  res.json({
+    schedule: 'Daily at 01:00 Asia/Jerusalem (Israel Time)',
+    nextRun:  getNextBackupRun(),
+    status:   'active',
+  });
+});
+
+/* ── Automatic daily backup scheduler ──────────────────────────────────────
+ * Runs every day at 01:00 Jerusalem time.
+ * Performs a full system backup to Google Drive automatically.
+ */
+function getNextBackupRun(): string {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(1, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  return next.toISOString();
+}
+
+function msUntilNextBackup(): number {
+  return new Date(getNextBackupRun()).getTime() - Date.now();
+}
+
+async function runDailyBackup(): Promise<void> {
+  logger.info('[AutoBackup] 🔄 Daily backup starting...');
+  try {
+    const tables: { name: string; data: any[] }[] = [];
+
+    const addTable = async (name: string, fn: () => Promise<any[]>) => {
+      try { const d = await fn(); if (d.length) tables.push({ name, data: d }); }
+      catch (e: any) { logger.warn(`[AutoBackup] ${name} skipped: ${e?.message}`); }
+    };
+
+    await addTable('walk_bookings',    () => db.select().from(walkBookings).orderBy(desc(walkBookings.createdAt)).limit(5000));
+    await addTable('sitter_bookings',  () => db.select().from(sitterBookings).orderBy(desc(sitterBookings.createdAt)).limit(5000));
+    await addTable('electronic_invoices', () => db.select().from(electronicInvoices).orderBy(desc(electronicInvoices.createdAt)).limit(2000));
+    await addTable('nayax_transactions',  () => db.select().from(nayaxTransactions).orderBy(desc(nayaxTransactions.createdAt)).limit(2000));
+    await addTable('transaction_records', () => db.select().from(transactionRecords).orderBy(desc(transactionRecords.createdAt)).limit(2000));
+    await addTable('security_events',     () => db.select().from(securityEvents).orderBy(desc(securityEvents.createdAt)).limit(2000));
+    await addTable('sitter_profiles',     () => db.select().from(sitterProfiles).orderBy(desc(sitterProfiles.createdAt)).limit(500));
+    await addTable('walker_profiles',     () => db.select().from(walkerProfiles).orderBy(desc(walkerProfiles.createdAt)).limit(500));
+    await addTable('provider_applications', () => db.select().from(providerApplications).orderBy(desc(providerApplications.createdAt)).limit(500));
+
+    // Raw-SQL tables (not in drizzle schema)
+    try {
+      const sysEvts = await db.execute(sql`SELECT * FROM system_events ORDER BY created_at DESC LIMIT 3000`);
+      if (sysEvts.rows.length) tables.push({ name: 'system_events', data: sysEvts.rows as any[] });
+    } catch (_) {}
+    try {
+      const ledger = await db.execute(sql`SELECT id, user_uid, entry_type, amount_cents, balance_cents_after, reference_id, description, created_at FROM wallet_ledger ORDER BY created_at DESC LIMIT 10000`);
+      if (ledger.rows.length) tables.push({ name: 'wallet_ledger', data: ledger.rows as any[] });
+    } catch (_) {}
+
+    if (tables.length === 0) {
+      logger.warn('[AutoBackup] No data found — backup skipped');
+      return;
+    }
+
+    const results = await googleDriveBackupService.backupDatabase(tables);
+    const ok = results.filter(r => r.success).length;
+    const stats = await googleDriveBackupService.getBackupStats();
+
+    SystemEventService.stamp({
+      eventType: 'auto_backup_completed',
+      severity: 'info',
+      source: 'auto_backup_scheduler',
+      message: `Daily auto-backup: ${ok}/${tables.length} tables → Google Drive`,
+      detail: { ok, total: tables.length, driveLink: stats.folderLink },
+    });
+    logger.info(`[AutoBackup] ✅ Complete: ${ok}/${tables.length} tables → Drive`);
+  } catch (err: any) {
+    SystemEventService.stamp({
+      eventType: 'auto_backup_failed',
+      severity: 'error',
+      source: 'auto_backup_scheduler',
+      message: `Daily auto-backup FAILED: ${err?.message?.slice(0, 200)}`,
+      detail: { error: err?.message },
+    });
+    logger.error('[AutoBackup] ❌ Failed', { error: err?.message });
+  }
+
+  // Schedule next run
+  setTimeout(runDailyBackup, msUntilNextBackup());
+}
+
+/* Kick off the daily backup scheduler on module load */
+setTimeout(runDailyBackup, msUntilNextBackup());
+logger.info(`[AutoBackup] 📅 Daily Google Drive backup scheduled — next run: ${getNextBackupRun()}`);
 
 export default router;

@@ -352,6 +352,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   const { startSecurityAdvisor } = await import('./services/GeminiSecurityAdvisor');
   startSecurityAdvisor();
 
+  // ── ThreatGuard intrusion-detection middleware (injection scan, scanner UA, brute-force tracking)
+  // Must be mounted BEFORE rate limiters so every request is inspected
+  const { threatGuardMiddleware } = await import('./middleware/threatGuard');
+  app.use('/api/', threatGuardMiddleware);
+
   // Apply rate limiting - ORDER MATTERS!
   // Apply admin limiter to admin routes only
   app.use('/api/admin/', adminLimiter);

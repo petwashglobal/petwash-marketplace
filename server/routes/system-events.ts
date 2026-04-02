@@ -10,6 +10,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { requireSuperAdmin } from '../middleware/gates';
 import { SystemEventService } from '../services/SystemEventService';
+import { ThreatGuardService } from '../services/ThreatGuardService';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -132,6 +133,36 @@ router.get('/live', requireSuperAdmin, async (req, res) => {
     res.json({ events: events.rows, generatedAt: new Date().toISOString() });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to fetch live events' });
+  }
+});
+
+/* ── GET /api/admin/system-events/threat-summary ───────────────────────── */
+/* Real-time in-memory threat intelligence from ThreatGuardService */
+router.get('/threat-summary', requireSuperAdmin, (req, res) => {
+  try {
+    const summary = ThreatGuardService.getThreatSummary();
+    res.json({
+      ...summary,
+      alertPhone:   process.env.SUPER_ADMIN_ALERT_PHONE ? '✅ Configured' : '⚠️ Not set — add SUPER_ADMIN_ALERT_PHONE env var',
+      generatedAt:  new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to get threat summary' });
+  }
+});
+
+/* ── POST /api/admin/system-events/manual-alert ────────────────────────── */
+/* Allows super-admin to fire a manual security alert with SMS */
+router.post('/manual-alert', requireSuperAdmin, async (req, res) => {
+  try {
+    const { title, detail, severity = 'critical' } = req.body as {
+      title: string; detail?: string; severity?: 'warn' | 'error' | 'critical';
+    };
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    await ThreatGuardService.manualAlert(title, detail ?? '', severity);
+    res.json({ ok: true, title, severity });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to send manual alert' });
   }
 });
 
