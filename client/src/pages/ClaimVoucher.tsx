@@ -44,10 +44,11 @@ export default function ClaimVoucher() {
       setClaimedVoucher(data);
       setClaimSuccess(true);
       
-      // Track GA4 event
-      if (user?.uid && data.voucherId && data.initialAmount) {
+      // Track GA4 event — user.id is the Firebase UID (varchar PK in users table)
+      const userId = (user as any)?.uid || (user as any)?.id;
+      if (userId && data.voucherId && data.initialAmount) {
         trackVoucherClaimed(
-          user.uid,
+          userId,
           data.voucherId,
           parseFloat(data.initialAmount),
           'ILS'

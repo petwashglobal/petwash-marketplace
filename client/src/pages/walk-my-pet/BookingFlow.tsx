@@ -47,27 +47,36 @@ export default function WalkBookingFlow() {
   // Check if weather consent is needed for the selected date
   const { data: weatherCheck } = useWeatherConsent(selectedDate);
 
-  // Simulate provider acceptance for two-way matching
-  // In production, this would be replaced by real-time WebSocket/polling for provider response
+  // Real-time polling for provider acceptance — same pattern as Sitter Suite
+  const { data: bookingStatus } = useQuery({
+    queryKey: [`/api/walk-my-pet/walks/bookings/${bookingId}/status`],
+    enabled: step === 'pending_match' && !!bookingId,
+    refetchInterval: 5000,
+  });
+
   useEffect(() => {
-    if (step === 'pending_match' && bookingId) {
-      // Simulate provider accepting the job after 3-5 seconds
-      const acceptanceDelay = 3000 + Math.random() * 2000;
-      const timer = setTimeout(() => {
+    if (step === 'pending_match' && bookingStatus) {
+      const status = (bookingStatus as any)?.status;
+      if (status === 'accepted' || status === 'confirmed') {
         setStep('confirmation');
         toast({
           title: "יש התאמה! 🎉",
           description: "המוליך/ה אישר/ה את הבקשה. ההזמנה מאושרת!",
         });
-      }, acceptanceDelay);
-      
-      return () => clearTimeout(timer);
+      }
     }
-  }, [step, bookingId, toast]);
+  }, [step, bookingStatus, toast]);
 
-  // Fetch walker data from real API
+  // Fetch specific walker data using ID filter — avoids loading all walkers
   const { data: providersData, isLoading: walkerLoading, error: walkerError } = useQuery({
-    queryKey: ['/api/platforms/walk_my_pet/providers'],
+    queryKey: ['/api/platforms/walk_my_pet/providers', walkerIdNumber],
+    queryFn: async () => {
+      const res = await fetch(`/api/platforms/walk_my_pet/providers?id=${walkerIdNumber}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch walker');
+      return res.json();
+    },
     enabled: !!walkerIdNumber,
   });
 

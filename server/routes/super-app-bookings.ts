@@ -520,10 +520,15 @@ router.get(
 
       // walk_my_pet uses walkerProfiles as the source of truth (contains walkerId for booking engine)
       if (platformId === 'walk_my_pet') {
+        const { and } = await import('drizzle-orm');
+        const idFilter = req.query.id ? parseInt(req.query.id as string) : null;
+        const whereClause = idFilter && !isNaN(idFilter)
+          ? and(eq(walkerProfiles.isActive, true), eq(walkerProfiles.id, idFilter))
+          : eq(walkerProfiles.isActive, true);
         const walkers = await db
           .select()
           .from(walkerProfiles)
-          .where(eq(walkerProfiles.isActive, true));
+          .where(whereClause);
 
         // Map walkerProfiles fields to the shape BookingFlow.tsx expects
         const mappedWalkers = walkers.map((w) => ({

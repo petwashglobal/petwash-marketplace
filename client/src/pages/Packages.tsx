@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Check, ArrowRight, ArrowLeft, Leaf, Sparkles, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, ArrowRight, ArrowLeft, Leaf, Sparkles, ShieldCheck, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 
 import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
 import greenCardFront from '@assets/IMG_3091_1770832584882.png';
@@ -90,12 +93,20 @@ const tierLabels: Record<string, Record<string, string>> = {
   ELITE: { en: 'Maison Collection', he: 'קולקציית מזון' },
 };
 
+const WASH_COUNT_TO_PACKAGE_ID: Record<number, number> = {
+  1: 1,
+  3: 2,
+  5: 3,
+  10: 4,
+};
+
 export default function Packages() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language } = useLanguage();
   const lang = language || 'he';
   const isHe = lang === 'he';
+  const { user } = useFirebaseAuth();
 
   const dir = ['he', 'ar'].includes(lang) ? 'rtl' : 'ltr';
   const isRtl = dir === 'rtl';
@@ -104,6 +115,26 @@ export default function Packages() {
 
   const [selectedPackage, setSelectedPackage] = useState<PackageOption | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState<{ washesAdded: number; amountPaid: number; discountApplied: number } | null>(null);
+
+  const purchaseMutation = useMutation({
+    mutationFn: async ({ packageId }: { packageId: number }) => {
+      const res = await apiRequest('POST', '/api/checkout', { packageId, paymentMethod: 'credit_card' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.messageHe || err.message || (isHe ? 'שגיאה ברכישה' : 'Purchase failed'));
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      setPurchaseSuccess({ washesAdded: data.washesAdded, amountPaid: data.amountPaid, discountApplied: data.discountApplied || 0 });
+    },
+    onError: (err: Error) => {
+      toast({ title: isHe ? 'שגיאה ברכישה' : 'Purchase failed', description: err.message, variant: 'destructive' });
+    }
+  });
 
   const handlePackageClick = (pkg: PackageOption) => {
     setSelectedPackage(pkg);
@@ -119,8 +150,61 @@ export default function Packages() {
 
   const handlePurchase = () => {
     if (!selectedPackage) return;
-    toast({ title: isHe ? "מעבד את הרכישה..." : "Processing your purchase...", description: isHe ? "מפנה לתשלום" : "Redirecting to payment" });
+    if (!user) {
+      toast({ title: isHe ? 'נדרשת התחברות' : 'Login required', description: isHe ? 'יש להתחבר לפני הרכישה' : 'Please log in before purchasing', variant: 'destructive' });
+      setLocation('/sign-up');
+      return;
+    }
+    const packageId = WASH_COUNT_TO_PACKAGE_ID[selectedPackage.washes];
+    if (!packageId) {
+      toast({ title: isHe ? 'חבילה לא תקינה' : 'Invalid package', variant: 'destructive' });
+      return;
+    }
+    purchaseMutation.mutate({ packageId });
   };
+
+  if (purchaseSuccess && selectedPackage) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-16" dir={dir}>
+        <div className="max-w-md w-full text-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-[#f8f5f0] flex items-center justify-center">
+              <CheckCircle className="w-10 h-10 text-[#c9a96e]" strokeWidth={1.2} />
+            </div>
+          </div>
+          <p className="text-[10px] tracking-[0.35em] uppercase text-[#c9a96e] font-medium mb-4">
+            {isHe ? 'רכישה הושלמה' : 'Purchase Complete'}
+          </p>
+          <h2 className="text-3xl font-light text-[#1a1a1a] mb-3"
+            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            {isHe ? 'תודה רבה!' : 'Thank You!'}
+          </h2>
+          <p className="text-[#888] text-sm mb-8 leading-relaxed">
+            {isHe
+              ? `${purchaseSuccess.washesAdded} רחיצות נוספו לחשבונך. שולמו ₪${purchaseSuccess.amountPaid.toFixed(2)}.${purchaseSuccess.discountApplied > 0 ? ` הנחה ${purchaseSuccess.discountApplied}% הוחלה.` : ''}`
+              : `${purchaseSuccess.washesAdded} wash${purchaseSuccess.washesAdded > 1 ? 'es' : ''} added to your account. ₪${purchaseSuccess.amountPaid.toFixed(2)} charged.${purchaseSuccess.discountApplied > 0 ? ` ${purchaseSuccess.discountApplied}% discount applied.` : ''}`
+            }
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button
+              className="w-full py-3.5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333]"
+              style={{ borderRadius: '2px' }}
+              onClick={() => setLocation('/dashboard')}
+            >
+              {isHe ? 'לדשבורד שלי' : 'Go to My Dashboard'}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-[#888] text-[12px]"
+              onClick={() => { setPurchaseSuccess(null); setShowDetails(false); }}
+            >
+              {isHe ? 'חזרה לחבילות' : 'Back to Packages'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showDetails && selectedPackage) {
     const price = Math.round(selectedPackage.washes * WASH_PRICE * (1 - selectedPackage.discount / 100));
@@ -187,13 +271,16 @@ export default function Packages() {
                 </div>
 
                 <Button 
-                  className="w-full py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2"
+                  className="w-full py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-60"
                   onClick={handlePurchase}
+                  disabled={purchaseMutation.isPending}
                   data-testid="button-purchase"
                   style={{ borderRadius: '2px' }}
                 >
-                  {isHe ? 'רכישה' : 'Buy Now'} — ₪{price}
-                  <ForwardIcon className="w-3.5 h-3.5" />
+                  {purchaseMutation.isPending
+                    ? (isHe ? 'מעבד...' : 'Processing...')
+                    : <>{isHe ? 'רכישה' : 'Buy Now'} — ₪{price}<ForwardIcon className="w-3.5 h-3.5" /></>
+                  }
                 </Button>
 
                 <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">

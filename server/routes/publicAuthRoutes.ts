@@ -594,6 +594,26 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
         } catch (loyaltyErr: any) {
           logger.warn('[PhoneAuth] Loyalty auto-enroll failed (non-blocking)', { error: loyaltyErr.message });
         }
+
+        // ── Users table record (new phone users) ─────────────────────────
+        // Without this row the dashboard, profile page, and any query that
+        // joins on users.id will fail or return null for phone-only signups.
+        try {
+          await storage.upsertUser({
+            id: user.uid,
+            email: null,
+            phone: formattedPhone,
+            role: 'customer',
+            authProvider: 'phone',
+            language: 'he',
+            country: 'IL',
+            userStatus: 'new',
+            signupIntent: 'customer',
+          } as any);
+          logger.info(`[PhoneAuth] users table row created uid=${user.uid}`);
+        } catch (usersErr: any) {
+          logger.warn('[PhoneAuth] users table upsert failed (non-blocking)', { error: usersErr.message });
+        }
       } else {
         throw error;
       }

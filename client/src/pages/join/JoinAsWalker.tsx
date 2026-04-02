@@ -438,16 +438,16 @@ export default function JoinAsWalker() {
               <Button onClick={() => {
                 if (step === 1) {
                   if (!form.firstName || !form.lastName || !form.email || !form.phone) {
-                    toast({ title: "Please fill in name, email, and phone", variant: "destructive" }); return;
+                    toast({ title: "יש למלא שם, אימייל וטלפון / Please fill in name, email, and phone", variant: "destructive" }); return;
                   }
                   if (!form.dateOfBirth) {
-                    toast({ title: "Date of birth is required / נדרש תאריך לידה", variant: "destructive" }); return;
+                    toast({ title: "נדרש תאריך לידה / Date of birth is required", variant: "destructive" }); return;
                   }
                   if (!form.idNumber) {
-                    toast({ title: "Israeli ID / Passport number is required / נדרשת תעודת זהות", variant: "destructive" }); return;
+                    toast({ title: "נדרשת תעודת זהות / Israeli ID or Passport required", variant: "destructive" }); return;
                   }
                   if (!form.city) {
-                    toast({ title: "Please select your home address", variant: "destructive" }); return;
+                    toast({ title: "יש לבחור כתובת מגורים / Please select your home address", variant: "destructive" }); return;
                   }
                 }
                 setStep(s => (s + 1) as Step);

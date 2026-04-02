@@ -131,16 +131,16 @@ export default function JoinAsSitter() {
         }));
       }
     } catch {
-      toast({ title: "Sign-in failed", description: "Could not sign in with Google.", variant: "destructive" });
+      toast({ title: "הכניסה נכשלה / Sign-in failed", description: "לא ניתן להתחבר עם Google / Could not sign in with Google.", variant: "destructive" });
     } finally {
       setGoogleLoading(false);
     }
   }
 
   async function handleSubmit() {
-    if (!user) { toast({ title: "Please sign in first", variant: "destructive" }); return; }
-    if (!form.agreeToTerms || !form.agreeToPrivacy) { toast({ title: "Please accept all agreements", variant: "destructive" }); return; }
-    if (form.acceptedPetTypes.length === 0) { toast({ title: "Please select at least one pet type you accept", variant: "destructive" }); return; }
+    if (!user) { toast({ title: "יש להתחבר תחילה / Please sign in first", variant: "destructive" }); return; }
+    if (!form.agreeToTerms || !form.agreeToPrivacy) { toast({ title: "יש לאשר את כל ההסכמות / Please accept all agreements", variant: "destructive" }); return; }
+    if (form.acceptedPetTypes.length === 0) { toast({ title: "יש לבחור לפחות סוג חיית מחמד אחד / Please select at least one pet type", variant: "destructive" }); return; }
 
     const captchaToken = await executeReCaptcha('provider_register').catch(() => null);
 
@@ -176,7 +176,7 @@ export default function JoinAsSitter() {
       navigate('/provider/pending');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Submission failed";
-      toast({ title: "Could not submit application", description: msg, variant: "destructive" });
+      toast({ title: "שגיאה בשליחת הבקשה / Could not submit application", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -454,16 +454,16 @@ export default function JoinAsSitter() {
               <Button onClick={() => {
                 if (step === 1) {
                   if (!form.firstName || !form.lastName || !form.email || !form.phone) {
-                    toast({ title: "Please fill in name, email, and phone", variant: "destructive" }); return;
+                    toast({ title: "יש למלא שם, אימייל וטלפון / Please fill in name, email, and phone", variant: "destructive" }); return;
                   }
                   if (!form.dateOfBirth) {
-                    toast({ title: "Date of birth is required / נדרש תאריך לידה", variant: "destructive" }); return;
+                    toast({ title: "נדרש תאריך לידה / Date of birth is required", variant: "destructive" }); return;
                   }
                   if (!form.idNumber) {
-                    toast({ title: "Israeli ID / Passport number is required / נדרשת תעודת זהות", variant: "destructive" }); return;
+                    toast({ title: "נדרשת תעודת זהות / Israeli ID or Passport required", variant: "destructive" }); return;
                   }
                   if (!form.city) {
-                    toast({ title: "Please select your home address", variant: "destructive" }); return;
+                    toast({ title: "יש לבחור כתובת מגורים / Please select your home address", variant: "destructive" }); return;
                   }
                 }
                 setStep(s => (s + 1) as Step);

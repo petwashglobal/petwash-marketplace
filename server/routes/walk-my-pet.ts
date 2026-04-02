@@ -877,6 +877,31 @@ router.get('/walks/:bookingId', async (req, res) => {
   }
 });
 
+// Lightweight status poll for pending_match screen (real-time two-way matching)
+router.get('/walks/bookings/:bookingId/status', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const [booking] = await db
+      .select({
+        bookingId: walkBookings.bookingId,
+        status: walkBookings.status,
+      })
+      .from(walkBookings)
+      .where(eq(walkBookings.bookingId, bookingId))
+      .limit(1);
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    res.json({ status: booking.status, bookingId: booking.bookingId });
+  } catch (error: any) {
+    console.error('[Walk My Pet] Get booking status error:', error);
+    res.status(500).json({ error: 'Failed to fetch booking status' });
+  }
+});
+
 // Walker confirms booking
 router.post('/walks/:bookingId/confirm', async (req, res) => {
   try {
