@@ -412,10 +412,18 @@ export default function ProviderApplicationForm() {
       }
     } catch (error: any) {
       console.error('[ProviderApplication] Submission error:', error);
+      let errorDesc = isHebrew
+        ? 'אנא בדוק שכל השדות מלאים ונסה שוב'
+        : 'Please check all fields and try again';
+      if (error?.status >= 500) {
+        errorDesc = isHebrew
+          ? 'שגיאת שרת - אנא נסה שוב מאוחר יותר'
+          : 'Server error — please try again later';
+      }
       toast({
         variant: 'destructive',
-        title: isHebrew ? 'שגיאה' : 'Error',
-        description: error.message || (isHebrew ? 'שגיאה בשליחת הבקשה' : 'Failed to submit application'),
+        title: isHebrew ? 'שגיאה בשליחת הבקשה' : 'Submission Error',
+        description: errorDesc,
       });
     } finally {
       setIsSubmitting(false);
@@ -1302,9 +1310,9 @@ export default function ProviderApplicationForm() {
                           <FormItem className="flex items-start gap-3">
                             <FormControl>
                               <Checkbox 
-                                checked={field.value} 
-                                onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1 border-gray-400 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                checked={!!field.value} 
+                                onCheckedChange={(checked) => field.onChange(checked === true)}
+                                className="h-6 w-6 mt-0.5 border-gray-400 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
                                 data-testid="checkbox-terms"
                               />
                             </FormControl>
@@ -1333,9 +1341,9 @@ export default function ProviderApplicationForm() {
                           <FormItem className="flex items-start gap-3">
                             <FormControl>
                               <Checkbox 
-                                checked={field.value} 
-                                onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1 border-gray-400 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                checked={!!field.value} 
+                                onCheckedChange={(checked) => field.onChange(checked === true)}
+                                className="h-6 w-6 mt-0.5 border-gray-400 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
                                 data-testid="checkbox-privacy"
                               />
                             </FormControl>
@@ -1364,9 +1372,9 @@ export default function ProviderApplicationForm() {
                           <FormItem className="flex items-start gap-3">
                             <FormControl>
                               <Checkbox 
-                                checked={field.value} 
-                                onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1 border-amber-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                                checked={!!field.value} 
+                                onCheckedChange={(checked) => field.onChange(checked === true)}
+                                className="h-6 w-6 mt-0.5 border-amber-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 flex-shrink-0"
                                 data-testid="checkbox-contractor"
                               />
                             </FormControl>

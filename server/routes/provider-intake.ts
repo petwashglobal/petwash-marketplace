@@ -326,7 +326,7 @@ const submitApplicationSchema = z.object({
   profilePhotoBase64: z.string().optional(),
   agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
   agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
-  agreeToContractorStatus: z.boolean().optional().default(false),
+  agreeToContractorStatus: z.boolean().refine(val => val === true, 'You must acknowledge independent contractor status'),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   captchaToken: z.string().optional(),
@@ -448,6 +448,9 @@ router.post('/submit', async (req, res) => {
     });
   } catch (error: any) {
     if (error.name === 'ZodError') {
+      logger.warn('[Provider Intake] Validation failed on submit:', {
+        fields: error.errors.map((e: any) => ({ path: e.path.join('.'), message: e.message }))
+      });
       return res.status(400).json({ 
         error: 'Validation failed',
         details: error.errors 
