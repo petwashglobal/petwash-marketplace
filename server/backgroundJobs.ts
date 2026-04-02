@@ -4,6 +4,8 @@ import { EmailService } from './emailService';
 import { GoogleMessagingService } from './services/GoogleMessagingService';
 import { db } from './lib/firebase-admin';
 import EscrowService from './services/EscrowService';
+import { twilioSMSService } from './services/TwilioSMSService';
+import { pool } from './db';
 import { createBirthdayVoucher, hasBirthdayVoucherThisYear } from './birthdayVoucher';
 import { processVaccineReminders } from './vaccineReminder';
 import { RevenueReportService } from './revenueReportService';
@@ -95,6 +97,14 @@ export class BackgroundJobProcessor {
           await this.processBirthdayDiscounts();
         } finally {
           this.releaseLock('birthdayDiscounts');
+        }
+      }
+      // Pet birthday SMS — 7-day advance notice via Twilio
+      if (await this.acquireLock('petBirthdaySMS')) {
+        try {
+          await this.processPetBirthdaySMS();
+        } finally {
+          this.releaseLock('petBirthdaySMS');
         }
       }
     }, {
@@ -726,6 +736,110 @@ export class BackgroundJobProcessor {
         false, 
         error instanceof Error ? error.message : 'Unknown error'
       );
+    }
+  }
+
+  /**
+   * Process PET birthday SMS — sent 7 days before the pet's birthday.
+   * Sends a Twilio SMS with a unique personal discount URL.
+   * Idempotent — tracks sent messages in Firestore to prevent duplicates.
+   */
+  private static async processPetBirthdaySMS(): Promise<void> {
+    const jobName = 'Pet Birthday SMS';
+    try {
+      const today = new Date();
+      const targetDate = new Date(today);
+      targetDate.setDate(targetDate.getDate() + 7); // 7 days ahead
+      const targetMM = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const targetDD = String(targetDate.getDate()).padStart(2, '0');
+
+      logger.info('[PetBirthdaySMS] Scanning for pet birthdays', { target: `${targetMM}-${targetDD}` });
+
+      // Scan all users in Firestore
+      const usersSnap = await db.collection('users').listDocuments();
+      let sent = 0;
+      let skipped = 0;
+
+      for (const userRef of usersSnap) {
+        try {
+          const uid = userRef.id;
+          const petsSnap = await db.collection(`users/${uid}/pets`)
+            .where('deletedAt', '==', null)
+            .get();
+
+          for (const petDoc of petsSnap.docs) {
+            const pet = petDoc.data();
+            const dob: string | undefined = pet.dateOfBirth || pet.birthdate || pet.birthday;
+            if (!dob) continue;
+
+            const match = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) continue;
+            const [, , mm, dd] = match;
+            if (mm !== targetMM || dd !== targetDD) continue;
+
+            // Pet birthday in 7 days — check if SMS already sent this year
+            const currentYear = today.getFullYear();
+            const smsKey = `${uid}_${petDoc.id}_${currentYear}`;
+            const smsDoc = await db.collection('pet_birthday_sms_log').doc(smsKey).get();
+            if (smsDoc.exists) { skipped++; continue; }
+
+            // Get user phone from PostgreSQL
+            const { rows } = await pool.query<{ phone_e164: string; phone: string; display_name: string }>(
+              'SELECT phone_e164, phone, display_name FROM users WHERE id = $1 LIMIT 1',
+              [uid]
+            );
+            const phone = rows[0]?.phone_e164 || rows[0]?.phone;
+            if (!phone) continue;
+
+            // Generate unique promo code bound to this pet + year
+            const { createHash, randomBytes } = await import('crypto');
+            const random = randomBytes(3).toString('hex').toUpperCase().substring(0, 4);
+            const petPart = createHash('sha256').update(`${uid}${petDoc.id}`).digest('hex').toUpperCase().substring(0, 4);
+            const yy = String(currentYear).slice(-2);
+            const code = `PW-${random}-${petPart}-${yy}`;
+            const petName: string = pet.name || pet.petName || 'חיית המחמד שלך';
+            const expiresAt = new Date(currentYear, targetDate.getMonth(), targetDate.getDate(), 23, 59);
+            expiresAt.setDate(expiresAt.getDate() + 30); // valid 30 days after birthday
+            const expiresStr = `${expiresAt.getDate()}/${expiresAt.getMonth() + 1}/${currentYear}`;
+
+            // Store promo code in Firestore
+            await db.collection('pet_birthday_promos').doc(smsKey).set({
+              uid, petId: petDoc.id, petName, code,
+              expiresAt: expiresAt.toISOString(),
+              discountPercent: 10,
+              claimed: false,
+              createdAt: new Date().toISOString(),
+            });
+
+            // Send SMS (Hebrew — since this is an Israeli app)
+            const promoUrl = `https://petwash.co.il/birthday?code=${code}&pet=${encodeURIComponent(petName)}`;
+            const smsBody =
+              `🎂 יום הולדת שמח ל${petName}! 🐾\n` +
+              `PetWash™ שולח לך הנחה של 10% כמתנת יום הולדת:\n` +
+              `${code}\n` +
+              `🔗 ${promoUrl}\n` +
+              `תקף עד ${expiresStr}. חד-פעמי, לשימוש אישי בלבד.`;
+
+            const result = await twilioSMSService.sendSMS(phone, smsBody, { userId: uid });
+            if (result.success) {
+              sent++;
+              await db.collection('pet_birthday_sms_log').doc(smsKey).set({
+                uid, petId: petDoc.id, petName, phone: phone.slice(-4), code,
+                sentAt: new Date().toISOString(), year: currentYear,
+              });
+              logger.info('[PetBirthdaySMS] SMS sent', { uid, petName, phone: phone.slice(-4) });
+            }
+          }
+        } catch (userError) {
+          logger.error('[PetBirthdaySMS] Error processing user', { uid: userRef.id, error: userError });
+        }
+      }
+
+      logger.info('[PetBirthdaySMS] Complete', { sent, skipped });
+      await recordCronExecution(jobName, true);
+    } catch (error) {
+      logger.error('[PetBirthdaySMS] Job failed', error);
+      await recordCronExecution(jobName, false, error instanceof Error ? error.message : 'Unknown error');
     }
   }
 

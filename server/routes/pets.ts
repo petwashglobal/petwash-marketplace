@@ -268,4 +268,160 @@ router.get('/intake-forms', validateFirebaseToken, async (req, res) => {
   }
 });
 
+// ============================================
+// PET HEALTH EVENTS — calendar-ready records
+// ============================================
+
+const healthEventSchema = z.object({
+  type: z.enum(['vaccination', 'vet_visit', 'medication', 'deworming', 'grooming', 'reminder']),
+  title: z.string().min(1).max(120),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().max(500).optional(),
+  nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  reminderEnabled: z.boolean().default(true),
+});
+
+/** Build a Google Calendar deeplink from a health event */
+function buildHealthEventCalendarLink(event: {
+  title: string; date: string; notes?: string; type: string;
+}, petName: string): string {
+  const dateStr = event.date.replace(/-/g, '');
+  const emoji: Record<string, string> = {
+    vaccination: '💉', vet_visit: '🏥', medication: '💊',
+    deworming: '🐛', grooming: '✂️', reminder: '📅',
+  };
+  const icon = emoji[event.type] || '📅';
+  const title = encodeURIComponent(`${icon} ${petName} — ${event.title}`);
+  const details = encodeURIComponent(
+    `${event.notes ? event.notes + '\n\n' : ''}` +
+    `🐾 PetWash™ Pet Health Tracker\nhttps://petwash.co.il/pets`
+  );
+  return (
+    `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+    `&text=${title}&dates=${dateStr}/${dateStr}&details=${details}`
+  );
+}
+
+/** Build an RFC 5545 iCalendar file string for iOS/macOS Calendar */
+function buildICS(event: {
+  title: string; date: string; notes?: string; type: string; id: string;
+}, petName: string): string {
+  const emoji: Record<string, string> = {
+    vaccination: '💉', vet_visit: '🏥', medication: '💊',
+    deworming: '🐛', grooming: '✂️', reminder: '📅',
+  };
+  const icon = emoji[event.type] || '📅';
+  const dateStr = event.date.replace(/-/g, '');
+  const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const uid = `${event.id}@petwash.co.il`;
+  const summary = `${icon} ${petName} — ${event.title}`;
+  const description = (event.notes || '') + '\\nPetWash™ Pet Health Tracker';
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//PetWash//PetHealth//HE',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${now}`,
+    `DTSTART;VALUE=DATE:${dateStr}`,
+    `DTEND;VALUE=DATE:${dateStr}`,
+    `SUMMARY:${summary}`,
+    `DESCRIPTION:${description}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+// GET /api/pets/:petId/health-events
+router.get('/:petId/health-events', validateFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { petId } = req.params;
+    const snap = await firestore
+      .collection(`users/${uid}/pets/${petId}/health_events`)
+      .orderBy('date', 'desc')
+      .limit(50)
+      .get();
+    const events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return res.json({ events });
+  } catch (error) {
+    logger.error('[PetHealth] Error fetching events', error);
+    return res.status(500).json({ error: 'Failed to fetch health events' });
+  }
+});
+
+// POST /api/pets/:petId/health-events
+router.post('/:petId/health-events', validateFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { petId } = req.params;
+    const data = healthEventSchema.parse(req.body);
+
+    // Verify pet belongs to user
+    const petDoc = await firestore.doc(`users/${uid}/pets/${petId}`).get();
+    if (!petDoc.exists || petDoc.data()?.deletedAt) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+    const petName: string = petDoc.data()?.name || 'Pet';
+
+    const ref = await firestore
+      .collection(`users/${uid}/pets/${petId}/health_events`)
+      .add({ ...data, petId, createdAt: new Date().toISOString() });
+
+    const eventId = ref.id;
+    const calendarLink = buildHealthEventCalendarLink(data, petName);
+    const icsUrl = `/api/pets/${petId}/health-events/${eventId}/ics`;
+
+    logger.info('[PetHealth] Event created', { uid, petId, type: data.type });
+    return res.status(201).json({ id: eventId, ...data, calendarLink, icsUrl });
+  } catch (error: any) {
+    if (error?.name === 'ZodError') return res.status(400).json({ error: error.errors });
+    logger.error('[PetHealth] Error creating event', error);
+    return res.status(500).json({ error: 'Failed to create health event' });
+  }
+});
+
+// DELETE /api/pets/:petId/health-events/:eventId
+router.delete('/:petId/health-events/:eventId', validateFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { petId, eventId } = req.params;
+    await firestore.doc(`users/${uid}/pets/${petId}/health_events/${eventId}`).delete();
+    return res.json({ ok: true });
+  } catch (error) {
+    logger.error('[PetHealth] Error deleting event', error);
+    return res.status(500).json({ error: 'Failed to delete health event' });
+  }
+});
+
+// GET /api/pets/:petId/health-events/:eventId/ics — public, no auth (share-friendly)
+router.get('/:petId/health-events/:eventId/ics', async (req, res) => {
+  try {
+    const { petId, eventId } = req.params;
+    // We need uid — encode it in the event's stored data, or look it up via Firestore Group query
+    const snap = await firestore.collectionGroup('health_events')
+      .where(firestore.FieldPath.documentId(), '==',
+        firestore.collection('placeholder').doc(eventId).id.length > 0 ? eventId : eventId)
+      .limit(1)
+      .get();
+    // Fallback: let caller include uid as query param (lightweight approach)
+    const uid = req.query.uid as string;
+    if (!uid) return res.status(400).json({ error: 'uid required' });
+    const doc = await firestore.doc(`users/${uid}/pets/${petId}/health_events/${eventId}`).get();
+    if (!doc.exists) return res.status(404).send('Event not found');
+    const ev = doc.data()!;
+    const petDoc = await firestore.doc(`users/${uid}/pets/${petId}`).get();
+    const petName: string = petDoc.data()?.name || 'Pet';
+    const icsContent = buildICS({ ...ev as any, id: eventId }, petName);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${petName}-health.ics"`);
+    return res.send(icsContent);
+  } catch (error) {
+    logger.error('[PetHealth] ICS generation error', error);
+    return res.status(500).json({ error: 'Failed to generate ICS' });
+  }
+});
+
 export default router;

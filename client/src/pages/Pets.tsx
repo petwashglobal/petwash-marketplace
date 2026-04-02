@@ -26,9 +26,17 @@ import {
   Syringe,
   Heart,
   AlertCircle,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  Stethoscope,
+  Pill,
+  ExternalLink,
+  Download,
+  Clock,
+  Cake,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays, setYear, parseISO } from 'date-fns';
 import { he, enUS } from 'date-fns/locale';
 
 const petFormSchema = z.object({
@@ -70,6 +78,234 @@ interface Pet {
   updatedAt: string;
 }
 
+// ============================================================
+// PetHealthPanel — inline health tracker per pet
+// ============================================================
+const HEALTH_EVENT_TYPES = [
+  { value: 'vaccination', labelHe: 'חיסון', labelEn: 'Vaccination', icon: '💉' },
+  { value: 'vet_visit',   labelHe: 'ביקור וטרינר', labelEn: 'Vet Visit', icon: '🏥' },
+  { value: 'medication',  labelHe: 'תרופה / טיפול', labelEn: 'Medication', icon: '💊' },
+  { value: 'deworming',   labelHe: 'טיפול תולעים', labelEn: 'Deworming', icon: '🐛' },
+  { value: 'grooming',    labelHe: 'טיפוח', labelEn: 'Grooming', icon: '✂️' },
+  { value: 'reminder',    labelHe: 'תזכורת כללית', labelEn: 'Reminder', icon: '📅' },
+];
+
+interface HealthEvent {
+  id: string; type: string; title: string; date: string;
+  notes?: string; nextDate?: string; calendarLink?: string; icsUrl?: string;
+}
+
+function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, userId }: {
+  petId: string; petName: string; petBirthdate?: string; language: string; authToken: string | null; userId?: string;
+}) {
+  const { toast } = useToast();
+  const qc = queryClient;
+  const isHe = language === 'he';
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ type: 'vaccination', title: '', date: '', notes: '' });
+
+  const { data, isLoading } = useQuery<{ events: HealthEvent[] }>({
+    queryKey: [`/api/pets/${petId}/health-events`],
+    enabled: !!authToken,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/pets/${petId}/health-events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: isHe ? '✅ האירוע נשמר!' : '✅ Event saved!' });
+      setForm({ type: 'vaccination', title: '', date: '', notes: '' });
+      setAdding(false);
+      qc.invalidateQueries({ queryKey: [`/api/pets/${petId}/health-events`] });
+    },
+    onError: (e: any) => toast({ variant: 'destructive', title: e.message }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      const res = await fetch(`/api/pets/${petId}/health-events/${eventId}`, {
+        method: 'DELETE',
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to delete');
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/pets/${petId}/health-events`] }),
+  });
+
+  // Birthday countdown
+  const birthdayCountdown = (() => {
+    if (!petBirthdate) return null;
+    try {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const dob = parseISO(petBirthdate);
+      let next = setYear(dob, today.getFullYear());
+      if (next < today) next = setYear(dob, today.getFullYear() + 1);
+      const days = differenceInDays(next, today);
+      return days;
+    } catch { return null; }
+  })();
+
+  const events = data?.events || [];
+
+  return (
+    <div className="border-t border-slate-100 pt-3 mt-1">
+      {/* Birthday countdown */}
+      {petBirthdate && birthdayCountdown !== null && birthdayCountdown <= 30 && (
+        <div className="mx-4 mb-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-3 flex items-center gap-2">
+          <Cake className="w-5 h-5 text-amber-500 shrink-0" />
+          <div className="text-sm">
+            <span className="font-semibold text-amber-800">
+              {birthdayCountdown === 0
+                ? (isHe ? `🎂 יום הולדת שמח, ${petName}!` : `🎂 Happy Birthday, ${petName}!`)
+                : isHe ? `יום הולדת בעוד ${birthdayCountdown} ימים 🎉`
+                        : `Birthday in ${birthdayCountdown} days 🎉`}
+            </span>
+            {birthdayCountdown <= 7 && (
+              <span className="block text-xs text-amber-600 mt-0.5">
+                {isHe ? 'תקבל SMS עם קוד הנחה מיוחד 10% 🎁' : 'You\'ll get an SMS with a special 10% discount code 🎁'}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Events list */}
+      <div className="px-4 pb-1">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            {isHe ? 'יומן בריאות' : 'Health Journal'}
+          </span>
+          <button
+            onClick={() => setAdding(v => !v)}
+            className="text-xs flex items-center gap-1 text-violet-600 hover:text-violet-700 font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {isHe ? 'הוסף' : 'Add'}
+          </button>
+        </div>
+
+        {/* Add form */}
+        {adding && (
+          <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 mb-3 space-y-2">
+            <select
+              value={form.type}
+              onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+              className="w-full text-sm rounded-lg border border-slate-200 p-1.5 bg-white"
+            >
+              {HEALTH_EVENT_TYPES.map(t => (
+                <option key={t.value} value={t.value}>
+                  {t.icon} {isHe ? t.labelHe : t.labelEn}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder={isHe ? 'כותרת (למשל: חיסון כלבת)' : 'Title (e.g. Rabies shot)'}
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              className="w-full text-sm rounded-lg border border-slate-200 p-1.5"
+            />
+            <input
+              type="date"
+              value={form.date}
+              onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              className="w-full text-sm rounded-lg border border-slate-200 p-1.5"
+            />
+            <textarea
+              placeholder={isHe ? 'הערות (רופא, מינון, תכשיר...)' : 'Notes (vet, dose, product...)'}
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              rows={2}
+              className="w-full text-sm rounded-lg border border-slate-200 p-1.5 resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => addMutation.mutate()}
+                disabled={!form.title || !form.date || addMutation.isPending}
+                className="flex-1 text-sm py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium disabled:opacity-50"
+              >
+                {addMutation.isPending ? '...' : (isHe ? 'שמור' : 'Save')}
+              </button>
+              <button
+                onClick={() => setAdding(false)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-600"
+              >
+                {isHe ? 'ביטול' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Events list */}
+        {isLoading ? (
+          <div className="text-center py-2 text-xs text-slate-400">{isHe ? 'טוען...' : 'Loading...'}</div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-3 text-xs text-slate-400">
+            {isHe ? 'אין אירועי בריאות. לחץ + הוסף להתחיל.' : 'No health events. Press + Add to start.'}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {events.slice(0, 5).map((ev) => {
+              const typeInfo = HEALTH_EVENT_TYPES.find(t => t.value === ev.type);
+              const icon = typeInfo?.icon || '📅';
+              const calUrl = ev.calendarLink ||
+                `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${icon} ${petName} — ${ev.title}`)}&dates=${ev.date.replace(/-/g,'')}/${ev.date.replace(/-/g,'')}`;
+              const icsUrl = `/api/pets/${petId}/health-events/${ev.id}/ics?uid=${userId || ''}`;
+              return (
+                <div key={ev.id} className="flex items-start gap-2 text-sm group">
+                  <span className="mt-0.5 shrink-0">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-800 truncate">{ev.title}</div>
+                    <div className="text-xs text-slate-500">
+                      {ev.date ? format(parseISO(ev.date), 'd/M/yyyy') : ''}
+                      {ev.notes && <span className="mx-1">·</span>}
+                      {ev.notes && <span className="truncate">{ev.notes}</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <a
+                      href={calUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={isHe ? 'Google Calendar' : 'Google Calendar'}
+                      className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-violet-600"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                    <a
+                      href={icsUrl}
+                      download={`${petName}-health.ics`}
+                      title={isHe ? 'הורד לאייפון (.ics)' : 'Download for iPhone (.ics)'}
+                      className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-blue-600"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
+                    <button
+                      onClick={() => deleteMutation.mutate(ev.id)}
+                      className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Pets() {
   const { t, language, dir } = useLanguage();
   const { toast } = useToast();
@@ -77,6 +313,7 @@ export default function Pets() {
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [deletingPet, setDeletingPet] = useState<Pet | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [expandedHealthPet, setExpandedHealthPet] = useState<string | null>(null);
 
   useEffect(() => {
     const getToken = async () => {
@@ -415,6 +652,30 @@ export default function Pets() {
                         </div>
                       )}
                     </CardContent>
+
+                    {/* Health Journal toggle */}
+                    <button
+                      onClick={() => setExpandedHealthPet(expandedHealthPet === pet.id ? null : pet.id)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-violet-600 hover:bg-violet-50 transition-colors border-t border-slate-100 rounded-b-xl"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Stethoscope className="w-3.5 h-3.5" />
+                        {language === 'he' ? 'יומן בריאות 🏥' : 'Health Journal 🏥'}
+                      </span>
+                      {expandedHealthPet === pet.id
+                        ? <ChevronUp className="w-3.5 h-3.5" />
+                        : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                    {expandedHealthPet === pet.id && (
+                      <PetHealthPanel
+                        petId={pet.id}
+                        petName={pet.name}
+                        petBirthdate={pet.birthdate}
+                        language={language}
+                        authToken={authToken}
+                        userId={auth.currentUser?.uid}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
