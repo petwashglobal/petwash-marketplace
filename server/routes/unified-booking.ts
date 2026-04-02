@@ -27,6 +27,7 @@ import {
 } from '../services/unified-booking';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
+import { ISRAELI_VAT_RATE } from '../services/VATCalculatorService';
 
 const router = Router();
 
@@ -59,7 +60,7 @@ async function loadBookingFromDB(bookingId: string): Promise<UnifiedBooking | nu
       vat: 0,
       net: Number(dbBooking.subtotal) || 0,
       currency: dbBooking.currency || 'ILS',
-      vatRate: 0.18,
+      vatRate: ISRAELI_VAT_RATE,
       breakdown: {},
       platformFee: Number(dbBooking.platformFee) || 0,
       providerPayout: Number(dbBooking.providerPayout) || 0

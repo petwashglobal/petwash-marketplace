@@ -41,7 +41,8 @@ function extractDevTestUser(req: Request): { uid: string; email?: string; email_
   // Mode B — playwright-test bypass (mirrors the requireAuth guard bypass in customAuth.ts)
   // This allows test suites to use a single set of headers across all middleware layers.
   const bypassHeader = req.headers['x-test-user-bypass'] as string | undefined;
-  if (bypassHeader === 'playwright-test') {
+  const bypassToken = process.env.TEST_BYPASS_TOKEN || 'playwright-test';
+  if (bypassHeader === bypassToken) {
     const uid = (req.headers['x-test-user-id'] as string) || 'playwright-test-user';
     const role = (req.headers['x-test-role'] as string) || 'customer';
     logger.debug('[firebase-auth] DEV: playwright-test bypass accepted', { uid, role });

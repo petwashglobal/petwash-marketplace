@@ -378,17 +378,23 @@ adminCouponRouter.patch('/:id', async (req: AuthenticatedRequest, res: Response)
     'audience_estimate', 'per_device_limit', 'per_phone_limit', 'per_email_limit'];
 
   const updates: Record<string, any> = {};
+  const allowedSet = new Set(allowed);
   for (const key of allowed) {
     const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-    if (req.body[camel] !== undefined) updates[key] = req.body[camel];
-    else if (req.body[key] !== undefined) updates[key] = req.body[key];
+    if (Object.prototype.hasOwnProperty.call(req.body, camel)) updates[key] = req.body[camel];
+    else if (Object.prototype.hasOwnProperty.call(req.body, key)) updates[key] = req.body[key];
   }
-  if (req.body.stackableWith) updates.stackable_with = JSON.stringify(req.body.stackableWith);
+  if (Object.prototype.hasOwnProperty.call(req.body, 'stackableWith')) {
+    updates.stackable_with = JSON.stringify(req.body.stackableWith);
+  }
   if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'אין שדות לעדכון' });
 
   try {
-    const setClauses = Object.keys(updates).map((k, i) => `${k} = $${i + 2}`).join(', ');
-    await pool.query(`UPDATE coupons SET ${setClauses}, updated_at = NOW() WHERE id = $1`, [couponId, ...Object.values(updates)]);
+    // Build parameterized query only from whitelisted column names
+    const safeKeys = Object.keys(updates).filter(k => allowedSet.has(k) || k === 'stackable_with');
+    const safeValues = safeKeys.map(k => updates[k]);
+    const setClauses = safeKeys.map((k, i) => `${k} = $${i + 2}`).join(', ');
+    await pool.query(`UPDATE coupons SET ${setClauses}, updated_at = NOW() WHERE id = $1`, [couponId, ...safeValues]);
 
     const adminId = req.firebaseUser?.uid ?? null;
     await pool.query(
