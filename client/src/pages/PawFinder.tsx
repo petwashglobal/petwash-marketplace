@@ -316,7 +316,7 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
         <Textarea
           value={message}
           onChange={e => setMessage(e.target.value)}
-          placeholder="תאר מה ראית, היכן, מתי, ומה מצב הבע"ח..."
+          placeholder={'תאר מה ראית, היכן, מתי, ומה מצב הבע"ח...'}
           rows={4}
           className="rounded-2xl mb-4"
           dir="rtl"

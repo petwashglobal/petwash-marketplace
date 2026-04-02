@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, signInWithCustomToken, getAdditionalUserInfo } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { syncUser } from "@/lib/hubspot";
@@ -11,8 +12,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertCircle, MapPin, Fingerprint, Shield, Sparkles, X } from "lucide-react";
-import { FaGoogle } from "react-icons/fa";
+import { Loader2, AlertCircle, MapPin, Fingerprint, Shield, Sparkles, X, Phone, ChevronRight, ArrowLeft, Info } from "lucide-react";
+import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
+import { SiTiktok, SiInstagram } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { trackSignUp } from "@/lib/analytics";
@@ -26,12 +28,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/auth/passkey";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { PhoneInput } from '@/components/PhoneInput';
+import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { executeReCaptcha, preloadReCaptcha } from '@/components/ReCaptcha';
-import { TurnstileWidget, TURNSTILE_CONFIGURED } from '@/components/TurnstileWidget';
+import { TurnstileWidget, TURNSTILE_CONFIGURED, executeTurnstileInvisible } from '@/components/TurnstileWidget';
 
 interface SignUpProps {
   language: Language;
@@ -52,6 +56,25 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
   const [stepUpPending, setStepUpPending] = useState(false);
   const [pendingCaptchaToken, setPendingCaptchaToken] = useState<string | null>(null);
+
+  // ── Social / phone signup state ───────────────────────────────────────────
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [signupMode, setSignupMode] = useState<'email' | 'phone'>('email');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<{ phone: string } | null>(null);
+  const [webviewBlocked, setWebviewBlocked] = useState(false);
+  const [phoneTermsAccepted, setPhoneTermsAccepted] = useState(false);
+
+  // Detect in-app browsers (Instagram, TikTok) that block OAuth popups
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const isInstagram = /Instagram/i.test(ua);
+    const isTikTok = /BytedanceWebview|musical_ly/i.test(ua);
+    const isGenericWebview = /wv|WebView/i.test(ua);
+    setWebviewBlocked(isInstagram || isTikTok || isGenericWebview);
+  }, []);
 
   const prefilledEmail = new URLSearchParams(window.location.search).get('email') || '';
   
@@ -154,83 +177,189 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     };
   }, [language]);
 
-  const handleGoogleSignUp = async () => {
-    if (!formData.acceptedTerms) {
-      setTermsError(true);
-      toast({ title: t('register.termsRequired', language), variant: 'destructive' });
-      return;
-    }
-    setLoading(true);
+  // ── OAuth: Google / Apple / Facebook ─────────────────────────────────────
+  const performOAuthSignup = async (provider: 'google' | 'apple' | 'facebook') => {
+    const traceId = 'REG-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    console.log('[Auth Trace]', { traceId, method: provider, device: getDeviceInfo().device, timestamp: new Date().toISOString() });
     try {
-      const provider = new GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
-      const result = await signInWithPopup(auth, provider);
-      const { user } = result;
+      setSocialLoading(provider);
+
+      let authProvider: import('firebase/auth').AuthProvider;
+      switch (provider) {
+        case 'apple':   authProvider = createAppleProvider();    break;
+        case 'facebook': authProvider = createFacebookProvider(); break;
+        default:        authProvider = createGoogleProvider();   break;
+      }
+
+      const strategy = getAuthStrategy();
+      const { signInWithPopup, signInWithRedirect } = await import('firebase/auth');
+      const result = strategy === 'redirect'
+        ? await signInWithRedirect(auth, authProvider).then(() => null)
+        : await signInWithPopup(auth, authProvider);
+
+      if (!result) return; // redirect flow — page will reload
+
+      const idToken = await result.user.getIdToken();
       const additionalInfo = getAdditionalUserInfo(result);
-      const isNewUser = additionalInfo?.isNewUser || false;
+      const isNewUser = additionalInfo?.isNewUser;
 
-      const idToken = await user.getIdToken();
-
-      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+      // Create/refresh server session
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, traceId }),
       });
-      if (!sessionResponse.ok) {
-        throw new Error('Failed to create session');
+      if (!sessionRes.ok) {
+        await auth.signOut();
+        throw new Error(language === 'he' ? 'שגיאה ביצירת הפגישה. אנא נסה שוב.' : 'Session creation failed. Please try again.');
       }
 
+      trackSignUp(provider, result.user.uid);
+      trackEvent({ action: 'signup_success', category: 'authentication', label: `${provider}_oauth_signup`, language });
+
       if (isNewUser) {
-        await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
+        await fetch(getApiUrl('/api/auth/post-login'), {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
           credentials: 'include',
           body: JSON.stringify({
-            userId: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            provider: 'google',
-            role: 'pet_parent',
+            uid: result.user.uid,
+            email: result.user.email || '',
+            displayName: result.user.displayName || '',
+            photoURL: result.user.photoURL || '',
+            provider,
+            isNewUser: true,
           }),
         }).catch(() => {});
       }
 
-      trackSignUp('google');
       toast({
-        title: isNewUser
-          ? (language === 'he' ? '✅ חשבון נוצר בהצלחה!' : '✅ Account created!')
-          : (language === 'he' ? '✅ ברוך הבא בחזרה!' : '✅ Welcome back!'),
+        title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉',
+        description: language === 'he' ? 'החשבון שלך נוצר בהצלחה' : 'Your account has been created successfully',
       });
+      window.scrollTo(0, 0);
+      navigate('/dashboard');
+    } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user') return;
+      logger.error(`[Auth] ${provider} OAuth signup failed:`, err);
+      toast({
+        variant: 'destructive',
+        title: language === 'he' ? `הרשמה עם ${provider === 'apple' ? 'Apple' : provider === 'facebook' ? 'Facebook' : 'Google'} נכשלה` : `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-up failed`,
+        description: language === 'he' ? 'נסה שוב או השתמש במספר טלפון.' : 'Please try again or use phone number.',
+      });
+    } finally {
+      setSocialLoading(null);
+    }
+  };
 
-      try {
-        const postLoginRes = await fetch(getApiUrl('/api/auth/post-login'), {
+  // ── External OAuth: TikTok / Instagram ───────────────────────────────────
+  const handleExternalOAuth = async (provider: 'tiktok' | 'instagram') => {
+    try {
+      setSocialLoading(provider);
+      const res = await fetch(getApiUrl(`/api/auth/social/${provider}/authorize`));
+      const data = await res.json();
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        toast({
+          variant: 'destructive',
+          title: language === 'he' ? 'שירות לא זמין' : 'Service unavailable',
+          description: language === 'he' ? `הרשמה עם ${provider} אינה זמינה כרגע` : `Sign up with ${provider} is not available yet`,
+        });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: language === 'he' ? 'אירעה שגיאה. נסה שוב.' : 'An error occurred. Please try again.' });
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  // ── Phone OTP signup ──────────────────────────────────────────────────────
+  const handleSendPhoneCode = async () => {
+    if (!phoneNumber || !phoneNumber.startsWith('+') || phoneNumber.length < 8) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'מספר טלפון שגוי' : 'Invalid phone number', description: language === 'he' ? 'הזן מספר טלפון בינלאומי תקין (לדוגמה: +972501234567)' : 'Enter a valid international phone number (e.g. +972501234567)' });
+      return;
+    }
+    setPhoneLoading(true);
+    try {
+      let turnstileToken: string | null = null;
+      let freshCaptchaToken: string | null = null;
+      turnstileToken = await executeTurnstileInvisible('phone_signup').catch(() => null);
+      if (!turnstileToken) {
+        freshCaptchaToken = await executeReCaptcha('phone_signup').catch(() => null);
+      }
+
+      const res = await fetch(getApiUrl('/api/auth/phone/send-code'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: phoneNumber.trim(), language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
+      });
+      const result = await res.json();
+      if (!result.ok) throw new Error(result.error || result.message || (language === 'he' ? 'שליחת הקוד נכשלה' : 'Failed to send code'));
+
+      setConfirmationResult({ phone: phoneNumber.trim() });
+      toast({ title: language === 'he' ? 'קוד נשלח! 📲' : 'Code sent! 📲', description: language === 'he' ? `קוד אימות נשלח ל-${phoneNumber}` : `Verification code sent to ${phoneNumber}` });
+    } catch (err: any) {
+      logger.error('[PhoneAuth] Send code failed:', err);
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: err.message || (language === 'he' ? 'שליחת הקוד נכשלה. נסה שוב.' : 'Failed to send code. Please try again.') });
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneCode = async (codeOverride?: string) => {
+    const code = codeOverride ?? verificationCode;
+    if (!code || code.length < 6) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: language === 'he' ? 'הזן קוד בן 6 ספרות' : 'Enter the 6-digit code' });
+      return;
+    }
+    if (!confirmationResult?.phone) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: language === 'he' ? 'שלח קוד תחילה' : 'Send a code first' });
+      return;
+    }
+    setPhoneLoading(true);
+    try {
+      const verifyRes = await fetch(getApiUrl('/api/auth/phone/verify-code'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: confirmationResult.phone, code, language }),
+      });
+      const verifyResult = await verifyRes.json();
+      if (!verifyResult.ok) throw new Error(verifyResult.error || (language === 'he' ? 'הקוד שגוי' : 'Invalid code'));
+
+      const sessionRes = await fetch(getApiUrl('/api/auth/phone-session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ verificationToken: verifyResult.verificationToken }),
+      });
+      if (!sessionRes.ok) throw new Error(language === 'he' ? 'יצירת הפגישה נכשלה' : 'Failed to create session');
+
+      const sessionData = await sessionRes.json();
+      if (sessionData.customToken) {
+        const userCredential = await signInWithCustomToken(auth, sessionData.customToken);
+        const idToken = await userCredential.user.getIdToken(true);
+        await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
+          body: JSON.stringify({ idToken }),
         });
-        const postLoginData = await postLoginRes.json();
-        window.scrollTo(0, 0);
-        navigate(postLoginData.nextUrl || postLoginData.redirectTo || '/home');
-      } catch {
-        navigate('/home');
       }
+
+      trackSignUp('phone', sessionData.userId || confirmationResult.phone);
+      trackEvent({ action: 'signup_success', category: 'authentication', label: 'phone_otp_signup', language });
+      toast({ title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉', description: language === 'he' ? 'ההרשמה הצליחה' : 'Sign-up successful' });
+      window.scrollTo(0, 0);
+      navigate('/dashboard');
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        toast({
-          title: language === 'he' ? 'התחברות עם Google אינה זמינה' : 'Google sign-in unavailable',
-          description: language === 'he'
-            ? 'אנא התחבר עם מספר הטלפון שלך.'
-            : 'Please sign in with your phone number instead.',
-          variant: 'destructive',
-        });
-      }
+      logger.error('[PhoneAuth] Verification failed:', err);
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות נכשל' : 'Verification failed', description: err.message || (language === 'he' ? 'הקוד שגוי או פג תוקף. נסה שוב.' : 'Incorrect or expired code. Please try again.') });
     } finally {
-      setLoading(false);
+      setPhoneLoading(false);
     }
   };
 
@@ -628,28 +757,185 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             </div>
           </motion.div>
           
-          {/* Google Sign-Up Button */}
+          {/* Social Sign-Up Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
             className="space-y-3"
           >
+            {/* Webview warning banner */}
+            {webviewBlocked && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-sm text-amber-800">
+                  {language === 'he'
+                    ? 'הרשמה עם Google/Apple/Facebook דורשת דפדפן מלא (Safari/Chrome). השתמש בטלפון או אימייל למטה.'
+                    : 'Google/Apple/Facebook sign-up requires a full browser (Safari/Chrome). Use phone or email below.'}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Google */}
             <Button
               type="button"
               variant="outline"
-              onClick={handleGoogleSignUp}
-              disabled={loading}
-              className="w-full h-14 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              onClick={() => performOAuthSignup('google')}
+              disabled={!!socialLoading || loading}
+              className="w-full h-13 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-google-signup"
             >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-              ) : (
-                <FaGoogle className="h-5 w-5 text-[#4285F4]" />
-              )}
+              {socialLoading === 'google' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaGoogle className="h-5 w-5 text-[#4285F4]" />}
               {language === 'he' ? 'המשך עם Google' : language === 'ar' ? 'تسجيل باستخدام Google' : 'Continue with Google'}
             </Button>
+
+            {/* Apple */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => performOAuthSignup('apple')}
+              disabled={!!socialLoading || loading}
+              className="w-full h-13 !bg-black hover:!bg-gray-900 !text-white border border-black shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              data-testid="button-apple-signup"
+            >
+              {socialLoading === 'apple' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaApple className="h-5 w-5" />}
+              {language === 'he' ? 'המשך עם Apple' : 'Continue with Apple'}
+            </Button>
+
+            {/* Facebook */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => performOAuthSignup('facebook')}
+              disabled={!!socialLoading || loading}
+              className="w-full h-13 !bg-[#1877F2] hover:!bg-[#166fe5] !text-white border border-[#1877F2] shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              data-testid="button-facebook-signup"
+            >
+              {socialLoading === 'facebook' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaFacebook className="h-5 w-5" />}
+              {language === 'he' ? 'המשך עם Facebook' : 'Continue with Facebook'}
+            </Button>
+
+            {/* TikTok + Instagram row */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleExternalOAuth('tiktok')}
+                disabled={!!socialLoading || loading}
+                className="h-11 !bg-black hover:!bg-gray-900 !text-white border border-black font-medium text-sm flex items-center justify-center gap-2 rounded-2xl transition-all"
+                data-testid="button-tiktok-signup"
+              >
+                {socialLoading === 'tiktok' ? <Loader2 className="h-4 w-4 animate-spin" /> : <SiTiktok className="h-4 w-4" />}
+                TikTok
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleExternalOAuth('instagram')}
+                disabled={!!socialLoading || loading}
+                className="h-11 !bg-gradient-to-r !from-purple-500 !via-pink-500 !to-orange-400 hover:opacity-90 !text-white border-0 font-medium text-sm flex items-center justify-center gap-2 rounded-2xl transition-all"
+                data-testid="button-instagram-signup"
+              >
+                {socialLoading === 'instagram' ? <Loader2 className="h-4 w-4 animate-spin" /> : <SiInstagram className="h-4 w-4" />}
+                Instagram
+              </Button>
+            </div>
+
+            {/* Phone OTP toggle */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setSignupMode(signupMode === 'phone' ? 'email' : 'phone'); setConfirmationResult(null); setVerificationCode(''); }}
+              disabled={!!socialLoading || loading}
+              className="w-full h-13 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              data-testid="button-phone-signup-toggle"
+            >
+              {signupMode === 'phone' ? <ArrowLeft className="h-5 w-5" /> : <Phone className="h-5 w-5 text-purple-600" />}
+              {signupMode === 'phone'
+                ? (language === 'he' ? 'חזור לאימייל' : 'Back to email')
+                : (language === 'he' ? 'הירשם עם מספר טלפון' : 'Sign up with phone number')}
+            </Button>
+
+            {/* Phone OTP section */}
+            <AnimatePresence>
+              {signupMode === 'phone' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden space-y-3 pt-1"
+                >
+                  <div className="p-4 rounded-2xl border border-purple-100 bg-purple-50/50 space-y-4">
+                    <p className="text-sm text-purple-800 font-medium">
+                      {language === 'he' ? '📲 הרשמה מהירה עם מספר טלפון' : '📲 Quick sign-up with phone number'}
+                    </p>
+                    <PhoneInput
+                      value={phoneNumber}
+                      onChange={setPhoneNumber}
+                      language={language}
+                      defaultCountry="IL"
+                    />
+                    {/* Mandatory consent before sending SMS */}
+                    <div className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${!phoneTermsAccepted ? 'border-gray-200 bg-white/60' : 'border-green-200 bg-green-50/50'}`}>
+                      <Checkbox
+                        id="phoneTerms"
+                        checked={phoneTermsAccepted}
+                        onCheckedChange={(v) => setPhoneTermsAccepted(!!v)}
+                        data-testid="checkbox-phone-terms"
+                      />
+                      <label htmlFor="phoneTerms" className="text-xs text-gray-700 leading-relaxed cursor-pointer">
+                        {language === 'he'
+                          ? <>קראתי ואני מסכים/ה ל<Link href="/terms" className="text-purple-600 underline">תנאי השימוש</Link> ול<Link href="/privacy-policy" className="text-purple-600 underline">מדיניות הפרטיות</Link> <span className="text-red-500">*</span></>
+                          : <>I agree to the <Link href="/terms" className="text-purple-600 underline">Terms of Use</Link> and <Link href="/privacy-policy" className="text-purple-600 underline">Privacy Policy</Link> <span className="text-red-500">*</span></>
+                        }
+                      </label>
+                    </div>
+                    {!confirmationResult ? (
+                      <Button
+                        type="button"
+                        onClick={handleSendPhoneCode}
+                        disabled={phoneLoading || !phoneTermsAccepted}
+                        className="luxury-btn-primary w-full h-12"
+                        data-testid="button-send-phone-code"
+                      >
+                        {phoneLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Phone className="h-5 w-5 mr-2" />}
+                        {language === 'he' ? 'שלח קוד אימות' : 'Send verification code'}
+                      </Button>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs text-gray-500 text-center">
+                          {language === 'he' ? `קוד נשלח ל-${confirmationResult.phone}` : `Code sent to ${confirmationResult.phone}`}
+                        </p>
+                        <OtpCodeInput
+                          length={6}
+                          value={verificationCode}
+                          onChange={setVerificationCode}
+                          onComplete={(code) => handleVerifyPhoneCode(code)}
+                          disabled={phoneLoading}
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => handleVerifyPhoneCode()}
+                          disabled={phoneLoading || verificationCode.length < 6}
+                          className="luxury-btn-primary w-full h-12"
+                          data-testid="button-verify-phone-code"
+                        >
+                          {phoneLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <ChevronRight className="h-5 w-5 mr-2" />}
+                          {language === 'he' ? 'אמת ושלח' : 'Verify & continue'}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => { setConfirmationResult(null); setVerificationCode(''); }}
+                          className="text-xs text-purple-600 hover:underline w-full text-center"
+                        >
+                          {language === 'he' ? 'שלח קוד חדש' : 'Resend code'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="relative flex items-center gap-3">
               <div className="flex-1 border-t border-gray-200" />
