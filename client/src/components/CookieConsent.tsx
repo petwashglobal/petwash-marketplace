@@ -49,51 +49,57 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
 
   const text = {
     en: {
-      message: 'We use cookies to improve your experience, secure your account, and personalize offers.',
-      policy: 'By continuing, you agree to our',
+      title: 'Your Privacy Choices',
+      message: 'We use cookies for essential functions, analytics, and personalized offers. Non-essential cookies are only activated with your explicit consent. You may reject all non-essential cookies without affecting core service functionality.',
+      policy: 'Read our',
       privacyPolicy: 'Privacy Policy',
       acceptAll: 'Accept All',
-      rejectAll: 'Reject All',
+      rejectAll: 'Reject Non-Essential',
       manage: 'Manage Preferences',
     },
     he: {
-      message: 'אנו משתמשים בעוגיות לשיפור החוויה, אבטחת החשבון והתאמת מבצעים אישיים.',
-      policy: 'בשימוש באתר אתה מסכים ל',
+      title: 'העדפות פרטיות',
+      message: 'אנו משתמשים בעוגיות לצורכי תפעול חיוני, אנליטיקה ומבצעים מותאמים. עוגיות שאינן הכרחיות מופעלות רק בהסכמתך המפורשת. ניתן לדחות עוגיות לא-הכרחיות ללא פגיעה בפונקציונליות הבסיסית של השירות.',
+      policy: 'קרא את',
       privacyPolicy: 'מדיניות הפרטיות',
       acceptAll: 'אישור הכל',
-      rejectAll: 'דחיית הכל',
-      manage: 'התאמה אישית',
+      rejectAll: 'דחיית לא-הכרחיות',
+      manage: 'ניהול העדפות',
     },
     ar: {
-      message: 'نستخدم ملفات تعريف الارتباط لتحسين تجربتك وتأمين حسابك وتخصيص العروض.',
-      policy: 'بالمتابعة، فإنك توافق على',
+      title: 'خيارات الخصوصية',
+      message: 'نستخدم ملفات تعريف الارتباط للوظائف الأساسية والتحليلات والعروض المخصصة. لا يتم تفعيل ملفات تعريف الارتباط غير الضرورية إلا بموافقتك الصريحة.',
+      policy: 'اقرأ',
       privacyPolicy: 'سياسة الخصوصية',
       acceptAll: 'قبول الكل',
-      rejectAll: 'رفض الكل',
+      rejectAll: 'رفض غير الضروري',
       manage: 'إدارة التفضيلات',
     },
     ru: {
-      message: 'Мы используем файлы cookie для улучшения вашего опыта, защиты учетной записи и персонализации предложений.',
-      policy: 'Продолжая, вы соглашаетесь с нашей',
+      title: 'Настройки конфиденциальности',
+      message: 'Мы используем cookies для основных функций, аналитики и персонализации. Необязательные cookies активируются только с вашего явного согласия.',
+      policy: 'Ознакомьтесь с',
       privacyPolicy: 'Политикой конфиденциальности',
       acceptAll: 'Принять все',
-      rejectAll: 'Отклонить все',
+      rejectAll: 'Отклонить необязательные',
       manage: 'Настроить',
     },
     fr: {
-      message: 'Nous utilisons des cookies pour améliorer votre expérience, sécuriser votre compte et personnaliser les offres.',
-      policy: 'En continuant, vous acceptez notre',
+      title: 'Vos choix de confidentialité',
+      message: 'Nous utilisons des cookies pour les fonctions essentielles, l\'analyse et les offres personnalisées. Les cookies non essentiels ne sont activés qu\'avec votre consentement explicite.',
+      policy: 'Lire notre',
       privacyPolicy: 'Politique de confidentialité',
       acceptAll: 'Tout accepter',
-      rejectAll: 'Tout refuser',
+      rejectAll: 'Refuser les non-essentiels',
       manage: 'Gérer les préférences',
     },
     es: {
-      message: 'Utilizamos cookies para mejorar su experiencia, proteger su cuenta y personalizar las ofertas.',
-      policy: 'Al continuar, acepta nuestra',
+      title: 'Sus opciones de privacidad',
+      message: 'Usamos cookies para funciones esenciales, análisis y ofertas personalizadas. Las cookies no esenciales solo se activan con su consentimiento explícito.',
+      policy: 'Lea nuestra',
       privacyPolicy: 'Política de privacidad',
       acceptAll: 'Aceptar todo',
-      rejectAll: 'Rechazar todo',
+      rejectAll: 'Rechazar no esenciales',
       manage: 'Gestionar preferencias',
     },
   };
@@ -132,6 +138,12 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
           </div>
           
           <div className="flex-1 min-w-0">
+            <p
+              className="text-sm font-semibold text-gray-900 mb-1"
+              style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
+            >
+              {t.title}
+            </p>
             <p 
               className="text-sm text-gray-700 mb-3 leading-relaxed"
               style={{

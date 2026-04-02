@@ -731,10 +731,28 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         <input value={form.contactPhone} onChange={set('contactPhone')} placeholder="050-..." className={inputCls} />
       </div>
 
+      {/* ── Point-of-collection consent disclosure (Israeli Privacy Law §11) ── */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1.5" dir="rtl">
+        <p className="font-semibold text-slate-700 text-sm">הודעת עיבוד מידע — Paw Finder™</p>
+        <ul className="space-y-1 list-disc list-inside">
+          <li><strong>תמונות:</strong> הקובץ שהעלת מועבר לשרתי PetWash, נדחס אוטומטית ונבדק ע"י AI לאיתור תוכן פוגעני לפני פרסום. לא מועבר לגורמים חיצוניים.</li>
+          <li><strong>מיקום GPS:</strong> אם לחצת על כפתור המיקום — המיקום המדויק <em>אינו נשמר</em>; נשמרת קירוב ברדיוס ~1.1 ק"מ בלבד.</li>
+          <li><strong>טלפון:</strong> אינו מוצג בפומבי. ייחשף רק לאחר אישורך המפורש לבקשת קשר ספציפית.</li>
+          <li><strong>מחיקה:</strong> ניתן למחוק את הפוסט בכל עת מ"האזור שלי".</li>
+        </ul>
+        <p>
+          בלחיצה על "פרסם פוסט" אתה מסכים לעיבוד המידע כמתואר ב
+          <a href="/privacy-policy#paw-finder" target="_blank" rel="noopener noreferrer" className="underline mr-1 font-medium text-slate-800">
+            מדיניות הפרטיות
+          </a>
+          — סעיף 12 (Paw Finder).
+        </p>
+      </div>
+
       <button
         type="submit"
-        disabled={submitting}
-        className="w-full rounded-2xl bg-slate-900 text-white py-3.5 font-semibold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+        disabled={submitting || uploadProgress === 'uploading'}
+        className="w-full rounded-2xl bg-slate-900 text-white py-3.5 font-semibold hover:bg-slate-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" /> פרסם פוסט</>}
       </button>

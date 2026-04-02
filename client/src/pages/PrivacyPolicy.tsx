@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            עודכן לאחרונה: 17 באוקטובר 2025 | תואם לתיקון 13 לחוק הגנת הפרטיות
+            עודכן לאחרונה: 2 באפריל 2026 | תואם לתיקון 13 לחוק הגנת הפרטיות
           </motion.p>
           
           <div className="space-y-6">
@@ -117,15 +117,35 @@ export default function PrivacyPolicy() {
                   <CardTitle className="luxury-heading-sm">4. שיתוף מידע</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 luxury-text-body">
-                <p>אנו משתפים מידע רק עם:</p>
-                <ul className="list-disc mr-6 space-y-2">
-                  <li><strong>ספקי שירות:</strong> Firebase (אחסון), Nayax Israel (תשלומים), SendGrid (אימייל)</li>
-                  <li><strong>רשויות:</strong> כנדרש על פי חוק</li>
-                  <li><strong>העברות עסקיות:</strong> במקרה של מיזוג או רכישה</li>
-                </ul>
-                <p className="mt-4 luxury-text-small">
-                  אנו לא מוכרים מידע אישי לצדדים שלישיים.
+                <p>אנו משתפים מידע אך ורק עם הגורמים הבאים, ורק במידה הנדרשת לאספקת השירות:</p>
+                <div className="overflow-x-auto">
+                  <table className="text-sm w-full border-collapse mt-2">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-3 py-2 text-right">ספק</th>
+                        <th className="border border-gray-200 px-3 py-2 text-right">מטרה</th>
+                        <th className="border border-gray-200 px-3 py-2 text-right">מדינה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">Firebase (Google)</td><td className="border border-gray-200 px-3 py-1.5">אחסון, אימות, פוש התראות</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">Nayax Israel</td><td className="border border-gray-200 px-3 py-1.5">עיבוד תשלומים</td><td className="border border-gray-200 px-3 py-1.5">ישראל</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">SendGrid (Twilio)</td><td className="border border-gray-200 px-3 py-1.5">שליחת אימיילים</td><td className="border border-gray-200 px-3 py-1.5">ארה״ב (SCCs)</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">Twilio</td><td className="border border-gray-200 px-3 py-1.5">שליחת SMS ואימות טלפון</td><td className="border border-gray-200 px-3 py-1.5">ארה״ב (SCCs)</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">Google Maps Platform</td><td className="border border-gray-200 px-3 py-1.5">מיקום תחנות שטיפה, מפות</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">Google Gemini AI</td><td className="border border-gray-200 px-3 py-1.5">ניתוח תוכן, בקרת בטיחות אוטומטית</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">Cloudflare Turnstile</td><td className="border border-gray-200 px-3 py-1.5">הגנה מפני בוטים (CAPTCHA)</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
+                      <tr><td className="border border-gray-200 px-3 py-1.5">DocuSeal</td><td className="border border-gray-200 px-3 py-1.5">חתימות דיגיטליות</td><td className="border border-gray-200 px-3 py-1.5">EEA</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-4 text-sm font-semibold text-red-700">
+                  אנו לא מוכרים מידע אישי לצדדים שלישיים, לעולם.
                 </p>
+                <ul className="list-disc mr-6 space-y-2 text-sm">
+                  <li><strong>רשויות:</strong> כנדרש על פי חוק ישראלי בלבד</li>
+                  <li><strong>העברות עסקיות:</strong> במקרה של מיזוג או רכישה — תקבל הודעה מראש</li>
+                </ul>
               </CardContent>
               </Card>
             </motion.div>
@@ -267,7 +287,7 @@ export default function PrivacyPolicy() {
                   <li>הודעת SMS (לשינויים קריטיים)</li>
                 </ul>
                 <p className="mt-4 luxury-text-small">
-                  המשך שימוש באתר לאחר עדכון מהווה הסכמה למדיניות המעודכנת.
+                  <strong>שינויים מהותיים</strong> — לגבי שינויים מהותיים (כגון סוג מידע נאסף, מטרות חדשות, שיתוף עם גורמים חדשים) נשלח הודעה מפורשת לכתובת האימייל שלך ונבקש הסכמה מחודשת לפני כניסת השינוי לתוקף. <strong>שימוש מתמשך אינו מהווה הסכמה לשינויים מהותיים.</strong>
                 </p>
               </CardContent>
               </Card>
@@ -283,10 +303,17 @@ export default function PrivacyPolicy() {
                   <CardTitle className="luxury-heading-sm">11. העברות מידע בינלאומיות</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 luxury-text-body">
-                <p>חלק מהמידע עשוי להישמר בשרתים מחוץ לישראל (EEA), תוך שמירה על רמת הגנה שווה.</p>
-                <p className="luxury-text-small">
-                  ספקים: Firebase (Google Cloud EU), SendGrid (EU), Nayax Israel
-                </p>
+                <p>ישראל מוכרת כמדינה בעלת הגנת פרטיות נאותה על-ידי האיחוד האירופי (GDPR Adequacy). חלק מהמידע מועבר לשרתים מחוץ לישראל כדלקמן:</p>
+                <ul className="list-disc mr-6 space-y-1 text-sm">
+                  <li><strong>Firebase / Google Cloud</strong> — EU/ארה״ב. הסכם עיבוד נתונים (DPA) + סעיפי חוזה סטנדרטיים (SCCs)</li>
+                  <li><strong>SendGrid / Twilio</strong> — ארה״ב. SCCs ותנאי GDPR</li>
+                  <li><strong>Google Maps Platform</strong> — EU/ארה״ב. DPA עם Google Ireland Ltd</li>
+                  <li><strong>Google Gemini AI</strong> — EU/ארה״ב. DPA עם Google. תוכן לא מועבר לאימון מודלים</li>
+                  <li><strong>Cloudflare Turnstile</strong> — EU/ארה״ב. Cloudflare GDPR DPA</li>
+                  <li><strong>Nayax</strong> — ישראל בלבד</li>
+                  <li><strong>DocuSeal</strong> — EU בלבד</li>
+                </ul>
+                <p className="text-sm mt-2">לקבלת עותק של ה-SCCs הרלוונטיים, פנה אלינו: <a href="mailto:Support@PetWash.co.il" className="underline">Support@PetWash.co.il</a></p>
               </CardContent>
               </Card>
             </motion.div>
@@ -295,6 +322,38 @@ export default function PrivacyPolicy() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.2 }}
+            >
+              <Card className="luxury-glass-panel luxury-shadow-md">
+                <CardHeader>
+                  <CardTitle className="luxury-heading-sm">12. Paw Finder™ — עיבוד מידע מיוחד</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 luxury-text-body">
+                <p>שירות Paw Finder™ מאפשר פרסום ואיתור חיות מחמד אבודות. עיבוד המידע בשירות זה כולל:</p>
+                <ul className="list-disc mr-6 space-y-2 text-sm">
+                  <li>
+                    <strong>תמונות חיות:</strong> תמונות שהועלו על-ידך מועברות לשרתי PetWash ומעובדות ע"י ספריית Sharp לדחיסה ואופטימיזציה. לאחר עיבוד, התמונה נשמרת בשרת. התמונות כפופות לבדיקת בטיחות אוטומטית ע"י Google Gemini AI לפני פרסום. <strong>הסכמה לעיבוד זה נדרשת כתנאי לשימוש בשירות Paw Finder.</strong>
+                  </li>
+                  <li>
+                    <strong>מיקום גיאוגרפי:</strong> אם תבחר בכפתור "📍 GPS", הדפדפן יבקש את רשותך לגישה למיקום. המיקום המדויק <em>אינו נשמר</em> — נשמרים רק קואורדינטות מעוגלות ל-2 ספרות עשרוניות (דיוק של כ-1.1 ק"מ) להגנת פרטיותך. מיקום ידני (שם עיר) לא מחייב שיתוף GPS כלל.
+                  </li>
+                  <li>
+                    <strong>פרטי קשר (טלפון):</strong> מספר הטלפון הרשום לפוסט <em>אינו מוצג בפומבי</em>. הוא נחשף רק לאחר אישור מפורש שלך לבקשת קשר ספציפית, בהתאם להגדרת הפרטיות שבחרת בעת הפרסום.
+                  </li>
+                  <li>
+                    <strong>בסיס משפטי:</strong> עיבוד זה מבוסס על הסכמה (§17 לחוק הגנת הפרטיות) ועל אינטרס לגיטימי בסיוע לאיתור חיות מחמד אבודות.
+                  </li>
+                  <li>
+                    <strong>שמירת מידע:</strong> פוסטים פעילים נשמרים עד שסומנים כנפתרו. ניתן למחוק פוסט בכל עת דרך "האזור שלי".
+                  </li>
+                </ul>
+              </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 1.3 }}
             >
               <Card className="luxury-glass-panel luxury-shadow-md border-2 border-purple-200">
                 <CardHeader>

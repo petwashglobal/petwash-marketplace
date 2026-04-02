@@ -63,10 +63,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     password: "",
     dob: "",
     country: "Israel",
-    loyaltyProgram: true,
-    reminders: true,
-    marketing: true,
-    pushNotifications: true,
+    loyaltyProgram: false,
+    reminders: false,
+    marketing: false,
+    pushNotifications: false,
     acceptedTerms: false,
   });
   
