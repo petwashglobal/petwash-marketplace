@@ -1,0 +1,94 @@
+Good. This is strong and much more serious.
+
+You are clearly improving real platform depth now:
+- admin access
+- KYC identity flow
+- finance safety logic
+- booking connectivity protection
+
+That is the right direction.
+
+Now I want the next step in the same proof-driven style.
+
+Please do not stop at “route exists” or “component added”.
+I want end-to-end proof for each major area.
+
+Next proof priorities:
+
+1. Admin login full proof
+- login success
+- correct redirect
+- correct dashboard shown
+- wrong role blocked
+- session persists
+- logout works
+
+2. KYC full proof
+For each document type:
+- upload works
+- invalid file blocked
+- selfie works from mobile
+- OCR / parsing result saved
+- likeness / match result saved
+- manual review fallback if unclear
+- DB before/after
+
+3. Financial monitor proof
+- one clean transaction
+- one suspicious transaction
+- one clearly broken transaction
+- exact verdicts
+- explain what is stored and what is not stored
+
+4. Booking connectivity proof
+- online success
+- offline blocked cleanly
+- server timeout blocked cleanly
+- no orphan booking created
+- user gets correct message
+
+5. Dashboard reality audit
+Check every major dashboard:
+- prestige member dashboard
+- provider dashboard
+- admin / staff dashboard
+- inbox
+- notifications
+- live counters
+- charts
+- filters
+- buttons
+I want confirmation that all show real data, not placeholder data.
+
+6. Provider / member mobile upload audit
+- camera take photo
+- upload photo
+- upload PDF where allowed
+- wrong format blocked
+- file size limits
+- mobile Safari / iPhone behavior
+
+7. Business rules stress review
+I want smart handling documented and tested for:
+- no internet mid booking
+- low battery or page close
+- cancel after host/provider confirmed
+- no provider match
+- location denied
+- provider location stale
+- payment succeeded but UI failed
+- cancelled but still redeem attempt
+- no credit but still trying to book
+
+Also do one more hardening pass for:
+- every dead button
+- every filter
+- every upload
+- every command
+- every save action
+No fake UI. No dead actions.
+
+Keep the same rule:
+No claims without proof.
+No done without failure tests.
+This is the right direction. Continue.
