@@ -829,6 +829,221 @@ function DigitalCardSection({
   );
 }
 
+// ─── Kiosk Pass Overlay ───────────────────────────────────────────────────────
+function PrestigeKioskPass({
+  wallet, walletData, he,
+  selectedBay, setSelectedBay,
+  qrToken, secondsLeft, isGenerating, generateQr,
+  onClose,
+}: {
+  wallet: WalletData;
+  walletData: any;
+  he: boolean;
+  selectedBay: 'left' | 'right' | 'any';
+  setSelectedBay: (b: 'left' | 'right' | 'any') => void;
+  qrToken: QrToken | null;
+  secondsLeft: number;
+  isGenerating: boolean;
+  generateQr: () => void;
+  onClose: () => void;
+}) {
+  const { pass, balances } = wallet;
+  const name = walletData?.displayName || pass.userId.slice(0, 10);
+  const tierLabel = he ? pass.tierDisplay.he : pass.tierDisplay.en;
+
+  // Attempt to keep screen bright while pass is open
+  useEffect(() => {
+    try {
+      const el = document.documentElement;
+      el.style.setProperty('--screen-bright', '1');
+    } catch { /* ignore */ }
+    return () => {
+      try { document.documentElement.style.removeProperty('--screen-bright'); } catch { /* ignore */ }
+    };
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '16px',
+      animation: 'kioskFadeIn 0.22s ease',
+    }}>
+      <style>{`
+        @keyframes kioskFadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
+        @keyframes kioskQrIn { from { opacity:0; transform:translateY(6px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+      `}</style>
+
+      {/* Pass Card */}
+      <div style={{
+        width: '100%', maxWidth: '360px',
+        background: '#FFFFFF',
+        borderRadius: '24px',
+        overflow: 'hidden',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.3)',
+        position: 'relative',
+      }}>
+        {/* Gold shimmer top */}
+        <div style={{ height: '3px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#f0d060,#c9a96e)' }} />
+
+        {/* Close button */}
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '12px', right: '14px',
+          width: '30px', height: '30px', borderRadius: '50%',
+          background: 'rgba(0,0,0,0.06)', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '16px', color: '#9E9E9E', zIndex: 1,
+        }}>✕</button>
+
+        {/* Header */}
+        <div style={{ padding: '20px 20px 0', textAlign: 'center' }}>
+          {/* Logo wordmark */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', marginBottom: '4px' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <ellipse cx="5" cy="7" rx="2.2" ry="3" fill="#C6A35B" />
+              <ellipse cx="9.5" cy="4.5" rx="2" ry="2.8" fill="#C6A35B" />
+              <ellipse cx="14.5" cy="4.5" rx="2" ry="2.8" fill="#C6A35B" />
+              <ellipse cx="19" cy="7" rx="2.2" ry="3" fill="#C6A35B" />
+              <path d="M12 9.5c-4.2 0-7.5 2.8-7.5 6 0 3 2.8 5.5 7.5 5.5s7.5-2.5 7.5-5.5c0-3.2-3.3-6-7.5-6z" fill="#C6A35B" />
+            </svg>
+            <span style={{ fontSize: '22px', fontWeight: 800, color: '#C6A35B', letterSpacing: '-0.02em', fontFamily: "'SF Pro Display','Helvetica Neue',sans-serif" }}>
+              PetWash™
+            </span>
+          </div>
+
+          {/* Prestige label */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'linear-gradient(90deg,#c9a96e,#d4af37,#c9a96e)', borderRadius: '100px', padding: '3px 14px', marginBottom: '14px' }}>
+            <span style={{ color: '#fff', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              {tierLabel}
+            </span>
+          </div>
+
+          {/* Member name */}
+          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1A1A1A', letterSpacing: '-0.01em', marginBottom: '2px', fontFamily: "'SF Pro Display','Helvetica Neue',sans-serif" }}>
+            {name.toUpperCase()}
+          </div>
+          <div style={{ fontSize: '0.62rem', color: '#9E9E9E', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '18px' }}>
+            {he ? 'חבר מכובד' : 'Member'}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)', margin: '0 20px' }} />
+
+        {/* QR Code — the centrepiece */}
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', animation: 'kioskQrIn 0.3s ease' }}>
+          {qrToken ? (
+            <>
+              {/* QR + countdown ring */}
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                {/* Countdown ring — positioned around the QR */}
+                <div style={{ position: 'absolute', top: '-10px', right: '-10px', zIndex: 1 }}>
+                  <CountdownRing secondsLeft={secondsLeft} total={QR_TTL} />
+                </div>
+                <div style={{
+                  background: '#FFFFFF', padding: '14px', borderRadius: '16px',
+                  border: '2px solid rgba(212,175,55,0.25)',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                }}>
+                  <QRCodeSVG
+                    value={qrToken.token}
+                    size={200}
+                    level="H"
+                    imageSettings={{ src: prestigeLogoDiamond, height: 36, width: 36, excavate: true }}
+                  />
+                </div>
+              </div>
+
+              {/* Instruction */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#B8941F', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2px' }}>
+                  {he ? 'סרוק בקיוסק K9000' : 'Scan at K9000 Kiosk'}
+                </div>
+                <div style={{ fontSize: '0.62rem', color: '#9E9E9E' }}>
+                  {he ? 'קוד חד-פעמי מאובטח' : 'One-time secure token'}
+                  {' · '}
+                  {qrToken.bay !== 'any' ? (he ? (qrToken.bay === 'left' ? 'תא שמאל' : 'תא ימין') : `${qrToken.bay} bay`) : (he ? 'כל תא' : 'any bay')}
+                </div>
+              </div>
+
+              {/* Refresh */}
+              <button onClick={generateQr} style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#C5A55A', fontSize: '0.72rem', fontWeight: 600, padding: '4px 8px',
+              }}>
+                <RefreshCw size={12} /> {he ? 'רענן קוד' : 'Refresh code'}
+              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '20px 0' }}>
+              <div style={{ width: '200px', height: '200px', borderRadius: '16px', background: 'rgba(212,175,55,0.04)', border: '2px dashed rgba(212,175,55,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <QrCodeIcon size={44} color="rgba(212,175,55,0.35)" />
+                <p style={{ margin: 0, color: 'rgba(212,175,55,0.55)', fontSize: '0.75rem', textAlign: 'center' }}>
+                  {he ? 'לחץ להפעלת קוד QR' : 'Tap to activate QR'}
+                </p>
+              </div>
+              <Button onClick={generateQr} disabled={isGenerating} style={{ background: 'linear-gradient(135deg,#c9a96e,#d4af37)', color: '#fff', border: 'none', fontWeight: 700, padding: '12px 36px', borderRadius: '12px', fontSize: '0.9rem' }}>
+                {isGenerating ? (he ? 'מייצר...' : 'Generating…') : (he ? 'הפעל QR' : 'Activate QR')}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent)', margin: '0 20px' }} />
+
+        {/* Footer — membership number + points */}
+        <div style={{ padding: '14px 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.55rem', color: '#9E9E9E', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>
+              {he ? 'מספר חבר' : 'Member No.'}
+            </div>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1A1A1A', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+              {pass.serialNumber}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.55rem', color: '#9E9E9E', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>
+              {he ? 'נקודות' : 'Points'}
+            </div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#C5A55A' }}>
+              {balances.loyaltyPoints.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* Bay selector — compact, below footer */}
+        <div style={{ padding: '0 20px 16px', display: 'flex', gap: '6px', justifyContent: 'center' }}>
+          {(['left', 'any', 'right'] as const).map((b) => (
+            <button key={b} onClick={() => { setSelectedBay(b); generateQr(); }} style={{
+              flex: 1, padding: '7px 4px', borderRadius: '100px',
+              border: selectedBay === b ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.18)',
+              background: selectedBay === b ? 'rgba(212,175,55,0.1)' : '#FFFFFF',
+              color: selectedBay === b ? '#B8941F' : '#9E9E9E',
+              fontWeight: selectedBay === b ? 700 : 500,
+              fontSize: '0.72rem', cursor: 'pointer',
+            }}>
+              {b === 'left' ? (he ? 'שמאל' : 'Left') : b === 'right' ? (he ? 'ימין' : 'Right') : (he ? 'כל תא' : 'Any')}
+            </button>
+          ))}
+        </div>
+
+        {/* Valid footer */}
+        <div style={{ background: 'rgba(212,175,55,0.04)', padding: '8px 20px 14px', textAlign: 'center', borderTop: '1px solid rgba(212,175,55,0.1)' }}>
+          <div style={{ fontSize: '0.56rem', color: '#BFAC8A', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            {he ? 'תקף בתחנות K9000 ברחבי העולם' : 'Valid at K9000 Dog Wash Kiosks Worldwide'}
+          </div>
+        </div>
+
+        {/* Gold shimmer bottom */}
+        <div style={{ height: '3px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#f0d060,#c9a96e)' }} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PrestigePassWallet() {
   const { language } = useLanguage() as { language: 'he' | 'en' };
@@ -842,6 +1057,7 @@ export default function PrestigePassWallet() {
   const [secondsLeft, setSecondsLeft]       = useState(QR_TTL);
   const [isGenerating, setIsGenerating]     = useState(false);
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
+  const [showKioskPass, setShowKioskPass]   = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [washEvent, setWashEvent]           = useState<{ bay:string; stationId:string|null; deductedCents:number; newBalanceCents:number; source:string; } | null>(null);
   const [petEditOpen, setPetEditOpen]       = useState(false);
@@ -966,7 +1182,53 @@ export default function PrestigePassWallet() {
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         .prestige-qr-wrap { animation: fadeIn 0.3s ease; }
+        @keyframes passButtonPulse { 0%,100% { box-shadow:0 4px 20px rgba(212,175,55,0.35); } 50% { box-shadow:0 4px 32px rgba(212,175,55,0.6); } }
       `}</style>
+
+      {/* ── Kiosk Pass Overlay ── */}
+      {showKioskPass && (
+        <PrestigeKioskPass
+          wallet={wallet}
+          walletData={walletData}
+          he={he}
+          selectedBay={selectedBay}
+          setSelectedBay={setSelectedBay}
+          qrToken={qrToken}
+          secondsLeft={secondsLeft}
+          isGenerating={isGenerating}
+          generateQr={generateQr}
+          onClose={() => setShowKioskPass(false)}
+        />
+      )}
+
+      {/* ── Sticky "Scan at K9000" FAB ── */}
+      <button
+        onClick={() => setShowKioskPass(true)}
+        style={{
+          position: 'fixed',
+          bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 100,
+          background: 'linear-gradient(135deg,#c9a96e 0%,#d4af37 50%,#c9a96e 100%)',
+          color: '#FFFFFF',
+          border: 'none',
+          borderRadius: '100px',
+          padding: '14px 28px',
+          fontWeight: 800,
+          fontSize: '0.88rem',
+          letterSpacing: '0.04em',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          whiteSpace: 'nowrap',
+          animation: 'passButtonPulse 3s ease-in-out infinite',
+        }}
+      >
+        <QrCodeIcon size={17} />
+        {he ? 'הצג כרטיס — K9000' : 'Show Pass — K9000'}
+      </button>
 
       <div style={{ background:'#FFFFFF', minHeight:'100vh', paddingBottom:'calc(180px + env(safe-area-inset-bottom, 0px))' }}>
 
