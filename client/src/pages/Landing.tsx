@@ -174,7 +174,8 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 <img 
                   src="/hero-image.jpeg"
                   alt="Professional pet washing service with adorable dogs and cats"
-                  className="w-full rounded-lg shadow-2xl object-contain h-60 sm:h-80 lg:h-96 mx-auto"
+                  className="w-full object-contain h-60 sm:h-80 lg:h-96 mx-auto"
+                  style={{ filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.14))' }}
                   loading="eager"
                   decoding="async"
                 />
@@ -244,13 +245,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               {features.map((feature, index) => (
                 <div 
                   key={index} 
-                  className={`luxury-card text-center group p-4 sm:p-6 rounded-lg transition-all duration-700 relative bg-gradient-to-br from-white to-[#fdfbf7] border border-[#e8e5e0] hover:border-[#c6a664]/50 hover:shadow-lg ${
+                  className={`text-center group p-4 sm:p-6 transition-all duration-700 relative bg-white ${
                     featuresRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                   }`}
                   style={{ transitionDelay: `${index * 80}ms` }}
                 >
-                  {/* Icon with gold ring */}
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-[#fdfbf7] to-white border border-[#c6a664]/30 flex items-center justify-center group-hover:border-[#c6a664] group-hover:scale-110 transition-all duration-500">
+                  {/* Icon */}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-[#fdfbf7] to-white flex items-center justify-center group-hover:scale-110 transition-all duration-500" style={{ boxShadow: '0 4px 16px rgba(198,166,100,0.12)' }}>
                     <span className="text-lg sm:text-xl">{feature.icon}</span>
                   </div>
                   
@@ -308,7 +309,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               ].map((item, index) => (
                 <div 
                   key={index}
-                  className={`text-center group p-3 sm:p-5 relative bg-white/80 backdrop-blur-sm rounded-lg border border-[#e8e5e0] hover:border-[#c6a664]/50 hover:shadow-md transition-all duration-700 ${
+                  className={`text-center group p-3 sm:p-5 relative bg-white transition-all duration-700 ${
                     organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                   }`}
                   style={{ transitionDelay: `${100 + index * 100}ms` }}
@@ -343,46 +344,124 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 {/* Digital Wallet Section - Removed: Feature not yet active */}
 
         {/* Loyalty Program Section */}
-        <section className="py-4 px-4 sm:py-6 sm:px-6 lg:px-8 bg-white">
-          <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-black mb-4 sm:mb-6">
-              {t('loyalty.title', language)}
-            </h2>
-            <p className="text-base sm:text-lg text-black mb-4 sm:mb-6 max-w-2xl lg:max-w-3xl mx-auto">
-              {t('loyalty.description', language)}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-black mb-3">
+        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+          <div className="max-w-6xl mx-auto">
+            {/* Section header */}
+            <div className="text-center mb-14">
+              <p className="text-[10px] font-light tracking-[5px] uppercase mb-4 text-[#C6A664]"
+                style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", letterSpacing: '0.35em' }}>
+                PET WASH PRESTIGE™
+              </p>
+              <h2 className="text-3xl sm:text-4xl font-light text-[#0A0A0A] mb-4"
+                style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
+                {t('loyalty.title', language)}
+              </h2>
+              {/* Metallic rule */}
+              <div className="flex justify-center my-5">
+                <div className="w-16 h-[1px]"
+                  style={{ background: 'linear-gradient(90deg,transparent,#C6A664 30%,#E8D5A0 50%,#C6A664 70%,transparent)' }} />
+              </div>
+              <p className="text-sm font-light text-[#6B7280] max-w-2xl mx-auto leading-relaxed"
+                style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+                {t('loyalty.description', language)}
+              </p>
+            </div>
+
+            {/* Tier cards — no borders, pure white with shadow lift */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-[#F5F5F5]">
+              {/* Silver */}
+              <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
+                style={{ boxShadow: '0 0 0 0 transparent', transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.09)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 0 0 transparent')}
+              >
+                {/* Tier indicator — thin metallic top strip */}
+                <div className="w-12 h-[2px] mx-auto mb-7"
+                  style={{ background: 'linear-gradient(90deg,#9CA3AF,#E5E7EB,#9CA3AF)' }} />
+                <span className="text-[9px] font-light tracking-[4px] uppercase text-[#9CA3AF] block mb-3"
+                  style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+                  Silver
+                </span>
+                <h3 className="text-lg font-light text-[#0A0A0A] mb-4"
+                  style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
                   {t('loyalty.newMember', language)}
                 </h3>
-                <p className="text-sm text-black">
+                <p className="text-sm font-light text-[#6B7280] leading-relaxed"
+                  style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
                   {t('loyalty.newMemberDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-black mb-3">
+
+              {/* Gold */}
+              <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
+                style={{ boxShadow: '0 0 0 0 transparent', transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.09)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 0 0 transparent')}
+              >
+                <div className="w-12 h-[2px] mx-auto mb-7"
+                  style={{ background: 'linear-gradient(90deg,#C6A664,#E8D5A0,#C6A664)' }} />
+                <span className="text-[9px] font-light tracking-[4px] uppercase block mb-3"
+                  style={{
+                    fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+                    background: 'linear-gradient(90deg,#C6A664,#D4AF37,#C6A664)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}>
+                  Gold
+                </span>
+                <h3 className="text-lg font-light text-[#0A0A0A] mb-4"
+                  style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
                   {t('loyalty.regular', language)}
                 </h3>
-                <p className="text-sm text-black">
+                <p className="text-sm font-light text-[#6B7280] leading-relaxed"
+                  style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
                   {t('loyalty.regularDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-amber-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-black mb-3">
+
+              {/* Platinum */}
+              <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
+                style={{ boxShadow: '0 0 0 0 transparent', transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.09)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 0 0 transparent')}
+              >
+                <div className="w-12 h-[2px] mx-auto mb-7"
+                  style={{ background: 'linear-gradient(90deg,#00C569,#00E87A,#00C569)' }} />
+                <span className="text-[9px] font-light tracking-[4px] uppercase block mb-3"
+                  style={{
+                    fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+                    background: 'linear-gradient(90deg,#00C569,#00E87A,#00C569)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}>
+                  Platinum
+                </span>
+                <h3 className="text-lg font-light text-[#0A0A0A] mb-4"
+                  style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
                   {t('loyalty.senior', language)}
                 </h3>
-                <p className="text-sm text-black">
+                <p className="text-sm font-light text-[#6B7280] leading-relaxed"
+                  style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
                   {t('loyalty.seniorDesc', language)}
                 </p>
               </div>
             </div>
-            <div className="mt-8">
-              <Button 
+
+            <div className="mt-12 text-center">
+              <Button
                 onClick={() => setLocation(user ? getDashboardPath() : '/signin')}
-                className="bg-black text-white hover:bg-black hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 text-base font-medium shadow-lg"
+                className="h-14 px-12 rounded-none text-white text-[11px] font-light tracking-[3px] uppercase"
+                style={{
+                  background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',
+                  backgroundSize: '200% 200%',
+                  fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+                  letterSpacing: '0.2em',
+                  boxShadow: '0 8px 32px rgba(198,166,100,0.3)',
+                }}
               >
-                {user 
+                {user
                   ? `${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`
                   : t('loyalty.signUp', language)
                 }

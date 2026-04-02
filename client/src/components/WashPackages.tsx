@@ -223,10 +223,12 @@ export function WashPackages({ language }: WashPackagesProps) {
                 className="group cursor-pointer"
                 onClick={() => handleExpressCheckout(pkg)}
               >
-                <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
+                <div className="relative overflow-hidden transition-all duration-500 bg-white hover:-translate-y-1"
                   style={{ 
-                    borderRadius: '2px',
-                    border: isPopular ? '1.5px solid #c9a96e' : '1px solid #eee',
+                    boxShadow: isPopular
+                      ? '0 0 0 1.5px #c9a96e, 0 12px 40px rgba(201,169,110,0.14)'
+                      : '0 4px 24px rgba(0,0,0,0.07)',
+                    transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s',
                   }}
                 >
                   {isPopular && (
@@ -355,7 +357,7 @@ export function WashPackages({ language }: WashPackagesProps) {
           
           <div className="grid grid-cols-3 gap-8 sm:gap-16 max-w-xl mx-auto">
             <div className="text-center">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full border border-[#e8e4de] flex items-center justify-center">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center">
                 <Check className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
@@ -367,7 +369,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             </div>
             
             <div className="text-center">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full border border-[#e8e4de] flex items-center justify-center">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center">
                 <Crown className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
@@ -379,7 +381,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             </div>
             
             <div className="text-center">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full border border-[#e8e4de] flex items-center justify-center">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center">
                 <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
