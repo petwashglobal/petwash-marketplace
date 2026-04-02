@@ -30,7 +30,8 @@ import {
   Car, Home, Dog, Scissors, GraduationCap,
   ArrowRight, ArrowLeft, Sparkles, Crown, Send,
   Camera, User, X, Sun,
-  Check, DollarSign, Info, MapPin, Mail
+  Check, DollarSign, Info, MapPin, Mail,
+  ScanLine, ShieldCheck, FileCheck, Upload, Clock, BadgeCheck
 } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { useLanguage } from "@/lib/languageStore";
@@ -157,6 +158,78 @@ const WORLD_COUNTRIES = [
   'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
 ];
 
+function SubmitDocumentsButton({
+  intakeId, firebaseUid, idFrontPhoto, idBackPhoto, selfieDocPhoto,
+  drivingLicensePhoto, isHebrew, onSuccess,
+}: {
+  intakeId: string | null;
+  firebaseUid: string;
+  idFrontPhoto: string | null;
+  idBackPhoto: string | null;
+  selfieDocPhoto: string | null;
+  drivingLicensePhoto: string | null;
+  isHebrew: boolean;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const token = await getAuth().currentUser?.getIdToken();
+      const res = await fetch('/api/provider-intake/submit-documents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          intakeId,
+          firebaseUid,
+          idDocumentFrontBase64: idFrontPhoto,
+          idDocumentBackBase64: idBackPhoto,
+          selfieDocBase64: selfieDocPhoto,
+          drivingLicenseBase64: drivingLicensePhoto,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast({
+          title: isHebrew ? 'המסמכים נשלחו בהצלחה!' : 'Documents submitted!',
+          description: isHebrew ? 'אנחנו נבדוק אותם ונעדכן אותך בקרוב.' : 'We\'ll review them and update you shortly.',
+        });
+        onSuccess();
+      } else {
+        throw new Error(result.error || 'Failed');
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה בשליחת המסמכים' : 'Document submission failed',
+        description: isHebrew ? 'נסה שוב מאוחר יותר' : 'Please try again later',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleSubmit}
+      disabled={loading}
+      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-6 py-3.5 rounded-2xl font-semibold shadow-lg shadow-emerald-500/25 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
+      {loading
+        ? (isHebrew ? 'שולח...' : 'Submitting...')
+        : (isHebrew ? 'שלח מסמכים לאימות' : 'Submit Documents for Verification')}
+    </button>
+  );
+}
+
 export default function ProviderApplicationForm() {
   const { toast } = useToast();
   const { language } = useLanguage();
@@ -176,6 +249,12 @@ export default function ProviderApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [idFrontPhoto, setIdFrontPhoto] = useState<string | null>(null);
+  const [idBackPhoto, setIdBackPhoto] = useState<string | null>(null);
+  const [selfieDocPhoto, setSelfieDocPhoto] = useState<string | null>(null);
+  const [drivingLicensePhoto, setDrivingLicensePhoto] = useState<string | null>(null);
+  const [submittedIntakeId, setSubmittedIntakeId] = useState<string | null>(null);
+  const [docsSubmittedWithForm, setDocsSubmittedWithForm] = useState(false);
   const [addressLat, setAddressLat] = useState<number | null>(null);
   const [addressLng, setAddressLng] = useState<number | null>(null);
 
@@ -194,6 +273,22 @@ export default function ProviderApplicationForm() {
       reader.onloadend = () => setProfilePhoto(reader.result as string);
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDocumentCapture = (setter: (v: string | null) => void) => (e: { target: HTMLInputElement }) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'קובץ גדול מדי' : 'File Too Large',
+        description: isHebrew ? 'גודל הקובץ המקסימלי הוא 10MB' : 'Maximum file size is 10MB',
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => setter(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const form = useForm<ApplicationForm>({
@@ -369,12 +464,18 @@ export default function ProviderApplicationForm() {
       // Convert first selected platform to legacy providerType
       const legacyType = selectedPlatforms[0]?.replace('_suite', '').replace('_my_pet', '').replace('_academy', '') || 'sitter';
       
+      const hasDocuments = !!(idFrontPhoto && selfieDocPhoto);
       const submitData = {
         ...data,
         providerType: legacyType,
         selectedPlatforms,
         intendedPricing: pricing,
         profilePhotoBase64: profilePhoto || undefined,
+        idDocumentFrontBase64: idFrontPhoto || undefined,
+        idDocumentBackBase64: idBackPhoto || undefined,
+        selfieDocBase64: selfieDocPhoto || undefined,
+        drivingLicenseBase64: drivingLicensePhoto || undefined,
+        firebaseUid: user?.uid || undefined,
         captchaToken: freshCaptchaToken,
         latitude: addressLat ?? undefined,
         longitude: addressLng ?? undefined,
@@ -387,6 +488,8 @@ export default function ProviderApplicationForm() {
 
       if (result.success) {
         setSubmitted(true);
+        setSubmittedIntakeId(result.intakeId || null);
+        setDocsSubmittedWithForm(hasDocuments && !!result.biometricRecordCreated);
         queryClient.invalidateQueries({ queryKey: ['/api/provider-intake'] });
 
         // Save address to user profile so it pre-fills everywhere (booking, settings, etc.)
@@ -431,51 +534,314 @@ export default function ProviderApplicationForm() {
   };
 
   if (submitted) {
+    const docCount = [idFrontPhoto, idBackPhoto, selfieDocPhoto, drivingLicensePhoto].filter(Boolean).length;
+    const allKeyDocsUploaded = !!(idFrontPhoto && selfieDocPhoto);
+
     return (
       <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
         <div className="py-12 px-4">
-          <div className="max-w-2xl mx-auto">
-            <div 
-              className="rounded-3xl p-10 text-center bg-white border border-gray-200 shadow-lg"
-            >
-              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/30">
-                <CheckCircle2 className="h-14 w-14 text-white" />
+          <div className="max-w-2xl mx-auto space-y-6">
+
+            {/* ── Success Header ── */}
+            <div className="rounded-3xl p-8 text-center bg-white border border-gray-200 shadow-lg">
+              <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl flex items-center justify-center mb-5 shadow-xl shadow-emerald-500/30">
+                <CheckCircle2 className="h-12 w-12 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-black mb-4">
-                {t.successTitle}
-              </h2>
-              <p className="text-lg text-gray-700 mb-8">
-                {t.successMessage}
-              </p>
-              
-              <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-200">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <Crown className="h-6 w-6 text-amber-400" />
-                  <span className="font-semibold text-lg text-black">
-                    {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
-                  </span>
+              <h2 className="text-3xl font-bold text-black mb-3">{t.successTitle}</h2>
+              <p className="text-gray-600 mb-2">{t.successMessage}</p>
+              {submittedIntakeId && (
+                <p className="text-xs text-gray-400 font-mono mt-1">
+                  {isHebrew ? 'מספר בקשה:' : 'Application ID:'} {submittedIntakeId}
+                </p>
+              )}
+            </div>
+
+            {/* ── Progress Tracker ── */}
+            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
+              <h3 className="font-semibold text-black mb-5 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-500" />
+                {isHebrew ? 'מסלול ההצטרפות שלך' : 'Your Onboarding Journey'}
+              </h3>
+              <div className="space-y-0">
+                {[
+                  {
+                    icon: FileCheck,
+                    label: isHebrew ? 'בקשה נשלחה' : 'Application Submitted',
+                    desc: isHebrew ? 'הפרטים שלך נקלטו בהצלחה' : 'Your details were received successfully',
+                    done: true,
+                  },
+                  {
+                    icon: ScanLine,
+                    label: isHebrew ? 'אימות זהות ומסמכים' : 'Identity & Document Verification',
+                    desc: docsSubmittedWithForm
+                      ? (isHebrew ? 'המסמכים הועלו — בבדיקה' : 'Documents uploaded — under review')
+                      : allKeyDocsUploaded
+                        ? (isHebrew ? 'המסמכים הועלו — בבדיקה' : 'Documents uploaded — under review')
+                        : (isHebrew ? 'נדרש — ראה פרטים למטה' : 'Required — see details below'),
+                    done: docsSubmittedWithForm || allKeyDocsUploaded,
+                    current: !docsSubmittedWithForm && !allKeyDocsUploaded,
+                  },
+                  {
+                    icon: ShieldCheck,
+                    label: isHebrew ? 'בדיקת רקע ואישור' : 'Background Check & Approval',
+                    desc: isHebrew ? 'צוות PetWash™ יאשר את הבקשה' : 'The PetWash™ team will approve your application',
+                    done: false,
+                  },
+                  {
+                    icon: BadgeCheck,
+                    label: isHebrew ? 'פעיל — התחל לקבל הזמנות!' : 'Active — Start Receiving Bookings!',
+                    desc: isHebrew ? 'תקבל קוד הזמנה וגישה לפלטפורמה' : 'You'll receive an invite code and platform access',
+                    done: false,
+                  },
+                ].map((s, i, arr) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        s.done ? 'bg-emerald-500' : s.current ? 'bg-amber-500' : 'bg-gray-200'
+                      }`}>
+                        <s.icon className={`h-5 w-5 ${s.done || s.current ? 'text-white' : 'text-gray-400'}`} />
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`w-0.5 h-8 mt-1 ${s.done ? 'bg-emerald-300' : 'bg-gray-200'}`} />
+                      )}
+                    </div>
+                    <div className="pb-6">
+                      <p className={`font-semibold text-sm ${s.done ? 'text-emerald-700' : s.current ? 'text-amber-700' : 'text-gray-500'}`}>
+                        {s.label}
+                        {s.done && <span className="ml-2 text-emerald-500">✓</span>}
+                        {s.current && <span className="ml-2 text-amber-500">←</span>}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Document Upload (if not submitted with form) ── */}
+            {!docsSubmittedWithForm && (
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-amber-200 bg-amber-100/60 flex items-center gap-3">
+                  <ScanLine className="h-5 w-5 text-amber-600" />
+                  <div>
+                    <p className="font-semibold text-black">{isHebrew ? 'אימות זהות ומסמכים' : 'Identity Verification'}</p>
+                    <p className="text-xs text-amber-700">{isHebrew ? 'נדרש לפני תחילת עבודה' : 'Required before you start working'}</p>
+                  </div>
                 </div>
-                <ol className={`${isHebrew ? 'text-right' : 'text-left'} space-y-3 text-gray-700`}>
-                  <li className="flex items-start gap-3">
-                    <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
-                    <span>{isHebrew ? 'השלם את אימות הזהות הביומטרי' : 'Complete biometric identity verification'}</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
-                    <span>{isHebrew ? 'העלה את המסמכים הנדרשים' : 'Upload required documents'}</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
-                    <span>{isHebrew ? 'לאחר אימות מוצלח - תאושר אוטומטית ותתחיל לקבל הזמנות!' : 'After successful verification - get auto-approved and start receiving bookings!'}</span>
-                  </li>
-                </ol>
+                <div className="p-6 space-y-5">
+                  <p className="text-sm text-gray-600">
+                    {isHebrew
+                      ? 'אנא העלה את המסמכים הבאים כדי להשלים את תהליך הרישום. כל המסמכים מאובטחים ומוצפנים.'
+                      : 'Please upload the following documents to complete your registration. All documents are encrypted and secure.'}
+                  </p>
+
+                  {/* Selfie */}
+                  <div className={`rounded-xl border-2 p-4 transition-colors ${selfieDocPhoto ? 'border-emerald-400 bg-emerald-50' : 'border-dashed border-amber-300 bg-white'}`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <Camera className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-black text-sm">{isHebrew ? '📸 סלפי' : '📸 Selfie'}</p>
+                        <p className="text-xs text-gray-500">{isHebrew ? 'פנים ברורות, תאורה טובה' : 'Clear face, good lighting'}</p>
+                      </div>
+                      {selfieDocPhoto && <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-auto" />}
+                    </div>
+                    {selfieDocPhoto ? (
+                      <div className="flex items-center gap-3">
+                        <img src={selfieDocPhoto} className="h-16 w-16 rounded-xl object-cover" alt="Selfie" />
+                        <button type="button" onClick={() => setSelfieDocPhoto(null)} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                          <X className="h-3 w-3" /> {isHebrew ? 'הסר' : 'Remove'}
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer block">
+                        <input type="file" accept="image/*" capture="user" onChange={handleDocumentCapture(setSelfieDocPhoto)} className="hidden" />
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors">
+                          <Camera className="h-4 w-4" />
+                          {isHebrew ? 'צלם סלפי' : 'Take Selfie'}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+
+                  {/* ID Front */}
+                  <div className={`rounded-xl border-2 p-4 transition-colors ${idFrontPhoto ? 'border-emerald-400 bg-emerald-50' : 'border-dashed border-amber-300 bg-white'}`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <ScanLine className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-black text-sm">{isHebrew ? '🪪 תעודת זהות — צד קדמי' : '🪪 Israeli ID — Front'}</p>
+                        <p className="text-xs text-gray-500">{isHebrew ? 'הצד עם התמונה והפרטים' : 'The side with your photo and details'}</p>
+                      </div>
+                      {idFrontPhoto && <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-auto" />}
+                    </div>
+                    {idFrontPhoto ? (
+                      <div className="flex items-center gap-3">
+                        <img src={idFrontPhoto} className="h-16 w-28 rounded-xl object-cover" alt="ID Front" />
+                        <button type="button" onClick={() => setIdFrontPhoto(null)} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                          <X className="h-3 w-3" /> {isHebrew ? 'הסר' : 'Remove'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer">
+                          <input type="file" accept="image/*" capture="environment" onChange={handleDocumentCapture(setIdFrontPhoto)} className="hidden" />
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg text-sm hover:bg-amber-200 transition-colors">
+                            <Camera className="h-4 w-4" />
+                            {isHebrew ? 'צלם' : 'Capture'}
+                          </span>
+                        </label>
+                        <label className="cursor-pointer">
+                          <input type="file" accept="image/*" onChange={handleDocumentCapture(setIdFrontPhoto)} className="hidden" />
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                            <Upload className="h-4 w-4" />
+                            {isHebrew ? 'העלה' : 'Upload'}
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ID Back */}
+                  <div className={`rounded-xl border-2 p-4 transition-colors ${idBackPhoto ? 'border-emerald-400 bg-emerald-50' : 'border-dashed border-gray-200 bg-white'}`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <ScanLine className="h-4 w-4 text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-black text-sm">{isHebrew ? '🪪 תעודת זהות — צד אחורי' : '🪪 Israeli ID — Back'}</p>
+                        <p className="text-xs text-gray-500">{isHebrew ? 'הספח — לא חובה אך מומלץ' : 'The annexe — optional but recommended'}</p>
+                      </div>
+                      {idBackPhoto && <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-auto" />}
+                    </div>
+                    {idBackPhoto ? (
+                      <div className="flex items-center gap-3">
+                        <img src={idBackPhoto} className="h-16 w-28 rounded-xl object-cover" alt="ID Back" />
+                        <button type="button" onClick={() => setIdBackPhoto(null)} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                          <X className="h-3 w-3" /> {isHebrew ? 'הסר' : 'Remove'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer">
+                          <input type="file" accept="image/*" capture="environment" onChange={handleDocumentCapture(setIdBackPhoto)} className="hidden" />
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                            <Camera className="h-4 w-4" />
+                            {isHebrew ? 'צלם' : 'Capture'}
+                          </span>
+                        </label>
+                        <label className="cursor-pointer">
+                          <input type="file" accept="image/*" onChange={handleDocumentCapture(setIdBackPhoto)} className="hidden" />
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                            <Upload className="h-4 w-4" />
+                            {isHebrew ? 'העלה' : 'Upload'}
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Driving License — conditional on pet_trek */}
+                  {selectedPlatforms.includes('pet_trek') && (
+                    <div className={`rounded-xl border-2 p-4 transition-colors ${drivingLicensePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-dashed border-blue-200 bg-white'}`}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Car className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-black text-sm">{isHebrew ? '🚗 רישיון נהיגה' : '🚗 Driving License'}</p>
+                          <p className="text-xs text-gray-500">{isHebrew ? 'נדרש לשירות הסעת חיות מחמד' : 'Required for pet transportation service'}</p>
+                        </div>
+                        {drivingLicensePhoto && <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-auto" />}
+                      </div>
+                      {drivingLicensePhoto ? (
+                        <div className="flex items-center gap-3">
+                          <img src={drivingLicensePhoto} className="h-16 w-28 rounded-xl object-cover" alt="Driving License" />
+                          <button type="button" onClick={() => setDrivingLicensePhoto(null)} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                            <X className="h-3 w-3" /> {isHebrew ? 'הסר' : 'Remove'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <label className="cursor-pointer">
+                            <input type="file" accept="image/*" capture="environment" onChange={handleDocumentCapture(setDrivingLicensePhoto)} className="hidden" />
+                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors">
+                              <Camera className="h-4 w-4" />
+                              {isHebrew ? 'צלם' : 'Capture'}
+                            </span>
+                          </label>
+                          <label className="cursor-pointer">
+                            <input type="file" accept="image/*" onChange={handleDocumentCapture(setDrivingLicensePhoto)} className="hidden" />
+                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                              <Upload className="h-4 w-4" />
+                              {isHebrew ? 'העלה' : 'Upload'}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submit Documents Button */}
+                  {allKeyDocsUploaded && user?.uid && (
+                    <SubmitDocumentsButton
+                      intakeId={submittedIntakeId}
+                      firebaseUid={user.uid}
+                      idFrontPhoto={idFrontPhoto}
+                      idBackPhoto={idBackPhoto}
+                      selfieDocPhoto={selfieDocPhoto}
+                      drivingLicensePhoto={drivingLicensePhoto}
+                      isHebrew={isHebrew}
+                      onSuccess={() => setDocsSubmittedWithForm(true)}
+                    />
+                  )}
+                  {!allKeyDocsUploaded && (
+                    <p className="text-xs text-center text-amber-700 font-medium">
+                      {isHebrew
+                        ? `נדרשים לפחות: סלפי + תעודת זהות (צד קדמי) — ${docCount}/2 הועלו`
+                        : `Required: Selfie + ID Front — ${docCount}/2 uploaded`}
+                    </p>
+                  )}
+                </div>
               </div>
-              
-              <Link href="/" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-8 py-4 rounded-2xl font-semibold shadow-xl shadow-amber-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]">
-                {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-                <ArrowRight className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
+            )}
+
+            {/* Documents already submitted confirmation */}
+            {docsSubmittedWithForm && (
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-800">{isHebrew ? 'המסמכים נשלחו בהצלחה' : 'Documents Submitted Successfully'}</p>
+                  <p className="text-sm text-emerald-700 mt-0.5">
+                    {isHebrew
+                      ? 'המסמכים שלך נקלטו ונמצאים בבדיקה. תקבל עדכון בדוא"ל תוך 24-48 שעות.'
+                      : 'Your documents are received and under review. You\'ll get an email update within 24-48 hours.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* CTA Buttons */}
+            <div className={`flex ${isHebrew ? 'flex-row-reverse' : 'flex-row'} gap-3 flex-wrap`}>
+              <Link
+                href="/provider-application/status"
+                className="flex-1 min-w-[180px] inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-6 py-3 rounded-2xl font-semibold shadow-lg shadow-amber-500/25 transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
+              >
+                <Clock className="h-4 w-4" />
+                {isHebrew ? 'עקוב אחר הבקשה' : 'Track Application Status'}
+              </Link>
+              <Link
+                href="/"
+                className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 bg-white border border-gray-200 text-black hover:bg-gray-50 px-6 py-3 rounded-2xl font-semibold transition-all duration-200"
+              >
+                {isHebrew ? 'דף הבית' : 'Home'}
               </Link>
             </div>
+
           </div>
         </div>
       </div>

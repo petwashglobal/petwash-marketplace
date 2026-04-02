@@ -4,7 +4,7 @@ import { providerIntakeService } from '../services/ProviderIntakeService';
 import { requireAuth } from '../customAuth';
 import { requireAdmin } from '../middleware/rbac';
 import { db } from '../db';
-import { providerIntakeQueue } from '@shared/schema';
+import { providerIntakeQueue, biometricCertificateVerifications } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
@@ -324,6 +324,11 @@ const submitApplicationSchema = z.object({
   whyJoinPetWash: z.string().min(20, 'Please tell us why you want to join'),
   referralSource: z.string().optional(),
   profilePhotoBase64: z.string().optional(),
+  idDocumentFrontBase64: z.string().optional(),
+  idDocumentBackBase64: z.string().optional(),
+  selfieDocBase64: z.string().optional(),
+  drivingLicenseBase64: z.string().optional(),
+  firebaseUid: z.string().optional(),
   agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
   agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
   agreeToContractorStatus: z.boolean().refine(val => val === true, 'You must acknowledge independent contractor status'),
@@ -396,6 +401,49 @@ router.post('/submit', async (req, res) => {
       geminiPlatformMonitor.recordRegistration('provider');
     } catch {}
 
+    // Create biometric verification record if documents were uploaded
+    let biometricRecordCreated = false;
+    const hasDocuments = data.firebaseUid && data.idDocumentFrontBase64 && data.selfieDocBase64;
+    if (hasDocuments) {
+      try {
+        await db.insert(biometricCertificateVerifications).values({
+          userId: data.firebaseUid!,
+          documentType: 'national_id',
+          documentCountry: 'IL',
+          documentNumber: data.idNumber || undefined,
+          documentFrontUrl: data.idDocumentFrontBase64!,
+          documentBackUrl: data.idDocumentBackBase64 || undefined,
+          selfiePhotoUrl: data.selfieDocBase64!,
+          biometricMatchStatus: 'pending',
+          verificationStatus: 'pending',
+          verificationMethod: 'automatic',
+          ipAddress: req.ip || undefined,
+          userAgent: req.headers['user-agent'] || undefined,
+        });
+        biometricRecordCreated = true;
+        logger.info('[Provider Intake] Biometric verification record created', { intakeId, firebaseUid: data.firebaseUid });
+
+        // Also store driving license as a separate record if provided
+        if (data.drivingLicenseBase64) {
+          await db.insert(biometricCertificateVerifications).values({
+            userId: data.firebaseUid!,
+            documentType: 'drivers_license',
+            documentCountry: 'IL',
+            documentFrontUrl: data.drivingLicenseBase64,
+            selfiePhotoUrl: data.selfieDocBase64!,
+            biometricMatchStatus: 'pending',
+            verificationStatus: 'pending',
+            verificationMethod: 'automatic',
+            ipAddress: req.ip || undefined,
+            userAgent: req.headers['user-agent'] || undefined,
+          });
+          logger.info('[Provider Intake] Driving license record created', { intakeId });
+        }
+      } catch (biometricError) {
+        logger.error('[Provider Intake] Failed to create biometric record (non-blocking):', { biometricError, intakeId });
+      }
+    }
+
     
     try {
       const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
@@ -444,7 +492,8 @@ router.post('/submit', async (req, res) => {
       message: 'Application accepted! Please complete identity verification to start.',
       intakeId,
       status: 'accepted',
-      contentHash: contentHash.substring(0, 16)
+      contentHash: contentHash.substring(0, 16),
+      biometricRecordCreated,
     });
   } catch (error: any) {
     if (error.name === 'ZodError') {
@@ -461,6 +510,82 @@ router.post('/submit', async (req, res) => {
       error: 'Failed to submit application',
       message: error.message 
     });
+  }
+});
+
+/**
+ * POST /api/provider-intake/submit-documents
+ * Submit identity documents after application is accepted
+ * Called from success screen when user uploads their documents post-submission
+ */
+const submitDocumentsSchema = z.object({
+  intakeId: z.string().optional(),
+  firebaseUid: z.string().min(1, 'Firebase UID required'),
+  idDocumentFrontBase64: z.string().min(1, 'ID document front is required'),
+  idDocumentBackBase64: z.string().optional(),
+  selfieDocBase64: z.string().min(1, 'Selfie is required'),
+  drivingLicenseBase64: z.string().optional(),
+});
+
+router.post('/submit-documents', async (req, res) => {
+  try {
+    const data = submitDocumentsSchema.parse(req.body);
+
+    // Create national ID biometric record
+    await db.insert(biometricCertificateVerifications).values({
+      userId: data.firebaseUid,
+      documentType: 'national_id',
+      documentCountry: 'IL',
+      documentFrontUrl: data.idDocumentFrontBase64,
+      documentBackUrl: data.idDocumentBackBase64 || undefined,
+      selfiePhotoUrl: data.selfieDocBase64,
+      biometricMatchStatus: 'pending',
+      verificationStatus: 'pending',
+      verificationMethod: 'automatic',
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'] || undefined,
+    });
+
+    // Create driving license record if provided
+    if (data.drivingLicenseBase64) {
+      await db.insert(biometricCertificateVerifications).values({
+        userId: data.firebaseUid,
+        documentType: 'drivers_license',
+        documentCountry: 'IL',
+        documentFrontUrl: data.drivingLicenseBase64,
+        selfiePhotoUrl: data.selfieDocBase64,
+        biometricMatchStatus: 'pending',
+        verificationStatus: 'pending',
+        verificationMethod: 'automatic',
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'] || undefined,
+      });
+    }
+
+    // Update intake status to 'reviewing' if intakeId provided
+    if (data.intakeId) {
+      await db
+        .update(providerIntakeQueue)
+        .set({ status: 'reviewing', updatedAt: new Date() })
+        .where(eq(providerIntakeQueue.intakeId, data.intakeId));
+    }
+
+    logger.info('[Provider Intake] Documents submitted post-application', {
+      intakeId: data.intakeId,
+      firebaseUid: data.firebaseUid,
+      hasDrivingLicense: !!data.drivingLicenseBase64,
+    });
+
+    res.json({
+      success: true,
+      message: 'Documents submitted for verification',
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    }
+    logger.error('[Provider Intake] Document submission failed:', error);
+    res.status(500).json({ error: 'Failed to submit documents', message: error.message });
   }
 });
 
