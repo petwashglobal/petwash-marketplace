@@ -16,9 +16,22 @@ const router = Router();
 // Auth helpers
 // ---------------------------------------------------------------------------
 
+const ALLOWED_MACHINE_IPS_FA = (process.env.ALLOWED_MACHINE_IPS || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+function getClientIpFA(req: Request): string {
+  return (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+}
+
 function getActingRole(req: Request): string {
-  // Admin secret = admin
-  if (req.headers['x-admin-secret'] === process.env.ADMIN_SECRET) return 'admin';
+  // Admin secret = admin — enforce IP allowlist when configured
+  if (req.headers['x-admin-secret'] === process.env.ADMIN_SECRET) {
+    if (ALLOWED_MACHINE_IPS_FA.length > 0) {
+      const clientIp = getClientIpFA(req);
+      if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) return 'agent'; // fall through to token auth
+    }
+    return 'admin';
+  }
   // Decoded Firebase token roles
   const decoded = (req as any).decodedToken;
   if (decoded?.executive) return 'executive';

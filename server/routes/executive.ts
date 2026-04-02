@@ -20,10 +20,27 @@ const router = Router();
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
+const ALLOWED_MACHINE_IPS = (process.env.ALLOWED_MACHINE_IPS || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+function getClientIp(req: Request): string {
+  return (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+}
+
 async function requireExec(req: Request, res: Response, next: Function) {
   try {
     const secret = req.headers['x-admin-secret'];
-    if (secret && (secret === process.env.ADMIN_SECRET || secret === process.env.PETWASH_ADMIN_SECRET)) return next();
+    if (secret && (secret === process.env.ADMIN_SECRET || secret === process.env.PETWASH_ADMIN_SECRET)) {
+      // M2M bypass: enforce IP allowlist when ALLOWED_MACHINE_IPS is configured
+      if (ALLOWED_MACHINE_IPS.length > 0) {
+        const clientIp = getClientIp(req);
+        if (!ALLOWED_MACHINE_IPS.includes(clientIp)) {
+          logger.warn('[Executive] x-admin-secret bypass rejected — IP not in allowlist', { clientIp });
+          return res.status(403).json({ error: 'ip_not_allowed' });
+        }
+      }
+      return next();
+    }
 
     const token = (req.headers.authorization ?? '').replace('Bearer ', '').trim();
     if (!token) return res.status(401).json({ error: 'unauthorized' });

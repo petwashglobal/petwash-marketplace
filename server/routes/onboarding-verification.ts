@@ -142,7 +142,8 @@ function getEmailHtml(code: string, language: string, verifyLinkUrl: string): st
 }
 
 function issueEmailVerificationToken(normalizedEmail: string): string {
-  const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-email-verify-fallback';
+  const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
+  if (!secret) throw new Error('Email verification secret not configured — set JWT_SECRET');
   const token = jwt.sign(
     { email: normalizedEmail, type: 'email-verified', nonce: crypto.randomBytes(8).toString('hex') },
     secret,
@@ -672,7 +673,8 @@ function renderLinkResultPage(success: boolean, message: string, isHebrew: boole
 export function peekEmailVerificationToken(token: string): { valid: boolean; email?: string } {
   if (!token) return { valid: false };
   try {
-    const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-email-verify-fallback';
+    const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
+    if (!secret) return { valid: false };
     const decoded = jwt.verify(token, secret) as { email?: string; type?: string };
     if (decoded.type !== 'email-verified' || !decoded.email) return { valid: false };
     return { valid: true, email: decoded.email };

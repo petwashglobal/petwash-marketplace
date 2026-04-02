@@ -23,8 +23,26 @@ import {
 } from "../../shared/petwashIsraeliContractors";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import crypto from "crypto";
 
 const router = Router();
+
+// ─── Bank Account Encryption (AES-256-GCM) ─────────────────────────────────
+// Uses DOCUMENT_ENCRYPTION_KEY (same key used for document security)
+function encryptBankAccount(plaintext: string): string {
+  const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!masterKey || masterKey.length < 32) {
+    logger.warn('[ContractorOnboarding] DOCUMENT_ENCRYPTION_KEY not set — bank account stored unencrypted');
+    return plaintext; // graceful degradation, but warn
+  }
+  const key = crypto.createHash('sha256').update(masterKey).digest(); // 32 bytes
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  // Format: enc:<base64iv>:<base64tag>:<base64ciphertext>
+  return `enc:${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+}
 
 /**
  * POST /api/contractor-onboarding/profile
@@ -319,7 +337,7 @@ router.post("/bank-details", async (req, res) => {
       bankName: bankDetails.bankName || null,
       bankCode: bankDetails.bankCode || null,
       branchCode: bankDetails.branchCode || null,
-      accountNumber: bankDetails.accountNumber || null, // TODO: Encrypt in production
+      accountNumber: bankDetails.accountNumber ? encryptBankAccount(bankDetails.accountNumber) : null,
       accountHolderName: bankDetails.accountHolderName || null,
       isVerified: false, // Admin must verify
     };

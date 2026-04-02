@@ -622,7 +622,8 @@ class TwilioSMSService {
     }
 
     // ── Success — issue JWT verification token ────────────────────────────────
-    const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-sms-verify-fallback';
+    const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
+    if (!secret) throw new Error('SMS verification secret not configured — set JWT_SECRET');
     const verificationToken = jwt.sign(
       { phone: formattedPhone, type: 'sms-verified', nonce: crypto.randomBytes(8).toString('hex') },
       secret,
@@ -643,7 +644,8 @@ class TwilioSMSService {
   validateVerificationToken(token: string): { valid: boolean; phone?: string } {
     if (!token) return { valid: false };
     try {
-      const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-sms-verify-fallback';
+      const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
+      if (!secret) return { valid: false };
       const decoded = jwt.verify(token, secret) as { phone?: string; type?: string };
       if (decoded.type !== 'sms-verified' || !decoded.phone) return { valid: false };
       logger.info('[TwilioSMS] JWT verification token validated', {
