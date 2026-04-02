@@ -1,7 +1,9 @@
-// Preserve GEMINI_API_KEY for Generative AI services even when GOOGLE_API_KEY (Maps) is also set.
-// The two keys serve different Google APIs and must coexist.
+// When both GOOGLE_API_KEY (Maps/Places) and GEMINI_API_KEY (Replit integration) are injected,
+// the Google AI SDK prints "Both GOOGLE_API_KEY and GEMINI_API_KEY are set" for every client
+// instantiation (43+ times at startup). The SDK already uses GOOGLE_API_KEY in this case,
+// so GEMINI_API_KEY is redundant. Delete it from the runtime env to suppress the noise.
 if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
-  process.env.GEMINI_AI_KEY = process.env.GEMINI_API_KEY; // stable alias for Gemini generative AI
+  delete process.env.GEMINI_API_KEY;
 }
 
 // ── Startup secrets validation (fail fast with clear errors) ──────────────────
