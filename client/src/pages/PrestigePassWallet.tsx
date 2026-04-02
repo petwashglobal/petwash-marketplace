@@ -9,7 +9,7 @@ import {
   Shield, RefreshCw, Wallet, ChevronRight, CreditCard, Zap, Gift,
   Star, Clock, CheckCircle, AlertCircle, Home, MapPin, BookOpen,
   Droplets, ArrowUpCircle, Monitor, Package, QrCode as QrCodeIcon,
-  Activity, TrendingUp, Users, GraduationCap, Car,
+  Activity, TrendingUp, Users, GraduationCap, Car, Crown, Phone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -873,6 +873,15 @@ function PrestigeKioskPass({
       <style>{`
         @keyframes kioskFadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
         @keyframes kioskQrIn { from { opacity:0; transform:translateY(6px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes qrGlow {
+          0%,100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); }
+          40%      { box-shadow: 0 0 22px 6px rgba(212,175,55,0.28); }
+          60%      { box-shadow: 0 0 28px 10px rgba(212,175,55,0.18); }
+        }
+        @keyframes cardShimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
       `}</style>
 
       {/* Pass Card */}
@@ -935,45 +944,47 @@ function PrestigeKioskPass({
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', animation: 'kioskQrIn 0.3s ease' }}>
           {qrToken ? (
             <>
-              {/* QR + countdown ring */}
+              {/* QR + glow + countdown ring */}
               <div style={{ position: 'relative', display: 'inline-flex' }}>
-                {/* Countdown ring — positioned around the QR */}
                 <div style={{ position: 'absolute', top: '-10px', right: '-10px', zIndex: 1 }}>
                   <CountdownRing secondsLeft={secondsLeft} total={QR_TTL} />
                 </div>
                 <div style={{
-                  background: '#FFFFFF', padding: '14px', borderRadius: '16px',
-                  border: '2px solid rgba(212,175,55,0.25)',
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                  background: '#FFFFFF', padding: '16px', borderRadius: '20px',
+                  border: '1.5px solid rgba(212,175,55,0.2)',
+                  animation: 'qrGlow 2.8s ease-in-out infinite',
                 }}>
                   <QRCodeSVG
                     value={qrToken.token}
-                    size={200}
+                    size={210}
                     level="H"
-                    imageSettings={{ src: prestigeLogoDiamond, height: 36, width: 36, excavate: true }}
+                    imageSettings={{ src: prestigeLogoDiamond, height: 38, width: 38, excavate: true }}
                   />
                 </div>
               </div>
 
-              {/* Instruction */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#B8941F', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2px' }}>
-                  {he ? 'סרוק בקיוסק K9000' : 'Scan at K9000 Kiosk'}
-                </div>
-                <div style={{ fontSize: '0.62rem', color: '#9E9E9E' }}>
-                  {he ? 'קוד חד-פעמי מאובטח' : 'One-time secure token'}
-                  {' · '}
-                  {qrToken.bay !== 'any' ? (he ? (qrToken.bay === 'left' ? 'תא שמאל' : 'תא ימין') : `${qrToken.bay} bay`) : (he ? 'כל תא' : 'any bay')}
-                </div>
+              {/* Bay selector — minimal, no text */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {(['left', 'any', 'right'] as const).map((b) => (
+                  <button key={b} onClick={() => { setSelectedBay(b); generateQr(); }} style={{
+                    padding: '5px 14px', borderRadius: '100px', cursor: 'pointer',
+                    border: selectedBay === b ? '1.5px solid #D4AF37' : '1.5px solid rgba(212,175,55,0.15)',
+                    background: selectedBay === b ? 'rgba(212,175,55,0.08)' : 'transparent',
+                    color: selectedBay === b ? '#B8941F' : '#BFAC8A',
+                    fontSize: '0.68rem', fontWeight: selectedBay === b ? 700 : 400,
+                  }}>
+                    {b === 'left' ? (he ? 'שמאל' : 'L') : b === 'right' ? (he ? 'ימין' : 'R') : (he ? 'כל תא' : 'Any')}
+                  </button>
+                ))}
               </div>
 
-              {/* Refresh */}
+              {/* Refresh — minimal */}
               <button onClick={generateQr} style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
+                display: 'flex', alignItems: 'center', gap: '4px',
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: '#C5A55A', fontSize: '0.72rem', fontWeight: 600, padding: '4px 8px',
+                color: 'rgba(197,165,90,0.6)', fontSize: '0.65rem', fontWeight: 500, padding: '2px 6px',
               }}>
-                <RefreshCw size={12} /> {he ? 'רענן קוד' : 'Refresh code'}
+                <RefreshCw size={10} /> {he ? 'רענן' : 'Refresh'}
               </button>
             </>
           ) : (
@@ -1075,6 +1086,16 @@ export default function PrestigePassWallet() {
   }>({ queryKey: ['/api/prestige-pass/wallet'], refetchInterval: 30_000 });
 
   const wallet: WalletData | null = walletData?.ok ? { pass: walletData.pass, balances: walletData.balances } : null;
+
+  const { data: loyaltyProfile } = useQuery<{
+    currentStreak: number;
+    longestStreak: number;
+    totalWashes: number;
+    tierProgress: number;
+    tierThreshold: number;
+    tier: string;
+    conciergeAccess: boolean;
+  }>({ queryKey: ['/api/loyalty/profile'] });
 
   const generateQr = useCallback(async () => {
     if (isGenerating) return;
@@ -1251,6 +1272,93 @@ export default function PrestigePassWallet() {
         {/* ── SECTION 1: Hero ── */}
         <PrivilegeHeroSection wallet={wallet} walletData={walletData} he={he} />
 
+        {/* ── EMOTIONAL LAYER ── Streak, Progress, Tier path ── */}
+        {loyaltyProfile && (
+          <div style={{ background: '#FFFFFF', padding: '0 20px 24px', borderBottom: '1px solid rgba(212,175,55,0.10)' }}>
+
+            {/* Streak + wash count row */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              {/* Streak pill */}
+              {loyaltyProfile.currentStreak > 0 && (
+                <div style={{
+                  flex: 1, background: 'linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02))',
+                  border: '1px solid rgba(212,175,55,0.18)', borderRadius: '14px',
+                  padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
+                }}>
+                  <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🔥</span>
+                  <div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
+                      {loyaltyProfile.currentStreak}
+                    </div>
+                    <div style={{ fontSize: '0.58rem', color: '#9E9E9E', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '1px' }}>
+                      {he ? 'שבועות ברצף' : 'Week streak'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Total washes pill */}
+              <div style={{
+                flex: 1, background: 'linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02))',
+                border: '1px solid rgba(212,175,55,0.18)', borderRadius: '14px',
+                padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
+              }}>
+                <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🐾</span>
+                <div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
+                    {loyaltyProfile.totalWashes}
+                  </div>
+                  <div style={{ fontSize: '0.58rem', color: '#9E9E9E', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '1px' }}>
+                    {he ? 'שטיפות סה״כ' : 'Total washes'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Next milestone pill */}
+              {loyaltyProfile.tierThreshold > loyaltyProfile.tierProgress && (
+                <div style={{
+                  flex: 1, background: 'linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02))',
+                  border: '1px solid rgba(212,175,55,0.18)', borderRadius: '14px',
+                  padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
+                }}>
+                  <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>✨</span>
+                  <div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
+                      {loyaltyProfile.tierThreshold - loyaltyProfile.tierProgress}
+                    </div>
+                    <div style={{ fontSize: '0.58rem', color: '#9E9E9E', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '1px' }}>
+                      {he ? 'עד דרגה' : 'To tier up'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tier progress bar */}
+            {loyaltyProfile.tierThreshold > 0 && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#9E9E9E', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    {he ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}
+                  </span>
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#C5A55A' }}>
+                    {loyaltyProfile.tierProgress.toLocaleString()} / {loyaltyProfile.tierThreshold.toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ height: '5px', background: 'rgba(212,175,55,0.12)', borderRadius: '100px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min(100, Math.round((loyaltyProfile.tierProgress / loyaltyProfile.tierThreshold) * 100))}%`,
+                    background: 'linear-gradient(90deg, #c9a96e, #f0d060, #d4af37)',
+                    borderRadius: '100px',
+                    transition: 'width 0.8s ease',
+                  }} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── SECTION 2: Benefits ── */}
         <BenefitsSection he={he} tier={wallet.pass.tier} />
 
@@ -1283,6 +1391,110 @@ export default function PrestigePassWallet() {
           setSavingPet={setSavingPet}
           queryClient={queryClient}
         />
+
+        {/* ── SECTION 6: Prestige Concierge ── */}
+        <div style={{
+          margin: '0 20px 24px',
+          background: 'linear-gradient(160deg, #1A1614 0%, #221E1A 100%)',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          border: '1px solid rgba(212,175,55,0.2)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        }}>
+          {/* Gold top strip */}
+          <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
+
+          <div style={{ padding: '20px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Crown size={14} color="#D4AF37" />
+              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(212,175,55,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                {he ? 'שירות קונסיירז׳ יוקרתי' : 'Prestige Concierge'}
+              </span>
+            </div>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+              {he ? 'כל בקשה, בכל עת' : 'Every request, any time'}
+            </h3>
+            <p style={{ margin: '0 0 18px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+              {he
+                ? 'שירות אישי מועדפן לחברי Prestige'
+                : 'Personal priority service for Prestige members'}
+            </p>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* WhatsApp */}
+              <a
+                href="https://wa.me/972501234567"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', borderRadius: '14px',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  textDecoration: 'none', cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(37,211,102,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1rem' }}>💬</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFFFFF' }}>WhatsApp</div>
+                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{he ? 'מענה מיידי' : 'Instant reply'}</div>
+                  </div>
+                </div>
+                <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
+              </a>
+
+              {/* Priority Call */}
+              <a
+                href="tel:+972501234567"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', borderRadius: '14px',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  textDecoration: 'none', cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Phone size={14} color="#D4AF37" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFFFFF' }}>{he ? 'שיחה עדיפות' : 'Priority Call'}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{he ? 'דלג על התור' : 'Skip the queue'}</div>
+                  </div>
+                </div>
+                <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
+              </a>
+
+              {/* Priority Booking */}
+              <button
+                onClick={() => navigate('/booking')}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', borderRadius: '14px', cursor: 'pointer',
+                  background: 'linear-gradient(90deg, rgba(212,175,55,0.15), rgba(212,175,55,0.08))',
+                  border: '1px solid rgba(212,175,55,0.25)',
+                  width: '100%',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(212,175,55,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Star size={14} color="#D4AF37" fill="#D4AF37" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#D4AF37' }}>{he ? 'הזמנה עדיפות' : 'Priority Booking'}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'rgba(212,175,55,0.5)' }}>{he ? 'מקום מובטח, תמיד' : 'Guaranteed slot, always'}</div>
+                  </div>
+                </div>
+                <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Bottom spacing handled by paddingBottom on container */}
       </div>
