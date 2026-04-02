@@ -224,17 +224,17 @@ export async function loadActivePolicies(
   ctx: CaseContext,
   onlyActive = true,
 ): Promise<RawPolicy[]> {
-  const typeFilter   = policyType ? `AND policy_type = '${policyType}'` : '';
-  const activeFilter = onlyActive ? 'AND is_active = true' : '';
+  const typeCondition   = policyType ? sql`AND policy_type = ${policyType}` : sql``;
+  const activeCondition = onlyActive ? sql`AND is_active = true`            : sql``;
 
-  const r = await db.execute(sql.raw(`
+  const r = await db.execute(sql`
     SELECT id, policy_type, name, case_types, conditions, actions, priority, scope_type, scope_id
     FROM governance_policies
     WHERE 1=1
-      ${activeFilter}
-      ${typeFilter}
+      ${activeCondition}
+      ${typeCondition}
     ORDER BY priority ASC, id ASC
-  `));
+  `);
 
   return (r.rows as any[])
     .filter(row => {
@@ -318,12 +318,6 @@ export async function evaluatePolicies(
   }
 }
 
-// ─── Safe SQL Helper ─────────────────────────────────────────────────────────
-
-function safe(s: string): string {
-  return String(s ?? '').replace(/'/g, "''").replace(/\\/g, '\\\\').slice(0, 500);
-}
-
 // ─── Action Executor ──────────────────────────────────────────────────────────
 
 /**
@@ -346,30 +340,32 @@ export async function runActions(
         switch (action.type) {
 
           case 'add_note': {
-            const noteText = safe(String(action.note ?? 'Governance policy note'));
-            await db.execute(sql.raw(`
+            const noteText     = String(action.note ?? 'Governance policy note').slice(0, 1000);
+            const fullNoteText = `[Policy: ${policy.name}] ${noteText}`;
+            await db.execute(sql`
               INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
               VALUES (
-                '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
+                ${ctx.caseType}, ${ctx.caseRefId},
                 'system', 'system',
-                '[Policy: ${safe(policy.name)}] ${noteText}'
+                ${fullNoteText}
               )
-            `));
+            `);
             actionsTaken.push(`add_note`);
             break;
           }
 
           case 'escalate': {
-            const toRole = String(action.to_role ?? 'franchise_owner');
-            const msg    = safe(String(action.message ?? 'Auto-escalated by governance policy'));
-            await db.execute(sql.raw(`
+            const toRole    = String(action.to_role ?? 'franchise_owner');
+            const msg       = String(action.message ?? 'Auto-escalated by governance policy').slice(0, 500);
+            const escalNote = `[Policy: ${policy.name}] ${msg}`;
+            await db.execute(sql`
               INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, note)
               VALUES (
-                '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
+                ${ctx.caseType}, ${ctx.caseRefId},
                 'auto_escalated',
-                '[Policy: ${safe(policy.name)}] ${msg}'
+                ${escalNote}
               )
-            `));
+            `);
             actionsTaken.push(`escalate:${toRole}`);
             break;
           }
@@ -405,18 +401,19 @@ export async function runActions(
     // Log execution record — Phase 12.14: include why_matched
     if (actionsTaken.length > 0) {
       try {
-        const whyJson = safe(JSON.stringify(policy.whyMatched ?? []));
-        await db.execute(sql.raw(`
+        const actionsTakenJson = JSON.stringify(actionsTaken);
+        const whyMatchedJson   = JSON.stringify(policy.whyMatched ?? []);
+        await db.execute(sql`
           INSERT INTO policy_executions
             (policy_id, case_type, case_ref_id, trigger_event, actions_taken, why_matched)
           VALUES (
             ${policy.policyId},
-            '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
-            '${safe(triggerEvent)}',
-            '${safe(JSON.stringify(actionsTaken))}',
-            '${whyJson}'::jsonb
+            ${ctx.caseType}, ${ctx.caseRefId},
+            ${triggerEvent},
+            ${actionsTakenJson},
+            ${whyMatchedJson}::jsonb
           )
-        `));
+        `);
       } catch (_) { /* non-critical */ }
 
       done.push(...actionsTaken);

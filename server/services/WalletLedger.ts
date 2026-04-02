@@ -33,7 +33,7 @@ import {
   walletFraudLog,
   walletHolds,
 } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { computeDeductionOrder, type DeductionBreakdown } from './WalletEngine';
 import { eventPublisher } from './EventPublisher';
@@ -625,18 +625,18 @@ export async function adminCreditWithLedger(params: {
       sql`SELECT id FROM wallet_accounts WHERE user_id = ${params.userId} FOR UPDATE`
     );
 
-    // Determine column to update
-    const colMap: Record<string, string> = {
-      cash_wallet:  'cash_wallet_balance_cents',
-      egift:        'egift_balance_cents',
-      promo:        'promo_balance_cents',
-      wash_package: 'wash_package_credits',
+    // Determine column to update — each bucket maps to a hardcoded SQL fragment
+    const bucketUpdateSql: Record<string, SQL> = {
+      cash_wallet:  sql`cash_wallet_balance_cents = cash_wallet_balance_cents + ${cents}`,
+      egift:        sql`egift_balance_cents = egift_balance_cents + ${cents}`,
+      promo:        sql`promo_balance_cents = promo_balance_cents + ${cents}`,
+      wash_package: sql`wash_package_credits = wash_package_credits + ${cents}`,
     };
-    const col = colMap[params.bucket];
-    if (!col) throw new Error(`Unknown bucket: ${params.bucket}`);
+    const bucketSql = bucketUpdateSql[params.bucket];
+    if (!bucketSql) throw new Error(`Unknown bucket: ${params.bucket}`);
 
     const res: any = await (tx as any).execute(
-      sql`UPDATE wallet_accounts SET ${sql.raw(col)} = ${sql.raw(col)} + ${cents}, updated_at = NOW() WHERE user_id = ${params.userId} RETURNING wallet_id`
+      sql`UPDATE wallet_accounts SET ${bucketSql}, updated_at = NOW() WHERE user_id = ${params.userId} RETURNING wallet_id`
     );
     const walletId = String((res?.rows?.[0] ?? res?.[0])?.wallet_id ?? '');
 

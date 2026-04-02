@@ -23,9 +23,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { db }     from '../db';
-import { sql }    from 'drizzle-orm';
-import { logger } from '../lib/logger';
+import { db }       from '../db';
+import { sql, SQL } from 'drizzle-orm';
+import { logger }   from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { evaluatePolicies, loadActivePolicies, explainConditions, CaseContext } from '../lib/policy-engine';
 
@@ -45,12 +45,12 @@ async function requireGovernanceAdmin(req: Request, res: Response, next: Functio
     const decoded = await firebaseAuth.verifyIdToken(token, true);
     if (decoded.admin) return next();
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       SELECT role FROM user_profiles
-      WHERE firebase_uid = '${String(decoded.uid ?? '').replace(/'/g, "''").slice(0, 200)}'
+      WHERE firebase_uid = ${decoded.uid ?? ''}
         AND is_active = true
       LIMIT 1
-    `));
+    `);
     const role = (r.rows[0] as any)?.role ?? '';
     if (['franchise_owner', 'manager'].includes(role)) {
       (req as any).callerCtx = { uid: decoded.uid, role };
@@ -63,10 +63,6 @@ async function requireGovernanceAdmin(req: Request, res: Response, next: Functio
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function safe(s: string) {
-  return String(s ?? '').replace(/'/g, "''").replace(/\\/g, '\\\\').slice(0, 1000);
-}
 
 function toNum(v: unknown) { return v == null ? 0 : Number(v); }
 
@@ -87,7 +83,6 @@ interface ValidationIssue {
 function deepValidatePolicy(body: any): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
-  // Type + name basics
   if (!body.policy_type || !VALID_TYPES.has(body.policy_type))
     issues.push({ severity: 'error', message: `policy_type must be one of: ${[...VALID_TYPES].join(', ')}` });
   if (!body.name || typeof body.name !== 'string' || body.name.trim().length < 3)
@@ -97,14 +92,12 @@ function deepValidatePolicy(body: any): ValidationIssue[] {
   if (body.scope_type && !VALID_SCOPES.has(body.scope_type))
     issues.push({ severity: 'error', message: `scope_type must be one of: ${[...VALID_SCOPES].join(', ')}` });
 
-  // Stop here if fundamental errors exist
   if (issues.some(i => i.severity === 'error')) return issues;
 
   const conditions: Record<string, unknown> = body.conditions ?? {};
   const actions: Array<Record<string, unknown>> = body.actions ?? [];
   const conditionKeys = Object.keys(conditions);
 
-  // Check action types
   for (const action of actions) {
     if (!action.type) {
       issues.push({ severity: 'error', message: 'Each action must have a "type" field' });
@@ -113,7 +106,6 @@ function deepValidatePolicy(body: any): ValidationIssue[] {
     }
   }
 
-  // Dangerous rule: auto_approve with empty conditions (approves every case)
   const hasAutoApprove = actions.some(a => a.type === 'auto_approve');
   if (hasAutoApprove && conditionKeys.length === 0) {
     issues.push({
@@ -122,7 +114,6 @@ function deepValidatePolicy(body: any): ValidationIssue[] {
     });
   }
 
-  // Dangerous rule: amount_gte: 0 with auto_approve
   if (hasAutoApprove && conditionKeys.includes('amount_gte') && Number(conditions['amount_gte']) <= 0) {
     issues.push({
       severity: 'error',
@@ -130,7 +121,6 @@ function deepValidatePolicy(body: any): ValidationIssue[] {
     });
   }
 
-  // Conflicting actions in same policy
   const hasRequireApproval = actions.some(a => a.type === 'require_approval');
   if (hasAutoApprove && hasRequireApproval) {
     issues.push({
@@ -139,7 +129,6 @@ function deepValidatePolicy(body: any): ValidationIssue[] {
     });
   }
 
-  // Priority warning
   if (body.priority != null && Number(body.priority) < 5) {
     issues.push({
       severity: 'warning',
@@ -147,7 +136,6 @@ function deepValidatePolicy(body: any): ValidationIssue[] {
     });
   }
 
-  // require_approval level check
   for (const action of actions) {
     if (action.type === 'require_approval') {
       const lvl = Number(action.level);
@@ -169,17 +157,17 @@ async function snapshotPolicy(
   changeNote?: string,
 ): Promise<void> {
   try {
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_versions (policy_id, version_number, snapshot, change_type, change_note, changed_by)
       SELECT
         id,
         COALESCE((SELECT MAX(version_number) FROM policy_versions WHERE policy_id = ${policyId}), 0) + 1,
         row_to_json(governance_policies.*)::jsonb,
-        '${safe(changeType)}',
-        ${changeNote ? `'${safe(changeNote)}'` : 'NULL'},
-        '${safe(changedBy)}'
+        ${changeType},
+        ${changeNote ?? null},
+        ${changedBy}
       FROM governance_policies WHERE id = ${policyId}
-    `));
+    `);
   } catch (snapErr: any) {
     logger.warn('[Governance] version snapshot failed', { policyId, error: snapErr.message });
   }
@@ -211,17 +199,19 @@ function serialisePolicy(row: any) {
 router.get('/policies', requireGovernanceAdmin, async (req: Request, res: Response) => {
   try {
     const { type, active } = req.query;
-    const typeFilter   = type   ? `AND policy_type = '${safe(String(type))}'` : '';
-    const activeFilter = active === 'false' ? '' : 'AND is_active = true';
 
-    const r = await db.execute(sql.raw(`
+    const conditions: SQL[] = [sql`1=1`];
+    if (type)            conditions.push(sql`policy_type = ${String(type)}`);
+    if (active !== 'false') conditions.push(sql`is_active = true`);
+
+    const r = await db.execute(sql`
       SELECT
         id, policy_type, name, description, case_types, conditions, actions,
         priority, is_active, scope_type, scope_id, created_by, created_at, updated_at
       FROM governance_policies
-      WHERE 1=1 ${typeFilter} ${activeFilter}
+      WHERE ${sql.join(conditions, sql` AND `)}
       ORDER BY priority ASC, policy_type, id ASC
-    `));
+    `);
 
     res.json({ policies: (r.rows as any[]).map(serialisePolicy), total: r.rows.length });
   } catch (err: any) {
@@ -244,39 +234,38 @@ router.post('/policies', requireGovernanceAdmin, async (req: Request, res: Respo
     const ctx      = (req as any).callerCtx;
     const actorUid = ctx?.uid ?? 'system';
 
-    const caseTypes  = JSON.stringify(Array.isArray(body.case_types) ? body.case_types : []);
-    const conditions = JSON.stringify(body.conditions ?? {});
-    const actions    = JSON.stringify(body.actions);
-    const priority   = Math.min(Math.max(1, toNum(body.priority ?? 100)), 999);
-    const scopeType  = VALID_SCOPES.has(body.scope_type) ? body.scope_type : 'global';
-    const scopeId    = body.scope_id ? `'${safe(String(body.scope_id))}'` : 'NULL';
+    const caseTypesJson  = JSON.stringify(Array.isArray(body.case_types) ? body.case_types : []);
+    const conditionsJson = JSON.stringify(body.conditions ?? {});
+    const actionsJson    = JSON.stringify(body.actions);
+    const priority       = Math.min(Math.max(1, toNum(body.priority ?? 100)), 999);
+    const scopeType      = VALID_SCOPES.has(body.scope_type) ? body.scope_type : 'global';
+    const scopeId        = body.scope_id ? String(body.scope_id) : null;
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       INSERT INTO governance_policies
         (policy_type, name, description, case_types, conditions, actions, priority, scope_type, scope_id, created_by)
       VALUES (
-        '${safe(body.policy_type)}',
-        '${safe(body.name.trim())}',
-        ${body.description ? `'${safe(String(body.description))}'` : 'NULL'},
-        '${safe(caseTypes)}'::jsonb::text::text[],
-        '${safe(conditions)}'::jsonb,
-        '${safe(actions)}'::jsonb,
+        ${body.policy_type},
+        ${body.name.trim()},
+        ${body.description ? String(body.description) : null},
+        ${caseTypesJson}::jsonb::text::text[],
+        ${conditionsJson}::jsonb,
+        ${actionsJson}::jsonb,
         ${priority},
-        '${scopeType}',
+        ${scopeType},
         ${scopeId},
-        '${safe(actorUid)}'
+        ${actorUid}
       )
       RETURNING id
-    `));
+    `);
 
     const newId = toNum((r.rows[0] as any)?.id);
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_audit_log (policy_id, action, actor_uid, changes)
-      VALUES (${newId}, 'created', '${safe(actorUid)}', '${safe(JSON.stringify({ name: body.name, policyType: body.policy_type }))}')
-    `));
+      VALUES (${newId}, 'created', ${actorUid}, ${JSON.stringify({ name: body.name, policyType: body.policy_type })})
+    `);
 
-    // Phase 12.14: snapshot version 1
     await snapshotPolicy(newId, 'created', actorUid);
 
     const warnings = issues.filter(i => i.severity === 'warning');
@@ -295,16 +284,16 @@ router.get('/policies/:id', requireGovernanceAdmin, async (req: Request, res: Re
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'invalid_id' });
 
-    const r = await db.execute(sql.raw(`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`));
+    const r = await db.execute(sql`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`);
     if (!r.rows.length) return res.status(404).json({ error: 'not_found' });
 
-    const execs = await db.execute(sql.raw(`
+    const execs = await db.execute(sql`
       SELECT case_type, case_ref_id, trigger_event, actions_taken, why_matched, created_at
       FROM policy_executions
       WHERE policy_id = ${id}
       ORDER BY created_at DESC
       LIMIT 20
-    `));
+    `);
 
     const row = r.rows[0] as any;
     res.json({
@@ -335,10 +324,8 @@ router.put('/policies/:id', requireGovernanceAdmin, async (req: Request, res: Re
     const ctx      = (req as any).callerCtx;
     const actorUid = ctx?.uid ?? 'system';
 
-    // Deep validate if conditions or actions are being updated
     if (body.conditions !== undefined || body.actions !== undefined || body.policy_type) {
-      // Fetch current policy to merge for validation
-      const cur = await db.execute(sql.raw(`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`));
+      const cur = await db.execute(sql`SELECT * FROM governance_policies WHERE id = ${id} LIMIT 1`);
       if (!cur.rows.length) return res.status(404).json({ error: 'not_found' });
       const current = cur.rows[0] as any;
 
@@ -358,35 +345,39 @@ router.put('/policies/:id', requireGovernanceAdmin, async (req: Request, res: Re
       }
     }
 
-    const setParts: string[] = ['updated_at = NOW()'];
+    const setParts: SQL[] = [sql`updated_at = NOW()`];
 
-    if (body.name)        setParts.push(`name = '${safe(String(body.name).trim())}'`);
+    if (body.name)
+      setParts.push(sql`name = ${String(body.name).trim()}`);
     if (body.description !== undefined)
-                          setParts.push(`description = ${body.description ? `'${safe(String(body.description))}'` : 'NULL'}`);
-    if (body.case_types)  setParts.push(`case_types = '${safe(JSON.stringify(body.case_types))}'::jsonb::text::text[]`);
-    if (body.conditions)  setParts.push(`conditions = '${safe(JSON.stringify(body.conditions))}'::jsonb`);
-    if (body.actions)     setParts.push(`actions = '${safe(JSON.stringify(body.actions))}'::jsonb`);
-    if (body.priority != null) setParts.push(`priority = ${Math.min(Math.max(1, toNum(body.priority)), 999)}`);
+      setParts.push(body.description ? sql`description = ${String(body.description)}` : sql`description = NULL`);
+    if (body.case_types)
+      setParts.push(sql`case_types = ${JSON.stringify(body.case_types)}::jsonb::text::text[]`);
+    if (body.conditions)
+      setParts.push(sql`conditions = ${JSON.stringify(body.conditions)}::jsonb`);
+    if (body.actions)
+      setParts.push(sql`actions = ${JSON.stringify(body.actions)}::jsonb`);
+    if (body.priority != null)
+      setParts.push(sql`priority = ${Math.min(Math.max(1, toNum(body.priority)), 999)}`);
     if (body.scope_type && VALID_SCOPES.has(body.scope_type))
-                          setParts.push(`scope_type = '${body.scope_type}'`);
+      setParts.push(sql`scope_type = ${body.scope_type}`);
     if (body.scope_id !== undefined)
-                          setParts.push(`scope_id = ${body.scope_id ? `'${safe(String(body.scope_id))}'` : 'NULL'}`);
+      setParts.push(body.scope_id ? sql`scope_id = ${String(body.scope_id)}` : sql`scope_id = NULL`);
     if (body.is_active != null)
-                          setParts.push(`is_active = ${Boolean(body.is_active)}`);
+      setParts.push(sql`is_active = ${Boolean(body.is_active)}`);
 
     if (setParts.length === 1) return res.status(400).json({ error: 'no_fields_to_update' });
 
-    const r = await db.execute(sql.raw(`
-      UPDATE governance_policies SET ${setParts.join(', ')} WHERE id = ${id} RETURNING id
-    `));
+    const r = await db.execute(sql`
+      UPDATE governance_policies SET ${sql.join(setParts, sql`, `)} WHERE id = ${id} RETURNING id
+    `);
     if (!r.rows.length) return res.status(404).json({ error: 'not_found' });
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_audit_log (policy_id, action, actor_uid, changes)
-      VALUES (${id}, 'updated', '${safe(actorUid)}', '${safe(JSON.stringify(body))}')
-    `));
+      VALUES (${id}, 'updated', ${actorUid}, ${JSON.stringify(body)})
+    `);
 
-    // Phase 12.14: snapshot after update
     await snapshotPolicy(id, 'updated', actorUid);
 
     logger.info('[Governance] policy updated', { id });
@@ -407,18 +398,17 @@ router.delete('/policies/:id', requireGovernanceAdmin, async (req: Request, res:
     const ctx      = (req as any).callerCtx;
     const actorUid = ctx?.uid ?? 'system';
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       UPDATE governance_policies SET is_active = false, updated_at = NOW()
       WHERE id = ${id} RETURNING id
-    `));
+    `);
     if (!r.rows.length) return res.status(404).json({ error: 'not_found' });
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_audit_log (policy_id, action, actor_uid)
-      VALUES (${id}, 'deactivated', '${safe(actorUid)}')
-    `));
+      VALUES (${id}, 'deactivated', ${actorUid})
+    `);
 
-    // Phase 12.14: snapshot after deactivation
     await snapshotPolicy(id, 'deactivated', actorUid);
 
     logger.info('[Governance] policy deactivated', { id });
@@ -439,18 +429,17 @@ router.post('/policies/:id/activate', requireGovernanceAdmin, async (req: Reques
     const ctx      = (req as any).callerCtx;
     const actorUid = ctx?.uid ?? 'system';
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       UPDATE governance_policies SET is_active = true, updated_at = NOW()
       WHERE id = ${id} RETURNING id
-    `));
+    `);
     if (!r.rows.length) return res.status(404).json({ error: 'not_found' });
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_audit_log (policy_id, action, actor_uid)
-      VALUES (${id}, 'activated', '${safe(actorUid)}')
-    `));
+      VALUES (${id}, 'activated', ${actorUid})
+    `);
 
-    // Phase 12.14: snapshot after reactivation
     await snapshotPolicy(id, 'activated', actorUid);
 
     res.json({ id, message: 'Policy activated' });
@@ -466,12 +455,12 @@ router.get('/executions', requireGovernanceAdmin, async (req: Request, res: Resp
     const { case_type, trigger_event, limit: lim } = req.query;
     const limitN = Math.min(Math.max(1, parseInt(String(lim ?? '50'), 10)), 200);
 
-    const filters: string[] = [];
-    if (case_type)     filters.push(`pe.case_type = '${safe(String(case_type))}'`);
-    if (trigger_event) filters.push(`pe.trigger_event = '${safe(String(trigger_event))}'`);
-    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const filters: SQL[] = [];
+    if (case_type)     filters.push(sql`pe.case_type = ${String(case_type)}`);
+    if (trigger_event) filters.push(sql`pe.trigger_event = ${String(trigger_event)}`);
+    const whereClause = filters.length ? sql`WHERE ${sql.join(filters, sql` AND `)}` : sql``;
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       SELECT
         pe.id, pe.policy_id, gp.name AS policy_name, gp.policy_type,
         pe.case_type, pe.case_ref_id, pe.trigger_event,
@@ -481,7 +470,7 @@ router.get('/executions', requireGovernanceAdmin, async (req: Request, res: Resp
       ${whereClause}
       ORDER BY pe.created_at DESC
       LIMIT ${limitN}
-    `));
+    `);
 
     res.json({
       executions: (r.rows as any[]).map(e => ({
@@ -536,11 +525,6 @@ router.post('/evaluate', requireGovernanceAdmin, async (req: Request, res: Respo
 });
 
 // ─── Phase 12.14: POST /simulate ──────────────────────────────────────────────
-/**
- * Dry-run simulation with per-policy, per-condition breakdown.
- * Shows ALL policies (matched AND unmatched) with the reason each condition passed/failed.
- * No side-effects — read-only.
- */
 
 router.post('/simulate', requireGovernanceAdmin, async (req: Request, res: Response) => {
   try {
@@ -550,7 +534,6 @@ router.post('/simulate', requireGovernanceAdmin, async (req: Request, res: Respo
     }
     const policyType = req.body?.policyType ?? undefined;
 
-    // Load all active policies (not filtered yet for matching — we want to show non-matches too)
     const policies = await loadActivePolicies(policyType ?? null, ctx);
 
     const results = policies.map(policy => {
@@ -569,10 +552,9 @@ router.post('/simulate', requireGovernanceAdmin, async (req: Request, res: Respo
       };
     });
 
-    const matched     = results.filter(r => r.wouldMatch);
-    const notMatched  = results.filter(r => !r.wouldMatch);
+    const matched    = results.filter(r => r.wouldMatch);
+    const notMatched = results.filter(r => !r.wouldMatch);
 
-    // Compute aggregate outcome
     const autoApprove = matched.some(r => r.verdict === 'AUTO_APPROVE');
     const level2      = matched.some(r =>
       r.actions.some((a: any) => a.type === 'require_approval' && Number(a.level) === 2)
@@ -599,25 +581,21 @@ router.post('/simulate', requireGovernanceAdmin, async (req: Request, res: Respo
 });
 
 // ─── Phase 12.14: GET /trace/:caseType/:caseRefId ─────────────────────────────
-/**
- * Full decision chain for a case: all policy executions in chronological order,
- * with why_matched breakdown for each.
- */
 
 router.get('/trace/:caseType/:caseRefId', requireGovernanceAdmin, async (req: Request, res: Response) => {
   try {
-    const caseType  = safe(req.params.caseType);
-    const caseRefId = safe(req.params.caseRefId);
+    const caseType  = String(req.params.caseType).slice(0, 64);
+    const caseRefId = String(req.params.caseRefId).slice(0, 200);
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       SELECT
         pe.id, pe.policy_id, gp.name AS policy_name, gp.policy_type, gp.priority,
         pe.trigger_event, pe.actions_taken, pe.why_matched, pe.created_at
       FROM policy_executions pe
       LEFT JOIN governance_policies gp ON gp.id = pe.policy_id
-      WHERE pe.case_type = '${caseType}' AND pe.case_ref_id = '${caseRefId}'
+      WHERE pe.case_type = ${caseType} AND pe.case_ref_id = ${caseRefId}
       ORDER BY pe.created_at ASC
-    `));
+    `);
 
     const steps = (r.rows as any[]).map((e, idx) => ({
       step:         idx + 1,
@@ -651,13 +629,13 @@ router.get('/policies/:id/versions', requireGovernanceAdmin, async (req: Request
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'invalid_id' });
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       SELECT id, version_number, change_type, change_note, changed_by, changed_at,
              snapshot
       FROM policy_versions
       WHERE policy_id = ${id}
       ORDER BY version_number DESC
-    `));
+    `);
 
     res.json({
       policyId: id,
@@ -678,10 +656,6 @@ router.get('/policies/:id/versions', requireGovernanceAdmin, async (req: Request
 });
 
 // ─── Phase 12.14: POST /policies/:id/rollback/:versionId ─────────────────────
-/**
- * Restore a policy to a previous version snapshot.
- * Writes a new version entry with change_type = 'rolled_back'.
- */
 
 router.post('/policies/:id/rollback/:versionId', requireGovernanceAdmin, async (req: Request, res: Response) => {
   try {
@@ -692,12 +666,11 @@ router.post('/policies/:id/rollback/:versionId', requireGovernanceAdmin, async (
     const ctx      = (req as any).callerCtx;
     const actorUid = ctx?.uid ?? 'system';
 
-    // Load the target version snapshot
-    const vr = await db.execute(sql.raw(`
+    const vr = await db.execute(sql`
       SELECT snapshot, version_number FROM policy_versions
       WHERE id = ${versionId} AND policy_id = ${id}
       LIMIT 1
-    `));
+    `);
     if (!vr.rows.length) return res.status(404).json({ error: 'version_not_found' });
 
     const snap = vr.rows[0] as any;
@@ -705,11 +678,6 @@ router.post('/policies/:id/rollback/:versionId', requireGovernanceAdmin, async (
       ? JSON.parse(snap.snapshot)
       : snap.snapshot;
 
-    const condStr = safe(JSON.stringify(snapshot.conditions ?? {}));
-    const actStr  = safe(JSON.stringify(snapshot.actions   ?? []));
-    const ctStr   = safe(JSON.stringify(snapshot.case_types ?? []));
-
-    // Validate the rolled-back state before applying
     const mergedForValidation = {
       policy_type: snapshot.policy_type,
       name:        snapshot.name,
@@ -727,29 +695,29 @@ router.post('/policies/:id/rollback/:versionId', requireGovernanceAdmin, async (
       });
     }
 
-    // Apply the snapshot
-    await db.execute(sql.raw(`
-      UPDATE governance_policies SET
-        policy_type = '${safe(String(snapshot.policy_type ?? ''))}',
-        name        = '${safe(String(snapshot.name ?? ''))}',
-        description = ${snapshot.description ? `'${safe(String(snapshot.description))}'` : 'NULL'},
-        case_types  = '${ctStr}'::jsonb::text::text[],
-        conditions  = '${condStr}'::jsonb,
-        actions     = '${actStr}'::jsonb,
-        priority    = ${Math.min(Math.max(1, toNum(snapshot.priority ?? 100)), 999)},
-        scope_type  = '${safe(String(snapshot.scope_type ?? 'global'))}',
-        is_active   = ${Boolean(snapshot.is_active)},
-        updated_at  = NOW()
+    const setParts: SQL[] = [
+      sql`policy_type = ${String(snapshot.policy_type ?? '')}`,
+      sql`name        = ${String(snapshot.name ?? '')}`,
+      sql`description = ${snapshot.description ? String(snapshot.description) : null}`,
+      sql`case_types  = ${JSON.stringify(snapshot.case_types ?? [])}::jsonb::text::text[]`,
+      sql`conditions  = ${JSON.stringify(snapshot.conditions ?? {})}::jsonb`,
+      sql`actions     = ${JSON.stringify(snapshot.actions ?? [])}::jsonb`,
+      sql`priority    = ${Math.min(Math.max(1, toNum(snapshot.priority ?? 100)), 999)}`,
+      sql`scope_type  = ${String(snapshot.scope_type ?? 'global')}`,
+      sql`is_active   = ${Boolean(snapshot.is_active)}`,
+      sql`updated_at  = NOW()`,
+    ];
+
+    await db.execute(sql`
+      UPDATE governance_policies SET ${sql.join(setParts, sql`, `)}
       WHERE id = ${id}
-    `));
+    `);
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_audit_log (policy_id, action, actor_uid, changes)
-      VALUES (${id}, 'rolled_back', '${safe(actorUid)}',
-        '${safe(JSON.stringify({ fromVersion: snap.version_number }))}')
-    `));
+      VALUES (${id}, 'rolled_back', ${actorUid}, ${JSON.stringify({ fromVersion: snap.version_number })})
+    `);
 
-    // Snapshot the newly rolled-back state
     await snapshotPolicy(id, 'rolled_back', actorUid, `Rolled back to version ${toNum(snap.version_number)}`);
 
     logger.info('[Governance] policy rolled back', { id, versionId, toVersion: snap.version_number });
@@ -761,10 +729,6 @@ router.post('/policies/:id/rollback/:versionId', requireGovernanceAdmin, async (
 });
 
 // ─── Phase 12.14: POST /validate ──────────────────────────────────────────────
-/**
- * Validate a policy definition without saving it.
- * Returns all errors + warnings.
- */
 
 router.post('/validate', requireGovernanceAdmin, async (req: Request, res: Response) => {
   try {

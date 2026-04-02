@@ -16,10 +16,10 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
-import { logger } from '../lib/logger';
-import { auth } from '../lib/firebase-admin';
+import { db }       from '../db';
+import { sql, SQL } from 'drizzle-orm';
+import { logger }   from '../lib/logger';
+import { auth }     from '../lib/firebase-admin';
 
 const router = Router();
 
@@ -30,8 +30,8 @@ type CallerRole = 'admin' | 'franchise_owner' | 'station_operator';
 interface CallerContext {
   role: CallerRole;
   uid: string | null;
-  franchiseIds: number[];   // franchise_owner only
-  stationIds:   number[];   // station_operator only
+  franchiseIds: number[];
+  stationIds:   number[];
 }
 
 type SlaStatus    = 'on_track' | 'at_risk' | 'breached';
@@ -46,11 +46,11 @@ const toILS  = (v: unknown): number  => v != null && v !== '' ? Math.round(Numbe
 // ─── SLA + Severity helpers ───────────────────────────────────────────────────
 
 const DISPUTE_SLA: Record<string, number> = {
-  open:         48,   // hours
+  open:         48,
   under_review: 72,
 };
 const MISMATCH_SLA = 24;
-const REFUND_SLA   = 120;   // ~5 working days
+const REFUND_SLA   = 120;
 
 function disputeSla(status: string, ageHours: number): SlaStatus {
   const sla = DISPUTE_SLA[status] ?? 48;
@@ -100,7 +100,6 @@ async function requireCaseViewer(req: Request, res: Response, next: NextFunction
       return next();
     }
 
-    // Franchise owner?
     const foRows = await db.execute(sql`
       SELECT id FROM franchise_owners WHERE owner_user_id = ${uid} AND status = 'active'
     `);
@@ -110,7 +109,6 @@ async function requireCaseViewer(req: Request, res: Response, next: NextFunction
       return next();
     }
 
-    // Station operator?
     const opRows = await db.execute(sql`
       SELECT station_id FROM station_operators WHERE user_id = ${uid} AND is_active = true
     `);
@@ -127,28 +125,29 @@ async function requireCaseViewer(req: Request, res: Response, next: NextFunction
   }
 }
 
-// ─── Scope WHERE clauses ──────────────────────────────────────────────────────
+// ─── Scope WHERE clause ───────────────────────────────────────────────────────
 
-/** Returns a SQL fragment that scopes by station, or empty string for admin. */
-function stationScope(ctx: CallerContext, stationAlias = 'st'): string {
-  if (ctx.role === 'admin') return '';
+function stationScope(ctx: CallerContext): SQL {
+  if (ctx.role === 'admin') return sql``;
   if (ctx.role === 'franchise_owner' && ctx.franchiseIds.length) {
-    return `AND ${stationAlias}.franchise_id IN (${ctx.franchiseIds.join(',')})`;
+    const idList = sql.join(ctx.franchiseIds.map(id => sql`${id}`), sql`, `);
+    return sql`AND st.franchise_id IN (${idList})`;
   }
   if (ctx.role === 'station_operator' && ctx.stationIds.length) {
-    return `AND ${stationAlias}.id IN (${ctx.stationIds.join(',')})`;
+    const idList = sql.join(ctx.stationIds.map(id => sql`${id}`), sql`, `);
+    return sql`AND st.id IN (${idList})`;
   }
-  return 'AND 1=0'; // deny if no IDs resolved
+  return sql`AND 1=0`;
 }
 
 // ─── GET /api/case-queue/disputes ─────────────────────────────────────────────
 
 router.get('/disputes', requireCaseViewer, async (req: Request, res: Response) => {
   try {
-    const ctx  = (req as any).callerCtx as CallerContext;
+    const ctx   = (req as any).callerCtx as CallerContext;
     const scope = stationScope(ctx);
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         bd.id                                                          AS dispute_id,
         bd.reason,
@@ -177,7 +176,7 @@ router.get('/disputes', requireCaseViewer, async (req: Request, res: Response) =
         ${scope}
       ORDER BY bd.created_at ASC
       LIMIT 500
-    `));
+    `);
 
     const cases = (rows.rows as any[]).map(r => {
       const ageHours   = toNum(r.age_hours);
@@ -224,7 +223,7 @@ router.get('/mismatches', requireCaseViewer, async (req: Request, res: Response)
     const ctx   = (req as any).callerCtx as CallerContext;
     const scope = stationScope(ctx);
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         ss.id                                                          AS settlement_id,
         ss.status                                                      AS settlement_status,
@@ -253,7 +252,7 @@ router.get('/mismatches', requireCaseViewer, async (req: Request, res: Response)
         ${scope}
       ORDER BY mismatch_cents DESC, ss.created_at ASC
       LIMIT 500
-    `));
+    `);
 
     const cases = (rows.rows as any[]).map(r => {
       const ageHours      = toNum(r.age_hours);
@@ -303,7 +302,7 @@ router.get('/refunds', requireCaseViewer, async (req: Request, res: Response) =>
     const ctx   = (req as any).callerCtx as CallerContext;
     const scope = stationScope(ctx);
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         b.id                                                           AS booking_id,
         b.booking_number,
@@ -326,7 +325,7 @@ router.get('/refunds', requireCaseViewer, async (req: Request, res: Response) =>
         ${scope}
       ORDER BY b.refund_requested_at ASC
       LIMIT 500
-    `));
+    `);
 
     const cases = (rows.rows as any[]).map(r => {
       const ageHours  = toNum(r.age_hours);
@@ -370,9 +369,8 @@ router.get('/summary', requireCaseViewer, async (req: Request, res: Response) =>
     const ctx   = (req as any).callerCtx as CallerContext;
     const scope = stationScope(ctx);
 
-    // Run three counts in parallel
     const [dRows, mRows, rRows] = await Promise.all([
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT
           COUNT(*)                                                        AS total,
           COUNT(*) FILTER (WHERE
@@ -388,8 +386,8 @@ router.get('/summary', requireCaseViewer, async (req: Request, res: Response) =>
         LEFT JOIN stations st ON st.id = b.station_id
         WHERE bd.status IN ('open', 'under_review')
           ${scope}
-      `)),
-      db.execute(sql.raw(`
+      `),
+      db.execute(sql`
         SELECT
           COUNT(*)                                                        AS total,
           COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW()-ss.created_at))/3600 >= 24) AS breached,
@@ -399,8 +397,8 @@ router.get('/summary', requireCaseViewer, async (req: Request, res: Response) =>
         LEFT JOIN stations st ON st.id = ss.station_id
         WHERE ss.total_amount_cents != (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents, 0))
           ${scope}
-      `)),
-      db.execute(sql.raw(`
+      `),
+      db.execute(sql`
         SELECT
           COUNT(*)                                                        AS total,
           COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW()-b.refund_requested_at))/3600 >= 120) AS breached,
@@ -410,16 +408,16 @@ router.get('/summary', requireCaseViewer, async (req: Request, res: Response) =>
         WHERE b.refund_status IN ('pending', 'processing')
           AND b.refund_requested_at IS NOT NULL
           ${scope}
-      `)),
+      `),
     ]);
 
     const d = dRows.rows[0] as any;
     const m = mRows.rows[0] as any;
     const r = rRows.rows[0] as any;
 
-    const disputes  = { total: toNum(d.total), breached: toNum(d.breached), atRiskOrBreached: toNum(d.at_risk_or_breached) };
+    const disputes   = { total: toNum(d.total), breached: toNum(d.breached), atRiskOrBreached: toNum(d.at_risk_or_breached) };
     const mismatches = { total: toNum(m.total), breached: toNum(m.breached), atRiskOrBreached: toNum(m.at_risk_or_breached) };
-    const refunds   = { total: toNum(r.total), breached: toNum(r.breached), atRiskOrBreached: toNum(r.at_risk_or_breached) };
+    const refunds    = { total: toNum(r.total), breached: toNum(r.breached), atRiskOrBreached: toNum(r.at_risk_or_breached) };
 
     res.json({
       disputes,
@@ -435,16 +433,13 @@ router.get('/summary', requireCaseViewer, async (req: Request, res: Response) =>
 });
 
 // ─── GET /api/case-queue/escalated ───────────────────────────────────────────
-// Phase 12.10 — Shows all breached cases from case_sla_states, sorted most overdue first.
-// Unified across all three case types.
 
 router.get('/escalated', requireCaseViewer, async (req: Request, res: Response) => {
   try {
     const ctx   = (req as any).callerCtx as CallerContext;
     const scope = stationScope(ctx);
 
-    // ── Escalated disputes ────────────────────────────────────────────────
-    const dRows = await db.execute(sql.raw(`
+    const dRows = await db.execute(sql`
       SELECT
         'dispute'                                                       AS case_type,
         bd.id::text                                                     AS case_ref_id,
@@ -476,10 +471,9 @@ router.get('/escalated', requireCaseViewer, async (req: Request, res: Response) 
         AND bd.status NOT IN ('resolved', 'rejected', 'closed')
         ${scope}
       LIMIT 500
-    `));
+    `);
 
-    // ── Escalated mismatches ──────────────────────────────────────────────
-    const mRows = await db.execute(sql.raw(`
+    const mRows = await db.execute(sql`
       SELECT
         'mismatch'                                                      AS case_type,
         'mismatch-' || ss.id::text                                     AS case_ref_id,
@@ -510,10 +504,9 @@ router.get('/escalated', requireCaseViewer, async (req: Request, res: Response) 
       WHERE css.sla_status = 'breached'
         ${scope}
       LIMIT 500
-    `));
+    `);
 
-    // ── Escalated refunds ─────────────────────────────────────────────────
-    const rRows = await db.execute(sql.raw(`
+    const rRows = await db.execute(sql`
       SELECT
         'refund'                                                        AS case_type,
         'refund-' || b.id::text                                        AS case_ref_id,
@@ -544,7 +537,7 @@ router.get('/escalated', requireCaseViewer, async (req: Request, res: Response) 
         AND b.refund_status IN ('pending', 'processing')
         ${scope}
       LIMIT 500
-    `));
+    `);
 
     const mapRow = (r: any) => ({
       caseType:         toStr(r.case_type),
@@ -574,7 +567,7 @@ router.get('/escalated', requireCaseViewer, async (req: Request, res: Response) 
       ...(dRows.rows as any[]).map(mapRow),
       ...(mRows.rows as any[]).map(mapRow),
       ...(rRows.rows as any[]).map(mapRow),
-    ].sort((a, b) => b.overdueHours - a.overdueHours);  // most overdue first
+    ].sort((a, b) => b.overdueHours - a.overdueHours);
 
     res.json({ cases: allCases, total: allCases.length });
   } catch (err: any) {

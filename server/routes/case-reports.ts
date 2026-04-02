@@ -46,7 +46,7 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
 router.get('/case-performance', requireAuth, async (req: Request, res: Response) => {
   try {
     // ── Per-handler stats ──────────────────────────────────────────────────
-    const handlerRows = await db.execute(sql.raw(`
+    const handlerRows = await db.execute(sql`
       WITH all_assignments AS (
         SELECT
           ca.assigned_to_uid                              AS handler_uid,
@@ -130,7 +130,7 @@ router.get('/case-performance', requireAuth, async (req: Request, res: Response)
       LEFT JOIN approval_stats as2 ON as2.handler_uid = hs.handler_uid
       ORDER BY hs.total_handled DESC
       LIMIT 100
-    `));
+    `);
 
     const byHandler = (handlerRows.rows as any[]).map(r => ({
       handlerUid:           toStr(r.handler_uid),
@@ -153,7 +153,7 @@ router.get('/case-performance', requireAuth, async (req: Request, res: Response)
     }));
 
     // ── Per-team stats ─────────────────────────────────────────────────────
-    const teamRows = await db.execute(sql.raw(`
+    const teamRows = await db.execute(sql`
       SELECT
         t.id                                              AS team_id,
         t.name                                            AS team_name,
@@ -170,7 +170,7 @@ router.get('/case-performance', requireAuth, async (req: Request, res: Response)
        AND css.case_ref_id = ca.case_ref_id
       GROUP BY t.id, t.name, t.type
       ORDER BY t.name
-    `));
+    `);
 
     const byTeam = (teamRows.rows as any[]).map(r => ({
       teamId:            toNum(r.team_id),

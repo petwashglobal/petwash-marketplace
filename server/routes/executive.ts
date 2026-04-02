@@ -31,7 +31,6 @@ async function requireExec(req: Request, res: Response, next: Function) {
   try {
     const secret = req.headers['x-admin-secret'];
     if (secret && (secret === process.env.ADMIN_SECRET || secret === process.env.PETWASH_ADMIN_SECRET)) {
-      // M2M bypass: enforce IP allowlist when ALLOWED_MACHINE_IPS is configured
       if (ALLOWED_MACHINE_IPS.length > 0) {
         const clientIp = getClientIp(req);
         if (!ALLOWED_MACHINE_IPS.includes(clientIp)) {
@@ -48,11 +47,12 @@ async function requireExec(req: Request, res: Response, next: Function) {
     const decoded = await firebaseAuth.verifyIdToken(token, true);
     if (decoded.admin) return next();
 
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       SELECT role FROM user_profiles
-      WHERE firebase_uid = '${String(decoded.uid ?? '').replace(/'/g, "''").slice(0, 200)}'
-        AND is_active = true LIMIT 1
-    `));
+      WHERE firebase_uid = ${decoded.uid ?? ''}
+        AND is_active = true
+      LIMIT 1
+    `);
     const role = (r.rows[0] as any)?.role ?? '';
     if (['franchise_owner', 'manager'].includes(role)) return next();
 
@@ -71,45 +71,38 @@ function toNum(v: unknown) { return v == null ? 0 : Number(v); }
 router.get('/network-risk', requireExec, async (_req: Request, res: Response) => {
   try {
     const [disputes, slaStates, escalations, pendingApproval, recentExecs] = await Promise.all([
-      // Disputes by status
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT status, COUNT(*) AS cnt FROM booking_disputes
         GROUP BY status
-      `)),
+      `),
 
-      // SLA states distribution
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT sla_status, COUNT(*) AS cnt FROM case_sla_states
         GROUP BY sla_status
-      `)),
+      `),
 
-      // Escalations last 7 days
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT COUNT(*) AS cnt FROM case_escalation_log
         WHERE created_at >= NOW() - INTERVAL '7 days'
-      `)),
+      `),
 
-      // Disputes awaiting second approval
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT COUNT(*) AS cnt FROM booking_disputes
         WHERE second_approval_required = true
           AND status NOT IN ('resolved', 'closed')
-      `)),
+      `),
 
-      // Policy executions last 24h
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT COUNT(*) AS cnt FROM policy_executions
         WHERE created_at >= NOW() - INTERVAL '24 hours'
-      `)),
+      `),
     ]);
 
-    // Summarise dispute status
     const disputeMap: Record<string, number> = {};
     for (const r of disputes.rows as any[]) {
       disputeMap[r.status] = toNum(r.cnt);
     }
 
-    // Summarise SLA states
     const slaMap: Record<string, number> = {};
     for (const r of slaStates.rows as any[]) {
       slaMap[r.sla_status] = toNum(r.cnt);
@@ -151,36 +144,33 @@ router.get('/automation', requireExec, async (req: Request, res: Response) => {
     const days = Math.min(Math.max(1, parseInt(String(req.query.days ?? '30'), 10)), 365);
 
     const [byTrigger, overall, byPolicy] = await Promise.all([
-      // Per trigger event
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT trigger_event, COUNT(*) AS fires FROM policy_executions
-        WHERE created_at >= NOW() - INTERVAL '${days} days'
+        WHERE created_at >= NOW() - make_interval(days => ${days})
         GROUP BY trigger_event ORDER BY fires DESC
-      `)),
+      `),
 
-      // Auto-approve vs require_approval count
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT
           COUNT(*) AS total_executions,
           COUNT(DISTINCT case_ref_id) AS unique_cases,
           SUM(CASE WHEN actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved,
           SUM(CASE WHEN actions_taken::text LIKE '%require_approval%' THEN 1 ELSE 0 END) AS flagged_for_review
         FROM policy_executions
-        WHERE created_at >= NOW() - INTERVAL '${days} days'
-      `)),
+        WHERE created_at >= NOW() - make_interval(days => ${days})
+      `),
 
-      // Top policies by execution count
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT pe.policy_id, gp.name AS policy_name, gp.policy_type,
                COUNT(*) AS fires,
                SUM(CASE WHEN pe.actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved
         FROM policy_executions pe
         LEFT JOIN governance_policies gp ON gp.id = pe.policy_id
-        WHERE pe.created_at >= NOW() - INTERVAL '${days} days'
+        WHERE pe.created_at >= NOW() - make_interval(days => ${days})
         GROUP BY pe.policy_id, gp.name, gp.policy_type
         ORDER BY fires DESC
         LIMIT 10
-      `)),
+      `),
     ]);
 
     const ov = overall.rows[0] as any;
@@ -220,10 +210,10 @@ router.get('/automation', requireExec, async (req: Request, res: Response) => {
 router.get('/breach-trends', requireExec, async (req: Request, res: Response) => {
   try {
     const days = Math.min(Math.max(7, parseInt(String(req.query.days ?? '30'), 10)), 90);
+    const priorDays = days * 2;
 
     const [byDay, byType, cumulative] = await Promise.all([
-      // Breaches per day
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT
           DATE(breach_detected_at) AS day,
           case_type,
@@ -231,29 +221,28 @@ router.get('/breach-trends', requireExec, async (req: Request, res: Response) =>
         FROM case_sla_states
         WHERE sla_status = 'breached'
           AND breach_detected_at IS NOT NULL
-          AND breach_detected_at >= NOW() - INTERVAL '${days} days'
+          AND breach_detected_at >= NOW() - make_interval(days => ${days})
         GROUP BY DATE(breach_detected_at), case_type
         ORDER BY day ASC
-      `)),
+      `),
 
-      // Total breaches per case type
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT case_type, COUNT(*) AS total_breaches,
                AVG(age_hours) AS avg_age_hours
         FROM case_sla_states
         WHERE sla_status = 'breached'
         GROUP BY case_type ORDER BY total_breaches DESC
-      `)),
+      `),
 
-      // Breaches vs at-risk last 30 days vs prior 30 days (trend direction)
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT
-          SUM(CASE WHEN breach_detected_at >= NOW() - INTERVAL '${days} days' AND sla_status = 'breached' THEN 1 ELSE 0 END) AS current_period,
-          SUM(CASE WHEN breach_detected_at >= NOW() - INTERVAL '${days * 2} days'
-                    AND breach_detected_at <  NOW() - INTERVAL '${days} days'
+          SUM(CASE WHEN breach_detected_at >= NOW() - make_interval(days => ${days})
+                    AND sla_status = 'breached' THEN 1 ELSE 0 END) AS current_period,
+          SUM(CASE WHEN breach_detected_at >= NOW() - make_interval(days => ${priorDays})
+                    AND breach_detected_at <  NOW() - make_interval(days => ${days})
                     AND sla_status = 'breached' THEN 1 ELSE 0 END) AS prior_period
         FROM case_sla_states WHERE breach_detected_at IS NOT NULL
-      `)),
+      `),
     ]);
 
     const trend    = cumulative.rows[0] as any;
@@ -261,7 +250,6 @@ router.get('/breach-trends', requireExec, async (req: Request, res: Response) =>
     const prior    = toNum(trend?.prior_period ?? 0);
     const trendPct = prior > 0 ? Math.round(((current - prior) / prior) * 100) : null;
 
-    // Build daily series — pivot by case_type for chart
     const dayMap: Record<string, Record<string, number>> = {};
     for (const r of byDay.rows as any[]) {
       const day = String(r.day).split('T')[0];
@@ -297,22 +285,20 @@ router.get('/policy-impact/:policyId', requireExec, async (req: Request, res: Re
     const policyId = parseInt(req.params.policyId, 10);
     if (isNaN(policyId)) return res.status(400).json({ error: 'invalid_id' });
 
-    // Load policy
-    const policyR = await db.execute(sql.raw(`
-      SELECT id, name, policy_type, is_active, created_at FROM governance_policies WHERE id = ${policyId} LIMIT 1
-    `));
+    const policyR = await db.execute(sql`
+      SELECT id, name, policy_type, is_active, created_at
+      FROM governance_policies WHERE id = ${policyId} LIMIT 1
+    `);
     if (!policyR.rows.length) return res.status(404).json({ error: 'policy_not_found' });
     const policy = policyR.rows[0] as any;
 
-    // Load versions to find impact pivot points
-    const versionsR = await db.execute(sql.raw(`
+    const versionsR = await db.execute(sql`
       SELECT id, version_number, change_type, changed_at, changed_by
       FROM policy_versions WHERE policy_id = ${policyId}
       ORDER BY version_number ASC
-    `));
+    `);
     const versions = versionsR.rows as any[];
 
-    // Find first activation (created/updated) point for the "went live" date
     const activationVersion = versions.find(v => v.change_type === 'created') ?? versions[0];
     if (!activationVersion) {
       return res.status(404).json({ error: 'no_version_history' });
@@ -320,44 +306,42 @@ router.get('/policy-impact/:policyId', requireExec, async (req: Request, res: Re
 
     const pivotDate = activationVersion.changed_at;
 
-    // Policy executions before/after pivot
     const [before, after] = await Promise.all([
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT COUNT(*) AS total_fires,
                SUM(CASE WHEN actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved,
                SUM(CASE WHEN actions_taken::text LIKE '%require_approval%' THEN 1 ELSE 0 END) AS flagged
         FROM policy_executions
         WHERE policy_id = ${policyId}
-          AND created_at < '${pivotDate}'::timestamptz
-      `)),
-      db.execute(sql.raw(`
+          AND created_at < ${pivotDate}
+      `),
+      db.execute(sql`
         SELECT COUNT(*) AS total_fires,
                SUM(CASE WHEN actions_taken::text LIKE '%auto_approve%' THEN 1 ELSE 0 END) AS auto_approved,
                SUM(CASE WHEN actions_taken::text LIKE '%require_approval%' THEN 1 ELSE 0 END) AS flagged
         FROM policy_executions
         WHERE policy_id = ${policyId}
-          AND created_at >= '${pivotDate}'::timestamptz
-      `)),
+          AND created_at >= ${pivotDate}
+      `),
     ]);
 
-    // Dispute resolution rates around pivot (all disputes near the time of first version)
     const [disputesBefore, disputesAfter] = await Promise.all([
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT COUNT(*) AS total,
                SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS resolved,
                SUM(CASE WHEN second_approval_required = true THEN 1 ELSE 0 END) AS needed_l2
         FROM booking_disputes
-        WHERE created_at < '${pivotDate}'::timestamptz
-          AND created_at >= '${pivotDate}'::timestamptz - INTERVAL '30 days'
-      `)),
-      db.execute(sql.raw(`
+        WHERE created_at < ${pivotDate}
+          AND created_at >= ${pivotDate} - INTERVAL '30 days'
+      `),
+      db.execute(sql`
         SELECT COUNT(*) AS total,
                SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS resolved,
                SUM(CASE WHEN second_approval_required = true THEN 1 ELSE 0 END) AS needed_l2
         FROM booking_disputes
-        WHERE created_at >= '${pivotDate}'::timestamptz
-          AND created_at < '${pivotDate}'::timestamptz + INTERVAL '30 days'
-      `)),
+        WHERE created_at >= ${pivotDate}
+          AND created_at < ${pivotDate} + INTERVAL '30 days'
+      `),
     ]);
 
     const bRow  = before.rows[0] as any;

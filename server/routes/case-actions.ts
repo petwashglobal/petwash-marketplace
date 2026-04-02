@@ -17,21 +17,13 @@
  * POST /closure-reject                   — manager rejects pending closure
  * GET  /resolution-codes                 — list seeded resolution codes
  * GET  /reopen-codes                     — list seeded reopen codes
- *
- * Assignment rules:
- *   - One active assignment per case at a time (unique partial index)
- *   - Reassigning deactivates previous, inserts new (logged)
- *   - If assignToTeamId supplied, workload-balance across active team members
- *   - If no active team member: assigned_to_uid = NULL, assigned_team_id = team
- *   - Every ownership change is audited in case_assignments history
- *   - Closure approval required for agents on disputes
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
-import { logger } from '../lib/logger';
-import { auth } from '../lib/firebase-admin';
+import { db }       from '../db';
+import { sql, SQL } from 'drizzle-orm';
+import { logger }   from '../lib/logger';
+import { auth }     from '../lib/firebase-admin';
 import { applyGovernance } from '../lib/policy-engine';
 
 const router = Router();
@@ -49,7 +41,6 @@ interface CallerContext {
 const toNum  = (v: unknown): number  => Number(v ?? 0);
 const toStr  = (v: unknown): string  => v != null ? String(v) : '';
 const toDate = (v: unknown): string | null => v ? (v as Date).toISOString() : null;
-const safe   = (s: unknown): string  => String(s ?? '').replace(/'/g, "''");
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 
@@ -100,22 +91,24 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 // ─── Scope filter ─────────────────────────────────────────────────────────────
 
-function stationScope(ctx: CallerContext, stAlias = 'st'): string {
-  if (ctx.role === 'admin') return '';
-  if (ctx.role === 'franchise_owner' && ctx.franchiseIds.length)
-    return `AND ${stAlias}.franchise_id IN (${ctx.franchiseIds.join(',')})`;
-  if (ctx.role === 'station_operator' && ctx.stationIds.length)
-    return `AND ${stAlias}.id IN (${ctx.stationIds.join(',')})`;
-  return 'AND 1=0';
+function stationScope(ctx: CallerContext): SQL {
+  if (ctx.role === 'admin') return sql``;
+  if (ctx.role === 'franchise_owner' && ctx.franchiseIds.length) {
+    const idList = sql.join(ctx.franchiseIds.map(id => sql`${id}`), sql`, `);
+    return sql`AND st.franchise_id IN (${idList})`;
+  }
+  if (ctx.role === 'station_operator' && ctx.stationIds.length) {
+    const idList = sql.join(ctx.stationIds.map(id => sql`${id}`), sql`, `);
+    return sql`AND st.id IN (${idList})`;
+  }
+  return sql`AND 1=0`;
 }
 
 // ─── Workload balancing ───────────────────────────────────────────────────────
-// Given a teamId, find the active team member with the fewest active case assignments.
-// Returns null if no team members exist.
 
 async function pickTeamMember(teamId: number): Promise<string | null> {
   try {
-    const r = await db.execute(sql.raw(`
+    const r = await db.execute(sql`
       SELECT
         tm.user_uid,
         COUNT(ca.id)::int AS active_count
@@ -126,7 +119,7 @@ async function pickTeamMember(teamId: number): Promise<string | null> {
       GROUP BY tm.user_uid
       ORDER BY active_count ASC
       LIMIT 1
-    `));
+    `);
     return (r.rows[0] as any)?.user_uid ?? null;
   } catch (err: any) {
     logger.error('[CaseActions] pickTeamMember error', { error: err.message });
@@ -145,35 +138,28 @@ async function doAssign(
   note:           string | null,
   networkScope:   string | null,
 ): Promise<void> {
-  // Deactivate existing active assignment
-  await db.execute(sql.raw(`
+  await db.execute(sql`
     UPDATE case_assignments
     SET is_active = false
-    WHERE case_type = '${safe(caseType)}'
-      AND case_ref_id = '${safe(caseRefId)}'
+    WHERE case_type = ${caseType}
+      AND case_ref_id = ${caseRefId}
       AND is_active = true
-  `));
+  `);
 
-  const teamCol  = assignToTeamId != null ? `${assignToTeamId}` : 'NULL';
-  const uidCol   = assignToUid    != null ? `'${safe(assignToUid)}'` : 'NULL';
-  const byCol    = assignByUid    != null ? `'${safe(assignByUid)}'` : 'NULL';
-  const noteCol  = note           != null ? `'${safe(note)}'` : 'NULL';
-  const scopeCol = networkScope   != null ? `'${safe(networkScope)}'` : 'NULL';
-
-  await db.execute(sql.raw(`
+  await db.execute(sql`
     INSERT INTO case_assignments
       (case_type, case_ref_id, assigned_to_uid, assigned_team_id, assigned_by_uid, note, network_scope, is_active)
     VALUES (
-      '${safe(caseType)}',
-      '${safe(caseRefId)}',
-      ${uidCol},
-      ${teamCol},
-      ${byCol},
-      ${noteCol},
-      ${scopeCol},
+      ${caseType},
+      ${caseRefId},
+      ${assignToUid},
+      ${assignToTeamId},
+      ${assignByUid},
+      ${note},
+      ${networkScope},
       true
     )
-  `));
+  `);
 }
 
 // ─── GET /assignments ─────────────────────────────────────────────────────────
@@ -183,7 +169,7 @@ router.get('/assignments', requireAuth, async (req: Request, res: Response) => {
     const ctx   = (req as any).callerCtx as CallerContext;
     const scope = stationScope(ctx);
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         ca.id,
         ca.case_type,
@@ -219,7 +205,7 @@ router.get('/assignments', requireAuth, async (req: Request, res: Response) => {
           ))
         )
       ORDER BY ca.assigned_at DESC
-    `));
+    `);
 
     const assignments = (rows.rows as any[]).map(r => ({
       id:              toNum(r.id),
@@ -264,10 +250,8 @@ router.post('/assign', requireAuth, async (req: Request, res: Response) => {
     let finalUid:    string | null = assignToUid ? String(assignToUid) : null;
     let finalTeamId: number | null = assignToTeamId ? Number(assignToTeamId) : null;
 
-    // Workload balancing: if assigning to a team, pick best member
     if (finalTeamId != null && !finalUid) {
       finalUid = await pickTeamMember(finalTeamId);
-      // If no member found, leave uid null (stays in team queue)
     }
 
     await doAssign(caseType, caseRefId, finalUid, finalTeamId, callerUid, noteText, null);
@@ -296,13 +280,13 @@ router.post('/unassign', requireAuth, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'caseType, caseRefId required' });
     }
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       UPDATE case_assignments
       SET is_active = false
-      WHERE case_type = '${safe(caseType)}'
-        AND case_ref_id = '${safe(caseRefId)}'
+      WHERE case_type = ${String(caseType)}
+        AND case_ref_id = ${String(caseRefId)}
         AND is_active = true
-    `));
+    `);
     await touchLastAction(String(caseType), String(caseRefId));
 
     res.json({ success: true, caseType, caseRefId });
@@ -327,17 +311,17 @@ router.post('/note', requireAuth, async (req: Request, res: Response) => {
     const callerRole = ctx.role;
     const text       = String(noteText).slice(0, 2000);
 
-    const result = await db.execute(sql.raw(`
+    const result = await db.execute(sql`
       INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
       VALUES (
-        '${safe(caseType)}',
-        '${safe(caseRefId)}',
-        '${safe(callerUid)}',
-        '${safe(callerRole)}',
-        '${safe(text)}'
+        ${String(caseType)},
+        ${String(caseRefId)},
+        ${callerUid},
+        ${callerRole},
+        ${text}
       )
       RETURNING id, created_at
-    `));
+    `);
 
     const row = result.rows[0] as any;
     await touchLastAction(String(caseType), String(caseRefId));
@@ -361,14 +345,14 @@ router.get('/notes/:caseType/:caseRefId', requireAuth, async (req: Request, res:
   try {
     const { caseType, caseRefId } = req.params;
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT id, author_uid, author_role, note_text, created_at
       FROM case_notes
-      WHERE case_type   = '${safe(caseType)}'
-        AND case_ref_id = '${safe(caseRefId)}'
+      WHERE case_type   = ${caseType}
+        AND case_ref_id = ${caseRefId}
       ORDER BY created_at ASC
       LIMIT 200
-    `));
+    `);
 
     const notes = (rows.rows as any[]).map(r => ({
       id:         toNum(r.id),
@@ -389,20 +373,15 @@ router.get('/notes/:caseType/:caseRefId', requireAuth, async (req: Request, res:
 
 async function touchLastAction(caseType: string, caseRefId: string): Promise<void> {
   try {
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_sla_states (case_type, case_ref_id, last_action_at)
-      VALUES ('${safe(caseType)}', '${safe(caseRefId)}', NOW())
+      VALUES (${caseType}, ${caseRefId}, NOW())
       ON CONFLICT (case_type, case_ref_id) DO UPDATE SET last_action_at = NOW()
-    `));
+    `);
   } catch { /* non-fatal */ }
 }
 
 // ─── POST /closure-request ────────────────────────────────────────────────────
-/**
- * Agent requests closure for a dispute.
- * Requires a resolution code. Does NOT close the case yet.
- * Managers see it as pending approval.
- */
 
 router.post('/closure-request', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -413,10 +392,9 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
       return res.status(400).json({ error: 'bookingId and closureReasonCode required' });
     }
 
-    // Validate resolution code exists
-    const codeR = await db.execute(sql.raw(`
-      SELECT code FROM resolution_codes WHERE code = '${safe(closureReasonCode)}' LIMIT 1
-    `));
+    const codeR = await db.execute(sql`
+      SELECT code FROM resolution_codes WHERE code = ${String(closureReasonCode)} LIMIT 1
+    `);
     if (!codeR.rows.length) {
       return res.status(400).json({ error: 'invalid_resolution_code' });
     }
@@ -428,7 +406,7 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
     if (!disputeR.rows.length) return res.status(404).json({ error: 'no_dispute_found' });
 
     const dispute   = disputeR.rows[0] as any;
-    const disputeId = String(dispute.id);
+    const disputeId = toNum(dispute.id);
 
     if (!['open', 'under_review'].includes(String(dispute.status))) {
       return res.status(400).json({ error: 'dispute_not_active', status: dispute.status });
@@ -437,30 +415,28 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
       return res.status(400).json({ error: 'closure_already_requested' });
     }
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       UPDATE booking_disputes
       SET closure_requested     = true,
-          closure_reason_code   = '${safe(closureReasonCode)}',
+          closure_reason_code   = ${String(closureReasonCode)},
           closure_requested_at  = NOW()
-      WHERE id::text = '${disputeId}'
-    `));
+      WHERE id = ${disputeId}
+    `);
 
-    // Audit note
     const noteText = note ? String(note).slice(0, 1000) : `Closure requested. Reason: ${closureReasonCode}`;
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
-      VALUES ('dispute', '${disputeId}',
-        '${safe(ctx.uid ?? 'system')}',
-        '${safe(ctx.role)}',
-        '${safe(`CLOSURE REQUESTED [${closureReasonCode}]: ${noteText}`)}')
-    `));
+      VALUES ('dispute', ${String(disputeId)},
+        ${ctx.uid ?? 'system'},
+        ${ctx.role},
+        ${`CLOSURE REQUESTED [${closureReasonCode}]: ${noteText}`})
+    `);
 
-    await touchLastAction('dispute', disputeId);
+    await touchLastAction('dispute', String(disputeId));
 
-    // ── Phase 12.13: Governance evaluation ──────────────────────────────────
     const govCtx = {
       caseType:    'dispute',
-      caseRefId:   disputeId,
+      caseRefId:   String(disputeId),
       closureCode: closureReasonCode,
       actorUid:    ctx.uid ?? 'system',
       handlerRole: ctx.role,
@@ -469,36 +445,34 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
     const govResult = await applyGovernance('closure_requested', govCtx, 'approval_threshold');
 
     if (govResult.autoApproved) {
-      // Policy auto-approves — close immediately without manager queue
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE booking_disputes
         SET status           = 'closed',
             closure_approved = true,
             resolved_at      = NOW(),
             resolved_by      = 'system_governance'
-        WHERE id::text = '${safe(disputeId)}'
-      `));
-      await db.execute(sql.raw(`
+        WHERE id = ${disputeId}
+      `);
+      await db.execute(sql`
         INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
-        VALUES ('dispute', '${safe(disputeId)}', 'system', 'system',
-          '${safe(`AUTO-APPROVED: ${govResult.message ?? 'Governance policy auto-close'}`)}')
-      `));
+        VALUES ('dispute', ${String(disputeId)}, 'system', 'system',
+          ${`AUTO-APPROVED: ${govResult.message ?? 'Governance policy auto-close'}`})
+      `);
       logger.info('[CaseActions] closure auto-approved by governance', { disputeId, policy: govResult.matched[0]?.name });
       return res.json({ success: true, disputeId, bookingId, closureReasonCode, autoApproved: true, newStatus: 'closed' });
     }
 
     if (govResult.requireLevel === 2) {
-      // Requires franchise-owner sign-off — flag the dispute
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE booking_disputes
         SET second_approval_required = true
-        WHERE id::text = '${safe(disputeId)}'
-      `));
-      await db.execute(sql.raw(`
+        WHERE id = ${disputeId}
+      `);
+      await db.execute(sql`
         INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
-        VALUES ('dispute', '${safe(disputeId)}', 'system', 'system',
-          '${safe(`LEVEL-2 REQUIRED: ${govResult.message ?? 'Franchise owner must approve this closure'}`)}')
-      `));
+        VALUES ('dispute', ${String(disputeId)}, 'system', 'system',
+          ${`LEVEL-2 REQUIRED: ${govResult.message ?? 'Franchise owner must approve this closure'}`})
+      `);
       logger.info('[CaseActions] closure flagged for level-2 approval', { disputeId, policy: govResult.matched[0]?.name });
     }
 
@@ -514,10 +488,6 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
 });
 
 // ─── POST /closure-approve ────────────────────────────────────────────────────
-/**
- * Manager (franchise_owner or admin) approves a pending closure request.
- * Sets status = 'closed' and closure_approved = true.
- */
 
 router.post('/closure-approve', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -536,7 +506,7 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
     if (!disputeR.rows.length) return res.status(404).json({ error: 'no_dispute_found' });
 
     const dispute   = disputeR.rows[0] as any;
-    const disputeId = String(dispute.id);
+    const disputeId = toNum(dispute.id);
 
     if (!dispute.closure_requested) {
       return res.status(400).json({ error: 'closure_not_requested' });
@@ -545,7 +515,6 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
       return res.status(400).json({ error: 'already_approved' });
     }
 
-    // ── Phase 12.13: Level-2 approval guard ─────────────────────────────────
     if (dispute.second_approval_required && !dispute.second_approval_by) {
       const isOwnerOrAdmin = ['franchise_owner'].includes(ctx.role) || (req as any).isAdmin;
       if (!isOwnerOrAdmin) {
@@ -554,43 +523,40 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
           message: 'This closure requires franchise owner sign-off (level-2 approval). Manager approval is insufficient.',
         });
       }
-      // Record the level-2 approval
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE booking_disputes
-        SET second_approval_by = '${safe(ctx.uid ?? 'admin')}',
+        SET second_approval_by = ${ctx.uid ?? 'admin'},
             second_approved_at = NOW()
-        WHERE id::text = '${disputeId}'
-      `));
+        WHERE id = ${disputeId}
+      `);
     }
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       UPDATE booking_disputes
-      SET status = 'closed',
+      SET status           = 'closed',
           closure_approved = true,
           resolved_at      = NOW(),
-          resolved_by      = '${safe(ctx.uid ?? 'admin')}'
-      WHERE id::text = '${disputeId}'
-    `));
+          resolved_by      = ${ctx.uid ?? 'admin'}
+      WHERE id = ${disputeId}
+    `);
 
-    // Escalation log
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
-      VALUES ('dispute', '${disputeId}', 'auto_escalated',
-        '${safe(ctx.uid ?? 'admin')}', NULL,
+      VALUES ('dispute', ${String(disputeId)}, 'auto_escalated',
+        ${ctx.uid ?? 'admin'}, NULL,
         'Closure approved by manager')
-    `));
+    `);
 
-    // Audit note
     const noteText = note ? String(note).slice(0, 500) : 'Closure approved.';
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
-      VALUES ('dispute', '${disputeId}',
-        '${safe(ctx.uid ?? 'system')}',
-        '${safe(ctx.role)}',
-        '${safe(`CLOSURE APPROVED: ${noteText}`)}')
-    `));
+      VALUES ('dispute', ${String(disputeId)},
+        ${ctx.uid ?? 'system'},
+        ${ctx.role},
+        ${`CLOSURE APPROVED: ${noteText}`})
+    `);
 
-    await touchLastAction('dispute', disputeId);
+    await touchLastAction('dispute', String(disputeId));
 
     res.json({ success: true, disputeId, bookingId, newStatus: 'closed' });
   } catch (err: any) {
@@ -600,10 +566,6 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
 });
 
 // ─── POST /closure-reject ─────────────────────────────────────────────────────
-/**
- * Manager rejects a pending closure request.
- * Clears closure_requested. Case stays active.
- */
 
 router.post('/closure-reject', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -622,29 +584,29 @@ router.post('/closure-reject', requireAuth, async (req: Request, res: Response) 
     if (!disputeR.rows.length) return res.status(404).json({ error: 'no_dispute_found' });
 
     const dispute   = disputeR.rows[0] as any;
-    const disputeId = String(dispute.id);
+    const disputeId = toNum(dispute.id);
 
     if (!dispute.closure_requested) {
       return res.status(400).json({ error: 'no_pending_closure' });
     }
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       UPDATE booking_disputes
       SET closure_requested   = false,
           closure_reason_code = NULL
-      WHERE id::text = '${disputeId}'
-    `));
+      WHERE id = ${disputeId}
+    `);
 
     const noteText = note ? String(note).slice(0, 500) : 'Closure request rejected.';
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
-      VALUES ('dispute', '${disputeId}',
-        '${safe(ctx.uid ?? 'system')}',
-        '${safe(ctx.role)}',
-        '${safe(`CLOSURE REJECTED: ${noteText}`)}')
-    `));
+      VALUES ('dispute', ${String(disputeId)},
+        ${ctx.uid ?? 'system'},
+        ${ctx.role},
+        ${`CLOSURE REJECTED: ${noteText}`})
+    `);
 
-    await touchLastAction('dispute', disputeId);
+    await touchLastAction('dispute', String(disputeId));
 
     res.json({ success: true, disputeId, bookingId });
   } catch (err: any) {
@@ -657,9 +619,9 @@ router.post('/closure-reject', requireAuth, async (req: Request, res: Response) 
 
 router.get('/resolution-codes', requireAuth, async (_req: Request, res: Response) => {
   try {
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT code, label, applies_to FROM resolution_codes ORDER BY label
-    `));
+    `);
     const codes = (rows.rows as any[]).map(r => ({
       code:      toStr(r.code),
       label:     toStr(r.label),
@@ -676,9 +638,9 @@ router.get('/resolution-codes', requireAuth, async (_req: Request, res: Response
 
 router.get('/reopen-codes', requireAuth, async (_req: Request, res: Response) => {
   try {
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT code, label FROM reopen_codes ORDER BY label
-    `));
+    `);
     const codes = (rows.rows as any[]).map(r => ({
       code:  toStr(r.code),
       label: toStr(r.label),
@@ -701,10 +663,9 @@ router.post('/reopen', requireAuth, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'bookingId and reopenCode required' });
     }
 
-    // Validate reopen code
-    const codeR = await db.execute(sql.raw(`
-      SELECT code FROM reopen_codes WHERE code = '${safe(reopenCode)}' LIMIT 1
-    `));
+    const codeR = await db.execute(sql`
+      SELECT code FROM reopen_codes WHERE code = ${String(reopenCode)} LIMIT 1
+    `);
     if (!codeR.rows.length) {
       return res.status(400).json({ error: 'invalid_reopen_code' });
     }
@@ -716,15 +677,14 @@ router.post('/reopen', requireAuth, async (req: Request, res: Response) => {
     if (!disputeR.rows.length) return res.status(404).json({ error: 'no_dispute_found' });
 
     const dispute    = disputeR.rows[0] as any;
-    const disputeId  = String(dispute.id);
+    const disputeId  = toNum(dispute.id);
     const prevStatus = String(dispute.status);
 
     if (['open', 'under_review'].includes(prevStatus)) {
       return res.status(400).json({ error: 'dispute_already_active', status: prevStatus });
     }
 
-    // Reopen
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       UPDATE booking_disputes
       SET status = 'open',
           resolved_at = NULL,
@@ -732,13 +692,12 @@ router.post('/reopen', requireAuth, async (req: Request, res: Response) => {
           closure_requested   = false,
           closure_approved    = false,
           closure_reason_code = NULL
-      WHERE id::text = '${disputeId}'
-    `));
+      WHERE id = ${disputeId}
+    `);
 
-    // Reset SLA
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_sla_states (case_type, case_ref_id, sla_status, breach_detected_at, escalated_at, escalated_to_uid, last_action_at)
-      VALUES ('dispute', '${disputeId}', 'within_sla', NULL, NULL, NULL, NOW())
+      VALUES ('dispute', ${String(disputeId)}, 'within_sla', NULL, NULL, NULL, NOW())
       ON CONFLICT (case_type, case_ref_id) DO UPDATE SET
         sla_status         = 'within_sla',
         breach_detected_at = NULL,
@@ -746,44 +705,42 @@ router.post('/reopen', requireAuth, async (req: Request, res: Response) => {
         escalated_to_uid   = NULL,
         last_action_at     = NOW(),
         checked_at         = NOW()
-    `));
+    `);
 
-    // Reassign to franchise owner
-    const foR = await db.execute(sql.raw(`
+    const foR = await db.execute(sql`
       SELECT fo.owner_user_id
       FROM franchise_owners fo
       JOIN stations st ON st.franchise_id = fo.id
       JOIN bookings b ON b.station_id = st.id
-      WHERE b.id = '${safe(bookingId)}' AND fo.status = 'active'
+      WHERE b.id = ${bookingId} AND fo.status = 'active'
       LIMIT 1
-    `));
+    `);
     const assignTo = (foR.rows[0] as any)?.owner_user_id ?? null;
 
     if (assignTo) {
-      await doAssign('dispute', disputeId, assignTo, null, ctx.uid, 'Reassigned on reopen', null);
+      await doAssign('dispute', String(disputeId), assignTo, null, ctx.uid, 'Reassigned on reopen', null);
     }
 
-    // Escalation log
     const noteText = note ? String(note).slice(0, 1000) : null;
-    await db.execute(sql.raw(`
+    const fullNote = `REOPENED [${reopenCode}]${noteText ? ': ' + noteText : ''}`;
+
+    await db.execute(sql`
       INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
       VALUES (
-        'dispute', '${disputeId}', 'reopened',
-        ${ctx.uid ? `'${safe(ctx.uid)}'` : 'NULL'},
-        ${assignTo ? `'${safe(assignTo)}'` : 'NULL'},
-        '${safe(`Reopened [${reopenCode}]${noteText ? ': ' + noteText : ''}`)}'
+        'dispute', ${String(disputeId)}, 'reopened',
+        ${ctx.uid ?? null},
+        ${assignTo ?? null},
+        ${fullNote}
       )
-    `));
+    `);
 
-    // Internal note
-    const fullNote = `REOPENED [${reopenCode}]${noteText ? ': ' + noteText : ''}`;
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
-      VALUES ('dispute', '${disputeId}',
-        '${safe(ctx.uid ?? 'system')}',
-        '${safe(ctx.role)}',
-        '${safe(fullNote)}')
-    `));
+      VALUES ('dispute', ${String(disputeId)},
+        ${ctx.uid ?? 'system'},
+        ${ctx.role},
+        ${fullNote})
+    `);
 
     res.json({
       success:    true,
@@ -833,39 +790,35 @@ router.post('/bulk', requireAuth, async (req: Request, res: Response) => {
           await touchLastAction(caseType, caseRefId);
           results.succeeded++;
         } else if (action === 'unassign') {
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE case_assignments SET is_active = false
-            WHERE case_type = '${safe(caseType)}' AND case_ref_id = '${safe(caseRefId)}' AND is_active = true
-          `));
+            WHERE case_type = ${String(caseType)} AND case_ref_id = ${String(caseRefId)} AND is_active = true
+          `);
           await touchLastAction(caseType, caseRefId);
           results.succeeded++;
         } else if (action === 'mark_under_review' && caseType === 'dispute') {
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE booking_disputes SET status = 'under_review'
-            WHERE id::text = '${safe(caseRefId)}' AND status = 'open'
-          `));
+            WHERE id::text = ${String(caseRefId)} AND status = 'open'
+          `);
           await touchLastAction(caseType, caseRefId);
           results.succeeded++;
         } else if (action === 'close_cases' && caseType === 'dispute') {
-          // Close only if not closure_approved required — here we respect the flow:
-          // If the case has a pending closure request and caller is admin/FO, approve + close.
-          // Otherwise, check if caller can close directly (admin/FO).
           if (ctx.role === 'admin' || ctx.role === 'franchise_owner') {
-            await db.execute(sql.raw(`
+            await db.execute(sql`
               UPDATE booking_disputes
               SET status = 'closed', resolved_at = NOW(),
                   closure_approved = true,
-                  resolved_by = '${safe(callerUid ?? 'admin')}'
-              WHERE id::text = '${safe(caseRefId)}' AND status NOT IN ('resolved')
-            `));
+                  resolved_by = ${callerUid ?? 'admin'}
+              WHERE id::text = ${String(caseRefId)} AND status NOT IN ('resolved')
+            `);
           } else {
-            // Agents: set closure_requested if no code yet, skip if already pending
-            await db.execute(sql.raw(`
+            await db.execute(sql`
               UPDATE booking_disputes
               SET closure_requested = true
-              WHERE id::text = '${safe(caseRefId)}' AND status NOT IN ('closed','resolved')
+              WHERE id::text = ${String(caseRefId)} AND status NOT IN ('closed','resolved')
                 AND closure_requested = false
-            `));
+            `);
           }
           await touchLastAction(caseType, caseRefId);
           results.succeeded++;

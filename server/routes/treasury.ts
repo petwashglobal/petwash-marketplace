@@ -74,13 +74,13 @@ router.post('/batches', async (req: Request, res: Response) => {
     }
 
     // Sum up the settlements
-    // ids are guaranteed integers (mapped + filtered), safe for sql.raw IN list
     const ids = settlement_ids.map(Number).filter(Boolean);
-    const settlements = await db.execute(sql.raw(`
+    const idList = sql.join(ids.map((id: number) => sql`${id}`), sql`, `);
+    const settlements = await db.execute(sql`
       SELECT id, station_amount_cents, held_in_reserve, payout_hold_reason
       FROM station_settlements
-      WHERE id IN (${ids.join(',')})
-    `));
+      WHERE id IN (${idList})
+    `);
 
     const blocked = (settlements.rows as any[]).filter(s => s.held_in_reserve || s.payout_hold_reason);
     if (blocked.length) {

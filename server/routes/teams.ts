@@ -28,7 +28,6 @@ interface CallerCtx {
   uid:  string | null;
 }
 
-const safe = (s: unknown) => String(s ?? '').replace(/'/g, "''");
 const toNum = (v: unknown): number => Number(v ?? 0);
 const toStr = (v: unknown): string => v != null ? String(v) : '';
 
@@ -81,7 +80,7 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         t.id,
         t.name,
@@ -93,7 +92,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       LEFT JOIN team_members tm ON tm.team_id = t.id
       GROUP BY t.id
       ORDER BY t.name
-    `));
+    `);
 
     const teams = (rows.rows as any[]).map(r => ({
       id:           toNum(r.id),
@@ -128,10 +127,10 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'type must be support | franchise | ops' });
     }
 
-    const result = await db.execute(sql.raw(`
-      INSERT INTO teams (name, type) VALUES ('${safe(name)}', '${safe(type)}')
+    const result = await db.execute(sql`
+      INSERT INTO teams (name, type) VALUES (${String(name)}, ${String(type)})
       RETURNING id, name, type, created_at
-    `));
+    `);
     const row = result.rows[0] as any;
 
     res.status(201).json({
@@ -155,7 +154,7 @@ router.get('/mine', requireAuth, async (req: Request, res: Response) => {
       return res.json({ teams: [] });
     }
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         t.id, t.name, t.type,
         tm.role AS my_role,
@@ -163,10 +162,10 @@ router.get('/mine', requireAuth, async (req: Request, res: Response) => {
       FROM team_members tm
       JOIN teams t ON t.id = tm.team_id
       LEFT JOIN team_members all_members ON all_members.team_id = t.id
-      WHERE tm.user_uid = '${safe(ctx.uid)}'
+      WHERE tm.user_uid = ${ctx.uid}
       GROUP BY t.id, t.name, t.type, tm.role
       ORDER BY t.name
-    `));
+    `);
 
     const teams = (rows.rows as any[]).map(r => ({
       id:          toNum(r.id),
@@ -190,7 +189,7 @@ router.get('/:id/members', requireAuth, async (req: Request, res: Response) => {
     const teamId = parseInt(req.params.id, 10);
     if (isNaN(teamId)) return res.status(400).json({ error: 'invalid team id' });
 
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         tm.id,
         tm.user_uid,
@@ -203,7 +202,7 @@ router.get('/:id/members', requireAuth, async (req: Request, res: Response) => {
       WHERE tm.team_id = ${teamId}
       GROUP BY tm.id, tm.user_uid, tm.role, tm.created_at
       ORDER BY tm.role DESC, tm.created_at ASC
-    `));
+    `);
 
     const members = (rows.rows as any[]).map(r => ({
       id:          toNum(r.id),
@@ -238,12 +237,12 @@ router.post('/:id/members', requireAuth, async (req: Request, res: Response) => 
       return res.status(400).json({ error: 'role must be agent | manager' });
     }
 
-    const result = await db.execute(sql.raw(`
+    const result = await db.execute(sql`
       INSERT INTO team_members (team_id, user_uid, role)
-      VALUES (${teamId}, '${safe(userUid)}', '${safe(role)}')
+      VALUES (${teamId}, ${String(userUid)}, ${String(role)})
       ON CONFLICT (user_uid, team_id) DO UPDATE SET role = EXCLUDED.role
       RETURNING id, user_uid, role, created_at
-    `));
+    `);
     const row = result.rows[0] as any;
 
     res.status(201).json({
@@ -272,10 +271,10 @@ router.delete('/:id/members/:uid', requireAuth, async (req: Request, res: Respon
 
     const uid = req.params.uid;
 
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       DELETE FROM team_members
-      WHERE team_id = ${teamId} AND user_uid = '${safe(uid)}'
-    `));
+      WHERE team_id = ${teamId} AND user_uid = ${uid}
+    `);
 
     res.json({ success: true, teamId, userUid: uid });
   } catch (err: any) {

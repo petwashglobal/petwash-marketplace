@@ -30,7 +30,7 @@ import rateLimit from 'express-rate-limit';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
 import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
-import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
+import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import multer from 'multer';
@@ -5513,44 +5513,42 @@ router.get('/admin/wallet/settlement-summary', async (req: Request, res: Respons
     if (to   && !DATE_RE.test(to))   return res.status(400).json({ error: 'Invalid to date' });
     if (divisionCode && !DIV_RE.test(divisionCode)) return res.status(400).json({ error: 'Invalid divisionCode' });
 
-    // Build date clauses
-    const fromClause = from ? `AND wle.created_at >= '${from}'::timestamptz` : '';
-    const toClause   = to   ? `AND wle.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
-    const divClause  = divisionCode ? `AND wle.division_code = '${divisionCode}'` : '';
-
-    const fromHoldClause = from ? `AND wh.created_at >= '${from}'::timestamptz` : '';
-    const toHoldClause   = to   ? `AND wh.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
-
-    const fromPayClause = from ? `AND ppe.created_at >= '${from}'::timestamptz` : '';
-    const toPayClause   = to   ? `AND ppe.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
-    const divPayClause  = divisionCode ? `AND ppe.division_code = '${divisionCode}'` : '';
+    // Build parameterised SQL filter fragments
+    const fromCond     = from         ? sql`AND wle.created_at >= ${from}::timestamptz`                        : sql``;
+    const toCond       = to           ? sql`AND wle.created_at <  ${to}::timestamptz + INTERVAL '1 day'`       : sql``;
+    const divCond      = divisionCode ? sql`AND wle.division_code = ${divisionCode}`                           : sql``;
+    const fromHoldCond = from         ? sql`AND wh.created_at >= ${from}::timestamptz`                         : sql``;
+    const toHoldCond   = to           ? sql`AND wh.created_at <  ${to}::timestamptz + INTERVAL '1 day'`        : sql``;
+    const fromPayCond  = from         ? sql`AND ppe.created_at >= ${from}::timestamptz`                        : sql``;
+    const toPayCond    = to           ? sql`AND ppe.created_at <  ${to}::timestamptz + INTERVAL '1 day'`       : sql``;
+    const divPayCond   = divisionCode ? sql`AND ppe.division_code = ${divisionCode}`                           : sql``;
 
     // ── 1. Collected (wallet debits for services) ──────────────────────────────
-    const collectedRow: any = await db.execute(sql.raw(`
+    const collectedRow: any = await db.execute(sql`
       SELECT COALESCE(SUM(amount_cents), 0) AS collected
       FROM wallet_ledger_entries wle
       WHERE wle.direction = 'debit'
-        AND wle.event_type IN ${COLLECTED_EVENTS}
-        ${fromClause} ${toClause} ${divClause}
-    `));
+        AND wle.event_type IN ('redeem_kiosk','redeem_online','hold_capture')
+        ${fromCond} ${toCond} ${divCond}
+    `);
     const collected = Number((collectedRow?.rows ?? collectedRow ?? [])[0]?.collected ?? 0);
 
     // ── 2. Pending holds (active holds created in period) ────────────────────
-    const holdsRow: any = await db.execute(sql.raw(`
+    const holdsRow: any = await db.execute(sql`
       SELECT COALESCE(SUM(wh.amount_cents), 0) AS pending_holds
       FROM wallet_holds wh
       WHERE wh.status = 'active'
-        ${fromHoldClause} ${toHoldClause}
-    `));
+        ${fromHoldCond} ${toHoldCond}
+    `);
     const pendingHolds = Number((holdsRow?.rows ?? holdsRow ?? [])[0]?.pending_holds ?? 0);
 
     // ── 3. Provider payable (earned + held payout entries in period) ──────────
-    const payableRow: any = await db.execute(sql.raw(`
+    const payableRow: any = await db.execute(sql`
       SELECT COALESCE(SUM(ppe.net_cents), 0) AS payable
       FROM provider_payout_entries ppe
       WHERE ppe.status IN ('earned', 'held')
-        ${fromPayClause} ${toPayClause} ${divPayClause}
-    `));
+        ${fromPayCond} ${toPayCond} ${divPayCond}
+    `);
     const providerPayable = Number((payableRow?.rows ?? payableRow ?? [])[0]?.payable ?? 0);
 
     // ── 4. Derived metrics ────────────────────────────────────────────────────
@@ -5559,27 +5557,27 @@ router.get('/admin/wallet/settlement-summary', async (req: Request, res: Respons
     const marginPct      = collected > 0 ? (margin / collected) * 100 : 0;
 
     // ── 5. By-division breakdown ───────────────────────────────────────────────
-    const byDivisionRaw: any = await db.execute(sql.raw(`
+    const byDivisionRaw: any = await db.execute(sql`
       SELECT
         COALESCE(wle.division_code, 'unknown')            AS division_code,
         COALESCE(SUM(wle.amount_cents), 0)               AS collected
       FROM wallet_ledger_entries wle
       WHERE wle.direction = 'debit'
-        AND wle.event_type IN ${COLLECTED_EVENTS}
-        ${fromClause} ${toClause}
+        AND wle.event_type IN ('redeem_kiosk','redeem_online','hold_capture')
+        ${fromCond} ${toCond}
       GROUP BY wle.division_code
       ORDER BY collected DESC
-    `));
+    `);
 
-    const payableByDivRaw: any = await db.execute(sql.raw(`
+    const payableByDivRaw: any = await db.execute(sql`
       SELECT
         COALESCE(ppe.division_code, 'unknown')            AS division_code,
         COALESCE(SUM(ppe.net_cents), 0)                  AS payable
       FROM provider_payout_entries ppe
       WHERE ppe.status IN ('earned', 'held')
-        ${fromPayClause} ${toPayClause}
+        ${fromPayCond} ${toPayCond}
       GROUP BY ppe.division_code
-    `));
+    `);
 
     const divRows   = byDivisionRaw?.rows   ?? byDivisionRaw   ?? [];
     const payDivMap = new Map<string, number>();
@@ -5640,60 +5638,60 @@ router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: 
     if (to   && !DATE_RE_EXP.test(to))   return res.status(400).json({ error: 'Invalid to date' });
     if (divisionCode && !DIV_RE_EXP.test(divisionCode)) return res.status(400).json({ error: 'Invalid divisionCode' });
 
-    // Reuse the summary endpoint logic by making an internal call
-    // Build same queries inline
-    const fromClause = from ? `AND wle.created_at >= '${from}'::timestamptz` : '';
-    const toClause   = to   ? `AND wle.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
-    const divClause  = divisionCode ? `AND wle.division_code = '${divisionCode}'` : '';
-    const fromPayClause = from ? `AND ppe.created_at >= '${from}'::timestamptz` : '';
-    const toPayClause   = to   ? `AND ppe.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
+    // Build parameterised SQL filter fragments for export
+    const expFromCond    = from         ? sql`AND wle.created_at >= ${from}::timestamptz`                  : sql``;
+    const expToCond      = to           ? sql`AND wle.created_at <  ${to}::timestamptz + INTERVAL '1 day'` : sql``;
+    const expDivCond     = divisionCode ? sql`AND wle.division_code = ${divisionCode}`                     : sql``;
+    const expFromPayCond = from         ? sql`AND ppe.created_at >= ${from}::timestamptz`                  : sql``;
+    const expToPayCond   = to           ? sql`AND ppe.created_at <  ${to}::timestamptz + INTERVAL '1 day'` : sql``;
+    const expDivPayCond  = divisionCode ? sql`AND ppe.division_code = ${divisionCode}`                     : sql``;
+    const expFromHoldCond = from        ? sql`AND created_at >= ${from}::timestamptz`                      : sql``;
+    const expToHoldCond   = to          ? sql`AND created_at <  ${to}::timestamptz + INTERVAL '1 day'`     : sql``;
 
-    const collectedRow: any = await db.execute(sql.raw(`
+    const collectedRow: any = await db.execute(sql`
       SELECT COALESCE(SUM(amount_cents), 0) AS collected
       FROM wallet_ledger_entries wle
-      WHERE wle.direction = 'debit' AND wle.event_type IN ${COLLECTED_EVENTS}
-        ${fromClause} ${toClause} ${divClause}
-    `));
+      WHERE wle.direction = 'debit' AND wle.event_type IN ('redeem_kiosk','redeem_online','hold_capture')
+        ${expFromCond} ${expToCond} ${expDivCond}
+    `);
     const collected = Number((collectedRow?.rows ?? collectedRow ?? [])[0]?.collected ?? 0);
 
-    const holdsRow: any = await db.execute(sql.raw(`
+    const holdsRow: any = await db.execute(sql`
       SELECT COALESCE(SUM(amount_cents), 0) AS pending_holds
       FROM wallet_holds WHERE status = 'active'
-      ${from ? `AND created_at >= '${from}'::timestamptz` : ''}
-      ${to   ? `AND created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : ''}
-    `));
+        ${expFromHoldCond} ${expToHoldCond}
+    `);
     const pendingHolds = Number((holdsRow?.rows ?? holdsRow ?? [])[0]?.pending_holds ?? 0);
 
-    const payableRow: any = await db.execute(sql.raw(`
+    const payableRow: any = await db.execute(sql`
       SELECT COALESCE(SUM(net_cents), 0) AS payable
       FROM provider_payout_entries ppe
       WHERE ppe.status IN ('earned','held')
-        ${fromPayClause} ${toPayClause}
-        ${divisionCode ? `AND ppe.division_code = '${divisionCode}'` : ''}
-    `));
+        ${expFromPayCond} ${expToPayCond} ${expDivPayCond}
+    `);
     const providerPayable = Number((payableRow?.rows ?? payableRow ?? [])[0]?.payable ?? 0);
 
     const vatLiability = Math.floor(collected * VAT_RATE);
     const margin       = collected - providerPayable - vatLiability;
     const marginPct    = collected > 0 ? (margin / collected) * 100 : 0;
 
-    const byDivisionRaw: any = await db.execute(sql.raw(`
+    const byDivisionRaw: any = await db.execute(sql`
       SELECT COALESCE(wle.division_code, 'unknown') AS division_code,
              COALESCE(SUM(wle.amount_cents), 0)    AS collected
       FROM wallet_ledger_entries wle
-      WHERE wle.direction = 'debit' AND wle.event_type IN ${COLLECTED_EVENTS}
-        ${fromClause} ${toClause}
+      WHERE wle.direction = 'debit' AND wle.event_type IN ('redeem_kiosk','redeem_online','hold_capture')
+        ${expFromCond} ${expToCond}
       GROUP BY wle.division_code ORDER BY collected DESC
-    `));
+    `);
 
-    const payableByDivRaw: any = await db.execute(sql.raw(`
+    const payableByDivRaw: any = await db.execute(sql`
       SELECT COALESCE(ppe.division_code, 'unknown') AS division_code,
              COALESCE(SUM(ppe.net_cents), 0)       AS payable
       FROM provider_payout_entries ppe
       WHERE ppe.status IN ('earned','held')
-        ${fromPayClause} ${toPayClause}
+        ${expFromPayCond} ${expToPayCond}
       GROUP BY ppe.division_code
-    `));
+    `);
 
     const divRows   = byDivisionRaw?.rows ?? byDivisionRaw ?? [];
     const payDivMap = new Map<string, number>();
@@ -5832,24 +5830,24 @@ router.get('/admin/wallet/disputes', async (req: Request, res: Response) => {
     if (bookingId        && !SAFE_ID_RE.test(bookingId))             return res.status(400).json({ error: 'Invalid bookingId' });
     if (complainantUid   && !SAFE_ID_RE.test(complainantUid))        return res.status(400).json({ error: 'Invalid complainantUid' });
 
-    const conditions: string[] = [];
-    if (status)           conditions.push(`status = '${status}'`);
-    if (divisionCode)     conditions.push(`division_code = '${divisionCode}'`);
-    if (assignedAdminUid) conditions.push(`assigned_admin_uid = '${assignedAdminUid}'`);
-    if (bookingId)        conditions.push(`booking_id = '${bookingId}'`);
-    if (complainantUid)   conditions.push(`complainant_uid = '${complainantUid}'`);
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereParts: SQL[] = [];
+    if (status)           whereParts.push(sql`status = ${status}`);
+    if (divisionCode)     whereParts.push(sql`division_code = ${divisionCode}`);
+    if (assignedAdminUid) whereParts.push(sql`assigned_admin_uid = ${assignedAdminUid}`);
+    if (bookingId)        whereParts.push(sql`booking_id = ${bookingId}`);
+    if (complainantUid)   whereParts.push(sql`complainant_uid = ${complainantUid}`);
+    const whereClause = whereParts.length ? sql`WHERE ${sql.join(whereParts, sql` AND `)}` : sql``;
 
-    const rows: any = await db.execute(sql.raw(`
+    const rows: any = await db.execute(sql`
       SELECT * FROM dispute_cases
-      ${where}
+      ${whereClause}
       ORDER BY opened_at DESC
       LIMIT ${limit} OFFSET ${offset}
-    `));
+    `);
 
-    const totalRow: any = await db.execute(sql.raw(`
-      SELECT COUNT(*) AS cnt FROM dispute_cases ${where}
-    `));
+    const totalRow: any = await db.execute(sql`
+      SELECT COUNT(*) AS cnt FROM dispute_cases ${whereClause}
+    `);
     const total = Number((totalRow?.rows ?? totalRow ?? [])[0]?.cnt ?? 0);
 
     return res.json({
@@ -5885,28 +5883,28 @@ router.patch('/admin/wallet/disputes/:caseRef', async (req: Request, res: Respon
     const { status, assignedAdminUid, note, authorName } = parsed.data;
 
     // Fetch existing case first
-    const existing: any = await db.execute(sql.raw(
-      `SELECT * FROM dispute_cases WHERE case_ref = '${caseRef}' LIMIT 1`
-    ));
+    const existing: any = await db.execute(sql`
+      SELECT * FROM dispute_cases WHERE case_ref = ${caseRef} LIMIT 1
+    `);
     const row = (existing?.rows ?? existing ?? [])[0];
     if (!row) return res.status(404).json({ error: 'Dispute not found', caseRef });
     if (row.status === 'resolved' || row.status === 'dismissed') {
       return res.status(400).json({ error: `Cannot patch a ${row.status} dispute. Use the resolve endpoint.` });
     }
 
-    const setParts: string[] = [`updated_at = NOW()`];
-    if (status)                              setParts.push(`status = '${status}'`);
-    if (assignedAdminUid !== undefined)      setParts.push(`assigned_admin_uid = ${assignedAdminUid ? `'${assignedAdminUid}'` : 'NULL'}`);
+    const setSqlParts: SQL[] = [sql`updated_at = NOW()`];
+    if (status)                         setSqlParts.push(sql`status = ${status}`);
+    if (assignedAdminUid !== undefined) setSqlParts.push(sql`assigned_admin_uid = ${assignedAdminUid ?? null}`);
     if (note) {
       const newNote = { authorUid: uid, authorName: authorName ?? 'Admin', text: note, createdAt: new Date().toISOString() };
-      setParts.push(`notes = notes || '${JSON.stringify([newNote])}'::jsonb`);
+      setSqlParts.push(sql`notes = notes || ${JSON.stringify([newNote])}::jsonb`);
     }
 
-    const updated: any = await db.execute(sql.raw(`
-      UPDATE dispute_cases SET ${setParts.join(', ')}
-      WHERE case_ref = '${caseRef}'
+    const updated: any = await db.execute(sql`
+      UPDATE dispute_cases SET ${sql.join(setSqlParts, sql`, `)}
+      WHERE case_ref = ${caseRef}
       RETURNING *
-    `));
+    `);
     const updatedRow = (updated?.rows ?? updated ?? [])[0];
     logger.info('[Dispute][Patch]', { caseRef, byAdmin: uid, status, assignedAdminUid, hasNote: !!note });
     return res.json({ ok: true, dispute: updatedRow });
@@ -5937,9 +5935,9 @@ router.post('/admin/wallet/disputes/:caseRef/resolve', async (req: Request, res:
     const { resolutionType, resolutionCents, note, authorName, finalStatus } = parsed.data;
 
     // Guard: can't resolve something already closed
-    const existing: any = await db.execute(sql.raw(
-      `SELECT * FROM dispute_cases WHERE case_ref = '${caseRef}' LIMIT 1`
-    ));
+    const existing: any = await db.execute(sql`
+      SELECT * FROM dispute_cases WHERE case_ref = ${caseRef} LIMIT 1
+    `);
     const row = (existing?.rows ?? existing ?? [])[0];
     if (!row) return res.status(404).json({ error: 'Dispute not found', caseRef });
     if (row.status === 'resolved' || row.status === 'dismissed') {
@@ -5953,17 +5951,17 @@ router.post('/admin/wallet/disputes/:caseRef/resolve', async (req: Request, res:
       createdAt:  new Date().toISOString(),
     };
 
-    const updated: any = await db.execute(sql.raw(`
+    const updated: any = await db.execute(sql`
       UPDATE dispute_cases SET
-        status           = '${finalStatus}',
-        resolution_type  = '${resolutionType}',
+        status           = ${finalStatus},
+        resolution_type  = ${resolutionType},
         resolution_cents = ${resolutionCents},
         resolved_at      = NOW(),
         updated_at       = NOW(),
-        notes            = notes || '${JSON.stringify([resolutionNote])}'::jsonb
-      WHERE case_ref = '${caseRef}'
+        notes            = notes || ${JSON.stringify([resolutionNote])}::jsonb
+      WHERE case_ref = ${caseRef}
       RETURNING *
-    `));
+    `);
     const updatedRow = (updated?.rows ?? updated ?? [])[0];
     logger.info('[Dispute][Resolve]', { caseRef, byAdmin: uid, resolutionType, resolutionCents, finalStatus });
     return res.json({ ok: true, dispute: updatedRow });
@@ -6844,41 +6842,38 @@ router.get('/admin/wallet/payout-batches/:batchId/provider-export', async (req: 
 
 // ── Helper: build division snapshots for a given calendar date ────────────
 async function buildDivisionSnapshots(dateIso: string): Promise<Record<string, any>> {
-  const fromClause = `AND wle.created_at >= '${dateIso}'::date AT TIME ZONE 'Asia/Jerusalem'`;
-  const toClause   = `AND wle.created_at <  ('${dateIso}'::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'`;
-  const fromPayClause = `AND ppe.created_at >= '${dateIso}'::date AT TIME ZONE 'Asia/Jerusalem'`;
-  const toPayClause   = `AND ppe.created_at <  ('${dateIso}'::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'`;
-
   const DIVS = ['walkers', 'petsitter', 'academy', 'station_k9000'];
   const snapshots: Record<string, any> = {};
 
-  const collectedRaw: any = await db.execute(sql.raw(`
+  const collectedRaw: any = await db.execute(sql`
     SELECT COALESCE(wle.division_code, 'unknown') AS div,
            COALESCE(SUM(amount_cents), 0)         AS collected
     FROM wallet_ledger_entries wle
     WHERE wle.direction = 'debit'
-      AND wle.event_type IN ${COLLECTED_EVENTS}
-      ${fromClause} ${toClause}
+      AND wle.event_type IN ('redeem_kiosk','redeem_online','hold_capture')
+      AND wle.created_at >= ${dateIso}::date AT TIME ZONE 'Asia/Jerusalem'
+      AND wle.created_at <  (${dateIso}::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'
     GROUP BY wle.division_code
-  `));
-  const payableRaw: any = await db.execute(sql.raw(`
+  `);
+  const payableRaw: any = await db.execute(sql`
     SELECT COALESCE(ppe.division_code, 'unknown') AS div,
            COALESCE(SUM(ppe.net_cents), 0)        AS payable
     FROM provider_payout_entries ppe
     WHERE ppe.status IN ('earned', 'held')
-      ${fromPayClause} ${toPayClause}
+      AND ppe.created_at >= ${dateIso}::date AT TIME ZONE 'Asia/Jerusalem'
+      AND ppe.created_at <  (${dateIso}::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'
     GROUP BY ppe.division_code
-  `));
-  const holdsRaw: any = await db.execute(sql.raw(`
+  `);
+  const holdsRaw: any = await db.execute(sql`
     SELECT COALESCE(wle.division_code, 'unknown') AS div,
            COALESCE(SUM(wh.amount_cents), 0)      AS holds
     FROM wallet_holds wh
     LEFT JOIN wallet_ledger_entries wle ON wle.booking_id = wh.booking_id
     WHERE wh.status = 'active'
-      AND wh.created_at >= '${dateIso}'::date AT TIME ZONE 'Asia/Jerusalem'
-      AND wh.created_at <  ('${dateIso}'::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'
+      AND wh.created_at >= ${dateIso}::date AT TIME ZONE 'Asia/Jerusalem'
+      AND wh.created_at <  (${dateIso}::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'
     GROUP BY wle.division_code
-  `));
+  `);
 
   const collMap = new Map<string, number>();
   for (const r of (collectedRaw?.rows ?? collectedRaw ?? [])) collMap.set(r.div, Number(r.collected ?? 0));
@@ -9763,18 +9758,16 @@ router.patch('/admin/wallet/payout-schedules/:id', async (req: Request, res: Res
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { divisionCode, cadence, dayOfWeek, dayOfMonth, enabled, minBatchNetCents, notes } = req.body;
-    const sets: string[] = [];
-    const vals: any[] = [];
-    if (divisionCode !== undefined) { sets.push(`division_code = $${vals.length+1}`); vals.push(divisionCode); }
-    if (cadence        !== undefined) { sets.push(`cadence = $${vals.length+1}`);        vals.push(cadence); }
-    if (dayOfWeek      !== undefined) { sets.push(`day_of_week = $${vals.length+1}`);    vals.push(dayOfWeek); }
-    if (dayOfMonth     !== undefined) { sets.push(`day_of_month = $${vals.length+1}`);   vals.push(dayOfMonth); }
-    if (enabled        !== undefined) { sets.push(`enabled = $${vals.length+1}`);        vals.push(enabled); }
-    if (minBatchNetCents !== undefined) { sets.push(`min_batch_net_cents = $${vals.length+1}`); vals.push(minBatchNetCents); }
-    if (notes          !== undefined) { sets.push(`notes = $${vals.length+1}`);          vals.push(notes); }
-    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
-    vals.push(parseInt(id, 10));
-    const raw: any = await db.execute(sql.raw(`UPDATE payout_schedules SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    const setParts: SQL[] = [];
+    if (divisionCode     !== undefined) setParts.push(sql`division_code = ${divisionCode}`);
+    if (cadence          !== undefined) setParts.push(sql`cadence = ${cadence}`);
+    if (dayOfWeek        !== undefined) setParts.push(sql`day_of_week = ${dayOfWeek}`);
+    if (dayOfMonth       !== undefined) setParts.push(sql`day_of_month = ${dayOfMonth}`);
+    if (enabled          !== undefined) setParts.push(sql`enabled = ${enabled}`);
+    if (minBatchNetCents !== undefined) setParts.push(sql`min_batch_net_cents = ${minBatchNetCents}`);
+    if (notes            !== undefined) setParts.push(sql`notes = ${notes}`);
+    if (!setParts.length) return res.status(400).json({ error: 'No fields to update' });
+    const raw: any = await db.execute(sql`UPDATE payout_schedules SET ${sql.join(setParts, sql`, `)} WHERE id = ${parseInt(id, 10)} RETURNING *`);
     const s = (raw?.rows ?? raw)?.[0];
     if (!s) return res.status(404).json({ error: 'Schedule not found' });
     await db.execute(sql`
@@ -9822,18 +9815,18 @@ router.post('/admin/wallet/payout-schedules/:id/run-now', async (req: Request, r
 
     // Create batch
     const batchId = `AUTO-${scheduleId}-${Date.now()}`;
-    const divFilter = schedule.division_code ? ` AND division_code = '${schedule.division_code}'` : '';
-    await db.execute(sql.raw(`
+    const divCond = schedule.division_code ? sql`AND division_code = ${schedule.division_code}` : sql``;
+    await db.execute(sql`
       INSERT INTO payout_batches (batch_id, status, gross_total_cents, commission_total_cents, net_total_cents, entry_count, created_by_uid, notes)
-      SELECT '${batchId}', 'created',
+      SELECT ${batchId}, 'created',
         SUM(gross_cents), SUM(gross_cents - net_cents), SUM(net_cents), COUNT(*),
-        '${adminUid}', 'Auto-created by schedule ${scheduleId}'
-      FROM provider_payout_entries WHERE status = 'earned'${divFilter}
-    `));
-    await db.execute(sql.raw(`
-      UPDATE provider_payout_entries SET status='batched', payout_batch_id='${batchId}'
-      WHERE status='earned'${divFilter}
-    `));
+        ${adminUid}, ${'Auto-created by schedule ' + scheduleId}
+      FROM provider_payout_entries WHERE status = 'earned' ${divCond}
+    `);
+    await db.execute(sql`
+      UPDATE provider_payout_entries SET status='batched', payout_batch_id=${batchId}
+      WHERE status='earned' ${divCond}
+    `);
     await db.execute(sql`
       UPDATE payout_schedules SET last_run_at = NOW() WHERE id = ${scheduleId}
     `);
@@ -9932,17 +9925,16 @@ router.patch('/admin/wallet/dispute-routing-rules/:id', async (req: Request, res
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { divisionCode, minAmountCents, maxAmountCents, assignToUid, queueName, priority, enabled } = req.body;
-    const sets: string[] = []; const vals: any[] = [];
-    if (divisionCode    !== undefined) { sets.push(`division_code = $${vals.length+1}`);     vals.push(divisionCode); }
-    if (minAmountCents  !== undefined) { sets.push(`min_amount_cents = $${vals.length+1}`);  vals.push(minAmountCents); }
-    if (maxAmountCents  !== undefined) { sets.push(`max_amount_cents = $${vals.length+1}`);  vals.push(maxAmountCents); }
-    if (assignToUid     !== undefined) { sets.push(`assign_to_uid = $${vals.length+1}`);     vals.push(assignToUid); }
-    if (queueName       !== undefined) { sets.push(`queue_name = $${vals.length+1}`);        vals.push(queueName); }
-    if (priority        !== undefined) { sets.push(`priority = $${vals.length+1}`);          vals.push(priority); }
-    if (enabled         !== undefined) { sets.push(`enabled = $${vals.length+1}`);           vals.push(enabled); }
-    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
-    vals.push(parseInt(id, 10));
-    const raw: any = await db.execute(sql.raw(`UPDATE dispute_routing_rules SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    const setParts: SQL[] = [];
+    if (divisionCode   !== undefined) setParts.push(sql`division_code = ${divisionCode}`);
+    if (minAmountCents !== undefined) setParts.push(sql`min_amount_cents = ${minAmountCents}`);
+    if (maxAmountCents !== undefined) setParts.push(sql`max_amount_cents = ${maxAmountCents}`);
+    if (assignToUid    !== undefined) setParts.push(sql`assign_to_uid = ${assignToUid}`);
+    if (queueName      !== undefined) setParts.push(sql`queue_name = ${queueName}`);
+    if (priority       !== undefined) setParts.push(sql`priority = ${priority}`);
+    if (enabled        !== undefined) setParts.push(sql`enabled = ${enabled}`);
+    if (!setParts.length) return res.status(400).json({ error: 'No fields to update' });
+    const raw: any = await db.execute(sql`UPDATE dispute_routing_rules SET ${sql.join(setParts, sql`, `)} WHERE id = ${parseInt(id, 10)} RETURNING *`);
     const rule = (raw?.rows ?? raw)?.[0];
     if (!rule) return res.status(404).json({ error: 'Rule not found' });
     await db.execute(sql`
@@ -10275,14 +10267,13 @@ router.patch('/admin/wallet/archive-policies/:id', async (req: Request, res: Res
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { retentionDays, archiveAfterDays, enabled, notes } = req.body;
-    const sets: string[] = []; const vals: any[] = [];
-    if (retentionDays    !== undefined) { sets.push(`retention_days = $${vals.length+1}`);     vals.push(retentionDays); }
-    if (archiveAfterDays !== undefined) { sets.push(`archive_after_days = $${vals.length+1}`); vals.push(archiveAfterDays); }
-    if (enabled          !== undefined) { sets.push(`enabled = $${vals.length+1}`);            vals.push(enabled); }
-    if (notes            !== undefined) { sets.push(`notes = $${vals.length+1}`);              vals.push(notes); }
-    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
-    vals.push(parseInt(id, 10));
-    const raw: any = await db.execute(sql.raw(`UPDATE finance_archive_policies SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    const setParts: SQL[] = [];
+    if (retentionDays    !== undefined) setParts.push(sql`retention_days = ${retentionDays}`);
+    if (archiveAfterDays !== undefined) setParts.push(sql`archive_after_days = ${archiveAfterDays}`);
+    if (enabled          !== undefined) setParts.push(sql`enabled = ${enabled}`);
+    if (notes            !== undefined) setParts.push(sql`notes = ${notes}`);
+    if (!setParts.length) return res.status(400).json({ error: 'No fields to update' });
+    const raw: any = await db.execute(sql`UPDATE finance_archive_policies SET ${sql.join(setParts, sql`, `)} WHERE id = ${parseInt(id, 10)} RETURNING *`);
     const policy = (raw?.rows ?? raw)?.[0];
     if (!policy) return res.status(404).json({ error: 'Policy not found' });
     await db.execute(sql`
@@ -13162,16 +13153,17 @@ router.get('/admin/wallet/orchestration-runs', async (req: Request, res: Respons
     if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
     const { runType, status, from, to } = req.query as Record<string, string>;
 
-    let baseQuery = `SELECT * FROM orchestration_runs WHERE 1=1`;
-    const conditions: string[] = [];
-    if (runType) conditions.push(`run_type = '${runType.replace(/'/g, "''")}'`);
-    if (status) conditions.push(`status = '${status.replace(/'/g, "''")}'`);
-    if (from) conditions.push(`started_at >= '${from}'`);
-    if (to) conditions.push(`started_at <= '${to}'`);
-    if (conditions.length) baseQuery += ' AND ' + conditions.join(' AND ');
-    baseQuery += ' ORDER BY started_at DESC LIMIT 200';
+    const condParts: SQL[] = [];
+    if (runType) condParts.push(sql`run_type = ${runType}`);
+    if (status)  condParts.push(sql`status = ${status}`);
+    if (from)    condParts.push(sql`started_at >= ${from}`);
+    if (to)      condParts.push(sql`started_at <= ${to}`);
+    const condClause = condParts.length ? sql`AND ${sql.join(condParts, sql` AND `)}` : sql``;
 
-    const raw: any = await db.execute(sql.raw(baseQuery));
+    const raw: any = await db.execute(sql`
+      SELECT * FROM orchestration_runs WHERE 1=1 ${condClause}
+      ORDER BY started_at DESC LIMIT 200
+    `);
     return res.json({ ok: true, runs: raw?.rows ?? raw });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to fetch orchestration runs', detail: err.message });
@@ -13485,15 +13477,13 @@ router.patch('/admin/wallet/governance/recipient-groups/:id', async (req: Reques
     const id = parseInt(req.params.id, 10);
     const { groupName, recipients, enabled } = req.body;
 
-    let setClause = '';
-    const updates: string[] = [];
-    if (groupName !== undefined) updates.push(`group_name = '${String(groupName).replace(/'/g, "''")}'`);
-    if (recipients !== undefined) updates.push(`recipients = '${JSON.stringify(recipients)}'::jsonb`);
-    if (enabled !== undefined) updates.push(`enabled = ${Boolean(enabled)}`);
-    if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
-    setClause = updates.join(', ');
+    const setParts: SQL[] = [];
+    if (groupName  !== undefined) setParts.push(sql`group_name = ${String(groupName)}`);
+    if (recipients !== undefined) setParts.push(sql`recipients = ${JSON.stringify(recipients)}::jsonb`);
+    if (enabled    !== undefined) setParts.push(sql`enabled = ${Boolean(enabled)}`);
+    if (!setParts.length) return res.status(400).json({ error: 'No fields to update' });
 
-    const raw: any = await db.execute(sql.raw(`UPDATE governance_recipient_groups SET ${setClause} WHERE id = ${id} RETURNING *`));
+    const raw: any = await db.execute(sql`UPDATE governance_recipient_groups SET ${sql.join(setParts, sql`, `)} WHERE id = ${id} RETURNING *`);
     return res.json({ ok: true, group: (raw?.rows ?? raw)?.[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to update group', detail: err.message });
@@ -13627,16 +13617,16 @@ router.get('/admin/wallet/orchestration-trace/:entityType/:entityId', async (req
 router.get('/admin/wallet/policy-outcomes', async (req: Request, res: Response) => {
   try {
     const { policyKey = '', entityCode = '', from = '', to = '' } = req.query as Record<string,string>;
-    const conditions: string[] = [];
-    if (policyKey)  conditions.push(`policy_key = '${policyKey}'`);
-    if (entityCode) conditions.push(`entity_code = '${entityCode}'`);
-    if (from)       conditions.push(`evaluation_period_start >= '${from}'`);
-    if (to)         conditions.push(`evaluation_period_end   <= '${to}'`);
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const rows = await db.execute(sql.raw(`
-      SELECT * FROM policy_outcome_scores ${where}
+    const condParts: SQL[] = [];
+    if (policyKey)  condParts.push(sql`policy_key = ${policyKey}`);
+    if (entityCode) condParts.push(sql`entity_code = ${entityCode}`);
+    if (from)       condParts.push(sql`evaluation_period_start >= ${from}`);
+    if (to)         condParts.push(sql`evaluation_period_end <= ${to}`);
+    const whereClause = condParts.length ? sql`WHERE ${sql.join(condParts, sql` AND `)}` : sql``;
+    const rows = await db.execute(sql`
+      SELECT * FROM policy_outcome_scores ${whereClause}
       ORDER BY created_at DESC LIMIT 100
-    `));
+    `);
     return res.json({ ok: true, outcomes: (rows as any).rows ?? rows });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to fetch policy outcomes', detail: err.message });
@@ -13672,13 +13662,12 @@ router.post('/admin/wallet/policy-outcomes/recompute', async (req: Request, res:
       - deltas.manual_intervention_delta_pct  * 0.10
     ).toFixed(2));
 
-    const ec = entityCode ? `'${entityCode}'` : 'NULL';
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO policy_outcome_scores (policy_key, entity_code, evaluation_period_start, evaluation_period_end, baseline_json, actual_json, score_json, roi_score)
-      VALUES ('${policyKey}', ${ec}, '${periodStart}', '${periodEnd}',
-        '${JSON.stringify(baseline)}'::jsonb, '${JSON.stringify(actual)}'::jsonb,
-        '${JSON.stringify(deltas)}'::jsonb, ${roiScore})
-    `));
+      VALUES (${policyKey}, ${entityCode ?? null}, ${periodStart}, ${periodEnd},
+        ${JSON.stringify(baseline)}::jsonb, ${JSON.stringify(actual)}::jsonb,
+        ${JSON.stringify(deltas)}::jsonb, ${roiScore})
+    `);
     return res.json({ ok: true, roiScore, deltas });
   } catch (err: any) {
     return res.status(500).json({ error: 'Recompute failed', detail: err.message });
@@ -13688,10 +13677,10 @@ router.post('/admin/wallet/policy-outcomes/recompute', async (req: Request, res:
 router.get('/admin/wallet/policy-outcomes/:policyKey/latest', async (req: Request, res: Response) => {
   try {
     const { policyKey } = req.params;
-    const rows = await db.execute(sql.raw(`
-      SELECT * FROM policy_outcome_scores WHERE policy_key = '${policyKey}'
+    const rows = await db.execute(sql`
+      SELECT * FROM policy_outcome_scores WHERE policy_key = ${policyKey}
       ORDER BY created_at DESC LIMIT 1
-    `));
+    `);
     const record = ((rows as any).rows ?? rows as any[])[0] ?? null;
     return res.json({ ok: true, outcome: record });
   } catch (err: any) {
@@ -13704,13 +13693,13 @@ router.get('/admin/wallet/policy-outcomes/:policyKey/latest', async (req: Reques
 router.get('/admin/wallet/orchestration-retry-policies', async (_req: Request, res: Response) => {
   try {
     const [policies, attempts] = await Promise.all([
-      db.execute(sql.raw(`SELECT * FROM orchestration_retry_policies ORDER BY id DESC`)),
-      db.execute(sql.raw(`
+      db.execute(sql`SELECT * FROM orchestration_retry_policies ORDER BY id DESC`),
+      db.execute(sql`
         SELECT a.*, r.run_type
         FROM orchestration_retry_attempts a
         JOIN orchestration_runs r ON r.id = a.orchestration_run_id
         ORDER BY a.started_at DESC LIMIT 50
-      `)).catch(() => ({ rows: [] })),
+      `).catch(() => ({ rows: [] })),
     ]);
     return res.json({
       ok: true,
@@ -13727,10 +13716,10 @@ router.post('/admin/wallet/orchestration-retry-policies', async (req: Request, r
     const { runType, errorPattern, autoRetryEnabled = true, maxRetries = 2, retryDelayMinutes = 15 } = req.body;
     if (!runType || !errorPattern)
       return res.status(400).json({ error: 'runType and errorPattern required' });
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO orchestration_retry_policies (run_type, error_pattern, auto_retry_enabled, max_retries, retry_delay_minutes)
-      VALUES ('${runType}', '${errorPattern.replace(/'/g, "''")}', ${!!autoRetryEnabled}, ${parseInt(maxRetries,10)}, ${parseInt(retryDelayMinutes,10)})
-    `));
+      VALUES (${runType}, ${errorPattern}, ${!!autoRetryEnabled}, ${parseInt(maxRetries,10)}, ${parseInt(retryDelayMinutes,10)})
+    `);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Create failed', detail: err.message });
@@ -13740,14 +13729,14 @@ router.post('/admin/wallet/orchestration-retry-policies', async (req: Request, r
 router.patch('/admin/wallet/orchestration-retry-policies/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const updates: string[] = [];
-    if (req.body.enabled           !== undefined) updates.push(`enabled = ${!!req.body.enabled}`);
-    if (req.body.autoRetryEnabled  !== undefined) updates.push(`auto_retry_enabled = ${!!req.body.autoRetryEnabled}`);
-    if (req.body.maxRetries        !== undefined) updates.push(`max_retries = ${parseInt(req.body.maxRetries,10)}`);
-    if (req.body.retryDelayMinutes !== undefined) updates.push(`retry_delay_minutes = ${parseInt(req.body.retryDelayMinutes,10)}`);
-    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
-    updates.push(`updated_at = NOW()`);
-    await db.execute(sql.raw(`UPDATE orchestration_retry_policies SET ${updates.join(', ')} WHERE id = ${id}`));
+    const setParts: SQL[] = [];
+    if (req.body.enabled           !== undefined) setParts.push(sql`enabled = ${!!req.body.enabled}`);
+    if (req.body.autoRetryEnabled  !== undefined) setParts.push(sql`auto_retry_enabled = ${!!req.body.autoRetryEnabled}`);
+    if (req.body.maxRetries        !== undefined) setParts.push(sql`max_retries = ${parseInt(req.body.maxRetries,10)}`);
+    if (req.body.retryDelayMinutes !== undefined) setParts.push(sql`retry_delay_minutes = ${parseInt(req.body.retryDelayMinutes,10)}`);
+    if (!setParts.length) return res.status(400).json({ error: 'Nothing to update' });
+    setParts.push(sql`updated_at = NOW()`);
+    await db.execute(sql`UPDATE orchestration_retry_policies SET ${sql.join(setParts, sql`, `)} WHERE id = ${id}`);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Update failed', detail: err.message });
@@ -13765,12 +13754,15 @@ router.get('/admin/wallet/approval-bottlenecks', async (req: Request, res: Respo
     const DATE_RE_BTL = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]{0,30})?$/;
     if (from && !DATE_RE_BTL.test(from)) return res.status(400).json({ error: 'Invalid from date' });
     if (to   && !DATE_RE_BTL.test(to))   return res.status(400).json({ error: 'Invalid to date' });
-    const dateFilter = from && to
-      ? `AND ar.created_at BETWEEN '${from}' AND '${to}'`
-      : from ? `AND ar.created_at >= '${from}'` : '';
+    const dateCond = (from && to)
+      ? sql`AND ar.created_at BETWEEN ${from} AND ${to}`
+      : from ? sql`AND ar.created_at >= ${from}` : sql``;
+    const stuckDateCond = (from && to)
+      ? sql`AND ar.created_at BETWEEN ${from} AND ${to}`
+      : from ? sql`AND ar.created_at >= ${from}` : sql``;
 
     const [kpiRaw, byChainRaw, stuckRaw] = await Promise.all([
-      db.execute(sql.raw(`
+      db.execute(sql`
         SELECT
           ROUND(AVG(EXTRACT(EPOCH FROM (
             SELECT MIN(ara.created_at) FROM approval_request_actions ara WHERE ara.approval_request_id = ar.id
@@ -13782,26 +13774,26 @@ router.get('/admin/wallet/approval-bottlenecks', async (req: Request, res: Respo
           SUM(CASE WHEN ar.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
           SUM(CASE WHEN ar.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
           SUM(CASE WHEN ar.status = 'pending'  THEN 1 ELSE 0 END) AS pending_count
-        FROM approval_requests ar WHERE 1=1 ${dateFilter}
-      `)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`
+        FROM approval_requests ar WHERE 1=1 ${dateCond}
+      `).catch(() => ({ rows: [{}] })),
+      db.execute(sql`
         SELECT chain_type,
           COUNT(*) AS total,
           ROUND(AVG(EXTRACT(EPOCH FROM (
             SELECT MAX(ara.created_at) FROM approval_request_actions ara WHERE ara.approval_request_id = ar.id
           ) - ar.created_at)/3600)::numeric, 2) AS avg_resolution_hours
-        FROM approval_requests ar WHERE 1=1 ${dateFilter}
+        FROM approval_requests ar WHERE 1=1 ${dateCond}
         GROUP BY chain_type ORDER BY avg_resolution_hours DESC NULLS LAST LIMIT 20
-      `)).catch(() => ({ rows: [] })),
-      db.execute(sql.raw(`
+      `).catch(() => ({ rows: [] })),
+      db.execute(sql`
         SELECT ar.id, ar.chain_type, ar.status, ar.created_at,
           ROUND(EXTRACT(EPOCH FROM NOW() - ar.created_at)/3600::numeric, 1) AS hours_open
         FROM approval_requests ar
         WHERE ar.status = 'pending'
           AND ar.created_at < NOW() - INTERVAL '24 hours'
-          ${dateFilter ? dateFilter.replace("ar.created_at", "1=1 AND ar.created_at") : ''}
+          ${stuckDateCond}
         ORDER BY ar.created_at ASC LIMIT 20
-      `)).catch(() => ({ rows: [] })),
+      `).catch(() => ({ rows: [] })),
     ]);
 
     const kpi = ((kpiRaw as any).rows ?? kpiRaw as any[])[0] ?? {};
@@ -13825,8 +13817,8 @@ router.get('/admin/wallet/approval-bottlenecks/:requestId', async (req: Request,
   try {
     const id = parseInt(req.params.requestId, 10);
     const [reqRow, steps] = await Promise.all([
-      db.execute(sql.raw(`SELECT * FROM approval_requests WHERE id = ${id}`)).catch(() => ({ rows: [] })),
-      db.execute(sql.raw(`SELECT * FROM approval_request_actions WHERE approval_request_id = ${id} ORDER BY created_at ASC`)).catch(() => ({ rows: [] })),
+      db.execute(sql`SELECT * FROM approval_requests WHERE id = ${id}`).catch(() => ({ rows: [] })),
+      db.execute(sql`SELECT * FROM approval_request_actions WHERE approval_request_id = ${id} ORDER BY created_at ASC`).catch(() => ({ rows: [] })),
     ]);
     return res.json({
       ok: true,
@@ -13842,7 +13834,7 @@ router.get('/admin/wallet/approval-bottlenecks/:requestId', async (req: Request,
 
 router.get('/admin/wallet/governance-pack-subscriptions', async (_req: Request, res: Response) => {
   try {
-    const rows = await db.execute(sql.raw(`SELECT * FROM governance_pack_subscriptions ORDER BY created_at DESC`));
+    const rows = await db.execute(sql`SELECT * FROM governance_pack_subscriptions ORDER BY created_at DESC`);
     return res.json({ ok: true, subscriptions: (rows as any).rows ?? rows });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed', detail: err.message });
@@ -13854,11 +13846,11 @@ router.post('/admin/wallet/governance-pack-subscriptions', async (req: Request, 
     const { audienceName, packType, entityCode, recipients = [], includeCommentary = true, includeControlCenter = false } = req.body;
     if (!audienceName || !packType)
       return res.status(400).json({ error: 'audienceName and packType required' });
-    const ec = entityCode ? `'${entityCode}'` : 'NULL';
-    await db.execute(sql.raw(`
+    const ecVal: string | null = entityCode ?? null;
+    await db.execute(sql`
       INSERT INTO governance_pack_subscriptions (audience_name, pack_type, entity_code, recipients, include_commentary, include_control_center)
-      VALUES ('${audienceName}', '${packType}', ${ec}, '${JSON.stringify(recipients)}'::jsonb, ${!!includeCommentary}, ${!!includeControlCenter})
-    `));
+      VALUES (${audienceName}, ${packType}, ${ecVal}, ${JSON.stringify(recipients)}::jsonb, ${!!includeCommentary}, ${!!includeControlCenter})
+    `);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Create failed', detail: err.message });
@@ -13868,12 +13860,12 @@ router.post('/admin/wallet/governance-pack-subscriptions', async (req: Request, 
 router.patch('/admin/wallet/governance-pack-subscriptions/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const updates: string[] = [];
-    if (req.body.enabled               !== undefined) updates.push(`enabled = ${!!req.body.enabled}`);
-    if (req.body.includeCommentary     !== undefined) updates.push(`include_commentary = ${!!req.body.includeCommentary}`);
-    if (req.body.includeControlCenter  !== undefined) updates.push(`include_control_center = ${!!req.body.includeControlCenter}`);
-    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
-    await db.execute(sql.raw(`UPDATE governance_pack_subscriptions SET ${updates.join(', ')} WHERE id = ${id}`));
+    const setParts: SQL[] = [];
+    if (req.body.enabled               !== undefined) setParts.push(sql`enabled = ${!!req.body.enabled}`);
+    if (req.body.includeCommentary     !== undefined) setParts.push(sql`include_commentary = ${!!req.body.includeCommentary}`);
+    if (req.body.includeControlCenter  !== undefined) setParts.push(sql`include_control_center = ${!!req.body.includeControlCenter}`);
+    if (!setParts.length) return res.status(400).json({ error: 'Nothing to update' });
+    await db.execute(sql`UPDATE governance_pack_subscriptions SET ${sql.join(setParts, sql`, `)} WHERE id = ${id}`);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Update failed', detail: err.message });
@@ -13885,11 +13877,11 @@ router.patch('/admin/wallet/governance-pack-subscriptions/:id', async (req: Requ
 router.get('/admin/wallet/scenario-entity-scores', async (req: Request, res: Response) => {
   try {
     const { scenarioId } = req.query as Record<string,string>;
-    const where = scenarioId ? `WHERE scenario_id = ${parseInt(scenarioId,10)}` : '';
-    const rows = await db.execute(sql.raw(`
-      SELECT * FROM scenario_entity_scores ${where}
+    const whereCond = scenarioId ? sql`WHERE scenario_id = ${parseInt(scenarioId,10)}` : sql``;
+    const rows = await db.execute(sql`
+      SELECT * FROM scenario_entity_scores ${whereCond}
       ORDER BY total_score DESC LIMIT 100
-    `));
+    `);
     const all = (rows as any).rows ?? rows as any[];
     const sorted = [...all].sort((a,b) => parseFloat(b.total_score) - parseFloat(a.total_score));
     return res.json({
@@ -13908,11 +13900,11 @@ router.post('/admin/wallet/scenario-entity-scores', async (req: Request, res: Re
     const { scenarioId, entityCode, scoreJson = {}, totalScore = 0 } = req.body;
     if (!scenarioId || !entityCode)
       return res.status(400).json({ error: 'scenarioId and entityCode required' });
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       INSERT INTO scenario_entity_scores (scenario_id, entity_code, score_json, total_score)
-      VALUES (${parseInt(scenarioId,10)}, '${entityCode}', '${JSON.stringify(scoreJson)}'::jsonb, ${parseFloat(totalScore)})
+      VALUES (${parseInt(scenarioId,10)}, ${entityCode}, ${JSON.stringify(scoreJson)}::jsonb, ${parseFloat(totalScore)})
       ON CONFLICT DO NOTHING
-    `));
+    `);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Create failed', detail: err.message });
@@ -13931,7 +13923,7 @@ const BUILTIN_CLUSTERS = [
 
 router.get('/admin/wallet/anomaly-clusters', async (_req: Request, res: Response) => {
   try {
-    const rows = await db.execute(sql.raw(`SELECT * FROM anomaly_clusters ORDER BY confidence_score DESC`));
+    const rows = await db.execute(sql`SELECT * FROM anomaly_clusters ORDER BY confidence_score DESC`);
     return res.json({ ok: true, clusters: (rows as any).rows ?? rows });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed', detail: err.message });
@@ -13944,14 +13936,14 @@ router.post('/admin/wallet/anomaly-clusters/recompute', async (_req: Request, re
     for (const c of BUILTIN_CLUSTERS) {
       // Deterministic confidence: 50% baseline + up to 45% scaled by signal count
       const confidence = parseFloat(Math.min(95, 50 + (c.signals.length / maxSignals) * 45).toFixed(2));
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         INSERT INTO anomaly_clusters (cluster_key, root_cause_label, signal_codes, confidence_score, last_seen_at)
-        VALUES ('${c.key}', '${c.label}', '${JSON.stringify(c.signals)}'::jsonb, ${confidence}, NOW())
+        VALUES (${c.key}, ${c.label}, ${JSON.stringify(c.signals)}::jsonb, ${confidence}, NOW())
         ON CONFLICT (cluster_key) DO UPDATE
           SET confidence_score = ${confidence}, last_seen_at = NOW()
-      `));
+      `);
     }
-    const rows = await db.execute(sql.raw(`SELECT * FROM anomaly_clusters ORDER BY confidence_score DESC`));
+    const rows = await db.execute(sql`SELECT * FROM anomaly_clusters ORDER BY confidence_score DESC`);
     return res.json({ ok: true, clusters: (rows as any).rows ?? rows });
   } catch (err: any) {
     return res.status(500).json({ error: 'Recompute failed', detail: err.message });
@@ -13966,13 +13958,13 @@ router.get('/admin/wallet/ops-command-center', async (_req: Request, res: Respon
       alertsRaw, approvalsRaw, orchRaw, anomalyRaw,
       forecastRaw, disputesRaw, govRaw,
     ] = await Promise.all([
-      db.execute(sql.raw(`SELECT COUNT(*) AS total, SUM(CASE WHEN severity='critical' THEN 1 ELSE 0 END) AS critical FROM wallet_anomaly_alerts WHERE status='active'`)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`SELECT COUNT(*) AS pending FROM approval_requests WHERE status='pending'`)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`SELECT COUNT(*) AS total, SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed FROM orchestration_runs WHERE started_at > NOW() - INTERVAL '24 hours'`)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`SELECT COUNT(*) AS total FROM anomaly_clusters`)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`SELECT COUNT(*) AS total FROM forecast_scenario_templates WHERE enabled = true`)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`SELECT COUNT(*) AS open FROM disputes WHERE status NOT IN ('resolved','closed')`)).catch(() => ({ rows: [{}] })),
-      db.execute(sql.raw(`SELECT COUNT(*) AS total, SUM(CASE WHEN enabled THEN 1 ELSE 0 END) AS active FROM governance_pack_subscriptions`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS total, SUM(CASE WHEN severity='critical' THEN 1 ELSE 0 END) AS critical FROM wallet_anomaly_alerts WHERE status='active'`).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS pending FROM approval_requests WHERE status='pending'`).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS total, SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed FROM orchestration_runs WHERE started_at > NOW() - INTERVAL '24 hours'`).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS total FROM anomaly_clusters`).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS total FROM forecast_scenario_templates WHERE enabled = true`).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS open FROM disputes WHERE status NOT IN ('resolved','closed')`).catch(() => ({ rows: [{}] })),
+      db.execute(sql`SELECT COUNT(*) AS total, SUM(CASE WHEN enabled THEN 1 ELSE 0 END) AS active FROM governance_pack_subscriptions`).catch(() => ({ rows: [{}] })),
     ]);
 
     const pick = (r: any) => ((r as any).rows ?? r as any[])[0] ?? {};

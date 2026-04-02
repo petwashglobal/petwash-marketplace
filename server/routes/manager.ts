@@ -72,7 +72,7 @@ async function requireManager(req: Request, res: Response, next: NextFunction) {
  */
 router.get('/approvals', requireManager, async (_req: Request, res: Response) => {
   try {
-    const rows = await db.execute(sql.raw(`
+    const rows = await db.execute(sql`
       SELECT
         d.id                                                        AS dispute_id,
         d.booking_id,
@@ -101,7 +101,7 @@ router.get('/approvals', requireManager, async (_req: Request, res: Response) =>
         AND (d.closure_approved = false OR d.closure_approved IS NULL)
         AND d.status != 'closed'
       ORDER BY age_hours DESC
-    `));
+    `);
 
     const approvals = (rows.rows as any[]).map(r => ({
       disputeId:          toStr(r.dispute_id),
@@ -132,7 +132,7 @@ router.get('/approvals', requireManager, async (_req: Request, res: Response) =>
 router.get('/sla-breaches', requireManager, async (_req: Request, res: Response) => {
   try {
     // Per-user breach stats
-    const byUserRows = await db.execute(sql.raw(`
+    const byUserRows = await db.execute(sql`
       SELECT
         ca.assigned_to_uid                                         AS uid,
         COUNT(*)::int                                              AS total_cases,
@@ -153,10 +153,10 @@ router.get('/sla-breaches', requireManager, async (_req: Request, res: Response)
       HAVING COUNT(CASE WHEN ss.sla_status = 'breached' THEN 1 END) > 0
          OR  COUNT(CASE WHEN ss.sla_status = 'at_risk'  THEN 1 END) > 0
       ORDER BY breached_cases DESC, breach_rate DESC
-    `));
+    `);
 
     // Per-team breach stats
-    const byTeamRows = await db.execute(sql.raw(`
+    const byTeamRows = await db.execute(sql`
       SELECT
         t.id                                                       AS team_id,
         t.name                                                     AS team_name,
@@ -177,10 +177,10 @@ router.get('/sla-breaches', requireManager, async (_req: Request, res: Response)
         AND ca.assigned_team_id IS NOT NULL
       GROUP BY t.id, t.name
       ORDER BY breached_cases DESC, breach_rate DESC
-    `));
+    `);
 
     // Per-station breach stats (dispute cases only, joined through bookings)
-    const byStationRows = await db.execute(sql.raw(`
+    const byStationRows = await db.execute(sql`
       SELECT
         s.id::text                                                 AS station_id,
         s.name                                                     AS station_name,
@@ -202,7 +202,7 @@ router.get('/sla-breaches', requireManager, async (_req: Request, res: Response)
       WHERE ca.is_active = true
       GROUP BY s.id, s.name
       ORDER BY breached_cases DESC, breach_rate DESC
-    `));
+    `);
 
     res.json({
       byUser:    (byUserRows.rows as any[]).map(r => ({
@@ -242,7 +242,7 @@ router.get('/sla-breaches', requireManager, async (_req: Request, res: Response)
  */
 router.get('/workload', requireManager, async (_req: Request, res: Response) => {
   try {
-    const byUserRows2 = await db.execute(sql.raw(`
+    const byUserRows2 = await db.execute(sql`
       SELECT
         ca.assigned_to_uid                                                 AS uid,
         COUNT(*)::int                                                      AS active_cases,
@@ -257,9 +257,9 @@ router.get('/workload', requireManager, async (_req: Request, res: Response) => 
         AND ca.assigned_to_uid IS NOT NULL
       GROUP BY ca.assigned_to_uid
       ORDER BY active_cases DESC, breached_count DESC
-    `));
+    `);
 
-    const byTeamRows = await db.execute(sql.raw(`
+    const byTeamRows = await db.execute(sql`
       SELECT
         t.id                                                               AS team_id,
         t.name                                                             AS team_name,
@@ -276,7 +276,7 @@ router.get('/workload', requireManager, async (_req: Request, res: Response) => 
         AND ca.assigned_team_id IS NOT NULL
       GROUP BY t.id, t.name
       ORDER BY active_cases DESC, breached_count DESC
-    `));
+    `);
 
     res.json({
       byUser: (byUserRows2.rows as any[]).map(r => ({
@@ -307,7 +307,7 @@ router.get('/workload', requireManager, async (_req: Request, res: Response) => 
 router.get('/resolution-analytics', requireManager, async (_req: Request, res: Response) => {
   try {
     // Overall by code
-    const overallRows = await db.execute(sql.raw(`
+    const overallRows = await db.execute(sql`
       SELECT
         d.closure_reason_code                                      AS code,
         rc.label,
@@ -323,10 +323,10 @@ router.get('/resolution-analytics', requireManager, async (_req: Request, res: R
       WHERE d.closure_reason_code IS NOT NULL
       GROUP BY d.closure_reason_code, rc.label
       ORDER BY total_count DESC
-    `));
+    `);
 
     // By team
-    const byTeamRows = await db.execute(sql.raw(`
+    const byTeamRows = await db.execute(sql`
       SELECT
         t.id                                                       AS team_id,
         t.name                                                     AS team_name,
@@ -342,10 +342,10 @@ router.get('/resolution-analytics', requireManager, async (_req: Request, res: R
       WHERE d.closure_reason_code IS NOT NULL
       GROUP BY t.id, t.name, d.closure_reason_code, rc.label
       ORDER BY t.name, count DESC
-    `));
+    `);
 
     // By station
-    const byStationRows = await db.execute(sql.raw(`
+    const byStationRows = await db.execute(sql`
       SELECT
         s.id::text                                                 AS station_id,
         s.name                                                     AS station_name,
@@ -359,10 +359,10 @@ router.get('/resolution-analytics', requireManager, async (_req: Request, res: R
       WHERE d.closure_reason_code IS NOT NULL
       GROUP BY s.id, s.name, d.closure_reason_code, rc.label
       ORDER BY s.name, count DESC
-    `));
+    `);
 
     // By franchise
-    const byFranchiseRows = await db.execute(sql.raw(`
+    const byFranchiseRows = await db.execute(sql`
       SELECT
         fo.id::text                                                AS franchise_id,
         fo.business_name                                           AS franchise_name,
@@ -377,7 +377,7 @@ router.get('/resolution-analytics', requireManager, async (_req: Request, res: R
       WHERE d.closure_reason_code IS NOT NULL
       GROUP BY fo.id, fo.business_name, d.closure_reason_code, rc.label
       ORDER BY fo.business_name, count DESC
-    `));
+    `);
 
     res.json({
       overall:     (overallRows.rows as any[]).map(r => ({
@@ -424,7 +424,7 @@ router.get('/reopen-stats', requireManager, async (_req: Request, res: Response)
   try {
     // Per-user reopen rate
     // handler = last active assigned_to_uid at time of reopen (from_uid in escalation log)
-    const byUserRows = await db.execute(sql.raw(`
+    const byUserRows = await db.execute(sql`
       WITH reopened AS (
         SELECT
           from_uid                       AS handler_uid,
@@ -459,12 +459,12 @@ router.get('/reopen-stats', requireManager, async (_req: Request, res: Response)
       FROM closed_by_handler cbh
       LEFT JOIN reopened r ON r.handler_uid = cbh.handler_uid
       ORDER BY reopen_rate_pct DESC NULLS LAST, reopen_count DESC
-    `));
+    `);
 
     // Per reopen_code: extract code from escalation log note
     // note format: "Reopened [code]: ..." or "Reopened [code]"
     // Uses SUBSTRING(... FROM pattern) — PostgreSQL POSIX ERE, no backslash ambiguity
-    const byCodeRows = await db.execute(sql.raw(`
+    const byCodeRows = await db.execute(sql`
       SELECT
         COALESCE(
           SUBSTRING(note FROM 'Reopened \\[([^\\]]+)\\]'),
@@ -476,7 +476,7 @@ router.get('/reopen-stats', requireManager, async (_req: Request, res: Response)
         AND note LIKE 'Reopened [%'
       GROUP BY 1
       ORDER BY count DESC
-    `));
+    `);
 
     res.json({
       byUser: (byUserRows.rows as any[]).map(r => ({
@@ -504,7 +504,7 @@ router.get('/reopen-stats', requireManager, async (_req: Request, res: Response)
 router.get('/performance-comparison', requireManager, async (_req: Request, res: Response) => {
   try {
     // By station
-    const byStationRows = await db.execute(sql.raw(`
+    const byStationRows = await db.execute(sql`
       WITH station_cases AS (
         SELECT
           s.id::text      AS station_id,
@@ -551,10 +551,10 @@ router.get('/performance-comparison', requireManager, async (_req: Request, res:
       LEFT JOIN reopens r ON r.case_ref_id = sc.dispute_id
       GROUP BY sc.station_id, sc.station_name
       ORDER BY breach_rate DESC NULLS LAST
-    `));
+    `);
 
     // By franchise
-    const byFranchiseRows = await db.execute(sql.raw(`
+    const byFranchiseRows = await db.execute(sql`
       WITH franchise_cases AS (
         SELECT
           fo.id::text     AS franchise_id,
@@ -602,10 +602,10 @@ router.get('/performance-comparison', requireManager, async (_req: Request, res:
       LEFT JOIN reopens r ON r.case_ref_id = fc.dispute_id
       GROUP BY fc.franchise_id, fc.franchise_name
       ORDER BY breach_rate DESC NULLS LAST
-    `));
+    `);
 
     // By team
-    const byTeamRows = await db.execute(sql.raw(`
+    const byTeamRows = await db.execute(sql`
       WITH team_cases AS (
         SELECT
           t.id            AS team_id,
@@ -651,7 +651,7 @@ router.get('/performance-comparison', requireManager, async (_req: Request, res:
       LEFT JOIN reopens r ON r.case_ref_id = tc.dispute_id
       GROUP BY tc.team_id, tc.team_name
       ORDER BY breach_rate DESC NULLS LAST
-    `));
+    `);
 
     const mapPerf = (r: any) => ({
       totalCases:          toNum(r.total_cases),
