@@ -2346,3 +2346,29 @@ Financial authority is now enforced as data, not trust. Every refund, payout rel
 - ActionDialog: shows rule match, amount, required role, second approval warning before confirming
 
 **Business rationale:** 12.13 = governance rules. 12.14 = trust and explainability. 12.15 = executive oversight. 12.16 = FINANCIAL AUTHORITY. This phase closes the gap between seeing financial risk and controlling who is allowed to create it.
+
+## Gemini AI Spam Guard + QA Pass (April 2026 — Pre-Launch)
+
+### Spam Monitoring System
+- **`server/services/GeminiSpamGuard.ts`** — New background AI spam detection service:
+  * Gemini 2.5 Flash analyzes reviews, chat messages, booking notes, provider bios
+  * Background sweep every 30 min (configurable: `SPAM_GUARD_INTERVAL_MS`)
+  * Coordinated abuse detection across batch content (bot campaigns, astroturfing)
+  * Twilio SMS to `SUPER_ADMIN_ALERT_PHONE` for HIGH/CRITICAL detections
+  * SendGrid HTML email report to `nir.h@petwash.co.il`
+  * `SystemEventService.stamp()` for every detection (visible in admin dashboard)
+  * Firestore persistence: `spam_guard_reports` collection
+  * In-memory ring buffer of last 200 detections
+  * Initial sweep fires 2 minutes after server ready (non-blocking)
+
+- **`server/routes/spam-guard.ts`** — Admin endpoints (all protected under `/api/admin/spam-guard/`):
+  * `GET /status` — scheduler state, last sweep summary, detection count
+  * `GET /detections?severity=high&resolved=false&limit=50` — filter detections
+  * `POST /sweep` — trigger manual sweep immediately
+  * `POST /analyze` — ad-hoc content analysis (check any text on demand)
+  * `PATCH /detections/:id/resolve` — dismiss a detection
+
+### QA Fixes
+- **ReceiptOCRService**: suppressed false `WARN` when `GOOGLE_APPLICATION_CREDENTIALS_JSON` holds a non-JSON value (API key in wrong env var). Only warns if value starts with `{` (intended to be JSON).
+- **server/index.ts**: SpamGuard scheduler started lazily alongside other background services.
+- **Confirmed clean**: 0 `sql.raw()` calls, health endpoint OK (db 2ms), all auth guards active.
