@@ -1425,7 +1425,7 @@ export default function PrestigePassWallet() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {/* WhatsApp */}
               <a
-                href="https://wa.me/972501234567"
+                href="https://wa.me/972549833355"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -1450,7 +1450,7 @@ export default function PrestigePassWallet() {
 
               {/* Priority Call */}
               <a
-                href="tel:+972501234567"
+                href="tel:+972549833355"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '14px 16px', borderRadius: '14px',
