@@ -12,6 +12,7 @@ import { SmartReceiptService } from "./smartReceiptService";
 import { EmailService } from "./emailService";
 import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
+import { requireDpaAccepted } from "./middleware/dpa-guard";
 import stationsRoutes from "./routes/stations";
 import stationSettlementsRoutes from "./routes/station-settlements";
 import stationRecommendRoutes from "./routes/station-recommend";
@@ -9079,11 +9080,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use(publicAuthRouter);
   logger.info('[Routes] ✅ Public auth routes registered (clean console mode)');
 
-  // KYC Verification routes
-  app.use('/api/kyc', uploadLimiter, kycRoutes);
+  // KYC Verification routes — DPA must be signed before biometric processing
+  app.use('/api/kyc', requireDpaAccepted, uploadLimiter, kycRoutes);
   
   // KYC 2026 - Enterprise-Grade Identity Verification
-  app.use('/api/kyc/v2', kyc2026Routes);
+  app.use('/api/kyc/v2', requireDpaAccepted, kyc2026Routes);
 
   // PetWash Privilege registration - Public (no auth required to join)
   const privilegeLoyaltyRoutes = await import('./routes/privilege-loyalty');
@@ -9519,6 +9520,43 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
+
+  // ─── AI Status (Gemini quota, backend type, usage) — super-admin only ──────
+  app.get('/api/admin/ai-status', requireAdmin, async (_req, res) => {
+    try {
+      const { getGeminiStats } = await import('./lib/gemini-client');
+      const stats = getGeminiStats();
+      return res.json({
+        ok: true,
+        gemini: stats,
+        recommendation: stats.backend === 'gemini_free_tier'
+          ? 'Upgrade: add AI_INTEGRATIONS_GEMINI_API_KEY to switch to paid Vertex AI'
+          : 'Running on paid Vertex AI — no daily quota limit',
+      });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // ─── Payment mode status — super-admin only ─────────────────────────────────
+  app.get('/api/admin/payment-mode', requireAdmin, (_req, res) => {
+    const nayaxKey    = !!process.env.NAYAX_API_KEY;
+    const nayaxMerch  = !!process.env.NAYAX_MERCHANT_ID;
+    const demoFlag    = process.env.NAYAX_DEMO_MODE === 'true';
+    const isLive      = nayaxKey && nayaxMerch;
+    return res.json({
+      ok: true,
+      paymentMode: isLive ? 'LIVE' : 'DEMO',
+      nayaxApiKeySet: nayaxKey,
+      nayaxMerchantIdSet: nayaxMerch,
+      demoBecause: isLive ? null : (!nayaxKey ? 'NAYAX_API_KEY missing' : 'NAYAX_MERCHANT_ID missing'),
+      demoFlagExplicit: demoFlag,
+      action: isLive
+        ? 'Real payments active — Nayax will charge customers'
+        : 'Set NAYAX_API_KEY + NAYAX_MERCHANT_ID to activate live payments',
+    });
+  });
+
   // Phase 6.12 — winback click-tracking (no auth; JWT-gated internally)
   app.use('/w', winbackTrackingRouter);
   
@@ -9756,7 +9794,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/user', optionalFirebaseToken, apiLimiter, profileSettingsRoutes);
 
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
-  app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);
+  app.use('/api/mobile/biometric', requireDpaAccepted, apiLimiter, mobileBiometricRoutes);
 
   // 📱 Mobile Field Operations - Field updates, photo uploads, Waze integration for technicians
   app.use('/api/mobile', apiLimiter, mobileFieldOpsRoutes);
@@ -9780,7 +9818,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/israeli-cpi', optionalFirebaseToken, israeliCPIRoutes);
 
   // 🔐 Biometric Certificate Verification - תעודת נכה, גימלאים, תעודת זהות, רשיון נהיגה (Document Upload + Face Matching)
-  app.use('/api/biometric-certificates', uploadLimiter, biometricCertificatesRoutes);
+  app.use('/api/biometric-certificates', requireDpaAccepted, uploadLimiter, biometricCertificatesRoutes);
 
   // Voice Command API (hands-free station control)
   app.use('/api/voice', apiLimiter, voiceRoutes);
