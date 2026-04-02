@@ -9,9 +9,10 @@ export default function TrackWalk() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
 
-  const { data: walk, isLoading } = useQuery({
+  const { data: walk, isLoading, refetch } = useQuery({
     queryKey: ['/api/walk', walkId],
     enabled: !!walkId,
+    refetchInterval: 30000,
   });
 
   if (isLoading) {
@@ -84,7 +85,11 @@ export default function TrackWalk() {
               </div>
             </div>
 
-            <Button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-refresh">
+            <Button
+              className="luxury-btn-primary w-full flex items-center justify-center gap-2"
+              data-testid="button-refresh"
+              onClick={() => refetch()}
+            >
               <CheckCircle className="h-4 w-4" />
               {isHebrew ? 'רענן מיקום' : 'Refresh Location'}
             </Button>

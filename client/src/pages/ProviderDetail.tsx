@@ -8,7 +8,7 @@ import { GlassmorphismCard } from '@/components/luxury/GlassmorphismCard';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
-import { useProviderDetails } from '@/services/marketplace';
+import { useProviderDetails, useProviderReviews } from '@/services/marketplace';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
   Clock, DollarSign, MessageCircle, Phone, Mail,
@@ -38,6 +38,9 @@ export default function ProviderDetail() {
     staleTime: 300_000,
     enabled: !!provider?.userId,
   });
+
+  // Fetch reviews from the dedicated reviews endpoint
+  const { data: reviewsData, isLoading: reviewsLoading } = useProviderReviews(platform!, id!);
 
   if (isLoading) {
     return (
@@ -70,6 +73,12 @@ export default function ProviderDetail() {
       </Layout>
     );
   }
+
+  // Compute reviews list once (from dedicated reviews endpoint)
+  const reviewList: any[] = (() => {
+    const raw = (reviewsData as any)?.reviews || reviewsData;
+    return Array.isArray(raw) ? raw : [];
+  })();
 
   const handleBooking = () => {
     if (!user) {
@@ -506,9 +515,11 @@ export default function ProviderDetail() {
                   </Badge>
                 </div>
                 
-                {/* TODO: Backend needs to provide reviews array in provider detail response */}
-                {/* For now, showing empty state since backend doesn't include reviews */}
-                {(!data?.reviews || data.reviews.length === 0) ? (
+                {reviewsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  </div>
+                ) : reviewList.length === 0 ? (
                   <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid="reviews-empty-state">
                     <Star className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
                     <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
@@ -522,7 +533,7 @@ export default function ProviderDetail() {
                   </div>
                 ) : (
                   <div className="space-y-4" data-testid="reviews-list">
-                    {data.reviews.map((review: any, index: number) => (
+                    {reviewList.map((review: any, index: number) => (
                       <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid={`review-${index}`}>
                         <div className="flex items-start justify-between mb-2">
                           <div>

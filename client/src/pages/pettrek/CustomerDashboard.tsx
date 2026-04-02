@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Car, MapPin, Clock, DollarSign, Star, Calendar, Navigation, Package, TrendingUp, ChevronRight, Bell, Home, Building2, Scissors, Heart, Edit2, Trash2, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PetTrekCustomerDashboard() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("upcoming");
 
   // Fetch real bookings from API
@@ -198,6 +202,7 @@ export default function PetTrekCustomerDashboard() {
           <Button 
             className="luxury-btn-primary luxury-shadow-xl gap-2"
             data-testid="button-quick-book"
+            onClick={() => setLocation('/pettrek/book')}
           >
             <Car className="h-5 w-5" />
             <span className="hidden sm:inline">Quick Book</span>
@@ -270,6 +275,7 @@ export default function PetTrekCustomerDashboard() {
                 <Button 
                   className="luxury-btn-primary gap-2"
                   data-testid="button-track-live"
+                  onClick={() => setLocation(`/pettrek/track/${activeTrip.id}`)}
                 >
                   <Navigation className="h-4 w-4" />
                   Track Live
@@ -309,10 +315,26 @@ export default function PetTrekCustomerDashboard() {
             </div>
 
             <div className="flex gap-3">
-              <Button className="luxury-btn-secondary flex-1" data-testid="button-contact-driver">
+              <Button
+                className="luxury-btn-secondary flex-1"
+                data-testid="button-contact-driver"
+                onClick={() => { window.location.href = 'tel:+972501234567'; }}
+              >
                 Call Driver
               </Button>
-              <Button className="luxury-btn-secondary flex-1" data-testid="button-share-eta">
+              <Button
+                className="luxury-btn-secondary flex-1"
+                data-testid="button-share-eta"
+                onClick={async () => {
+                  const text = 'My pet is on the way! Track here: ' + window.location.href;
+                  if (navigator.share) {
+                    await navigator.share({ title: 'PetTrek™ ETA', text, url: window.location.href });
+                  } else {
+                    await navigator.clipboard.writeText(text);
+                    toast({ title: 'ETA copied', description: 'Share the link with your family' });
+                  }
+                }}
+              >
                 Share ETA
               </Button>
             </div>
@@ -544,7 +566,11 @@ export default function PetTrekCustomerDashboard() {
             <p className="luxury-text-body mb-8">
               Professional drivers, climate-controlled vehicles, real-time GPS tracking, and premium care for your beloved pets.
             </p>
-            <Button className="luxury-btn-primary luxury-shadow-xl gap-3 px-8 py-6 text-lg" data-testid="button-book-trip">
+            <Button
+              className="luxury-btn-primary luxury-shadow-xl gap-3 px-8 py-6 text-lg"
+              data-testid="button-book-trip"
+              onClick={() => setLocation('/pettrek/book')}
+            >
               <Car className="h-6 w-6" />
               Book a Trip Now
               <ChevronRight className="h-5 w-5" />

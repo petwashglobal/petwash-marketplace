@@ -366,6 +366,60 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
 // =================== GET REVIEWS ===================
 
 /**
+ * Get reviews for a provider by platform + providerId
+ * GET /api/reviews/:platform/:providerId
+ * Frontend marketplace hook uses this format.
+ */
+router.get('/:platform/:providerId', async (req: Request, res: Response) => {
+  const { platform, providerId } = req.params;
+  const { limit = 20 } = req.query;
+
+  try {
+    const reviews = await db
+      .select()
+      .from(contractorReviews)
+      .where(
+        and(
+          eq(contractorReviews.subjectId, providerId),
+          eq(contractorReviews.isVisible, true),
+          eq(contractorReviews.isPublic, true)
+        )
+      )
+      .orderBy(desc(contractorReviews.createdAt))
+      .limit(Number(limit));
+
+    const totalReviews = reviews.length;
+    const avgOverallRating = totalReviews > 0
+      ? reviews.reduce((sum, r) => sum + (r.overallRating || 0), 0) / totalReviews
+      : 0;
+
+    return res.json({
+      success: true,
+      platform,
+      providerId,
+      totalReviews,
+      avgOverallRating: parseFloat(avgOverallRating.toFixed(2)),
+      reviews: reviews.map(r => ({
+        reviewId: r.reviewId,
+        customerName: r.reviewerName,
+        rating: r.overallRating,
+        overallRating: r.overallRating,
+        comment: r.reviewText,
+        reviewText: r.reviewText,
+        reviewPhotos: r.reviewPhotos,
+        highlights: r.highlights,
+        hasResponse: r.hasResponse,
+        responseText: r.responseText,
+        createdAt: r.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    logger.error('[Reviews] Get reviews by platform/provider error', error);
+    return res.status(500).json({ error: error.message || 'Failed to get reviews' });
+  }
+});
+
+/**
  * Get reviews for a specific contractor or owner
  * GET /api/reviews/:subjectId?type=contractor&limit=20
  */

@@ -35,7 +35,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 type TaskStatus = "planned" | "assigned" | "in_progress" | "completed" | "blocked";
 type TaskType = "install" | "service" | "repair" | "inspection" | "relocation";
@@ -65,6 +65,8 @@ interface Vehicle {
 export default function LogisticsFleetView() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [addVehicleOpen, setAddVehicleOpen] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({ label: "", type: "van", plateNumber: "", capacityKg: "" });
   const { toast } = useToast();
 
   // Fetch logistics tasks
@@ -130,13 +132,32 @@ export default function LogisticsFleetView() {
     );
   };
 
+  const addVehicleMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/logistics/vehicles", {
+      label: vehicleForm.label,
+      type: vehicleForm.type,
+      plateNumber: vehicleForm.plateNumber,
+      ...(vehicleForm.capacityKg ? { capacityKg: parseInt(vehicleForm.capacityKg) } : {}),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] });
+      setAddVehicleOpen(false);
+      setVehicleForm({ label: "", type: "van", plateNumber: "", capacityKg: "" });
+      toast({ title: "Vehicle added", description: `${vehicleForm.plateNumber} registered successfully` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to add vehicle", description: err.message || "Unknown error", variant: "destructive" });
+    },
+  });
+
   const openInWaze = (stationId: string) => {
-    // TODO: Get actual station coordinates
-    const wazeUrl = `https://waze.com/ul?ll=32.0853,34.7818&navigate=yes`;
+    const task = tasks.find(t => t.stationId === stationId);
+    const query = encodeURIComponent(task?.stationName || `PetWash Station ${stationId}`);
+    const wazeUrl = `https://waze.com/ul?q=${query}&navigate=yes`;
     window.open(wazeUrl, "_blank");
     toast({
       title: "Opening Waze",
-      description: `Navigation to station ${stationId}`,
+      description: `Navigating to ${task?.stationName || `Station ${stationId}`}`,
     });
   };
 
@@ -322,10 +343,70 @@ export default function LogisticsFleetView() {
               <CardTitle>Fleet Management</CardTitle>
               <CardDescription>Manage vehicles and drivers</CardDescription>
             </div>
-            <Button variant="outline" data-testid="button-add-vehicle">
+            <Button variant="outline" data-testid="button-add-vehicle" onClick={() => setAddVehicleOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add Vehicle
             </Button>
+            <Dialog open={addVehicleOpen} onOpenChange={setAddVehicleOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Vehicle</DialogTitle>
+                  <DialogDescription>Register a new vehicle in the fleet</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1">
+                    <Label>Label / Name</Label>
+                    <Input
+                      placeholder="e.g. Van 01"
+                      value={vehicleForm.label}
+                      onChange={e => setVehicleForm(f => ({ ...f, label: e.target.value }))}
+                      data-testid="input-vehicle-label"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Plate Number</Label>
+                    <Input
+                      placeholder="e.g. 123-45-678"
+                      value={vehicleForm.plateNumber}
+                      onChange={e => setVehicleForm(f => ({ ...f, plateNumber: e.target.value }))}
+                      data-testid="input-vehicle-plate"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Type</Label>
+                    <Select value={vehicleForm.type} onValueChange={v => setVehicleForm(f => ({ ...f, type: v }))}>
+                      <SelectTrigger data-testid="select-vehicle-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="van">Van</SelectItem>
+                        <SelectItem value="small_truck">Small Truck</SelectItem>
+                        <SelectItem value="car">Car</SelectItem>
+                        <SelectItem value="bike">Bike</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Capacity (kg, optional)</Label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 500"
+                      value={vehicleForm.capacityKg}
+                      onChange={e => setVehicleForm(f => ({ ...f, capacityKg: e.target.value }))}
+                      data-testid="input-vehicle-capacity"
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => addVehicleMutation.mutate()}
+                    disabled={!vehicleForm.label || !vehicleForm.plateNumber || addVehicleMutation.isPending}
+                    data-testid="button-submit-add-vehicle"
+                  >
+                    {addVehicleMutation.isPending ? "Adding..." : "Add Vehicle"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent>

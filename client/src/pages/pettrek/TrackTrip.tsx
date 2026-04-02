@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { MapPin, Clock, Car, Phone, MessageCircle, Star, Navigation, User, CheckCircle, Circle, Share2, Headphones, Receipt, PawPrint } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TrackTrip() {
   const { tripId } = useParams();
+  const [, setLocation] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  const { toast } = useToast();
 
   // Mock data for demo - in production, this would come from real-time API/WebSocket
   const tripStatus = 'in_transit'; // 'scheduled' | 'in_transit' | 'completed'
@@ -292,12 +295,23 @@ export default function TrackTrip() {
               </div>
               
               <div className="space-y-3">
-                <Button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-call-driver">
+                <Button
+                  className="luxury-btn-primary w-full flex items-center justify-center gap-2"
+                  data-testid="button-call-driver"
+                  onClick={() => {
+                    toast({ title: isHebrew ? 'מחייג לנהג...' : 'Calling driver...', description: driverName });
+                    window.location.href = 'tel:+972501234567';
+                  }}
+                >
                   <Phone className="h-5 w-5" />
                   {isHebrew ? 'התקשר לנהג' : 'Call Driver'}
                 </Button>
                 
-                <Button className="luxury-btn-secondary w-full flex items-center justify-center gap-2" data-testid="button-message-driver">
+                <Button
+                  className="luxury-btn-secondary w-full flex items-center justify-center gap-2"
+                  data-testid="button-message-driver"
+                  onClick={() => setLocation(`/pettrek/chat/${tripId}`)}
+                >
                   <MessageCircle className="h-5 w-5" />
                   {isHebrew ? 'שלח הודעה' : 'Send Message'}
                 </Button>
@@ -311,7 +325,23 @@ export default function TrackTrip() {
               </h3>
               
               <div className="luxury-grid-3 gap-3">
-                <Button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-share-location">
+                <Button
+                  className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center"
+                  data-testid="button-share-location"
+                  onClick={async () => {
+                    const shareData = {
+                      title: isHebrew ? 'מיקום החיה שלי' : 'My Pet\'s Location',
+                      text: isHebrew ? `מעקב אחר נסיעה #${tripId} — הגעה בעוד ${eta} דקות` : `Tracking trip #${tripId} — ETA ${eta} min`,
+                      url: window.location.href,
+                    };
+                    if (navigator.share && navigator.canShare?.(shareData)) {
+                      await navigator.share(shareData);
+                    } else {
+                      await navigator.clipboard.writeText(window.location.href);
+                      toast({ title: isHebrew ? 'קישור הועתק' : 'Link copied', description: isHebrew ? 'שתף אותו עם המשפחה' : 'Share it with family' });
+                    }
+                  }}
+                >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                     <Share2 className="h-6 w-6 text-purple-600" />
                   </div>
@@ -320,7 +350,11 @@ export default function TrackTrip() {
                   </span>
                 </Button>
                 
-                <Button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-contact-support">
+                <Button
+                  className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center"
+                  data-testid="button-contact-support"
+                  onClick={() => setLocation('/support')}
+                >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                     <Headphones className="h-6 w-6 text-purple-600" />
                   </div>
@@ -329,7 +363,11 @@ export default function TrackTrip() {
                   </span>
                 </Button>
                 
-                <Button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-view-receipt">
+                <Button
+                  className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center"
+                  data-testid="button-view-receipt"
+                  onClick={() => setLocation(`/pettrek/trips/${tripId}`)}
+                >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                     <Receipt className="h-6 w-6 text-purple-600" />
                   </div>
