@@ -723,12 +723,25 @@ export default function WalkBookingFlow() {
             <div className="w-24 h-24 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
               <Check className="h-12 w-12 text-white" />
             </div>
+            {/* Personalized greeting */}
+            {user?.displayName && (
+              <p className="text-sm font-medium text-emerald-600 mb-1 tracking-wide">
+                היי {user.displayName.split(' ')[0]}! 👋
+              </p>
+            )}
             <h2 className="luxury-heading-lg mb-4">יש התאמה! 🎉</h2>
             <p className="luxury-text-body max-w-md mx-auto mb-3">
               {walker?.businessName || walker?.displayName || 'המוליך/ה'} אישר/ה את ההזמנה!
             </p>
+            {/* Booking reference card */}
+            <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-slate-200 bg-slate-50 mb-4 mx-auto">
+              <p className="text-xs text-slate-400 tracking-widest uppercase">מספר הזמנה</p>
+              <p className="text-lg font-mono font-semibold text-slate-800 tracking-wider">
+                #{bookingId || "—"}
+              </p>
+            </div>
             <p className="luxury-text-small max-w-md mx-auto mb-8">
-              מספר הזמנה: {bookingId || "בבדיקה"} · פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
+              פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
             </p>
 
             {/* What happens next section */}

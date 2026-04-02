@@ -6,7 +6,7 @@ import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail } from 'lucide-react';
+import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck } from 'lucide-react';
 import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
 import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
 import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
@@ -380,7 +380,25 @@ export default function Dashboard() {
   const wallet = walletData?.wallet || null;
   const userProfile = (profileData as any)?.user;
   const userName = userProfile?.firstName || firebaseUser?.displayName?.split(' ')[0] || '';
+  const membershipNumber: string | null = userProfile?.membershipNumber || null;
   const unreadCount = unreadData?.count || 0;
+
+  const getTimeGreeting = (lang: string): string => {
+    const hour = new Date().getHours();
+    const greetings: Record<string, [string, string, string]> = {
+      he: ['בוקר טוב', 'צהריים טובים', 'ערב טוב'],
+      ar: ['صباح الخير', 'مساء الخير', 'مساء الخير'],
+      en: ['Good morning', 'Good afternoon', 'Good evening'],
+      ru: ['Доброе утро', 'Добрый день', 'Добрый вечер'],
+      fr: ['Bonjour', 'Bon après-midi', 'Bonsoir'],
+      es: ['Buenos días', 'Buenas tardes', 'Buenas noches'],
+    };
+    const set = greetings[lang] || greetings.en;
+    if (hour < 12) return set[0];
+    if (hour < 17) return set[1];
+    return set[2];
+  };
+  const greeting = getTimeGreeting(language);
   const formatCurrency = (cents: number) => `${(cents / 100).toFixed(0)}`;
   const tierKey = (wallet?.loyaltyTier || 'bronze').toLowerCase();
   const tierLabel = tierLabels[tierKey]?.[language] || tierLabels[tierKey]?.en || 'Bronze';
@@ -434,12 +452,31 @@ export default function Dashboard() {
             >
               {tx('privilege', language)}
             </p>
+            {/* Time-of-day greeting */}
             <h1
               className="text-2xl sm:text-3xl font-light mt-0.5"
               style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.01em', color: '#111111' }}
             >
-              {userName || tx('privilege', language)}
+              {userName ? `${greeting}, ${userName}` : greeting}
             </h1>
+            {/* Membership number badge */}
+            {membershipNumber && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.4 }}
+                className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full border"
+                style={{ borderColor: '#C9A84C33', backgroundColor: '#FDFAF3' }}
+              >
+                <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#C9A84C' }} />
+                <span
+                  className="text-[11px] tracking-[0.15em] font-medium"
+                  style={{ color: '#8A6A1B', fontFamily: "'Playfair Display', serif", letterSpacing: '0.1em' }}
+                >
+                  {membershipNumber}
+                </span>
+              </motion.div>
+            )}
           </motion.div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">

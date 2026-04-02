@@ -137,6 +137,21 @@ publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
             }
           }
           const userRecord = await fbAdmin.getUser(decoded.uid);
+          // Enrich with membershipNumber from DB so the frontend can always show the member badge
+          let membershipNumber: string | null = null;
+          try {
+            const { db: pgDb } = await import('../db');
+            const { users: usersTable } = await import('@shared/schema');
+            const { eq: pgEq } = await import('drizzle-orm');
+            const [dbUser] = await pgDb
+              .select({ membershipNumber: usersTable.membershipNumber })
+              .from(usersTable)
+              .where(pgEq(usersTable.id, decoded.uid))
+              .limit(1);
+            membershipNumber = dbUser?.membershipNumber || null;
+          } catch {
+            // Non-blocking — membership number is cosmetic
+          }
           return sendSafeJSON(res, {
             ok: true,
             authenticated: true,
@@ -147,6 +162,7 @@ publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
               firstName: userRecord.displayName?.split(' ')[0] || '',
               lastName: userRecord.displayName?.split(' ').slice(1).join(' ') || '',
               authProvider: 'firebase',
+              membershipNumber,
             },
           });
         }

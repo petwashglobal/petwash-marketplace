@@ -805,16 +805,24 @@ export default function SitterBookingFlow() {
             <div className="w-20 h-20 rounded-full bg-emerald-100 mx-auto flex items-center justify-center mb-6">
               <Check className="h-10 w-10 text-emerald-600" />
             </div>
-            <h2 className="text-2xl font-semibold text-slate-900 mb-3">ההזמנה נקלטה בהצלחה</h2>
+            {/* Personalized greeting */}
+            {user?.displayName && (
+              <p className="text-sm font-medium text-emerald-600 mb-1 tracking-wide">
+                היי {user.displayName.split(' ')[0]}! 👋
+              </p>
+            )}
+            <h2 className="text-2xl font-semibold text-slate-900 mb-3">ההזמנה נקלטה בהצלחה 🎉</h2>
             <p className="text-slate-600 max-w-md mx-auto mb-2">
               השמרטף/ית יקבל/תקבל את פרטי ההזמנה.
             </p>
-            <p className="text-sm text-slate-400 mb-1">
-              מספר הזמנה: {bookingId || "בבדיקה"}
-            </p>
-            <p className="text-sm text-slate-400 mb-8">
-              פרטי התשלום ישלחו בהודעה נפרדת.
-            </p>
+            {/* Booking reference card */}
+            <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-slate-200 bg-slate-50 mb-6 mx-auto">
+              <p className="text-xs text-slate-400 tracking-widest uppercase">מספר הזמנה</p>
+              <p className="text-lg font-mono font-semibold text-slate-800 tracking-wider">
+                #{bookingId || "—"}
+              </p>
+            </div>
+            <p className="text-sm text-slate-400 mb-8">פרטי התשלום ישלחו בהודעה נפרדת.</p>
 
             {/* What happens next section */}
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 mb-8 text-right max-w-md mx-auto">
