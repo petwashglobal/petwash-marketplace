@@ -12,9 +12,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign } from "lucide-react";
+import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhoneInput } from '@/components/PhoneInput';
+import { usePaymentStatus } from '@/hooks/use-payment-status';
 
 interface BuyGiftCardProps {
   language: Language;
@@ -25,6 +26,8 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
+  const { paymentsEnabled, isLoading: paymentStatusLoading } = usePaymentStatus();
+  const isRTL = language === 'he' || language === 'ar';
   
   const [formData, setFormData] = useState({
     // Sender info (optional - can be anonymous gift)
@@ -139,6 +142,46 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
       setLoading(false);
     }
   };
+
+  if (!paymentStatusLoading && !paymentsEnabled) {
+    return (
+      <Layout language={language} onLanguageChange={onLanguageChange}>
+        <div className="min-h-screen flex flex-col luxury-bg-mesh" dir={isRTL ? 'rtl' : 'ltr'}>
+          <main className="flex-1 container mx-auto px-4 py-16 flex items-center justify-center">
+            <div className="max-w-md w-full text-center">
+              <div className="relative mb-6">
+                <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
+                  <Gift className="w-12 h-12 text-purple-500" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center shadow-md mx-auto" style={{ right: 'calc(50% - 52px)' }}>
+                  <Clock className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold mb-3 text-slate-800">
+                {isRTL ? '🎁 כרטיסי מתנה — בקרוב!' : '🎁 Gift Cards — Coming Soon!'}
+              </h1>
+              <p className="text-slate-500 leading-relaxed mb-6">
+                {isRTL
+                  ? 'אנחנו בגרסת השקה — כרטיסי מתנה דיגיטליים יהיו זמינים ברגע שמערכת התשלומים תופעל. תודה על הסבלנות!'
+                  : 'We\'re in soft launch mode — digital gift cards will be available as soon as our payment system goes live. Thanks for your patience!'}
+              </p>
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 mb-6 text-sm text-purple-700">
+                {isRTL
+                  ? '✅ בינתיים, הצטרף למועדון, גלה ספקים וצור קשר עם קהילת חובבי החיות שלנו!'
+                  : '✅ In the meantime, join the club, discover providers, and connect with our pet lover community!'}
+              </div>
+              <button
+                onClick={() => navigate('/')}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-colors shadow-sm"
+              >
+                {isRTL ? '← חזרה לדף הבית' : '← Back to Home'}
+              </button>
+            </div>
+          </main>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
