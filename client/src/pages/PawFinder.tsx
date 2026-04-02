@@ -1001,7 +1001,12 @@ export default function PawFinder({ language }: PawFinderProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<Tab>('browse');
+  const [tab, setTab] = useState<Tab>(() => {
+    const p = new URLSearchParams(window.location.search).get('tab');
+    if (p === 'report' || p === 'post' || p === 'new' || p === 'ad') return 'report';
+    if (p === 'my') return 'my';
+    return 'browse';
+  });
   const [filterType, setFilterType] = useState<'all' | 'lost' | 'found'>('all');
   const [filterCity, setFilterCity] = useState('');
   const [filterPet, setFilterPet] = useState('');
