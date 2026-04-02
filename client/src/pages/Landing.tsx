@@ -367,13 +367,11 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               </p>
             </div>
 
-            {/* Tier cards — no borders, pure white with shadow lift */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-[#F5F5F5]">
+            {/* Tier cards — no borders, pure white with shadow */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
               {/* Silver */}
               <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
-                style={{ boxShadow: '0 0 0 0 transparent', transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.09)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 0 0 transparent')}
+                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
               >
                 {/* Tier indicator — thin metallic top strip */}
                 <div className="w-12 h-[2px] mx-auto mb-7"
@@ -394,9 +392,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
               {/* Gold */}
               <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
-                style={{ boxShadow: '0 0 0 0 transparent', transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.09)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 0 0 transparent')}
+                style={{ boxShadow: '0 4px 24px rgba(198,166,100,0.12)' }}
               >
                 <div className="w-12 h-[2px] mx-auto mb-7"
                   style={{ background: 'linear-gradient(90deg,#C6A664,#E8D5A0,#C6A664)' }} />
@@ -422,9 +418,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
               {/* Platinum */}
               <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
-                style={{ boxShadow: '0 0 0 0 transparent', transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.09)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 0 0 transparent')}
+                style={{ boxShadow: '0 4px 24px rgba(0,197,105,0.10)' }}
               >
                 <div className="w-12 h-[2px] mx-auto mb-7"
                   style={{ background: 'linear-gradient(90deg,#00C569,#00E87A,#00C569)' }} />
@@ -452,7 +446,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             <div className="mt-12 text-center">
               <Button
                 onClick={() => setLocation(user ? getDashboardPath() : '/signin')}
-                className="h-14 px-12 rounded-none text-white text-[11px] font-light tracking-[3px] uppercase"
+                className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',
                   backgroundSize: '200% 200%',

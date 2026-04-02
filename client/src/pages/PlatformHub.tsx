@@ -468,10 +468,10 @@ export default function PlatformHub() {
                     </p>
 
                     <div
-                      className="inline-flex items-center gap-2 text-[11px] font-light tracking-[2px] uppercase transition-all duration-300 group-hover:gap-3"
+                      className="inline-flex items-center gap-2 text-xs font-medium tracking-widest uppercase transition-all duration-300 group-hover:gap-3"
                       style={{ color: service.accent, fontFamily: sans }}
                     >
-                      <span>{isHebrew ? 'גלה עוד' : 'Explore'}</span>
+                      <span>{isHebrew ? 'לחץ לפרטים' : 'Book Now'}</span>
                       {isHebrew
                         ? <ArrowLeft className="w-3.5 h-3.5" />
                         : <ArrowRight className="w-3.5 h-3.5" />}
@@ -512,12 +512,10 @@ export default function PlatformHub() {
                 />
               </div>
               <Button
-                className="h-14 px-10 rounded-none text-white text-[11px] font-light tracking-[3px] uppercase"
+                className="h-14 px-10 rounded-none text-white text-sm font-medium tracking-widest uppercase min-w-[120px]"
                 style={{
                   background: 'linear-gradient(135deg,#00C569 0%,#00A855 50%,#00C569 100%)',
-                  backgroundSize: '200% 200%',
                   fontFamily: sans,
-                  letterSpacing: '0.2em',
                 }}
                 data-testid="search-button"
               >
@@ -725,13 +723,11 @@ export default function PlatformHub() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="h-14 px-12 rounded-none text-white text-[11px] font-light tracking-[3px] uppercase"
+                className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase transition-all duration-300 hover:-translate-y-0.5"
                 style={{
                   background: 'linear-gradient(135deg,#00C569 0%,#00A855 50%,#00C569 100%)',
-                  backgroundSize: '200% 200%',
                   fontFamily: sans,
-                  letterSpacing: '0.2em',
-                  boxShadow: '0 8px 32px rgba(0,197,105,0.25)',
+                  boxShadow: '0 8px 32px rgba(0,197,105,0.30)',
                 }}
                 data-testid="cta-find-provider"
               >
@@ -740,12 +736,11 @@ export default function PlatformHub() {
               <Button
                 size="lg"
                 variant="outline"
-                className="h-14 px-12 rounded-none text-[11px] font-light tracking-[3px] uppercase transition-all duration-300 hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A]"
+                className="h-14 px-12 rounded-none text-sm font-medium tracking-widest uppercase transition-all duration-300 hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A]"
                 style={{
                   borderColor: '#D1D5DB',
                   color: '#374151',
                   fontFamily: sans,
-                  letterSpacing: '0.2em',
                 }}
                 data-testid="cta-become-provider"
               >
