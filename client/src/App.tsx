@@ -326,6 +326,7 @@ const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
+const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
 
 // Pet Wash Ltd Executive Suite - Centralized C-Suite Management
 const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
@@ -2276,15 +2277,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
-        <Route path="/admin/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="management">
-              <Suspense fallback={<PageLoader />}>
-                <MobileManagementDashboard />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
         <Route path="/octopus-brain">
           {() => (
             <RoleProtectedRoute minRole="management">
@@ -2488,9 +2480,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Admin routes - /admin redirects to /admin/login for unauthenticated users */}
-        <Route path="/admin">{() => <Redirect to="/admin/login" />}</Route>
-        <Route path="/admin/login" component={AdminLogin} />
+        {/* Admin routes - /admin redirects to /admin/login-v2 for unauthenticated users */}
+        <Route path="/admin">{() => <Redirect to="/admin/login-v2" />}</Route>
+        <Route path="/admin/login" component={AdminLoginV2} />
         <Route path="/admin/backend">
           {() => (
             <AdminRouteGuard>
@@ -2534,6 +2526,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminSystemLogs />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/financial-monitor">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <GeminiFinancialMonitor />
+              </Suspense>
             </AdminRouteGuard>
           )}
         </Route>

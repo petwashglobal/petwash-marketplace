@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
+import { useNetworkGuard } from "@/hooks/useNetworkGuard";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, Clock, Check, CalendarRange, Loader2, CreditCard, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export default function SitterBookingFlow() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
+  const { assertConnected } = useNetworkGuard();
 
   const [step, setStep] = useState<BookingStep>("details");
   const [selectedPetIds, setSelectedPetIds] = useState<number[]>([]);
@@ -182,6 +184,9 @@ export default function SitterBookingFlow() {
 
     try {
       setIsSubmitting(true);
+
+      // Network connectivity check before committing booking
+      await assertConnected('he');
 
       const payload = {
         sitterId: sitter.id,

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
+import { useNetworkGuard } from "@/hooks/useNetworkGuard";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake, CreditCard, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function WalkBookingFlow() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
+  const { assertConnected } = useNetworkGuard();
 
   const walkerIdNumber = walkerId ? parseInt(walkerId) : undefined;
 
@@ -143,6 +145,9 @@ export default function WalkBookingFlow() {
 
     try {
       setIsSubmitting(true);
+
+      // Network connectivity check before committing booking
+      await assertConnected('he');
 
       const scheduledDate = selectedDate.toISOString().split('T')[0];
       const scheduledStartTime = selectedDate.toTimeString().slice(0, 5);

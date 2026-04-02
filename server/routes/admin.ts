@@ -1311,6 +1311,124 @@ router.post('/sms/kill-switch/clear', validateFirebaseToken, requireAdmin, async
 });
 
 /**
+ * POST /api/admin/financial-check
+ * Gemini AI-powered transaction financial safety monitor.
+ * Validates VAT (18%), commission math, and checks for anomalies/fraud signals.
+ */
+router.post('/financial-check', validateFirebaseToken, requireAdminOrViewer, async (req, res) => {
+  try {
+    const { amount, vat, commission, total, transactionId, customerId, providerId, serviceType, notes } = req.body;
+
+    if (!amount || !total) {
+      return res.status(400).json({ error: 'amount and total are required' });
+    }
+
+    const baseAmount = parseFloat(amount);
+    const vatAmount = parseFloat(vat || '0');
+    const commissionAmount = parseFloat(commission || '0');
+    const totalAmount = parseFloat(total);
+
+    const expectedVat = Math.round(baseAmount * 0.18 * 100) / 100;
+    const vatDiff = Math.abs(vatAmount - expectedVat);
+    const vatCorrect = vatDiff < 0.02;
+    const expectedTotal = Math.round((baseAmount + expectedVat) * 100) / 100;
+    const totalDiff = Math.abs(totalAmount - expectedTotal);
+    const totalCorrect = totalDiff < 0.05;
+    const commissionPercent = baseAmount > 0 ? (commissionAmount / baseAmount) * 100 : 0;
+    const commissionCorrect = commissionPercent >= 10 && commissionPercent <= 30;
+
+    const anomalies: string[] = [];
+    if (!vatCorrect) anomalies.push(`VAT mismatch: expected ₪${expectedVat}, got ₪${vatAmount}`);
+    if (!totalCorrect) anomalies.push(`Total mismatch: expected ₪${expectedTotal}, got ₪${totalAmount}`);
+    if (!commissionCorrect && commissionAmount > 0) anomalies.push(`Commission ${commissionPercent.toFixed(1)}% outside normal range (10-30%)`);
+    if (baseAmount > 5000) anomalies.push(`High-value transaction: ₪${baseAmount} — requires manual review`);
+    if (baseAmount < 0) anomalies.push(`Negative base amount — possible refund fraud`);
+    if (totalAmount < baseAmount && vatAmount >= 0) anomalies.push(`Total less than base amount — possible manipulation`);
+
+    let riskScore = 0;
+    if (!vatCorrect) riskScore += 35;
+    if (!totalCorrect) riskScore += 35;
+    if (!commissionCorrect && commissionAmount > 0) riskScore += 15;
+    if (baseAmount > 5000) riskScore += 10;
+    if (baseAmount < 0) riskScore += 80;
+    if (totalAmount < baseAmount && vatAmount >= 0) riskScore += 60;
+    riskScore = Math.min(100, riskScore);
+
+    let verdict: 'CLEAN' | 'SUSPICIOUS' | 'FRAUD_DETECTED' = 'CLEAN';
+    if (riskScore >= 70) verdict = 'FRAUD_DETECTED';
+    else if (riskScore >= 30) verdict = 'SUSPICIOUS';
+
+    let aiReasoning = '';
+    let aiRecommendation = '';
+
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        const genAI = new GoogleGenAI({ apiKey });
+        const prompt = `You are PetWash financial auditor. Analyze this Israeli pet-care transaction (VAT 18%, ILS):
+
+Transaction: ${transactionId || 'N/A'} | Service: ${serviceType} | Customer: ${customerId || 'N/A'} | Provider: ${providerId || 'N/A'}
+Base: ₪${baseAmount} | VAT charged: ₪${vatAmount} | Commission: ₪${commissionAmount} | Total: ₪${totalAmount}
+Notes: ${notes || 'none'}
+Math anomalies found: ${anomalies.length > 0 ? anomalies.join('; ') : 'none'}
+Risk score: ${riskScore}/100 | Initial verdict: ${verdict}
+
+In 2-3 sentences: (1) Confirm or correct the initial verdict. (2) Explain the main concern. (3) What action should the admin take?
+Keep it factual, professional, Hebrew business context. No markdown, plain text only.`;
+
+        const result = await genAI.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: { maxOutputTokens: 200 },
+        });
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const parts = text.split('\n').filter(Boolean);
+        aiReasoning = parts.slice(0, 2).join(' ');
+        aiRecommendation = parts.slice(2).join(' ') || 'No additional action required.';
+      }
+    } catch (aiErr) {
+      logger.warn('[Admin FinancialCheck] Gemini call failed, using rule-based result', aiErr);
+    }
+
+    const reasoning = aiReasoning || (
+      verdict === 'CLEAN'
+        ? `Transaction math checks out. VAT (18%) and total are within acceptable tolerance.`
+        : verdict === 'SUSPICIOUS'
+        ? `Some values deviate from expected. Review the flagged anomalies before approving.`
+        : `Critical math errors or fraud signals detected. Do not release funds until reviewed.`
+    );
+
+    const recommendation = aiRecommendation || (
+      verdict === 'CLEAN'
+        ? 'Transaction appears legitimate. Approve and proceed with normal processing.'
+        : verdict === 'SUSPICIOUS'
+        ? 'Flag for manual review. Contact customer or provider to verify amounts before release.'
+        : 'BLOCK this transaction immediately. Escalate to finance team and initiate fraud investigation.'
+    );
+
+    res.json({
+      verdict,
+      confidence: Math.round(100 - riskScore * 0.5),
+      riskScore,
+      reasoning,
+      anomalies,
+      mathCheck: {
+        vatCorrect,
+        commissionCorrect,
+        totalCorrect,
+        details: `Expected VAT ₪${expectedVat} (18% of ₪${baseAmount}). Expected total ₪${expectedTotal}. Commission: ${commissionPercent.toFixed(1)}%.`,
+      },
+      recommendation,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error('[Admin FinancialCheck] Error', error);
+    res.status(500).json({ error: 'Financial check failed' });
+  }
+});
+
+/**
  * POST /api/admin/sms/kill-switch/activate
  * Manually trigger the SMS kill switch (emergency stop)
  */

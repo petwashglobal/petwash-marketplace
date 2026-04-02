@@ -27,7 +27,8 @@ import {
   Zap,
   Target,
   Award,
-  MapPin
+  MapPin,
+  Brain
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import NayaxMonitoring from "@/components/admin/NayaxMonitoring";
@@ -229,6 +230,12 @@ export default function AdminDashboard() {
                 >
                   <Info className="w-4 h-4 mr-2" />
                   <span className="hidden sm:inline">Help</span>
+                </Button>
+              </Link>
+              <Link href="/admin/financial-monitor">
+                <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-200 hover:bg-white/10 backdrop-blur-sm" data-testid="button-financial-monitor">
+                  <Brain className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Financial AI</span>
                 </Button>
               </Link>
               <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 backdrop-blur-sm" data-testid="button-settings">
