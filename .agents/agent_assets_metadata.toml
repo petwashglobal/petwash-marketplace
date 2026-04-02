@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "L8KQ6wWjari1GrywYwvDp"
+uri = "file://uploads/paw-finder/demo-cat.png"
+type = "image"
+title = "fluffy tabby cat demo"
+
+[[generated]]
+id = "16mc887nMMwZBjsUYHMMj"
+uri = "file://uploads/paw-finder/demo-dog.png"
+type = "image"
+title = "golden retriever dog demo"
+
+[[generated]]
+id = "V7gGXhmWm6l-usMkyclcU"
+uri = "file://uploads/paw-finder/demo-bird.png"
+type = "image"
+title = "colorful macaw parrot tiki jakob"

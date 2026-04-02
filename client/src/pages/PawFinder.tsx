@@ -195,9 +195,16 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
   showResolve?: boolean;
 }) {
   const isLost = post.post_type === 'lost';
+  const isDemo = post.post_key?.startsWith('demo-');
 
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow ${isLost ? 'border-rose-100' : 'border-emerald-100'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow ${isLost ? 'border-rose-100' : 'border-emerald-100'} ${isDemo ? 'ring-2 ring-amber-300 ring-offset-1' : ''}`}>
+      {isDemo && (
+        <div className="bg-amber-50 border-b border-amber-200 px-3 py-1 flex items-center gap-1.5 text-xs text-amber-700 font-medium">
+          <span>⚠️</span>
+          <span>דוגמה להמחשה בלבד — DEMO ONLY</span>
+        </div>
+      )}
       <div className="flex gap-0">
         <div className="w-[120px] flex-shrink-0">
           {post.primary_media ? (
@@ -260,9 +267,9 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
             {showResolve && onResolve && post.status !== 'resolved' && (
               <button
                 onClick={onResolve}
-                className="text-xs font-medium px-3 py-1.5 rounded-xl border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1"
+                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition-all flex items-center gap-1 shadow-sm"
               >
-                <CheckCircle2 className="w-3 h-3" /> סמן כנפתר
+                <CheckCircle2 className="w-3.5 h-3.5" /> 🎉 נפתר! הסר פוסט
               </button>
             )}
           </div>
@@ -791,13 +798,23 @@ function MyPosts() {
     </div>
   );
 
-  const rows: any[] = data?.rows ?? [];
+  const allRows: any[] = data?.rows ?? [];
+  // hide resolved posts — they're done, no need to keep showing them
+  const rows = allRows.filter(p => p.status !== 'resolved');
 
-  if (!rows.length) return (
+  if (!allRows.length) return (
     <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-400">
       <Footprints className="w-8 h-8 mx-auto mb-3 opacity-30" />
       <p className="font-medium">אין לך פוסטים עדיין.</p>
       <p className="text-sm mt-1">עבור ל"הגשת פוסט" כדי לפרסם.</p>
+    </div>
+  );
+
+  if (!rows.length) return (
+    <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-10 text-center">
+      <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-emerald-400" />
+      <p className="font-semibold text-emerald-800">כל הפוסטים שלך נפתרו 🎉</p>
+      <p className="text-sm text-emerald-600 mt-1">שמחנו לעזור! ניתן לפרסם פוסט חדש בכל עת.</p>
     </div>
   );
 

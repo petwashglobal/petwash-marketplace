@@ -59,6 +59,7 @@ export function BookingPaymentModal({
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState('');
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
+  const [showGoogleReview, setShowGoogleReview] = useState(true);
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
@@ -163,6 +164,36 @@ export function BookingPaymentModal({
             >
               {isHebrew ? 'סגור' : 'Close'}
             </Button>
+
+            {/* Google review — soft ask, only after confirmed service (happy moment), only high ratings */}
+            {showGoogleReview && mode === 'confirm' && rating >= 4 && (
+              <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-100 p-4 text-center">
+                <p className="text-sm font-semibold text-amber-900 mb-0.5">
+                  {isHebrew ? '🌟 שמחנו שהכל הלך טוב!' : '🌟 So glad it went well!'}
+                </p>
+                <p className="text-xs text-amber-700 mb-3 leading-relaxed">
+                  {isHebrew
+                    ? 'אם יש לך דקה, ביקורת ב-Google עוזרת לנו להגיע לעוד בעלי חיות אהובות ❤️'
+                    : 'A quick Google review helps other pet owners find us ❤️'}
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <a
+                    href="https://maps.app.goo.gl/yXgfzyiYTYwLwcNy9?g_st=ic"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-white font-semibold transition-colors"
+                  >
+                    ⭐ {isHebrew ? 'בכיף, אכתוב ביקורת' : 'Sure, leave a review'}
+                  </a>
+                  <button
+                    onClick={() => setShowGoogleReview(false)}
+                    className="text-xs px-4 py-2 rounded-xl bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors"
+                  >
+                    {isHebrew ? 'לא עכשיו' : 'Not now'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : mode === 'pay' ? (
           <>
