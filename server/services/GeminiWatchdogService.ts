@@ -15,7 +15,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { 
@@ -27,8 +27,6 @@ import {
   watchdogUserJourneys
 } from '../../shared/schema-gemini-watchdog';
 import { eq, desc, and, sql } from 'drizzle-orm';
-
-const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 interface LogEntry {
   timestamp: Date;
@@ -80,11 +78,11 @@ class GeminiWatchdogService {
   private TECH_UPDATE_INTERVAL = 6 * 60 * 60 * 1000; // Check every 6 hours
 
   constructor() {
-    if (GEMINI_API_KEY) {
+    if (IS_VERTEX) {
       this.genAI = new GoogleGenAI(getVertexAIConfig());
       logger.info('[Gemini Watchdog] ✅ Gemini 2.5 Flash initialized');
     } else {
-      logger.warn('[Gemini Watchdog] ⚠️ GEMINI_API_KEY not configured - watchdog disabled');
+      logger.warn('[Gemini Watchdog] ⚠️ No AI backend configured - watchdog disabled');
     }
   }
 

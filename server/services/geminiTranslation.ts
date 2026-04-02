@@ -1,4 +1,4 @@
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 /**
  * Gemini AI Translation Service
  * 
@@ -72,11 +72,11 @@ export async function translateWithGemini(
       return { success: true, translatedText: text };
     }
 
-    // Check if Gemini API key is configured
-    if (!process.env.AI_INTEGRATIONS_GEMINI_API_KEY && !process.env.GEMINI_API_KEY) {
-      logger.error('[GeminiTranslation] GEMINI_API_KEY not configured');
+    // Check if AI backend is configured
+    if (!IS_VERTEX) {
+      logger.error('[GeminiTranslation] No AI backend configured');
       metrics.failedTranslations++;
-      return { success: false, translatedText: text, error: 'GEMINI_API_KEY not configured' };
+      return { success: false, translatedText: text, error: 'No AI backend configured' };
     }
 
     // Build context-aware prompt

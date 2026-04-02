@@ -14,12 +14,11 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 
-const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const PRODUCTION_URL = 'https://petwash.co.il';
 const FIREBASE_URL = 'https://signinpetwash.web.app';
 
@@ -59,11 +58,11 @@ class ProductionWebsiteMonitorService {
   private GEMINI_DAILY_LIMIT = 15; // Stay under 20 free tier limit
 
   constructor() {
-    if (GEMINI_API_KEY) {
+    if (IS_VERTEX) {
       this.ai = new GoogleGenAI(getVertexAIConfig());
       logger.info('[ProductionMonitor] ✅ Gemini AI initialized for website monitoring');
     } else {
-      logger.warn('[ProductionMonitor] ⚠️ Gemini API key not configured - monitoring limited');
+      logger.warn('[ProductionMonitor] ⚠️ No AI backend configured - monitoring limited');
     }
   }
 

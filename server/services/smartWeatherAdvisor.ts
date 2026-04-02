@@ -9,13 +9,13 @@ import {
   getWeatherConditionTranslation 
 } from '../lib/weatherTranslations';
 
-const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+import { IS_VERTEX } from '../lib/gemini-client';
 
-if (!GEMINI_API_KEY) {
-  logger.warn('[SmartWeatherAdvisor] GEMINI_API_KEY not configured - smart advice disabled');
+if (!IS_VERTEX) {
+  logger.warn('[SmartWeatherAdvisor] No AI backend configured - smart advice disabled');
 }
 
-const genAI = GEMINI_API_KEY ? new GoogleGenAI(getVertexAIConfig()) : null;
+const genAI = IS_VERTEX ? new GoogleGenAI(getVertexAIConfig()) : null;
 
 // Language name mapping for Gemini prompts
 const LANGUAGE_MAP: Record<SupportedLanguage, string> = {

@@ -6,7 +6,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 
 export interface BookingTriageRequest {
   startDate: Date;
@@ -30,9 +30,8 @@ export class SitterAITriageService {
   private genAI: GoogleGenAI;
 
   constructor() {
-    const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('[Sitter AI Triage] GEMINI_API_KEY not configured');
+    if (!IS_VERTEX) {
+      throw new Error('[Sitter AI Triage] No AI backend configured');
     }
     
     this.genAI = new GoogleGenAI(getVertexAIConfig());

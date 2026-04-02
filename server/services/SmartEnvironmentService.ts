@@ -12,14 +12,13 @@
 
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 let genAI: GoogleGenAI | null = null;
 
-if (GEMINI_API_KEY) {
+if (IS_VERTEX) {
   genAI = new GoogleGenAI(getVertexAIConfig());
 }
 

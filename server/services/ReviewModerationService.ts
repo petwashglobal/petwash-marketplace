@@ -1,4 +1,4 @@
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 /**
  * REVIEW MODERATION SERVICE
  * =========================
@@ -58,11 +58,10 @@ export class ReviewModerationService {
   private geminiAI: GoogleGenAI | null = null;
 
   constructor() {
-    const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (apiKey) {
+    if (IS_VERTEX) {
       this.geminiAI = new GoogleGenAI(getVertexAIConfig());
     } else {
-      console.warn("GEMINI_API_KEY not set - AI moderation will be limited to keyword matching");
+      console.warn("No AI backend configured - AI moderation will be limited to keyword matching");
     }
   }
 

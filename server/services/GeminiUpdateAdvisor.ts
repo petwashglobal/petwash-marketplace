@@ -20,7 +20,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { getVertexAIConfig } from '../lib/gemini-client';
+import { getVertexAIConfig, IS_VERTEX } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { EmailService } from '../emailService';
 import { db } from '../lib/firebase-admin';
@@ -56,9 +56,8 @@ export class GeminiUpdateAdvisor {
     if (this.isInitialized) return;
 
     try {
-      const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        logger.warn('[Gemini Advisor] ⚠️ GEMINI_API_KEY not configured - advisory disabled');
+      if (!IS_VERTEX) {
+        logger.warn('[Gemini Advisor] ⚠️ No AI backend configured - advisory disabled');
         return;
       }
 
