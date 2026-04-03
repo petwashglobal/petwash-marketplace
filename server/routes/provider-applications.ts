@@ -16,7 +16,7 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
-import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
+import { sendProviderEnrollmentConfirmation, sendLuxuryEmail } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { assignProviderMembership } from '../services/MembershipService';
@@ -434,7 +434,52 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     } catch (emailError) {
       logger.error('[ProviderApplication] Failed to send confirmation email', { emailError, applicationId: application.id });
     }
-    
+
+    // Notify admin of new provider application
+    try {
+      const platformsLabel = Array.isArray(bodyData?.platforms) && bodyData.platforms.length
+        ? bodyData.platforms.join(', ')
+        : (Array.isArray(formData.serviceTypes) ? formData.serviceTypes.join(', ') : formData.serviceTypes);
+      const adminHtml = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          <div style="background:#1a1a1a;padding:24px;text-align:center">
+            <h1 style="color:#c9a96e;font-size:22px;margin:0">🐾 Pet Wash™ — New Provider Application</h1>
+          </div>
+          <div style="padding:28px">
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:140px">Application ID</td><td style="padding:8px 0;font-weight:bold">#${application.id}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Membership #</td><td style="padding:8px 0;font-weight:bold">${membershipNumber}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Name</td><td style="padding:8px 0">${formData.firstName} ${formData.lastName}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Email</td><td style="padding:8px 0"><a href="mailto:${formData.email}">${formData.email}</a></td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Phone</td><td style="padding:8px 0">${formData.phoneNumber}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">City</td><td style="padding:8px 0">${formData.city || '—'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Platforms</td><td style="padding:8px 0">${platformsLabel || '—'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Service Types</td><td style="padding:8px 0">${Array.isArray(formData.serviceTypes) ? formData.serviceTypes.join(', ') : formData.serviceTypes}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Experience</td><td style="padding:8px 0">${formData.yearsExperience || '—'} years</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Submitted At</td><td style="padding:8px 0">${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })} (Israel)</td></tr>
+            </table>
+            <div style="margin-top:24px;padding:16px;background:#f9fafb;border-radius:6px">
+              <p style="margin:0;font-size:13px;color:#374151"><strong>Biography:</strong><br>${formData.biography || 'Not provided'}</p>
+            </div>
+            <div style="margin-top:20px;text-align:center">
+              <a href="https://petwash.co.il/admin" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">Review in Admin Dashboard →</a>
+            </div>
+          </div>
+          <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af">
+            Pet Wash™ Provider Application System · ח.פ. 517145033
+          </div>
+        </div>`;
+      await sendLuxuryEmail({
+        to: 'nirhadad1@gmail.com',
+        subject: `[Pet Wash™] New Provider Application #${application.id} — ${formData.firstName} ${formData.lastName}`,
+        html: adminHtml,
+        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
+      });
+      logger.info('[ProviderApplication] Admin notification sent', { applicationId: application.id });
+    } catch (adminEmailError) {
+      logger.error('[ProviderApplication] Failed to send admin notification', { adminEmailError, applicationId: application.id });
+    }
+
     // Send confirmation SMS with membership number
     try {
       const isHebrew = req.headers['accept-language']?.includes('he');

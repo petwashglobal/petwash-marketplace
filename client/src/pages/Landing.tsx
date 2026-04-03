@@ -187,10 +187,8 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
 
-        {/* PetWash Platforms - Mobile First Position */}
-        <div className="block md:hidden">
-          <PetWashDivisions language={language} />
-        </div>
+        {/* PetWash Platforms - All Devices */}
+        <PetWashDivisions language={language} />
 
         {/* Luxury Gold Divider */}
         <div className="relative h-3 bg-white overflow-hidden">
@@ -463,11 +461,6 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             </div>
           </div>
         </section>
-
-        {/* PetWash Ltd Group - Our Unique Services (Desktop Only - Mobile shows at top) */}
-        <div className="hidden md:block">
-          <PetWashDivisions language={language} />
-        </div>
 
         {/* Provider Registration - Join Our Team */}
         <ProviderRegistrationBanner variant="hero" platform="all" />

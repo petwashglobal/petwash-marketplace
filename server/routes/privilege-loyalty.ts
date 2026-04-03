@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { sendClubWelcomeEmail } from '../email/luxury-email-service';
+import { sendClubWelcomeEmail, sendLuxuryEmail } from '../email/luxury-email-service';
 import multer from 'multer';
 import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
@@ -194,6 +194,50 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       logger.info('[Privilege] Club welcome email sent', { email: email.trim().toLowerCase() });
     } catch (emailErr) {
       logger.error('[Privilege] Failed to send welcome email (non-blocking)', { emailErr });
+    }
+
+    // Notify admin of new Privilege registration
+    try {
+      const petsDisplay = Array.isArray(parsedPets) && parsedPets.length
+        ? parsedPets.map((p: any) => `${p.name || '?'} (${p.type || '?'})`).join(', ')
+        : 'None';
+      const adminHtml = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          <div style="background:#1a1a1a;padding:24px;text-align:center">
+            <h1 style="color:#c9a96e;font-size:22px;margin:0">🐾 Pet Wash™ Prestige — New Member Registration</h1>
+          </div>
+          <div style="padding:28px">
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:140px">Member ID</td><td style="padding:8px 0;font-weight:bold">${memberId}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Name</td><td style="padding:8px 0">${firstName} ${lastName}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Email</td><td style="padding:8px 0"><a href="mailto:${email}">${email}</a></td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Phone</td><td style="padding:8px 0">${phone}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">City</td><td style="padding:8px 0">${city || '—'}, ${country || 'Israel'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Date of Birth</td><td style="padding:8px 0">${dob || '—'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Pets</td><td style="padding:8px 0">${petsDisplay}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">ID Type</td><td style="padding:8px 0">${idType || '—'} ${idNumber ? `(${idNumber})` : ''}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">ID Document</td><td style="padding:8px 0">${idDocumentUrl ? '✅ Uploaded' : '❌ Not uploaded'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Referral</td><td style="padding:8px 0">${referralSource || '—'} ${referralCode ? `(code: ${referralCode})` : ''}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Language</td><td style="padding:8px 0">${language || 'en'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Registered At</td><td style="padding:8px 0">${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })} (Israel)</td></tr>
+            </table>
+            <div style="margin-top:20px;text-align:center">
+              <a href="https://petwash.co.il/admin" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">View in Admin Dashboard →</a>
+            </div>
+          </div>
+          <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af">
+            Pet Wash™ Prestige Club System · ח.פ. 517145033
+          </div>
+        </div>`;
+      await sendLuxuryEmail({
+        to: 'nirhadad1@gmail.com',
+        subject: `[Pet Wash™ Prestige] New Member — ${firstName} ${lastName} (${memberId})`,
+        html: adminHtml,
+        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
+      });
+      logger.info('[Privilege] Admin notification sent', { memberId });
+    } catch (adminEmailErr) {
+      logger.error('[Privilege] Failed to send admin notification', { adminEmailErr });
     }
 
     res.status(201).json({
