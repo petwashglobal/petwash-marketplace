@@ -104,34 +104,38 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
     .d1 { animation-delay:0.1s; } .d2 { animation-delay:0.2s; } .d3 { animation-delay:0.3s; } .d4 { animation-delay:0.4s; } .d5 { animation-delay:0.5s; }
   </style>
 </head>
-<body style="margin:0;padding:0;background:#f5f3ef;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <div style="max-width:620px;margin:0 auto;padding:20px 12px;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+  <!-- Top summer stripe -->
+  <div style="background:linear-gradient(90deg,#FF6B6B,#FF8E53,#00C9A7);height:5px;"></div>
+
+  <div style="max-width:620px;margin:0 auto;padding:16px 12px;">
 
     <!-- Outer Frame -->
     <div style="overflow:hidden;background:white;">
 
-      <!-- Top Ornamental Bar -->
-      <div class="fi" style="background:#1a1a1a;padding:6px 0;text-align:center;">
-        <span style="font-size:8px;letter-spacing:8px;color:${t.accentColor};text-transform:uppercase;">
+      <!-- Top Ornamental Bar - summer coral -->
+      <div class="fi" style="background:linear-gradient(90deg,#FF6B6B,#FF8E53);padding:10px 0;text-align:center;">
+        <span style="font-size:8px;letter-spacing:8px;color:#ffffff;text-transform:uppercase;font-weight:700;">
           ${t.ornament} &nbsp; Pet Wash Privilege™ &nbsp; ${t.ornament}
         </span>
       </div>
 
-      <!-- Logo Section - Lettermark (no external image) -->
+      <!-- Logo Section - summer lettermark -->
       <div class="fi d1" style="padding:40px 40px 20px;text-align:center;background:white;">
         <div style="display:inline-block;">
-          <div style="font-size:22px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a1a;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">PET WASH™</div>
-          <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:${t.accentColor};margin-top:4px;">PRIVILEGE</div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:5px;text-transform:uppercase;color:#FF6B6B;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">PET WASH™</div>
+          <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:#00C9A7;margin-top:4px;font-weight:700;">PRIVILEGE</div>
         </div>
-        <div style="margin-top:16px;font-size:9px;letter-spacing:6px;text-transform:uppercase;color:${t.accentColor};">
+        <div style="margin-top:16px;font-size:9px;letter-spacing:6px;text-transform:uppercase;color:#FF6B6B;font-weight:600;">
           ${isHe ? 'מועדון חברים יוקרתי' : 'Exclusive Members Club'}
         </div>
-        <div style="width:40px;height:1px;background:${t.accentColor};margin:16px auto 0;"></div>
+        <div style="width:40px;height:2px;background:linear-gradient(90deg,#FF6B6B,#00C9A7);margin:14px auto 0;border-radius:2px;"></div>
       </div>
 
       <!-- Hero Welcome -->
       <div class="fi d2" style="padding:32px 40px;text-align:center;">
-        <div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:${t.accentColor};margin-bottom:16px;">
+        <div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:#FF6B6B;margin-bottom:16px;font-weight:700;">
           ${isHe ? 'ברוכים הבאים' : 'Welcome'}
         </div>
         <h1 style="font-size:32px;font-weight:300;color:#1a1a1a;margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;letter-spacing:-0.5px;line-height:1.2;">
@@ -147,9 +151,9 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
       <!-- Divider Ornament -->
       <div style="text-align:center;padding:0 40px;">
         <div style="display:inline-block;">
-          <span style="font-size:6px;letter-spacing:4px;color:${t.accentColor};">── ─ ─</span>
-          <span style="font-size:14px;color:${t.accentColor};margin:0 8px;">${t.icon}</span>
-          <span style="font-size:6px;letter-spacing:4px;color:${t.accentColor};">─ ─ ──</span>
+          <span style="font-size:6px;letter-spacing:4px;color:#FF6B6B;">── ─ ─</span>
+          <span style="font-size:16px;color:#FF6B6B;margin:0 8px;">${t.icon}</span>
+          <span style="font-size:6px;letter-spacing:4px;color:#FF6B6B;">─ ─ ──</span>
         </div>
       </div>
 
@@ -202,13 +206,13 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 
         <!-- Points Display -->
         <div style="margin-top:24px;">
-          <div style="font-size:8px;letter-spacing:4px;text-transform:uppercase;color:${t.accentColor};margin-bottom:8px;">
+          <div style="font-size:8px;letter-spacing:4px;text-transform:uppercase;color:#FF6B6B;margin-bottom:8px;font-weight:700;">
             ${isHe ? 'נקודות פריבילגיה' : 'Privilege Points'}
           </div>
-          <div style="font-size:36px;font-weight:200;color:#1a1a1a;font-family:Georgia,'Times New Roman',serif;letter-spacing:2px;">
+          <div style="font-size:40px;font-weight:700;color:#FF6B6B;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:1px;">
             ${points.toLocaleString()}
           </div>
-          <div style="font-size:10px;color:${t.accentColor};letter-spacing:2px;margin-top:2px;">
+          <div style="font-size:11px;color:#00C9A7;letter-spacing:2px;margin-top:4px;font-weight:600;">
             ${isHe ? 'זמינות מיידית' : 'Available Now'}
           </div>
         </div>
@@ -216,13 +220,13 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 
       <!-- Elegant Divider -->
       <div style="padding:0 60px;">
-        <div style="height:1px;background:linear-gradient(90deg, transparent, ${t.accentColor}, transparent);"></div>
+        <div style="height:2px;background:linear-gradient(90deg, transparent, #00C9A7, transparent);border-radius:2px;"></div>
       </div>
 
       <!-- Benefits Section - Haute Couture Style -->
       <div class="fi d4" style="padding:32px 40px;">
         <div style="text-align:center;margin-bottom:24px;">
-          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:${t.accentColor};">
+          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#FF6B6B;font-weight:700;">
             ${isHe ? 'הפריבילגיות שלך' : 'Your Privileges'}
           </div>
         </div>
@@ -287,7 +291,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
       <!-- Membership Details - Minimalist Luxury Table -->
       <div class="fi d4" style="background:white;padding:28px 40px;border-top:1px solid #f0ede8;border-bottom:1px solid #f0ede8;">
         <div style="text-align:center;margin-bottom:20px;">
-          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:${t.accentColor};">
+          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#FF6B6B;font-weight:700;">
             ${isHe ? 'פרטי החברות' : 'Membership Details'}
           </div>
         </div>
@@ -299,7 +303,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
           <tr style="border-bottom:1px solid #ece9e4;">
             <td style="padding:14px 0;color:#444;font-size:12px;letter-spacing:0.5px;">${isHe ? 'דרגה' : 'Tier'}</td>
             <td style="padding:14px 0;text-align:${alignOpp};">
-              <span style="display:inline-block;padding:4px 16px;border:1px solid ${t.accentColor};border-radius:2px;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${t.accentColor};">
+              <span style="display:inline-block;padding:4px 16px;border:2px solid #FF6B6B;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#FF6B6B;">
                 ${t.icon} ${tierName}
               </span>
             </td>
@@ -319,37 +323,41 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
         </table>
       </div>
 
-      <!-- CTA Button - Haute Style -->
+      <!-- CTA Button - Summer Style -->
       <div class="fi d5" style="padding:40px;text-align:center;background:white;">
-        <a href="https://petwash.co.il/loyalty" style="display:inline-block;padding:16px 52px;border:1px solid #1a1a1a;color:#1a1a1a;text-decoration:none;font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;transition:all 0.3s;">
+        <a href="https://petwash.co.il/loyalty" style="display:inline-block;padding:16px 52px;background:linear-gradient(90deg,#FF6B6B,#FF8E53);color:#ffffff;text-decoration:none;font-size:12px;letter-spacing:4px;text-transform:uppercase;font-weight:700;border-radius:100px;">
           ${isHe ? 'כניסה למועדון' : 'Enter Your Club'}
         </a>
-        <p style="font-size:11px;color:${t.accentColor};margin:16px 0 0;letter-spacing:0.5px;">
+        <p style="font-size:11px;color:#00C9A7;margin:16px 0 0;letter-spacing:0.5px;font-weight:600;">
           petwash.co.il/loyalty
         </p>
       </div>
 
-      <!-- Footer - Maison Style -->
-      <div style="background:#1a1a1a;padding:32px 40px;text-align:center;">
-        <div style="font-size:7px;letter-spacing:6px;text-transform:uppercase;color:${t.accentColor};margin-bottom:16px;">
+      <!-- Footer - Summer Style -->
+      <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53,#00C9A7);padding:32px 40px;text-align:center;">
+        <div style="font-size:8px;letter-spacing:6px;text-transform:uppercase;color:#ffffff;margin-bottom:14px;font-weight:700;">
           ${t.ornament} &nbsp; ${t.ornament} &nbsp; ${t.ornament}
         </div>
-        <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 8px;line-height:1.6;letter-spacing:0.5px;">
+        <p style="font-size:12px;color:#ffffff;margin:0 0 10px;line-height:1.6;letter-spacing:0.3px;font-weight:500;">
           ${isHe ? 'תודה שהצטרפת למשפחת Pet Wash™ Privilege' : 'Thank you for joining the Pet Wash™ Privilege family'}
         </p>
-        <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 0 16px;">
-          <a href="https://petwash.co.il" style="color:${t.accentColor};text-decoration:none;letter-spacing:1px;">petwash.co.il</a>
-          <span style="margin:0 8px;color:rgba(255,255,255,0.15);">|</span>
-          <a href="mailto:Support@PetWash.co.il" style="color:rgba(255,255,255,0.4);text-decoration:none;">Support@PetWash.co.il</a>
+        <p style="font-size:11px;color:rgba(255,255,255,0.85);margin:0 0 16px;">
+          <a href="https://petwash.co.il" style="color:#ffffff;text-decoration:underline;letter-spacing:1px;font-weight:600;">petwash.co.il</a>
+          <span style="margin:0 10px;color:rgba(255,255,255,0.5);">|</span>
+          <a href="mailto:Support@PetWash.co.il" style="color:#ffffff;text-decoration:none;font-weight:600;">Support@PetWash.co.il</a>
         </p>
-        <div style="width:30px;height:1px;background:rgba(255,255,255,0.1);margin:0 auto 16px;"></div>
-        <p style="font-size:9px;color:rgba(255,255,255,0.2);margin:0;letter-spacing:1px;">
+        <div style="width:30px;height:1px;background:rgba(255,255,255,0.4);margin:0 auto 14px;"></div>
+        <p style="font-size:9px;color:rgba(255,255,255,0.7);margin:0;letter-spacing:1px;">
           &copy; ${new Date().getFullYear()} Pet Wash™ Ltd. ${isHe ? 'כל הזכויות שמורות.' : 'All rights reserved.'}
         </p>
       </div>
 
     </div>
   </div>
+
+  <!-- Bottom summer stripe -->
+  <div style="background:linear-gradient(90deg,#00C9A7,#FF6B6B);height:4px;"></div>
+
 </body>
 </html>`;
 

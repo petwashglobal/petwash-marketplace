@@ -3279,19 +3279,35 @@ export class EmailService {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${t.subject}</title>
 </head>
-<body style="margin:0;padding:0;background:#fff;color:#000;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;">
-  <div style="max-width:520px;margin:60px auto;padding:40px 24px;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;">
+
+  <!-- Top summer stripe -->
+  <div style="background:linear-gradient(90deg,#FF6B6B,#FF8E53);height:5px;"></div>
+
+  <div style="max-width:520px;margin:0 auto;padding:48px 28px 56px;">
 
     <!-- Logo -->
-    <div style="text-align:center;font-size:16px;letter-spacing:4px;margin-bottom:50px;">PET WASH™</div>
+    <div style="text-align:center;margin-bottom:44px;">
+      <span style="font-size:18px;font-weight:800;letter-spacing:5px;text-transform:uppercase;color:#FF6B6B;">PET WASH™</span>
+    </div>
+
+    <!-- Status badge -->
+    <div style="text-align:center;margin-bottom:8px;">
+      <span style="display:inline-block;background:#00C9A7;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:6px 24px;border-radius:100px;">
+        ${isHebrew ? '✓ אושר' : '✓ Confirmed'}
+      </span>
+    </div>
 
     <!-- Title -->
-    <div style="text-align:center;font-size:28px;margin-bottom:10px;">${isHebrew ? 'הזמנה אושרה' : 'Booking Confirmed'}</div>
+    <div style="text-align:center;font-size:30px;font-weight:300;color:#1a1a1a;margin:16px 0 8px;">${isHebrew ? 'הזמנה אושרה' : 'Booking Confirmed'}</div>
 
     <!-- Subtitle: name · date · time -->
-    <div style="text-align:center;font-size:14px;color:#1a1a1a;margin-bottom:50px;">
+    <div style="text-align:center;font-size:14px;color:#333;margin-bottom:48px;">
       ${customerName} &nbsp;·&nbsp; ${dateFormatted} &nbsp;·&nbsp; ${timeFormatted}
     </div>
+
+    <!-- Divider -->
+    <div style="height:2px;background:linear-gradient(90deg,#FF6B6B,#00C9A7);border-radius:2px;margin-bottom:36px;"></div>
 
     <!-- Detail rows -->
     ${row(t.serviceLabel,  serviceType)}
@@ -3299,27 +3315,31 @@ export class EmailService {
     ${row(t.platformLabel, platformName)}
     ${row(t.bookingLabel,  bookingId)}
     ${row(t.invoiceLabel,  invoiceNumber)}
-    ${discountFormatted ? row(t.loyaltyLabel, `-₪${discountFormatted}`, '#059669') : ''}
+    ${discountFormatted ? row(t.loyaltyLabel, `-₪${discountFormatted}`, '#00C9A7') : ''}
 
     <!-- Total -->
-    <div style="margin-top:30px;padding-top:20px;border-top:1px solid #000;font-size:20px;display:flex;justify-content:space-between;direction:${dir};">
+    <div style="margin-top:32px;padding:20px 0;border-top:2px solid #FF6B6B;border-bottom:2px solid #FF6B6B;font-size:21px;font-weight:700;display:flex;justify-content:space-between;direction:${dir};color:#1a1a1a;">
       <div>${t.totalLabel}</div>
-      <div>₪${totalFormatted}</div>
+      <div style="color:#FF6B6B;">₪${totalFormatted}</div>
     </div>
 
     <!-- Trust / Escrow notice -->
-    <div style="text-align:center;font-size:13px;margin-top:50px;line-height:1.6;color:#444;">
+    <div style="text-align:center;font-size:13px;margin-top:44px;line-height:1.7;color:#333;background:#f7fffe;padding:18px 20px;border-radius:10px;border-left:4px solid #00C9A7;direction:${dir};">
       ${t.escrowNote}
     </div>
 
     <!-- Footer -->
-    <div style="text-align:center;font-size:12px;color:#444;margin-top:60px;line-height:1.8;">
-      Pet Wash™ &nbsp;·&nbsp; ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}<br/>
+    <div style="text-align:center;font-size:12px;color:#333;margin-top:52px;line-height:2;">
+      <span style="color:#FF6B6B;font-weight:700;">Pet Wash™</span> &nbsp;·&nbsp; ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}<br/>
       ${isHebrew ? 'אושר דיגיטלית' : 'Digitally Approved'} &nbsp;·&nbsp; ${new Date().getFullYear()}<br/>
-      <a href="mailto:${t.contactEmail}" style="color:#C6A664;text-decoration:none;">${t.contactEmail}</a>
+      <a href="mailto:${t.contactEmail}" style="color:#FF6B6B;font-weight:600;text-decoration:none;">${t.contactEmail}</a>
     </div>
 
   </div>
+
+  <!-- Bottom summer stripe -->
+  <div style="background:linear-gradient(90deg,#00C9A7,#FF6B6B);height:4px;"></div>
+
 </body>
 </html>`;
 
