@@ -1,0 +1,53 @@
+PURPOSE | DOCUMENT TYPE | WHO ISSUES | WHEN TRIGGERED | LEGAL STATUS (ISRAEL) | MUST USE APPROVED ACCOUNTING SYSTEM | NUMBERING REQUIRED | ALLOCATION NUMBER (2026) | RELATED TO ESCROW | WHAT IT REPRESENTS | CAN BE PDF ONLY | WHO RECEIVES | CRITICAL NOTES
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+booking_confirmation | Booking Confirmation / Service Summary | platform | immediately after booking created | NOT a tax document | NO | NO | NO | YES (display only) | summary of booking, service, provider, customer, payment status | YES | customer | must NOT be called invoice or receipt
+receipt | קבלה | platform OR provider (depends who legally receives money) | when payment is captured (even if held in escrow) | LEGAL tax document | YES | YES (sequential) | NO | YES | proof of money received | NO | payer | must come from accounting system, not internal PDF
+tax_invoice | חשבונית מס | provider OR platform (depends VAT entity) | when tax invoice is required (service / billing event) | LEGAL tax document | YES | YES (sequential) | YES if B2B above threshold | INDIRECT | VAT reporting document | NO | business customer | without allocation number (when required) client cannot deduct VAT
+escrow_statement | Escrow / Settlement Statement | platform | when funds are held / released | NOT tax document | NO | NO | NO | CORE | shows money flow: customer paid, fee, VAT on fee, amount held, amount to provider, release date | YES | provider + ops | THIS IS NOT invoice or receipt
+payout_statement | Provider Payout Statement | platform | when funds released to provider | NOT tax document | NO | NO | NO | YES | breakdown of what provider receives after fees | YES | provider | supports reconciliation only
+refund_statement | Refund / Adjustment Statement | platform | when refund happens | NOT tax document | NO | NO | NO | YES | reversal of transaction / escrow adjustments | YES | customer + provider | must align with receipt/invoice corrections
+audit_record | Internal Audit Log | system | every event | REGULATORY SUPPORT | YES (storage requirement) | YES (internal IDs) | N/A | YES | full trace of lifecycle (booking → payment → escrow → release) | NO | internal | must be stored 7 years
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ESCROW LOGIC (THIS IS THE PART HE IS MISSING):
+
+1. Customer pays → money is captured → receipt MAY be required (depending structure)
+2. Money is NOT revenue yet → it is HELD (escrow)
+3. Platform may take fee → this part MAY be taxable revenue
+4. Provider only earns when:
+   - service completed
+   - funds released
+5. ONLY THEN:
+   - provider may need to issue tax invoice (depending model)
+6. Escrow statement = explanation of flow, NOT legal tax document
+
+CRITICAL RULES:
+
+- PDF ≠ legal invoice
+- Escrow ≠ revenue
+- Receipt ≠ tax invoice
+- Booking confirmation ≠ anything financial legally
+- If numbering is not sequential → NOT legal
+- If not from approved accounting system → NOT legal
+- If B2B without allocation number → VAT deduction invalid
+
+IF HE BUILDS IT WRONG:
+
+- wrong tax reporting
+- illegal invoices
+- broken VAT chain
+- exposure to audit issues
+- providers issuing incorrect documents
+- platform carrying unintended tax liability
+
+WHAT YOU WANT BUILT:
+
+1. Booking confirmation → internal PDF
+2. Escrow statement → internal PDF
+3. Receipt → from accounting system
+4. Tax invoice → from accounting system + allocation number when needed
+5. Audit trail → stored 7 years
+
+NO MIXING.
+NO SHORTCUTS.
+NO “ONE PDF DOES ALL”.

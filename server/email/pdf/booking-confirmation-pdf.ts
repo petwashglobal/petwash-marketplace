@@ -108,11 +108,11 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
 
     // ── DOCUMENT TITLE ────────────────────────────────────────────────────────
     doc.font('Helvetica-Bold').fontSize(15).fillColor(DARK)
-       .text('Booking Confirmation / Payment Summary', 0, y, { width: W, align: 'center' });
+       .text('Booking Confirmation', 0, y, { width: W, align: 'center' });
     y += 13;
     // Sub-title in Hebrew
     doc.font('Helvetica').fontSize(9).fillColor(MUTED)
-       .text('\u05d0\u05d9\u05e9\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4 / \u05e1\u05d9\u05db\u05d5\u05dd \u05ea\u05e9\u05dc\u05d5\u05dd', 0, y, { width: W, align: 'center' });
+       .text('\u05d0\u05d9\u05e9\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4  |  \u05de\u05e1\u05de\u05da \u05e9\u05d9\u05e8\u05d5\u05ea \u05dc\u05dc\u05e7\u05d5\u05d7 \u05d1\u05dc\u05d1\u05d3', 0, y, { width: W, align: 'center' });
     y += 16;
 
     // Meta row: Ref# / Booking# / Issue Date
@@ -251,7 +251,7 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
        .strokeColor(BORDER).lineWidth(0.5).stroke();
     doc.rect(M, finY, INNER, 20).fill('#F0F0F0');
     doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK)
-       .text('Financial Breakdown', M + 8, finY + 5);
+       .text('Payment Status — For Reference Only (Not a Receipt or Invoice)', M + 8, finY + 5);
 
     const finColW = INNER / 2;
     let frY = finY + 20 + 6;

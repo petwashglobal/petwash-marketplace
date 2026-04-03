@@ -3407,8 +3407,8 @@ export class EmailService {
       <!-- PDF note -->
       <div style="background:#FFFBF0;border-radius:8px;padding:14px 16px;border-${side}:3px solid #F0A500;font-size:12px;color:#555;direction:${dir};margin-bottom:24px;">
         📎 ${isHebrew
-          ? 'מצורף: אישור הזמנה וסיכום תשלום בפורמט PDF. <strong>מסמך זה אינו חשבונית מס.</strong> חשבונית המס הרשמית תישלח בנפרד דרך מערכת הנה"ח המאושרת.'
-          : 'Attached: Booking Confirmation &amp; Payment Summary (PDF). <strong>This document is NOT a tax invoice.</strong> An official tax invoice will be issued separately through the authorized accounting system.'}
+          ? 'מצורף: <strong>אישור הזמנה</strong> בפורמט PDF. <strong>מסמך זה אינו חשבונית מס, קבלה, או מסמך מס כלשהו.</strong> חשבונית המס הרשמית תישלח בנפרד דרך מערכת הנה"ח המאושרת.'
+          : 'Attached: <strong>Booking Confirmation</strong> (PDF). <strong>This is NOT a tax invoice, receipt, or any legal financial document.</strong> An official tax invoice will be issued separately through the authorized accounting system.'}
       </div>
 
       <!-- Support / contact -->
