@@ -1,0 +1,73 @@
+Good. Now I need hard proof, not summary.
+
+Please verify and show me the following with exact evidence:
+
+1. CUSTOMER INTELLIGENCE
+- Show me the exact DB table schema for user_intelligence_profiles
+- Show me one real example row from local/dev DB
+- Show me the exact formulas used for trustScore, behaviorScore, and riskLevel
+- Show me the API JSON response from:
+  GET /api/user/intelligence
+- Explain what causes each score to go up or down
+
+2. JOURNEY STATE MACHINE
+- Show me the exact users table column for journey_state
+- Show me where it changes to:
+  visitor
+  browsing
+  authenticated
+  ready_to_book
+  booked
+- Show me proof that state only moves forward and never backward
+- Show me one real example user journey in logs or DB
+
+3. REAL-TIME EVENTS
+- Show me the exact payloads emitted for:
+  matching.started
+  provider.accepted
+  provider.arriving
+- Show me where those events are consumed
+- If they go to EventBus only, show me where the frontend/admin actually receives or displays them
+- Show me proof provider.arriving works end-to-end with a real request
+
+4. PROVIDER ARRIVING
+- Show me the new route definition
+- Show me request body example
+- Show me response example
+- Show me how ETA is stored or used
+- Show me what happens if a non-provider calls it
+
+5. RECOVERY AUTOMATION
+- Show me the exact cron code
+- Show me the email template used for the 30-day winback
+- Show me the dedupe key logic
+- Show me proof it only targets users inactive for 30-90 days
+- Show me proof it does not email the same user repeatedly
+
+6. FRONTEND WIRING
+- Show me where the customer intelligence API is actually used in UI
+- Show me where journey state is visible or used in routing
+- Show me where provider.arriving is triggered from provider UI
+- Show me where the event outputs appear in admin or customer UI
+
+7. MANUAL TESTS
+Please run and report these exact tests:
+- create booking -> matching.started emitted
+- provider accepts -> provider.accepted emitted
+- provider arriving -> provider.arriving emitted
+- customer journey state changes to ready_to_book on booking creation
+- customer journey state changes to booked on provider acceptance
+- inactive user is selected correctly by recovery cron
+- GET /api/user/intelligence returns valid data for a real user
+
+8. SCREENSHOTS / PROOF
+I want screenshots or console outputs for:
+- DB row in user_intelligence_profiles
+- journey_state in users table
+- API response for /api/user/intelligence
+- event logs for the three booking events
+- recovery cron registration line
+- provider arriving request + response
+
+Do not give me another summary.
+Give me proof for each item above.
