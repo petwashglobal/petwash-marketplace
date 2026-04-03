@@ -1,0 +1,121 @@
+Understood. Locked.
+
+We now have a complete picture from both audits.
+This is not theoretical - these are real production risks.
+
+System status:
+NOT production-safe as a marketplace.
+
+Main risk areas:
+- fake payment flows
+- broken auth / bypass risk
+- booking ownership + state control
+- escrow release integrity
+- secrets exposure
+- misleading financial flows (invoice / receipt)
+
+Do not touch UI.
+Do not do partial fixes.
+Do not fix low priority items first.
+
+We fix only in strict order.
+
+--------------------------------
+P0 - immediate (stop damage)
+--------------------------------
+1. Disable / remove fake payment endpoint (/api/express-checkout)
+2. Block any endpoint that confirms payment without real processor event
+3. Remove auth bypass (default test token / fallback paths)
+4. Remove all hardcoded fallback secrets (voucher / webhook / API)
+5. Rotate ALL potentially exposed secrets (including repo history risk)
+
+6. Lock booking system:
+   - enforce ownership checks on ALL booking actions:
+     transition / cancel / confirm / complete
+   - remove role from request body (derive from DB + auth claims)
+   - block direct transitions to "completed"
+   - prevent same user from completing both sides
+
+--------------------------------
+P1 - this week (stability + integrity)
+--------------------------------
+7. Release slots on:
+   - payment.failed
+   - payment.expired
+   - payment.cancelled
+
+8. Protect invoice endpoints:
+   - requireAuth
+   - enforce ownership OR admin
+
+9. Enforce provider ownership on availability updates
+
+10. Mark escrow as "held" ONLY after confirmed payment (webhook)
+
+11. Replace in-memory webhook dedup with persistent layer (DB / Redis)
+
+12. Fix wallet / balance race conditions with DB transactions
+
+13. Fix admin secret comparison (timing-safe everywhere)
+
+14. Sanitize all backend HTML before rendering
+
+--------------------------------
+P2 - next (architecture fixes)
+--------------------------------
+15. Resolve dual escrow systems (Firestore vs Postgres)
+16. Unify or map booking state systems (currently 3 enums)
+17. Add expiry handling for marketplace bookings
+18. Remove production stubs (machine control / fake flows)
+19. Centralize fee calculation logic
+
+--------------------------------
+P3 - compliance + hardening
+--------------------------------
+20. Fix invoice system:
+   - sequential numbering (not nanoid)
+   - correct labeling (commission vs full invoice)
+   - add booking reference
+
+21. Build dispute resolution flow (admin + SLA)
+
+22. Add strict validation for all numeric inputs
+
+23. Add tests for:
+   - payment
+   - webhook
+   - escrow
+   - RBAC
+   - refunds
+
+--------------------------------
+DELIVERY REQUIREMENT
+--------------------------------
+For each fix, return:
+
+- exact file changed
+- exact commit
+- before behavior
+- after behavior
+- proof (logs / response / test)
+- note if data repair or migration is required
+
+--------------------------------
+BOTTOM LINE
+--------------------------------
+The system is currently unsafe mainly due to:
+- booking permissions
+- state transitions
+- escrow handling
+- fake financial confirmations
+
+Not a UI problem.
+
+Fix order is:
+1. booking permissions
+2. fake checkout
+3. escrow safety
+4. availability + expiry
+5. invoice / privacy
+
+Do not proceed outside this order.
