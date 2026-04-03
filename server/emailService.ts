@@ -10,6 +10,7 @@ import { replaceTemplates, validateTemplate, type TemplateContext } from './lib/
 import { createMailService, isSendGridConfigured } from './lib/sendgrid';
 import { emailSpendGuard } from './services/EmailSpendGuard';
 import { wrapEmailShell, buildLegalFooter, SENDERS, DESIGN, COMPANY_TAX_ID, LEGAL_NAME_HE, LEGAL_NAME_EN } from './email/brand-identity';
+import { generateBookingConfirmationPDF } from './email/pdf/booking-confirmation-pdf';
 
 const mailService = createMailService();
 
@@ -3171,26 +3172,36 @@ export class EmailService {
   static async sendBookingConfirmation(params: {
     email: string;
     customerName: string;
+    customerPhone?: string;
+    petName?: string;
     bookingId: string;
+    bookingNumber?: string;
     invoiceNumber: string;
     platformName: string;
     serviceType: string;
     providerName: string;
+    providerAddress?: string;
     startDate: Date;
     endDate: Date;
     totalAmountCents: number;
+    vatCents?: number;
     loyaltyDiscountCents?: number;
+    paymentStatus?: string;
     escrowReleaseDate: Date;
     language?: 'he' | 'en';
   }): Promise<boolean> {
     const {
       email,
       customerName,
+      customerPhone,
+      petName,
       bookingId,
+      bookingNumber,
       invoiceNumber,
       platformName,
       serviceType,
       providerName,
+      providerAddress,
       startDate,
       endDate,
       totalAmountCents,
@@ -3198,6 +3209,9 @@ export class EmailService {
       escrowReleaseDate,
       language = 'he'
     } = params;
+    const vatCents   = params.vatCents ?? Math.round(totalAmountCents - totalAmountCents / 1.18);
+    const netCents   = totalAmountCents - vatCents;
+    const paymentStatus = params.paymentStatus ?? (language === 'he' ? 'התקבל — מוחזק בנאמנות' : 'Received — Held in Escrow');
 
     const isHebrew = language === 'he';
 
@@ -3220,133 +3234,239 @@ export class EmailService {
         return false;
       }
 
-      const formatDate = (d: Date) => new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Jerusalem'
-      }).format(d);
-
-      const totalFormatted = (totalAmountCents / 100).toFixed(2);
-      const discountFormatted = loyaltyDiscountCents > 0 ? (loyaltyDiscountCents / 100).toFixed(2) : null;
-
-      const t = {
-        subject: isHebrew ? `אישור הזמנה ${invoiceNumber} - ⁦Pet Wash™⁩` : `Booking Confirmation ${invoiceNumber} - ⁦Pet Wash™⁩`,
-        greeting: isHebrew ? `שלום ${customerName}` : `Hello ${customerName}`,
-        thankYou: isHebrew ? 'תודה על ההזמנה שלך!' : 'Thank you for your booking!',
-        bookingDetails: isHebrew ? 'פרטי ההזמנה' : 'Booking Details',
-        invoiceLabel: isHebrew ? 'מספר חשבונית' : 'Invoice Number',
-        bookingLabel: isHebrew ? 'מספר הזמנה' : 'Booking Number',
-        serviceLabel: isHebrew ? 'שירות' : 'Service',
-        platformLabel: isHebrew ? 'פלטפורמה' : 'Platform',
-        providerLabel: isHebrew ? 'נותן/ת השירות' : 'Service Provider',
-        dateLabel: isHebrew ? 'תאריך ושעה' : 'Date & Time',
-        totalLabel: isHebrew ? 'סה"כ לתשלום' : 'Total Amount',
-        loyaltyLabel: isHebrew ? 'הנחת נאמנות' : 'Loyalty Discount',
-        escrowNote: isHebrew 
-          ? `התשלום שלך מוחזק בנאמנות ויועבר לנותן השירות ב-${formatDate(escrowReleaseDate)} לאחר השלמת השירות בהצלחה.`
-          : `Your payment is held in escrow and will be released to the provider on ${formatDate(escrowReleaseDate)} after successful service completion.`,
-        contactUs: isHebrew ? 'לשאלות ובירורים' : 'Questions?',
-        contactEmail: 'Support@PetWash.co.il',
-        footer: isHebrew ? '⁦Pet Wash™⁩ - טיפוח יוקרתי לחיות מחמד' : '⁦Pet Wash™⁩ - Premium Pet Care'
-      };
-
-      const dateFormatted = new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
+      // ── Date / time helpers ──────────────────────────────────────────────
+      const fmtDate = (d: Date) => new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
         timeZone: 'Asia/Jerusalem'
-      }).format(startDate);
-      const timeFormatted = new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
+      }).format(d);
+      const fmtTime = (d: Date) => new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
         hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem'
-      }).format(startDate);
+      }).format(d);
 
-      const dir = isHebrew ? 'rtl' : 'ltr';
-      const alignEnd = isHebrew ? 'left' : 'right';
+      const dateStr    = fmtDate(startDate);
+      const timeStart  = fmtTime(startDate);
+      const timeEnd    = fmtTime(endDate);
+      const releaseStr = `${fmtDate(escrowReleaseDate)} ${isHebrew ? 'בשעה' : 'at'} ${fmtTime(escrowReleaseDate)}`;
 
-      const row = (label: string, value: string, color = '#1a1a1a', weight = '500') =>
-        `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:18px;direction:${dir};">` +
-        `<div style="color:#444;">${label}</div>` +
-        `<div style="font-weight:${weight};color:${color};text-align:${alignEnd};">${value}</div>` +
-        `</div>`;
+      const totalFmt = (totalAmountCents / 100).toFixed(2);
+      const netFmt   = (netCents / 100).toFixed(2);
+      const vatFmt   = (vatCents / 100).toFixed(2);
+      const discFmt  = loyaltyDiscountCents > 0 ? (loyaltyDiscountCents / 100).toFixed(2) : null;
 
-      const htmlContent = `
-<!DOCTYPE html>
+      const dir  = isHebrew ? 'rtl' : 'ltr';
+      const side = isHebrew ? 'right' : 'left';
+      const opp  = isHebrew ? 'left'  : 'right';
+
+      const subject = isHebrew
+        ? `✓ אישור הזמנה ${invoiceNumber} — Pet Wash™`
+        : `✓ Booking Confirmed ${invoiceNumber} — Pet Wash™`;
+
+      // ── Reusable row renderers ────────────────────────────────────────────
+      const detailRow = (label: string, value: string, accent = '#1a1a1a') =>
+        `<tr>
+          <td style="padding:11px 0 11px 0;color:#555;font-size:13px;border-bottom:1px solid #F0F0F0;white-space:nowrap;padding-${opp}:24px;">${label}</td>
+          <td style="padding:11px 0;font-size:13px;font-weight:600;color:${accent};border-bottom:1px solid #F0F0F0;text-align:${opp};">${value}</td>
+        </tr>`;
+
+      const finRow = (label: string, value: string, accent = '#1a1a1a') =>
+        `<tr>
+          <td style="padding:10px 0 10px 0;color:#555;font-size:13px;border-bottom:1px solid #F0F0F0;">${label}</td>
+          <td style="padding:10px 0;font-size:13px;font-weight:600;color:${accent};border-bottom:1px solid #F0F0F0;text-align:right;">${value}</td>
+        </tr>`;
+
+      // ── Google Calendar link ──────────────────────────────────────────────
+      const calText   = encodeURIComponent(`${isHebrew ? 'טיפול ב-Pet Wash™' : 'Pet Wash™ Service'} — ${providerName}`);
+      const calDetail = encodeURIComponent(`${isHebrew ? 'הזמנה' : 'Booking'}: ${bookingId} | ${isHebrew ? 'חשבונית' : 'Invoice'}: ${invoiceNumber}`);
+      const calStart  = startDate.toISOString().replace(/-|:|\.\d{3}/g, '');
+      const calEnd    = endDate.toISOString().replace(/-|:|\.\d{3}/g, '');
+      const calLink   = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${calText}&dates=${calStart}/${calEnd}&details=${calDetail}`;
+
+      // ── HTML Email ────────────────────────────────────────────────────────
+      const htmlContent = `<!DOCTYPE html>
 <html dir="${dir}" lang="${language}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${t.subject}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${subject}</title>
 </head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#F4F6F8;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;">
 
-  <!-- Top summer stripe -->
+  <!-- Top stripe -->
   <div style="background:linear-gradient(90deg,#FF6B6B,#00B140);height:5px;"></div>
 
-  <div style="max-width:520px;margin:0 auto;padding:48px 28px 56px;">
+  <div style="max-width:580px;margin:0 auto;padding:28px 16px 48px;">
 
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:44px;">
-      <span style="font-size:18px;font-weight:800;letter-spacing:5px;text-transform:uppercase;color:#FF6B6B;">PET WASH™</span>
+    <!-- Header card -->
+    <div style="background:#FF6B6B;border-radius:16px 16px 0 0;padding:32px 32px 28px;text-align:center;">
+      <div style="font-size:13px;font-weight:800;letter-spacing:5px;color:rgba(255,255,255,0.7);text-transform:uppercase;margin-bottom:10px;">PET WASH™</div>
+      <div style="display:inline-block;background:rgba(255,255,255,0.2);border-radius:100px;padding:6px 22px;margin-bottom:14px;">
+        <span style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:3px;text-transform:uppercase;">✓ ${isHebrew ? 'הזמנה אושרה' : 'BOOKING CONFIRMED'}</span>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.85);">${isHebrew ? 'שלום' : 'Hello'}, <strong style="color:#ffffff;">${customerName}</strong></div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:6px;">${dateStr} &nbsp;·&nbsp; ${timeStart}–${timeEnd}</div>
     </div>
 
-    <!-- Status badge -->
-    <div style="text-align:center;margin-bottom:8px;">
-      <span style="display:inline-block;background:#00C9A7;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:6px 24px;border-radius:100px;">
-        ${isHebrew ? '✓ אושר' : '✓ Confirmed'}
-      </span>
-    </div>
+    <!-- Main body card -->
+    <div style="background:#ffffff;border-radius:0 0 16px 16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
 
-    <!-- Title -->
-    <div style="text-align:center;font-size:30px;font-weight:300;color:#1a1a1a;margin:16px 0 8px;">${isHebrew ? 'הזמנה אושרה' : 'Booking Confirmed'}</div>
+      <!-- At-a-glance tiles -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+        <tr>
+          <td style="width:33%;padding:0 6px 0 0;vertical-align:top;">
+            <div style="background:#FFF5F5;border-radius:10px;padding:14px 12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">🐾</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">${isHebrew ? 'שירות' : 'Service'}</div>
+              <div style="font-size:12px;font-weight:700;color:#1a1a1a;margin-top:3px;line-height:1.3;">${serviceType}</div>
+            </div>
+          </td>
+          <td style="width:33%;padding:0 3px;vertical-align:top;">
+            <div style="background:#F0FDF6;border-radius:10px;padding:14px 12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">👤</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">${isHebrew ? 'נותן שירות' : 'Provider'}</div>
+              <div style="font-size:12px;font-weight:700;color:#1a1a1a;margin-top:3px;line-height:1.3;">${providerName}</div>
+            </div>
+          </td>
+          <td style="width:33%;padding:0 0 0 6px;vertical-align:top;">
+            <div style="background:#F5F0FF;border-radius:10px;padding:14px 12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">📋</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">${isHebrew ? 'חשבונית' : 'Invoice'}</div>
+              <div style="font-size:11px;font-weight:700;color:#1a1a1a;margin-top:3px;font-family:monospace;">${invoiceNumber}</div>
+            </div>
+          </td>
+        </tr>
+      </table>
 
-    <!-- Subtitle: name · date · time -->
-    <div style="text-align:center;font-size:14px;color:#333;margin-bottom:48px;">
-      ${customerName} &nbsp;·&nbsp; ${dateFormatted} &nbsp;·&nbsp; ${timeFormatted}
-    </div>
+      <!-- Section: Booking Details -->
+      <div style="font-size:10px;font-weight:700;color:#FF6B6B;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">${isHebrew ? 'פרטי ההזמנה' : 'BOOKING DETAILS'}</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        ${detailRow(isHebrew ? 'שם לקוח' : 'Customer Name', customerName)}
+        ${petName ? detailRow(isHebrew ? 'שם החיית מחמד' : 'Pet Name', petName, '#00B140') : ''}
+        ${detailRow(isHebrew ? 'נותן/ת השירות' : 'Service Provider', providerName)}
+        ${detailRow(isHebrew ? 'פלטפורמה' : 'Platform', platformName)}
+        ${detailRow(isHebrew ? 'סוג שירות' : 'Service Type', serviceType)}
+        ${detailRow(isHebrew ? 'תאריך' : 'Date', dateStr)}
+        ${detailRow(isHebrew ? 'שעות' : 'Time', `${timeStart} – ${timeEnd}`)}
+        ${providerAddress ? detailRow(isHebrew ? 'כתובת' : 'Location', providerAddress) : ''}
+        ${detailRow(isHebrew ? 'מספר הזמנה' : 'Booking ID', bookingId, '#555')}
+        ${detailRow(isHebrew ? 'מספר חשבונית' : 'Invoice No.', invoiceNumber, '#555')}
+        ${detailRow(isHebrew ? 'סטטוס תשלום' : 'Payment Status', paymentStatus, '#00B140')}
+      </table>
 
-    <!-- Divider -->
-    <div style="height:2px;background:linear-gradient(90deg,#FF6B6B,#00C9A7);border-radius:2px;margin-bottom:36px;"></div>
+      <!-- Section: Financial Summary -->
+      <div style="font-size:10px;font-weight:700;color:#FF6B6B;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">${isHebrew ? 'סיכום כספי' : 'FINANCIAL SUMMARY'}</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        ${finRow(isHebrew ? 'מחיר לפני מע"מ' : 'Service Fee (excl. VAT)', `₪${netFmt}`)}
+        ${finRow(isHebrew ? 'מע"מ 18%' : 'VAT 18% (Reg. 517145033)', `₪${vatFmt}`, '#FF6B6B')}
+        ${discFmt ? finRow(isHebrew ? 'הנחת נאמנות' : 'Loyalty Discount', `-₪${discFmt}`, '#00C9A7') : ''}
+      </table>
+      <!-- Total -->
+      <div style="background:#1a1a1a;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;direction:${dir};margin-bottom:28px;">
+        <span style="font-size:14px;font-weight:700;color:#ffffff;">${isHebrew ? 'סה"כ לתשלום' : 'Total Charged'}</span>
+        <span style="font-size:20px;font-weight:800;color:#FF6B6B;">₪${totalFmt}</span>
+      </div>
 
-    <!-- Detail rows -->
-    ${row(t.serviceLabel,  serviceType)}
-    ${row(t.providerLabel, providerName)}
-    ${row(t.platformLabel, platformName)}
-    ${row(t.bookingLabel,  bookingId)}
-    ${row(t.invoiceLabel,  invoiceNumber)}
-    ${discountFormatted ? row(t.loyaltyLabel, `-₪${discountFormatted}`, '#00C9A7') : ''}
+      <!-- Escrow Status -->
+      <div style="background:#F0FDF6;border-radius:10px;padding:18px 20px;border-${side}:4px solid #00B140;margin-bottom:28px;direction:${dir};">
+        <div style="font-size:10px;font-weight:700;color:#00B140;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">🔒 ${isHebrew ? 'סטטוס נאמנות' : 'ESCROW STATUS'}</div>
+        <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">${isHebrew ? 'התשלום שלך מוחזק בנאמנות' : 'Your payment is held in secure escrow'}</div>
+        <div style="font-size:12px;color:#444;line-height:1.6;">
+          ${isHebrew
+            ? `העברה לנותן השירות: <strong>${releaseStr}</strong> לאחר אישור הושלמה`
+            : `Release to provider: <strong>${releaseStr}</strong> upon service completion`}
+        </div>
+      </div>
 
-    <!-- Total -->
-    <div style="margin-top:32px;padding:20px 0;border-top:2px solid #FF6B6B;border-bottom:2px solid #FF6B6B;font-size:21px;font-weight:700;display:flex;justify-content:space-between;direction:${dir};color:#1a1a1a;">
-      <div>${t.totalLabel}</div>
-      <div style="color:#FF6B6B;">₪${totalFormatted}</div>
-    </div>
+      <!-- Action Links -->
+      <table width="100%" cellpadding="0" cellspacing="8" style="margin-bottom:28px;">
+        <tr>
+          <td style="width:50%;padding-${opp}:6px;">
+            <a href="https://petwash.co.il/bookings/${bookingId}" style="display:block;text-align:center;padding:12px;background:#FF6B6B;color:#ffffff;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;">
+              ${isHebrew ? '📋 צפה בהזמנה' : '📋 View Booking'}
+            </a>
+          </td>
+          <td style="width:50%;padding-${side}:6px;">
+            <a href="${calLink}" style="display:block;text-align:center;padding:12px;background:#F4F6F8;color:#1a1a1a;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;border:1px solid #E0E0E0;">
+              ${isHebrew ? '📅 הוסף ליומן' : '📅 Add to Calendar'}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:50%;padding-${opp}:6px;padding-top:8px;">
+            <a href="https://petwash.co.il/bookings/${bookingId}/modify" style="display:block;text-align:center;padding:12px;background:#F4F6F8;color:#1a1a1a;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;border:1px solid #E0E0E0;">
+              ${isHebrew ? '✏️ שנה הזמנה' : '✏️ Modify Booking'}
+            </a>
+          </td>
+          <td style="width:50%;padding-${side}:6px;padding-top:8px;">
+            <a href="mailto:Support@PetWash.co.il?subject=Booking%20${bookingId}" style="display:block;text-align:center;padding:12px;background:#F4F6F8;color:#1a1a1a;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;border:1px solid #E0E0E0;">
+              ${isHebrew ? '💬 תמיכה' : '💬 Support'}
+            </a>
+          </td>
+        </tr>
+      </table>
 
-    <!-- Trust / Escrow notice -->
-    <div style="text-align:center;font-size:13px;margin-top:44px;line-height:1.7;color:#333;background:#f7fffe;padding:18px 20px;border-radius:10px;border-left:4px solid #00C9A7;direction:${dir};">
-      ${t.escrowNote}
+      <!-- PDF note -->
+      <div style="background:#FFFBF0;border-radius:8px;padding:14px 16px;border-${side}:3px solid #F0A500;font-size:12px;color:#555;direction:${dir};margin-bottom:24px;">
+        📎 ${isHebrew
+          ? 'מצורף לאימייל זה: חשבונית מס/קבלה רשמית בפורמט PDF (כולל פירוט מע"מ, נאמנות, ועקבות ביקורת)'
+          : 'Attached to this email: Official Tax Invoice/Receipt as PDF (incl. VAT breakdown, escrow detail & audit trail)'}
+      </div>
+
+      <!-- Support / contact -->
+      <div style="text-align:center;font-size:12px;color:#555;line-height:2;">
+        <span style="color:#FF6B6B;font-weight:700;">Pet Wash™</span> &nbsp;·&nbsp; ${isHebrew ? 'מחלקת שירות ולקוחות' : 'Customer Service'}<br/>
+        <a href="mailto:Support@PetWash.co.il" style="color:#FF6B6B;font-weight:600;text-decoration:none;">Support@PetWash.co.il</a>
+        &nbsp;·&nbsp;
+        <a href="https://petwash.co.il/support" style="color:#333;text-decoration:none;">petwash.co.il/support</a>
+      </div>
     </div>
 
     <!-- Footer -->
-    <div style="text-align:center;font-size:12px;color:#333;margin-top:52px;line-height:2;">
-      <span style="color:#FF6B6B;font-weight:700;">Pet Wash™</span> &nbsp;·&nbsp; ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}<br/>
-      ${isHebrew ? 'אושר דיגיטלית' : 'Digitally Approved'} &nbsp;·&nbsp; ${new Date().getFullYear()}<br/>
-      <a href="mailto:${t.contactEmail}" style="color:#FF6B6B;font-weight:600;text-decoration:none;">${t.contactEmail}</a>
+    <div style="text-align:center;margin-top:24px;font-size:11px;color:#888;line-height:1.8;">
+      Pet Wash™ Ltd. &nbsp;·&nbsp; פט וואש בע"מ &nbsp;·&nbsp; ח.פ. 517145033<br/>
+      ${isHebrew ? 'מסמך זה הוא חשבונית מס רשמית. אושר דיגיטלית.' : 'This is an official tax document. Digitally approved.'} &nbsp;·&nbsp; ${new Date().getFullYear()}
     </div>
-
   </div>
 
-  <!-- Bottom summer stripe -->
+  <!-- Bottom stripe -->
   <div style="background:linear-gradient(90deg,#00C9A7,#FF6B6B);height:4px;"></div>
 
 </body>
 </html>`;
 
-      const msg = {
+      // ── Generate PDF attachment ───────────────────────────────────────────
+      let pdfBuffer: Buffer | null = null;
+      try {
+        pdfBuffer = await generateBookingConfirmationPDF({
+          invoiceNumber,
+          bookingId,
+          bookingNumber,
+          platformName,
+          serviceType,
+          providerName,
+          customerName,
+          customerEmail: email,
+          customerPhone,
+          petName,
+          startDate,
+          endDate,
+          location: providerAddress,
+          baseAmountCents: netCents,
+          vatCents,
+          loyaltyDiscountCents,
+          totalAmountCents,
+          paymentStatus,
+          escrowReleaseDate,
+          language
+        });
+      } catch (pdfErr: any) {
+        logger.warn('[BookingConfirmation] PDF generation failed — sending email without attachment', { error: pdfErr.message });
+      }
+
+      // ── Build SendGrid message ────────────────────────────────────────────
+      const msg: any = {
         to: email,
         from: { email: this.FROM_EMAIL, name: 'Pet Wash™' },
-        subject: t.subject,
+        subject,
         html: this.sanitizeEmailContent(htmlContent),
         headers: {
           'List-Unsubscribe': `<${this.UNSUBSCRIBE_URL}?token=${this.generateUnsubscribeToken(email)}>`,
@@ -3354,8 +3474,17 @@ export class EmailService {
         }
       };
 
+      if (pdfBuffer) {
+        msg.attachments = [{
+          content: pdfBuffer.toString('base64'),
+          filename: `PetWash-Invoice-${invoiceNumber}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }];
+      }
+
       await mailService.send(msg);
-      logger.info(`[BookingConfirmation] Sent to ${email}`, { invoiceNumber, bookingId });
+      logger.info(`[BookingConfirmation] Sent to ${email}`, { invoiceNumber, bookingId, hasPdf: !!pdfBuffer });
       return true;
 
     } catch (error) {

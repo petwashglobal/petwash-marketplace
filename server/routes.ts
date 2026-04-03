@@ -11864,22 +11864,35 @@ self.addEventListener('notificationclick', (event) => {
     const end    = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2h
     const escrow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
+    const tag = Date.now().toString(36).toUpperCase();
     const demoBookings = [
       {
-        bookingId: `DEMO-${Date.now().toString(36).toUpperCase()}-01`,
+        bookingId: `DEMO-${tag}-01`,
+        bookingNumber: `PW-2026-001`,
         invoiceNumber: `INV-2026-DEMO-001`,
         platformName: 'PetWash™',
         serviceType: 'עיצוב ושמפו מלא',
         providerName: 'רינת כהן — גרומינג VIP',
+        providerAddress: 'רחוב דיזנגוף 100, תל אביב',
+        customerPhone: '+972549833355',
+        petName: 'בוקסר',
         totalAmountCents: 32000,
+        loyaltyDiscountCents: 1500,
+        paymentStatus: 'התקבל — מוחזק בנאמנות',
       },
       {
-        bookingId: `DEMO-${Date.now().toString(36).toUpperCase()}-02`,
+        bookingId: `DEMO-${tag}-02`,
+        bookingNumber: `PW-2026-002`,
         invoiceNumber: `INV-2026-DEMO-002`,
         platformName: 'PetWash™',
         serviceType: 'טיפול ספא פרמיום',
         providerName: 'משה לוי — PetSpa Elite',
+        providerAddress: 'שדרות רוטשילד 45, תל אביב',
+        customerPhone: '+972549833355',
+        petName: 'לונה',
         totalAmountCents: 54900,
+        loyaltyDiscountCents: 0,
+        paymentStatus: 'Received — Held in Escrow',
       },
     ];
 
@@ -11894,14 +11907,20 @@ self.addEventListener('notificationclick', (event) => {
       const emailOk = await EmailService.sendBookingConfirmation({
         email: ADMIN_EMAIL,
         customerName: ADMIN_NAME,
+        customerPhone: b.customerPhone,
+        petName: b.petName,
         bookingId: b.bookingId,
+        bookingNumber: b.bookingNumber,
         invoiceNumber: b.invoiceNumber,
         platformName: b.platformName,
         serviceType: b.serviceType,
         providerName: b.providerName,
+        providerAddress: b.providerAddress,
         startDate: now,
         endDate: end,
         totalAmountCents: b.totalAmountCents,
+        loyaltyDiscountCents: b.loyaltyDiscountCents,
+        paymentStatus: b.paymentStatus,
         escrowReleaseDate: escrow,
         language: 'he',
       });

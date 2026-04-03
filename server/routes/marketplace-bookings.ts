@@ -423,20 +423,30 @@ router.post('/:quoteId/checkout', async (req, res) => {
     // Send booking confirmation email (async, don't block response)
     if (customer?.email) {
       const customerName = customer.displayName || customer.firstName || customer.email.split('@')[0];
+      const customerPhone = (customer as any).phone || (customer as any).phoneNumber || undefined;
+      const vatCentsCalc = quote.vatCents
+        ? (quote.vatCents as number)
+        : Math.round((quote.totalCents || 0) - (quote.totalCents || 0) / 1.18);
       EmailService.sendBookingConfirmation({
         email: customer.email,
         customerName,
+        customerPhone,
+        petName: (quote as any).petName || (slot as any).petName || undefined,
         bookingId,
+        bookingNumber,
         invoiceNumber,
         platformName,
         serviceType: quote.serviceType || 'Standard Service',
         providerName,
+        providerAddress: (sitterProfile as any)?.address || (quote as any).address || undefined,
         startDate: new Date(slot.startTime!),
         endDate: new Date(slot.endTime!),
         totalAmountCents: quote.totalCents || 0,
+        vatCents: vatCentsCalc,
         loyaltyDiscountCents: quote.loyaltyDiscountCents || 0,
+        paymentStatus: 'התקבל — מוחזק בנאמנות',
         escrowReleaseDate: releaseEligibleAt,
-        language: 'he' // Default to Hebrew for Israeli market
+        language: 'he'
       }).catch(err => {
         logger.error('[MarketplaceBookings] Failed to send confirmation email', { error: err.message });
       });
