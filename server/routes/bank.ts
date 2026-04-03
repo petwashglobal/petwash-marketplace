@@ -23,7 +23,22 @@ interface AuthenticatedUser {
   email: string;
 }
 
-// RBAC: Only CEO and CFO can access bank endpoints
+// P0-FIX: Financial management email list must not be hardcoded in source.
+// Set FINANCE_AUTHORIZED_EMAILS as comma-separated env var.
+// Example: FINANCE_AUTHORIZED_EMAILS=ceo@company.com,cfo@company.com
+function getFinanceAuthorizedEmails(): string[] {
+  const raw = process.env.FINANCE_AUTHORIZED_EMAILS;
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: FINANCE_AUTHORIZED_EMAILS environment variable is required in production');
+    }
+    logger.warn('[Bank API] FINANCE_AUTHORIZED_EMAILS not set — all bank endpoint access will be denied');
+    return [];
+  }
+  return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+}
+
+// RBAC: Only authorized finance personnel can access bank endpoints
 const financialAuth = async (req: Request, res: Response, next: Function) => {
   try {
     const user = (req as Request & { user?: AuthenticatedUser }).user;
@@ -32,13 +47,7 @@ const financialAuth = async (req: Request, res: Response, next: Function) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    // STRICTLY CEO and CFO corporate emails only
-    const financialManagement = [
-      'nir.h@petwash.co.il',      // CEO
-      'ido.s@petwash.co.il'        // CFO/National Operations Director
-    ];
-    
-    if (!financialManagement.includes(user.email?.toLowerCase())) {
+    if (!getFinanceAuthorizedEmails().includes(user.email?.toLowerCase())) {
       logger.warn("[Bank API] Unauthorized access attempt", { 
         email: user.email,
         ip: req.ip,

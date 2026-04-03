@@ -91,10 +91,12 @@ router.post('/send', async (req: Request, res: Response) => {
 
     // If sending to multiple users, require admin role
     if (body.userIds && body.userIds.length > 1) {
+      // P0-FIX: Admin email list must come from SUPER_ADMIN_EMAILS env var, not source code.
       const senderEmail = (req as any).firebaseUser?.email;
-      const adminEmails = ['nirhadad1@gmail.com', 'admin@petwash.co.il'];
+      const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
+        .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
       
-      if (!adminEmails.includes(senderEmail || '')) {
+      if (!adminEmails.includes((senderEmail || '').toLowerCase())) {
         return res.status(403).json({ error: 'Admin access required for broadcast notifications' });
       }
     }
