@@ -64,12 +64,24 @@ export interface NayaxWebhookPayload {
   timestamp: string;
 }
 
+function requireNayaxEnvSecret(name: string): string {
+  const val = process.env[name];
+  if (!val) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`[NayaxPaymentService] FATAL: required env var ${name} is not set in production`);
+    }
+    logger.warn(`[NayaxPaymentService] ${name} not set — service will fail if called in non-production environment`);
+    return `__MISSING_${name}__`;
+  }
+  return val;
+}
+
 export class NayaxPaymentService {
   private static readonly NAYAX_API_BASE = process.env.NAYAX_BASE_URL || 'https://sandbox.nayax.co.il/api/v1';
-  private static readonly MERCHANT_ID = process.env.NAYAX_MERCHANT_ID || 'PETWASH_MERCHANT';
-  private static readonly API_KEY = process.env.NAYAX_API_KEY || 'test_api_key';
-  private static readonly NAYAX_SECRET = process.env.NAYAX_SECRET || 'test_secret';
-  private static readonly WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || 'webhook_secret';
+  private static readonly MERCHANT_ID = requireNayaxEnvSecret('NAYAX_MERCHANT_ID');
+  private static readonly API_KEY = requireNayaxEnvSecret('NAYAX_API_KEY');
+  private static readonly NAYAX_SECRET = requireNayaxEnvSecret('NAYAX_SECRET');
+  private static readonly WEBHOOK_SECRET = requireNayaxEnvSecret('NAYAX_WEBHOOK_SECRET');
 
   /**
    * Initiate payment with Nayax Israel - creates pending transaction and returns payment URL

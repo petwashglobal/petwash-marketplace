@@ -153,13 +153,24 @@ export function createIPAllowlist(
       // Extract client IP (handles proxy scenarios)
       const rawIP = extractClientIP(req);
       
-      // Development mode bypass
-      if (process.env.NODE_ENV === 'development' || allowedCIDRs.length === 0) {
-        logger.warn(`[IPAllowlist:${providerName}] IP allowlist not configured - allowing all IPs (DEV MODE)`, {
+      // Development mode bypass (only when explicitly in development AND env var is unset)
+      if (process.env.NODE_ENV === 'development' && allowedCIDRs.length === 0) {
+        logger.warn(`[IPAllowlist:${providerName}] IP allowlist not configured - allowing all IPs (DEV MODE ONLY)`, {
           ip: rawIP,
           envVar: envVarName,
         });
         return next();
+      }
+
+      // PRODUCTION: fail-closed when IP allowlist env var is not set
+      if (allowedCIDRs.length === 0) {
+        logger.error(`[IPAllowlist:${providerName}] FATAL: ${envVarName} not set in production - blocking all requests`, {
+          ip: rawIP,
+        });
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Webhook IP allowlist not configured',
+        });
       }
       
       // Check if IP is allowed

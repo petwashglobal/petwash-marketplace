@@ -4,6 +4,42 @@ import { requireAuth } from "../customAuth";
 
 const router = express.Router();
 
+// ─── Safe public field allowlists ─────────────────────────────────────────────
+// SECURITY: Never expose ...doc.data() on public endpoints.
+// These allowlists define exactly which fields are safe for unauthenticated callers.
+
+const SITTER_PUBLIC_FIELDS = new Set([
+  'displayName', 'bio', 'location', 'city', 'areas', 'profilePhoto',
+  'averageRating', 'reviewCount', 'dailyRate', 'nightlyRate', 'active',
+  'specializations', 'services', 'yearsExperience', 'languages',
+  'hasOwnPets', 'petTypes', 'maxPets', 'homeType', 'gardenAccess',
+  'acceptsUnsocialized', 'isVerified', 'badgeLevel', 'onlineNow', 'responseTime',
+]);
+
+const WALKER_PUBLIC_FIELDS = new Set([
+  'displayName', 'bio', 'location', 'city', 'areas', 'profilePhoto',
+  'averageRating', 'reviewCount', 'hourlyRate', 'active',
+  'specializations', 'services', 'yearsExperience', 'languages',
+  'maxDogs', 'dogSizes', 'offLeashCapable', 'isVerified', 'badgeLevel',
+  'onlineNow', 'responseTime', 'petTypes',
+]);
+
+const DRIVER_PUBLIC_FIELDS = new Set([
+  'displayName', 'bio', 'location', 'city', 'areas', 'profilePhoto',
+  'averageRating', 'reviewCount', 'active', 'vehicleType', 'vehicleMake',
+  'vehicleModel', 'petFriendlyVehicle', 'services', 'yearsExperience',
+  'languages', 'isVerified', 'badgeLevel', 'onlineNow', 'responseTime',
+  'currentlyAvailable', 'maxAnimals', 'animalTypes',
+]);
+
+function pickPublic(data: Record<string, unknown>, allowedFields: Set<string>, id: string): Record<string, unknown> {
+  const safe: Record<string, unknown> = { id };
+  for (const field of allowedFields) {
+    if (field in data) safe[field] = data[field];
+  }
+  return safe;
+}
+
 // Get all sitters (Sitter Suite)
 router.get("/sitters", async (req, res) => {
   try {
@@ -20,7 +56,7 @@ router.get("/sitters", async (req, res) => {
     }
 
     const snapshot = await query.get();
-    const sitters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const sitters = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, SITTER_PUBLIC_FIELDS, doc.id));
 
     res.json({ sitters });
   } catch (error: any) {
@@ -39,7 +75,7 @@ router.get("/sitters/:sitterId", async (req, res) => {
       return res.status(404).json({ error: "Sitter not found" });
     }
 
-    res.json({ sitter: { id: doc.id, ...doc.data() } });
+    res.json({ sitter: pickPublic(doc.data() as Record<string, unknown>, SITTER_PUBLIC_FIELDS, doc.id) });
   } catch (error: any) {
     console.error("[Providers] Error fetching sitter:", error);
     res.status(500).json({ error: error.message });
@@ -81,7 +117,7 @@ router.get("/walkers", async (req, res) => {
     }
 
     const snapshot = await query.get();
-    const walkers = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const walkers = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, WALKER_PUBLIC_FIELDS, doc.id));
 
     res.json({ walkers });
   } catch (error: any) {
@@ -100,7 +136,7 @@ router.get("/walkers/:walkerId", async (req, res) => {
       return res.status(404).json({ error: "Walker not found" });
     }
 
-    res.json({ walker: { id: doc.id, ...doc.data() } });
+    res.json({ walker: pickPublic(doc.data() as Record<string, unknown>, WALKER_PUBLIC_FIELDS, doc.id) });
   } catch (error: any) {
     console.error("[Providers] Error fetching walker:", error);
     res.status(500).json({ error: error.message });
@@ -146,7 +182,7 @@ router.get("/drivers", async (req, res) => {
     }
 
     const snapshot = await query.get();
-    const drivers = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const drivers = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, DRIVER_PUBLIC_FIELDS, doc.id));
 
     res.json({ drivers });
   } catch (error: any) {
@@ -165,7 +201,7 @@ router.get("/drivers/:driverId", async (req, res) => {
       return res.status(404).json({ error: "Driver not found" });
     }
 
-    res.json({ driver: { id: doc.id, ...doc.data() } });
+    res.json({ driver: pickPublic(doc.data() as Record<string, unknown>, DRIVER_PUBLIC_FIELDS, doc.id) });
   } catch (error: any) {
     console.error("[Providers] Error fetching driver:", error);
     res.status(500).json({ error: error.message });
@@ -180,7 +216,6 @@ router.post("/drivers/profile", requireAuth, async (req, res) => {
       ...req.body,
       userId,
       active: true,
-      currentlyAvailable: false,
       updatedAt: new Date(),
     };
 
@@ -188,25 +223,6 @@ router.post("/drivers/profile", requireAuth, async (req, res) => {
     res.json({ success: true, profileId: userId });
   } catch (error: any) {
     console.error("[Providers] Error saving driver profile:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update driver availability (real-time)
-router.post("/drivers/availability", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user!.uid;
-    const { available, currentLocation } = req.body;
-
-    await db.collection("driver_profiles").doc(userId).update({
-      currentlyAvailable: available,
-      currentLocation,
-      lastActive: new Date(),
-    });
-
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error("[Providers] Error updating availability:", error);
     res.status(500).json({ error: error.message });
   }
 });

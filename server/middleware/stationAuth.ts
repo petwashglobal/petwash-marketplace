@@ -21,6 +21,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { isSuperAdmin } from './rbac';
 import { logger } from '../lib/logger';
+import { isValidAdminSecret } from '../lib/admin-secret';
 
 export type StationRole = 'worker' | 'manager' | 'owner';
 
@@ -31,8 +32,7 @@ const ROLE_RANK: Record<StationRole, number> = {
 };
 
 function isAdminSecret(req: Request): boolean {
-  const secret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-  return !!(secret && req.headers['x-admin-secret'] === secret);
+  return isValidAdminSecret(req);
 }
 
 async function resolveUid(req: Request): Promise<string | null> {

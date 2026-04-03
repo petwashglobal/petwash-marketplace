@@ -108,6 +108,7 @@ import {
 import { dispatchAcademySms } from '../services/academySmsHelper';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
+import { isValidAdminSecret } from '../lib/admin-secret';
 
 const router = Router();
 
@@ -2060,9 +2061,7 @@ const revokePassSchema = z.object({
 
 router.post('/revoke-pass', async (req: Request, res: Response) => {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2113,9 +2112,7 @@ const adminCreditSchema = z.object({
 
 router.post('/admin/manual-credit', async (req: Request, res: Response) => {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2166,9 +2163,7 @@ const adminReissueSchema = z.object({
 
 router.post('/admin/reissue', async (req: Request, res: Response) => {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2222,9 +2217,7 @@ router.post('/admin/reissue', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────
 router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
   try {
-    const adminSecret = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    const provided    = req.headers['x-admin-secret'];
-    if (!adminSecret || provided !== adminSecret) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Forbidden' });
     }
 
@@ -2334,9 +2327,8 @@ router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/admin/send-demo-receipts', async (req: Request, res: Response) => {
   try {
-    const adminSecret = process.env.ADMIN_SECRET || process.env.COOKIE_SECRET;
-    const provided    = req.headers['x-admin-secret'];
-    if (!adminSecret || provided !== adminSecret) {
+    const { isValidAdminSecret: _isValidAdmin } = await import('../lib/admin-secret');
+    if (!_isValidAdmin(req)) {
       return res.status(403).json({ ok: false, error: 'Forbidden' });
     }
 

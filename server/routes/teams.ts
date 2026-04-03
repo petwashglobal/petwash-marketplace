@@ -17,9 +17,9 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { isValidAdminSecret } from '../lib/admin-secret';
 
 const router = Router();
-const ADMIN_SEC = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
 
 type CallerRole = 'admin' | 'franchise_owner' | 'station_operator';
 
@@ -35,7 +35,7 @@ const toStr = (v: unknown): string => v != null ? String(v) : '';
 
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+    if (isValidAdminSecret(req)) {
       (req as any).ctx = { role: 'admin', uid: null } as CallerCtx;
       return next();
     }

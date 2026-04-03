@@ -1,0 +1,101 @@
+We now have multiple independent audits (GitHub agent + security review).
+
+This is no longer a bug list.  
+This is a system integrity failure in marketplace + payments.
+
+Do NOT continue feature work.
+
+You must fix these in this exact order.
+
+P0 - STOP EVERYTHING
+
+1. Lock booking ownership everywhere
+- No endpoint may act on bookingId without verifying:
+  booking.customerId === userId OR booking.providerId === userId OR admin
+- Applies to:
+  /transition
+  /complete
+  /confirm
+  /cancel
+
+2. Remove client-controlled role completely
+- Never accept role from request body or query
+- Derive role from booking record only
+
+3. Block direct transition to completed
+- completed must be system-only state
+- Remove it from allowed transitions of:
+  owner_completion_review
+  provider_completion_review
+
+4. Fix double-completion exploit
+- owner review must be created ONLY by customer
+- provider review must be created ONLY by provider
+- enforce different userIds
+
+5. Disable fake checkout immediately
+- /api/express-checkout must return 503
+- no success response without real payment
+
+6. Protect invoices and contractor endpoints
+- Add requireAuth + ownership check
+- No public access to invoices or contractor data
+
+7. Fix provider availability permissions
+- Only provider owner can update slots
+
+P1 - THIS WEEK
+
+8. Fix slot release on payment failure
+- payment.failed / expired / cancelled must release slot
+
+9. Add booking expiry
+- marketplace bookings must auto-expire
+- release slot + refund if needed
+
+10. Unify escrow logic
+- document which system is active
+- prevent dual release
+- long-term: move to single escrow system
+
+11. Update escrow state on payment success
+- pending_payment → held on webhook success
+
+12. Fix dispute flow
+- resolving dispute must:
+  - release OR refund escrow
+  - not just update status
+
+P2
+
+13. Unify booking status systems
+- one state machine only
+
+14. Fix invoice compliance
+- sequential numbering
+- clear commission vs full amount
+
+15. Remove public provider data exposure
+- no ...doc.data()
+
+16. Fix K9000
+- no payment success without machine activation
+
+Delivery format
+
+For every fix:
+- file
+- exact change
+- before vs after
+- proof (logs or test)
+- whether production data is affected
+
+Final note
+
+Right now the system allows:
+- unauthorized booking manipulation
+- fake payments
+- escrow misuse
+- privacy violations
+
+This must be stabilized before any further development.

@@ -101,10 +101,13 @@ const stationRedeemSchema = z.object({
   notes: z.string().optional(),
 });
 
+// NOTE: amountIls is intentionally EXCLUDED from webRedeemSchema.
+// For web/app redemptions, the server derives the amount from the voucher's
+// stored remaining balance — the client never controls the redemption value.
+
 const webRedeemSchema = z.object({
   voucherId: z.string().optional(),
   serialNumber: z.string().optional(),
-  amountIls: z.number().positive().optional(),
   washes: z.number().int().positive().optional(),
   externalRef: z.string().optional(), // booking id / order id
   notes: z.string().optional(),
@@ -232,21 +235,37 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
     // Resolve channel: APP or WEB based on User-Agent / header
     const channel: Channel = req.headers["x-client-platform"] === "app" ? "APP" : "WEB";
 
-    // Ensure caller owns the voucher (or is admin)
+    // Ensure caller owns the voucher (or is admin) and derive server-side redemption amount
     const voucherId = req.body.voucherId;
     const serialNumber = req.body.serialNumber;
     let ownerId: string | null = null;
+    let serverDerivedAmountIls: number | undefined;
 
     if (voucherId) {
       const [v] = await db.select().from(unifiedVouchers).where(eq(unifiedVouchers.id, voucherId)).limit(1);
-      if (v) ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+      if (v) {
+        ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+        // SECURITY: derive amount from server-side remaining balance, not client input
+        if (v.valueRemaining != null) {
+          serverDerivedAmountIls = parseFloat(v.valueRemaining as string);
+        }
+      }
     } else if (serialNumber) {
       const [v] = await db.select().from(unifiedVouchers).where(eq(unifiedVouchers.serialNumber, serialNumber)).limit(1);
-      if (v) ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+      if (v) {
+        ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+        if (v.valueRemaining != null) {
+          serverDerivedAmountIls = parseFloat(v.valueRemaining as string);
+        }
+      }
     }
 
     if (ownerId && ownerId !== req.user?.uid && !isAdmin(req)) {
       return res.status(403).json({ success: false, error: "Not authorized", traceId: tid });
+    }
+
+    if (serverDerivedAmountIls !== undefined && serverDerivedAmountIls <= 0) {
+      return res.status(400).json({ success: false, error: "No remaining balance on this voucher", traceId: tid });
     }
 
     const result = await redeemVoucher({
@@ -254,7 +273,8 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
       serialNumber: req.body.serialNumber,
       qrToken: req.body.qrToken,
       channel,
-      amountIls: req.body.amountIls,
+      // SECURITY: amount derived from server-side voucher balance — client value ignored
+      amountIls: serverDerivedAmountIls,
       washes: req.body.washes,
       actorUserId: req.user?.uid,
       actorRole: "customer",

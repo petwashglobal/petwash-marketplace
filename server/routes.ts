@@ -502,10 +502,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     }
 
-    // 🔑 Admin secret bypass — allows server-side and automation access to internal routes
-    const adminSecretHeader = req.headers['x-admin-secret'];
-    const CONFIGURED_ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-    if (CONFIGURED_ADMIN_SECRET && adminSecretHeader === CONFIGURED_ADMIN_SECRET) {
+    // 🔑 Admin secret bypass — allows server-side and automation access to internal routes (timing-safe)
+    if (timingSafeAdminSecretMatch(req)) {
       return next();
     }
 
@@ -11822,8 +11820,7 @@ self.addEventListener('notificationclick', (event) => {
   // confirmations to the admin. Used for legal demo / investor walk-throughs.
   // Auth: x-admin-secret header (ADMIN_SECRET env var).
   app.post('/api/internal/demo-booking-notify', async (req: any, res) => {
-    const secret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-    if (!secret || req.headers['x-admin-secret'] !== secret) {
+    if (!timingSafeAdminSecretMatch(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const ADMIN_EMAIL  = 'nirhadad1@gmail.com';
