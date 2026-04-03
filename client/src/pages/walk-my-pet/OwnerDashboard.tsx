@@ -1,107 +1,82 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, MapPin, Clock, DollarSign, Star, Bell, MessageCircle, TrendingUp, ChevronRight, Navigation } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+
+interface WalkBooking {
+  id: number;
+  bookingId: string;
+  ownerId: string;
+  walkerId: string;
+  status: string;
+  scheduledDate: string;
+  scheduledStartTime: string;
+  durationMinutes: number;
+  totalCost: string;
+  currency: string;
+  petName: string | null;
+  petBreed: string | null;
+  pickupAddress: string;
+  actualStartTime: string | null;
+  actualEndTime: string | null;
+  actualDurationMinutes: number | null;
+  totalDistanceMeters: number | null;
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('he-IL', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; className: string }> = {
+    confirmed: { label: 'מאושר / Confirmed', className: 'bg-green-500 text-white' },
+    pending_provider: { label: 'ממתין / Pending', className: 'bg-amber-500 text-white' },
+    in_progress: { label: 'בטיול / In Progress', className: 'bg-blue-500 text-white animate-pulse' },
+    completed: { label: 'הושלם / Completed', className: 'bg-gray-400 text-white' },
+    cancelled: { label: 'בוטל / Cancelled', className: 'bg-red-500 text-white' },
+  };
+  const s = map[status] || { label: status, className: 'bg-slate-300 text-slate-800' };
+  return <Badge className={s.className}>{s.label}</Badge>;
+}
 
 export default function WalkMyPetOwnerDashboard() {
-  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("upcoming");
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
-  // Fetch real bookings from API
-  const { data: bookingsData } = useQuery({
-    queryKey: ['/api/bookings/my-bookings', { platform: 'walk-my-pet' }],
+  const { data: walksData, isLoading } = useQuery<{ success: boolean; bookings: WalkBooking[] }>({
+    queryKey: ['/api/walk-my-pet/users', user?.id, 'walks'],
+    queryFn: () =>
+      fetch(`/api/walk-my-pet/users/${user?.id}/walks`, { credentials: 'include' })
+        .then(r => r.json()),
+    enabled: !!user?.id,
   });
 
-  const allWalks = bookingsData?.bookings || [];
-  const upcomingWalks = allWalks.length > 0 ? allWalks.filter((w: any) => w.status === 'confirmed' && new Date(w.serviceDate) > new Date()) : [];
-  const pastWalks = allWalks.length > 0 ? allWalks.filter((w: any) => w.status === 'completed') : [];
-  
-  // Mock active walk for now
-  const activeWalkMock = null;
+  const allWalks: WalkBooking[] = walksData?.bookings || [];
 
-  // Fallback mock data for development
-  const upcomingWalksMock = [
-    {
-      id: "1",
-      walkerName: "Sarah Cohen",
-      walkerPhoto: "https://i.pravatar.cc/150?img=1",
-      rating: 4.9,
-      date: "2025-11-08",
-      time: "09:00",
-      duration: 30,
-      price: 45,
-      status: "confirmed",
-      petName: "Max",
-      isRecurring: true,
-      recurringDays: ["Mon", "Wed", "Fri"]
-    },
-    {
-      id: "2",
-      walkerName: "David Levi",
-      walkerPhoto: "https://i.pravatar.cc/150?img=2",
-      rating: 5.0,
-      date: "2025-11-08",
-      time: "16:00",
-      duration: 45,
-      price: 60,
-      status: "walker_en_route",
-      petName: "Luna"
-    }
-  ];
+  const activeWalk = allWalks.find(w => w.status === 'in_progress');
+  const upcomingWalks = allWalks.filter(w =>
+    (w.status === 'confirmed' || w.status === 'pending_provider') &&
+    new Date(w.scheduledDate) >= new Date(new Date().toDateString())
+  );
+  const pastWalks = allWalks.filter(w => w.status === 'completed');
 
-  const activeWalk = {
-    id: "active-1",
-    walkerName: "Sarah Cohen",
-    walkerPhoto: "https://i.pravatar.cc/150?img=1",
-    petName: "Max",
-    startTime: "09:00",
-    currentLocation: { lat: 32.0853, lng: 34.7818 },
-    distance: "1.2 km",
-    timeElapsed: "12 min"
-  };
+  // Derived stats from real data
+  const totalWalks = allWalks.filter(w => w.status === 'completed').length;
+  const totalSpent = allWalks
+    .filter(w => w.status === 'completed' || w.status === 'in_progress')
+    .reduce((sum, w) => sum + parseFloat(w.totalCost || '0'), 0);
 
-  const pastWalksMock = [
-    {
-      id: "past-1",
-      walkerName: "Sarah Cohen",
-      walkerPhoto: "https://i.pravatar.cc/150?img=1",
-      date: "2025-11-06",
-      time: "09:00",
-      duration: 30,
-      price: 45,
-      petName: "Max",
-      rating: 5,
-      photo: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=300&h=200&fit=crop"
-    },
-    {
-      id: "past-2",
-      walkerName: "David Levi",
-      walkerPhoto: "https://i.pravatar.cc/150?img=2",
-      date: "2025-11-05",
-      time: "16:00",
-      duration: 45,
-      price: 60,
-      petName: "Luna",
-      rating: 5,
-      photo: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=300&h=200&fit=crop"
-    }
-  ];
-
-  const stats = {
-    totalWalks: 47,
-    totalSpent: 2145,
-    favoriteWalker: "Sarah Cohen",
-    avgRating: 4.9
-  };
+  const cardStyle = "bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all";
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Premium White Neomorphic Header */}
+      {/* Header */}
       <div className="relative bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
@@ -109,10 +84,10 @@ export default function WalkMyPetOwnerDashboard() {
               <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent" data-testid="page-title">
                 🐾 Walk My Pet™
               </h1>
-              <p className="text-slate-600 text-lg" data-testid="page-subtitle">Owner Dashboard</p>
+              <p className="text-slate-600 text-lg" data-testid="page-subtitle">לוח בעלי כלבים / Owner Dashboard</p>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="gap-2 bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-slate-200"
               data-testid="button-notifications"
             >
@@ -121,32 +96,36 @@ export default function WalkMyPetOwnerDashboard() {
             </Button>
           </div>
 
-          {/* Quick Stats - Pure White Neomorphism */}
+          {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-total-walks">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Total Walks</div>
+            <Card className={cardStyle} data-testid="stat-total-walks">
+              <div className="text-slate-500 text-sm mb-2 font-medium">Total Walks / טיולים</div>
               <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
-                {stats.totalWalks}
+                {isLoading ? '—' : totalWalks}
               </div>
             </Card>
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-total-spent">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Total Spent</div>
+            <Card className={cardStyle} data-testid="stat-total-spent">
+              <div className="text-slate-500 text-sm mb-2 font-medium">Total Spent / הוצאות</div>
               <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
-                ₪{stats.totalSpent}
+                {isLoading ? '—' : `₪${totalSpent.toFixed(0)}`}
               </div>
             </Card>
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-avg-rating">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Avg Rating</div>
-              <div className="text-4xl font-bold flex items-center gap-1">
-                <span className="bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
-                  {stats.avgRating}
-                </span>
-                <Star className="h-6 w-6 fill-amber-400 text-amber-400" />
+            <Card className={cardStyle} data-testid="stat-upcoming">
+              <div className="text-slate-500 text-sm mb-2 font-medium">Upcoming / קרוב</div>
+              <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
+                {isLoading ? '—' : upcomingWalks.length}
               </div>
             </Card>
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-favorite-walker">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Favorite Walker</div>
-              <div className="text-lg font-semibold text-slate-800 truncate">{stats.favoriteWalker}</div>
+            <Card className={cardStyle} data-testid="stat-active">
+              <div className="text-slate-500 text-sm mb-2 font-medium">Status / סטטוס</div>
+              <div className="text-lg font-semibold text-slate-800">
+                {activeWalk ? (
+                  <span className="flex items-center gap-2 text-blue-600">
+                    <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    בטיול / In Walk
+                  </span>
+                ) : '—'}
+              </div>
             </Card>
           </div>
         </div>
@@ -154,214 +133,235 @@ export default function WalkMyPetOwnerDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Active Walk Alert - White Neomorphic with Gold Accent */}
+
+        {/* Active Walk Alert */}
         {activeWalk && (
           <Card className="mb-8 p-6 bg-white shadow-[8px_8px_24px_rgba(163,177,198,0.2),-4px_-4px_16px_rgba(255,255,255,0.9)] border-l-4 border-amber-500" data-testid="card-active-walk">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Avatar className="h-12 w-12 border-2 border-amber-400 shadow-lg" data-testid="avatar-walker">
-                    <AvatarImage src={activeWalk.walkerPhoto} />
-                    <AvatarFallback>SC</AvatarFallback>
-                  </Avatar>
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-white font-bold text-lg">
+                    🐕
+                  </div>
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900" data-testid="text-active-walk-title">
-                    {activeWalk.petName}'s Walk is Live!
+                    {activeWalk.petName || 'הכלב'} Walk is Live! / הטיול ברשת!
                   </div>
-                  <div className="text-sm text-slate-600" data-testid="text-walker-name">
-                    with {activeWalk.walkerName}
+                  <div className="text-sm text-slate-600">
+                    {activeWalk.pickupAddress}
                   </div>
                 </div>
               </div>
-              <Button 
+              <Button
                 className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg hover:shadow-xl"
                 data-testid="button-track-live"
+                onClick={() => setLocation(`/walks/track/${activeWalk.bookingId}`)}
               >
                 <Navigation className="h-4 w-4" />
-                Track Live
+                Track Live / עקוב
               </Button>
             </div>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div data-testid="stat-time-elapsed">
-                <div className="text-2xl font-bold text-slate-900">{activeWalk.timeElapsed}</div>
-                <div className="text-sm text-slate-500">Elapsed</div>
-              </div>
-              <div data-testid="stat-distance">
-                <div className="text-2xl font-bold text-slate-900">{activeWalk.distance}</div>
-                <div className="text-sm text-slate-500">Distance</div>
-              </div>
-              <div data-testid="stat-gps-status">
-                <div className="text-2xl font-bold flex items-center justify-center gap-1 text-slate-900">
-                  <MapPin className="h-5 w-5 text-amber-500" /> Live
+            {activeWalk.actualStartTime && (
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div data-testid="stat-start-time">
+                  <div className="text-2xl font-bold text-slate-900">
+                    {new Date(activeWalk.actualStartTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div className="text-sm text-slate-500">Start Time</div>
                 </div>
-                <div className="text-sm text-slate-500">GPS Tracking</div>
+                <div data-testid="stat-distance">
+                  <div className="text-2xl font-bold text-slate-900">
+                    {activeWalk.totalDistanceMeters ? `${(activeWalk.totalDistanceMeters / 1000).toFixed(1)} km` : '—'}
+                  </div>
+                  <div className="text-sm text-slate-500">Distance</div>
+                </div>
               </div>
-            </div>
+            )}
           </Card>
         )}
 
-        {/* Tabs - White Neomorphism */}
+        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 lg:w-auto bg-white shadow-[inset_2px_2px_5px_rgba(163,177,198,0.2),inset_-2px_-2px_5px_rgba(255,255,255,0.9)] p-1" data-testid="tabs-walk-sections">
-            <TabsTrigger value="upcoming" data-testid="tab-upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="past" data-testid="tab-past">History</TabsTrigger>
-            <TabsTrigger value="recurring" data-testid="tab-recurring">Recurring</TabsTrigger>
+            <TabsTrigger value="upcoming" data-testid="tab-upcoming">
+              עתידי / Upcoming {upcomingWalks.length > 0 && `(${upcomingWalks.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="past" data-testid="tab-past">
+              היסטוריה / History
+            </TabsTrigger>
+            <TabsTrigger value="recurring" data-testid="tab-recurring">
+              קבוע / Recurring
+            </TabsTrigger>
           </TabsList>
 
           {/* Upcoming Walks */}
           <TabsContent value="upcoming" className="space-y-4">
-            {upcomingWalks.map((walk) => (
-              <Card 
-                key={walk.id} 
-                className="p-6 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2)] transition-all"
-                data-testid={`card-walk-${walk.id}`}
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-16 w-16 shadow-lg" data-testid={`avatar-walker-${walk.id}`}>
-                      <AvatarImage src={walk.walkerPhoto} />
-                      <AvatarFallback>{walk.walkerName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg text-slate-900" data-testid={`text-walker-name-${walk.id}`}>
-                          {walk.walkerName}
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="luxury-spinner mx-auto mb-4"></div>
+                <p className="text-slate-500">טוען טיולים... / Loading walks...</p>
+              </div>
+            ) : upcomingWalks.length === 0 ? (
+              <Card className={`${cardStyle} p-10 text-center`} data-testid="card-no-upcoming">
+                <Calendar className="h-16 w-16 mx-auto mb-4 text-amber-500" />
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">אין טיולים עתידיים / No Upcoming Walks</h3>
+                <p className="text-slate-600 mb-6">Book a walk for your pet below.</p>
+              </Card>
+            ) : (
+              upcomingWalks.map((walk) => (
+                <Card
+                  key={walk.bookingId}
+                  className={`${cardStyle} p-6`}
+                  data-testid={`card-walk-${walk.bookingId}`}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-lg text-slate-900" data-testid={`text-pet-name-${walk.bookingId}`}>
+                          {walk.petName || 'כלב / Pet'}
+                          {walk.petBreed ? ` (${walk.petBreed})` : ''}
                         </h3>
-                        <div className="flex items-center gap-1 text-sm" data-testid={`rating-${walk.id}`}>
-                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                          <span className="text-slate-700">{walk.rating}</span>
-                        </div>
+                        <StatusBadge status={walk.status} />
                       </div>
                       <div className="text-sm text-slate-600 space-y-1">
-                        <div className="flex items-center gap-2" data-testid={`walk-datetime-${walk.id}`}>
+                        <div className="flex items-center gap-2" data-testid={`walk-datetime-${walk.bookingId}`}>
                           <Calendar className="h-4 w-4 text-amber-500" />
-                          <span>{walk.date} at {walk.time}</span>
+                          <span>{formatDate(walk.scheduledDate)} בשעה / at {walk.scheduledStartTime}</span>
                         </div>
-                        <div className="flex items-center gap-2" data-testid={`walk-duration-${walk.id}`}>
+                        <div className="flex items-center gap-2" data-testid={`walk-duration-${walk.bookingId}`}>
                           <Clock className="h-4 w-4 text-amber-500" />
-                          <span>{walk.duration} minutes • {walk.petName}</span>
+                          <span>{walk.durationMinutes} דקות / minutes</span>
                         </div>
-                        {walk.isRecurring && (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 border-amber-200" data-testid={`badge-recurring-${walk.id}`}>
-                              Recurring: {walk.recurringDays.join(", ")}
-                            </Badge>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-amber-500" />
+                          <span className="truncate">{walk.pickupAddress}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col md:items-end gap-2">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent" data-testid={`price-${walk.bookingId}`}>
+                        ₪{parseFloat(walk.totalCost).toFixed(2)}
+                      </div>
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 shadow-sm"
+                          data-testid={`button-chat-${walk.bookingId}`}
+                          onClick={() => setLocation(`/chat/${walk.bookingId}`)}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Chat
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white"
+                          data-testid={`button-track-${walk.bookingId}`}
+                          onClick={() => setLocation(`/walks/track/${walk.bookingId}`)}
+                        >
+                          <Navigation className="h-4 w-4" />
+                          Track
+                        </Button>
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex flex-col md:items-end gap-2">
-                    <div className="text-2xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent" data-testid={`price-${walk.id}`}>
-                      ₪{walk.price}
-                    </div>
-                    <Badge className={
-                      walk.status === "walker_en_route" 
-                        ? "bg-amber-500 text-white" 
-                        : "bg-green-500 text-white"
-                    } data-testid={`badge-status-${walk.id}`}>
-                      {walk.status === "walker_en_route" ? "Walker En Route" : "Confirmed"}
-                    </Badge>
-                    <div className="flex gap-2 mt-2">
-                      <Button variant="outline" size="sm" className="gap-2 shadow-sm" data-testid={`button-chat-${walk.id}`}>
-                        <MessageCircle className="h-4 w-4" />
-                        Chat
-                      </Button>
-                      <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white" data-testid={`button-details-${walk.id}`}>
-                        Details
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))
+            )}
           </TabsContent>
 
           {/* Past Walks */}
           <TabsContent value="past" className="space-y-4">
-            {pastWalks.map((walk) => (
-              <Card 
-                key={walk.id} 
-                className="p-6 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2)] transition-all"
-                data-testid={`card-past-walk-${walk.id}`}
-              >
-                <div className="flex flex-col md:flex-row gap-4">
-                  <img 
-                    src={walk.photo} 
-                    alt="Walk photo"
-                    className="w-full md:w-48 h-32 object-cover rounded-lg shadow-md"
-                    data-testid={`img-walk-photo-${walk.id}`}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12 shadow-md" data-testid={`avatar-past-walker-${walk.id}`}>
-                        <AvatarImage src={walk.walkerPhoto} />
-                        <AvatarFallback>{walk.walkerName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg mb-2 text-slate-900" data-testid={`text-past-walker-name-${walk.id}`}>
-                          {walk.walkerName}
-                        </h3>
-                        <div className="text-sm text-slate-600 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-amber-500" />
-                            <span data-testid={`past-walk-datetime-${walk.id}`}>{walk.date} at {walk.time}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-amber-500" />
-                            <span data-testid={`past-walk-duration-${walk.id}`}>{walk.duration} minutes • {walk.petName}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-amber-500" />
-                            <span data-testid={`past-walk-price-${walk.id}`}>₪{walk.price}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 mt-3" data-testid={`rating-past-${walk.id}`}>
-                          {[...Array(5)].map((_, i) => (
-                            <Star 
-                              key={i} 
-                              className={`h-5 w-5 ${i < walk.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
-                            />
-                          ))}
-                        </div>
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="luxury-spinner mx-auto mb-4"></div>
+              </div>
+            ) : pastWalks.length === 0 ? (
+              <Card className={`${cardStyle} p-10 text-center`} data-testid="card-no-past">
+                <Clock className="h-16 w-16 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">אין טיולים קודמים / No Past Walks</h3>
+              </Card>
+            ) : (
+              pastWalks.map((walk) => (
+                <Card
+                  key={walk.bookingId}
+                  className={`${cardStyle} p-6`}
+                  data-testid={`card-past-walk-${walk.bookingId}`}
+                >
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-lg text-slate-900" data-testid={`text-past-pet-name-${walk.bookingId}`}>
+                        {walk.petName || 'כלב / Pet'}
+                        {walk.petBreed ? ` (${walk.petBreed})` : ''}
+                      </h3>
+                      <StatusBadge status={walk.status} />
+                    </div>
+                    <div className="text-sm text-slate-600 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-amber-500" />
+                        <span data-testid={`past-walk-datetime-${walk.bookingId}`}>
+                          {formatDate(walk.scheduledDate)} בשעה / at {walk.scheduledStartTime}
+                        </span>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-amber-500" />
+                        <span data-testid={`past-walk-duration-${walk.bookingId}`}>
+                          {walk.actualDurationMinutes ?? walk.durationMinutes} דקות / minutes
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-amber-500" />
+                        <span data-testid={`past-walk-price-${walk.bookingId}`}>₪{parseFloat(walk.totalCost).toFixed(2)}</span>
+                      </div>
+                      {walk.totalDistanceMeters && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-amber-500" />
+                          <span>{(walk.totalDistanceMeters / 1000).toFixed(2)} ק"מ / km</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))
+            )}
           </TabsContent>
 
           {/* Recurring Walks */}
           <TabsContent value="recurring">
-            <Card className="p-8 text-center bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0" data-testid="card-recurring-empty">
+            <Card className={`${cardStyle} p-8 text-center`} data-testid="card-recurring-empty">
               <TrendingUp className="h-16 w-16 mx-auto mb-4 text-amber-500" />
-              <h3 className="text-xl font-semibold mb-2 text-slate-900">Manage Recurring Walks</h3>
-              <p className="text-slate-600 mb-6">
-                Set up regular walking schedules for your pets
-              </p>
-              <Button size="lg" className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg" data-testid="button-create-recurring">
+              <h3 className="text-xl font-semibold mb-2 text-slate-900">ניהול טיולים קבועים / Manage Recurring Walks</h3>
+              <p className="text-slate-600 mb-6">Set up regular walking schedules for your pets</p>
+              <Button
+                size="lg"
+                className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg"
+                data-testid="button-create-recurring"
+                onClick={() => setLocation('/walk-my-pet')}
+              >
                 <Calendar className="h-5 w-5" />
-                Create Recurring Schedule
+                Book Walks / הזמן טיולים
               </Button>
             </Card>
           </TabsContent>
         </Tabs>
 
-        {/* Book New Walk CTA - White Neomorphic */}
+        {/* Book New Walk CTA */}
         <Card className="mt-8 p-8 bg-white text-center shadow-[8px_8px_24px_rgba(163,177,198,0.2),-8px_-8px_24px_rgba(255,255,255,0.9)] border-0" data-testid="card-book-cta">
           <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
-            Need a Walk Today?
+            צריך טיול היום? / Need a Walk Today?
           </h2>
           <p className="text-slate-600 mb-6">Book a trusted walker in seconds</p>
-          <Button size="lg" className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg hover:shadow-xl" data-testid="button-find-walkers">
+          <Button
+            size="lg"
+            className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg hover:shadow-xl"
+            data-testid="button-find-walkers"
+            onClick={() => setLocation('/walk-my-pet')}
+          >
             <MapPin className="h-5 w-5" />
-            Find Walkers Near Me
+            Find Walkers Near Me / מצא מולכי כלבים
           </Button>
         </Card>
       </div>

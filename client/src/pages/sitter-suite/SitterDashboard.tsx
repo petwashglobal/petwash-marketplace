@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,10 +42,9 @@ interface BookingRequest {
 }
 
 interface Earnings {
-  today: number;
-  thisWeek: number;
-  thisMonth: number;
   total: number;
+  weekly: number;
+  monthly: number;
   pending: number;
   currency: string;
 }
@@ -51,8 +52,9 @@ interface Earnings {
 interface Stats {
   totalBookings: number;
   activeBookings: number;
-  completionRate: number;
-  rating: number;
+  completedBookings: number;
+  acceptanceRate: number;
+  averageRating: number;
   totalReviews: number;
 }
 
@@ -91,28 +93,76 @@ function useProviderLocationBeacon() {
 export default function SitterDashboard() {
   const { language } = useLanguage();
   const t = (key: string) => ti18n(key, language);
+  const isHebrew = language === 'he';
+  const { toast } = useToast();
   useProviderLocationBeacon();
   const [activeTab, setActiveTab] = useState('requests');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
-  // Fetch booking requests
-  const { data: requests = [] } = useQuery<BookingRequest[]>({
+  // Fetch booking requests — backend returns { bookings: [], total: N }
+  const { data: requestsData } = useQuery<{ bookings: BookingRequest[]; total: number }>({
     queryKey: ['/api/sitter-suite/sitter/requests'],
   });
+  const requests: BookingRequest[] = requestsData?.bookings || [];
 
   // Fetch earnings
   const { data: earnings } = useQuery<Earnings>({
     queryKey: ['/api/sitter-suite/sitter/earnings'],
   });
 
-  // Fetch stats
+  // Fetch stats — backend returns { totalBookings, completedBookings, averageRating, totalReviews, acceptanceRate }
   const { data: stats } = useQuery<Stats>({
     queryKey: ['/api/sitter-suite/sitter/stats'],
   });
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const activeBookings = requests.filter(r => 
-    r.status === 'accepted' && new Date(r.endDate) > new Date()
+  // Accept booking mutation
+  const acceptMutation = useMutation({
+    mutationFn: (bookingId: string) =>
+      apiRequest('PATCH', `/api/sitter-suite/bookings/${bookingId}/provider-respond`, { action: 'accept' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitter/requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitter/earnings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitter/stats'] });
+      toast({
+        title: isHebrew ? 'ההזמנה אושרה!' : 'Booking accepted!',
+        description: isHebrew ? 'הודענו לבעל החיה על האישור' : 'The owner has been notified',
+      });
+    },
+    onError: () => {
+      toast({
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'לא הצלחנו לאשר את ההזמנה' : 'Failed to accept booking',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Decline booking mutation
+  const declineMutation = useMutation({
+    mutationFn: (bookingId: string) =>
+      apiRequest('PATCH', `/api/sitter-suite/bookings/${bookingId}/provider-respond`, { action: 'decline' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitter/requests'] });
+      toast({
+        title: isHebrew ? 'ההזמנה נדחתה' : 'Booking declined',
+      });
+    },
+    onError: () => {
+      toast({
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'לא הצלחנו לדחות את ההזמנה' : 'Failed to decline booking',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Backend statuses: pending / pending_provider = needs decision; confirmed / in_progress = active
+  const pendingRequests = requests.filter(r =>
+    r.status === 'pending' || r.status === ('pending_provider' as any)
+  );
+  const activeBookings = requests.filter(r =>
+    (r.status === 'accepted' || r.status === 'confirmed' || r.status === ('in_progress' as any)) &&
+    new Date(r.endDate) > new Date()
   );
   const completedBookings = requests.filter(r => r.status === 'completed');
 
@@ -154,7 +204,7 @@ export default function SitterDashboard() {
                 <p className="text-sm text-purple-100">Your Rating</p>
                 <div className="flex items-center gap-2">
                   <Star className="w-6 h-6 fill-white text-white" />
-                  <span className="text-3xl font-bold">{stats?.rating.toFixed(1) || '5.0'}</span>
+                  <span className="text-3xl font-bold">{stats?.averageRating?.toFixed(1) ?? '5.0'}</span>
                   <span className="text-sm text-purple-100">({stats?.totalReviews || 0} reviews)</span>
                 </div>
               </div>
@@ -170,7 +220,7 @@ export default function SitterDashboard() {
                 </div>
                 <p className="text-sm text-purple-100">Today</p>
               </div>
-              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.today.toFixed(0) || '0'}</p>
+              <p className="luxury-heading-lg luxury-text-gradient">₪0</p>
             </div>
 
             <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-2">
@@ -180,7 +230,7 @@ export default function SitterDashboard() {
                 </div>
                 <p className="text-sm text-purple-100">This Week</p>
               </div>
-              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.thisWeek.toFixed(0) || '0'}</p>
+              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.weekly?.toFixed(0) ?? '0'}</p>
             </div>
 
             <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-3">
@@ -190,7 +240,7 @@ export default function SitterDashboard() {
                 </div>
                 <p className="text-sm text-purple-100">This Month</p>
               </div>
-              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.thisMonth.toFixed(0) || '0'}</p>
+              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.monthly?.toFixed(0) ?? '0'}</p>
             </div>
 
             <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-4">
@@ -308,16 +358,20 @@ export default function SitterDashboard() {
                             <Button 
                               className="luxury-btn-primary flex-1"
                               data-testid={`button-accept-${request.id}`}
+                              disabled={acceptMutation.isPending || declineMutation.isPending}
+                              onClick={() => acceptMutation.mutate(request.id)}
                             >
                               <CheckCircle2 className="w-4 h-4 mr-2" />
-                              Accept
+                              {isHebrew ? 'אשר' : 'Accept'}
                             </Button>
                             <Button 
                               className="luxury-btn-secondary flex-1"
                               data-testid={`button-decline-${request.id}`}
+                              disabled={acceptMutation.isPending || declineMutation.isPending}
+                              onClick={() => declineMutation.mutate(request.id)}
                             >
                               <XCircle className="w-4 h-4 mr-2" />
-                              Decline
+                              {isHebrew ? 'דחה' : 'Decline'}
                             </Button>
                             <Button 
                               className="luxury-btn-ghost"
@@ -509,7 +563,7 @@ export default function SitterDashboard() {
                     </div>
                     <div>
                       <p className="luxury-text-small">Rating</p>
-                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.rating.toFixed(1) || '5.0'}</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.averageRating?.toFixed(1) ?? '5.0'}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -523,7 +577,7 @@ export default function SitterDashboard() {
                     </div>
                     <div>
                       <p className="luxury-text-small">Completion Rate</p>
-                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.completionRate || 100}%</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.acceptanceRate ?? 100}%</p>
                     </div>
                   </div>
                 </CardContent>
@@ -544,12 +598,12 @@ export default function SitterDashboard() {
                   <div>
                     <div className="flex justify-between mb-2">
                       <span className="luxury-text-small font-medium">Completion Rate</span>
-                      <span className="luxury-text-gradient font-bold">{stats?.completionRate || 100}%</span>
+                      <span className="luxury-text-gradient font-bold">{stats?.acceptanceRate ?? 100}%</span>
                     </div>
                     <div className="w-full luxury-glass-minimal rounded-full h-3 overflow-hidden">
                       <div 
                         className="luxury-bg-primary h-3 rounded-full transition-all luxury-animate-scale-in" 
-                        style={{ width: `${stats?.completionRate || 100}%` }}
+                        style={{ width: `${stats?.acceptanceRate ?? 100}%` }}
                       />
                     </div>
                   </div>
