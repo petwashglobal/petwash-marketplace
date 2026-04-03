@@ -107,7 +107,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 <body style="margin:0;padding:0;background:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 
   <!-- Top summer stripe -->
-  <div style="background:linear-gradient(90deg,#FF6B6B,#FF8E53,#00C9A7);height:5px;"></div>
+  <div style="background:linear-gradient(90deg,#FF6B6B,#00B140,#00C9A7);height:5px;"></div>
 
   <div style="max-width:620px;margin:0 auto;padding:16px 12px;">
 
@@ -115,7 +115,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
     <div style="overflow:hidden;background:white;">
 
       <!-- Top Ornamental Bar - summer coral -->
-      <div class="fi" style="background:linear-gradient(90deg,#FF6B6B,#FF8E53);padding:10px 0;text-align:center;">
+      <div class="fi" style="background:linear-gradient(90deg,#FF6B6B,#00B140);padding:10px 0;text-align:center;">
         <span style="font-size:8px;letter-spacing:8px;color:#ffffff;text-transform:uppercase;font-weight:700;">
           ${t.ornament} &nbsp; Pet Wash Privilege™ &nbsp; ${t.ornament}
         </span>
@@ -325,7 +325,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 
       <!-- CTA Button - Summer Style -->
       <div class="fi d5" style="padding:40px;text-align:center;background:white;">
-        <a href="https://petwash.co.il/loyalty" style="display:inline-block;padding:16px 52px;background:linear-gradient(90deg,#FF6B6B,#FF8E53);color:#ffffff;text-decoration:none;font-size:12px;letter-spacing:4px;text-transform:uppercase;font-weight:700;border-radius:100px;">
+        <a href="https://petwash.co.il/loyalty" style="display:inline-block;padding:16px 52px;background:linear-gradient(90deg,#FF6B6B,#00B140);color:#ffffff;text-decoration:none;font-size:12px;letter-spacing:4px;text-transform:uppercase;font-weight:700;border-radius:100px;">
           ${isHe ? 'כניסה למועדון' : 'Enter Your Club'}
         </a>
         <p style="font-size:11px;color:#00C9A7;margin:16px 0 0;letter-spacing:0.5px;font-weight:600;">
@@ -334,7 +334,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
       </div>
 
       <!-- Footer - Summer Style -->
-      <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53,#00C9A7);padding:32px 40px;text-align:center;">
+      <div style="background:linear-gradient(135deg,#FF6B6B,#00B140,#00C9A7);padding:32px 40px;text-align:center;">
         <div style="font-size:8px;letter-spacing:6px;text-transform:uppercase;color:#ffffff;margin-bottom:14px;font-weight:700;">
           ${t.ornament} &nbsp; ${t.ornament} &nbsp; ${t.ornament}
         </div>

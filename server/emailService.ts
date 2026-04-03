@@ -3282,7 +3282,7 @@ export class EmailService {
 <body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;">
 
   <!-- Top summer stripe -->
-  <div style="background:linear-gradient(90deg,#FF6B6B,#FF8E53);height:5px;"></div>
+  <div style="background:linear-gradient(90deg,#FF6B6B,#00B140);height:5px;"></div>
 
   <div style="max-width:520px;margin:0 auto;padding:48px 28px 56px;">
 
