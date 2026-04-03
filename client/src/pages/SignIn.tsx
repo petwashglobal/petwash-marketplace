@@ -165,10 +165,30 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         body: intent ? JSON.stringify({ intent }) : undefined,
       });
       const data = await res.json();
-      const path = data.nextUrl || data.redirectTo || fallback;
+      const postLoginPath = data.nextUrl || data.redirectTo || fallback;
       localStorage.removeItem('signup_intent');
       window.scrollTo(0, 0);
-      navigate(path);
+
+      // If post-login says the user is ready (going to /home or /provider/dashboard etc.)
+      // and there is a ?from= return URL in the address bar, send them back there instead.
+      // This preserves bookings-in-progress: user clicks "Book", gets redirected to sign-in,
+      // completes sign-in, and arrives back at the booking page — not a generic home screen.
+      const urlParams = new URLSearchParams(window.location.search);
+      const returnUrl = urlParams.get('from');
+      const isTerminalPath = ['/home', '/provider/dashboard', '/admin/dashboard', '/franchise/dashboard'].some(
+        p => postLoginPath === p || postLoginPath.startsWith(p)
+      );
+      if (returnUrl && isTerminalPath) {
+        try {
+          const decoded = decodeURIComponent(returnUrl);
+          // Basic safety: only allow relative paths (prevent open redirect)
+          if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+            navigate(decoded);
+            return;
+          }
+        } catch {}
+      }
+      navigate(postLoginPath);
     } catch {
       window.scrollTo(0, 0);
       navigate(fallback);

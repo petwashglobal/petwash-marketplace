@@ -311,9 +311,56 @@ export async function postLoginDecider(req: Request, res: Response) {
     }
 
     if (!userRole || userRole === 'new') {
+      // ── Smart social-auth shortcut ─────────────────────────────────────────
+      // Google / Apple / Facebook users already proved their identity via OAuth.
+      // If no explicit intent was sent but we have a social provider, auto-assign
+      // them as 'customer' and seed their name from Firebase — skipping ChooseRole
+      // entirely. A real human using Google is almost always a customer, not staff.
+      if (!intent) {
+        try {
+          const fbAdminModule = await import('../lib/firebase-admin');
+          const fbAuth = fbAdminModule.auth;
+          if (fbAuth) {
+            const firebaseUser = await fbAuth.getUser(userId);
+            const socialProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com', 'phone'];
+            const isSocial = firebaseUser.providerData?.some(p => socialProviders.includes(p.providerId));
+            if (isSocial) {
+              const nameParts = (firebaseUser.displayName || '').trim().split(/\s+/);
+              const derivedFirst = (user as any).firstName || nameParts[0] || '';
+              const derivedLast = (user as any).lastName || nameParts.slice(1).join(' ') || '';
+              const now = new Date();
+              const updatePayload: Record<string, any> = {
+                role: 'customer',
+                signupIntent: 'customer',
+                accessLevel: 1,
+                userStatus: 'profile_incomplete',
+                termsAcceptedAt: now,
+                privacyAcceptedAt: now,
+              };
+              if (derivedFirst && !(user as any).firstName) updatePayload.firstName = derivedFirst;
+              if (derivedLast && !(user as any).lastName)   updatePayload.lastName  = derivedLast;
+              if (firebaseUser.phoneNumber && !(user as any).phone) updatePayload.phone = firebaseUser.phoneNumber;
+              await storage.updateUser(userId, updatePayload as any);
+              userRole = 'customer';
+              logger.info('[PostLogin] ✅ Social user auto-assigned customer role + seeded name', {
+                userId,
+                provider: firebaseUser.providerData?.map(p => p.providerId),
+                derivedFirst,
+                derivedLast,
+              });
+            }
+          }
+        } catch (socialAutoErr) {
+          logger.warn('[PostLogin] Social auto-assign failed (non-blocking)', { userId, error: String(socialAutoErr) });
+        }
+      }
+
       const safeIntent = (intent && (ALLOWED_INTENTS as readonly string[]).includes(intent)) ? intent : null;
 
-      if (safeIntent) {
+      if (userRole && userRole !== 'new') {
+        // Social auto-assign succeeded above — skip the intent block, let the
+        // flow continue to the refreshedUser check and profile completion below.
+      } else if (safeIntent) {
         const assignedRole = intentToRole(safeIntent);
         await storage.updateUser(userId, {
           role: assignedRole,

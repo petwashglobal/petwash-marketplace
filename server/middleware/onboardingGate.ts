@@ -56,6 +56,13 @@ export async function requireOnboardingComplete(req: Request, res: Response, nex
       return next();
     }
 
+    // READ operations never require onboarding — users must be able to browse
+    // services, see pricing, and explore the platform before they commit to registering.
+    // Only WRITE operations (booking, payment, profile mutation) require a complete profile.
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      return next();
+    }
+
     const userId = (req as any).userId || (req as any).user?.id || (req.session as any)?.userId;
     if (!userId) {
       return next();
