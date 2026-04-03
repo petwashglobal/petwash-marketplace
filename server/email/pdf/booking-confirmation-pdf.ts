@@ -7,6 +7,7 @@ export interface BookingPdfParams {
   platformName: string;
   serviceType: string;
   providerName: string;
+  providerAddress?: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
@@ -23,204 +24,350 @@ export interface BookingPdfParams {
   language?: 'he' | 'en';
 }
 
-const CORAL   = '#E8524A';
-const GREEN   = '#00B140';
-const TEAL    = '#00C9A7';
-const DARK    = '#1a1a1a';
-const MID     = '#444444';
-const LIGHT   = '#888888';
-const RULE    = '#E5E5E5';
+// ── Palette ───────────────────────────────────────────────────────────────────
+const GREEN  = '#2D6A4F';
+const GREEN_LIGHT = '#40916C';
+const DARK   = '#1A1A1A';
+const MID    = '#444444';
+const MUTED  = '#777777';
+const BORDER = '#CCCCCC';
+const BG_ROW = '#F8F8F8';
+const WHITE  = '#FFFFFF';
 
-function fmtDate(d: Date): string {
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmtDateLong(d: Date): string {
   return new Intl.DateTimeFormat('en-IL', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    year: 'numeric', month: 'long', day: 'numeric',
     timeZone: 'Asia/Jerusalem'
   }).format(d);
 }
-function fmtTime(d: Date): string {
+function fmtDateTime(d: Date): string {
   return new Intl.DateTimeFormat('en-IL', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem'
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Asia/Jerusalem'
   }).format(d);
 }
 function fmtILS(cents: number): string {
-  return `ILS ${(cents / 100).toFixed(2)}`;
+  const n = (cents / 100).toFixed(2);
+  return `\u20AA${n}`;          // ₪ symbol
 }
 
 export function generateBookingConfirmationPDF(params: BookingPdfParams): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true });
+
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 0,
+      bufferPages: true,
+      info: {
+        Title: `PetWash Invoice ${params.invoiceNumber}`,
+        Author: 'PetWash Ltd.',
+        Subject: 'Tax Invoice & Booking Confirmation',
+        Keywords: 'petwash, invoice, booking, tax, vat'
+      }
+    });
 
     doc.on('data', (c: Buffer) => chunks.push(c));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('end',  () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const W = 595.28;
-    const MARGIN = 48;
-    const COL = W - MARGIN * 2;
+    const W     = 595.28;   // A4 width pts
+    const H     = 841.89;   // A4 height pts
+    const M     = 36;       // outer margin
+    const INNER = W - M * 2;
 
-    // ── HEADER BAND ──────────────────────────────────────────────────────────
-    doc.rect(0, 0, W, 88).fill(CORAL);
+    // ── HEADER ────────────────────────────────────────────────────────────────
+    // White background
+    doc.rect(0, 0, W, H).fill(WHITE);
 
-    // brand name
-    doc.font('Helvetica-Bold').fontSize(18).fillColor('#ffffff')
-       .text('PET WASH™', MARGIN, 24, { characterSpacing: 4 });
+    let y = M;
 
-    // doc type
-    doc.font('Helvetica').fontSize(9).fillColor('rgba(255,255,255,0.8)')
-       .text('TAX INVOICE & BOOKING CONFIRMATION', MARGIN, 50, { characterSpacing: 2 });
-
-    // invoice number top-right
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#ffffff')
-       .text(params.invoiceNumber, W - MARGIN - 130, 28, { width: 130, align: 'right' });
-    doc.font('Helvetica').fontSize(8).fillColor('rgba(255,255,255,0.7)')
-       .text(fmtDate(new Date()), W - MARGIN - 130, 46, { width: 130, align: 'right' });
-
-    // ── GREEN ACCENT STRIPE ──────────────────────────────────────────────────
-    doc.rect(0, 88, W, 4).fill(GREEN);
-
-    let y = 112;
-
-    // ── STATUS BADGE ────────────────────────────────────────────────────────
-    doc.roundedRect(MARGIN, y, 160, 26, 13).fill(GREEN);
-    doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
-       .text('✓  BOOKING CONFIRMED', MARGIN + 10, y + 8, { width: 140, align: 'center', characterSpacing: 1 });
-
-    doc.font('Helvetica').fontSize(8).fillColor(LIGHT)
-       .text(`Issued: ${fmtDate(new Date())} at ${fmtTime(new Date())}`, MARGIN + 170, y + 9);
-
-    y += 46;
-
-    // ── TWO-COLUMN LAYOUT: CUSTOMER + SERVICE PROVIDER ───────────────────────
-    const halfW = (COL - 16) / 2;
-
-    function sectionHeader(title: string, yPos: number) {
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(CORAL)
-         .text(title.toUpperCase(), MARGIN, yPos, { characterSpacing: 2 });
-      doc.moveTo(MARGIN, yPos + 13).lineTo(MARGIN + COL, yPos + 13).strokeColor(RULE).lineWidth(0.5).stroke();
-    }
-
-    function rowPair(label: string, value: string, xStart: number, yPos: number, colWidth: number): number {
-      doc.font('Helvetica').fontSize(8).fillColor(LIGHT).text(label, xStart, yPos, { width: colWidth });
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK)
-         .text(value || '—', xStart, yPos + 11, { width: colWidth });
-      return yPos + 26;
-    }
-
-    // Customer
-    sectionHeader('Customer Information', y);
-    y += 18;
-    const colR = MARGIN + halfW + 16;
-    let yL = y;
-    let yR = y;
-
-    yL = rowPair('Full Name', params.customerName, MARGIN, yL, halfW);
-    yL = rowPair('Email Address', params.customerEmail, MARGIN, yL, halfW);
-    if (params.customerPhone)
-      yL = rowPair('Phone', params.customerPhone, MARGIN, yL, halfW);
-    if (params.petName)
-      yL = rowPair('Pet Name', params.petName, MARGIN, yL, halfW);
-
-    // Provider
-    yR = rowPair('Service Provider', params.providerName, colR, yR, halfW);
-    yR = rowPair('Platform', params.platformName, colR, yR, halfW);
-    yR = rowPair('Service Type', params.serviceType, colR, yR, halfW);
-    if (params.location)
-      yR = rowPair('Location', params.location, colR, yR, halfW);
-
-    y = Math.max(yL, yR) + 14;
-
-    // ── BOOKING DETAILS ──────────────────────────────────────────────────────
-    sectionHeader('Booking Details', y);
-    y += 18;
-
-    const col3 = COL / 3;
-    function col3pair(label: string, value: string, colIdx: number, yPos: number): void {
-      const xPos = MARGIN + colIdx * col3;
-      doc.font('Helvetica').fontSize(8).fillColor(LIGHT).text(label, xPos, yPos, { width: col3 - 8 });
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK).text(value || '—', xPos, yPos + 11, { width: col3 - 8 });
-    }
-
-    col3pair('Booking ID', params.bookingId, 0, y);
-    col3pair('Invoice No.', params.invoiceNumber, 1, y);
-    col3pair('Payment Status', params.paymentStatus, 2, y);
+    // Brand mark (text-only — no external image)
+    doc.font('Helvetica-Bold').fontSize(22).fillColor(DARK)
+       .text('PetWash\u2122', 0, y, { width: W, align: 'center' });
     y += 30;
 
-    col3pair('Service Date', fmtDate(params.startDate), 0, y);
-    col3pair('Start Time', fmtTime(params.startDate), 1, y);
-    col3pair('End Time', fmtTime(params.endDate), 2, y);
-    y += 38;
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(MID)
+       .text('PetWash Ltd.', 0, y, { width: W, align: 'center' });
+    y += 15;
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED)
+       .text('Company#: 517145033', 0, y, { width: W, align: 'center' });
+    y += 13;
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED)
+       .text('www.petwash.co.il', 0, y, { width: W, align: 'center' });
+    y += 13;
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED)
+       .text('support@petwash.co.il', 0, y, { width: W, align: 'center' });
+    y += 20;
 
-    // ── FINANCIAL SUMMARY ────────────────────────────────────────────────────
-    sectionHeader('Financial Summary', y);
-    y += 18;
+    // Horizontal rule
+    doc.moveTo(M, y).lineTo(W - M, y).strokeColor(BORDER).lineWidth(0.75).stroke();
+    y += 14;
 
-    // Table header
-    doc.rect(MARGIN, y, COL, 22).fill('#F7F7F7');
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(MID)
-       .text('Description', MARGIN + 10, y + 7)
-       .text('Amount (ILS)', W - MARGIN - 100, y + 7, { width: 100, align: 'right' });
+    // ── DOCUMENT TITLE ────────────────────────────────────────────────────────
+    doc.font('Helvetica-Bold').fontSize(15).fillColor(DARK)
+       .text('Invoice & Booking Confirmation', 0, y, { width: W, align: 'center' });
     y += 22;
 
-    function finRow(label: string, value: string, accent?: string) {
-      doc.moveTo(MARGIN, y).lineTo(MARGIN + COL, y).strokeColor(RULE).lineWidth(0.3).stroke();
-      doc.font('Helvetica').fontSize(9).fillColor(DARK).text(label, MARGIN + 10, y + 7);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(accent || DARK)
-         .text(value, W - MARGIN - 100, y + 7, { width: 100, align: 'right' });
-      y += 22;
+    // Meta row: Invoice# / Booking# / Issue Date
+    const metaY = y;
+    const col3w = INNER / 3;
+
+    doc.roundedRect(M, metaY, INNER, 32, 3).strokeColor(BORDER).lineWidth(0.5).stroke();
+    // dividers
+    doc.moveTo(M + col3w,     metaY).lineTo(M + col3w,     metaY + 32).strokeColor(BORDER).lineWidth(0.4).stroke();
+    doc.moveTo(M + col3w * 2, metaY).lineTo(M + col3w * 2, metaY + 32).strokeColor(BORDER).lineWidth(0.4).stroke();
+
+    const metaLabel = (text: string, x: number) =>
+      doc.font('Helvetica').fontSize(7.5).fillColor(MUTED).text(text, x + 6, metaY + 5, { width: col3w - 12 });
+    const metaVal = (text: string, x: number) =>
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(DARK).text(text, x + 6, metaY + 15, { width: col3w - 12 });
+
+    metaLabel('Invoice#:', M);
+    metaVal(`INV-${params.invoiceNumber}`, M);
+    metaLabel('Booking#:', M + col3w);
+    metaVal(params.bookingNumber || params.bookingId, M + col3w);
+    metaLabel('Issue Date:', M + col3w * 2);
+    metaVal(fmtDateLong(new Date()), M + col3w * 2);
+
+    y = metaY + 32;
+
+    // Second meta row
+    const meta2Y = y;
+    doc.roundedRect(M, meta2Y, INNER, 22, 0)
+       .strokeColor(BORDER).lineWidth(0.4).stroke().fill(BG_ROW).stroke();
+    doc.font('Helvetica').fontSize(8).fillColor(MID)
+       .text(`Company#: 517145033`, M + 8, meta2Y + 7)
+       .text(`\u05de\u05e1\u05e4\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4: ${params.bookingId}`, M + INNER / 2, meta2Y + 7, { width: INNER / 2, align: 'right' });
+    y = meta2Y + 22 + 14;
+
+    // ── HELPER: Bordered section with two columns ─────────────────────────────
+    function twoColSection(
+      title: string,
+      leftTitle: string,
+      leftRows: [string, string][],
+      rightTitle: string,
+      rightRows: [string, string][],
+      startY: number
+    ): number {
+      const leftRows_ = leftRows.filter(([, v]) => v);
+      const rightRows_ = rightRows.filter(([, v]) => v);
+      const rowH = 16;
+      const headerH = 20;
+      const pad = 8;
+      const sectionH = headerH + Math.max(leftRows_.length, rightRows_.length) * rowH + pad * 2;
+      const halfW = INNER / 2;
+
+      // outer border
+      doc.roundedRect(M, startY, INNER, sectionH, 3)
+         .strokeColor(BORDER).lineWidth(0.5).stroke();
+      // header band
+      doc.rect(M, startY, INNER, headerH).fill('#F0F0F0');
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK)
+         .text(title, M + 8, startY + 5, { width: INNER - 16 });
+      // column divider
+      doc.moveTo(M + halfW, startY + headerH).lineTo(M + halfW, startY + sectionH)
+         .strokeColor(BORDER).lineWidth(0.4).stroke();
+
+      // column sub-headers
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(MID)
+         .text(leftTitle,  M + 8,         startY + headerH + pad - 3, { width: halfW - 16 })
+         .text(rightTitle, M + halfW + 8, startY + headerH + pad - 3, { width: halfW - 16 });
+
+      let rowY = startY + headerH + pad + 8;
+
+      for (let i = 0; i < Math.max(leftRows_.length, rightRows_.length); i++) {
+        const [lLabel, lVal] = leftRows_[i] || ['', ''];
+        const [rLabel, rVal] = rightRows_[i] || ['', ''];
+
+        if (lLabel) {
+          doc.font('Helvetica').fontSize(8).fillColor(MUTED)
+             .text(lLabel + ':', M + 8, rowY, { width: 72 });
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK)
+             .text(lVal || '\u2014', M + 82, rowY, { width: halfW - 90 });
+        }
+        if (rLabel) {
+          doc.font('Helvetica').fontSize(8).fillColor(MUTED)
+             .text(rLabel + ':', M + halfW + 8, rowY, { width: 72 });
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK)
+             .text(rVal || '\u2014', M + halfW + 82, rowY, { width: halfW - 90 });
+        }
+        rowY += rowH;
+      }
+
+      return startY + sectionH + 10;
     }
 
-    const net = params.baseAmountCents;
-    const vat = params.vatCents;
-    const disc = params.loyaltyDiscountCents || 0;
-    const total = params.totalAmountCents;
+    // ── CUSTOMER + PROVIDER ────────────────────────────────────────────────────
+    y = twoColSection(
+      '',
+      'Customer Details',
+      [
+        ['Name',  params.customerName],
+        ['Phone', params.customerPhone || ''],
+        ['Email', params.customerEmail],
+      ],
+      'Service Provider Details',
+      [
+        ['Name',    params.providerName],
+        ['Address', params.providerAddress || ''],
+        ['Phone',   ''],
+      ],
+      y
+    );
 
-    finRow('Service Fee (excl. VAT)', fmtILS(net));
-    finRow('VAT 18% — Israeli VAT Reg. 517145033', fmtILS(vat), CORAL);
-    if (disc > 0) finRow('Loyalty Discount', `-${fmtILS(disc)}`, TEAL);
+    // ── SERVICE DETAILS ────────────────────────────────────────────────────────
+    y = twoColSection(
+      'Service Details',
+      '',
+      [
+        ['Service Type', params.serviceType],
+        ['Date & Time',  fmtDateTime(params.startDate)],
+        ['End Time',     fmtDateTime(params.endDate)],
+      ],
+      '',
+      [
+        ['Pet Name',    params.petName || ''],
+        ['Location',    params.location || params.providerAddress || ''],
+        ['Booking #',   params.bookingNumber || params.bookingId],
+      ],
+      y
+    );
+
+    // ── FINANCIAL BREAKDOWN ────────────────────────────────────────────────────
+    const disc = params.loyaltyDiscountCents || 0;
+    const finY = y;
+    const finRowH = 18;
+    const finRows = disc > 0 ? 4 : 3;
+    const finH = 20 + finRows * finRowH + 24 + 12;
+
+    doc.roundedRect(M, finY, INNER, finH, 3)
+       .strokeColor(BORDER).lineWidth(0.5).stroke();
+    doc.rect(M, finY, INNER, 20).fill('#F0F0F0');
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK)
+       .text('Financial Breakdown', M + 8, finY + 5);
+
+    const finColW = INNER / 2;
+    let frY = finY + 20 + 6;
+
+    function finRow2(leftLabel: string, leftVal: string, rightLabel: string, rightVal: string) {
+      doc.font('Helvetica').fontSize(8.5).fillColor(MID)
+         .text(leftLabel + ':', M + 8, frY, { width: finColW - 16 });
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(DARK)
+         .text(leftVal, M + 120, frY, { width: finColW - 128 });
+      doc.font('Helvetica').fontSize(8.5).fillColor(MID)
+         .text(rightLabel + ':', M + finColW + 8, frY, { width: finColW / 2 });
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(DARK)
+         .text(rightVal, M + finColW + 100, frY, { width: finColW - 108 });
+      // row divider
+      frY += finRowH;
+      doc.moveTo(M, frY - 2).lineTo(M + INNER, frY - 2).strokeColor('#EEEEEE').lineWidth(0.3).stroke();
+    }
+
+    finRow2(
+      'Subtotal (excl. VAT)', fmtILS(params.baseAmountCents),
+      'VAT (18%)',            fmtILS(params.vatCents)
+    );
+    if (disc > 0) {
+      finRow2(
+        'Loyalty Discount', `-${fmtILS(disc)}`,
+        'Discounts',        `-${fmtILS(disc)}`
+      );
+    }
 
     // Total row
-    doc.rect(MARGIN, y, COL, 30).fill(DARK);
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#ffffff')
-       .text('TOTAL CHARGED', MARGIN + 10, y + 9)
-       .text(fmtILS(total), W - MARGIN - 110, y + 9, { width: 110, align: 'right' });
-    y += 44;
+    const totalRowY = frY + 4;
+    doc.rect(M, totalRowY, INNER, 26).fill('#F5F5F5');
+    doc.moveTo(M, totalRowY).lineTo(M + INNER, totalRowY).strokeColor(BORDER).lineWidth(0.5).stroke();
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(DARK)
+       .text('Total Due:', M + 8, totalRowY + 7)
+       .text(fmtILS(params.totalAmountCents), M + 8, totalRowY + 7, { width: INNER - 16, align: 'right' });
+    // "Incl. discount" label if applicable
+    if (disc > 0) {
+      doc.font('Helvetica').fontSize(7.5).fillColor(GREEN_LIGHT)
+         .text(`\u05e9\u05d7\u05de\u05ea: ${fmtILS(disc)}`, M + 8, totalRowY + 17, { width: INNER - 16, align: 'right' });
+    }
 
-    // ── ESCROW & PAYMENT STATUS ──────────────────────────────────────────────
-    doc.rect(MARGIN, y, COL, 66).fill('#F0FDF6');
-    doc.rect(MARGIN, y, 4, 66).fill(GREEN);
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(GREEN)
-       .text('ESCROW & PAYMENT STATUS', MARGIN + 14, y + 10, { characterSpacing: 1.5 });
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK)
-       .text('Payment Received — Held in Secure Escrow', MARGIN + 14, y + 24);
-    doc.font('Helvetica').fontSize(8.5).fillColor(MID)
-       .text(`Escrow Release: ${fmtDate(params.escrowReleaseDate)} at ${fmtTime(params.escrowReleaseDate)}`, MARGIN + 14, y + 38)
-       .text('Funds are released automatically upon verified service completion.', MARGIN + 14, y + 50);
-    y += 80;
+    y = totalRowY + 26 + 12;
 
-    // ── AUDIT TRAIL ──────────────────────────────────────────────────────────
-    doc.rect(MARGIN, y, COL, 50).fill('#FFF8F8');
-    doc.rect(MARGIN, y, 4, 50).fill(CORAL);
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(CORAL)
-       .text('AUDIT TRAIL', MARGIN + 14, y + 10, { characterSpacing: 1.5 });
-    const auditY = y + 24;
-    doc.font('Helvetica').fontSize(8.5).fillColor(MID)
-       .text(`Booking ID: ${params.bookingId}`, MARGIN + 14, auditY)
-       .text(`Invoice No: ${params.invoiceNumber}`, MARGIN + 14, auditY + 12)
-       .text(`Confirmed: ${new Date().toISOString()}  |  Platform: ${params.platformName}`, MARGIN + 14 + 200, auditY);
-    y += 64;
+    // ── ESCROW MECHANISM ──────────────────────────────────────────────────────
+    const escrowH = 66;
+    doc.roundedRect(M, y, INNER, escrowH, 3).fill(GREEN).stroke();
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(WHITE)
+       .text('Escrow Mechanism', M + 10, y + 9);
+    doc.font('Helvetica').fontSize(8.5).fillColor('rgba(255,255,255,0.92)')
+       .text(
+         'The payment has been collected in full at the time of booking and is held in escrow by PetWash Ltd. ' +
+         'Transfer of funds to the service provider will be made only upon completion of the service and client approval.',
+         M + 10, y + 25, { width: INNER - 20, lineGap: 2 }
+       );
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('rgba(255,255,255,0.75)')
+       .text(`Release Date: ${fmtDateTime(params.escrowReleaseDate)}`, M + 10, y + 52);
+    y += escrowH + 12;
 
-    // ── FOOTER ───────────────────────────────────────────────────────────────
-    doc.rect(0, 760, W, 81).fill(DARK);
-    doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
-       .text('Pet Wash™ Ltd.  |  Petwash.co.il', MARGIN, 772);
-    doc.font('Helvetica').fontSize(7.5).fillColor('rgba(255,255,255,0.65)')
-       .text('Company No. (ח.פ.): 517145033  |  פט וואש בע"מ  |  VAT Reg.: 517145033', MARGIN, 786)
-       .text('Support@PetWash.co.il  |  petwash.co.il/support  |  This is an official tax document.', MARGIN, 799)
-       .text(`© ${new Date().getFullYear()} Pet Wash™ Ltd. All rights reserved.  Digitally issued — no signature required.`, MARGIN, 812);
+    // ── LEGAL DISCLAIMER ──────────────────────────────────────────────────────
+    const legalItems = [
+      'This document serves as a valid tax invoice receipt in accordance with Israeli VAT law. The VAT rate has been calculated at the statutory rate of 18%.',
+      'PetWash Ltd operates as a technological platform that connects clients with independent service providers. PetWash is not a party to the service agreement and is not responsible for the actual performance, quality, outcome of the service, or any damages incurred.',
+      'Full responsibility for service execution rests solely with the service provider.',
+    ];
 
-    // footer right — teal stripe
-    doc.rect(W - 8, 760, 8, 81).fill(TEAL);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK).text('Legal Disclaimer:', M, y);
+    y += 14;
+
+    for (const item of legalItems) {
+      // checkmark bullet
+      doc.font('Helvetica').fontSize(9).fillColor(GREEN_LIGHT).text('\u2713', M, y);
+      doc.font('Helvetica').fontSize(8).fillColor(MID)
+         .text(item, M + 14, y, { width: INNER - 14, lineGap: 1.5 });
+      const h = doc.heightOfString(item, { width: INNER - 14 });
+      y += Math.max(h + 4, 18);
+    }
+
+    y += 8;
+
+    // ── AUDIT TRAIL ───────────────────────────────────────────────────────────
+    doc.moveTo(M, y).lineTo(W - M, y).strokeColor(BORDER).lineWidth(0.5).stroke();
+    y += 8;
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(MID)
+       .text('Audit Trail', M, y);
+    y += 12;
+
+    const auditFields: [string, string][] = [
+      ['Booking Created',   fmtDateTime(params.startDate)],
+      ['Invoice Confirmed', fmtDateTime(new Date())],
+      ['Payment Status',    params.paymentStatus],
+      ['System ID',         params.bookingId],
+    ];
+
+    for (const [k, v] of auditFields) {
+      doc.font('Helvetica').fontSize(7.5).fillColor(MUTED).text(k + ': ', M, y, { continued: true });
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK).text(v);
+      y += 12;
+    }
+
+    y += 8;
+
+    // ── DIGITAL SIGNATURE LINE ─────────────────────────────────────────────────
+    doc.moveTo(M, y).lineTo(W - M, y).strokeColor(BORDER).lineWidth(0.5).stroke();
+    y += 8;
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(MID)
+       .text('Digital Signature:', M, y)
+       .text('PetWash System', M + 100, y);
+    y += 8;
+    doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
+       .text(`Issued: ${new Date().toISOString()}  |  Signed by: PetWash Automated Invoice Engine`, M, y);
+
+    // ── FOOTER ────────────────────────────────────────────────────────────────
+    const footerY = H - 24;
+    doc.moveTo(M, footerY).lineTo(W - M, footerY).strokeColor(BORDER).lineWidth(0.4).stroke();
+    doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
+       .text(
+         `\u00A9 ${new Date().getFullYear()} All rights reserved. This document was produced by PetWash Ltd.  |  \u05e4\u05d8 \u05d5\u05d5\u05d0\u05e9 \u05d1\u05e2\u05de \u05d7.\u05e4. 517145033`,
+         M, footerY + 6, { width: INNER, align: 'center' }
+       );
 
     doc.end();
   });
