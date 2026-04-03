@@ -5,8 +5,18 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import IsraeliTaxAPIService, { type InvoiceSubmissionPayload } from './IsraeliTaxAPIService';
 import { GoogleSheetsService } from './googleSheetsIntegration';
+import { requiresAllocationNumber } from './LegalThresholdConfig';
 
-const THRESHOLD_B2B_ELECTRONIC = 25000; // ₪25,000 - B2B threshold for mandatory electronic invoicing (2025)
+/**
+ * THRESHOLD NOTE — Israeli Digital Invoice Law (חוק חשבוניות דיגיטליות):
+ *
+ *   From 1 Jan 2026:  ₪10,000 before VAT  (B2B mandatory electronic invoicing)
+ *   From 1 Jun 2026:  ₪5,000  before VAT
+ *   From 1 Jan 2027:  ₪0      (all B2B)
+ *
+ * Do NOT use a hardcoded constant — thresholds change by date.
+ * Use requiresAllocationNumber() from LegalThresholdConfig for all checks.
+ */
 
 interface CreateInvoiceParams {
   serviceType: 'k9000_wash' | 'sitter_suite' | 'walk_my_pet' | 'pettrek_transport' | 'pet_wash' | 'other';
@@ -85,11 +95,18 @@ class ElectronicInvoicingService {
     return 'B2C';
   }
 
-  private requiresElectronicInvoicing(invoiceType: 'B2B' | 'B2C', totalAmount: number): boolean {
-    if (invoiceType === 'B2B' && totalAmount >= THRESHOLD_B2B_ELECTRONIC) {
-      return true;
-    }
-    return false;
+  /**
+   * Determines if this invoice requires ITA allocation number.
+   * Uses the date-aware threshold from LegalThresholdConfig.
+   * amountBeforeVat must be in NIS (not agorot).
+   */
+  private requiresElectronicInvoicing(
+    invoiceType: 'B2B' | 'B2C',
+    amountBeforeVat: number,
+    issueDate: Date = new Date()
+  ): boolean {
+    if (invoiceType !== 'B2B') return false;
+    return requiresAllocationNumber(amountBeforeVat, true, issueDate);
   }
 
   async createInvoice(params: CreateInvoiceParams) {
@@ -101,7 +118,9 @@ class ElectronicInvoicingService {
       const invoiceNumber = params.invoiceNumber;
       const amounts = this.calculateAmounts(params);
       const invoiceType = this.determineInvoiceType(amounts.totalAmount, params.customerTaxId);
-      const requiresElectronic = this.requiresElectronicInvoicing(invoiceType, amounts.totalAmount);
+      const issueDate = params.invoiceDate ? new Date(params.invoiceDate) : new Date();
+      // Pass amountBeforeVat (not total) — threshold is applied to pre-VAT amount
+      const requiresElectronic = this.requiresElectronicInvoicing(invoiceType, amounts.amountBeforeVat, issueDate);
 
       logger.info('[Electronic Invoicing] Creating invoice', {
         invoiceId,
@@ -330,16 +349,20 @@ class ElectronicInvoicingService {
       return invoiceDate >= startDate && invoiceDate <= endDate;
     });
 
-    const b2bOver25k = filtered.filter(inv => 
-      inv.invoiceType === 'B2B' && parseFloat(inv.totalAmount) >= THRESHOLD_B2B_ELECTRONIC
-    );
+    // Use date-aware threshold per LegalThresholdConfig (₪10k from Jan 2026, ₪5k from Jun 2026)
+    const b2bRequiringAllocation = filtered.filter(inv => {
+      if (inv.invoiceType !== 'B2B') return false;
+      const invDate = new Date(inv.invoiceDate);
+      const amountBeforeVat = parseFloat(inv.amountBeforeVat ?? inv.totalAmount) / (1 + 0.18);
+      return requiresAllocationNumber(amountBeforeVat, true, invDate);
+    });
 
-    const submitted = b2bOver25k.filter(inv => 
+    const submitted = b2bRequiringAllocation.filter(inv => 
       inv.itaSubmissionStatus === 'submitted' || inv.itaSubmissionStatus === 'accepted'
     );
 
-    const pending = b2bOver25k.filter(inv => inv.itaSubmissionStatus === 'pending');
-    const failed = b2bOver25k.filter(inv => 
+    const pending = b2bRequiringAllocation.filter(inv => inv.itaSubmissionStatus === 'pending');
+    const failed = b2bRequiringAllocation.filter(inv => 
       inv.itaSubmissionStatus === 'error' || inv.itaSubmissionStatus === 'rejected'
     );
 

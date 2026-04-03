@@ -29,12 +29,25 @@ class ITAComplianceMonitoringService {
   private consecutiveFailures: number = 0;
   private circuitBreakerOpen: boolean = false;
   
+  /**
+   * B2B mandatory electronic invoicing thresholds (amount BEFORE VAT, NIS).
+   * Source: Israeli Digital Invoice Law (חוק חשבוניות דיגיטליות)
+   * Government of Israel — https://www.gov.il
+   *
+   * 1 Jan 2026: ₪10,000 before VAT
+   * 1 Jun 2026: ₪5,000  before VAT
+   * 1 Jan 2027: ₪0      (all B2B require allocation number)
+   *
+   * NOTE: These are thresholds on the pre-VAT amount only.
+   * Do NOT compare gross (including VAT) amounts to these thresholds.
+   */
   private knownThresholds = {
     b2bElectronicInvoicing: {
-      '2025': 25000,
-      '2026': 20000,
-      '2027': 15000,
-      '2028': 0,
+      effectiveDates: [
+        { from: '2026-01-01', thresholdNIS: 10_000, note: '₪10,000 before VAT from 1 Jan 2026' },
+        { from: '2026-06-01', thresholdNIS: 5_000,  note: '₪5,000 before VAT from 1 Jun 2026' },
+        { from: '2027-01-01', thresholdNIS: 0,       note: 'All B2B from 1 Jan 2027' },
+      ],
     },
     vatRate: 0.18,
   };

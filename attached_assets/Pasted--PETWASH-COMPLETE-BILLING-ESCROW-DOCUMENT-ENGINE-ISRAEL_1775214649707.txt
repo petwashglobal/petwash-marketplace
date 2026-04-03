@@ -1,0 +1,279 @@
+/**
+ * PETWASH - COMPLETE BILLING + ESCROW + DOCUMENT ENGINE (ISRAEL READY)
+ * PURPOSE:
+ * - Separate payment, escrow, and tax documents
+ * - NO fake invoices
+ * - Backend-driven legal logic
+ /
+
+//////////////////////////////
+// 1. TYPES
+//////////////////////////////
+
+type DocumentPurpose =
+  | "booking_confirmation"
+  | "receipt"
+  | "tax_invoice"
+  | "escrow_statement";
+
+type PaymentFlowStatus =
+  | "authorized"
+  | "captured"
+  | "held_in_escrow"
+  | "released"
+  | "refunded"
+  | "disputed";
+
+type BillingEntity = "platform" | "provider";
+
+interface PaymentEvent {
+  bookingId: string;
+  amountAgorot: number;
+  currency: "ILS";
+  customerId: string;
+  providerId: string;
+  processor: "stripe" | "nayax";
+  processorRef: string;
+  paymentMethod: "card" | "bank_transfer";
+}
+
+interface LedgerEntry {
+  id: string;
+  bookingId: string;
+  type: PaymentFlowStatus;
+  amountAgorot: number;
+  createdAt: string;
+}
+
+interface BillingRecord {
+  bookingId: string;
+  issuingEntity: BillingEntity;
+  subtotalAgorot: number;
+  vatAgorot: number;
+  totalAgorot: number;
+  platformFeeAgorot: number;
+  providerPayoutAgorot: number;
+  paymentStatus: PaymentFlowStatus;
+  receiptNumber?: string;
+  invoiceNumber?: string;
+  allocationNumber?: string;
+}
+
+//////////////////////////////
+// 2. CONFIG
+//////////////////////////////
+
+const VAT_RATE = 0.18;
+
+function getAllocationThreshold(date: Date) {
+  const june2026 = new Date("2026-06-01");
+  return date >= june2026 ? 5000 * 100 : 10000 * 100; // agorot
+}
+
+//////////////////////////////
+// 3. LEDGER (ESCROW CORE)
+//////////////////////////////
+
+class LedgerService {
+  private entries: LedgerEntry[] = [];
+
+  record(entry: LedgerEntry) {
+    this.entries.push(entry);
+  }
+
+  getByBooking(bookingId: string) {
+    return this.entries.filter(e => e.bookingId === bookingId);
+  }
+}
+
+//////////////////////////////
+// 4. ESCROW ENGINE
+//////////////////////////////
+
+class EscrowEngine {
+  holdFunds(payment: PaymentEvent): LedgerEntry {
+    return {
+      id: crypto.randomUUID(),
+      bookingId: payment.bookingId,
+      type: "held_in_escrow",
+      amountAgorot: payment.amountAgorot,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  releaseFunds(bookingId: string, amountAgorot: number): LedgerEntry {
+    return {
+      id: crypto.randomUUID(),
+      bookingId,
+      type: "released",
+      amountAgorot,
+      createdAt: new Date().toISOString()
+    };
+  }
+}
+
+//////////////////////////////
+// 5. DOCUMENT RESOLVER
+//////////////////////////////
+
+function resolveDocuments(params: {
+  paymentCaptured: boolean;
+  escrow: boolean;
+  issuingEntity: BillingEntity;
+}) {
+  const docs: DocumentPurpose[] = [];
+
+  docs.push("booking_confirmation");
+
+  if (params.paymentCaptured) {
+    docs.push("receipt");
+  }
+
+  if (params.escrow) {
+    docs.push("escrow_statement");
+  }
+
+  return docs;
+}
+
+//////////////////////////////
+// 6. ACCOUNTING (STUB - MUST CONNECT REAL SYSTEM)
+//////////////////////////////
+
+class AccountingService {
+  async issueReceipt(data: BillingRecord) {
+    // MUST be replaced with real accounting API
+    return {
+      receiptNumber: "RCPT-" + Date.now()
+    };
+  }
+
+  async issueTaxInvoice(data: BillingRecord) {
+    // MUST be real integration
+    return {
+      invoiceNumber: "INV-" + Date.now(),
+      allocationNumber: await this.getAllocationIfNeeded(data)
+    };
+  }
+
+  private async getAllocationIfNeeded(data: BillingRecord) {
+    const threshold = getAllocationThreshold(new Date());
+
+    if (data.subtotalAgorot >= threshold) {
+      // REAL FLOW MUST CALL TAX AUTHORITY
+      return "REAL-ALLOCATION-NUMBER";
+    }
+
+    return null;
+  }
+}
+
+//////////////////////////////
+// 7. BILLING ENGINE
+//////////////////////////////
+
+class BillingEngine {
+  constructor(
+    private ledger: LedgerService,
+    private escrow: EscrowEngine,
+    private accounting: AccountingService
+  ) {}
+
+  async handlePaymentCaptured(payment: PaymentEvent) {
+    // 1. RECORD CAPTURE
+    this.ledger.record({
+      id: crypto.randomUUID(),
+      bookingId: payment.bookingId,
+      type: "captured",
+      amountAgorot: payment.amountAgorot,
+      createdAt: new Date().toISOString()
+    });
+
+    // 2. HOLD IN ESCROW
+    const escrowEntry = this.escrow.holdFunds(payment);
+    this.ledger.record(escrowEntry);
+
+    // 3. BUILD BILLING RECORD
+    const platformFee = Math.floor(payment.amountAgorot * 0.15);
+    const providerPayout = payment.amountAgorot - platformFee;
+
+    const record: BillingRecord = {
+      bookingId: payment.bookingId,
+      issuingEntity: "platform",
+      subtotalAgorot: payment.amountAgorot,
+      vatAgorot: Math.floor(payment.amountAgorot * VAT_RATE),
+      totalAgorot: Math.floor(payment.amountAgorot * (1 + VAT_RATE)),
+      platformFeeAgorot: platformFee,
+      providerPayoutAgorot: providerPayout,
+      paymentStatus: "held_in_escrow"
+    };
+
+    // 4. DOCUMENTS
+    const docs = resolveDocuments({
+      paymentCaptured: true,
+      escrow: true,
+      issuingEntity: "platform"
+    });
+
+    // 5. ISSUE RECEIPT (LEGAL)
+    if (docs.includes("receipt")) {
+      const receipt = await this.accounting.issueReceipt(record);
+      record.receiptNumber = receipt.receiptNumber;
+    }
+
+    // 6. RETURN EVERYTHING
+    return {
+      record,
+      documents: docs
+    };
+  }
+
+  async handleServiceCompleted(bookingId: string, amountAgorot: number) {
+    // 1. RELEASE FUNDS
+    const release = this.escrow.releaseFunds(bookingId, amountAgorot);
+    this.ledger.record(release);
+
+    // 2. OPTIONAL: ISSUE TAX INVOICE (DEPENDS MODEL)
+    return {
+      status: "released",
+      bookingId
+    };
+  }
+}
+
+//////////////////////////////
+// 8. USAGE
+//////////////////////////////
+
+const engine = new BillingEngine(
+  new LedgerService(),
+  new EscrowEngine(),
+  new AccountingService()
+);
+
+// PAYMENT FLOW
+engine.handlePaymentCaptured({
+  bookingId: "BK123",
+  amountAgorot: 20000,
+  currency: "ILS",
+  customerId: "C1",
+  providerId: "P1",
+  processor: "stripe",
+  processorRef: "pi_123",
+  paymentMethod: "card"
+});
+
+// SERVICE COMPLETION
+engine.handleServiceCompleted("BK123", 20000);
+
+//////////////////////////////
+// END
+//////////////////////////////
+
+/*
+ * CRITICAL NOTES:
+ * - This engine handles logic only
+ * - REAL accounting must be integrated
+ * - NEVER generate fake invoices here
+ * - Escrow is state, not text
+ */
