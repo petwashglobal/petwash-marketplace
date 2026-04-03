@@ -1,0 +1,81 @@
+כן. קראתי לעומק.
+וזה מסביר מאוד טוב למה ההרשמה וה-onboarding מרגישים שבורים.
+
+מה GitHub agent מצא באמת
+
+הבעיה כאן היא לא “באג אחד”.
+יש פיצול מטורף בזרימות הרשמה וזו הסיבה שהמערכת לא עקבית.
+
+הבעיות הכי חמורות
+	1.	אין זרימת registration אחת
+יש 4 מסלולים שונים שיוצרים user rows, כל אחד עושה דברים אחרים:
+	•	אחד יוצר wallet
+	•	אחד יוצר loyalty
+	•	אחד לא יוצר כלום
+	•	אחד עושה upsert מאוחר
+זו הסיבה שמשתמש אחד נראה “מלא”, ומשתמש אחר “שבור”.
+	2.	Email/social users לא מקבלים wallet ו-loyalty כמו שצריך
+לכן דפים שמצפים ל-wallet/points/tier נשברים או מחזירים null.
+	3.	Phone OTP מכניס משתמש למבוי סתום
+הוא מאומת, אבל אין שם / שם משפחה / אימייל, ואז post-login דורש אותם וחוסם.
+	4.	יש redirect ל-/verify-email אבל הדף לא קיים
+כלומר email signup יכול להצליח ואז לזרוק את המשתמש לעמוד שלא קיים.
+	5.	Facebook / Instagram / TikTok / Apple flows לא סגורים נכון
+	•	Facebook בכלל לא שלם בצד שרת
+	•	Instagram/TikTok יוצרים Firebase user בלי PostgreSQL user
+	•	Apple נשבר בלוגין חוזר כי email לא תמיד מגיע שוב
+	•	intent של “Become Provider” הולך לאיבוד אחרי OAuth
+	6.	יש תחרות בין handlers שקוראים OAuth redirect result
+שני מקומות קוראים getRedirectResult() וזה יוצר false errors אחרי login מוצלח.
+	7.	Provider onboarding שבור בכמה מקומות
+	•	לופ redirect כי לא בודקים isLoading
+	•	phone verified לא מרענן token
+	•	KYC יכול להיתקע לנצח על processing
+	•	background check הוא stub
+	•	police clearance לא נאכף באמת
+	•	Walk My Pet ו-Academy מאפשרים self-register בלי verification אמיתי
+	8.	מבנה provider data מפוצל
+יש כמה טבלאות provider שונות בלי קוהרנטיות, ולכן admin view ו-approval logic נהיים כאוס.
+
+השורה התחתונה
+
+ה-agent מצא שכרגע:
+	•	ה-signup לא בנוי סביב source of truth אחד
+	•	post-login לא מבוסס על post-registration setup אחיד
+	•	social/email/phone/provider flows לא מתכנסים למסלול אחיד
+	•	provider onboarding מלא TODOs ו-stubs קריטיים
+
+זה לא “UI broken”.
+זה architecture broken in signup and onboarding.
+
+5 הדברים הכי דחופים לפי ההיגיון של הדוח
+
+אם אתה צריך להגיד ל-Replit מה דחוף עכשיו, זה זה:
+	1.	לבנות פונקציה אחידה אחת לכל auth path
+משהו כמו:
+registerUserInPostgresAndBootstrap(uid, provider)
+שתמיד יוצרת/מוודאת:
+	•	users row
+	•	wallet
+	•	loyalty
+	•	customer/provider baseline profile
+	•	post-login readiness
+	2.	לתקן את phone OTP flow
+או:
+	•	לאסוף firstName/lastName/email לפני סיום
+או:
+	•	לאפשר complete-profile בלי deadlock
+	3.	ליצור /verify-email אמיתי
+עם resend + handling, לא redirect לעמוד שלא קיים
+	4.	לתקן social OAuth flows
+במיוחד:
+	•	Facebook server callback
+	•	Instagram/TikTok PostgreSQL sync
+	•	Apple returning user logic
+	•	preserve provider intent after OAuth
+	5.	לתקן provider onboarding guards
+	•	!isLoading לפני redirect
+	•	refresh token אחרי phone verification
+	•	לעצור approval בלי police/background/KYC אמיתי
+
+מה הייתי שולח ל-Replit

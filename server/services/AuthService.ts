@@ -74,7 +74,7 @@ export class AuthService {
 
   async createUser(data: {
     id: string;
-    email: string;
+    email?: string | null;
     firstName?: string;
     lastName?: string;
     phone?: string;
@@ -93,7 +93,7 @@ export class AuthService {
 
       const [user] = await db.insert(users).values({
         id: data.id,
-        email: data.email.toLowerCase(),
+        email: data.email ? data.email.toLowerCase() : null,
         firstName: data.firstName || null,
         lastName: data.lastName || null,
         phone: data.phone || null,
@@ -229,13 +229,12 @@ export class AuthService {
       }
 
       if (!email) {
-        logger.warn('[AuthService] Cannot create PostgreSQL user without email', { uid: firebaseUid });
-        return null;
+        logger.warn('[AuthService] Creating PostgreSQL user without email (TikTok/Instagram/Apple provider) — email can be updated via complete-profile', { uid: firebaseUid });
       }
 
       const newUser = await this.createUser({
         id: firebaseUid,
-        email,
+        email: email || null,
         ...extraData,
       });
       return { user: newUser, isNewUser: true };

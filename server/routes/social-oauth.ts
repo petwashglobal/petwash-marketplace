@@ -157,6 +157,23 @@ router.get('/tiktok/callback', async (req: Request, res: Response) => {
       });
     }
 
+    // ── PostgreSQL user bootstrap (wallet + loyalty + users row) ─────────────
+    // TikTok does not return an email — ensureUserInPostgres now accepts null.
+    // This must run for both new AND returning users (idempotent ON CONFLICT guards).
+    try {
+      const { authService } = await import('../services/AuthService');
+      const nameParts = (tiktokUser.display_name || '').split(' ');
+      await authService.ensureUserInPostgres(uid, undefined, {
+        firstName: nameParts[0] || 'TikTok',
+        lastName: nameParts.slice(1).join(' ') || 'User',
+        profileImageUrl: tiktokUser.avatar_url || undefined,
+        language: 'he',
+        country: 'IL',
+      });
+    } catch (pgErr: any) {
+      logger.warn('[TikTok OAuth] PostgreSQL bootstrap failed (non-blocking)', { uid, error: pgErr.message });
+    }
+
     const customToken = await adminAuth.createCustomToken(uid);
     const exchangeCode = crypto.randomBytes(32).toString('hex');
     pendingTokens.set(exchangeCode, {
@@ -248,6 +265,20 @@ router.get('/instagram/callback', async (req: Request, res: Response) => {
         loyaltyMember: true,
         program: 'PetWash Privilege',
       });
+    }
+
+    // ── PostgreSQL user bootstrap (wallet + loyalty + users row) ─────────────
+    // Instagram does not reliably return an email — ensureUserInPostgres accepts null.
+    try {
+      const { authService } = await import('../services/AuthService');
+      await authService.ensureUserInPostgres(uid, undefined, {
+        firstName: instaUser.username || 'Instagram',
+        lastName: 'User',
+        language: 'he',
+        country: 'IL',
+      });
+    } catch (pgErr: any) {
+      logger.warn('[Instagram OAuth] PostgreSQL bootstrap failed (non-blocking)', { uid, error: pgErr.message });
     }
 
     const customToken = await adminAuth.createCustomToken(uid);

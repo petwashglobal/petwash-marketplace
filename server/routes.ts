@@ -11005,6 +11005,17 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // ===== PHASE 2: Best-effort side effects (failures do NOT block registration) =====
+
+      // ── Wallet + loyalty bootstrap (idempotent ON CONFLICT guards) ───────────────────
+      // authService.createUser() calls these for brand-new users; this block covers
+      // the returning-user path where createUser() returns early without calling them.
+      try {
+        await authService.ensureWalletAccount(userId);
+        await authService.ensureLoyaltyProfile(userId);
+        logger.info(`[Phase2] ✅ Wallet + loyalty ensured uid=${userId}`, { traceId });
+      } catch (bootstrapErr: any) {
+        logger.warn(`[Phase2] Wallet/loyalty bootstrap failed (non-blocking)`, { traceId, error: bootstrapErr.message });
+      }
       
       // Firestore profile (best-effort - user can still log in without it)
       try {
