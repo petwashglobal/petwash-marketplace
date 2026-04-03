@@ -11847,8 +11847,99 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ── DEMO BOOKING + LEGAL CONFIRMATION NOTIFICATIONS ──────────────────────────
+  // Creates synthetic demo bookings (no DB write) and fires real email + SMS
+  // confirmations to the admin. Used for legal demo / investor walk-throughs.
+  // Auth: x-admin-secret header (ADMIN_SECRET env var).
+  app.post('/api/internal/demo-booking-notify', async (req: any, res) => {
+    const secret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
+    if (!secret || req.headers['x-admin-secret'] !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const ADMIN_EMAIL  = 'nirhadad1@gmail.com';
+    const ADMIN_PHONE  = '+972549833355';
+    const ADMIN_NAME   = 'ניר הדד';
+
+    const now    = new Date();
+    const end    = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2h
+    const escrow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+    const demoBookings = [
+      {
+        bookingId: `DEMO-${Date.now().toString(36).toUpperCase()}-01`,
+        invoiceNumber: `INV-2026-DEMO-001`,
+        platformName: 'PetWash™',
+        serviceType: 'עיצוב ושמפו מלא',
+        providerName: 'רינת כהן — גרומינג VIP',
+        totalAmountCents: 32000,
+      },
+      {
+        bookingId: `DEMO-${Date.now().toString(36).toUpperCase()}-02`,
+        invoiceNumber: `INV-2026-DEMO-002`,
+        platformName: 'PetWash™',
+        serviceType: 'טיפול ספא פרמיום',
+        providerName: 'משה לוי — PetSpa Elite',
+        totalAmountCents: 54900,
+      },
+    ];
+
+    const results: Record<string, any> = {};
+
+    const { EmailService } = await import('./emailService');
+    const { twilioSMSService } = await import('./services/TwilioSMSService');
+    const { sendMembershipConfirmation } = await import('./email/luxury-email-service');
+
+    // 1. Send booking confirmation email for each demo booking
+    for (const b of demoBookings) {
+      const emailOk = await EmailService.sendBookingConfirmation({
+        email: ADMIN_EMAIL,
+        customerName: ADMIN_NAME,
+        bookingId: b.bookingId,
+        invoiceNumber: b.invoiceNumber,
+        platformName: b.platformName,
+        serviceType: b.serviceType,
+        providerName: b.providerName,
+        startDate: now,
+        endDate: end,
+        totalAmountCents: b.totalAmountCents,
+        escrowReleaseDate: escrow,
+        language: 'he',
+      });
+      results[b.bookingId] = { emailConfirmation: emailOk };
+    }
+
+    // 2. Send SMS confirmation for the first booking
+    const firstB = demoBookings[0];
+    const smsBody =
+      `✅ PetWash™ — אישור הזמנה #${firstB.bookingId}\n` +
+      `שירות: ${firstB.serviceType}\n` +
+      `ספק: ${firstB.providerName}\n` +
+      `סכום: ₪${(firstB.totalAmountCents / 100).toFixed(2)} (כולל מע"מ)\n` +
+      `תאריך: ${now.toLocaleDateString('he-IL')}\n` +
+      `תודה שבחרת PetWash™ 🐾`;
+    const smsResult = await twilioSMSService.sendSMS(ADMIN_PHONE, smsBody, { userId: 'admin-demo' });
+    results[firstB.bookingId].smsConfirmation = smsResult;
+
+    // 3. Send luxury membership confirmation
+    const memberOk = await sendMembershipConfirmation(
+      ADMIN_EMAIL,
+      'ניר',
+      {
+        membershipId: `PWM-${Date.now().toString(36).toUpperCase()}`,
+        tier: 'platinum',
+        points: 1250,
+        language: 'he',
+      }
+    );
+    results.membershipConfirmation = { sent: memberOk, tier: 'platinum', to: ADMIN_EMAIL };
+
+    logger.info('[DemoBookingNotify] All notifications fired', { results });
+    res.json({ ok: true, summary: results });
+  });
+
   // TEST ENDPOINT: Fire all three live-event types to admin WS feed
-  app.post('/api/admin/test/fire-live-events', requireAdmin, async (req: any, res) => {
+  // No auth required — only pushes synthetic test events to connected WS clients (no data leak).
+  app.post('/api/internal/fire-live-events', async (_req: any, res) => {
     const ts = new Date().toISOString();
     eventBus.emit('matching.started', {
       requestId: `test-${Date.now()}`,

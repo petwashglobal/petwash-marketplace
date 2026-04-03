@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
+import { logger } from '../lib/logger';
 import { 
   insertChatConversationSchema,
   insertChatMessageSchema,
@@ -118,7 +119,7 @@ router.get('/conversations', requireAuth, async (req: AuthenticatedRequest, res:
       }
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error fetching conversations:', error);
+    logger.error('[ChatHistory] Error fetching conversations', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch conversations',
@@ -163,7 +164,7 @@ router.get('/conversations/franchise/:franchiseId', requireAuth, async (req: Aut
       }
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error fetching franchise conversations:', error);
+    logger.error('[ChatHistory] Error fetching franchise conversations:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch conversations',
@@ -203,7 +204,7 @@ router.get('/conversations/:conversationId', requireAuth, async (req: Authentica
       conversation,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error fetching conversation:', error);
+    logger.error('[ChatHistory] Error fetching conversation:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch conversation',
@@ -232,7 +233,7 @@ router.post('/conversations', requireAuth, async (req: AuthenticatedRequest, res
       conversation: newConversation,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error creating conversation:', error);
+    logger.error('[ChatHistory] Error creating conversation:', { error: error.message });
     
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -294,7 +295,7 @@ router.patch('/conversations/:conversationId', requireAuth, async (req: Authenti
       conversation: updated,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error updating conversation:', error);
+    logger.error('[ChatHistory] Error updating conversation:', { error: error.message });
     
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -351,7 +352,7 @@ router.delete('/conversations/:conversationId', requireAuth, async (req: Authent
       .returning();
 
     // Audit log
-    console.info('[ChatHistory] [AUDIT] Conversation deleted:', {
+    logger.info('[ChatHistory] [AUDIT] Conversation deleted:', {
       conversationId,
       deletedBy: req.user!.uid,
       deletedAt: new Date(),
@@ -363,7 +364,7 @@ router.delete('/conversations/:conversationId', requireAuth, async (req: Authent
       conversation: deleted,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error deleting conversation:', error);
+    logger.error('[ChatHistory] Error deleting conversation:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to delete conversation',
@@ -428,7 +429,7 @@ router.get('/conversations/:conversationId/messages', requireAuth, async (req: A
       }
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error fetching messages:', error);
+    logger.error('[ChatHistory] Error fetching messages:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch messages',
@@ -487,7 +488,7 @@ router.post('/messages', requireAuth, async (req: AuthenticatedRequest, res: Res
       message: newMessage,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error creating message:', error);
+    logger.error('[ChatHistory] Error creating message:', { error: error.message });
     
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -552,7 +553,7 @@ router.patch('/messages/:messageId/read', requireAuth, async (req: Authenticated
       message: updated,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error marking message as read:', error);
+    logger.error('[ChatHistory] Error marking message as read:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update message',
@@ -604,7 +605,7 @@ router.get('/search', requireAuth, async (req: AuthenticatedRequest, res: Respon
       results: messages,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error searching messages:', error);
+    logger.error('[ChatHistory] Error searching messages:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to search messages',
@@ -649,7 +650,7 @@ router.post('/analytics', requireAuth, async (req: AuthenticatedRequest, res: Re
       event,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error tracking analytics:', error);
+    logger.error('[ChatHistory] Error tracking analytics:', { error: error.message });
     
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -704,7 +705,7 @@ router.get('/analytics/:conversationId', requireAuth, async (req: AuthenticatedR
       events,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error fetching analytics:', error);
+    logger.error('[ChatHistory] Error fetching analytics:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch analytics',
@@ -749,7 +750,7 @@ router.post('/attachments', requireAuth, async (req: AuthenticatedRequest, res: 
       attachment,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error creating attachment:', error);
+    logger.error('[ChatHistory] Error creating attachment:', { error: error.message });
     
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -810,7 +811,7 @@ router.get('/messages/:messageId/attachments', requireAuth, async (req: Authenti
       attachments,
     });
   } catch (error: any) {
-    console.error('[ChatHistory] Error fetching attachments:', error);
+    logger.error('[ChatHistory] Error fetching attachments:', { error: error.message });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch attachments',

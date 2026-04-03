@@ -159,7 +159,7 @@ export default function AdminLiveEvents() {
   const fireTestEvents = useCallback(async () => {
     setFiring(true);
     try {
-      await fetch('/api/admin/test/fire-live-events', { method: 'POST' });
+      await fetch('/api/internal/fire-live-events', { method: 'POST' });
     } finally {
       setTimeout(() => setFiring(false), 1200);
     }
