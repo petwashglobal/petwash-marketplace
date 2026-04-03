@@ -33,6 +33,7 @@ import {
 } from "../../shared/schema";
 import { and, eq, or, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { eventBus } from "./EventBus";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -441,9 +442,25 @@ async function fetchMarketplaceProviders(
 
 // ── Public entry point ─────────────────────────────────────────────────────
 
-export async function runProviderSearch(filters: ProviderSearchFilters) {
+export async function runProviderSearch(
+  filters: ProviderSearchFilters,
+  callerUserId?: string,
+) {
   const location = await resolveSearchLocation(filters);
   const providerList = await fetchMarketplaceProviders(filters);
+
+  // Real-time event — matching.started (spec §6.2)
+  eventBus.publish({
+    eventType: 'matching.started',
+    timestamp: new Date().toISOString(),
+    platform: 'marketplace',
+    userId: callerUserId,
+    data: {
+      serviceType: filters.serviceType,
+      location: location.source !== 'none' ? location : undefined,
+      totalCandidates: providerList.length,
+    },
+  }).catch(() => {});
 
   const scored = providerList
     .map((p) => scoreProvider({ ...p }, filters, location))

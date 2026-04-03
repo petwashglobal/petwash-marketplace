@@ -92,6 +92,7 @@ import careersRoutes from "./routes/careers";
 import vatRoutes from "./routes/vat";
 import feesRoutes from "./routes/fees";
 import escrowRoutes from "./routes/escrow";
+import customerIntelligenceRoutes, { adminIntelligenceRouter } from "./routes/customer-intelligence";
 import bookingsRoutes from "./routes/bookings";
 import superAppBookingsRoutes from "./routes/super-app-bookings";
 import privacySettingsRoutes from "./routes/privacy-settings";
@@ -9865,6 +9866,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/user/addresses', apiLimiter, userAddressesRoutes);
   app.use('/api/account', apiLimiter, accountManagementRoutes);
   app.use('/api/user', optionalFirebaseToken, apiLimiter, profileSettingsRoutes);
+
+  // 🧠 Customer Intelligence — trust/behavior scoring, journey state machine
+  app.use('/api/user', optionalFirebaseToken, apiLimiter, customerIntelligenceRoutes);
+  app.use('/api/admin/users', requireAdmin, apiLimiter, adminIntelligenceRouter);
 
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', requireDpaAccepted, apiLimiter, mobileBiometricRoutes);

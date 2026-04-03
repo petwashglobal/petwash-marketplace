@@ -49,6 +49,8 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
+import { eventBus } from '../services/EventBus';
+import { recomputeCustomerProfile, advanceJourneyState } from '../services/CustomerIntelligenceService';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -379,6 +381,11 @@ router.post('/', async (req, res) => {
       },
       { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
+
+    // Intelligence — advance customer journey state to ready_to_book
+    if (booking.ownerId) {
+      advanceJourneyState(booking.ownerId, 'ready_to_book').catch(() => {});
+    }
 
     // ── Loyalty credit redemption — synchronous debit after booking row exists ──
     // Amount was already reflected in the quote's totalCents.
@@ -844,6 +851,29 @@ router.post('/:requestId/respond', async (req, res) => {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       providerRespondedAt: new Date().toISOString(),
     }).catch(() => {});
+
+    // Real-time intelligence event — provider.accepted (spec §6.2)
+    if (data.action === 'accept') {
+      eventBus.publish({
+        eventType: 'provider.accepted',
+        timestamp: new Date().toISOString(),
+        platform: 'marketplace',
+        userId: booking.providerId ?? undefined,
+        data: {
+          requestId,
+          ownerId: booking.ownerId,
+          providerId: booking.providerId,
+          serviceType: booking.serviceType,
+          newStatus,
+        },
+      }).catch(() => {});
+
+      // Advance owner journey state to 'booked' on acceptance
+      if (booking.ownerId) {
+        advanceJourneyState(booking.ownerId, 'booked').catch(() => {});
+        recomputeCustomerProfile(booking.ownerId).catch(() => {});
+      }
+    }
     
     res.json({
       success: true,
@@ -1286,6 +1316,60 @@ router.post('/:requestId/complete', async (req, res) => {
   } catch (error: any) {
     logger.error('[BookingRequests] Complete service error', { error: error.message });
     res.status(500).json({ error: 'Failed to complete service' });
+  }
+});
+
+/**
+ * POST /api/booking-requests/:requestId/arriving
+ * Provider signals they are on the way / have arrived.
+ * Emits real-time `provider.arriving` event (spec §6.2).
+ */
+router.post('/:requestId/arriving', async (req, res) => {
+  try {
+    const userId = req.user?.uid || (req as any).firebaseUser?.uid;
+    const { requestId } = req.params;
+    const { eta } = req.body;
+
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const [booking] = await db
+      .select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.providerId !== userId) {
+      return res.status(403).json({ error: 'Only the assigned provider can signal arrival' });
+    }
+
+    const allowedStatuses = ['accepted', 'confirmed', 'in_progress'];
+    if (!allowedStatuses.includes(booking.status)) {
+      return res.status(400).json({
+        error: `Cannot signal arrival for booking with status: ${booking.status}`,
+      });
+    }
+
+    // Emit real-time event — provider.arriving (spec §6.2)
+    eventBus.publish({
+      eventType: 'provider.arriving',
+      timestamp: new Date().toISOString(),
+      platform: 'marketplace',
+      userId,
+      data: {
+        requestId,
+        ownerId: booking.ownerId,
+        providerId: userId,
+        serviceType: booking.serviceType,
+        eta: eta ?? null,
+      },
+    }).catch(() => {});
+
+    logger.info('[BookingRequests] Provider arriving signal emitted', { requestId, userId });
+    return res.json({ success: true, message: 'Arrival signal sent to customer' });
+  } catch (error: any) {
+    logger.error('[BookingRequests] Provider arriving error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to signal arrival' });
   }
 });
 

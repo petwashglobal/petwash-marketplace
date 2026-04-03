@@ -145,6 +145,10 @@ export const users = pgTable("users", {
   lastActivationEmailSentAt: timestamp("last_activation_email_sent_at"),
   activationVersion: integer("activation_version").notNull().default(1),
 
+  // CUSTOMER JOURNEY STATE MACHINE (intelligence layer)
+  // visitor | browsing | authenticated | ready_to_book | booked
+  journeyState: varchar("journey_state", { length: 30 }).default("visitor"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -174,6 +178,33 @@ export const userAddresses = pgTable("user_addresses", {
 export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({ id: true, createdAt: true, lastUsedAt: true });
 export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
 export type UserAddress = typeof userAddresses.$inferSelect;
+
+// ── User Intelligence Profiles (customer trust/behavior scoring) ─────────────
+export const userIntelligenceProfiles = pgTable("user_intelligence_profiles", {
+  userId: varchar("user_id", { length: 128 }).primaryKey(),
+  userType: varchar("user_type", { length: 20 }).notNull().default("customer"),
+  trustScore: decimal("trust_score", { precision: 5, scale: 2 }).default("50").notNull(),
+  behaviorScore: decimal("behavior_score", { precision: 5, scale: 2 }).default("50").notNull(),
+  riskLevel: decimal("risk_level", { precision: 5, scale: 2 }).default("0").notNull(),
+  bookingHistoryCount: integer("booking_history_count").default(0).notNull(),
+  cancellationRate: decimal("cancellation_rate", { precision: 5, scale: 4 }).default("0").notNull(),
+  noShowCount: integer("no_show_count").default(0).notNull(),
+  repeatUsageCount: integer("repeat_usage_count").default(0).notNull(),
+  recentActivityDaysAgo: integer("recent_activity_days_ago"),
+  preferences: jsonb("preferences").default({}).notNull(),
+  lastComputedAt: timestamp("last_computed_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_user_intelligence_user").on(table.userId),
+  index("idx_user_intelligence_trust").on(table.trustScore),
+]);
+
+export const insertUserIntelligenceProfileSchema = createInsertSchema(userIntelligenceProfiles).omit({
+  createdAt: true, updatedAt: true, lastComputedAt: true,
+});
+export type InsertUserIntelligenceProfile = z.infer<typeof insertUserIntelligenceProfileSchema>;
+export type UserIntelligenceProfile = typeof userIntelligenceProfiles.$inferSelect;
 
 // Verification Tokens — persistent store for OTP + email activation tokens
 export const verificationTokens = pgTable("verification_tokens", {

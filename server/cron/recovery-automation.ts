@@ -198,6 +198,70 @@ async function runAbandonedBookingRecovery() {
   }
 }
 
+// ── Job 3: Re-engagement — inactive 30+ days ─────────────────────────────
+
+async function runInactiveUserReengagement() {
+  const THIRTY_DAYS_AGO  = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const NINETY_DAYS_AGO  = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+  const inactive = await db
+    .select({
+      id:        users.id,
+      email:     users.email,
+      firstName: users.firstName,
+      lastLoginAt: users.lastLoginAt,
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.activationStatus, 'active'),
+        lt(users.lastLoginAt, THIRTY_DAYS_AGO),
+        sql`${users.lastLoginAt} > ${NINETY_DAYS_AGO}`,
+      )
+    )
+    .limit(100);
+
+  let sent = 0, skipped = 0;
+
+  for (const user of inactive) {
+    if (!user.email) { skipped++; continue; }
+
+    const key = `recovery_winback_30d_${user.id}`;
+    if (await alreadyQueued(key)) { skipped++; continue; }
+
+    try {
+      await markQueued(key, user.id, user.email, 'winback_30d');
+
+      await dispatchNotification({
+        uid:      user.id,
+        email:    user.email,
+        type:     'winback_30d',
+        title:    '🐾 חסרים לנו!',
+        bodyHtml: `
+          <p>שלום ${user.firstName ?? 'חבר PetWash'},</p>
+          <p>לא ראינו אותך כבר 30 יום — הכלב שלך בוודאי מתגעגע לטיפול.</p>
+          <p>חזור עכשיו וקבל עדיפות בהזמנה הבאה שלך.</p>
+        `,
+        channels: ['email'],
+        locale:   'he',
+      });
+
+      sent++;
+    } catch (err: any) {
+      logger.error('[RecoveryAutomation] Failed to send winback email', {
+        userId: user.id,
+        err: err.message,
+      });
+    }
+  }
+
+  if (sent > 0 || inactive.length > 0) {
+    logger.info('[RecoveryAutomation] Inactive 30-day re-engagement scan complete', {
+      scanned: inactive.length, sent, skipped,
+    });
+  }
+}
+
 // ── Cron registration ─────────────────────────────────────────────────────
 
 export function startRecoveryAutomationCron() {
@@ -215,5 +279,13 @@ export function startRecoveryAutomationCron() {
     }
   });
 
-  logger.info('[RecoveryAutomation] Cron jobs registered (signup: 60min, booking: 30min)');
+  // Daily at 10:00 AM — re-engage users inactive for 30+ days
+  cron.schedule('0 10 * * *', async () => {
+    try { await runInactiveUserReengagement(); }
+    catch (err: any) {
+      logger.error('[RecoveryAutomation] Winback 30d job failed', { err: err.message });
+    }
+  });
+
+  logger.info('[RecoveryAutomation] Cron jobs registered (signup: 60min, booking: 30min, winback: daily 10:00)');
 }
