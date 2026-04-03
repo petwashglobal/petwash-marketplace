@@ -124,6 +124,12 @@ interface UserProfile {
   country: string;
   latitude: number | null;
   longitude: number | null;
+  // Temporary address support
+  addressIsTemporary?: boolean;
+  temporaryAddress?: string;
+  temporaryLat?: number | null;
+  temporaryLng?: number | null;
+  temporaryPostal?: string;
   birthdate: string;
   photoURL: string;
   preferredLanguage: string;
@@ -1698,11 +1704,113 @@ export default function MyAccount() {
                             />
                           </div>
                         </div>
+
+                        {/* ── Temporary Address Toggle ── */}
+                        <div className="mt-3 p-3 rounded-xl border border-blue-100 bg-blue-50/40 space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700">
+                                {isHebrew ? '📍 כתובת זמנית' : '📍 Temporary Address'}
+                              </p>
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                {isHebrew
+                                  ? 'אם אין לך כתובת קבועה, הגדר את מיקומך הנוכחי כאזור שירות זמני'
+                                  : 'If you have no permanent address, set your current location as a temporary service zone'}
+                              </p>
+                            </div>
+                            <Switch
+                              checked={editedProfile.addressIsTemporary ?? false}
+                              onCheckedChange={(checked) =>
+                                setEditedProfile({ ...editedProfile, addressIsTemporary: checked })
+                              }
+                            />
+                          </div>
+
+                          {editedProfile.addressIsTemporary && (
+                            <div className="space-y-2">
+                              {editedProfile.temporaryAddress ? (
+                                <div className="flex items-start gap-2 p-2 rounded-lg bg-white border border-blue-200">
+                                  <MapPin className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-800 truncate">
+                                      {editedProfile.temporaryAddress}
+                                    </p>
+                                    {editedProfile.temporaryPostal && (
+                                      <p className="text-xs text-gray-500">{isHebrew ? 'מיקוד: ' : 'Postal: '}{editedProfile.temporaryPostal}</p>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="text-xs text-red-400 hover:text-red-600 transition-colors shrink-0"
+                                    onClick={() => setEditedProfile({
+                                      ...editedProfile,
+                                      temporaryAddress: '',
+                                      temporaryLat: null,
+                                      temporaryLng: null,
+                                      temporaryPostal: '',
+                                    })}
+                                  >
+                                    {isHebrew ? 'נקה' : 'Clear'}
+                                  </button>
+                                </div>
+                              ) : null}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 gap-2"
+                                onClick={() => {
+                                  if (!navigator.geolocation) return;
+                                  navigator.geolocation.getCurrentPosition(
+                                    async (pos) => {
+                                      const { latitude, longitude } = pos.coords;
+                                      try {
+                                        const res = await fetch(
+                                          `/api/google/places-details?latlng=${latitude},${longitude}`,
+                                          { credentials: 'include' }
+                                        );
+                                        const data = await res.json();
+                                        const formatted = data?.result?.formatted_address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+                                        const postal = data?.result?.address_components?.find((c: any) => c.types.includes('postal_code'))?.long_name || '';
+                                        setEditedProfile({
+                                          ...editedProfile,
+                                          addressIsTemporary: true,
+                                          temporaryAddress: formatted,
+                                          temporaryLat: latitude,
+                                          temporaryLng: longitude,
+                                          temporaryPostal: postal,
+                                        });
+                                      } catch {
+                                        setEditedProfile({
+                                          ...editedProfile,
+                                          addressIsTemporary: true,
+                                          temporaryAddress: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+                                          temporaryLat: latitude,
+                                          temporaryLng: longitude,
+                                        });
+                                      }
+                                    },
+                                    () => {}
+                                  );
+                                }}
+                              >
+                                <MapPin className="w-4 h-4" />
+                                {isHebrew ? 'זהה את מיקומי הנוכחי' : 'Detect My Current Location'}
+                              </Button>
+                              <p className="text-[10px] text-blue-500 text-center">
+                                {isHebrew
+                                  ? 'הכתובת הזמנית תשמש לחיפוש ולהזמנות עד שתוסיף כתובת קבועה'
+                                  : 'This temporary address will be used for service matching until you add a permanent one'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       /* Display mode — show structured address */
-                      <div className="space-y-0.5">
-                        {(profile.street || profile.city) ? (
+                      <div className="space-y-1">
+                        {/* Permanent address */}
+                        {(profile.street || profile.city || profile.address) ? (
                           <>
                             <p className="text-gray-900 font-medium">
                               {[profile.street, (profile as any).streetNumber].filter(Boolean).join(' ')}
@@ -1714,8 +1822,15 @@ export default function MyAccount() {
                           </>
                         ) : (
                           <p className="text-gray-400 text-sm italic">
-                            {isHebrew ? 'לא הוזנה כתובת' : 'No address saved yet'}
+                            {isHebrew ? 'לא הוזנה כתובת קבועה' : 'No permanent address saved yet'}
                           </p>
+                        )}
+                        {/* Temporary address badge */}
+                        {(profile as any).addressIsTemporary && (profile as any).temporaryAddress && (
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-blue-600 bg-blue-50 rounded-lg px-2 py-1 w-fit">
+                            <MapPin className="w-3 h-3" />
+                            <span>{isHebrew ? 'זמני: ' : 'Temp: '}{(profile as any).temporaryAddress}</span>
+                          </div>
                         )}
                       </div>
                     )}

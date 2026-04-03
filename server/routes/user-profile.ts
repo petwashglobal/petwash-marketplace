@@ -21,13 +21,22 @@ const profileUpdateSchema = z.object({
   phone: z.string().optional(),
   birthdate: z.string().optional(),
   preferredLanguage: z.string().optional(),
+  // Permanent address
   address: z.string().optional(),
   street: z.string().optional(),
+  streetNumber: z.string().optional(),
+  apartment: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  // Temporary address (for users without permanent address / on the move)
+  addressIsTemporary: z.boolean().optional(),
+  temporaryAddress: z.string().optional(),
+  temporaryLat: z.number().optional().nullable(),
+  temporaryLng: z.number().optional().nullable(),
+  temporaryPostal: z.string().optional(),
   email: z.string().email().optional(),
   photoURL: z.string().optional(),
   notificationPreferences: notificationPreferencesSchema,
@@ -113,13 +122,22 @@ router.get('/profile', async (req, res) => {
       displayName,
       email: user.email || '',
       phone: user.phone || '',
+      // Permanent address
       address: user.address || '',
       street: user.street || '',
+      streetNumber: user.streetNumber || '',
+      apartment: user.apartment || '',
       city: user.city || '',
       postalCode: user.postalCode || '',
       country: user.country || 'IL',
       latitude: user.latitude ? Number(user.latitude) : null,
       longitude: user.longitude ? Number(user.longitude) : null,
+      // Temporary address
+      addressIsTemporary: user.addressIsTemporary ?? false,
+      temporaryAddress: user.temporaryAddress || '',
+      temporaryLat: user.temporaryLat ? Number(user.temporaryLat) : null,
+      temporaryLng: user.temporaryLng ? Number(user.temporaryLng) : null,
+      temporaryPostal: user.temporaryPostal || '',
       birthdate: user.dateOfBirth || '',
       photoURL: user.profileImageUrl || '',
       preferredLanguage: user.language || 'he',
@@ -159,7 +177,12 @@ router.patch('/profile', async (req, res) => {
       return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.flatten() });
     }
 
-    const { displayName, phone, birthdate, preferredLanguage, address, street, city, postalCode, country, latitude, longitude, notificationPreferences } = parseResult.data;
+    const {
+      displayName, phone, birthdate, preferredLanguage,
+      address, street, streetNumber, apartment, city, postalCode, country, latitude, longitude,
+      addressIsTemporary, temporaryAddress, temporaryLat, temporaryLng, temporaryPostal,
+      notificationPreferences,
+    } = parseResult.data;
 
     const [existingUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
 
@@ -173,13 +196,22 @@ router.patch('/profile', async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (birthdate !== undefined) updateData.dateOfBirth = birthdate;
     if (preferredLanguage !== undefined) updateData.language = preferredLanguage;
+    // Permanent address
     if (address !== undefined) updateData.address = address;
     if (street !== undefined) updateData.street = street;
+    if (streetNumber !== undefined) updateData.streetNumber = streetNumber;
+    if (apartment !== undefined) updateData.apartment = apartment;
     if (city !== undefined) updateData.city = city;
     if (postalCode !== undefined) updateData.postalCode = postalCode;
     if (country !== undefined) updateData.country = country;
-    if (latitude !== undefined) updateData.latitude = String(latitude);
-    if (longitude !== undefined) updateData.longitude = String(longitude);
+    if (latitude !== undefined) updateData.latitude = latitude !== null ? String(latitude) : null;
+    if (longitude !== undefined) updateData.longitude = longitude !== null ? String(longitude) : null;
+    // Temporary address
+    if (addressIsTemporary !== undefined) updateData.addressIsTemporary = addressIsTemporary;
+    if (temporaryAddress !== undefined) updateData.temporaryAddress = temporaryAddress;
+    if (temporaryLat !== undefined) updateData.temporaryLat = temporaryLat !== null ? String(temporaryLat) : null;
+    if (temporaryLng !== undefined) updateData.temporaryLng = temporaryLng !== null ? String(temporaryLng) : null;
+    if (temporaryPostal !== undefined) updateData.temporaryPostal = temporaryPostal;
 
     if (Object.keys(updateData).length > 0) {
       if (existingUser) {

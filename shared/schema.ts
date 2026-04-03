@@ -45,11 +45,19 @@ export const users = pgTable("users", {
   dateOfBirth: varchar("date_of_birth"),
   address: text("address"),
   street: text("street"),
+  streetNumber: varchar("street_number"),        // Building/house number, e.g. "18"
+  apartment: varchar("apartment"),               // Apt / floor / entrance, e.g. "דירה 4"
   city: varchar("city"),
   postalCode: varchar("postal_code"),
   country: varchar("country").default("IL"),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  // Temporary address — for users without a permanent address or on the move
+  addressIsTemporary: boolean("address_is_temporary").default(false),
+  temporaryAddress: text("temporary_address"),   // Full formatted temporary address
+  temporaryLat: decimal("temporary_lat", { precision: 10, scale: 7 }),
+  temporaryLng: decimal("temporary_lng", { precision: 10, scale: 7 }),
+  temporaryPostal: varchar("temporary_postal"),
   gender: varchar("gender"),
   language: varchar("language").default("en"),
   loyaltyTier: varchar("loyalty_tier").default("bronze"), // 7-tier luxury system: bronze(5%), silver(10%), gold(15%), platinum(20%), diamond(30%), emerald(40%), royal(50%)

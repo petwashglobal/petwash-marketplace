@@ -39,6 +39,46 @@ export default function WalkBookingFlow() {
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
   const [pickupAddress, setPickupAddress] = useState('');
   const [pickupDetails, setPickupDetails] = useState<PlaceDetails | null>(null);
+
+  // Pre-fill pickup address from user's saved profile
+  const { data: userProfile } = useQuery<{
+    address: string; street: string; streetNumber?: string; apartment?: string;
+    city: string; postalCode: string; latitude: number | null; longitude: number | null;
+    addressIsTemporary?: boolean; temporaryAddress?: string; temporaryLat?: number | null; temporaryLng?: number | null;
+  }>({
+    queryKey: ['/api/user/profile'],
+    enabled: !!user?.uid,
+  });
+
+  useEffect(() => {
+    if (!userProfile || pickupAddress) return;
+    // Prefer temporary address when flagged, otherwise use permanent address
+    if (userProfile.addressIsTemporary && userProfile.temporaryAddress) {
+      setPickupAddress(userProfile.temporaryAddress);
+      if (userProfile.temporaryLat && userProfile.temporaryLng) {
+        setPickupDetails({
+          formattedAddress: userProfile.temporaryAddress,
+          lat: userProfile.temporaryLat,
+          lng: userProfile.temporaryLng,
+        });
+      }
+    } else if (userProfile.address || userProfile.street) {
+      const full = userProfile.address ||
+        [userProfile.street, userProfile.streetNumber, userProfile.apartment, userProfile.city, userProfile.postalCode]
+          .filter(Boolean).join(', ');
+      setPickupAddress(full);
+      if (userProfile.latitude && userProfile.longitude) {
+        setPickupDetails({
+          formattedAddress: full,
+          street: userProfile.street,
+          city: userProfile.city,
+          postalCode: userProfile.postalCode,
+          lat: userProfile.latitude,
+          lng: userProfile.longitude,
+        });
+      }
+    }
+  }, [userProfile]);
   const [showWeatherConsent, setShowWeatherConsent] = useState(false);
   const [weatherConsentAccepted, setWeatherConsentAccepted] = useState(false);
   const [weatherConditions, setWeatherConditions] = useState<string[]>([]);

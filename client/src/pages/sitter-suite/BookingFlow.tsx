@@ -64,6 +64,36 @@ export default function SitterBookingFlow() {
   const [addressLat, setAddressLat] = useState<number | null>(null);
   const [addressLng, setAddressLng] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Pre-fill address from user's saved profile
+  const { data: userProfile } = useQuery<{
+    address: string; street: string; streetNumber?: string; apartment?: string;
+    city: string; postalCode: string; latitude: number | null; longitude: number | null;
+    addressIsTemporary?: boolean; temporaryAddress?: string; temporaryLat?: number | null; temporaryLng?: number | null;
+    temporaryPostal?: string;
+  }>({
+    queryKey: ['/api/user/profile'],
+    enabled: !!user?.uid,
+  });
+
+  useEffect(() => {
+    if (!userProfile || address) return;
+    if (userProfile.addressIsTemporary && userProfile.temporaryAddress) {
+      setAddress(userProfile.temporaryAddress);
+      if (userProfile.temporaryLat) setAddressLat(userProfile.temporaryLat);
+      if (userProfile.temporaryLng) setAddressLng(userProfile.temporaryLng);
+      if (userProfile.temporaryPostal) setAddressPostal(userProfile.temporaryPostal);
+    } else if (userProfile.address || userProfile.street) {
+      const full = userProfile.address ||
+        [userProfile.street, userProfile.streetNumber, userProfile.apartment, userProfile.city, userProfile.postalCode]
+          .filter(Boolean).join(', ');
+      setAddress(full);
+      if (userProfile.city) setAddressCity(userProfile.city);
+      if (userProfile.postalCode) setAddressPostal(userProfile.postalCode);
+      if (userProfile.latitude) setAddressLat(userProfile.latitude);
+      if (userProfile.longitude) setAddressLng(userProfile.longitude);
+    }
+  }, [userProfile]);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
   const { instructions: ownerInstructions, setInstructions: setOwnerInstructions } = useOwnerInstructions();
