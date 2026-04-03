@@ -1,0 +1,32 @@
+The user wants me to read the full audit document, understand all 20 issues deeply, and prepare to fix them. They say "that's the first one, read deep with logic will send more" - so they're going to send more audit content. Let me read the full document first.
+Let me read the full document before you send more:
+Good - now I've read the full audit. Let me understand the 20 issues, verify them against the actual code, and prepare my response. The user says "that's the first one, read deep with logic will send more" - so they'll send more audit documents. I need to understand this one deeply and be ready to act.
+
+Let me now verify the critical issues (#1, #2, #3, etc.) against the actual codebase quickly. The most important ones are:
+
+#1 - Fake payment endpoint in /api/express-checkout
+#2 - Auth bypass with hardcoded TEST_BYPASS_TOKEN
+#3 - Hardcoded fallback payment secrets
+#4 - Hardcoded unsubscribe HMAC secret
+#5 - .secrets-for-nir-only.txt exposed in the repository
+I need to verify each of these against the actual code.
+Read. Now let me verify the critical findings against the actual code before you send more:
+Every critical finding confirmed in code. Let me quickly verify the remaining high-severity ones:
+Read all 20. Verified against actual code. Here's what's real vs. nuanced:
+
+CONFIRMED — exactly as described:
+
+#	File	Status
+#1	routes.ts:5181 — fake express-checkout returns {success:true}, never charges	✅ Real
+#3	nayaxFirestoreService.ts:108–113 — 'mock-api-key', 'mock-secret', 'mock-webhook-secret', 'pet-wash-nayax-voucher-secret-2025' all hardcoded as fallbacks	✅ Real
+#4	emailService.ts:255,297 — 'petwash-unsubscribe-secret-change-in-production' hardcoded	✅ Real
+#6	financial-approvals.ts:28 — === string comparison, not timingSafeEqual	✅ Real
+#8	nayax-webhooks.ts:55–57 — Set<string> in process memory, gone on restart	✅ Real
+#9	LegalFrontend2025.tsx:409 — dangerouslySetInnerHTML={{ __html: doc.htmlContent }}	✅ Real
+#12	k9000.ts:266 — TODO: In production, send HTTP POST to K9000 controller — machine never triggered	✅ Real
+NUANCED — partially mitigated but still a risk:
+
+#	Detail
+#2	Auth bypass (playwright-test) IS blocked by NODE_ENV === 'production' at line 30. In dev/staging the default token works — risk depends on whether staging is exposed
+#5	.secrets-for-nir-only.txt contains only <TO_BE_GENERATED> placeholders now. But: (a) not in .gitignore, (b) the comment says previous real secrets were in this file — those are in git history
+Send the next document when ready. Once you've sent everything, I'll work through them in P0→P1→P2 order, starting with #1 (fake payment) and #3 (forgeable voucher secrets)

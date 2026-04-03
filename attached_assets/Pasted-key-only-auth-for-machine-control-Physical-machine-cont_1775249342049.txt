@@ -1,0 +1,553 @@
+key only auth for machine control	Physical machine control without identity
+You asked
+
+
+Reviewing marketplace platform for safety and reliability issues
+11m 48s
+
+
+Setting up environment
+
+Start 'github-mcp-server' MCP server
+
+Start 'playwright' MCP server
+
+Start agent firewall
+Agent firewall started
+
+Clone repository petwashglobal/petwash-marketplace
+The user wants a deep marketplace-specific audit focusing on:
+
+Broken state transitions
+Missing permission checks
+Payout/escrow risks
+Race conditions
+Misleading invoice/document logic
+Frontend flows that look complete but aren't backed by real logic
+Places where a user could be confused or blocked
+This is an analysis/explanation task, not a code change task. Let me explore the relevant parts of the codebase to give concrete findings.
+
+Let me look at the marketplace-specific code: booking flows, escrow, payouts, state machines, permission checks, invoices, and frontend flows.
+
+Explore: Marketplace audit - booking/escrow/payout flows
+
+
+Read first half of marketplace audit
+
+
+Get size and read first chunk
+
+
+Read second half of marketplace audit
+
+
+Read rest of audit file
+
+
+Read middle section of file
+
+
+Read final section of audit file
+Now let me verify the most critical specific findings directly:
+
+
+Verify role bypass on complete endpoint
+
+
+Verify missing auth on invoice endpoint
+
+
+Check for booking request timeout
+
+View 2 files
+
+server/routes/marketplace-bookings.ts:625-700
+
+server/routes/marketplace-bookings.ts:550-600
+
+
+Check if BookingLifecycleService enforces actor role
+
+
+Check if BookingLifecycleService enforces role restrictions on transitions
+
+View server/services/BookingLifecycleService.ts:380-440
+
+
+Check what happens to slot on payment failure
+
+View 2 files
+
+server/routes/nayax-webhooks.ts:600-660
+
+server/routes/marketplace-bookings.ts:270-380
+
+
+Check if slot is released on payment failure in webhook handler
+
+
+Check if transition roles are enforced in BookingLifecycleService
+
+
+Find both booking status enums
+
+
+Audit escrow release timing - is it from booking creation or completion?
+
+
+Check when escrow release timer resets
+
+
+Check third booking status system
+
+
+Check if escrow auto-release cron job actually exists
+
+
+Find where escrow auto-release is actually invoked
+
+
+Check if EscrowService uses Firestore but ProviderPayoutService uses PostgreSQL
+
+
+Check booking expiry job content
+
+
+Find the generic transition endpoint
+
+View server/routes/marketplace-bookings.ts:548-580
+
+
+Check if booking expiry covers marketplace booking table
+
+
+Check escrow creation vs reset timing
+
+
+Check if in_progress can directly jump to completed
+
+
+Get exact transition map
+
+
+Verify owner_completion_review to completed transition exploit
+
+
+Check dual-store escrow risk
+
+
+Check if marketplace-bookings uses EscrowService (Firestore) directly
+
+
+Find all callers of Firestore EscrowService
+
+
+Check slot release on payment failure in webhook
+
+
+Check which escrow system booking-requests uses
+
+
+Does webhook handler release slots on payment failure
+
+
+Check all payment failure cases in webhook
+
+
+Check if same user can complete both review sides
+
+
+Check what is stored in statusHistory
+
+
+Check participant verification on transition endpoint
+
+
+Confirm no ownership check on any transition
+
+
+Check escrow status transition from pending_payment to releasing
+
+View server/routes/marketplace-bookings.ts:1340-1360
+
+
+Check escrow status flow in BookingLifecycleService
+
+
+Find where escrow moves from pending_payment to held
+
+
+Check when escrow moves from pending_payment to held
+
+
+Check background job runs both autoRelease methods
+
+
+Check if both autorelease jobs are under separate locks
+1 premium request · Claude Sonnet 4.6
+Now I have all the verification I need. Here is the complete analysis:
+
+PetWash Marketplace — Production Safety Audit
+
+Scope: Booking flows · Escrow · Payouts · Permissions · State transitions · Invoice logic · Frontend completeness · User experience blocking
+
+FINDING 1 — GENERIC TRANSITION ENDPOINT HAS NO BOOKING OWNERSHIP CHECK
+
+Category: Missing Permission Check | Severity: CRITICAL
+
+File: server/routes/marketplace-bookings.ts:548–577
+
+TypeScript
+router.post('/:bookingId/transition', async (req, res) => {
+  const userId = req.user?.uid || req.firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+  const { newStatus, role = 'customer', reason } = req.body;  // role from body — not verified
+
+  await bookingLifecycleService.transitionStatus(
+    bookingId,
+    newStatus as BookingLifecycleStatus,
+    userId,
+    role as 'customer' | 'provider' | 'system' | 'admin',
+    reason
+  );
+Any authenticated user who knows a bookingId can call this endpoint and drive the booking to any valid next state. There is no check that userId is the customer or provider on the booking. The role field is accepted verbatim from the request body — a customer can send role: "admin". BookingLifecycleService.transitionStatus() validates the state machine transitions but never verifies the actor's identity against the booking record.
+
+Impact: User A can advance or cancel User B's booking. A provider can push any customer's booking to disputed. Any authenticated user can impersonate admin role in the audit log.
+
+Fix: Before calling transitionStatus, fetch the booking and assert booking.customerId === userId || booking.providerId === userId (or admin role from Firebase claims). Derive actorRole from the booking record itself, not from the request body.
+
+FINDING 2 — CUSTOMER CAN SELF-COMPLETE BOTH SIDES OF A BOOKING (TRIGGERS ESCROW RELEASE)
+
+Category: Broken State Transition | Race Condition | Severity: CRITICAL
+
+File: server/routes/marketplace-bookings.ts:630–665
+
+TypeScript
+router.post('/:bookingId/complete', async (req, res) => {
+  const { role = 'provider' } = req.body;          // ← controlled by caller
+
+  const targetStatus = role === 'provider'
+    ? 'provider_completion_review'
+    : 'owner_completion_review';
+
+  await bookingLifecycleService.transitionStatus(bookingId, targetStatus, userId, role, ...);
+
+  const ownerReviewed   = booking?.statusHistory.some(h => h.toStatus === 'owner_completion_review');
+  const providerReviewed = booking?.statusHistory.some(h => h.toStatus === 'provider_completion_review');
+
+  if (ownerReviewed && providerReviewed) {
+    await bookingLifecycleService.transitionStatus(bookingId, 'completed', 'system', 'system', ...);
+    // ↑ This triggers scheduleEscrowRelease → payout in 72h
+  }
+Two separate exploits here:
+
+Same user calls /complete twice — once with role: "customer", once with role: "provider". Both status history entries are created with changedByUserId = userId. The check at line 654 only looks at whether both status entries exist, not whether different users made them. One person can set both flags and auto-trigger completion + escrow release.
+
+Compound with Finding 1 — The /transition endpoint permits in_progress → owner_completion_review, then owner_completion_review → completed directly (the transition map allows this). So a customer can skip provider review entirely: call /transition with newStatus: "owner_completion_review", then call /transition again with newStatus: "completed". Both are valid transitions per BOOKING_STATUS_TRANSITIONS.
+
+File: shared/schema.ts
+
+TypeScript
+owner_completion_review: ["completed", "disputed"],  // "completed" is a valid next state
+Fix: The statusHistory completion check must verify that the owner_completion_review entry was created by booking.customerId and the provider_completion_review entry was created by booking.providerId. The /transition endpoint must also block non-admin access to the completed terminal state — it should only be set by the system after both parties have reviewed.
+
+FINDING 3 — TWO PARALLEL ESCROW SYSTEMS, NOT SYNCHRONIZED
+
+Category: Escrow Risk | Payout Risk | Severity: CRITICAL
+
+The codebase has two completely separate escrow implementations operating concurrently:
+
+System 1	System 2
+Storage	Firestore escrow_payments collection	PostgreSQL escrowHoldings table
+Service	server/services/EscrowService.ts	server/services/BookingLifecycleService.ts
+Used by	server/routes/bookings.ts, server/routes/booking-requests.ts	server/routes/marketplace-bookings.ts
+Auto-release	backgroundJobs.ts:435 → EscrowService.autoReleaseExpiredHolds()	backgroundJobs.ts:135 → ProviderPayoutService.autoReleaseExpiredEscrows()
+Status values	held → released → refunded → disputed	pending_payment → releasing → released
+Both cron jobs run independently. There is no cross-reference between them. A booking that uses the new marketplace-bookings.ts flow writes to escrowHoldings (Postgres). If someone queries via the /api/escrow/:id routes (which use EscrowService pointing at Firestore), they get 404 for that escrow — the records don't exist in Firestore.
+
+File: server/backgroundJobs.ts:135–139 (Postgres path):
+
+TypeScript
+if (await this.acquireLock('autoReleaseEscrows')) {
+  await this.autoReleaseEscrowPayouts();   // → ProviderPayoutService → superAppPayouts table
+File: server/backgroundJobs.ts:435–438 (Firestore path):
+
+TypeScript
+if (await this.acquireLock('escrowAutoRelease')) {
+  await this.autoReleaseExpiredEscrow();   // → EscrowService → Firestore escrow_payments
+These run under different lock keys so they can execute simultaneously. If a booking somehow ends up in both stores (e.g., via code path overlap), it could be released twice.
+
+Fix: Consolidate to a single escrow store. Until then, document which booking types use which store and ensure the auto-release jobs target only their respective bookings.
+
+FINDING 4 — SLOT NOT RELEASED WHEN PAYMENT FAILS
+
+Category: User Blocking | Broken State | Severity: HIGH
+
+File: server/routes/nayax-webhooks.ts:605–647
+
+TypeScript
+} else if (payload.event === 'payment.failed') {
+  await db.update(bookings)
+    .set({ status: 'payment_failed', paymentStatus: 'failed', updatedAt: new Date() })
+    .where(eq(bookings.id, payload.bookingId));
+  // ← NO slot release here
+When payment fails, the booking is marked payment_failed but the availabilitySlots record that was set to status: 'booked' during checkout (marketplace-bookings.ts:274) is never returned to status: 'available'.
+
+Compare: when the booking transaction itself fails, the slot IS correctly reverted (marketplace-bookings.ts:364–366):
+
+TypeScript
+// ON TRANSACTION FAILURE (correct):
+await db.update(availabilitySlots)
+  .set({ status: 'available', lockToken: null, lockExpiresAt: null, updatedAt: new Date() })
+  .where(eq(availabilitySlots.id, slotId));
+But on Nayax payment.failed webhook (after checkout succeeded but payment declined) — no such revert exists. The slot stays booked permanently. The same gap exists for payment.expired and payment.cancelled events (lines 649–710), which correctly revert booking to draft but also do not release the slot.
+
+Impact: The customer's chosen time slot remains locked. They cannot re-book it, and no other customer can book it either. The provider's calendar shows a confirmed booking that never happened.
+
+Fix: In the payment.failed, payment.expired, and payment.cancelled webhook handlers, add an UPDATE availabilitySlots SET status = 'available' WHERE bookingId = :bookingId.
+
+FINDING 5 — NEW MARKETPLACE BOOKINGS HAVE NO TIMEOUT/EXPIRY
+
+Category: User Blocking | Severity: HIGH
+
+The server/jobs/booking-expiry.ts job expires stale bookings only for older tables:
+
+TypeScript
+// Line 46: walk_my_pet — expires after 2 hours
+eq(walkBookings.status, 'pending_provider'),
+lt(walkBookings.createdAt, expiryWindow)   // expiryWindow = 2h ago
+
+// Line 88: sitter_suite — expires after 4 hours  
+eq(sitterBookings.status, 'pending_provider'),
+
+// Line 145: trainer_bookings — expires after 45 minutes
+WHERE status IN ('pending', 'payment_pending')
+The new bookings table (used by marketplace-bookings.ts and BookingLifecycleService.ts) is not in any expiry job. A booking stuck in inquiry, quote_sent, pending_provider, or deposit_pending will remain there indefinitely.
+
+Consequences:
+
+Customer's payment held in escrow forever if provider ignores the booking request
+Provider's slot stays locked permanently (compounded by Finding 4)
+No automatic refund trigger for abandoned bookings
+Customer has no self-service way to cancel after payment (only the /cancel endpoint exists, but there is no UI-level fallback timer)
+Fix: Add the bookings table to the expiry job with appropriate timeouts (e.g., 24h for quote_sent, 48h for deposit_pending if no activity).
+
+FINDING 6 — PROVIDER OWNERSHIP CHECK ON AVAILABILITY UPDATES IS EXPLICITLY COMMENTED OUT
+
+Category: Missing Permission Check | Severity: HIGH
+
+File: server/routes/marketplace-bookings.ts:1344–1346
+
+TypeScript
+// For now, allow any authenticated user to update for testing
+// In production, enforce ownership check
+Any authenticated user (including customers) can modify any provider's availability calendar. This was left as a testing shortcut and never hardened for production. A customer could mark a competitor provider's slots as unavailable, or a provider could block another provider's calendar.
+
+Fix: Fetch the provider record and assert provider.userId === req.user.uid before allowing availability changes.
+
+FINDING 7 — INVOICE GENERATION ENDPOINT HAS NO AUTHENTICATION
+
+Category: Missing Permission Check | Legal/Compliance | Severity: HIGH
+
+File: server/routes/contractor-invoices.ts:14–60
+
+TypeScript
+router.get("/:commissionId/generate", async (req, res) => {
+  // No requireAuth, no requireAdmin, no ownership check
+  const { commissionId } = req.params;
+  const [commission] = await db.select()...where(eq(providerCommissions.commissionId, commissionId))...
+  const pdfBuffer = await IsraeliInvoiceGenerator.generateInvoice(commissionId, language);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.send(pdfBuffer);
+Also: router.get("/:commissionId/preview", ...) at line 66 — same issue.
+
+Anyone can download a tax invoice PDF for any provider by guessing or enumerating commissionId values. These PDFs contain the provider's full name, Israeli tax ID (VAT number), banking details, and earnings breakdown. This is a data privacy violation under Israeli Privacy Protection Law and GDPR-equivalent regulations.
+
+Fix: Add requireAuth middleware and verify commission.providerId === req.user.uid (or admin role).
+
+FINDING 8 — CANCELLATION ENDPOINT DOESN'T VERIFY THE CALLER IS A PARTY TO THE BOOKING
+
+Category: Missing Permission Check | Broken State | Severity: HIGH
+
+File: server/routes/marketplace-bookings.ts:675–698
+
+TypeScript
+router.post('/:bookingId/cancel', async (req, res) => {
+  const userId = req.user?.uid || req.firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+  const { reason, role = 'customer' } = req.body;  // ← no ownership check
+
+  await bookingLifecycleService.transitionStatus(bookingId, 'cancelled', userId, role, reason);
+Same root cause as Finding 1. Any authenticated user can cancel any booking they know the ID of.
+
+Same problem exists on /confirm (lines 579–599): role is taken from body without verifying the caller is actually the provider or customer on the booking.
+
+Fix: Same as Finding 1 — fetch booking, assert booking.customerId === userId || booking.providerId === userId, derive role from the record.
+
+FINDING 9 — ESCROW TIMER SET AT BOOKING CREATION, NOT AT SERVICE COMPLETION (POTENTIAL EARLY RELEASE)
+
+Category: Payout / Escrow Risk | Severity: HIGH
+
+File: server/routes/marketplace-bookings.ts:335–353
+
+TypeScript
+// At checkout (booking creation):
+releaseEligibleAt = new Date();
+releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72);  // NOW + 72h
+
+await tx.insert(escrowHoldings).values({
+  status: 'pending_payment',
+  releaseEligibleAt,   // ← Set at checkout time
+  ...
+});
+File: server/services/BookingLifecycleService.ts:486–500
+
+TypeScript
+// At service completion:
+private async scheduleEscrowRelease(bookingId: string): Promise<void> {
+  const releaseTime = new Date(Date.now() + ESCROW_HOURS * 60 * 60 * 1000);  // NOW + 72h again
+
+  await db.update(escrowHoldings)
+    .set({
+      status: 'releasing',           // ← Status changes to 'releasing' only here
+      releaseEligibleAt: releaseTime,
+    })
+The auto-release cron queries status = 'releasing' AND releaseEligibleAt <= NOW (BookingLifecycleService.ts:555). Since the initial status is pending_payment (not releasing), the first releaseEligibleAt = NOW+72h set at checkout is harmless — the cron won't pick it up.
+
+However: the status never progresses from pending_payment to held in the new system. When a Nayax webhook confirms payment (payment.succeeded), the booking status changes but the escrowHoldings.status stays pending_payment. It only becomes releasing when scheduleEscrowRelease runs on booking completion. This means the escrow is in pending_payment for the entire booking duration — there is no intermediate held state update to confirm payment was actually received. If the webhook never arrives (network issue), the escrow stays pending_payment forever with no monitoring.
+
+Fix: On payment.succeeded webhook, update escrowHoldings.status from pending_payment to held to confirm funds are secured. Add a monitoring alert for escrow records stuck in pending_payment for more than 30 minutes.
+
+FINDING 10 — DUPLICATE BOOKING STATUS ENUMS: THREE PARALLEL STATE SYSTEMS
+
+Category: Broken State Transitions | Architecture Risk | Severity: HIGH
+
+shared/schema.ts defines three independent booking status enumerations:
+
+Enum	Location	Values
+bookingStatusEnum	line 7743	draft, pending_payment, pending_provider, confirmed, declined, in_progress, completed, cancelled, disputed, refunded
+bookingLifecycleStatusEnum	line 11146	inquiry, quote_sent, quote_expired, deposit_pending, deposit_received, owner_confirmed, provider_confirmed, in_progress, completed, cancelled, refunded, disputed
+octopusBookingStatusEnum	line 11787	(separate set, used by octopus-engine.ts)
+These are used by different route files with no cross-mapping. The booking-requests.ts system uses pending_provider and accepted. The marketplace-bookings.ts system uses lifecycle states. When a customer checks their booking from a UI that queries one system but the booking was created through another, the status will be unrecognizable or null.
+
+File: server/routes/booking-requests.ts (uses bookingStatusEnum states — pending, accepted) File: server/routes/marketplace-bookings.ts (uses bookingLifecycleStatusEnum states — inquiry, quote_sent, etc.)
+
+A customer booking created via booking-requests.ts will never appear in marketplace-bookings.ts queries, and vice versa. The UI must know which endpoint to call based on how the booking was created — this is not currently tracked.
+
+Fix: Unify on a single booking state model. In the interim, ensure all customer-facing booking queries fan out to both tables and normalize the status values before returning to the frontend.
+
+FINDING 11 — PROVIDER COMPLETION REVIEW → COMPLETED IS A DIRECT ONE-PARTY TRANSITION
+
+Category: Broken State Transition | Escrow Risk | Severity: HIGH
+
+File: shared/schema.ts
+
+TypeScript
+BOOKING_STATUS_TRANSITIONS = {
+  ...
+  provider_completion_review: ["completed", "disputed"],   // ← provider alone can go to "completed"
+  owner_completion_review:    ["completed", "disputed"],   // ← customer alone can go to "completed"
+Both owner_completion_review and provider_completion_review list completed as a valid next state. Combined with Finding 1 (no ownership check on /transition), either party can push the booking from their own review state directly to completed — bypassing the other party's acknowledgment entirely.
+
+The two-party check in the /complete endpoint (lines 654–665) is correct logic, but it only applies when the /complete endpoint is used. The generic /transition endpoint bypasses this entirely.
+
+Fix: Remove completed from both *_completion_review allowed transitions in BOOKING_STATUS_TRANSITIONS. Make completed only reachable by the system actor (internal code) once both reviews are confirmed.
+
+FINDING 12 — /api/express-checkout RETURNS SUCCESS WITHOUT PROCESSING PAYMENT
+
+Category: Frontend Looks Complete but Backend Is Stub | Legal/Compliance | Severity: CRITICAL
+
+File: server/routes.ts:5156–5197
+
+TypeScript
+app.post('/api/express-checkout', async (req, res) => {
+  if (paymentMethod === 'credit_card') {
+    // TODO: Integrate with real payment gateway
+    // For now, just return success
+    res.json({ success: true, message: "Express checkout successful", price: pkg.price });
+  }
+No auth required. No payment charged. No escrow created. No database record written. Any caller — including a frontend "Buy Now" button — receives { success: true } and price: pkg.price (the amount they should have paid) without any money being processed. If any UI component calls this endpoint and shows a success screen, the customer believes they have purchased a service that was never paid for.
+
+Fix: Remove this endpoint or replace it with the real Nayax checkout flow. Do not ship a stub payment endpoint in production.
+
+FINDING 13 — INVOICE NUMBER IS NOT SEQUENTIAL (COMPLIANCE RISK)
+
+Category: Misleading Invoice Logic | Legal/Compliance | Severity: MEDIUM
+
+File: server/routes/marketplace-bookings.ts:373–376
+
+TypeScript
+const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+const invoiceNumber = `INV-${datePart}-${nanoid(6).toUpperCase()}`;
+// Example: INV-20260403-A7K9M2
+Israeli invoice law (Heshbonim Law 5775-2015) requires invoices to be numbered sequentially and without gaps. A random nanoid(6) suffix — even prefixed with a date — does not satisfy this requirement. The Israeli Tax Authority may reject non-sequential invoice numbering during a tax audit. If two invoices happen to generate the same nanoid(6) on the same date, there is also a collision risk producing duplicate invoice numbers.
+
+Fix: Use an auto-incrementing database sequence or a daily counter (e.g., INV-20260403-0001, INV-20260403-0002) with a unique constraint to prevent collisions.
+
+FINDING 14 — INVOICE AMOUNT IS THE PLATFORM COMMISSION, NOT THE CUSTOMER-PAID AMOUNT (WITHOUT CLEAR LABELING)
+
+Category: Misleading Invoice Logic | Legal/Compliance | Severity: MEDIUM
+
+File: server/services/IsraeliInvoiceGenerator.ts:159–163
+
+TypeScript
+const commissionTotal = parseFloat(commission.commissionAmount); // e.g. ₪150 (15% of ₪1000)
+const vatAmount = commissionTotal * (18 / 118);                  // back-calc VAT
+const netAmount = commissionTotal - vatAmount;
+
+doc.text(`₪${commissionTotal.toFixed(2)}`, ...)   // Shows ₪150, not ₪1000
+The PDF invoice the provider receives shows only PetWash's commission (₪150) as the "total to pay." The full service amount the customer paid (₪1000) does not appear. This is correct from a commission-invoice perspective but only if the invoice header clearly states it is a commission invoice from PetWash to the provider. If the provider shows this invoice to their own customers or accountant as a service receipt, the amounts are completely misleading.
+
+The Israeli Tax Authority also requires that a commission invoice reference the underlying service transaction. No such reference number appears in the generated invoice.
+
+Fix: Add a prominent header: "Commission Invoice — PetWash Ltd." Add a line showing the full service amount and the commission rate applied. Add the original booking ID as a reference on the invoice.
+
+FINDING 15 — DISPUTE FLOW HAS NO ADMIN RESOLUTION UI OR SLA ENFORCEMENT
+
+Category: User Blocking | Severity: MEDIUM
+
+The dispute mechanism sets autoReleaseBlocked: true on the Firestore escrow record and logs a row to Google Sheets. There is no:
+
+Admin dashboard endpoint to list open disputes
+Dedicated API endpoint for admin to resolve a dispute (set status to completed or refunded)
+SLA timer or escalation logic
+Notification to admin when a dispute is filed
+File: server/routes/escrow.ts:154–203 — dispute is filed, Google Sheets row appended, funds frozen.
+
+The only way to unfreeze a disputed escrow is via the admin manual override endpoint or by waiting for an admin to directly update Firestore. If the admin Sheets process isn't monitored, disputed funds can remain frozen indefinitely — blocking both customer refund and provider payout.
+
+Fix: Implement a POST /api/admin/disputes/:escrowId/resolve endpoint with requireAdmin middleware. Add a cron alert if a dispute is unresolved after N days.
+
+FINDING 16 — BOOKING EXPIRY JOB DOES NOT COVER THE MAIN MARKETPLACE BOOKING TABLE
+
+Category: User Blocking | Severity: MEDIUM
+
+File: server/jobs/booking-expiry.ts:43–135
+
+The job handles:
+
+walkBookings table (2h timeout)
+sitterBookings table (4h timeout)
+trainer_bookings table (45m timeout)
+Not handled:
+
+bookings table (used by marketplace-bookings.ts and BookingLifecycleService.ts) — no timeout at any state
+A booking in inquiry or quote_sent status in the main marketplace table will never auto-expire. The provider can ignore it indefinitely. The customer has no way to know if the provider saw the request, and no automatic refund is issued.
+
+RECOMMENDED FIX ORDER
+
+Priority	Finding	Why First
+P0 — Today	#1, #8	Any user can cancel or advance any booking — immediate financial and UX damage
+P0 — Today	#2, #11	Customer can self-complete booking and trigger escrow release
+P0 — Today	#12	Fake express-checkout endpoint must be removed or blocked
+P1 — This Week	#4	Slots permanently locked after failed payment — blocks re-booking
+P1 — This Week	#7	Unauthenticated invoice download — privacy law violation
+P1 — This Week	#6	Any user can modify any provider's availability calendar
+P2 — Next Sprint	#3	Dual escrow systems risk double-release or missed payout
+P2 — Next Sprint	#5, #16	Marketplace bookings stuck forever with no expiry
+P2 — Next Sprint	#9	Escrow never confirmed as "held" after payment succeeds
+P3 — Next Sprint	#10	Three separate booking state machines — unify or map
+P3 — Backlog	#13, #14	Invoice compliance — sequential numbers, proper labeling
+P3 — Backlog	#15	Dispute admin resolution tooling
