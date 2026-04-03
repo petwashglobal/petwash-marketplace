@@ -70,6 +70,13 @@ interface WalkStatus {
     message: string;
     resolved: boolean;
   }>;
+  // Full booking snapshot — always present from GET /walks/:id
+  booking?: {
+    pickupAddress?: string;
+    pickupLatitude?: string | number | null;
+    pickupLongitude?: string | number | null;
+    bookingId?: string;
+  };
 }
 
 export default function WalkTracking() {
@@ -521,6 +528,44 @@ export default function WalkTracking() {
                       {isHebrew ? 'הודעה' : 'Message'}
                     </Button>
                   </div>
+
+                  {/* Navigation to pickup address */}
+                  {(() => {
+                    const lat = walk.booking?.pickupLatitude != null ? Number(walk.booking.pickupLatitude) : null;
+                    const lng = walk.booking?.pickupLongitude != null ? Number(walk.booking.pickupLongitude) : null;
+                    if (!lat || !lng) return null;
+                    return (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                          {isHebrew ? 'ניווט לנקודת האיסוף' : 'Navigate to pickup'}
+                        </p>
+                        {walk.booking?.pickupAddress && (
+                          <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            {walk.booking.pickupAddress}
+                          </p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <a
+                            href={`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#09B4FF]/10 border border-[#09B4FF]/30 text-[#09B4FF] text-xs font-semibold hover:bg-[#09B4FF]/20 transition-colors"
+                          >
+                            🚗 Waze
+                          </a>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors"
+                          >
+                            🗺️ {isHebrew ? 'מפות Google' : 'Google Maps'}
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

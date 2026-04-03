@@ -5,7 +5,18 @@ import { requireAuth } from "../customAuth";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "../lib/logger";
+
 const router = Router();
+
+// ~500m threshold in degrees (≈ 0.0045°)
+const PROXIMITY_THRESHOLD = 0.0045;
+
+function isNearby(lat1: number, lng1: number, lat2: number, lng2: number): boolean {
+  return (
+    Math.abs(lat1 - lat2) < PROXIMITY_THRESHOLD &&
+    Math.abs(lng1 - lng2) < PROXIMITY_THRESHOLD
+  );
+}
 
 // GET /api/user/addresses — list all saved addresses for the authenticated user
 router.get("/", requireAuth, async (req, res) => {
@@ -24,7 +35,8 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 // POST /api/user/addresses — add or upsert a saved address
-// If an address with the same text already exists, increment usageCount + update lastUsedAt
+// Deduplication: if an address with the same lat/lng (within 500m) exists → increment usageCount
+// If lat/lng missing: fall back to text match
 router.post("/", requireAuth, async (req, res) => {
   try {
     const userId = (req as any).user.uid;
@@ -44,33 +56,39 @@ router.post("/", requireAuth, async (req, res) => {
 
     const data = schema.parse(req.body);
 
-    // Check if this address already exists for the user
-    const existing = await db
+    // Load all existing addresses for this user (count is small, JS proximity check is fine)
+    const allAddresses = await db
       .select()
       .from(userAddresses)
-      .where(and(eq(userAddresses.userId, userId), eq(userAddresses.address, data.address)))
-      .limit(1);
+      .where(eq(userAddresses.userId, userId));
 
-    if (existing.length > 0) {
-      // Upsert: increment usage, update lastUsed
+    // Find a match: prefer lat/lng proximity, fall back to exact text match
+    const match = allAddresses.find((a) => {
+      if (data.lat !== undefined && data.lng !== undefined && a.lat && a.lng) {
+        return isNearby(data.lat, data.lng, Number(a.lat), Number(a.lng));
+      }
+      return a.address === data.address;
+    });
+
+    if (match) {
       const [updated] = await db
         .update(userAddresses)
         .set({
-          usageCount: existing[0].usageCount + 1,
+          usageCount: match.usageCount + 1,
           lastUsedAt: new Date(),
           label: data.label,
-          customLabel: data.customLabel ?? existing[0].customLabel,
-          isDefault: data.isDefault ? true : existing[0].isDefault,
+          customLabel: data.customLabel ?? match.customLabel,
+          // Enrich lat/lng if incoming has them but stored doesn't
+          lat: match.lat ?? (data.lat?.toString() ?? null),
+          lng: match.lng ?? (data.lng?.toString() ?? null),
+          postalCode: data.postalCode ?? match.postalCode,
+          isDefault: data.isDefault ? true : match.isDefault,
         })
-        .where(eq(userAddresses.id, existing[0].id))
+        .where(eq(userAddresses.id, match.id))
         .returning();
 
       if (data.isDefault) {
-        // Clear default flag from all other addresses
-        await db
-          .update(userAddresses)
-          .set({ isDefault: false })
-          .where(and(eq(userAddresses.userId, userId)));
+        await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
         await db.update(userAddresses).set({ isDefault: true }).where(eq(userAddresses.id, updated.id));
       }
 

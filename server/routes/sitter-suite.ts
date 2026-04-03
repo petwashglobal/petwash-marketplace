@@ -647,7 +647,12 @@ router.post('/bookings', requireAuth, async (req, res) => {
       startDate,
       endDate,
       specialInstructions,
+      addressText,
+      address: addressTextFallback,
+      addressLat,
+      addressLng,
     } = req.body;
+    const resolvedAddressText = addressText ?? addressTextFallback ?? null;
     
     const ownerId = (req as any).user?.uid || req.body.ownerId;
     
@@ -743,6 +748,10 @@ router.post('/bookings', requireAuth, async (req, res) => {
         aiTriageNotes: triageResult.triageNotes,
         specialInstructions,
         status: 'pending_provider',
+        // Address snapshot — coordinates are the truth, never blocked by missing postcode
+        serviceAddressText: resolvedAddressText,
+        serviceAddressLat: addressLat != null ? String(addressLat) : null,
+        serviceAddressLng: addressLng != null ? String(addressLng) : null,
       })
       .returning();
     

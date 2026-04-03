@@ -4310,6 +4310,11 @@ export const sitterBookings = pgTable("sitter_bookings", {
   cancelledAt: timestamp("cancelled_at"),
   updatedAt: timestamp("updated_at").defaultNow(),
 
+  // Address snapshot (coordinates are the truth — never postcode)
+  serviceAddressText: text("service_address_text"),
+  serviceAddressLat: decimal("service_address_lat", { precision: 10, scale: 7 }),
+  serviceAddressLng: decimal("service_address_lng", { precision: 10, scale: 7 }),
+
   // Provider Reassignment (booking-expiry poller)
   reassignmentCount: integer("reassignment_count").default(0),
   previousProviders: text("previous_providers").array(),

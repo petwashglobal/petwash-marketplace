@@ -68,25 +68,27 @@ export function AddressPicker({
   // ── Handle place selection via autocomplete ───────────────────────────────
   const handlePlaceSelected = useCallback(
     (place: PlaceDetails) => {
+      // SPEC: never block the user — emit address regardless of whether coords are present
       onChange(place.formattedAddress, place);
       onPlaceSelected?.(place);
       setShowNew(false);
 
-      if (autoSave && user?.uid) {
+      // Only persist to history when we have coordinates (coordinates = the truth)
+      if (autoSave && user?.uid && place.lat != null && place.lng != null) {
         saveMutation.mutate({
           address: place.formattedAddress,
           street: place.street,
           streetNumber: place.streetNumber,
           apartment: place.apartment,
           city: place.city,
-          postalCode: place.postalCode,
+          postalCode: place.postalCode,   // optional — never blocks
           lat: place.lat as any,
           lng: place.lng as any,
           label: "other",
         });
       }
     },
-    [onChange, onPlaceSelected, autoSave, user?.uid]
+    [onChange, onPlaceSelected, autoSave, user?.uid, saveMutation]
   );
 
   // ── Handle "use current location" ────────────────────────────────────────
@@ -159,9 +161,14 @@ export function AddressPicker({
       onPlaceSelected?.(place);
       setShowNew(false);
 
-      // Bump usage count silently
+      // Bump usage count silently — pass lat/lng for proximity-based deduplication
       if (user?.uid) {
-        saveMutation.mutate({ address: addr.address, label: addr.label ?? "other" });
+        saveMutation.mutate({
+          address: addr.address,
+          label: addr.label ?? "other",
+          lat: addr.lat ? Number(addr.lat) : undefined,
+          lng: addr.lng ? Number(addr.lng) : undefined,
+        });
       }
     },
     [onChange, onPlaceSelected, user?.uid]
