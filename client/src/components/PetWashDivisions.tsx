@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Sparkles, Heart, MapPin, Zap, GraduationCap, ArrowRight } from 'lucide-react';
+import { Sparkles, Heart, MapPin, Zap, GraduationCap, ArrowRight, Search } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -75,6 +75,19 @@ const platformStyles = [
     ctaColor: '#CE93D8',
     dividerColor: 'rgba(206,147,216,0.2)',
   },
+  {
+    gradient: 'linear-gradient(135deg, #BF360C 0%, #D84315 30%, #E64A19 50%, #D84315 70%, #BF360C 100%)',
+    shimmer: 'linear-gradient(135deg, rgba(255,204,188,0.15) 0%, rgba(255,204,188,0.05) 50%, rgba(255,204,188,0.15) 100%)',
+    iconBg: 'linear-gradient(135deg, #FFAB91, #FFCCBC)',
+    iconColor: '#BF360C',
+    textColor: '#FFFFFF',
+    taglineColor: 'rgba(255,204,188,0.95)',
+    descColor: 'rgba(255,255,255,0.7)',
+    borderColor: 'rgba(255,171,145,0.3)',
+    borderHover: 'rgba(255,171,145,0.6)',
+    ctaColor: '#FFAB91',
+    dividerColor: 'rgba(255,171,145,0.2)',
+  },
 ];
 
 export function PetWashDivisions({ language }: PetWashDivisionsProps) {
@@ -112,6 +125,18 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     },
     {
       id: 4,
+      name: '⁦PawFinder™⁩',
+      nameHe: '⁦PawFinder™⁩ – מציאת חיות',
+      tagline: language === 'he' ? 'שירות חינמי לאיתור חיות אבודות' : 'FREE Lost & Found Pet Recovery',
+      description: language === 'he'
+        ? 'שלחו התראה לכל הקהילה תוך שניות. זיהוי AI מתקדם + מעקב GPS. 100% חינמי לנצח.'
+        : 'Alert your entire community in seconds. AI-powered matching, GPS tracking, and community reunions. Always 100% free.',
+      icon: Search,
+      link: '/paw-finder',
+      badge: language === 'he' ? 'חינם' : 'FREE',
+    },
+    {
+      id: 5,
       name: '⁦PetTrek™⁩',
       nameHe: 'פט-טרק',
       tagline: t('divisions.petTrek.tagline', language),
@@ -121,7 +146,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       comingSoon: true,
     },
     {
-      id: 5,
+      id: 6,
       name: '⁦Pet Wash Academy™⁩',
       nameHe: 'אקדמיית ⁦Pet Wash™⁩',
       tagline: t('divisions.academy.tagline', language),
@@ -168,7 +193,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
           {divisions.map((division, index) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;
-            const style = platformStyles[index];
+            const style = platformStyles[index % platformStyles.length];
             const isLastOdd = index === divisions.length - 1 && divisions.length % 3 === 2;
             
             const CardWrapper = division.comingSoon ? 'div' : Link;
@@ -241,6 +266,11 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                       {division.comingSoon && (
                         <span className="px-2 py-0.5 text-[9px] tracking-[0.15em] uppercase font-semibold rounded-full bg-white/30 backdrop-blur-sm" style={{ color: style.textColor, border: `1px solid ${style.borderColor}` }}>
                           {isHebrew ? 'בקרוב' : 'Coming Soon'}
+                        </span>
+                      )}
+                      {(division as any).badge && !division.comingSoon && (
+                        <span className="px-2 py-0.5 text-[9px] tracking-[0.15em] uppercase font-bold rounded-full bg-white/90 backdrop-blur-sm" style={{ color: style.iconColor }}>
+                          {(division as any).badge}
                         </span>
                       )}
                     </div>

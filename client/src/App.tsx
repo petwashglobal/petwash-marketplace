@@ -9,7 +9,6 @@ import { AiChatWidget } from "@/components/AiChatWidget";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ConsentManager } from "@/components/ConsentManager";
 import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
-import { LuxuryPlatformShowcase } from "@/components/LuxuryPlatformShowcase";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
