@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { createGoogleProvider } from "@/lib/iosAuthHandler";
+import { createGoogleProvider, getAuthStrategy } from "@/lib/iosAuthHandler";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
@@ -114,6 +114,13 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
     setGoogleLoading(true);
     try {
       const provider = createGoogleProvider();
+      const strategy = getAuthStrategy();
+      if (strategy === 'redirect') {
+        // iPhone Safari: popup windows are blocked — use redirect flow instead
+        await signInWithRedirect(auth, provider);
+        // Page will reload; result is handled by getRedirectResult in useEffect below
+        return;
+      }
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
@@ -127,6 +134,20 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       setGoogleLoading(false);
     }
   };
+
+  // Handle Google redirect result (iPhone Safari returns here after sign-in)
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        const displayName = result.user.displayName || '';
+        const nameParts = displayName.trim().split(' ');
+        if (nameParts[0]) setFirstName(nameParts[0]);
+        if (nameParts.slice(1).join(' ')) setLastName(nameParts.slice(1).join(' '));
+        if (result.user.email) setEmail(result.user.email);
+        setShowForm(true);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -249,16 +270,31 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       formData.append('smsConsent', String(smsConsent));
       formData.append('termsConsent', String(termsConsent));
       formData.append('language', language);
-      const freshCaptchaToken = await executeReCaptcha('privilege_register');
-      if (!freshCaptchaToken) {
-        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.' });
-        setLoading(false);
-        return;
+      // reCAPTCHA: non-blocking — if script fails (Safari ITP, ad-blockers, slow network)
+      // we still allow submission. Server logs the missing token and soft-fails.
+      let freshCaptchaToken: string | null = null;
+      try {
+        freshCaptchaToken = await executeReCaptcha('privilege_register');
+      } catch {
+        freshCaptchaToken = null;
       }
-      formData.append('captchaToken', freshCaptchaToken);
+      formData.append('captchaToken', freshCaptchaToken ?? 'captcha_unavailable');
       formData.append('traceId', traceId);
 
-      const response = await fetch(getApiUrl('/api/privilege/register'), { method: 'POST', body: formData });
+      // AbortController: 45-second hard timeout prevents silent hangs on slow networks
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      let response: Response;
+      try {
+        response = await fetch(getApiUrl('/api/privilege/register'), {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.error || 'Registration failed');
@@ -267,7 +303,14 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       console.error('[Privilege Registration Trace] Failed', { traceId, error: error?.message });
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong' });
+      const isTimeout = error?.name === 'AbortError';
+      toast({
+        variant: 'destructive',
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: isTimeout
+          ? (language === 'he' ? 'הבקשה לקחה יותר מדי זמן. בדוק חיבור לאינטרנט ונסה שוב.' : 'The request timed out. Check your internet connection and try again.')
+          : (error.message || (language === 'he' ? 'משהו השתבש' : 'Something went wrong')),
+      });
     } finally {
       setLoading(false);
     }

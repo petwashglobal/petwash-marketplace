@@ -3,6 +3,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { sendClubWelcomeEmail, sendLuxuryEmail } from '../email/luxury-email-service';
+import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import multer from 'multer';
 import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
@@ -22,34 +23,10 @@ const upload = multer({
   },
 });
 
-router.post('/register', upload.single('idDocument'), async (req: Request, res: Response) => {
+// ── One-time table initialisation (runs at module load, not per-request) ───────
+const _tableReady: Promise<void> = (async () => {
   try {
-    const {
-      firstName, lastName, email, phone, dob, gender,
-      country, city, address,
-      pets, idType, idNumber,
-      referralSource, referralCode,
-      marketingConsent, smsConsent, termsConsent,
-      language, captchaToken, traceId
-    } = req.body;
-
-    logger.info('[Privilege Register] Processing', { traceId, email });
-
-    if (!firstName || !lastName || !email || !phone || !dob || !termsConsent) {
-      return res.status(400).json({ error: 'Missing required fields', errorCode: 'MISSING_FIELDS' });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email address', errorCode: 'INVALID_EMAIL' });
-    }
-
-    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(phone.replace(/[\s\-()]/g, ''))) {
-      return res.status(400).json({ error: 'Invalid phone number', errorCode: 'INVALID_PHONE' });
-    }
-
-    // Backward compatibility: rename old table if it exists, otherwise create new one
+    // Backward compat: rename legacy table name if it exists
     await db.execute(sql`
       DO $$
       BEGIN
@@ -59,7 +36,6 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         END IF;
       END $$
     `);
-
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS privilege_members (
         id SERIAL PRIMARY KEY,
@@ -93,6 +69,57 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `);
+    logger.info('[Privilege] privilege_members table ready');
+  } catch (err) {
+    logger.error('[Privilege] Table init failed', err);
+  }
+})();
+
+router.post('/register', upload.single('idDocument'), async (req: Request, res: Response) => {
+  try {
+    const {
+      firstName, lastName, email, phone, dob, gender,
+      country, city, address,
+      pets, idType, idNumber,
+      referralSource, referralCode,
+      marketingConsent, smsConsent, termsConsent,
+      language, captchaToken, traceId
+    } = req.body;
+
+    logger.info('[Privilege Register] Processing', { traceId, email });
+
+    if (!firstName || !lastName || !email || !phone || !dob || !termsConsent) {
+      return res.status(400).json({ error: 'Missing required fields', errorCode: 'MISSING_FIELDS' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address', errorCode: 'INVALID_EMAIL' });
+    }
+
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phone.replace(/[\s\-()]/g, ''))) {
+      return res.status(400).json({ error: 'Invalid phone number', errorCode: 'INVALID_PHONE' });
+    }
+
+    // ── reCAPTCHA verification (soft-fail: log score, only hard-block clear bots) ──
+    if (captchaToken && captchaToken !== 'captcha_unavailable') {
+      try {
+        const captchaResult = await verifyCaptchaToken(captchaToken, 'privilege_register');
+        logger.info('[Privilege] reCAPTCHA result', { traceId, valid: captchaResult.valid, score: captchaResult.score, source: captchaResult.source });
+        // Hard-block only unambiguous bots (score < 0.1) in production
+        if (!captchaResult.valid && captchaResult.score !== undefined && captchaResult.score < 0.1 && process.env.NODE_ENV === 'production') {
+          return res.status(403).json({ error: 'Security verification failed. Please refresh and try again.', errorCode: 'CAPTCHA_FAILED' });
+        }
+      } catch (captchaErr) {
+        logger.warn('[Privilege] reCAPTCHA verification error (non-blocking)', { captchaErr });
+      }
+    } else {
+      logger.warn('[Privilege] No captcha token provided or captcha unavailable', { traceId, captchaToken: captchaToken || 'missing' });
+    }
+
+    // Ensure table is ready (module-level init already ran; this just awaits it)
+    await _tableReady;
 
     const existingCheck = await db.execute(sql`
       SELECT id FROM privilege_members WHERE email = ${email.trim().toLowerCase()} LIMIT 1
@@ -178,10 +205,55 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       petsCount: parsedPets.length,
     });
 
+    // ── Gemini platform monitor ───────────────────────────────────────────────
     try {
       const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
       geminiPlatformMonitor.recordRegistration('prestige');
     } catch {}
+
+    // ── FCM push notification to the new member (if they have an FCM token) ──
+    try {
+      const { FCMService } = await import('../services/FCMService');
+      const firebaseUidForFCM = (req as any).user?.uid || null;
+      if (firebaseUidForFCM) {
+        const isHe = (language || 'en') === 'he';
+        await FCMService.sendToUser({
+          userId: firebaseUidForFCM,
+          title: isHe ? '🐾 ברוך הבא ל-Prestige Club!' : '🐾 Welcome to Prestige Club!',
+          body: isHe
+            ? `היי ${firstName.trim()}, הצטרפת בהצלחה! מספר החבר שלך: ${memberId}`
+            : `Hi ${firstName.trim()}, you're in! Your member ID: ${memberId}`,
+          data: { memberId, tier: 'bronze', type: 'prestige_welcome', click_action: '/prestige' },
+        });
+        logger.info('[Privilege] Welcome push notification sent', { memberId, firebaseUidForFCM });
+      }
+    } catch (fcmErr) {
+      logger.warn('[Privilege] FCM notification failed (non-blocking)', { fcmErr });
+    }
+
+    // ── EventBus: fire platform event for Octopus control panel ──────────────
+    try {
+      const { eventBus } = await import('../services/EventBus');
+      await eventBus.publish({
+        eventType: 'member.registered',
+        timestamp: new Date().toISOString(),
+        platform: 'prestige',
+        data: {
+          memberId,
+          email: email.trim().toLowerCase(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          country: country || 'Israel',
+          tier: 'bronze',
+          petsCount: parsedPets.length,
+          hasIdDocument: !!idDocumentUrl,
+          language: language || 'en',
+        },
+      });
+      logger.info('[Privilege] EventBus member.registered fired', { memberId });
+    } catch (busErr) {
+      logger.warn('[Privilege] EventBus publish failed (non-blocking)', { busErr });
+    }
 
 
     try {
