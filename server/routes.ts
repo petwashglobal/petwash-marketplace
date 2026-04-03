@@ -9538,6 +9538,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/treasury', apiLimiter, treasuryRoutes.default);
   treasuryRoutes.startReconciliationScheduler();
 
+  // Billing Engine — payment capture / escrow release / refund / dispute
+  const billingRoutes = await import('./routes/billing');
+  app.use('/api/billing', adminLimiter, billingRoutes.default);
+
   // Phase 12.19 — Profitability, Unit Economics & Capital Allocation
   const financeRoutes = await import('./routes/finance');
   app.use('/api/finance', apiLimiter, financeRoutes.default);
