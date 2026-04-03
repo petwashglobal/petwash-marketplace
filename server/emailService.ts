@@ -3407,8 +3407,8 @@ export class EmailService {
       <!-- PDF note -->
       <div style="background:#FFFBF0;border-radius:8px;padding:14px 16px;border-${side}:3px solid #F0A500;font-size:12px;color:#555;direction:${dir};margin-bottom:24px;">
         📎 ${isHebrew
-          ? 'מצורף לאימייל זה: חשבונית מס/קבלה רשמית בפורמט PDF (כולל פירוט מע"מ, נאמנות, ועקבות ביקורת)'
-          : 'Attached to this email: Official Tax Invoice/Receipt as PDF (incl. VAT breakdown, escrow detail & audit trail)'}
+          ? 'מצורף: אישור הזמנה וסיכום תשלום בפורמט PDF. <strong>מסמך זה אינו חשבונית מס.</strong> חשבונית המס הרשמית תישלח בנפרד דרך מערכת הנה"ח המאושרת.'
+          : 'Attached: Booking Confirmation &amp; Payment Summary (PDF). <strong>This document is NOT a tax invoice.</strong> An official tax invoice will be issued separately through the authorized accounting system.'}
       </div>
 
       <!-- Support / contact -->
@@ -3423,7 +3423,7 @@ export class EmailService {
     <!-- Footer -->
     <div style="text-align:center;margin-top:24px;font-size:11px;color:#888;line-height:1.8;">
       Pet Wash™ Ltd. &nbsp;·&nbsp; פט וואש בע"מ &nbsp;·&nbsp; ח.פ. 517145033<br/>
-      ${isHebrew ? 'מסמך זה הוא חשבונית מס רשמית. אושר דיגיטלית.' : 'This is an official tax document. Digitally approved.'} &nbsp;·&nbsp; ${new Date().getFullYear()}
+      ${isHebrew ? 'מסמך זה הוא אישור הזמנה בלבד — אינו חשבונית מס.' : 'This is a Booking Confirmation only — not a tax invoice.'} &nbsp;·&nbsp; ${new Date().getFullYear()}
     </div>
   </div>
 
@@ -3477,7 +3477,7 @@ export class EmailService {
       if (pdfBuffer) {
         msg.attachments = [{
           content: pdfBuffer.toString('base64'),
-          filename: `PetWash-Invoice-${invoiceNumber}.pdf`,
+          filename: `PetWash-BookingConfirmation-${invoiceNumber}.pdf`,
           type: 'application/pdf',
           disposition: 'attachment'
         }];

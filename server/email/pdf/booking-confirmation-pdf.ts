@@ -62,10 +62,10 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
       margin: 0,
       bufferPages: true,
       info: {
-        Title: `PetWash Invoice ${params.invoiceNumber}`,
+        Title: `PetWash Booking Confirmation ${params.bookingNumber || params.bookingId}`,
         Author: 'PetWash Ltd.',
-        Subject: 'Tax Invoice & Booking Confirmation',
-        Keywords: 'petwash, invoice, booking, tax, vat'
+        Subject: 'Booking Confirmation / Payment Summary',
+        Keywords: 'petwash, booking, confirmation, payment, escrow'
       }
     });
 
@@ -108,10 +108,14 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
 
     // ── DOCUMENT TITLE ────────────────────────────────────────────────────────
     doc.font('Helvetica-Bold').fontSize(15).fillColor(DARK)
-       .text('Invoice & Booking Confirmation', 0, y, { width: W, align: 'center' });
-    y += 22;
+       .text('Booking Confirmation / Payment Summary', 0, y, { width: W, align: 'center' });
+    y += 13;
+    // Sub-title in Hebrew
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED)
+       .text('\u05d0\u05d9\u05e9\u05d5\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4 / \u05e1\u05d9\u05db\u05d5\u05dd \u05ea\u05e9\u05dc\u05d5\u05dd', 0, y, { width: W, align: 'center' });
+    y += 16;
 
-    // Meta row: Invoice# / Booking# / Issue Date
+    // Meta row: Ref# / Booking# / Issue Date
     const metaY = y;
     const col3w = INNER / 3;
 
@@ -125,8 +129,8 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
     const metaVal = (text: string, x: number) =>
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(DARK).text(text, x + 6, metaY + 15, { width: col3w - 12 });
 
-    metaLabel('Invoice#:', M);
-    metaVal(`INV-${params.invoiceNumber}`, M);
+    metaLabel('Reference#:', M);
+    metaVal(params.invoiceNumber, M);
     metaLabel('Booking#:', M + col3w);
     metaVal(params.bookingNumber || params.bookingId, M + col3w);
     metaLabel('Issue Date:', M + col3w * 2);
@@ -307,11 +311,25 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
        .text(`Release Date: ${fmtDateTime(params.escrowReleaseDate)}`, M + 10, y + 52);
     y += escrowH + 12;
 
+    // ── NOT-A-TAX-INVOICE NOTICE ──────────────────────────────────────────────
+    const noticeH = 38;
+    doc.roundedRect(M, y, INNER, noticeH, 3).fill('#FFF8E1').stroke('#F0A500');
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#7A5000')
+       .text('\u26A0  IMPORTANT NOTICE', M + 10, y + 7);
+    doc.font('Helvetica').fontSize(7.5).fillColor('#7A5000')
+       .text(
+         'This document is a Booking Confirmation and Payment Summary ONLY. It is NOT a tax invoice (חשבונית מס). ' +
+         'An official tax invoice will be issued separately through the authorized accounting system.',
+         M + 10, y + 18, { width: INNER - 20, lineGap: 1 }
+       );
+    y += noticeH + 10;
+
     // ── LEGAL DISCLAIMER ──────────────────────────────────────────────────────
     const legalItems = [
-      'This document serves as a valid tax invoice receipt in accordance with Israeli VAT law. The VAT rate has been calculated at the statutory rate of 18%.',
-      'PetWash Ltd operates as a technological platform that connects clients with independent service providers. PetWash is not a party to the service agreement and is not responsible for the actual performance, quality, outcome of the service, or any damages incurred.',
+      'PetWash Ltd. operates as a technological intermediary platform that connects clients with independent service providers. PetWash Ltd. is not a party to the service agreement and is not responsible for the actual performance, quality, outcome of the service, or any damages incurred.',
       'Full responsibility for service execution rests solely with the service provider.',
+      'The payment amounts shown include an estimated VAT component of 18%. The official tax invoice, issued through the authorized accounting system, is the binding tax document for VAT deduction purposes.',
+      'In case of dispute, contact customer service within 24 hours of service completion: support@petwash.co.il',
     ];
 
     doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK).text('Legal Disclaimer:', M, y);
@@ -336,10 +354,10 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
     y += 12;
 
     const auditFields: [string, string][] = [
-      ['Booking Created',   fmtDateTime(params.startDate)],
-      ['Invoice Confirmed', fmtDateTime(new Date())],
-      ['Payment Status',    params.paymentStatus],
-      ['System ID',         params.bookingId],
+      ['Booking Created',        fmtDateTime(params.startDate)],
+      ['Confirmation Issued',    fmtDateTime(new Date())],
+      ['Payment Status',         params.paymentStatus],
+      ['System ID',              params.bookingId],
     ];
 
     for (const [k, v] of auditFields) {
@@ -354,11 +372,11 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
     doc.moveTo(M, y).lineTo(W - M, y).strokeColor(BORDER).lineWidth(0.5).stroke();
     y += 8;
     doc.font('Helvetica-Bold').fontSize(8).fillColor(MID)
-       .text('Digital Signature:', M, y)
-       .text('PetWash System', M + 100, y);
+       .text('Confirmed by:', M, y)
+       .text('PetWash Booking System', M + 80, y);
     y += 8;
     doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
-       .text(`Issued: ${new Date().toISOString()}  |  Signed by: PetWash Automated Invoice Engine`, M, y);
+       .text(`Generated: ${new Date().toISOString()}  |  PetWash Ltd. — Booking Confirmation System`, M, y);
 
     // ── FOOTER ────────────────────────────────────────────────────────────────
     const footerY = H - 24;
