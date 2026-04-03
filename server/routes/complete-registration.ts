@@ -7,6 +7,7 @@ import { generateMembershipId, assignCustomerMembership } from '../services/Memb
 import { WelcomeEmailService } from '../services/WelcomeEmailService';
 import { peekEmailVerificationToken } from './onboarding-verification';
 import { twilioSMSService } from '../services/TwilioSMSService';
+import { syncUserToHubSpot, trackHubSpotEvent } from '../hubspot';
 import crypto from 'crypto';
 
 const router = Router();
@@ -124,6 +125,25 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     }).catch(err => {
       logger.warn('[CompleteRegistration] Welcome email send failed (non-blocking)', { error: err.message, traceId });
     });
+
+    // ── HubSpot CRM sync — server-side safety net (fires regardless of client-side success) ──
+    syncUserToHubSpot({
+      uid: membershipNumber,
+      email: normalizedEmail,
+      firstname: firstName?.trim() || undefined,
+      lastname: lastName?.trim() || undefined,
+      lang: language,
+    }).catch(err => {
+      logger.warn('[CompleteRegistration] HubSpot sync failed (non-blocking)', { error: err?.message, traceId });
+    });
+
+    // Track lifecycle event in HubSpot timeline
+    trackHubSpotEvent(normalizedEmail, `petwash_${userType}_registered`, {
+      membershipNumber,
+      userType,
+      language,
+      registeredAt: new Date().toISOString(),
+    }).catch(() => {});
 
     return res.json({
       success: true,

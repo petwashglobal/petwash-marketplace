@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { sendClubWelcomeEmail, sendLuxuryEmail } from '../email/luxury-email-service';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
+import { syncUserToHubSpot, trackHubSpotEvent } from '../hubspot';
 import multer from 'multer';
 import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
@@ -210,6 +211,31 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
       geminiPlatformMonitor.recordRegistration('prestige');
     } catch {}
+
+    // ── HubSpot CRM — Prestige members were previously invisible to CRM ───────
+    syncUserToHubSpot({
+      uid: memberId,
+      email: email.trim().toLowerCase(),
+      firstname: firstName.trim(),
+      lastname: lastName.trim(),
+      phone: phone.trim(),
+      lang: language || 'he',
+      country: country || 'Israel',
+      loyaltyProgram: true,
+      consent: termsConsent === 'true' || termsConsent === true,
+      consentTimestamp: new Date().toISOString(),
+    }).catch(err => {
+      logger.warn('[Privilege] HubSpot sync failed (non-blocking)', { error: err?.message });
+    });
+
+    trackHubSpotEvent(email.trim().toLowerCase(), 'petwash_prestige_joined', {
+      memberId,
+      tier: 'bronze',
+      country: country || 'Israel',
+      petsCount: parsedPets.length,
+      hasIdDocument: !!idDocumentUrl,
+      joinedAt: new Date().toISOString(),
+    }).catch(() => {});
 
     // ── FCM push notification to the new member (if they have an FCM token) ──
     try {

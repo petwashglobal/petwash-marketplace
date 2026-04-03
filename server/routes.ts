@@ -1016,8 +1016,11 @@ self.addEventListener('notificationclick', (event) => {
               }
               logger.info('[Session] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score, uid: preDecoded.uid, traceId });
             } else {
-              logger.warn('[Session] Suspicious traffic on sign-in — step-up required', { score: captchaResult.score, uid: preDecoded.uid, traceId });
-              return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+              // Soft-fail: suspicious reCAPTCHA score but no Turnstile available.
+              // Firebase auth token is already verified above — the user is authenticated.
+              // Blocking here breaks real users on mobile data, VPNs, and corporate proxies.
+              // Log for monitoring only; do NOT hard-block sign-in.
+              logger.warn('[Session] Suspicious reCAPTCHA score on sign-in — allowing (Firebase auth verified)', { score: captchaResult.score, uid: preDecoded.uid, traceId });
             }
           }
         }
@@ -1161,6 +1164,32 @@ self.addEventListener('notificationclick', (event) => {
               logger.info('[Session] ✅ Google Sheets registration logged', { uid: decoded.uid });
             } catch (sheetsErr) {
               logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
+            }
+
+            // ── HubSpot CRM: capture every new social/phone sign-up ───────────────
+            // Previously, Google/Apple/Phone sign-ups bypassed HubSpot entirely.
+            // This is the authoritative server-side capture — fires regardless of client JS.
+            try {
+              const { syncUserToHubSpot, trackHubSpotEvent } = await import('./hubspot');
+              const provider = (decoded as any).firebase?.sign_in_provider || 'unknown';
+              await syncUserToHubSpot({
+                uid: decoded.uid,
+                email: decoded.email || '',
+                firstname: firstName,
+                lastname: lastName,
+                phone: phone || decoded.phone_number || undefined,
+                lang: lang || 'he',
+                country: country || 'IL',
+              });
+              await trackHubSpotEvent(decoded.email || '', 'petwash_user_registered', {
+                registrationSource: provider,
+                language: lang || 'he',
+                country: country || 'IL',
+                registeredAt: new Date().toISOString(),
+              });
+              logger.info('[Session] ✅ HubSpot new user synced', { uid: decoded.uid, provider });
+            } catch (hubspotErr) {
+              logger.warn('[Session] HubSpot new user sync failed (non-blocking)', hubspotErr);
             }
           }
         } catch (syncErr) {
@@ -10839,8 +10868,10 @@ self.addEventListener('notificationclick', (event) => {
           }
           logger.info('[CreateProfile] Accepted with Turnstile only (reCAPTCHA unavailable on client)', { traceId });
         } else {
-          logger.warn('[CreateProfile] Missing both captchaToken and turnstileToken');
-          return res.status(400).json({ success: false, error: 'Security verification token required.', errorCode: 'CAPTCHA_REQUIRED' });
+          // Both tokens missing — common for Google/Apple OAuth on strict mobile browsers
+          // where reCAPTCHA scripts are blocked. The Firebase ID token above has already
+          // verified this is a real authenticated user, so allow with a logged warning.
+          logger.warn('[CreateProfile] Missing both captchaToken and turnstileToken — allowing authenticated Firebase user', { traceId, uid });
         }
       } else {
         const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
@@ -10857,8 +10888,10 @@ self.addEventListener('notificationclick', (event) => {
             }
             logger.info('[CreateProfile] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score });
           } else {
-            logger.warn('[CreateProfile] Suspicious traffic on signup — step-up required', { score: captchaResult.score });
-            return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+            // Soft-fail: suspicious score but no Turnstile. Firebase auth is already verified.
+            // Blocking here prevents real mobile/VPN users from creating accounts.
+            // Log for fraud monitoring; allow the request to proceed.
+            logger.warn('[CreateProfile] Suspicious reCAPTCHA score — allowing (Firebase auth is proof of human)', { score: captchaResult.score });
           }
         }
       }
