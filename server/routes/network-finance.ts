@@ -72,9 +72,9 @@ async function requireNetworkOwner(req: Request, res: Response, next: NextFuncti
     }
     (req as any).ownerType = ownerType;
 
-    // Admin bypass via header secret (works for both company and franchise)
-    const adminHeader = req.headers['x-admin-secret'];
-    if (adminHeader && adminHeader === ADMIN_SECRET) return next();
+    // Admin bypass via header secret — P1-FIX: timing-safe comparison
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) return next();
 
     // Bearer token path
     const authHeader = req.headers.authorization;

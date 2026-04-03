@@ -32,3 +32,6 @@ load-test-results.json
 *.key
 *.pem
 petwash-wallet.key
+# Secrets files — never commit
+*.secrets*.txt
+.secrets-for-nir-only.txt

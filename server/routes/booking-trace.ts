@@ -46,8 +46,9 @@ async function requireTraceViewer(req: Request, res: Response, next: NextFunctio
   try {
     const bookingId = req.params.bookingId;
 
-    // ── Admin bypass via header secret ──────────────────────────────────────
-    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+    // ── Admin bypass via header secret — P1-FIX: timing-safe comparison ────
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) {
       (req as any).callerRole = 'admin' as CallerRole;
       (req as any).callerUid  = null;
       return next();

@@ -5152,48 +5152,14 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Express checkout endpoint (unauthenticated quick checkout)
-  app.post('/api/express-checkout', async (req, res) => {
-    try {
-      const { packageId, email, paymentMethod } = req.body;
-      
-      if (!packageId || !email) {
-        return res.status(400).json({ message: "Package ID and email are required" });
-      }
-      
-      // SECURITY: Block Nayax payments until API keys are configured
-      if (paymentMethod === 'nayax') {
-        logger.warn('[Express Checkout] Nayax payment blocked - feature disabled until API keys configured', { email, packageId });
-        return res.status(503).json({ 
-          message: "Mobile payment (Nayax) coming soon. Please use card payment.",
-          messageHe: "תשלום נייד (Nayax) בקרוב. אנא השתמש בתשלום בכרטיס."
-        });
-      }
-      
-      // Get package details
-      const pkg = await storage.getWashPackage(packageId);
-      if (!pkg) {
-        return res.status(404).json({ message: "Package not found" });
-      }
-      
-      // For credit card payments, simulate success (integrate with real payment gateway later)
-      if (paymentMethod === 'credit_card') {
-        // TODO: Integrate with real payment gateway
-        // For now, just return success
-        res.json({
-          success: true,
-          message: "Express checkout successful",
-          packageId,
-          email,
-          price: pkg.price
-        });
-      } else {
-        res.status(400).json({ message: "Invalid payment method" });
-      }
-    } catch (error) {
-      logger.error('Express checkout error:', error);
-      res.status(500).json({ message: "Express checkout failed" });
-    }
+  // P0-FIX: Express checkout stub REMOVED — returned {success:true} with no real payment processor,
+  // no auth, and no DB record. Use /api/checkout (authenticated) with a real payment flow instead.
+  app.post('/api/express-checkout', (_req, res) => {
+    res.status(410).json({
+      error: 'endpoint_removed',
+      message: 'This endpoint has been permanently removed. Use /api/checkout with authenticated payment flow.',
+      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש ב-/api/checkout עם זרימת תשלום מאומתת.'
+    });
   });
 
   // Purchase/Checkout endpoint for wash packages (authenticated with discounts)

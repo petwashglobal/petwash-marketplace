@@ -42,9 +42,9 @@ async function requireFranchiseOwner(req: Request, res: Response, next: NextFunc
     }
     (req as any).franchiseIdInt = franchiseId;
 
-    // Admin bypass via header secret
-    const adminHeader = req.headers['x-admin-secret'];
-    if (adminHeader && adminHeader === ADMIN_SECRET) return next();
+    // Admin bypass via header secret — P1-FIX: timing-safe comparison
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) return next();
 
     // Bearer token path
     const authHeader = req.headers.authorization;

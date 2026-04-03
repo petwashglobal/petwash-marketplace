@@ -43,8 +43,9 @@ async function resolveUidFromRequest(req: any): Promise<string | null> {
 }
 
 function isAdminSecretReq(req: any): boolean {
-  const secret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-  return !!(secret && req.headers['x-admin-secret'] === secret);
+  // P1-FIX: timing-safe comparison (was ===)
+  const { isValidAdminSecret } = require('../lib/admin-secret');
+  return isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET');
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

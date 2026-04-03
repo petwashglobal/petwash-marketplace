@@ -82,7 +82,9 @@ function severity(slaStatus: SlaStatus, amountILS?: number): Severity {
 
 async function requireCaseViewer(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+    // P1-FIX: timing-safe comparison (was ===)
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) {
       (req as any).callerCtx = { role: 'admin', uid: null, franchiseIds: [], stationIds: [] } as CallerContext;
       return next();
     }

@@ -29,8 +29,9 @@ function getClientIp(req: Request): string {
 
 async function requireExec(req: Request, res: Response, next: Function) {
   try {
-    const secret = req.headers['x-admin-secret'];
-    if (secret && (secret === process.env.ADMIN_SECRET || secret === process.env.PETWASH_ADMIN_SECRET)) {
+    // P1-FIX: timing-safe comparison (was ===)
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) {
       if (ALLOWED_MACHINE_IPS.length > 0) {
         const clientIp = getClientIp(req);
         if (!ALLOWED_MACHINE_IPS.includes(clientIp)) {

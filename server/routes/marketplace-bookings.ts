@@ -26,6 +26,47 @@ import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService
 
 const router = Router();
 
+// ---------------------------------------------------------------------------
+// P0-FIX: Booking ownership enforcement
+// ---------------------------------------------------------------------------
+// Fetches the booking and determines whether the authenticated user is the
+// customer, the provider, or an admin. Returns the booking + derived role,
+// or throws a 403 if the caller has no stake in the booking.
+//
+// BEFORE: role was accepted from req.body — any authenticated user could
+//         drive any booking they knew the ID of.
+// AFTER:  role is derived exclusively from booking.userId (customer) and
+//         booking.providerId (provider), or from admin claims.
+// ---------------------------------------------------------------------------
+async function assertBookingParty(
+  bookingId: string,
+  userId: string,
+  userRole?: string,
+  res?: any
+): Promise<{ booking: typeof bookings.$inferSelect; derivedRole: 'customer' | 'provider' | 'admin' } | null> {
+  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+
+  if (!booking) {
+    if (res) res.status(404).json({ error: 'Booking not found' });
+    return null;
+  }
+
+  // Admin bypass — requires admin role in user claims
+  if (userRole === 'admin') {
+    return { booking, derivedRole: 'admin' };
+  }
+
+  const isCustomer = booking.userId === userId;
+  const isProvider = booking.providerId === userId;
+
+  if (!isCustomer && !isProvider) {
+    if (res) res.status(403).json({ error: 'Access denied — you are not a party to this booking' });
+    return null;
+  }
+
+  return { booking, derivedRole: isCustomer ? 'customer' : 'provider' };
+}
+
 // Helper to generate friendly display names from provider IDs
 function formatProviderName(providerId: string): string {
   // Extract meaningful name from provider ID patterns like "user-ido", "demo-sitter-1", etc.
@@ -553,13 +594,29 @@ router.post('/:bookingId/transition', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { newStatus, role = 'customer', reason } = req.body;
+    const { newStatus, reason } = req.body;
+
+    // P0-FIX: role is no longer accepted from request body.
+    // It is derived from the booking record — only the actual customer or provider may act.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    // P0-FIX: Block direct user transitions to 'completed'.
+    // 'completed' can only be reached via the /complete endpoint after both parties
+    // have independently confirmed — enforced by the system actor.
+    // Admin may override via admin tools, not this endpoint.
+    if (newStatus === 'completed' && party.derivedRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Direct transition to completed is not allowed. Use the /complete endpoint.'
+      });
+    }
 
     await bookingLifecycleService.transitionStatus(
       bookingId,
       newStatus as BookingLifecycleStatus,
       userId,
-      role as 'customer' | 'provider' | 'system' | 'admin',
+      party.derivedRole,
       reason
     );
 
@@ -584,15 +641,19 @@ router.post('/:bookingId/confirm', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { role = 'customer' } = req.body;
 
-    const targetStatus = role === 'provider' ? 'provider_confirmed' : 'owner_confirmed';
-    
+    // P0-FIX: role no longer accepted from body — derived from booking record.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    const targetStatus = party.derivedRole === 'provider' ? 'provider_confirmed' : 'owner_confirmed';
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       targetStatus as BookingLifecycleStatus,
       userId,
-      role as 'customer' | 'provider',
+      party.derivedRole,
       'Booking confirmed'
     );
 
@@ -611,7 +672,16 @@ router.post('/:bookingId/start', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    
+
+    // P0-FIX: Only the actual provider of this booking may start it.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    if (party.derivedRole !== 'provider' && party.derivedRole !== 'admin') {
+      return res.status(403).json({ error: 'Only the provider can start a service' });
+    }
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       'in_progress',
@@ -635,26 +705,38 @@ router.post('/:bookingId/complete', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { role = 'provider' } = req.body;
 
-    const targetStatus = role === 'provider' 
-      ? 'provider_completion_review' 
+    // P0-FIX: role is no longer accepted from request body.
+    // Derived from booking record. This also prevents the same user from
+    // self-completing both sides: their role is fixed by who they are in the booking.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    const targetStatus = party.derivedRole === 'provider'
+      ? 'provider_completion_review'
       : 'owner_completion_review';
-    
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       targetStatus as BookingLifecycleStatus,
       userId,
-      role as 'customer' | 'provider',
+      party.derivedRole === 'admin' ? 'system' : party.derivedRole,
       'Service marked complete'
     );
 
     const booking = await bookingLifecycleService.getBookingWithHistory(bookingId);
-    
-    const ownerReviewed = booking?.statusHistory.some(h => h.toStatus === 'owner_completion_review');
-    const providerReviewed = booking?.statusHistory.some(h => h.toStatus === 'provider_completion_review');
 
-    if (ownerReviewed && providerReviewed) {
+    // P0-FIX: Verify that the two completion events came from DIFFERENT users.
+    // Without this, a single user who is both customer and provider (e.g. demo/test data)
+    // could trigger escrow release unilaterally.
+    const ownerEntry = booking?.statusHistory.find((h: any) => h.toStatus === 'owner_completion_review');
+    const providerEntry = booking?.statusHistory.find((h: any) => h.toStatus === 'provider_completion_review');
+    const ownerReviewed = !!ownerEntry;
+    const providerReviewed = !!providerEntry;
+    const distinctActors = ownerEntry && providerEntry && ownerEntry.changedByUserId !== providerEntry.changedByUserId;
+
+    if (ownerReviewed && providerReviewed && distinctActors) {
       await bookingLifecycleService.transitionStatus(
         bookingId,
         'completed',
@@ -680,13 +762,18 @@ router.post('/:bookingId/cancel', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { reason, role = 'customer' } = req.body;
+    const { reason } = req.body;
+
+    // P0-FIX: role no longer accepted from body — derived from booking record.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
 
     await bookingLifecycleService.transitionStatus(
       bookingId,
       'cancelled',
       userId,
-      role as 'customer' | 'provider',
+      party.derivedRole === 'admin' ? 'system' : party.derivedRole,
       reason || 'Booking cancelled'
     );
 

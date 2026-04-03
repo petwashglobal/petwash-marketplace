@@ -38,14 +38,16 @@ function extractDevTestUser(req: Request): { uid: string; email?: string; email_
     return { uid: testUid, email: `${testUid}@test.local`, email_verified: true, claims: { role } };
   }
 
-  // Mode B — playwright-test bypass (mirrors the requireAuth guard bypass in customAuth.ts)
-  // This allows test suites to use a single set of headers across all middleware layers.
+  // Mode B — test bypass (dev/staging only).
+  // P0-FIX: No longer falls back to the publicly known 'playwright-test' string.
+  // If TEST_BYPASS_TOKEN is not set, this mode is completely disabled.
+  // Set TEST_BYPASS_TOKEN to a strong random secret in your test environment only.
   const bypassHeader = req.headers['x-test-user-bypass'] as string | undefined;
-  const bypassToken = process.env.TEST_BYPASS_TOKEN || 'playwright-test';
-  if (bypassHeader === bypassToken) {
-    const uid = (req.headers['x-test-user-id'] as string) || 'playwright-test-user';
+  const bypassToken = process.env.TEST_BYPASS_TOKEN; // NO default — must be explicitly set
+  if (bypassToken && bypassHeader === bypassToken) {
+    const uid = (req.headers['x-test-user-id'] as string) || 'test-user';
     const role = (req.headers['x-test-role'] as string) || 'customer';
-    logger.debug('[firebase-auth] DEV: playwright-test bypass accepted', { uid, role });
+    logger.debug('[firebase-auth] DEV: test bypass accepted', { uid, role });
     return { uid, email: `${uid}@test.local`, email_verified: true, claims: { role } };
   }
 

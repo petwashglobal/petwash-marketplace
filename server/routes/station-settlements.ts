@@ -24,8 +24,9 @@ const router = Router();
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 function isAdminRequest(req: any): boolean {
-  const adminSecret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-  return !!(adminSecret && req.headers['x-admin-secret'] === adminSecret);
+  // P1-FIX: timing-safe comparison (was ===)
+  const { isValidAdminSecret } = require('../lib/admin-secret');
+  return isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET');
 }
 
 async function resolveUidOrNull(req: any): Promise<string | null> {

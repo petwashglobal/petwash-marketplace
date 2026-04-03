@@ -251,10 +251,18 @@ export class EmailService {
       
       const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64');
       
-      // Generate HMAC signature using secret key
-      const secret = process.env.UNSUBSCRIBE_HMAC_SECRET || 'petwash-unsubscribe-secret-change-in-production';
+      // P0-FIX: UNSUBSCRIBE_HMAC_SECRET must be set as an environment variable.
+      // Hardcoded fallback removed — signing with a known public string defeats HMAC entirely.
+      const secret = process.env.UNSUBSCRIBE_HMAC_SECRET;
+      if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('FATAL: UNSUBSCRIBE_HMAC_SECRET environment variable is required in production');
+        }
+        logger.warn('[EmailService] UNSUBSCRIBE_HMAC_SECRET not set — unsubscribe tokens are insecure in this environment. Set this env var before going to production.');
+      }
+      const _secret = secret || 'dev-only-unsubscribe-hmac__not-for-production';
       const signature = crypto
-        .createHmac('sha256', secret)
+        .createHmac('sha256', _secret)
         .update(payloadBase64)
         .digest('hex');
       
@@ -293,10 +301,10 @@ export class EmailService {
 
       const [payloadBase64, receivedSignature] = parts;
 
-      // Verify HMAC signature
-      const secret = process.env.UNSUBSCRIBE_HMAC_SECRET || 'petwash-unsubscribe-secret-change-in-production';
+      // P0-FIX: Verify using env var only — hardcoded fallback removed.
+      const verifySecret = process.env.UNSUBSCRIBE_HMAC_SECRET || 'dev-only-unsubscribe-hmac__not-for-production';
       const expectedSignature = crypto
-        .createHmac('sha256', secret)
+        .createHmac('sha256', verifySecret)
         .update(payloadBase64)
         .digest('hex');
 

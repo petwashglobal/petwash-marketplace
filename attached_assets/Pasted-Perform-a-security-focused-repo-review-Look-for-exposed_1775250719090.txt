@@ -1,0 +1,404 @@
+Perform a security-focused repo review. Look for: - exposed secrets usage patterns - weak auth assumptions - unsafe role checks - missing ownership checks - insecure file upload handling - webhook verification issues - payment endpoint weaknesses - admin route exposure - unsafe logging of personal/sensitive data Return: - critical - high - medium issues only, with file paths and why they matter.
+petwashglobal's avatar
+The user wants a security-focused repo review. This is an analysis task, not a code change task. I need to explore the repository to find security issues across multiple categories. Let me do a thorough investigation.
+
+Explore: Security audit - auth, secrets, uploads, webhooks
+
+Explore: Security audit - ownership checks, IDOR, injection, logging
+
+
+Read security audit 1 full output
+
+
+Verify hardcoded fallback secrets and webhook bypass
+
+
+Confirm timingSafeAdminSecretMatch exists but is unused in routes
+
+
+Confirm no timing-safe comparison in vulnerable admin routes
+
+
+Verify webhook bypass when secret unset
+
+
+Confirm in-memory webhook dedup
+
+
+Verify unauthenticated provider list with full field exposure
+
+
+Verify express-checkout stub
+
+
+Verify ADMIN_SECRET fallback to COOKIE_SECRET
+
+
+Check what sensitive fields are stored in provider Firestore docs
+
+
+Check if contractor onboarding has auth
+
+
+Verify routes.ts admin guard comparison
+
+
+Check if the legacy nayaxService with hardcoded creds is still used
+
+
+Check if nayaxService hardcoded creds are used in production gift card payments
+
+
+Confirm no auth on contractor onboarding routes
+
+
+Check bank-details endpoint specifically
+
+
+Find PII in logs
+
+
+Check if routes.ts admin guard can be bypassed with empty secret
+
+
+Find non-admin routes that take amount from request body
+
+
+Verify K9000 hardware not actually activated
+
+
+Check voucher amount from request body
+
+
+Check contractor onboarding file header for any auth middleware
+
+
+Check if amountIls from voucher redemption is validated server-side
+
+
+Verify bank account plaintext fallback
+
+
+Find other encryption fallback weaknesses
+
+
+Find routes that log full request bodies
+
+
+Check auth coverage on booking-requests routes
+
+
+Check plaintext tax/national insurance storage warning
+
+
+What routes use the ADMIN_SECRET fallback to COOKIE_SECRET
+
+
+Check all admin endpoints using cookie secret fallback
+
+
+Check Nayax IP allowlist enforcement
+
+
+Verify IP allowlist is applied to webhook route
+
+
+Check IP allowlist middleware fail behavior
+
+
+Check IP allowlist fail-open condition
+
+
+Check createIPAllowlist factory for fail-open logic
+
+
+Confirm IP allowlist fails open in production when env var is empty
+
+
+Check auth on booking-requests pay route and confirm IP allowlist fail-open
+1 premium request · Claude Sonnet 4.6
+Now I have everything needed. Here is the complete security review:
+
+Security Review — PetWash Marketplace
+
+CRITICAL
+
+C-1 — Express Checkout Returns Payment Success Without Processing Any Payment
+
+File: server/routes.ts:5179–5188
+
+TypeScript
+// For credit card payments, simulate success (integrate with real payment gateway later)
+if (paymentMethod === 'credit_card') {
+  // TODO: Integrate with real payment gateway
+  // For now, just return success
+  res.json({ success: true, message: "Express checkout successful", packageId, ... });
+No auth required. No payment charged. No database record written. No escrow created. Any caller — including any connected UI — receives { success: true } with the package price in the response body. If any frontend component treats this as a completed purchase, real services will be unlocked without payment.
+
+Action: Disable endpoint immediately. Return 503 with "endpoint disabled" until replaced with the real Nayax checkout flow.
+
+C-2 — Hardcoded Fallback Credentials in Nayax Payment Service
+
+File: server/nayaxService.ts:70–72
+
+TypeScript
+private static readonly API_KEY     = process.env.NAYAX_API_KEY     || 'test_api_key';
+private static readonly NAYAX_SECRET = process.env.NAYAX_SECRET     || 'test_secret';
+private static readonly WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || 'webhook_secret';
+This class is actively called from server/routes/gift-cards.ts:313 for real gift card purchases. If any of the three env vars are missing in a deployment, the service silently falls back to these strings — which means it would attempt Nayax API calls with known-public credentials or fail in an unpredictable and unmonitored way. More importantly the webhook secret fallback ('webhook_secret') would cause signature validation to pass for any attacker who knows this literal string.
+
+Action: Remove all three fallbacks. Hard-fail at startup if any are absent in production.
+
+C-3 — Webhook IP Allowlist Fails Open When Env Var Is Not Set
+
+Files: server/middleware/ipAllowlist.ts:157–163, server/routes/nayax-webhooks.ts:49–53
+
+TypeScript
+// ipAllowlist.ts
+if (process.env.NODE_ENV === 'development' || allowedCIDRs.length === 0) {
+  logger.warn(`IP allowlist not configured - allowing all IPs`);
+  return next();   // ← ALL IPs ALLOWED
+}
+createIPAllowlist reads process.env.NAYAX_ALLOWED_IPS directly. If that variable is not set, allowedCIDRs is empty, the length === 0 branch fires, and the middleware calls next() in production — allowing any IP to send webhook events. The fallback array defined in nayax-webhooks.ts:49 is only a local constant and is never read by the middleware. The net result: if NAYAX_ALLOWED_IPS is absent from the deployment environment, the IP guard is silently disabled in production.
+
+Action: Change the fail condition to hard-block in production when the env var is missing (return res.status(403)). Separately, verify NAYAX_ALLOWED_IPS is set in the production environment today.
+
+C-4 — Webhook Deduplication Is In-Memory Only (Replay Attacks Survive Restarts)
+
+File: server/routes/nayax-webhooks.ts:55–56
+
+TypeScript
+// In-memory deduplication cache (use Redis in production)
+const processedWebhooks = new Set<string>();
+Every server restart clears this Set. A Nayax webhook replayed within the TTL window (1 hour) after a restart will be processed again — duplicate payment confirmations, duplicate escrow creation, duplicate loyalty points. With Cloud Run or any horizontally scaled deployment each instance has its own in-memory Set, so the same event can hit two instances simultaneously and both process it.
+
+Action: Move deduplication to the database. Insert the event ID into a processed_webhook_events table inside the same transaction as the business logic, with a unique constraint.
+
+C-5 — Unauthenticated Contractor Invoice Download (IDOR + Privacy Law Violation)
+
+File: server/routes/contractor-invoices.ts:14, 66
+
+TypeScript
+router.get("/:commissionId/generate", async (req, res) => {
+  // No requireAuth, no ownership check
+  const { commissionId } = req.params;
+  const pdfBuffer = await IsraeliInvoiceGenerator.generateInvoice(commissionId, language);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.send(pdfBuffer);
+Both /generate and /preview endpoints have zero authentication. The PDF contains the provider's legal name, Israeli tax ID (VAT number), national insurance number, and earnings breakdown. This is a violation of the Israeli Privacy Protection Law 5741-1981 and exposes PII to any unauthenticated internet request with a guessable commission ID.
+
+Action: Add requireAuth immediately. Verify req.user.uid === commission.providerId before serving the PDF.
+
+C-6 — Contractor Onboarding Accepts Bank Account Details Without Authentication
+
+File: server/routes/contractor-onboarding.ts:327–350
+
+TypeScript
+router.post("/bank-details", async (req, res) => {  // ← No requireAuth
+  const { contractorId, bankDetails } = req.body;
+  // contractorId comes from request body — not verified against session
+  const bankRecord = { contractorId, accountNumber: encryptBankAccount(...) };
+  await db.insert(contractorBankDetails).values(bankRecord);
+None of the nine contractor onboarding endpoints (/profile, /tax-profile, /bank-details, /insurance, /background-check, /service-area, /capability) have any authentication middleware. The contractorId is taken from the request body — anyone can submit bank account details for any contractor by sending a known or guessed contractorId. Additionally, if DOCUMENT_ENCRYPTION_KEY is not set, bank accounts are stored in plaintext (confirmed by the logger.warn fallback at line 35).
+
+Action: Add requireAuth and ownership assertion (req.user.uid === contractorId) to all nine endpoints. Hard-fail on missing DOCUMENT_ENCRYPTION_KEY.
+
+C-7 — Tax ID and National Insurance Numbers Stored in Plaintext (Acknowledged in Code)
+
+File: server/services/IsraeliContractorCompliance.ts:187–190
+
+TypeScript
+// ⚠️ SECURITY WARNING: Tax IDs and National Insurance numbers are stored in plaintext
+// TODO PRODUCTION: Encrypt sensitive PII (taxId, nationalInsuranceNumber) at rest using AES-256
+// TODO PRODUCTION: Implement field-level encryption for GDPR/Israeli Privacy Law compliance
+// TODO PRODUCTION: Redact sensitive fields in API responses (show only last 4 digits)
+The code inserts these values to the providerTaxCompliance table without encryption. These are government identity numbers — the highest sensitivity class of PII under Israeli law. The TODO comment confirms this is known and unresolved.
+
+Action: Apply the same AES-256-GCM field encryption already used for bank accounts. This requires a migration to re-encrypt existing rows.
+
+HIGH
+
+H-1 — Admin Secret Compared with === in Nine Route Files (Timing Attack)
+
+Files:
+
+server/routes/booking-trace.ts:50
+server/routes/case-actions.ts:49
+server/routes/case-queue.ts:85
+server/routes/case-reports.ts:24
+server/routes/teams.ts:38
+server/routes/manager.ts:34
+server/routes/financial-approvals.ts:28
+server/routes/station-dashboard.ts:47
+server/middleware/stationAuth.ts:35
+server/routes/station-settlements.ts:28
+server/routes.ts:508
+TypeScript
+if (req.headers['x-admin-secret'] === ADMIN_SEC)  // ← timing-vulnerable
+The correct implementation already exists in server/middleware/adminAuth.ts:24 using crypto.timingSafeEqual after SHA-256 hashing, and it is used in server/routes/finance/payout-reconciliation.ts and server/routes/finance/manual-adjustment.ts. Every other admin route bypasses it. A timing attack against a 16–32 character ASCII secret is practical over a low-latency internal network or with statistical averaging over repeated attempts.
+
+Action: Replace every === ADMIN_SEC / === process.env.ADMIN_SECRET comparison with the existing timingSafeAdminSecretMatch(req) utility. This is a one-line change per file.
+
+H-2 — ADMIN_SECRET Falls Back to COOKIE_SECRET in prestige-pass.ts
+
+File: server/routes/prestige-pass.ts:2337
+
+TypeScript
+const adminSecret = process.env.ADMIN_SECRET || process.env.COOKIE_SECRET;
+if (!adminSecret || provided !== adminSecret) { ... }
+The session cookie signing secret is being used as an admin authentication secret. These serve entirely different trust models. If ADMIN_SECRET is not set, the admin endpoint accepts the session key as credentials — meaning anyone who can read or derive the session cookie signing key gains admin access. This guard also uses !== (no timing safety).
+
+Action: Remove the COOKIE_SECRET fallback. Hard-fail if ADMIN_SECRET is not set.
+
+H-3 — Provider List Endpoints Return All Firestore Fields Including Potential PII
+
+File: server/routes/providers.ts:12, 42, 82, 103, 131+
+
+TypeScript
+// All list and detail endpoints do:
+const sitters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+All five unauthenticated endpoints (/sitters, /sitters/:id, /walkers, /walkers/:id, /drivers) spread the entire Firestore document into the API response. The contractor onboarding process stores phoneE164, email, taxId, taxIdType, and — if DOCUMENT_ENCRYPTION_KEY is missing — raw bank account details in those same Firestore profiles. This data is being served publicly to any client.
+
+Action: Define an explicit safe-fields allowlist for public responses. Never use ...doc.data() for public endpoints.
+
+H-4 — Voucher Redemption Accepts amountIls from Request Body Without Server-Side Validation
+
+File: server/routes/unified-vouchers.ts:208, 257
+
+TypeScript
+const result = await redeemVoucher({
+  amountIls: req.body.amountIls,   // ← from untrusted client
+  ...
+});
+Both the station-side and web-side redemption endpoints pass the client-supplied amountIls directly to the redemption service. If the redemption service applies this amount without checking it against the voucher's face value, a customer could redeem a voucher for more than its denomination. The impact depends on whether redeemVoucher validates the amount internally (the function is in server/nayaxFirestoreService.ts — verification required).
+
+Action: Remove amountIls from the request body. The server should look up the voucher's denomination by voucher ID and use that value exclusively.
+
+H-5 — nayax-monyx-events.ts Webhook Signature Validation Skipped When Secret Is Empty
+
+File: server/routes/nayax-monyx-events.ts:26, 160
+
+TypeScript
+const WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || '';  // empty string if unset
+
+if (WEBHOOK_SECRET && !validateSignature(rawBody, sigHeader)) {  // ← skipped entirely if empty
+  return res.status(401).json({ error: 'Invalid signature' });
+}
+If NAYAX_WEBHOOK_SECRET is not present in the environment, the entire signature block is skipped and any HTTP request to this endpoint is processed as a valid webhook event. This endpoint handles loyalty point awards and financial events — an attacker who discovers the URL can award arbitrary points or trigger financial operations.
+
+Action: Invert the condition: if !WEBHOOK_SECRET, reject with 500 (misconfiguration), not accept. Same fix applies to the || '' default in nayax-webhooks.ts:48.
+
+H-6 — K9000 Wash Bay Activation Is a Stub — No Hardware Commands Sent
+
+File: server/routes/k9000.ts:266–276
+
+TypeScript
+// TODO: In production, send HTTP POST to K9000 controller
+// const machine_url = `http://${clientIP}/api/start/${machineId}`;
+// const response = await fetch(machine_url, { ... });
+The entire activation block is commented out. When a customer pays for a car wash and the backend confirms payment, no command is sent to the physical wash bay. The session is logged as started in the database, but the actual machine is never activated. Customers pay but receive no service.
+
+Note: This may be intentional during hardware integration phase, but it means the payment flow should also be disabled until hardware activation is implemented. If the endpoint is reachable by paying customers today, this is a critical service delivery failure.
+
+H-7 — Missing Booking Ownership Check on /complete, /confirm, /cancel Endpoints
+
+File: server/routes/marketplace-bookings.ts:579–698
+
+TypeScript
+const { role = 'provider' } = req.body;          // role from client body, not verified
+await bookingLifecycleService.transitionStatus(bookingId, targetStatus, userId, role, ...);
+// booking.providerId never checked against userId
+Any authenticated user can mark any booking as complete, confirm, or cancel it, as long as they know the booking ID. The role is provided by the caller — a customer sends role: "provider" to impersonate the provider side. These three endpoints share the same root cause as the generic /transition endpoint. (Covered in the marketplace audit but included here as a security finding because it directly enables unauthorized financial actions.)
+
+H-8 — Multiple Admin Endpoints Use Different Header Names (x-admin-secret vs x-admin-key)
+
+Files: server/routes/marketplace-bookings.ts:1481, all others
+
+TypeScript
+// marketplace-bookings.ts:
+const adminKey = req.headers['x-admin-key'];       // different header
+if (adminKey !== process.env.ADMIN_API_KEY) { ... } // different env var, no timing safety
+Two separate admin authentication schemes coexist. This creates maintenance risk (a developer adds a new admin route using the wrong header name and it accepts neither secret), confusion about which secret to rotate, and inconsistent timing safety. The x-admin-key + ADMIN_API_KEY combination in marketplace-bookings.ts is also using plain !==.
+
+MEDIUM
+
+M-1 — Caller-Controlled role Parameter Accepted from Request Body/Query in Multiple Routes
+
+Files:
+
+server/routes/marketplace-bookings.ts:515, 556, 587, 638, 683 — req.body.role and req.query.role
+server/routes/booking-requests.ts:505 — req.query.role
+server/routes/sitter-suite.ts:1124 — req.query.role
+server/routes/loyalty.ts:138 — req.body.role
+The role value derived from the request is used to select what action to take (e.g., which booking state to transition to, what loyalty tier to apply). In none of these cases is the supplied role verified against the authenticated user's actual role in the booking or user record.
+
+M-2 — Email Addresses Logged in Plaintext
+
+Files:
+
+server/routes/documents.ts:386, 646 — req.firebaseUser?.email in info log
+server/routes/pin-auth.ts:169, 199, 400, 494, 571, 902, 977 — email in info log
+server/routes/google-services.ts:730, 765 — userData?.email in info log
+Email is PII under Israeli Privacy Protection Law and GDPR-equivalent obligations. Log aggregation services (Datadog, Elastic, GCP Logging) store these indefinitely. The risk is log exfiltration exposing a user database. Replace with user ID or a hashed token in log entries.
+
+M-3 — Webhook Event ID Deduplication Window Is Only 1 Hour
+
+File: server/routes/nayax-webhooks.ts:57
+
+TypeScript
+const WEBHOOK_CACHE_TTL = 3600000; // 1 hour
+Beyond the in-memory issue (C-4), even if this were persistent, 1 hour is too short. Nayax can retry webhook delivery for up to 24 hours on failure. An event delivered at hour 2 of a 24-hour retry cycle would not be in the cache. Idempotency keys must persist for at least 24 hours beyond the initial delivery.
+
+M-4 — routes.ts Main Admin Guard Uses Plain ===
+
+File: server/routes.ts:508
+
+TypeScript
+if (CONFIGURED_ADMIN_SECRET && adminSecretHeader === CONFIGURED_ADMIN_SECRET) {
+  return next();  // ← plain === on critical auth path
+}
+This is the central RBAC guard that protects all internal API routes. It already imports timingSafeAdminSecretMatch (line 296 and 3330) but doesn't use it on line 508. This is the highest-traffic admin check in the codebase.
+
+M-5 — Synthetic Test Endpoint Hardcodes a Real-Format Password
+
+File: server/routes/synthetic.ts:103
+
+TypeScript
+const testPassword = process.env.SYNTHETIC_TEST_PASSWORD || 'SyntheticTest123!';
+The fallback is a valid password format (upper, lower, digit, special). If committed to version control history and the synthetic account ever exists in production (e.g., after a NODE_ENV check failure), this is a known credential. It also sets a bad precedent of committing password literals.
+
+M-6 — Super-App Bookings Provider Verification Is a TODO
+
+File: server/routes/super-app-bookings.ts:214
+
+TypeScript
+if (booking.userId !== userId) {
+  // Check if user is the provider
+  // TODO: Add provider lookup to verify ownership  ← NOT IMPLEMENTED
+  return res.status(403).json({ error: 'Unauthorized access to booking' });
+}
+The code blocks non-customer access but never grants access to the legitimate provider. A provider trying to view a booking they own is locked out. This appears at five endpoints: /confirm, /cancel, /payment-intents, /complete, and the GET detail endpoint.
+
+M-7 — Bank Account Stored in Plaintext When DOCUMENT_ENCRYPTION_KEY Is Not Set
+
+File: server/routes/contractor-onboarding.ts:33–36
+
+TypeScript
+const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+if (!masterKey || masterKey.length < 32) {
+  logger.warn('[ContractorOnboarding] DOCUMENT_ENCRYPTION_KEY not set — bank account stored unencrypted');
+  return plaintext; // graceful degradation, but warn
+}
+"Graceful degradation" for an Israeli bank account number (which includes routing code + account number) is not acceptable. The encryption should fail hard and return 500 to the caller rather than silently store PII in plaintext. Check whether the production database currently contains unencrypted bank accounts.
+
+Requires data repair if any rows were inserted without the key being set.
+
+Summary: What to Disable Before Anything Else
+
+Item	Action
+POST /api/express-checkout	Disable immediately — return 503
+GET /api/contractor-invoices/:id/generate and /preview	Add requireAuth + ownership check
+All 9 contractor-onboarding endpoints	Add requireAuth + ownership check
+NAYAX_API_KEY, NAYAX_SECRET, NAYAX_WEBHOOK_SECRET env vars	Verify set in production; remove hardcoded fallbacks from code
+NAYAX_ALLOWED_IPS env var	Verify set in production; invert fail-open logic to fail-closed
+DOCUMENT_ENCRYPTION_KEY env var	Verify set; hard-fail if absent; audit DB for plaintext bank accounts

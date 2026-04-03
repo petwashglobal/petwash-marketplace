@@ -35,9 +35,9 @@ const router = Router();
 
 async function requireGovernanceAdmin(req: Request, res: Response, next: Function) {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    if (adminSecret && adminSecret === process.env.ADMIN_SECRET) return next();
-    if (adminSecret && adminSecret === process.env.PETWASH_ADMIN_SECRET) return next();
+    // P1-FIX: timing-safe comparison (was ===)
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) return next();
 
     const token = (req.headers.authorization ?? '').replace('Bearer ', '').trim();
     if (!token) return res.status(401).json({ error: 'unauthorized' });

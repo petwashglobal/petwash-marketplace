@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import { timingSafeEqual } from 'crypto';
 import {
   checkFinancialAuthority,
   getApprovalRule,
@@ -24,8 +25,18 @@ function getClientIpFA(req: Request): string {
 }
 
 function getActingRole(req: Request): string {
-  // Admin secret = admin — enforce IP allowlist when configured
-  if (req.headers['x-admin-secret'] === process.env.ADMIN_SECRET) {
+  // P1-FIX: Use timing-safe comparison to prevent timing attacks on admin secret.
+  // BEFORE: === comparison leaks timing information about secret length/prefix.
+  // AFTER:  timingSafeEqual with fixed-length buffers eliminates the timing oracle.
+  const adminSecretHeader = req.headers['x-admin-secret'] as string | undefined;
+  const adminSecretEnv = process.env.ADMIN_SECRET;
+  const adminSecretMatch = !!(
+    adminSecretHeader &&
+    adminSecretEnv &&
+    adminSecretHeader.length === adminSecretEnv.length &&
+    timingSafeEqual(Buffer.from(adminSecretHeader), Buffer.from(adminSecretEnv))
+  );
+  if (adminSecretMatch) {
     if (ALLOWED_MACHINE_IPS_FA.length > 0) {
       const clientIp = getClientIpFA(req);
       if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) return 'agent'; // fall through to token auth

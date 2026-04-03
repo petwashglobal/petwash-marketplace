@@ -105,12 +105,27 @@ export interface NayaxTerminal {
 // CONSTANTS
 // =====================================
 
-const VOUCHER_SALT = process.env.VOUCHER_SALT || 'pet-wash-nayax-voucher-secret-2025';
-const NAYAX_API_KEY = process.env.NAYAX_API_KEY || 'mock-api-key';
-const NAYAX_SECRET = process.env.NAYAX_SECRET || 'mock-secret';
-const NAYAX_MERCHANT_ID = process.env.NAYAX_MERCHANT_ID || 'mock-merchant-id';
+// P0-FIX: All hardcoded fallback secrets removed. These must be set as environment variables.
+// In production, missing secrets are fatal. In development, a clear error is thrown.
+function requireEnvSecret(name: string, devFallback?: string): string {
+  const val = process.env[name];
+  if (val) return val;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`FATAL: Environment variable ${name} is required in production but not set.`);
+  }
+  if (devFallback) {
+    logger.warn(`[NayaxFirestore] WARNING: ${name} not set — using dev-only placeholder. Set this before going to production.`);
+    return devFallback;
+  }
+  throw new Error(`Environment variable ${name} is required but not set.`);
+}
+
+const VOUCHER_SALT   = requireEnvSecret('VOUCHER_SALT',        'dev-only-voucher-salt__not-for-production');
+const NAYAX_API_KEY  = requireEnvSecret('NAYAX_API_KEY',       'dev-only-api-key__not-for-production');
+const NAYAX_SECRET   = requireEnvSecret('NAYAX_SECRET',        'dev-only-secret__not-for-production');
+const NAYAX_MERCHANT_ID = requireEnvSecret('NAYAX_MERCHANT_ID','dev-only-merchant-id__not-for-production');
 const NAYAX_BASE_URL = process.env.NAYAX_BASE_URL || 'https://api.nayax.com';
-const WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || 'mock-webhook-secret';
+const WEBHOOK_SECRET = requireEnvSecret('NAYAX_WEBHOOK_SECRET','dev-only-webhook-secret__not-for-production');
 
 // Merchant Fee and VAT Configuration (live from environment)
 const NAYAX_MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055'); // 5.5% default
