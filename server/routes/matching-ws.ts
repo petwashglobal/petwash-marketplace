@@ -132,6 +132,8 @@ async function findBestProvider(service: string, location?: { lat: number; lng: 
 // ── Booking event subscriptions ────────────────────────────────────────────
 // Map: requestId → Set of connected WebSocket clients watching that booking
 const bookingWatchers = new Map<string, Set<WebSocket>>();
+// Admin clients that receive all marketplace events
+const adminWatchers = new Set<WebSocket>();
 
 function addWatcher(requestId: string, ws: WebSocket) {
   if (!bookingWatchers.has(requestId)) {
@@ -150,17 +152,18 @@ function removeWatcher(requestId: string, ws: WebSocket) {
 function broadcastToWatchers(requestId: string, data: object) {
   const watchers = bookingWatchers.get(requestId);
   if (!watchers) return;
-  for (const ws of watchers) {
-    send(ws, data);
-  }
+  for (const ws of watchers) send(ws, data);
+}
+
+function broadcastToAdmins(data: object) {
+  for (const ws of adminWatchers) send(ws, data);
 }
 
 // Subscribe to EventBus intelligence events and forward to watching clients
 function wireBookingEventForwarding() {
   eventBus.subscribe('provider.accepted', (event) => {
     const requestId = event.data?.requestId as string | undefined;
-    if (!requestId) return;
-    broadcastToWatchers(requestId, {
+    const payload = {
       type: 'PROVIDER_ACCEPTED',
       requestId,
       providerId:  event.data?.providerId,
@@ -168,14 +171,17 @@ function wireBookingEventForwarding() {
       newStatus:   event.data?.newStatus,
       serviceType: event.data?.serviceType,
       timestamp:   event.timestamp,
-    });
-    logger.info('[MatchingWS] Forwarded provider.accepted', { requestId });
+    };
+    if (requestId) {
+      broadcastToWatchers(requestId, payload);
+      logger.info('[MatchingWS] Forwarded provider.accepted', { requestId });
+    }
+    broadcastToAdmins(payload);
   });
 
   eventBus.subscribe('provider.arriving', (event) => {
     const requestId = event.data?.requestId as string | undefined;
-    if (!requestId) return;
-    broadcastToWatchers(requestId, {
+    const payload = {
       type: 'PROVIDER_ARRIVING',
       requestId,
       providerId:  event.data?.providerId,
@@ -183,8 +189,22 @@ function wireBookingEventForwarding() {
       eta:         event.data?.eta ?? null,
       serviceType: event.data?.serviceType,
       timestamp:   event.timestamp,
-    });
-    logger.info('[MatchingWS] Forwarded provider.arriving', { requestId });
+    };
+    if (requestId) {
+      broadcastToWatchers(requestId, payload);
+      logger.info('[MatchingWS] Forwarded provider.arriving', { requestId });
+    }
+    broadcastToAdmins(payload);
+  });
+
+  eventBus.subscribe('matching.started', (event) => {
+    const payload = {
+      type: 'MATCHING_STARTED',
+      serviceType:     event.data?.serviceType,
+      totalCandidates: event.data?.totalCandidates ?? 0,
+      timestamp:       event.timestamp,
+    };
+    broadcastToAdmins(payload);
   });
 }
 
@@ -253,6 +273,13 @@ export function setupMatchingWebSocket(server: Server): void {
             subscribedBookings = subscribedBookings.filter(id => id !== requestId);
           }
         }
+
+        // ── Admin live feed subscription ──────────────────────────────────
+        if (msg.type === 'SUBSCRIBE_ADMIN') {
+          adminWatchers.add(ws);
+          send(ws, { type: 'SUBSCRIBED', scope: 'admin' });
+          logger.info('[MatchingWS] Admin subscribed to live event feed');
+        }
       } catch (err) {
         logger.warn('[MatchingWS] Bad message', { raw: raw.toString() });
       }
@@ -261,6 +288,7 @@ export function setupMatchingWebSocket(server: Server): void {
     ws.on('close', () => {
       if (searchTimer) clearTimeout(searchTimer);
       for (const id of subscribedBookings) removeWatcher(id, ws);
+      adminWatchers.delete(ws);
       logger.info('[MatchingWS] Client disconnected');
     });
 

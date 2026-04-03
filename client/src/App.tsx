@@ -326,6 +326,7 @@ const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplication
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
+const AdminLiveEvents = lazy(() => import("@/pages/admin/AdminLiveEvents"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
 const PawFinderAdmin = lazy(() => import("@/pages/admin/PawFinderAdmin"));
 
@@ -2225,6 +2226,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <MarketplaceIntelligenceDashboard />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/live-events">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminLiveEvents />
               </Suspense>
             </AdminRouteGuard>
           )}
