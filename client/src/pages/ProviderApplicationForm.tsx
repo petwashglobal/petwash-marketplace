@@ -590,7 +590,7 @@ export default function ProviderApplicationForm() {
                   {
                     icon: BadgeCheck,
                     label: isHebrew ? 'פעיל — התחל לקבל הזמנות!' : 'Active — Start Receiving Bookings!',
-                    desc: isHebrew ? 'תקבל קוד הזמנה וגישה לפלטפורמה' : 'You'll receive an invite code and platform access',
+                    desc: isHebrew ? 'תקבל קוד הזמנה וגישה לפלטפורמה' : "You'll receive an invite code and platform access",
                     done: false,
                   },
                 ].map((s, i, arr) => (
