@@ -1054,44 +1054,118 @@ export default function PawFinder({ language }: PawFinderProps) {
     <div className="min-h-screen bg-slate-50" dir={isHe ? 'rtl' : 'ltr'}>
       {contactPost && <ContactModal post={contactPost} onClose={() => setContactPost(null)} />}
 
-      {/* Hero */}
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">
-                Pet Wash™
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                🐾 Paw Finder
-              </h1>
-              <p className="text-slate-500 mt-1 text-sm">
-                {isHe
-                  ? 'עוזרים לחיות אבודות למצוא את הדרך הביתה. חינמי לחברי לויאלטי.'
-                  : 'Helping lost pets find their way home. Free for loyalty members.'}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-2 rounded-full">
-                <Heart className="w-3.5 h-3.5 text-rose-500" />
-                <span>{posts.filter(p => p.post_type === 'lost').length} אבודים</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-2 rounded-full">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>{posts.filter(p => p.post_type === 'found').length} נמצאו</span>
-              </div>
-            </div>
+      {/* ===================== HERO ===================== */}
+      <div
+        className="relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #ff8e53 40%, #00C9A7 100%)' }}
+      >
+        {/* decorative paw prints */}
+        <div className="absolute inset-0 opacity-10 select-none pointer-events-none overflow-hidden" aria-hidden>
+          {['top-4 left-8 text-7xl rotate-12','bottom-6 right-12 text-8xl -rotate-12',
+            'top-1/2 left-1/4 text-6xl rotate-6','top-8 right-1/3 text-5xl -rotate-6',
+            'bottom-4 left-1/2 text-9xl rotate-3'].map((cls, i) => (
+            <span key={i} className={`absolute ${cls}`}>🐾</span>
+          ))}
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 pt-10 pb-8">
+          {/* Top label */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">PetWash™ · שירות קהילתי חינמי</span>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mt-5 border-b border-slate-100 overflow-x-auto">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+            {/* Headline block */}
+            <div className="flex-1">
+              <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight drop-shadow-sm">
+                🐾 Paw Finder
+              </h1>
+              <p className="text-white/90 text-xl md:text-2xl font-semibold mt-2 leading-snug">
+                הפלטפורמה הקהילתית לחיות אבודות ונמצאות
+              </p>
+              <p className="text-white/75 text-base mt-2 max-w-xl leading-relaxed">
+                אנחנו מאמינים שכל חיית מחמד ראויה לחזור הביתה. Paw Finder הוא שירות חינמי לחלוטין עבור כל חברי הקהילה שלנו — פרסמו, גלו, ועזרו לחיות אבודות למצוא את הדרך הביתה.
+              </p>
+              <p className="text-white/60 text-sm mt-1">
+                Free community service · Serving Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™
+              </p>
+
+              {/* Live stats */}
+              <div className="flex items-center gap-4 mt-5 flex-wrap">
+                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
+                  <Heart className="w-4 h-4 text-white" />
+                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'lost').length} חיות אבודות</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'found').length} נמצאו</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
+                  <MapPin className="w-4 h-4 text-white" />
+                  <span className="text-white font-semibold text-sm">תל אביב, רמת גן וסביבה</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA card */}
+            <div className="flex-shrink-0 bg-white/95 backdrop-blur-sm rounded-3xl p-6 shadow-2xl w-full lg:w-80">
+              <div className="text-center mb-4">
+                <div className="text-3xl mb-1">🆓</div>
+                <div className="font-bold text-slate-900 text-lg leading-tight">פרסום מודעה — חינמי לגמרי</div>
+                <p className="text-slate-500 text-sm mt-1 leading-relaxed">
+                  חבר קהילה? פרסם מיד. אבדה לך חיית מחמד? פרסם בחינם תוך דקה.
+                </p>
+              </div>
+              <button
+                onClick={() => setTab('report')}
+                className="w-full py-3 rounded-2xl font-bold text-white text-base shadow-lg hover:opacity-90 active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #FF6B6B, #ff8e53)' }}
+              >
+                📢 פרסם מודעה עכשיו
+              </button>
+              <button
+                onClick={() => setTab('browse')}
+                className="w-full py-3 rounded-2xl font-semibold text-slate-700 text-sm mt-2 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                🗺️ חפש בפוסטים הפעילים
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* How it works strip */}
+        <div className="relative bg-white/10 backdrop-blur-sm border-t border-white/20">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { icon: '📸', title: 'צלם ופרסם', desc: 'העלה תמונה, תאר את החיה ואת המיקום — הפוסט עולה לאוויר תוך שניות.' },
+                { icon: '🗺️', title: 'מפה חיה', desc: 'כל הפוסטים מופיעים על מפה אינטראקטיבית. ראה מיד מה קורה בסביבתך.' },
+                { icon: '🤝', title: 'קישור קהילתי', desc: 'המערכת מתאימה אוטומטית בין דיווחי "אבוד" ו"נמצא" ומחברת בין האנשים הנכונים.' },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-3 text-white">
+                  <span className="text-2xl flex-shrink-0">{icon}</span>
+                  <div>
+                    <div className="font-bold text-sm">{title}</div>
+                    <div className="text-white/70 text-xs mt-0.5 leading-relaxed">{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===================== TABS BAR ===================== */}
+      <div className="bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex gap-1 overflow-x-auto">
             {TAB_ITEMS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-5 py-3.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                   tab === key
-                    ? 'border-slate-900 text-slate-900'
+                    ? 'border-rose-500 text-rose-600'
                     : 'border-transparent text-slate-400 hover:text-slate-700'
                 }`}
               >
