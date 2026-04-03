@@ -296,6 +296,12 @@ import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClie
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
 
+const MAX_QUERY_LIMIT = 500;
+const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
+  const n = parseInt(raw as string, 10);
+  return isNaN(n) || n < 1 ? defaultVal : Math.min(n, max);
+};
+
 export async function registerRoutes(app: Express): Promise<void> {
   
   // NOTE: Static assets now served by serveStatic() in production mode
@@ -3658,7 +3664,7 @@ self.addEventListener('notificationclick', (event) => {
     const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex').substring(0, 8);
     
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = safeLimit(req.query.limit, 50);
       const cursor = req.query.cursor ? parseInt(req.query.cursor as string) : undefined;
 
       if (limit > 100) {
@@ -4481,7 +4487,7 @@ self.addEventListener('notificationclick', (event) => {
       const filters = {
         status: req.query.status as string | undefined,
         q: req.query.q as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit) : 100,
+        limit: safeLimit(req.query.limit, 100),
         page: req.query.page ? parseInt(req.query.page) : 1,
       };
 
@@ -4523,7 +4529,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { getStationAlerts } = await import('./stationsService');
       const stationId = req.params.stationId;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const limit = safeLimit(req.query.limit, 100);
 
       const alerts = await getStationAlerts(stationId, limit);
 
@@ -4594,7 +4600,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/monitoring/tests', requireAdmin, async (req: any, res) => {
     try {
       const { db: adminDb } = await import('./lib/firebase-admin');
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = safeLimit(req.query.limit, 50);
 
       const testsSnapshot = await adminDb.collection('monitoring_tests')
         .orderBy('timestamp', 'desc')
@@ -5610,7 +5616,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/vouchers/my-vouchers', requireAuth, verifyAppCheckTokenOptional, async (req: any, res) => {
     try {
       const userId = req.user?.uid || req.firebaseUser?.uid;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const limit = safeLimit(req.query.limit, 20);
       const cursor = req.query.cursor as string | undefined;
       
       const result = await storage.getMyVouchers(userId, { limit, cursor });
@@ -5678,7 +5684,7 @@ self.addEventListener('notificationclick', (event) => {
   // Admin: List all vouchers with search
   app.get('/api/admin/vouchers', requireAdmin, async (req: any, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = safeLimit(req.query.limit, 50);
       const cursor = req.query.cursor as string | undefined;
       const status = req.query.status as string | undefined;
       const search = req.query.search as string | undefined;
@@ -6297,7 +6303,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/backups/logs', requireAdmin, async (req: any, res) => {
     try {
       const { db } = await import('./lib/firebase-admin');
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = safeLimit(req.query.limit, 50);
       const type = req.query.type as string | undefined; // 'code' or 'firestore'
       
       let query = db.collection('backup_logs')
@@ -6574,7 +6580,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/users/:userId/receipts', requireAuth, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = safeLimit(req.query.limit, 10);
       
       // Check if user can access these receipts
       const requestingUserId = req.user.claims.sub;
@@ -13502,7 +13508,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/loyalty/top-performers', requireAdmin, async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = safeLimit(req.query.limit, 10);
       const performers = await loyaltyActivityMonitor.getTopPerformers(limit);
       res.json(performers);
     } catch (error: any) {

@@ -301,8 +301,16 @@ export class EmailService {
 
       const [payloadBase64, receivedSignature] = parts;
 
-      // P0-FIX: Verify using env var only — hardcoded fallback removed.
-      const verifySecret = process.env.UNSUBSCRIBE_HMAC_SECRET || 'dev-only-unsubscribe-hmac__not-for-production';
+      // P0-FIX: Verify using env var only — no fallback. In production this must be set;
+      // an attacker knowing the fallback could forge any unsubscribe token.
+      const verifySecret = process.env.UNSUBSCRIBE_HMAC_SECRET;
+      if (!verifySecret) {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('FATAL: UNSUBSCRIBE_HMAC_SECRET environment variable is required in production');
+        }
+        logger.warn('[EmailService] UNSUBSCRIBE_HMAC_SECRET not set — rejecting all tokens in this environment to prevent forged unsubscribes');
+        return { isValid: false, error: 'Unsubscribe verification not configured' };
+      }
       const expectedSignature = crypto
         .createHmac('sha256', verifySecret)
         .update(payloadBase64)

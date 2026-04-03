@@ -258,22 +258,50 @@ router.post('/wash/start_cycle', async (req, res) => {
     }
 
     // === STEP 2: SEND ACTIVATION COMMAND TO K9000 ===
-    // In production, this would send a command to the K9000 controller
-    // For now, we'll simulate and log the wash start
-    
     const washId = `wash_${Date.now()}_${nanoid(12)}`;
-    
-    // TODO: In production, send HTTP POST to K9000 controller
-    // const machine_url = `http://${clientIP}/api/start/${machineId}`;
-    // const response = await fetch(machine_url, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     program: selectedProgram,
-    //     bayNumber,
-    //     token: process.env.MACHINE_SECRET_KEY,
-    //   }),
-    // });
+    let machineCommandSent = false;
+
+    // INTEGRATION STATUS: The K9000 machine activation command is not yet implemented.
+    // Set MACHINE_ACTIVATION_URL in environment variables to enable real machine control.
+    // Until then, all activations are demo-mode only — no physical machine is commanded.
+    //
+    // To complete the integration:
+    //   1. Set MACHINE_ACTIVATION_URL=http://<k9000-controller-ip>/api/start
+    //   2. Set MACHINE_SECRET_KEY (already configured as env var)
+    //   3. Remove this comment and test with real hardware
+    const machineActivationUrl = process.env.MACHINE_ACTIVATION_URL;
+    if (machineActivationUrl) {
+      try {
+        const machineRes = await fetch(`${machineActivationUrl}/${machineId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            program: washType,
+            bayNumber,
+            token: process.env.MACHINE_SECRET_KEY,
+            washId,
+            transactionId,
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+        machineCommandSent = machineRes.ok;
+        if (!machineRes.ok) {
+          logger.error('[K9000 Wash] Machine activation HTTP error', {
+            washId, machineId, status: machineRes.status,
+          });
+        } else {
+          logger.info('[K9000 Wash] ✅ Machine activation command sent', { washId, machineId });
+        }
+      } catch (machineErr: any) {
+        logger.error('[K9000 Wash] Machine activation command failed', {
+          washId, machineId, error: machineErr.message,
+        });
+      }
+    } else {
+      logger.warn('[K9000 Wash] DEMO MODE — MACHINE_ACTIVATION_URL not set. Physical machine was NOT commanded. Set MACHINE_ACTIVATION_URL to enable real machine control.', {
+        washId, machineId, transactionId,
+      });
+    }
     
     // === STEP 2.5: BAY LOOKUP — find the specific bay record for this side ===
     // resolvedSide was validated above. If the bay isn't in station_bays yet
@@ -416,6 +444,8 @@ router.post('/wash/start_cycle', async (req, res) => {
         isFreeWash,
         discountPercent,
         washId,
+        machineCommandSent,      // false = demo mode / MACHINE_ACTIVATION_URL not set
+        machineActivationMode: machineActivationUrl ? 'live' : 'demo',
       }),
       ipAddress: clientIP,
       userAgent: req.headers['user-agent'] || null,

@@ -18,6 +18,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { redis } from '../services/redis';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
 import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings } from '@shared/schema';
@@ -52,9 +53,10 @@ const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') || [
   '185.60.216.0/24', // Example - replace with actual Nayax IPs
 ];
 
-// In-memory deduplication cache (use Redis in production)
-const processedWebhooks = new Set<string>();
-const WEBHOOK_CACHE_TTL = 3600000; // 1 hour
+// Redis-based deduplication — survives restarts and horizontal scaling.
+// Falls back to accepting (non-deduplicating) when Redis is unavailable,
+// logging a warning so ops can see when dedup is degraded.
+const WEBHOOK_DEDUP_TTL_SECONDS = 86400; // 24 hours — covers Nayax retry window
 
 // ==================== MIDDLEWARE ====================
 
@@ -141,8 +143,10 @@ function validateNayaxSignature(
 
 /**
  * Check if webhook has already been processed (idempotency)
+ * Uses Redis SET NX (atomic) — survives server restarts and horizontal scaling.
+ * Falls back gracefully when Redis is unavailable (logs a WARN, does not block).
  */
-function checkIdempotency(
+async function checkIdempotency(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
@@ -154,17 +158,19 @@ function checkIdempotency(
     return res.status(400).json({ error: 'Missing event ID' });
   }
   
-  if (processedWebhooks.has(eventId)) {
-    logger.info('[NayaxWebhook] Duplicate webhook ignored', { eventId });
-    return res.status(200).json({ 
-      received: true, 
-      message: 'Webhook already processed',
-    });
-  }
+  const dedupKey = `nayax:webhook:dedup:${eventId}`;
   
-  // Add to cache with TTL cleanup
-  processedWebhooks.add(eventId);
-  setTimeout(() => processedWebhooks.delete(eventId), WEBHOOK_CACHE_TTL);
+  if (redis.isConnected()) {
+    // setNx returns true if key was newly set (first time), false if already existed (replay)
+    const isNew = await redis.setNx(dedupKey, { processedAt: new Date().toISOString() }, WEBHOOK_DEDUP_TTL_SECONDS);
+    if (!isNew) {
+      logger.info('[NayaxWebhook] Duplicate webhook ignored (Redis dedup)', { eventId });
+      return res.status(200).json({ received: true, message: 'Webhook already processed' });
+    }
+  } else {
+    // Redis unavailable — log degraded dedup so ops knows, but do not block payments
+    logger.warn('[NayaxWebhook] Redis unavailable — webhook dedup degraded. Manual review may be required.', { eventId });
+  }
   
   next();
 }

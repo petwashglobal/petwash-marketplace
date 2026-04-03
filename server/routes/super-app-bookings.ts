@@ -209,9 +209,28 @@ router.get(
       }
 
       // SECURITY: Verify user ownership or provider access
-      if (booking.userId !== userId) {
-        // Check if user is the provider
-        // TODO: Add provider lookup to verify ownership
+      const isCustomer = booking.userId === userId;
+
+      let isProvider = false;
+      if (!isCustomer && booking.providerId) {
+        const { db: dbClient } = await import('../db');
+        const { providers } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        const [provider] = await dbClient
+          .select()
+          .from(providers)
+          .where(
+            and(
+              eq(providers.id, booking.providerId),
+              eq(providers.userId, userId),
+              eq(providers.platformId, platformId)
+            )
+          );
+        isProvider = !!provider;
+      }
+
+      if (!isCustomer && !isProvider) {
+        logger.warn('[SuperAppBookings] Unauthorized booking access attempt', { userId, bookingId });
         return res.status(403).json({ error: 'Unauthorized access to booking' });
       }
 
