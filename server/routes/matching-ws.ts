@@ -15,6 +15,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import { logger } from '../lib/logger';
 import { pool } from '../db';
+import { eventBus } from '../services/EventBus';
 
 export interface ProviderMatch {
   id: string;
@@ -128,14 +129,77 @@ async function findBestProvider(service: string, location?: { lat: number; lng: 
   return null;
 }
 
+// ── Booking event subscriptions ────────────────────────────────────────────
+// Map: requestId → Set of connected WebSocket clients watching that booking
+const bookingWatchers = new Map<string, Set<WebSocket>>();
+
+function addWatcher(requestId: string, ws: WebSocket) {
+  if (!bookingWatchers.has(requestId)) {
+    bookingWatchers.set(requestId, new Set());
+  }
+  bookingWatchers.get(requestId)!.add(ws);
+}
+
+function removeWatcher(requestId: string, ws: WebSocket) {
+  bookingWatchers.get(requestId)?.delete(ws);
+  if (bookingWatchers.get(requestId)?.size === 0) {
+    bookingWatchers.delete(requestId);
+  }
+}
+
+function broadcastToWatchers(requestId: string, data: object) {
+  const watchers = bookingWatchers.get(requestId);
+  if (!watchers) return;
+  for (const ws of watchers) {
+    send(ws, data);
+  }
+}
+
+// Subscribe to EventBus intelligence events and forward to watching clients
+function wireBookingEventForwarding() {
+  eventBus.subscribe('provider.accepted', (event) => {
+    const requestId = event.data?.requestId as string | undefined;
+    if (!requestId) return;
+    broadcastToWatchers(requestId, {
+      type: 'PROVIDER_ACCEPTED',
+      requestId,
+      providerId:  event.data?.providerId,
+      ownerId:     event.data?.ownerId,
+      newStatus:   event.data?.newStatus,
+      serviceType: event.data?.serviceType,
+      timestamp:   event.timestamp,
+    });
+    logger.info('[MatchingWS] Forwarded provider.accepted', { requestId });
+  });
+
+  eventBus.subscribe('provider.arriving', (event) => {
+    const requestId = event.data?.requestId as string | undefined;
+    if (!requestId) return;
+    broadcastToWatchers(requestId, {
+      type: 'PROVIDER_ARRIVING',
+      requestId,
+      providerId:  event.data?.providerId,
+      ownerId:     event.data?.ownerId,
+      eta:         event.data?.eta ?? null,
+      serviceType: event.data?.serviceType,
+      timestamp:   event.timestamp,
+    });
+    logger.info('[MatchingWS] Forwarded provider.arriving', { requestId });
+  });
+}
+
 export function setupMatchingWebSocket(server: Server): void {
   const wss = new WebSocketServer({ server, path: '/ws/match' });
+
+  // Wire EventBus → WS forwarding once
+  wireBookingEventForwarding();
 
   wss.on('connection', (ws: WebSocket, req) => {
     const ip = req.socket.remoteAddress;
     logger.info('[MatchingWS] Client connected', { ip });
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
+    let subscribedBookings: string[] = [];
 
     ws.on('message', (raw) => {
       try {
@@ -170,6 +234,25 @@ export function setupMatchingWebSocket(server: Server): void {
           if (searchTimer) clearTimeout(searchTimer);
           logger.info('[MatchingWS] Search cancelled');
         }
+
+        // ── Booking event subscription (intelligence layer) ──────────────────
+        if (msg.type === 'SUBSCRIBE_BOOKING') {
+          const requestId = msg.requestId as string;
+          if (requestId && !subscribedBookings.includes(requestId)) {
+            subscribedBookings.push(requestId);
+            addWatcher(requestId, ws);
+            send(ws, { type: 'SUBSCRIBED', requestId });
+            logger.info('[MatchingWS] Client subscribed to booking', { requestId });
+          }
+        }
+
+        if (msg.type === 'UNSUBSCRIBE_BOOKING') {
+          const requestId = msg.requestId as string;
+          if (requestId) {
+            removeWatcher(requestId, ws);
+            subscribedBookings = subscribedBookings.filter(id => id !== requestId);
+          }
+        }
       } catch (err) {
         logger.warn('[MatchingWS] Bad message', { raw: raw.toString() });
       }
@@ -177,6 +260,7 @@ export function setupMatchingWebSocket(server: Server): void {
 
     ws.on('close', () => {
       if (searchTimer) clearTimeout(searchTimer);
+      for (const id of subscribedBookings) removeWatcher(id, ws);
       logger.info('[MatchingWS] Client disconnected');
     });
 

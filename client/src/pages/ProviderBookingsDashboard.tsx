@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   CalendarDays, Clock, User, MapPin, Star, Check, X,
   MessageSquare, Camera, Play, CheckCircle, AlertTriangle,
-  Loader2, Dog, ChevronRight, Coffee, Phone, Mail
+  Loader2, Dog, ChevronRight, Coffee, Phone, Mail, Navigation2
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useLanguage } from "@/lib/languageStore";
@@ -562,6 +562,34 @@ function UpcomingBookingCard({
     },
   });
 
+  const [etaMinutes, setEtaMinutes] = useState('');
+  const [showArrivingInput, setShowArrivingInput] = useState(false);
+
+  const arrivingMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/arriving`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eta: etaMinutes ? `${etaMinutes} דקות` : null }),
+      });
+      if (!res.ok) throw new Error('Failed to notify');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: isHebrew ? '🚗 הלקוח קיבל התראה!' : '🚗 Customer notified!',
+        description: etaMinutes
+          ? (isHebrew ? `ETA: ${etaMinutes} דקות` : `ETA: ${etaMinutes} minutes`)
+          : undefined,
+      });
+      setShowArrivingInput(false);
+      setEtaMinutes('');
+    },
+    onError: () => {
+      toast({ title: isHebrew ? 'שגיאה' : 'Error', variant: 'destructive' });
+    },
+  });
+
   return (
     <Card className="border-l-4 border-l-blue-500">
       <CardContent className="p-6">
@@ -598,6 +626,59 @@ function UpcomingBookingCard({
             </div>
           )}
         </div>
+
+        {/* I'm Arriving — shown for accepted / confirmed / in_progress */}
+        {['accepted', 'confirmed', 'in_progress'].includes(booking.status) && (
+          <div className="mb-3">
+            {showArrivingInput ? (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <Navigation2 className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <Input
+                  type="number"
+                  min="1"
+                  max="120"
+                  placeholder={isHebrew ? 'ETA (דקות)' : 'ETA (minutes)'}
+                  value={etaMinutes}
+                  onChange={e => setEtaMinutes(e.target.value)}
+                  className="h-8 w-28 text-sm"
+                  data-testid={`input-eta-${booking.requestId}`}
+                />
+                <Button
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-white h-8 px-3"
+                  onClick={() => arrivingMutation.mutate()}
+                  disabled={arrivingMutation.isPending}
+                  data-testid={`button-confirm-arriving-${booking.requestId}`}
+                >
+                  {arrivingMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    isHebrew ? 'שלח' : 'Send'
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-muted-foreground"
+                  onClick={() => setShowArrivingInput(false)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+                onClick={() => setShowArrivingInput(true)}
+                data-testid={`button-arriving-${booking.requestId}`}
+              >
+                <Navigation2 className="h-4 w-4 mr-1.5" />
+                {isHebrew ? 'אני בדרך!' : "I'm Arriving!"}
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-3">
           {booking.status === 'meet_greet_scheduled' && (

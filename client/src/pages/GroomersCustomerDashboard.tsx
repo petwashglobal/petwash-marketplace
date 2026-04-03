@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Scissors, Calendar, Clock, Star, CheckCircle2, XCircle, MessageCircle,
   Camera, PawPrint, RefreshCcw, DollarSign, Heart, MapPin, TrendingUp,
+  Navigation2, Shield,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { format, parseISO } from 'date-fns';
+import { IntelligencePanel } from '@/components/IntelligenceBadge';
+import { useBookingEvents } from '@/hooks/useBookingEvents';
+import { useJourneyState } from '@/hooks/useJourneyState';
 
 interface BookingRequest {
   id: number;
@@ -110,11 +114,54 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
     },
   });
 
+  // ── Intelligence profile (own scores) ────────────────────────────────────
+  const { data: intel } = useQuery<{
+    trustScore: number; behaviorScore: number; riskLevel: number;
+    bookingHistoryCount: number; cancellationRate: number; journeyState: string;
+  }>({
+    queryKey: ['/api/user/intelligence'],
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  // ── Journey state ─────────────────────────────────────────────────────────
+  const { advance } = useJourneyState();
+
+  // Advance journey once user visits this page
+  useEffect(() => { advance('browsing'); }, []);
+
   const now = new Date();
   const upcoming = bookings.filter(b => ['pending', 'accepted', 'confirmed', 'in_progress', 'meet_greet_scheduled'].includes(b.status));
   const completed = bookings.filter(b => b.status === 'completed');
   const cancelled = bookings.filter(b => ['cancelled', 'declined'].includes(b.status));
   const totalSpent = completed.reduce((s, b) => s + b.totalCents, 0);
+
+  // ── Real-time booking events (most active booking) ─────────────────────
+  const activeBookingId = upcoming[0]?.requestId;
+  const { arriving, accepted } = useBookingEvents(activeBookingId);
+
+  // Toast on provider.arriving
+  useEffect(() => {
+    if (!arriving) return;
+    toast({
+      title: isHebrew ? '🚗 הספק בדרך אליך!' : '🚗 Provider is on the way!',
+      description: arriving.eta
+        ? (isHebrew ? `ETA: ${arriving.eta}` : `ETA: ${arriving.eta}`)
+        : (isHebrew ? 'הם יגיעו בקרוב' : 'They\'ll arrive soon'),
+      duration: 8000,
+    });
+  }, [arriving]);
+
+  // Toast on provider.accepted
+  useEffect(() => {
+    if (!accepted) return;
+    toast({
+      title: isHebrew ? '✅ הספק אישר את ההזמנה!' : '✅ Provider accepted your booking!',
+      description: isHebrew ? 'ניתן לצפות בפרטים בכרטיסיית "קרוב"' : 'Check the Upcoming tab for details',
+      duration: 6000,
+    });
+  }, [accepted]);
+
   const favoriteService = Object.entries(
     completed.reduce((acc: Record<string, number>, b) => ({ ...acc, [b.serviceType]: (acc[b.serviceType] || 0) + 1 }), {})
   ).sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -252,10 +299,47 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
               </div>
             ))}
           </div>
+
+          {/* Provider arriving live banner */}
+          {arriving && (
+            <div className="mt-4 flex items-center gap-3 bg-amber-500/20 border border-amber-400/40 rounded-xl px-4 py-3">
+              <Navigation2 className="w-5 h-5 text-amber-300 animate-bounce" />
+              <div>
+                <p className="text-white font-medium text-sm">
+                  {isHebrew ? '🚗 הספק בדרך אליך!' : '🚗 Provider is on the way!'}
+                </p>
+                {arriving.eta && (
+                  <p className="text-amber-200 text-xs">
+                    {isHebrew ? `ETA: ${arriving.eta}` : `ETA: ${arriving.eta}`}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="luxury-container py-8">
+        {/* Intelligence panel — customer's own trust & engagement scores */}
+        {intel && (
+          <div className="luxury-glass-card luxury-shadow-md p-5 mb-6 luxury-animate-fade-in">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-4 h-4 text-[#C6A664]" />
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                {isHebrew ? 'הפרופיל שלי' : 'My Trust Profile'}
+              </h3>
+            </div>
+            <IntelligencePanel
+              trustScore={intel.trustScore}
+              behaviorScore={intel.behaviorScore}
+              riskLevel={intel.riskLevel}
+              bookingHistoryCount={intel.bookingHistoryCount}
+              cancellationRate={intel.cancellationRate}
+              journeyState={intel.journeyState}
+            />
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="luxury-tabs-list mb-6">
             <TabsTrigger value="upcoming" className="luxury-tab">

@@ -50,6 +50,33 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { IntelligenceBadge } from "@/components/IntelligenceBadge";
+import { useQuery as useIntelQuery } from "@tanstack/react-query";
+
+/**
+ * Fetches and renders the trust-score badge for a single user.
+ * Self-contained so we avoid hooks-in-loops antipattern.
+ */
+function UserTrustBadge({ uid }: { uid: string }) {
+  const { data } = useIntelQuery<{ trustScore: number; riskLevel: number; journeyState: string }>({
+    queryKey: ['/api/admin/users', uid, 'intelligence'],
+    queryFn: () =>
+      fetch(`/api/admin/users/${uid}/intelligence`, { credentials: 'include' }).then(r =>
+        r.ok ? r.json() : Promise.reject()
+      ),
+    staleTime: 120_000,
+    retry: false,
+  });
+
+  if (!data) return null;
+
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <IntelligenceBadge trustScore={data.trustScore} />
+      <span className="text-[10px] text-muted-foreground capitalize">{data.journeyState?.replace(/_/g, ' ')}</span>
+    </div>
+  );
+}
 
 interface AdminUsersProps {
   language: Language;
@@ -490,6 +517,9 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
                       </p>
                       <p className="luxury-text-small">{user.loyaltyPoints} pts</p>
                     </div>
+
+                    {/* Trust Score */}
+                    <UserTrustBadge uid={user.id} />
 
                     {/* Actions */}
                     <DropdownMenu>
