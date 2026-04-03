@@ -1025,7 +1025,8 @@ router.post('/:requestId/pay', async (req, res) => {
     
     const nayaxTransactionId = transactionId || `NAYAX-${nanoid(16)}`;
     
-    // ENTERPRISE: Create escrow payment via EscrowService (72-hour hold)
+    // P2-FIX: Escrow creation is FATAL — if it fails, booking is NOT confirmed.
+    // Never silently continue without an escrow: money would be taken with no protection.
     try {
       const escrow = await EscrowService.createEscrowPayment(
         requestId,
@@ -1040,7 +1041,6 @@ router.post('/:requestId/pay', async (req, res) => {
           endDate: booking.endDate,
         }
       );
-      
       logger.info('[BookingRequests] Escrow created via EscrowService', {
         requestId,
         escrowId: escrow.id,
@@ -1048,8 +1048,15 @@ router.post('/:requestId/pay', async (req, res) => {
         holdUntil: escrow.holdUntil,
       });
     } catch (escrowError: any) {
-      logger.warn('[BookingRequests] EscrowService failed, continuing with local tracking', {
+      logger.error('[BookingRequests] Escrow creation FAILED — payment flow aborted, booking NOT confirmed', {
         error: escrowError.message,
+        requestId,
+        totalCents: booking.totalCents,
+        nayaxTransactionId,
+      });
+      return res.status(500).json({
+        error: 'Payment processing failed — escrow could not be established. No charge was made. Please retry.',
+        errorCode: 'ESCROW_CREATION_FAILED',
       });
     }
     

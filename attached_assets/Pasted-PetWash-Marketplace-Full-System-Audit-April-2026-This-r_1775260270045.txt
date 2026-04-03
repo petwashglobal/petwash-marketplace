@@ -1,0 +1,219 @@
+PetWash Marketplace — Full System Audit (April 2026)
+
+This report covers Face ID/passkeys, admin access control, all API integrations, booking wiring, storage/backups, and active hacker entry points — building on the signup/provider analysis from the first session.
+
+1 — FACE ID AND PASSKEYS (WebAuthn)
+
+Architecture
+
+There are two separate biometric systems that must not be confused:
+
+System A — Passkey/WebAuthn login: Device Face ID or fingerprint used to sign in (via platform authenticator on iOS/Android).
+System B — KYC face matching: Google Cloud Vision API comparing selfie to government ID for provider verification.
+Critical Passkey Bugs
+
+Bug P1 — Two conflicting WebAuthn implementations (CRITICAL) server/routes/webauthn.ts and server/routes.ts (lines 2760–2880) both define WebAuthn registration and login endpoints. They use different challenge storage backends (Firestore vs signed cookies). The client calls one; the other silently does nothing. One path may have security gaps that the other doesn't. There is no single source of truth.
+
+Bug P2 — Challenge not stored server-side in /register/options (HIGH) server/routes/webauthn.ts:104 — The registration options endpoint generates a challenge and returns it to the client without storing it in the database. The verification step has no way to confirm the challenge was server-issued. An attacker who intercepts the challenge can replay it within the 5-minute window.
+
+Bug P3 — /authenticate/verify has no auth middleware (HIGH) server/routes/webauthn.ts:256 — The authentication verification endpoint accepts any email and retrieves the Firebase user without requiring a prior session. This enables email enumeration: an attacker can probe any address and learn whether it has passkeys registered.
+
+Bug P4 — Apple and Android attestation validation not implemented (HIGH) server/webauthn/config.ts:337–367 — Both validateAppleAttestation() and validateAndroidAttestation() are stubs that always return true. There is no certificate chain verification, no SafetyNet/Key Attestation check for Android, and no Apple App Attest check. Any device — including emulators and non-genuine hardware — can register passkeys.
+
+Bug P5 — Credential storage split across three backends (MEDIUM) Passkey credentials are written to Firestore, to a JSONB column in the users table, and partially referenced in shared/schema.ts. There is no single authoritative store. A deleted Firestore document would leave an orphaned PostgreSQL record, causing login failure with no recovery path.
+
+Bug P6 — Server reads VITE_FIREBASE_PROJECT_ID (client env var) for biometric bucket (MEDIUM) server/infra/biometricStorage.ts:14 — This server-side file uses the browser-prefixed env var. In environments where only server vars are set, the bucket name falls back to the hardcoded string "signinpetwash", pointing to the wrong GCS project.
+
+2 — ADMIN ACCESS CONTROL
+
+Super-Admin Credentials Are Hardcoded in Eight Files
+
+The following files contain hardcoded email addresses used for admin access checks. Any of these files being compromised exposes the admin identity:
+
+File	Line(s)	Emails hardcoded
+server/routes/access-requests.ts	9–15	nirhadad1@gmail.com, nir.h@petwash.co.il, ido.s@petwash.co.il, idoshakarzi110@gmail.com
+server/routes/wallet.ts	842	nirhadad1@gmail.com, nir.h@petwash.co.il, ido.s@petwash.co.il
+server/middleware/rbac.ts	17	nirhadad1@gmail.com (fallback when SUPER_ADMIN_EMAILS not set)
+server/routes/admin.ts	29–32	ido.s@petwash.co.il, avner9000@gmail.com, shiri.shakarzi1@gmail.com
+server/routes/expenses.ts	141, 236, 293, 359	nirhadad1@gmail.com (CEO check bypasses role system)
+server/routes/admin-loyalty.ts	38	nirhadad1@gmail.com
+server/routes/prestige-pass.ts	2231–2232, 2346	nirhadad1@gmail.com, nir.h@petwash.co.il
+server/routes/push-notifications.ts	95	nirhadad1@gmail.com, admin@petwash.co.il
+Additionally, a Firebase UID (vdiboz7IrUQEm2RbdO7VZLkBu552) is hardcoded in:
+
+server/routes/disputes.ts:18
+server/routes/provider-trust.ts:32
+If Firebase is compromised and this UID is reassigned, an attacker gains full control of those endpoints.
+
+Admin Routes Without Proper Middleware
+
+server/routes/academy.ts:639–767 — Routes check req.user?.isAdmin with no middleware that validates or sets this field. Any value in req.user.isAdmin goes unchecked.
+server/routes/provider-applications.ts:874 — Checks Firebase accountType claim (internal/admin). Custom claims can be set by any code path with admin SDK access.
+server/routes/provider-intake.ts:64 — GET /api/provider-intake/stats has no authentication at all. It returns internal approval counts to unauthenticated callers.
+Timing Attack on x-admin-secret Header
+
+server/middleware/adminAuth.ts provides a timingSafeAdminSecretMatch() function, but the following routes use plain === string comparison:
+
+server/routes/teams.ts:38
+server/routes/station-dashboard.ts:47
+server/routes/booking-trace.ts:50
+server/routes/case-queue.ts:85
+server/routes/case-actions.ts:49
+Timing attacks can leak byte-by-byte information about the secret value over many requests.
+
+No Phone-Based 2FA Enforced for Admin
+
+There is no hardened admin login flow via mobile number OTP or TOTP. The admin account relies solely on Firebase email/password authentication. If nirhadad1@gmail.com is compromised, an attacker has immediate full admin access with no second factor stopping them.
+
+Email Unsubscribe HMAC Secret Has a Weak Default
+
+server/emailService.ts:255 — Default value: 'petwash-unsubscribe-secret-change-in-production'. If the env var is not set, anyone can forge valid unsubscribe tokens and unsubscribe any user from any email list.
+
+3 — SQL INJECTION (14 CRITICAL VULNERABILITIES)
+
+All 14 are in server/routes/prestige-pass.ts. They use raw template literal string interpolation directly in SQL queries passed to pool.query():
+
+Lines	Pattern	Risk
+16802, 16813	WHERE id = ${parseInt(req.params.id)} and LIMIT ${limit}	Arbitrary data read
+14152, 14208	SET status = '${status}' WHERE id = ${parseInt(id, 10)}	Arbitrary row update
+14234, 14239	SET assigned_to = '${targetApproverUid}' and broken JSON escaping with replace(/"/g, '\\"')	Data manipulation + broken escaping
+14351, 14356–14363	WHERE month = '${month}', LIKE '${month}%', date ranges with ${month}-01	Date injection → full table scan or data exfiltration
+14090, 14784, 14850	Dynamic status fields in UPDATE statements	Arbitrary status changes
+The parseInt() wrapping provides false confidence — string parameters like status, month, targetApproverUid, and reason are not sanitized. A payload like '; DROP TABLE users; -- in month or status would execute. The fix is to use Drizzle ORM's sql tagged template or proper $1, $2 parameterized queries for all of these.
+
+4 — API INTEGRATIONS STATUS
+
+Google Maps — API Key Exposed to Browser
+
+server/routes.ts:659 reads process.env.VITE_GOOGLE_MAPS_API_KEY. The VITE_ prefix means this value is bundled into the client JavaScript and visible in any browser's developer tools or network inspector. Google Maps is a billable API. An exposed key can be used by anyone to run up charges. The fix is to use GOOGLE_MAPS_API_KEY (no VITE prefix) server-side only, and proxy map requests through the server rather than exposing the key to the browser.
+
+Google Drive Backup — No Encryption
+
+server/services/googleDriveBackupService.ts:176 — Backup files are uploaded as raw JSON.stringify() output. The backup contains invoices, digital signatures, biometric certificate records, provider applications, and security events. If the Google Drive account or service account is compromised, all this data is readable immediately. Backup data should be encrypted with AES-256 before upload.
+
+Google Drive Backup — Silent Failure
+
+server/services/googleDriveBackupService.ts:192–197 — Backup errors are caught and logged but no alert is sent (no email, no SMS, no Slack). Backups can fail silently for weeks with no visibility.
+
+Google Sheets — 25+ Sheets Including Sensitive Data
+
+server/services/googleSheetsIntegration.ts:14–51 — Sheet names include IDENTITY_VERIFICATIONS, SECURITY_EVENTS, CONSENT_AUDIT, E_SIGNATURES. These contain PII. Sheets are accessible to anyone with the service account, and they are stored unencrypted.
+
+SendGrid
+
+server/emailService.ts — Well implemented overall:
+
+✅ API key validated at startup
+✅ HTML sanitization with sanitize-html and allowlist
+✅ Rate limited: 100/hour and 500/day per recipient
+⚠️ Rate limits are in-memory only — reset on server restart (TODO comment at line 24 acknowledges this)
+✅ Consent and unsubscribe enforced
+✅ Gmail fallback on SendGrid failure (but this can mask outages)
+SMS / Twilio
+
+server/services/RegistrationOTPService.ts and server/services/TwilioSMSService.ts — Reasonably well implemented:
+
+✅ OTP hashed with SHA-256, constant-time comparison
+✅ 3 OTP sends per phone per hour; 15 per IP per hour; 60-second cooldown
+✅ 5 verification attempts max then 15-minute lockout
+✅ Approved-countries allowlist (no high-risk regions)
+⚠️ reCAPTCHA/Turnstile is non-blocking — if it fails, the request proceeds anyway. This means CAPTCHA is decoration, not protection.
+⚠️ Phone numbers are cleaned but not validated for SMS injection characters before being passed to the Twilio API
+Google Calendar
+
+server/services/GoogleCalendarIntegrationService.ts — OAuth2 refresh token pattern used. Requires GOOGLE_BUSINESS_CLIENT_ID, GOOGLE_BUSINESS_CLIENT_SECRET, GOOGLE_BUSINESS_REFRESH_TOKEN. Not deeply broken but these env vars have no startup validation — if missing, Calendar events will silently fail to create.
+
+Weather APIs
+
+Five weather providers (OpenWeather, WeatherAPI, Visual Crossing, AQICN, Ambee) are configured with graceful degradation. If all keys are missing, the service returns null rather than crashing. This is acceptable.
+
+Nayax (Payment)
+
+✅ Webhook HMAC-SHA256 signature validation
+✅ IP allowlist enforced
+⚠️ Dedup cache TTL is 1 hour — replay attacks possible after 1 hour using the same webhook
+⚠️ No test-vs-production key separation visible — risk of prod accidentally pointing to test environment
+5 — BOOKING SYSTEM WIRING
+
+PawSpa Platform Does Not Exist
+
+Zero references to "PawSpa" anywhere in the codebase. If this platform is intended to exist, it has not been implemented.
+
+Octopus V1 Bookings Are Deprecated But Still Reachable
+
+server/routes/octopus-engine.ts:78–80 — All V1 booking endpoints return a deprecation warning and log the call, but they still process the request. Old clients or integrations that haven't migrated still work but go through unmaintained code.
+
+/api/k9000 Registered Three Times With Different Middleware
+
+server/routes.ts:9751, 9754, 9757 — Express uses the first matching mount. Lines 9754 and 9757 may be unreachable. The adminLimiter and optionalFirebaseToken middleware on those lines is never applied.
+
+walkMyPetRoutes Mounted at /api (Too Broad)
+
+server/routes.ts:10017 — app.use('/api', apiLimiter, walkMyPetRoutes) mounts the Walk My Pet router at the root API path, not just at /api/walk-my-pet. Express matches this AFTER more specific routes (because they are registered first), so it should not shadow them in normal operation. However, any Walk My Pet route that matches a path used by another module would collide, and this is a maintenance trap that will cause hard-to-debug conflicts.
+
+Payment Has No Idempotency Key
+
+server/routes/booking-requests.ts:985–1134 — The /pay endpoint calls EscrowService.createEscrowPayment() with no idempotency key and no check for whether a payment transaction ID already exists. If a network timeout causes the client to retry, the user is charged twice.
+
+No Atomic Database Transactions
+
+No BEGIN/COMMIT/ROLLBACK patterns found in booking payment flows. If the escrow is created at line 1030 and the booking status update at line 1063 fails, the funds are held in escrow with no associated booking status. There is no rollback.
+
+6 — STORAGE BUCKETS
+
+✅ Bucket names come from env vars (not hardcoded)
+✅ Files scoped to contractorId/type/ paths — no path traversal possible
+✅ MIME type validation server-side (JPEG, PNG, WebP, PDF only)
+✅ 10MB file size limit per upload
+⚠️ Signed URL expiry is 1 year (server/routes/contractor-documents.ts) — best practice is 7–30 days
+⚠️ server/routes/careers.ts uses multer({ storage: multer.memoryStorage() }) with no file size limit — a large file upload here could exhaust server memory and cause a denial of service
+7 — GENERAL SECURITY VULNERABILITIES
+
+CORS with Credentials
+
+server/index.ts:91–133 — CORS is configured with credentials: true. If the origin validation function ever returns a wildcard * on error (lines 97, 106), the combination of credentials: true and origin: * is invalid per the CORS spec and browsers will block the response. More importantly, any misconfiguration in the origin function could allow a malicious domain to make credentialed cross-site requests.
+
+No SQL Transactions Anywhere
+
+Searches across the entire server/ directory find no BEGIN, COMMIT, or ROLLBACK SQL statements and no Drizzle transaction wrappers. Multi-step operations (payment + booking creation, user creation + loyalty setup, escrow creation + status update) are all vulnerable to partial failure leaving the database in an inconsistent state.
+
+reCAPTCHA Is Non-Blocking on OTP
+
+server/routes/publicAuthRoutes.ts:315–316 — If reCAPTCHA validation fails, the code logs a warning and continues. This makes reCAPTCHA useless as an anti-bot measure for OTP sending. An attacker's bot just needs to send the OTP request without a valid CAPTCHA token and it works anyway.
+
+8 — WHAT SPECIFICALLY BLOCKS SIGN-UP TODAY (Summary from Both Sessions)
+
+For completeness, the confirmed blockers from the first investigation:
+
+Auth method	Why it's broken
+Email/password	POST /api/auth/register returns 410 Gone
+Phone OTP	Flow never collects firstName/lastName → /complete-profile returns 400 NAME_REQUIRED → permanent loop
+Facebook	Zero server-side OAuth implementation — no PostgreSQL row created
+Instagram	Firebase user created, no PostgreSQL row created
+TikTok	Firebase user created, no PostgreSQL row created
+Apple (2nd device)	Email not resent by Apple on repeat sign-in → ensureUserInPostgres gets null email → returns null → user not found
+All email/social users	Wallet and loyalty profile never created
+New providers via OAuth	Provider intent stored but discarded after OAuth redirect → lands on /home
+Provider completion	DOCUMENT_ENCRYPTION_KEY absent → bank IBAN stored in plaintext; background check is a stub; police clearance not enforced
+/verify-email	Redirect destination page does not exist in client router
+Highest-Priority Fixes (Ordered by Blast Radius)
+
+Fix 14 SQL injection vulnerabilities in prestige-pass.ts — use Drizzle sql tagged templates or $1/$2 parameters. These allow arbitrary data exfiltration today.
+
+Enforce phone-based 2FA for admin login and remove all hardcoded admin emails from source code — move to SUPER_ADMIN_EMAILS environment variable exclusively.
+
+Use timingSafeEqual() on all x-admin-secret comparisons in teams.ts, booking-trace.ts, case-queue.ts, case-actions.ts, station-dashboard.ts.
+
+Create a single shared registerUserPostAuth(uid, provider, email) function called by every auth path that: creates the PostgreSQL user row, creates the wallet, creates the loyalty profile. This fixes the Facebook/Instagram/TikTok/email inconsistency in one change.
+
+Make reCAPTCHA blocking on OTP send — return 400 if CAPTCHA fails rather than proceeding.
+
+Encrypt Google Drive backup files before upload with AES-256, and add an alert (email/SMS) on backup failure.
+
+Fix passkey duplicate implementations — choose one (prefer server/routes.ts unified service), add requireAuth to /authenticate/verify, and implement challenge storage in /register/options.
+
+Add an idempotency key to the payment endpoint — check for existing paymentTransactionId before charging, and wrap the escrow + booking update in a database transaction.
+
+Remove VITE_GOOGLE_MAPS_API_KEY from server code — use GOOGLE_MAPS_API_KEY (server-only) and restrict the Maps API key to your server's IP in Google Cloud Console.
+
+Add limits: { fileSize: 10 * 1024 * 1024 } to the careers.ts multer config to prevent memory exhaustion.
