@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { walkBookings, sitterBookings, walkerProfiles, sitterProfiles } from '@shared/schema';
+import { walkBookings, sitterBookings, walkerProfiles, sitterProfiles, availabilitySlots, escrowHoldings, bookings } from '@shared/schema';
 import { eq, and, lt, notInArray, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
@@ -191,6 +191,101 @@ async function processStuckUnifiedBookings(): Promise<void> {
   }
 }
 
+/**
+ * P1-FIX: Expire marketplace bookings from the unified `bookings` table.
+ *
+ * This table was missing from ALL prior expiry jobs, meaning:
+ *   - `pending_payment` bookings could hold a slot forever if the customer abandoned checkout
+ *   - `inquiry`/`quote_sent`/`pending_provider` bookings could stay open indefinitely
+ *
+ * Timeouts (conservative, aligned with Israeli consumer protection norms):
+ *   - pending_payment  > 2 h   → payment_failed + release slot + void escrow
+ *   - inquiry          > 24 h  → expired (no slot held at this stage)
+ *   - quote_sent       > 48 h  → expired
+ *   - pending_provider > 24 h  → expired
+ *   - deposit_pending  > 48 h  → expired
+ */
+async function processExpiredMarketplaceBookings(): Promise<void> {
+  const now = new Date();
+
+  try {
+    // ── 1. pending_payment > 2h — customer abandoned checkout ────────────────
+    const paymentExpiredBookings = await db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.status, 'pending_payment'),
+          lt(bookings.updatedAt, new Date(now.getTime() - 2 * 60 * 60 * 1000))
+        )
+      )
+      .limit(50);
+
+    for (const b of paymentExpiredBookings) {
+      await db.update(bookings)
+        .set({ status: 'payment_failed', paymentStatus: 'expired', updatedAt: now } as any)
+        .where(eq(bookings.id, b.id));
+
+      // Release the slot this booking held
+      await db.update(availabilitySlots)
+        .set({
+          status: 'available',
+          bookingId: null,
+          lockToken: null,
+          lockExpiresAt: null,
+          lockedByUid: null,
+          updatedAt: now,
+        } as any)
+        .where(eq(availabilitySlots.bookingId, b.id));
+
+      // Void escrow — payment was never captured
+      await db.update(escrowHoldings)
+        .set({ status: 'refunded', updatedAt: now } as any)
+        .where(eq(escrowHoldings.bookingId, b.id));
+
+      logger.warn('[BookingExpiry] Marketplace booking payment timeout — slot released, escrow voided', {
+        bookingId: b.id,
+      });
+      SystemEventService.bookingStuck('marketplace_payment_timeout', b.id, 'pending_payment', 120);
+    }
+
+    // ── 2. Early-stage bookings stuck without a slot (alert only) ────────────
+    const staleStates = [
+      { status: 'inquiry',          maxAgeH: 24 },
+      { status: 'quote_sent',       maxAgeH: 48 },
+      { status: 'pending_provider', maxAgeH: 24 },
+      { status: 'deposit_pending',  maxAgeH: 48 },
+    ] as const;
+
+    for (const { status: stuckStatus, maxAgeH } of staleStates) {
+      const stale = await db
+        .select({ id: bookings.id })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.status, stuckStatus as string),
+            lt(bookings.updatedAt, new Date(now.getTime() - maxAgeH * 60 * 60 * 1000))
+          )
+        )
+        .limit(50);
+
+      for (const b of stale) {
+        await db.update(bookings)
+          .set({ status: 'expired', updatedAt: now } as any)
+          .where(eq(bookings.id, b.id));
+        logger.warn('[BookingExpiry] Marketplace booking expired', {
+          bookingId: b.id, fromStatus: stuckStatus, maxAgeH,
+        });
+        SystemEventService.bookingStuck('marketplace_booking_expired', b.id, stuckStatus, maxAgeH * 60);
+      }
+    }
+  } catch (err: any) {
+    if (!err.message?.includes('does not exist')) {
+      logger.error('[BookingExpiry] Marketplace expiry scan error', { error: err.message });
+    }
+  }
+}
+
 export function startBookingExpiryPoller() {
   logger.info('[BookingExpiry] Poller started — expiry/reassignment every 5m, escrow every 15m');
 
@@ -199,6 +294,7 @@ export function startBookingExpiryPoller() {
       await processExpiredWalkBookings();
       await processExpiredSitterBookings();
       await processStuckUnifiedBookings();
+      await processExpiredMarketplaceBookings(); // P1-FIX: was missing entirely
     } catch (err) {
       logger.error('[BookingExpiry] Expiry/reassignment cycle error', err);
     }

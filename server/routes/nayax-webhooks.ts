@@ -20,7 +20,7 @@ import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
-import { paymentIntents, bookings, bookingStatusHistory } from '@shared/schema';
+import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
@@ -565,6 +565,24 @@ router.post(
           },
         });
 
+        // ── [P1-FIX] Transition escrow pending_payment → held ───────────────────
+        // escrowHoldings record was created at booking checkout with status='pending_payment'.
+        // Now that payment is confirmed, move it to 'held' and record the transaction ID.
+        await db
+          .update(escrowHoldings)
+          .set({
+            status: 'held',
+            capturedAt: new Date(),
+            paymentIntentId: payload.transactionId,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.info('[NayaxPaymentWebhook] ✅ Escrow → held', {
+          bookingId: payload.bookingId,
+          transactionId: payload.transactionId,
+        });
+
         logger.info('[NayaxPaymentWebhook] ✅ Payment confirmed — booking → pending_confirmation', {
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
@@ -609,7 +627,27 @@ router.post(
           .set({ status: 'payment_failed', paymentStatus: 'failed', updatedAt: new Date() } as any)
           .where(eq(bookings.id, payload.bookingId));
 
-        logger.warn('[NayaxPaymentWebhook] Payment failed — booking marked payment_failed', {
+        // ── [P1-FIX] Release the booked slot so it can be re-booked ─────────
+        // Without this the slot stays 'booked' forever even though no payment happened.
+        await db
+          .update(availabilitySlots)
+          .set({
+            status: 'available',
+            bookingId: null,
+            lockToken: null,
+            lockExpiresAt: null,
+            lockedByUid: null,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+
+        // ── [P1-FIX] Void the escrow record — payment never captured ─────────
+        await db
+          .update(escrowHoldings)
+          .set({ status: 'refunded', updatedAt: new Date() } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.warn('[NayaxPaymentWebhook] Payment failed — booking marked payment_failed, slot released, escrow voided', {
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
         });
@@ -654,7 +692,25 @@ router.post(
           .set({ status: 'draft', paymentStatus: 'expired', updatedAt: new Date() } as any)
           .where(eq(bookings.id, payload.bookingId));
 
-        logger.warn('[NayaxPaymentWebhook] Payment session expired — booking reverted to draft', {
+        // ── [P1-FIX] Release slot + void escrow ──────────────────────────────
+        await db
+          .update(availabilitySlots)
+          .set({
+            status: 'available',
+            bookingId: null,
+            lockToken: null,
+            lockExpiresAt: null,
+            lockedByUid: null,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+
+        await db
+          .update(escrowHoldings)
+          .set({ status: 'refunded', updatedAt: new Date() } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.warn('[NayaxPaymentWebhook] Payment session expired — booking reverted to draft, slot released, escrow voided', {
           bookingId: payload.bookingId,
         });
 
@@ -696,7 +752,25 @@ router.post(
           .set({ status: 'draft', paymentStatus: 'cancelled', updatedAt: new Date() } as any)
           .where(eq(bookings.id, payload.bookingId));
 
-        logger.info('[NayaxPaymentWebhook] Payment cancelled by customer — booking reverted to draft', {
+        // ── [P1-FIX] Release slot + void escrow ──────────────────────────────
+        await db
+          .update(availabilitySlots)
+          .set({
+            status: 'available',
+            bookingId: null,
+            lockToken: null,
+            lockExpiresAt: null,
+            lockedByUid: null,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+
+        await db
+          .update(escrowHoldings)
+          .set({ status: 'refunded', updatedAt: new Date() } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.info('[NayaxPaymentWebhook] Payment cancelled by customer — booking reverted to draft, slot released, escrow voided', {
           bookingId: payload.bookingId,
         });
 

@@ -1417,19 +1417,14 @@ router.post('/provider/:providerId/availability', async (req, res) => {
     const { providerId } = req.params;
     const { dates, isAvailable, customPrice, platform, maxBookings, notes } = req.body;
 
-    // Validate provider owns this rate card
-    const [rateCard] = await db.select()
-      .from(providerRateCards)
-      .where(
-        and(
-          eq(providerRateCards.providerId, providerId),
-          eq(providerRateCards.providerId, userId)
-        )
-      )
-      .limit(1);
-
-    // For now, allow any authenticated user to update for testing
-    // In production, enforce ownership check
+    // P1-FIX: Enforce that the caller IS the provider — or is an admin.
+    // Before this fix the ownership check was commented out ("for testing"),
+    // meaning any authenticated user could block/unblock any provider's calendar.
+    const callerIsAdmin = req.user?.customClaims?.admin === true ||
+      req.user?.email?.endsWith('@petwash.co.il');
+    if (userId !== providerId && !callerIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Not authorized to modify this provider\'s availability' });
+    }
 
     const results = [];
     for (const dateStr of dates as string[]) {
