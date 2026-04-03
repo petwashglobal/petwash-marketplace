@@ -3265,9 +3265,9 @@ export class EmailService {
       const dir = isHebrew ? 'rtl' : 'ltr';
       const alignEnd = isHebrew ? 'left' : 'right';
 
-      const row = (label: string, value: string, color = '#000', weight = '500') =>
+      const row = (label: string, value: string, color = '#1a1a1a', weight = '500') =>
         `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:18px;direction:${dir};">` +
-        `<div style="color:#666;">${label}</div>` +
+        `<div style="color:#444;">${label}</div>` +
         `<div style="font-weight:${weight};color:${color};text-align:${alignEnd};">${value}</div>` +
         `</div>`;
 
@@ -3289,7 +3289,7 @@ export class EmailService {
     <div style="text-align:center;font-size:28px;margin-bottom:10px;">${isHebrew ? 'הזמנה אושרה' : 'Booking Confirmed'}</div>
 
     <!-- Subtitle: name · date · time -->
-    <div style="text-align:center;font-size:14px;color:#555;margin-bottom:50px;">
+    <div style="text-align:center;font-size:14px;color:#1a1a1a;margin-bottom:50px;">
       ${customerName} &nbsp;·&nbsp; ${dateFormatted} &nbsp;·&nbsp; ${timeFormatted}
     </div>
 
@@ -3313,10 +3313,10 @@ export class EmailService {
     </div>
 
     <!-- Footer -->
-    <div style="text-align:center;font-size:12px;color:#777;margin-top:60px;line-height:1.8;">
+    <div style="text-align:center;font-size:12px;color:#444;margin-top:60px;line-height:1.8;">
       Pet Wash™ &nbsp;·&nbsp; ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}<br/>
       ${isHebrew ? 'אושר דיגיטלית' : 'Digitally Approved'} &nbsp;·&nbsp; ${new Date().getFullYear()}<br/>
-      <a href="mailto:${t.contactEmail}" style="color:#555;text-decoration:none;">${t.contactEmail}</a>
+      <a href="mailto:${t.contactEmail}" style="color:#C6A664;text-decoration:none;">${t.contactEmail}</a>
     </div>
 
   </div>

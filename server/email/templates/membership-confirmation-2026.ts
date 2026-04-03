@@ -1,4 +1,3 @@
-import { PETWASH_LOGO_BASE64 } from './logo-base64';
 
 interface MembershipConfirmationParams {
   firstName: string;
@@ -42,12 +41,12 @@ const TIER_CONFIG: Record<string, { en: string; he: string; gradient: string; ic
   },
   platinum: {
     en: 'Platinum', he: 'פלטינום',
-    gradient: 'linear-gradient(145deg, #D4D0C8, #E5E4E2, #F0EFED)',
+    gradient: 'linear-gradient(145deg, #C6A664, #D4AF70, #E8C98A)',
     icon: '◈',
-    textColor: '#6B6B6B',
+    textColor: '#1a1a1a',
     cardGradient: 'linear-gradient(145deg, #18181B, #27272A, #3F3F46)',
-    accentColor: '#E5E4E2',
-    glowColor: 'rgba(229, 228, 226, 0.4)',
+    accentColor: '#C6A664',
+    glowColor: 'rgba(198, 166, 100, 0.4)',
     ornament: '◆'
   },
   diamond: {
@@ -108,8 +107,8 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 <body style="margin:0;padding:0;background:#f5f3ef;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
   <div style="max-width:620px;margin:0 auto;padding:20px 12px;">
 
-    <!-- Outer Frame with Art Deco Border -->
-    <div style="border:1px solid #e0dbd3;border-radius:2px;overflow:hidden;background:white;">
+    <!-- Outer Frame -->
+    <div style="overflow:hidden;background:white;">
 
       <!-- Top Ornamental Bar -->
       <div class="fi" style="background:#1a1a1a;padding:6px 0;text-align:center;">
@@ -118,10 +117,13 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
         </span>
       </div>
 
-      <!-- Logo Section - Maison Style -->
+      <!-- Logo Section - Lettermark (no external image) -->
       <div class="fi d1" style="padding:40px 40px 20px;text-align:center;background:white;">
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width:140px;height:auto;" />
-        <div style="margin-top:16px;font-size:9px;letter-spacing:6px;text-transform:uppercase;color:#999;">
+        <div style="display:inline-block;">
+          <div style="font-size:22px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a1a;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">PET WASH™</div>
+          <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:${t.accentColor};margin-top:4px;">PRIVILEGE</div>
+        </div>
+        <div style="margin-top:16px;font-size:9px;letter-spacing:6px;text-transform:uppercase;color:${t.accentColor};">
           ${isHe ? 'מועדון חברים יוקרתי' : 'Exclusive Members Club'}
         </div>
         <div style="width:40px;height:1px;background:${t.accentColor};margin:16px auto 0;"></div>
@@ -135,7 +137,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
         <h1 style="font-size:32px;font-weight:300;color:#1a1a1a;margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;letter-spacing:-0.5px;line-height:1.2;">
           ${firstName}
         </h1>
-        <p style="font-size:14px;color:#888;margin:0;line-height:1.7;max-width:400px;display:inline-block;">
+        <p style="font-size:14px;color:#1a1a1a;margin:0;line-height:1.7;max-width:400px;display:inline-block;">
           ${isHe
             ? 'חברותך במועדון היוקרה הבלעדי של Pet Wash™ מאושרת. עולם של פריבילגיות מחכה לך.'
             : 'Your place in the exclusive Pet Wash™ Privilege Club is confirmed. A world of distinction awaits.'}
@@ -145,9 +147,9 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
       <!-- Divider Ornament -->
       <div style="text-align:center;padding:0 40px;">
         <div style="display:inline-block;">
-          <span style="font-size:6px;letter-spacing:4px;color:#ccc;">── ─ ─</span>
+          <span style="font-size:6px;letter-spacing:4px;color:${t.accentColor};">── ─ ─</span>
           <span style="font-size:14px;color:${t.accentColor};margin:0 8px;">${t.icon}</span>
-          <span style="font-size:6px;letter-spacing:4px;color:#ccc;">─ ─ ──</span>
+          <span style="font-size:6px;letter-spacing:4px;color:${t.accentColor};">─ ─ ──</span>
         </div>
       </div>
 
@@ -200,7 +202,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 
         <!-- Points Display -->
         <div style="margin-top:24px;">
-          <div style="font-size:8px;letter-spacing:4px;text-transform:uppercase;color:#bbb;margin-bottom:8px;">
+          <div style="font-size:8px;letter-spacing:4px;text-transform:uppercase;color:${t.accentColor};margin-bottom:8px;">
             ${isHe ? 'נקודות פריבילגיה' : 'Privilege Points'}
           </div>
           <div style="font-size:36px;font-weight:200;color:#1a1a1a;font-family:Georgia,'Times New Roman',serif;letter-spacing:2px;">
@@ -214,13 +216,13 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 
       <!-- Elegant Divider -->
       <div style="padding:0 60px;">
-        <div style="height:1px;background:linear-gradient(90deg, transparent, #ddd, transparent);"></div>
+        <div style="height:1px;background:linear-gradient(90deg, transparent, ${t.accentColor}, transparent);"></div>
       </div>
 
       <!-- Benefits Section - Haute Couture Style -->
       <div class="fi d4" style="padding:32px 40px;">
         <div style="text-align:center;margin-bottom:24px;">
-          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#bbb;">
+          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:${t.accentColor};">
             ${isHe ? 'הפריבילגיות שלך' : 'Your Privileges'}
           </div>
         </div>
@@ -231,11 +233,11 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
             <td style="padding:16px 0;border-bottom:1px solid #f5f3ef;">
               <table cellpadding="0" cellspacing="0"><tr>
                 <td style="width:44px;vertical-align:top;">
-                  <div style="width:36px;height:36px;border-radius:50%;background:#faf8f5;border:1px solid #eee;text-align:center;line-height:36px;font-size:16px;">✨</div>
+                  <div style="width:36px;height:36px;border-radius:50%;background:transparent;text-align:center;line-height:36px;font-size:20px;">✨</div>
                 </td>
                 <td style="vertical-align:top;padding-${isHe ? 'right' : 'left'}:14px;">
                   <div style="font-size:13px;font-weight:600;color:#1a1a1a;letter-spacing:0.3px;">${isHe ? 'נקודות בונוס ברוכים הבאים' : 'Welcome Bonus Reward'}</div>
-                  <div style="font-size:11px;color:#999;margin-top:3px;line-height:1.5;">${isHe ? `${points} נקודות כבר בחשבון הפריבילגיה שלך` : `${points} points already credited to your Privilege account`}</div>
+                  <div style="font-size:11px;color:#444;margin-top:3px;line-height:1.5;">${isHe ? `${points} נקודות כבר בחשבון הפריבילגיה שלך` : `${points} points already credited to your Privilege account`}</div>
                 </td>
               </tr></table>
             </td>
@@ -244,11 +246,11 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
             <td style="padding:16px 0;border-bottom:1px solid #f5f3ef;">
               <table cellpadding="0" cellspacing="0"><tr>
                 <td style="width:44px;vertical-align:top;">
-                  <div style="width:36px;height:36px;border-radius:50%;background:#faf8f5;border:1px solid #eee;text-align:center;line-height:36px;font-size:16px;">🌟</div>
+                  <div style="width:36px;height:36px;border-radius:50%;background:transparent;text-align:center;line-height:36px;font-size:20px;">🌟</div>
                 </td>
                 <td style="vertical-align:top;padding-${isHe ? 'right' : 'left'}:14px;">
                   <div style="font-size:13px;font-weight:600;color:#1a1a1a;letter-spacing:0.3px;">${isHe ? 'מערכת 7 כוכבים' : '7-Star Ascension'}</div>
-                  <div style="font-size:11px;color:#999;margin-top:3px;line-height:1.5;">${isHe ? 'עלה בדרגות מארד ועד רויאל — כל דרגה פותחת הטבות בלעדיות' : 'Rise from Bronze to Royal — each tier unlocks exclusive privileges'}</div>
+                  <div style="font-size:11px;color:#444;margin-top:3px;line-height:1.5;">${isHe ? 'עלה בדרגות מארד ועד רויאל — כל דרגה פותחת הטבות בלעדיות' : 'Rise from Bronze to Royal — each tier unlocks exclusive privileges'}</div>
                 </td>
               </tr></table>
             </td>
@@ -257,11 +259,11 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
             <td style="padding:16px 0;border-bottom:1px solid #f5f3ef;">
               <table cellpadding="0" cellspacing="0"><tr>
                 <td style="width:44px;vertical-align:top;">
-                  <div style="width:36px;height:36px;border-radius:50%;background:#faf8f5;border:1px solid #eee;text-align:center;line-height:36px;font-size:16px;">🐾</div>
+                  <div style="width:36px;height:36px;border-radius:50%;background:transparent;text-align:center;line-height:36px;font-size:20px;">🐾</div>
                 </td>
                 <td style="vertical-align:top;padding-${isHe ? 'right' : 'left'}:14px;">
                   <div style="font-size:13px;font-weight:600;color:#1a1a1a;letter-spacing:0.3px;">${isHe ? 'צבירה בכל הפלטפורמות' : 'Earn Across All Maisons'}</div>
-                  <div style="font-size:11px;color:#999;margin-top:3px;line-height:1.5;">${isHe ? 'K9000 · סיטר סוויט · ווק מיי פט · אקדמיה · פלאש לאב · ווש האב' : 'K9000 · Sitter Suite · Walk My Pet · Academy · Plush Lab · Wash Hub'}</div>
+                  <div style="font-size:11px;color:#444;margin-top:3px;line-height:1.5;">${isHe ? 'K9000 · סיטר סוויט · ווק מיי פט · אקדמיה · פלאש לאב · ווש האב' : 'K9000 · Sitter Suite · Walk My Pet · Academy · Plush Lab · Wash Hub'}</div>
                 </td>
               </tr></table>
             </td>
@@ -270,11 +272,11 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
             <td style="padding:16px 0;">
               <table cellpadding="0" cellspacing="0"><tr>
                 <td style="width:44px;vertical-align:top;">
-                  <div style="width:36px;height:36px;border-radius:50%;background:#faf8f5;border:1px solid #eee;text-align:center;line-height:36px;font-size:16px;">💝</div>
+                  <div style="width:36px;height:36px;border-radius:50%;background:transparent;text-align:center;line-height:36px;font-size:20px;">💝</div>
                 </td>
                 <td style="vertical-align:top;padding-${isHe ? 'right' : 'left'}:14px;">
                   <div style="font-size:13px;font-weight:600;color:#1a1a1a;letter-spacing:0.3px;">${isHe ? 'הפתעות וחוויות VIP' : 'VIP Surprises & Experiences'}</div>
-                  <div style="font-size:11px;color:#999;margin-top:3px;line-height:1.5;">${isHe ? 'מתנות יום הולדת, אירועים בלעדיים וחוויות שמורות לחברים' : 'Birthday gifts, exclusive events, and members-only experiences'}</div>
+                  <div style="font-size:11px;color:#444;margin-top:3px;line-height:1.5;">${isHe ? 'מתנות יום הולדת, אירועים בלעדיים וחוויות שמורות לחברים' : 'Birthday gifts, exclusive events, and members-only experiences'}</div>
                 </td>
               </tr></table>
             </td>
@@ -283,35 +285,35 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
       </div>
 
       <!-- Membership Details - Minimalist Luxury Table -->
-      <div class="fi d4" style="background:#faf9f7;padding:28px 40px;border-top:1px solid #f0ede8;border-bottom:1px solid #f0ede8;">
+      <div class="fi d4" style="background:white;padding:28px 40px;border-top:1px solid #f0ede8;border-bottom:1px solid #f0ede8;">
         <div style="text-align:center;margin-bottom:20px;">
-          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#bbb;">
+          <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:${t.accentColor};">
             ${isHe ? 'פרטי החברות' : 'Membership Details'}
           </div>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <tr style="border-bottom:1px solid #ece9e4;">
-            <td style="padding:14px 0;color:#999;font-size:12px;letter-spacing:0.5px;">${isHe ? 'תוכנית' : 'Programme'}</td>
+            <td style="padding:14px 0;color:#444;font-size:12px;letter-spacing:0.5px;">${isHe ? 'תוכנית' : 'Programme'}</td>
             <td style="padding:14px 0;color:#1a1a1a;text-align:${alignOpp};font-weight:500;font-size:12px;letter-spacing:0.5px;">Pet Wash Privilege™</td>
           </tr>
           <tr style="border-bottom:1px solid #ece9e4;">
-            <td style="padding:14px 0;color:#999;font-size:12px;letter-spacing:0.5px;">${isHe ? 'דרגה' : 'Tier'}</td>
+            <td style="padding:14px 0;color:#444;font-size:12px;letter-spacing:0.5px;">${isHe ? 'דרגה' : 'Tier'}</td>
             <td style="padding:14px 0;text-align:${alignOpp};">
-              <span style="display:inline-block;padding:4px 16px;border:1px solid ${t.accentColor};border-radius:2px;font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:${t.textColor};">
+              <span style="display:inline-block;padding:4px 16px;border:1px solid ${t.accentColor};border-radius:2px;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${t.accentColor};">
                 ${t.icon} ${tierName}
               </span>
             </td>
           </tr>
           <tr style="border-bottom:1px solid #ece9e4;">
-            <td style="padding:14px 0;color:#999;font-size:12px;letter-spacing:0.5px;">${isHe ? 'מזהה חבר' : 'Member No.'}</td>
+            <td style="padding:14px 0;color:#444;font-size:12px;letter-spacing:0.5px;">${isHe ? 'מזהה חבר' : 'Member No.'}</td>
             <td style="padding:14px 0;color:#1a1a1a;text-align:${alignOpp};font-family:'Courier New',monospace;font-size:11px;letter-spacing:1.5px;">${membershipId}</td>
           </tr>
           <tr style="border-bottom:1px solid #ece9e4;">
-            <td style="padding:14px 0;color:#999;font-size:12px;letter-spacing:0.5px;">${isHe ? 'דוא"ל' : 'Email'}</td>
+            <td style="padding:14px 0;color:#444;font-size:12px;letter-spacing:0.5px;">${isHe ? 'דוא"ל' : 'Email'}</td>
             <td style="padding:14px 0;color:#1a1a1a;text-align:${alignOpp};font-size:12px;">${email}</td>
           </tr>
           <tr>
-            <td style="padding:14px 0;color:#999;font-size:12px;letter-spacing:0.5px;">${isHe ? 'תאריך הצטרפות' : 'Member Since'}</td>
+            <td style="padding:14px 0;color:#444;font-size:12px;letter-spacing:0.5px;">${isHe ? 'תאריך הצטרפות' : 'Member Since'}</td>
             <td style="padding:14px 0;color:#1a1a1a;text-align:${alignOpp};font-size:12px;">${joinDate}</td>
           </tr>
         </table>
@@ -322,8 +324,8 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
         <a href="https://petwash.co.il/loyalty" style="display:inline-block;padding:16px 52px;border:1px solid #1a1a1a;color:#1a1a1a;text-decoration:none;font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;transition:all 0.3s;">
           ${isHe ? 'כניסה למועדון' : 'Enter Your Club'}
         </a>
-        <p style="font-size:11px;color:#bbb;margin:16px 0 0;letter-spacing:0.5px;">
-          ${isHe ? 'petwash.co.il/loyalty' : 'petwash.co.il/loyalty'}
+        <p style="font-size:11px;color:${t.accentColor};margin:16px 0 0;letter-spacing:0.5px;">
+          petwash.co.il/loyalty
         </p>
       </div>
 
