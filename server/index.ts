@@ -752,7 +752,29 @@ if (isProduction) {
       
       import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
       import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
-      
+
+      // Notification event handlers
+      try {
+        const { registerNotificationEventHandlers } = await import('./services/events/NotificationEventHandlers');
+        registerNotificationEventHandlers();
+      } catch (e: any) {
+        console.error('[Notifications] Failed to register handlers (non-fatal):', e.message);
+      }
+
+      // Cron jobs (dev mode — runs same as production)
+      try {
+        console.log('[Cron] Initializing automated jobs...');
+        const { startMonthlySettlementsCron } = await import('./cron/monthly-settlements');
+        startMonthlySettlementsCron();
+        const { startWinbackCron } = await import('./cron/winback');
+        startWinbackCron();
+        const { startRecoveryAutomationCron } = await import('./cron/recovery-automation');
+        startRecoveryAutomationCron();
+        console.log('[Cron] All cron jobs initialized successfully');
+      } catch (e: any) {
+        console.error('[Cron] Failed to initialize cron jobs (non-fatal):', e.message);
+      }
+
       // Skip the rest of initialization in development mode
       // (Vite handles serving index.html and static assets)
       return;
@@ -795,6 +817,8 @@ if (isProduction) {
       startMonthlySettlementsCron();
       const { startWinbackCron } = await import("./cron/winback");
       startWinbackCron();
+      const { startRecoveryAutomationCron } = await import("./cron/recovery-automation");
+      startRecoveryAutomationCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);

@@ -473,6 +473,181 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// INTELLIGENCE ENDPOINT — alerts + optimization suggestions
+// GET /api/provider-dashboard/v2/intelligence
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/intelligence', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const uid = user.uid;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [todayRow, weekRow, upcomingRow, missedRow, profileRow] = await Promise.all([
+      // Today's earnings
+      pool.query(
+        `SELECT COALESCE(SUM(provider_payout_cents), 0)::bigint AS cents
+         FROM booking_requests
+         WHERE provider_id = $1
+           AND status IN ('completed','reviewed')
+           AND service_completed_at >= $2`,
+        [uid, todayStart],
+      ),
+      // This month's completed bookings
+      pool.query(
+        `SELECT COUNT(*)::int AS completed_this_month,
+                COALESCE(SUM(provider_payout_cents), 0)::bigint AS month_earnings_cents
+         FROM booking_requests
+         WHERE provider_id = $1
+           AND status IN ('completed','reviewed')
+           AND service_completed_at >= date_trunc('month', now())`,
+        [uid],
+      ),
+      // Upcoming (pending + confirmed)
+      pool.query(
+        `SELECT COUNT(*)::int AS upcoming
+         FROM booking_requests
+         WHERE provider_id = $1
+           AND status IN ('pending','accepted','confirmed','meet_greet_scheduled','meet_greet_completed','payment_pending')`,
+        [uid],
+      ),
+      // Missed/declined in last 7 days — bookings that expired without action
+      pool.query(
+        `SELECT COUNT(*)::int AS missed
+         FROM booking_requests
+         WHERE provider_id = $1
+           AND status IN ('cancelled','declined')
+           AND cancelled_at >= now() - interval '7 days'`,
+        [uid],
+      ),
+      // Profile completeness (bio, avatar)
+      db.select({
+        bio: providers.bio,
+        photoUrl: providers.photoUrl,
+        averageRating: providers.averageRating,
+        completionRate: providers.completionRate,
+        totalBookings: providers.totalBookings,
+        verificationStatus: providers.verificationStatus,
+      }).from(providers).where(eq(providers.userId, uid)),
+    ]);
+
+    const todayEarningsCents = Number(todayRow.rows[0]?.cents ?? 0);
+    const monthEarningsCents = Number(weekRow.rows[0]?.month_earnings_cents ?? 0);
+    const completedThisMonth = weekRow.rows[0]?.completed_this_month ?? 0;
+    const upcomingCount      = upcomingRow.rows[0]?.upcoming ?? 0;
+    const missedCount        = missedRow.rows[0]?.missed ?? 0;
+
+    const profile = profileRow[0] ?? {};
+    const completionRate  = parseFloat(String(profile.completionRate ?? 0));
+    const averageRating   = parseFloat(String(profile.averageRating ?? 0));
+    const totalBookings   = profile.totalBookings ?? 0;
+
+    // ── Build alerts ────────────────────────────────────────────────────────
+    const alerts: Array<{ type: string; message: string; messageHe: string; priority: 'high' | 'medium' | 'low' }> = [];
+
+    if (missedCount >= 3) {
+      alerts.push({
+        type: 'missed_bookings',
+        message: `You missed ${missedCount} bookings this week. Consider widening your availability.`,
+        messageHe: `פספסת ${missedCount} הזמנות השבוע — שקול להרחיב את הזמינות שלך.`,
+        priority: 'high',
+      });
+    } else if (missedCount >= 1) {
+      alerts.push({
+        type: 'missed_bookings',
+        message: `You missed ${missedCount} booking${missedCount > 1 ? 's' : ''} this week.`,
+        messageHe: `פספסת ${missedCount} הזמנות השבוע.`,
+        priority: 'medium',
+      });
+    }
+
+    if (profile.verificationStatus === 'pending') {
+      alerts.push({
+        type: 'verification_pending',
+        message: 'Your verification is pending. Complete it to appear higher in search results.',
+        messageHe: 'האימות שלך בהמתנה — השלם אותו כדי להופיע גבוה יותר בתוצאות החיפוש.',
+        priority: 'high',
+      });
+    }
+
+    if (completionRate < 70 && totalBookings > 5) {
+      alerts.push({
+        type: 'low_completion_rate',
+        message: `Your completion rate is ${Math.round(completionRate)}%. Cancellations affect your ranking.`,
+        messageHe: `שיעור ההשלמה שלך הוא ${Math.round(completionRate)}%. ביטולים פוגעים בדירוג שלך.`,
+        priority: 'medium',
+      });
+    }
+
+    if (upcomingCount === 0 && totalBookings > 0) {
+      alerts.push({
+        type: 'no_upcoming_bookings',
+        message: 'No upcoming bookings. Make sure your availability calendar is up to date.',
+        messageHe: 'אין הזמנות קרובות — ודא שלוח הזמינות שלך מעודכן.',
+        priority: 'low',
+      });
+    }
+
+    // ── Build optimization suggestions ──────────────────────────────────────
+    const suggestions: Array<{ type: string; message: string; messageHe: string; estimatedImpact: string }> = [];
+
+    if (!profile.bio || profile.bio.trim().length < 50) {
+      suggestions.push({
+        type: 'complete_bio',
+        message: 'Add a detailed bio to increase your booking rate by up to 30%.',
+        messageHe: 'הוסף תיאור מפורט — מגדיל את שיעור ההזמנות בעד 30%.',
+        estimatedImpact: '+30% bookings',
+      });
+    }
+
+    if (!profile.photoUrl) {
+      suggestions.push({
+        type: 'add_photo',
+        message: 'Providers with profile photos receive 2× more bookings.',
+        messageHe: 'ספקים עם תמונת פרופיל מקבלים פי 2 הזמנות.',
+        estimatedImpact: '+100% visibility',
+      });
+    }
+
+    if (averageRating >= 4.5 && totalBookings >= 10) {
+      suggestions.push({
+        type: 'premium_listing',
+        message: 'Your rating qualifies you for a featured placement. Contact support to activate.',
+        messageHe: 'הדירוג שלך מאפשר מיקום מובלט — צור קשר עם התמיכה להפעלה.',
+        estimatedImpact: '+23% bookings',
+      });
+    }
+
+    if (missedCount > 0) {
+      suggestions.push({
+        type: 'increase_availability',
+        message: 'Increasing your available hours could reduce missed bookings.',
+        messageHe: 'הרחבת שעות הזמינות יכולה להפחית הזמנות שפוספסו.',
+        estimatedImpact: `-${missedCount} missed/week`,
+      });
+    }
+
+    res.json({
+      ok: true,
+      todayEarnings:    Number((todayEarningsCents  / 100).toFixed(2)),
+      monthEarnings:    Number((monthEarningsCents  / 100).toFixed(2)),
+      completedThisMonth,
+      upcomingBookings: upcomingCount,
+      missedThisWeek:   missedCount,
+      alerts,
+      optimizationSuggestions: suggestions,
+      _source: 'booking_requests_v2',
+    });
+  } catch (err: any) {
+    logger.error('[ProviderDashboardV2] /intelligence error', err);
+    res.status(500).json({ ok: false, error: 'Failed to load intelligence data' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 4 — V2 ACTION ROUTES (writes to booking_requests, not bookings)
 // These replace the V1 action handlers for the provider lifecycle.
 // ═══════════════════════════════════════════════════════════════════════════════

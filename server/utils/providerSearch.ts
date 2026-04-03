@@ -197,3 +197,59 @@ export function scoreProvider(
   provider.rankingScore = score;
   return provider;
 }
+
+/**
+ * SMART MATCHING LABELS
+ *
+ * After providers are scored and sorted (highest score first), assign a
+ * customer-facing tier label to each result:
+ *
+ *   best_match   → rank #1 (or rank #1 by a significant margin)
+ *   great_option → top ~30% of remaining results
+ *   budget_option→ the single cheapest provider not already labelled best_match
+ *
+ * The Hebrew variants are shown in the UI alongside the badge.
+ * matchScore (0–100) is a normalised percentile within this result set.
+ */
+export function assignMatchLabels(
+  sorted: ProviderSearchItem[]
+): ProviderSearchItem[] {
+  if (!sorted.length) return sorted;
+
+  const maxScore = sorted[0].rankingScore;
+  const minScore = sorted[sorted.length - 1].rankingScore;
+  const scoreRange = maxScore - minScore || 1;
+
+  const great_option_cutoff = Math.ceil(sorted.length * 0.3);
+
+  let budgetIndex = -1;
+  let lowestPrice = Infinity;
+  sorted.forEach((p, i) => {
+    if (p.startingPrice < lowestPrice) {
+      lowestPrice = p.startingPrice;
+      budgetIndex = i;
+    }
+  });
+
+  return sorted.map((p, i) => {
+    const normalised = Math.round(
+      ((p.rankingScore - minScore) / scoreRange) * 100
+    );
+
+    let matchLabel: ProviderSearchItem['matchLabel'];
+    let matchLabelHe: string | undefined;
+
+    if (i === 0) {
+      matchLabel = 'best_match';
+      matchLabelHe = 'הבחירה המומלצת ⭐';
+    } else if (i === budgetIndex) {
+      matchLabel = 'budget_option';
+      matchLabelHe = 'המשתלם ביותר 💰';
+    } else if (i < great_option_cutoff) {
+      matchLabel = 'great_option';
+      matchLabelHe = 'אפשרות מצוינת';
+    }
+
+    return { ...p, matchLabel, matchLabelHe, matchScore: normalised };
+  });
+}

@@ -22,6 +22,7 @@ import type {
 import {
   applyProviderFilters,
   scoreProvider,
+  assignMatchLabels,
 } from "../utils/providerSearch";
 import { db } from "../db";
 import {
@@ -448,9 +449,11 @@ export async function runProviderSearch(filters: ProviderSearchFilters) {
     .map((p) => scoreProvider({ ...p }, filters, location))
     .filter((p) => p.rankingScore > -999999);
 
-  const filtered = applyProviderFilters(scored, filters).sort(
+  const sorted = applyProviderFilters(scored, filters).sort(
     (a, b) => b.rankingScore - a.rankingScore
   );
+
+  const labelled = assignMatchLabels(sorted);
 
   const page = filters.page || 1;
   const pageSize = filters.pageSize || 20;
@@ -458,10 +461,10 @@ export async function runProviderSearch(filters: ProviderSearchFilters) {
 
   return {
     filters,
-    total: filtered.length,
+    total: labelled.length,
     page,
     pageSize,
-    results: filtered.slice(offset, offset + pageSize),
+    results: labelled.slice(offset, offset + pageSize),
     debug: {
       usedLocation: location.source !== "none",
       locationSource: location.source,

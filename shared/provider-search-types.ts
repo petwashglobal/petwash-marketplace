@@ -82,6 +82,10 @@ export interface ProviderSearchItem {
 
   rankingScore: number;
   badges: string[];
+
+  matchLabel?: 'best_match' | 'great_option' | 'budget_option';
+  matchLabelHe?: string;
+  matchScore?: number;
 }
 
 export interface ProviderSearchResponse {

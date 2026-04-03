@@ -1,0 +1,1663 @@
+/*
+PETWASH INTELLIGENCE LAYER - COPY/PASTE STARTER IMPLEMENTATION
+Stack assumption:
+- Node.js + Express + TypeScript backend
+- React + TypeScript frontend
+- PostgreSQL or similar DB
+- WebSocket/EventBus available
+- Existing auth/session middleware already exists
+
+GOAL:
+1. Geo-based address engine
+2. Smart provider matching
+3. Provider dashboard intelligence
+4. Admin control toggles
+5. User intelligence/trust scores
+6. Real-time booking events
+7. Recovery automation hooks
+8. HubSpot/SendGrid hook points
+9. Google Maps/Waze links
+*/
+
+/* =========================================================
+   1. SHARED TYPES
+========================================================= */
+
+export type UserType = "customer" | "provider" | "admin";
+export type ProviderType = "sitter" | "walker" | "groomer" | "trainer" | "transporter";
+export type BookingStatus =
+  | "draft"
+  | "matching"
+  | "pending_provider"
+  | "accepted"
+  | "provider_arriving"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+export type CustomerState =
+  | "visitor"
+  | "browsing"
+  | "authenticated"
+  | "ready_to_book"
+  | "booked";
+
+export type ProviderState =
+  | "applied"
+  | "under_review"
+  | "approved"
+  | "active"
+  | "paused";
+
+export interface AddressInput {
+  label?: string;
+  address: string;
+  lat: number;
+  lng: number;
+  postcode?: string | null;
+  city?: string | null;
+  country?: string | null;
+}
+
+export interface SavedAddress extends AddressInput {
+  id: string;
+  userId: string;
+  isDefault: boolean;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserIntelligenceProfile {
+  userId: string;
+  userType: UserType;
+  trustScore: number;
+  behaviorScore: number;
+  riskLevel: number;
+  bookingHistoryCount: number;
+  cancellationRate: number;
+  preferences: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProviderProfile {
+  userId: string;
+  providerType: ProviderType;
+  headline: string;
+  bio: string;
+  ratingAverage: number;
+  ratingCount: number;
+  responseTimeMinutes: number;
+  completedBookings: number;
+  repeatCustomers: number;
+  cancellationRate: number;
+  verified: boolean;
+  currentLat: number | null;
+  currentLng: number | null;
+  serviceRadiusKm: number;
+  serviceAreas?: string[];
+  availabilityScore: number;
+  isBoosted?: boolean;
+  isPaused?: boolean;
+}
+
+export interface BookingRequestInput {
+  customerId: string;
+  providerType: ProviderType;
+  serviceDate: string;
+  serviceTime: string;
+  address: AddressInput;
+  petCount?: number;
+  notes?: string;
+  budget?: number | null;
+}
+
+export interface BookingRecord {
+  id: string;
+  customerId: string;
+  providerId?: string | null;
+  providerType: ProviderType;
+  serviceDate: string;
+  serviceTime: string;
+  addressText: string;
+  lat: number;
+  lng: number;
+  postcode?: string | null;
+  city?: string | null;
+  country?: string | null;
+  status: BookingStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProviderMatchScore {
+  providerId: string;
+  totalScore: number;
+  distanceKm: number;
+  scoreBreakdown: {
+    distanceScore: number;
+    availabilityScore: number;
+    ratingScore: number;
+    repeatCustomerScore: number;
+    responseSpeedScore: number;
+    trustScore: number;
+    budgetScore: number;
+    boostScore: number;
+  };
+}
+
+export interface RankedProviderResult {
+  provider: ProviderProfile;
+  score: ProviderMatchScore;
+  bucket: "best_match" | "great_option" | "budget_option";
+}
+
+export interface AdminMarketplaceSettings {
+  id: string;
+  frictionEnabled: boolean;
+  matchingRadiusKmDefault: number;
+  allowSoftCaptchaFallback: boolean;
+  smsRequiredForProviders: boolean;
+  smsRequiredForCustomers: boolean;
+  boostedProviderIds: string[];
+  pausedProviderIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProviderDashboardData {
+  todayEarnings: number;
+  upcomingBookings: number;
+  completedJobs: number;
+  alerts: string[];
+  optimizationSuggestions: string[];
+}
+
+export interface EventPayload {
+  eventType: string;
+  timestamp: string;
+  userId?: string;
+  bookingId?: string;
+  providerId?: string;
+  customerId?: string;
+  payload?: Record<string, unknown>;
+}
+
+/* =========================================================
+   2. UTILS - GEO + NORMALIZATION + LINKS
+========================================================= */
+
+export function normalizeEmail(email?: string | null): string | null {
+  if (!email) return null;
+  return email.trim().toLowerCase();
+}
+
+export function normalizePhone(phone?: string | null): string | null {
+  if (!phone) return null;
+  return phone.replace(/\s+/g, "").trim();
+}
+
+export function cleanName(value?: string | null): string | null {
+  if (!value) return null;
+  return value.replace(/\s+/g, " ").trim();
+}
+
+export function toRadians(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+export function calculateDistanceKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLng / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+
+export function buildGoogleMapsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+export function buildWazeUrl(lat: number, lng: number): string {
+  return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+}
+
+/* =========================================================
+   3. DB SCHEMA - SQL MIGRATION STARTER
+========================================================= */
+
+/*
+CREATE TABLE IF NOT EXISTS user_addresses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  label TEXT,
+  formatted_address TEXT NOT NULL,
+  lat DOUBLE PRECISION NOT NULL,
+  lng DOUBLE PRECISION NOT NULL,
+  postcode TEXT,
+  city TEXT,
+  country TEXT,
+  is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  usage_count INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_addresses_user_id ON user_addresses(user_id);
+
+CREATE TABLE IF NOT EXISTS user_intelligence_profiles (
+  user_id UUID PRIMARY KEY,
+  user_type TEXT NOT NULL,
+  trust_score DOUBLE PRECISION NOT NULL DEFAULT 50,
+  behavior_score DOUBLE PRECISION NOT NULL DEFAULT 50,
+  risk_level DOUBLE PRECISION NOT NULL DEFAULT 0,
+  booking_history_count INTEGER NOT NULL DEFAULT 0,
+  cancellation_rate DOUBLE PRECISION NOT NULL DEFAULT 0,
+  preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS admin_marketplace_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  friction_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  matching_radius_km_default DOUBLE PRECISION NOT NULL DEFAULT 10,
+  allow_soft_captcha_fallback BOOLEAN NOT NULL DEFAULT TRUE,
+  sms_required_for_providers BOOLEAN NOT NULL DEFAULT TRUE,
+  sms_required_for_customers BOOLEAN NOT NULL DEFAULT FALSE,
+  boosted_provider_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  paused_provider_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS address_text TEXT,
+  ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS postcode TEXT,
+  ADD COLUMN IF NOT EXISTS city TEXT,
+  ADD COLUMN IF NOT EXISTS country TEXT;
+*/
+
+/* =========================================================
+   4. REPOSITORY STUBS
+========================================================= */
+
+interface DbClient {
+  query<T = any>(sql: string, params?: any[]): Promise<{ rows: T[] }>;
+}
+
+export class AddressRepository {
+  constructor(private db: DbClient) {}
+
+  async listByUser(userId: string): Promise<SavedAddress[]> {
+    const result = await this.db.query<SavedAddress>(
+      `
+      SELECT
+        id,
+        user_id as "userId",
+        label,
+        formatted_address as address,
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        is_default as "isDefault",
+        usage_count as "usageCount",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM user_addresses
+      WHERE user_id = $1
+      ORDER BY is_default DESC, usage_count DESC, updated_at DESC
+      `,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async upsertAddress(userId: string, input: AddressInput): Promise<SavedAddress> {
+    const nearby = await this.db.query<SavedAddress>(
+      `
+      SELECT
+        id,
+        user_id as "userId",
+        label,
+        formatted_address as address,
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        is_default as "isDefault",
+        usage_count as "usageCount",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM user_addresses
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    const existing = nearby.rows.find((row) => {
+      const distanceKm = calculateDistanceKm(row.lat, row.lng, input.lat, input.lng);
+      return distanceKm < 0.05;
+    });
+
+    if (existing) {
+      const updated = await this.db.query<SavedAddress>(
+        `
+        UPDATE user_addresses
+        SET
+          label = COALESCE($2, label),
+          formatted_address = $3,
+          lat = $4,
+          lng = $5,
+          postcode = $6,
+          city = $7,
+          country = $8,
+          usage_count = usage_count + 1,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+          id,
+          user_id as "userId",
+          label,
+          formatted_address as address,
+          lat,
+          lng,
+          postcode,
+          city,
+          country,
+          is_default as "isDefault",
+          usage_count as "usageCount",
+          created_at as "createdAt",
+          updated_at as "updatedAt"
+        `,
+        [
+          existing.id,
+          input.label ?? null,
+          input.address,
+          input.lat,
+          input.lng,
+          input.postcode ?? null,
+          input.city ?? null,
+          input.country ?? null,
+        ]
+      );
+      return updated.rows[0];
+    }
+
+    const inserted = await this.db.query<SavedAddress>(
+      `
+      INSERT INTO user_addresses (
+        user_id, label, formatted_address, lat, lng, postcode, city, country
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING
+        id,
+        user_id as "userId",
+        label,
+        formatted_address as address,
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        is_default as "isDefault",
+        usage_count as "usageCount",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      `,
+      [
+        userId,
+        input.label ?? null,
+        input.address,
+        input.lat,
+        input.lng,
+        input.postcode ?? null,
+        input.city ?? null,
+        input.country ?? null,
+      ]
+    );
+    return inserted.rows[0];
+  }
+
+  async setDefault(userId: string, addressId: string): Promise<void> {
+    await this.db.query(`UPDATE user_addresses SET is_default = FALSE WHERE user_id = $1`, [userId]);
+    await this.db.query(
+      `UPDATE user_addresses SET is_default = TRUE, updated_at = NOW() WHERE id = $1 AND user_id = $2`,
+      [addressId, userId]
+    );
+  }
+
+  async remove(userId: string, addressId: string): Promise<void> {
+    await this.db.query(`DELETE FROM user_addresses WHERE id = $1 AND user_id = $2`, [addressId, userId]);
+  }
+}
+
+/* =========================================================
+   5. INTELLIGENCE / TRUST SCORING
+========================================================= */
+
+export function calculateCustomerTrustScore(input: {
+  cancellationRate: number;
+  completedBookings: number;
+  noShowCount?: number;
+}): number {
+  let score = 50;
+  score += Math.min(input.completedBookings * 1.5, 25);
+  score -= Math.min(input.cancellationRate * 50, 25);
+  score -= Math.min((input.noShowCount ?? 0) * 10, 20);
+  return Math.max(0, Math.min(100, score));
+}
+
+export function calculateProviderTrustScore(provider: ProviderProfile): number {
+  let score = 50;
+  score += Math.min(provider.ratingAverage * 8, 35);
+  score += provider.verified ? 10 : 0;
+  score += Math.min(provider.completedBookings / 20, 10);
+  score -= Math.min(provider.cancellationRate * 40, 25);
+  return Math.max(0, Math.min(100, score));
+}
+
+export function calculateBehaviorScore(input: {
+  bookingHistoryCount: number;
+  repeatUsage?: number;
+  recentActivityDaysAgo?: number;
+}): number {
+  let score = 40;
+  score += Math.min(input.bookingHistoryCount * 2, 30);
+  score += Math.min((input.repeatUsage ?? 0) * 3, 20);
+
+  if ((input.recentActivityDaysAgo ?? 999) <= 7) score += 10;
+  if ((input.recentActivityDaysAgo ?? 999) > 30) score -= 10;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+/* =========================================================
+   6. SMART MATCHING ENGINE
+========================================================= */
+
+export interface MatchingContext {
+  request: BookingRequestInput;
+  customerProfile: UserIntelligenceProfile | null;
+  candidateProviders: ProviderProfile[];
+  previousBookingsWithProviderIds: string[];
+  marketplaceSettings: AdminMarketplaceSettings;
+}
+
+export function scoreProvider(
+  provider: ProviderProfile,
+  context: MatchingContext
+): ProviderMatchScore {
+  const { request, previousBookingsWithProviderIds, marketplaceSettings } = context;
+
+  const effectiveRadiusKm =
+    provider.serviceRadiusKm || marketplaceSettings.matchingRadiusKmDefault;
+
+  const providerLat = provider.currentLat;
+  const providerLng = provider.currentLng;
+
+  const farAwayDistance = 9999;
+  const distanceKm =
+    providerLat !== null && providerLng !== null
+      ? calculateDistanceKm(request.address.lat, request.address.lng, providerLat, providerLng)
+      : farAwayDistance;
+
+  const distanceScore =
+    distanceKm <= effectiveRadiusKm
+      ? Math.max(0, 30 - distanceKm * 3)
+      : 0;
+
+  const availabilityScore = Math.max(0, Math.min(provider.availabilityScore, 20));
+  const ratingScore = Math.max(0, Math.min(provider.ratingAverage * 4, 20));
+
+  const repeatCustomerScore = previousBookingsWithProviderIds.includes(provider.userId) ? 12 : 0;
+
+  const responseSpeedScore =
+    provider.responseTimeMinutes <= 5
+      ? 10
+      : provider.responseTimeMinutes <= 15
+      ? 7
+      : provider.responseTimeMinutes <= 30
+      ? 4
+      : 1;
+
+  const trustScore = Math.max(0, Math.min(calculateProviderTrustScore(provider) / 10, 10));
+
+  const budgetScore =
+    request.budget && request.budget > 0
+      ? 5
+      : 0;
+
+  const boostScore =
+    provider.isBoosted || marketplaceSettings.boostedProviderIds.includes(provider.userId)
+      ? 5
+      : 0;
+
+  const totalScore =
+    distanceScore +
+    availabilityScore +
+    ratingScore +
+    repeatCustomerScore +
+    responseSpeedScore +
+    trustScore +
+    budgetScore +
+    boostScore;
+
+  return {
+    providerId: provider.userId,
+    totalScore,
+    distanceKm,
+    scoreBreakdown: {
+      distanceScore,
+      availabilityScore,
+      ratingScore,
+      repeatCustomerScore,
+      responseSpeedScore,
+      trustScore,
+      budgetScore,
+      boostScore,
+    },
+  };
+}
+
+export function rankProviders(context: MatchingContext): RankedProviderResult[] {
+  const activeProviders = context.candidateProviders.filter((provider) => {
+    if (provider.isPaused) return false;
+    if (context.marketplaceSettings.pausedProviderIds.includes(provider.userId)) return false;
+    return true;
+  });
+
+  const ranked = activeProviders
+    .map((provider) => ({
+      provider,
+      score: scoreProvider(provider, context),
+    }))
+    .sort((a, b) => b.score.totalScore - a.score.totalScore)
+    .slice(0, 3)
+    .map((entry, index): RankedProviderResult => ({
+      provider: entry.provider,
+      score: entry.score,
+      bucket:
+        index === 0 ? "best_match" :
+        index === 1 ? "great_option" :
+        "budget_option",
+    }));
+
+  return ranked;
+}
+
+/* =========================================================
+   7. PROVIDER DASHBOARD INTELLIGENCE
+========================================================= */
+
+export async function buildProviderDashboard(
+  db: DbClient,
+  providerId: string
+): Promise<ProviderDashboardData> {
+  const todayEarningsResult = await db.query<{ amount: number }>(
+    `
+    SELECT COALESCE(SUM(provider_payout_amount), 0) as amount
+    FROM bookings
+    WHERE provider_id = $1
+      AND status = 'completed'
+      AND DATE(updated_at) = CURRENT_DATE
+    `,
+    [providerId]
+  );
+
+  const upcomingResult = await db.query<{ count: string }>(
+    `
+    SELECT COUNT(*) as count
+    FROM bookings
+    WHERE provider_id = $1
+      AND status IN ('accepted', 'provider_arriving', 'in_progress')
+      AND service_date >= CURRENT_DATE
+    `,
+    [providerId]
+  );
+
+  const completedJobsResult = await db.query<{ count: string }>(
+    `
+    SELECT COUNT(*) as count
+    FROM bookings
+    WHERE provider_id = $1
+      AND status = 'completed'
+    `,
+    [providerId]
+  );
+
+  const missedBookingsResult = await db.query<{ count: string }>(
+    `
+    SELECT COUNT(*) as count
+    FROM bookings
+    WHERE provider_id = $1
+      AND status = 'cancelled'
+      AND cancelled_by = 'provider'
+      AND updated_at >= NOW() - INTERVAL '7 days'
+    `,
+    [providerId]
+  );
+
+  const alerts: string[] = [];
+  const suggestions: string[] = [];
+
+  const missedCount = Number(missedBookingsResult.rows[0]?.count ?? 0);
+  if (missedCount > 0) {
+    alerts.push(`You missed ${missedCount} bookings in the last 7 days`);
+  }
+
+  const upcomingBookings = Number(upcomingResult.rows[0]?.count ?? 0);
+  if (upcomingBookings < 3) {
+    suggestions.push("Increase availability to improve your booking volume");
+  }
+
+  if (missedCount >= 2) {
+    suggestions.push("Improve response speed and keep calendar up to date");
+  }
+
+  return {
+    todayEarnings: Number(todayEarningsResult.rows[0]?.amount ?? 0),
+    upcomingBookings,
+    completedJobs: Number(completedJobsResult.rows[0]?.count ?? 0),
+    alerts,
+    optimizationSuggestions: suggestions,
+  };
+}
+
+/* =========================================================
+   8. EVENT BUS / REAL-TIME EVENTS
+========================================================= */
+
+export interface EventBus {
+  publish(event: EventPayload): Promise<void>;
+}
+
+export class ConsoleEventBus implements EventBus {
+  async publish(event: EventPayload): Promise<void> {
+    console.log("[EVENT]", JSON.stringify(event));
+  }
+}
+
+export async function emitBookingEvent(
+  eventBus: EventBus,
+  eventType: string,
+  booking: BookingRecord,
+  extra?: Record<string, unknown>
+): Promise<void> {
+  await eventBus.publish({
+    eventType,
+    timestamp: new Date().toISOString(),
+    bookingId: booking.id,
+    customerId: booking.customerId,
+    providerId: booking.providerId ?? undefined,
+    payload: extra ?? {},
+  });
+}
+
+/* =========================================================
+   9. CRM / EMAIL HOOKS
+========================================================= */
+
+export async function syncToHubSpot(user: {
+  userId: string;
+  email?: string | null;
+  phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  role?: string | null;
+}): Promise<void> {
+  try {
+    console.log("[HubSpot] Sync", user.userId, user.email ?? null);
+  } catch (error) {
+    console.error("[HubSpot] Sync failed", error);
+  }
+}
+
+export async function sendEmail(eventType: string, user: {
+  userId: string;
+  email?: string | null;
+  language?: string | null;
+}): Promise<void> {
+  try {
+    console.log("[SendGrid] Send", eventType, user.userId, user.email ?? null);
+  } catch (error) {
+    console.error("[SendGrid] Send failed", error);
+  }
+}
+
+/* =========================================================
+   10. RECOVERY AUTOMATION HOOKS
+========================================================= */
+
+export async function handleRecoveryTriggers(input: {
+  userId: string;
+  eventType: "signup_not_completed" | "booking_abandoned" | "inactive_30_days";
+  email?: string | null;
+}): Promise<void> {
+  if (input.eventType === "signup_not_completed") {
+    await sendEmail("signup_incomplete_reminder", {
+      userId: input.userId,
+      email: input.email ?? null,
+    });
+  }
+
+  if (input.eventType === "booking_abandoned") {
+    await sendEmail("booking_abandoned_followup", {
+      userId: input.userId,
+      email: input.email ?? null,
+    });
+  }
+
+  if (input.eventType === "inactive_30_days") {
+    await sendEmail("reengagement_campaign", {
+      userId: input.userId,
+      email: input.email ?? null,
+    });
+  }
+}
+
+/* =========================================================
+   11. BOOKING SERVICE
+========================================================= */
+
+export class BookingIntelligenceService {
+  constructor(
+    private db: DbClient,
+    private addressRepo: AddressRepository,
+    private eventBus: EventBus
+  ) {}
+
+  async createDraftBooking(input: BookingRequestInput): Promise<BookingRecord> {
+    if (input.address.lat == null || input.address.lng == null) {
+      throw new Error("Address lat/lng required");
+    }
+
+    await this.addressRepo.upsertAddress(input.customerId, input.address);
+
+    const result = await this.db.query<BookingRecord>(
+      `
+      INSERT INTO bookings (
+        customer_id,
+        provider_type,
+        service_date,
+        service_time,
+        address_text,
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        status,
+        created_at,
+        updated_at
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'draft',NOW(),NOW())
+      RETURNING
+        id,
+        customer_id as "customerId",
+        provider_id as "providerId",
+        provider_type as "providerType",
+        service_date as "serviceDate",
+        service_time as "serviceTime",
+        address_text as "addressText",
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        status,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      `,
+      [
+        input.customerId,
+        input.providerType,
+        input.serviceDate,
+        input.serviceTime,
+        input.address.address,
+        input.address.lat,
+        input.address.lng,
+        input.address.postcode ?? null,
+        input.address.city ?? null,
+        input.address.country ?? null,
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  async findMatchesForBooking(bookingId: string): Promise<RankedProviderResult[]> {
+    const bookingResult = await this.db.query<BookingRecord>(
+      `
+      SELECT
+        id,
+        customer_id as "customerId",
+        provider_id as "providerId",
+        provider_type as "providerType",
+        service_date as "serviceDate",
+        service_time as "serviceTime",
+        address_text as "addressText",
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        status,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM bookings
+      WHERE id = $1
+      `,
+      [bookingId]
+    );
+
+    const booking = bookingResult.rows[0];
+    if (!booking) throw new Error("Booking not found");
+
+    const providersResult = await this.db.query<ProviderProfile>(
+      `
+      SELECT
+        user_id as "userId",
+        provider_type as "providerType",
+        headline,
+        bio,
+        rating_average as "ratingAverage",
+        rating_count as "ratingCount",
+        response_time_minutes as "responseTimeMinutes",
+        completed_bookings as "completedBookings",
+        repeat_customers as "repeatCustomers",
+        cancellation_rate as "cancellationRate",
+        verified,
+        current_lat as "currentLat",
+        current_lng as "currentLng",
+        service_radius_km as "serviceRadiusKm",
+        availability_score as "availabilityScore"
+      FROM provider_profiles
+      WHERE provider_type = $1
+        AND approved = TRUE
+      `,
+      [booking.providerType]
+    );
+
+    const previousResult = await this.db.query<{ providerId: string }>(
+      `
+      SELECT DISTINCT provider_id as "providerId"
+      FROM bookings
+      WHERE customer_id = $1
+        AND provider_id IS NOT NULL
+        AND status = 'completed'
+      `,
+      [booking.customerId]
+    );
+
+    const settingsResult = await this.db.query<AdminMarketplaceSettings>(
+      `
+      SELECT
+        id,
+        friction_enabled as "frictionEnabled",
+        matching_radius_km_default as "matchingRadiusKmDefault",
+        allow_soft_captcha_fallback as "allowSoftCaptchaFallback",
+        sms_required_for_providers as "smsRequiredForProviders",
+        sms_required_for_customers as "smsRequiredForCustomers",
+        boosted_provider_ids as "boostedProviderIds",
+        paused_provider_ids as "pausedProviderIds",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM admin_marketplace_settings
+      ORDER BY created_at DESC
+      LIMIT 1
+      `
+    );
+
+    const settings =
+      settingsResult.rows[0] ??
+      {
+        id: "default",
+        frictionEnabled: true,
+        matchingRadiusKmDefault: 10,
+        allowSoftCaptchaFallback: true,
+        smsRequiredForProviders: true,
+        smsRequiredForCustomers: false,
+        boostedProviderIds: [],
+        pausedProviderIds: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+    const ranked = rankProviders({
+      request: {
+        customerId: booking.customerId,
+        providerType: booking.providerType,
+        serviceDate: booking.serviceDate,
+        serviceTime: booking.serviceTime,
+        address: {
+          address: booking.addressText,
+          lat: booking.lat,
+          lng: booking.lng,
+          postcode: booking.postcode ?? null,
+          city: booking.city ?? null,
+          country: booking.country ?? null,
+        },
+      },
+      customerProfile: null,
+      candidateProviders: providersResult.rows.map((provider) => ({
+        ...provider,
+        isBoosted: settings.boostedProviderIds.includes(provider.userId),
+        isPaused: settings.pausedProviderIds.includes(provider.userId),
+      })),
+      previousBookingsWithProviderIds: previousResult.rows.map((row) => row.providerId),
+      marketplaceSettings: settings,
+    });
+
+    await this.db.query(
+      `UPDATE bookings SET status = 'matching', updated_at = NOW() WHERE id = $1`,
+      [bookingId]
+    );
+
+    await emitBookingEvent(this.eventBus, "matching.started", {
+      ...booking,
+      status: "matching",
+    });
+
+    return ranked;
+  }
+
+  async assignProvider(bookingId: string, providerId: string): Promise<BookingRecord> {
+    const result = await this.db.query<BookingRecord>(
+      `
+      UPDATE bookings
+      SET provider_id = $2,
+          status = 'accepted',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        customer_id as "customerId",
+        provider_id as "providerId",
+        provider_type as "providerType",
+        service_date as "serviceDate",
+        service_time as "serviceTime",
+        address_text as "addressText",
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        status,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      `,
+      [bookingId, providerId]
+    );
+
+    const booking = result.rows[0];
+    if (!booking) throw new Error("Booking not found");
+
+    await emitBookingEvent(this.eventBus, "provider.accepted", booking);
+    return booking;
+  }
+
+  async markProviderArriving(bookingId: string): Promise<BookingRecord> {
+    const result = await this.db.query<BookingRecord>(
+      `
+      UPDATE bookings
+      SET status = 'provider_arriving',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        customer_id as "customerId",
+        provider_id as "providerId",
+        provider_type as "providerType",
+        service_date as "serviceDate",
+        service_time as "serviceTime",
+        address_text as "addressText",
+        lat,
+        lng,
+        postcode,
+        city,
+        country,
+        status,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      `,
+      [bookingId]
+    );
+
+    const booking = result.rows[0];
+    if (!booking) throw new Error("Booking not found");
+
+    await emitBookingEvent(this.eventBus, "provider.arriving", booking);
+    return booking;
+  }
+}
+
+/* =========================================================
+   12. EXPRESS ROUTES
+========================================================= */
+
+import express, { Request, Response } from "express";
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email?: string | null;
+    role?: string | null;
+  };
+}
+
+export function createIntelligenceRouter(
+  db: DbClient,
+  eventBus: EventBus
+): express.Router {
+  const router = express.Router();
+  const addressRepo = new AddressRepository(db);
+  const bookingService = new BookingIntelligenceService(db, addressRepo, eventBus);
+
+  // Saved addresses
+  router.get("/api/addresses", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+      const items = await addressRepo.listByUser(req.user.id);
+      return res.json({ items });
+    } catch (error) {
+      console.error("GET /api/addresses failed", error);
+      return res.status(500).json({ error: "Failed to load addresses" });
+    }
+  });
+
+  router.post("/api/addresses", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+
+      const input = req.body as AddressInput;
+      if (input.lat == null || input.lng == null || !input.address) {
+        return res.status(400).json({ error: "Address with lat/lng required" });
+      }
+
+      const item = await addressRepo.upsertAddress(req.user.id, input);
+      return res.json({ item });
+    } catch (error) {
+      console.error("POST /api/addresses failed", error);
+      return res.status(500).json({ error: "Failed to save address" });
+    }
+  });
+
+  router.post("/api/addresses/:id/default", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+      await addressRepo.setDefault(req.user.id, req.params.id);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("POST /api/addresses/:id/default failed", error);
+      return res.status(500).json({ error: "Failed to set default address" });
+    }
+  });
+
+  router.delete("/api/addresses/:id", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+      await addressRepo.remove(req.user.id, req.params.id);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("DELETE /api/addresses/:id failed", error);
+      return res.status(500).json({ error: "Failed to delete address" });
+    }
+  });
+
+  // Create booking draft
+  router.post("/api/bookings/draft", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+
+      const input = req.body as Omit<BookingRequestInput, "customerId">;
+      const booking = await bookingService.createDraftBooking({
+        ...input,
+        customerId: req.user.id,
+      });
+
+      return res.json({ booking });
+    } catch (error) {
+      console.error("POST /api/bookings/draft failed", error);
+      return res.status(500).json({ error: "Failed to create booking draft" });
+    }
+  });
+
+  // Find intelligent matches
+  router.post("/api/bookings/:id/match", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+
+      const ranked = await bookingService.findMatchesForBooking(req.params.id);
+
+      return res.json({
+        bestMatch: ranked.find((x) => x.bucket === "best_match") ?? null,
+        greatOption: ranked.find((x) => x.bucket === "great_option") ?? null,
+        budgetOption: ranked.find((x) => x.bucket === "budget_option") ?? null,
+        ranked,
+      });
+    } catch (error) {
+      console.error("POST /api/bookings/:id/match failed", error);
+      return res.status(500).json({ error: "Failed to match providers" });
+    }
+  });
+
+  // Provider accepts
+  router.post("/api/bookings/:id/accept", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+      const booking = await bookingService.assignProvider(req.params.id, req.user.id);
+      return res.json({ booking });
+    } catch (error) {
+      console.error("POST /api/bookings/:id/accept failed", error);
+      return res.status(500).json({ error: "Failed to accept booking" });
+    }
+  });
+
+  // Provider arriving
+  router.post("/api/bookings/:id/arriving", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+      const booking = await bookingService.markProviderArriving(req.params.id);
+      return res.json({ booking });
+    } catch (error) {
+      console.error("POST /api/bookings/:id/arriving failed", error);
+      return res.status(500).json({ error: "Failed to update booking state" });
+    }
+  });
+
+  // Provider dashboard
+  router.get("/api/provider/dashboard", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+      const dashboard = await buildProviderDashboard(db, req.user.id);
+      return res.json({ dashboard });
+    } catch (error) {
+      console.error("GET /api/provider/dashboard failed", error);
+      return res.status(500).json({ error: "Failed to load provider dashboard" });
+    }
+  });
+
+  return router;
+}
+
+/* =========================================================
+   13. FRONTEND - ADDRESS PICKER
+========================================================= */
+
+/*
+React component assumptions:
+- Existing GooglePlacesAutocomplete returns selected object with formatted address + lat/lng
+- Browser geolocation available
+- Existing fetch helper available
+*/
+
+import React, { useEffect, useMemo, useState } from "react";
+
+type AddressPickerProps = {
+  value: AddressInput | null;
+  onChange: (value: AddressInput) => void;
+};
+
+export function AddressPicker({ value, onChange }: AddressPickerProps) {
+  const [saved, setSaved] = useState<SavedAddress[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSavedAddresses() {
+    const response = await fetch("/api/addresses", {
+      credentials: "include",
+    });
+    const data = await response.json();
+    setSaved(data.items ?? []);
+  }
+
+  useEffect(() => {
+    loadSavedAddresses().catch(console.error);
+  }, []);
+
+  async function useCurrentLocation() {
+    setLoading(true);
+    try {
+      const coords = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      });
+
+      const address: AddressInput = {
+        label: "Current Location",
+        address: "Current location",
+        lat: coords.coords.latitude,
+        lng: coords.coords.longitude,
+        postcode: null,
+      };
+
+      onChange(address);
+
+      await fetch("/api/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(address),
+      });
+
+      await loadSavedAddresses();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function selectSavedAddress(item: SavedAddress) {
+    onChange({
+      label: item.label,
+      address: item.address,
+      lat: item.lat,
+      lng: item.lng,
+      postcode: item.postcode ?? null,
+      city: item.city ?? null,
+      country: item.country ?? null,
+    });
+  }
+
+  async function handleGooglePlaceSelected(place: {
+    formattedAddress: string;
+    lat: number;
+    lng: number;
+    postcode?: string | null;
+    city?: string | null;
+    country?: string | null;
+  }) {
+    const next: AddressInput = {
+      label: "Recent",
+      address: place.formattedAddress,
+      lat: place.lat,
+      lng: place.lng,
+      postcode: place.postcode ?? null,
+      city: place.city ?? null,
+      country: place.country ?? null,
+    };
+
+    // Never block if postcode missing
+    onChange(next);
+
+    await fetch("/api/addresses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(next),
+    });
+
+    await loadSavedAddresses();
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <button type="button" onClick={useCurrentLocation} disabled={loading}>
+        {loading ? "Getting location..." : "Use my current location"}
+      </button>
+
+      {saved.length > 0 && (
+        <div>
+          <strong>Saved addresses</strong>
+          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+            {saved.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => selectSavedAddress(item)}
+                style={{ textAlign: "left" }}
+              >
+                {item.label ? `${item.label} - ` : ""}{item.address}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <strong>Search address</strong>
+        {/* Replace this block with existing Google autocomplete component */}
+        <button
+          type="button"
+          onClick={() =>
+            handleGooglePlaceSelected({
+              formattedAddress: "1 Collins St, Melbourne VIC",
+              lat: -37.8136,
+              lng: 144.9631,
+              postcode: "3000",
+              city: "Melbourne",
+              country: "Australia",
+            })
+          }
+        >
+          Mock Google Place Select
+        </button>
+      </div>
+
+      {value && (
+        <div>
+          <strong>Selected:</strong> {value.address} ({value.lat}, {value.lng})
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   14. FRONTEND - SMART MATCH BOOKING FLOW
+========================================================= */
+
+type MatchResponse = {
+  bestMatch: RankedProviderResult | null;
+  greatOption: RankedProviderResult | null;
+  budgetOption: RankedProviderResult | null;
+  ranked: RankedProviderResult[];
+};
+
+export function SmartBookingFlow() {
+  const [address, setAddress] = useState<AddressInput | null>(null);
+  const [serviceType, setServiceType] = useState<ProviderType>("walker");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [matches, setMatches] = useState<MatchResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleFindMatch() {
+    if (!address) {
+      alert("Select address first");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const createResponse = await fetch("/api/bookings/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          providerType: serviceType,
+          serviceDate: date,
+          serviceTime: time,
+          address,
+        }),
+      });
+
+      const createData = await createResponse.json();
+      const bookingId = createData.booking.id;
+
+      const matchResponse = await fetch(`/api/bookings/${bookingId}/match`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const matchData = await matchResponse.json();
+      setMatches(matchData);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <h2>Find the perfect match</h2>
+
+      <select
+        value={serviceType}
+        onChange={(e) => setServiceType(e.target.value as ProviderType)}
+      >
+        <option value="walker">Walker</option>
+        <option value="sitter">Sitter</option>
+        <option value="groomer">Groomer</option>
+        <option value="trainer">Trainer</option>
+        <option value="transporter">Transporter</option>
+      </select>
+
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+
+      <AddressPicker value={address} onChange={setAddress} />
+
+      <button type="button" onClick={handleFindMatch} disabled={loading}>
+        {loading ? "Finding your match..." : "Find my best match"}
+      </button>
+
+      {matches && (
+        <div style={{ display: "grid", gap: 12 }}>
+          {matches.bestMatch && (
+            <MatchCard title="Best Match ⭐" match={matches.bestMatch} />
+          )}
+          {matches.greatOption && (
+            <MatchCard title="Great Option" match={matches.greatOption} />
+          )}
+          {matches.budgetOption && (
+            <MatchCard title="Budget Option" match={matches.budgetOption} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MatchCard({ title, match }: { title: string; match: RankedProviderResult }) {
+  const mapsUrl = buildGoogleMapsUrl(
+    match.provider.currentLat ?? 0,
+    match.provider.currentLng ?? 0
+  );
+  const wazeUrl = buildWazeUrl(
+    match.provider.currentLat ?? 0,
+    match.provider.currentLng ?? 0
+  );
+
+  return (
+    <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 12 }}>
+      <h3>{title}</h3>
+      <div><strong>{match.provider.headline}</strong></div>
+      <div>Rating: {match.provider.ratingAverage.toFixed(1)}</div>
+      <div>Response: {match.provider.responseTimeMinutes} min</div>
+      <div>Distance: {match.score.distanceKm.toFixed(1)} km</div>
+      <div>Verified: {match.provider.verified ? "Yes" : "No"}</div>
+      <div>Total score: {match.score.totalScore.toFixed(1)}</div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <a href={mapsUrl} target="_blank" rel="noreferrer">Google Maps</a>
+        <a href={wazeUrl} target="_blank" rel="noreferrer">Waze</a>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   15. FRONTEND - PROVIDER DASHBOARD
+========================================================= */
+
+export function ProviderDashboard() {
+  const [data, setData] = useState<ProviderDashboardData | null>(null);
+
+  useEffect(() => {
+    fetch("/api/provider/dashboard", {
+      credentials: "include",
+    })
+      .then((r) => r.json())
+      .then((json) => setData(json.dashboard))
+      .catch(console.error);
+  }, []);
+
+  if (!data) return <div>Loading dashboard...</div>;
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <h2>Provider Dashboard</h2>
+      <div>Today earnings: {data.todayEarnings}</div>
+      <div>Upcoming bookings: {data.upcomingBookings}</div>
+      <div>Completed jobs: {data.completedJobs}</div>
+
+      <div>
+        <h3>Alerts</h3>
+        {data.alerts.length === 0 ? <div>No alerts</div> : (
+          <ul>{data.alerts.map((x) => <li key={x}>{x}</li>)}</ul>
+        )}
+      </div>
+
+      <div>
+        <h3>Optimization Suggestions</h3>
+        {data.optimizationSuggestions.length === 0 ? <div>No suggestions</div> : (
+          <ul>{data.optimizationSuggestions.map((x) => <li key={x}>{x}</li>)}</ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   16. FRONTEND - ADMIN CONTROL PANEL STARTER
+========================================================= */
+
+export function AdminMarketplaceControls() {
+  const [settings, setSettings] = useState<AdminMarketplaceSettings | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/marketplace-settings", {
+      credentials: "include",
+    })
+      .then((r) => r.json())
+      .then((json) => setSettings(json.settings))
+      .catch(console.error);
+  }, []);
+
+  async function updateSettings(next: Partial<AdminMarketplaceSettings>) {
+    const response = await fetch("/api/admin/marketplace-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(next),
+    });
+    const data = await response.json();
+    setSettings(data.settings);
+  }
+
+  if (!settings) return <div>Loading admin controls...</div>;
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <h2>Marketplace Controls</h2>
+
+      <label>
+        <input
+          type="checkbox"
+          checked={settings.frictionEnabled}
+          onChange={(e) => updateSettings({ frictionEnabled: e.target.checked })}
+        />
+        Friction enabled
+      </label>
+
+      <label>
+        Default matching radius (km)
+        <input
+          type="number"
+          value={settings.matchingRadiusKmDefault}
+          onChange={(e) => updateSettings({ matchingRadiusKmDefault: Number(e.target.value) })}
+        />
+      </label>
+
+      <label>
+        <input
+          type="checkbox"
+          checked={settings.allowSoftCaptchaFallback}
+          onChange={(e) => updateSettings({ allowSoftCaptchaFallback: e.target.checked })}
+        />
+        Allow soft captcha fallback
+      </label>
+    </div>
+  );
+}
+
+/* =========================================================
+   17. ONBOARDING LOGIC - CUSTOMER FIRST
+========================================================= */
+
+export function shouldSkipHeavyOnboarding(input: {
+  socialLogin: boolean;
+  hasDisplayName: boolean;
+  existingRole?: string | null;
+}): boolean {
+  if (input.existingRole) return true;
+  if (input.socialLogin && input.hasDisplayName) return true;
+  return false;
+}
+
+export function resolvePostLoginRoute(input: {
+  socialLogin: boolean;
+  hasDisplayName: boolean;
+  existingRole?: string | null;
+  returnUrl?: string | null;
+}): string {
+  if (shouldSkipHeavyOnboarding(input)) {
+    return input.returnUrl || "/home";
+  }
+  return "/choose-role";
+}
+
+/* =========================================================
+   18. IMPORTANT BUSINESS RULES
+========================================================= */
+
+/*
+1. Never block address flow because postcode missing.
+2. Always store lat/lng on booking snapshot.
+3. Matching is geo-based, not postcode-based.
+4. Customer browsing must not be blocked by onboarding.
+5. Heavy verification is deferred until risk/action justifies it.
+6. Provider status must use explicit states:
+   applied -> under_review -> approved -> active -> paused
+7. Customer state must use explicit states:
+   visitor -> browsing -> authenticated -> ready_to_book -> booked
+8. Real-time events must be emitted for:
+   matching.started
+   provider.accepted
+   provider.arriving
+9. HubSpot + SendGrid must be called from one backend service layer, not random scattered places.
+10. Admin must be able to adjust friction and matching, not just view logs.
+*/
+
+/* =========================================================
+   19. WHAT DEVELOPER MUST WIRE NEXT
+========================================================= */
+
+/*
+- Connect to actual Google Places autocomplete output
+- Connect to real DB schema names
+- Add auth middleware to routes
+- Add websocket broadcasting to emitBookingEvent
+- Add admin routes for marketplace settings CRUD
+- Add provider profile table if not already present
+- Add abandoned booking cron and signup recovery cron
+- Add real HubSpot API client
+- Add real SendGrid API client
+- Add analytics tracking for drop-offs:
+  landing
+  signup_start
+  signup_complete
+  booking_draft_created
+  match_found
+  booking_paid
+  booking_completed
+*/

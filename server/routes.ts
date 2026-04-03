@@ -6144,6 +6144,45 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ── System Config (Friction Toggles) ──────────────────────────────────────
+  // GET /api/admin/system-config — read current live config + audit log
+  app.get('/api/admin/system-config', requireAdmin, async (_req: any, res) => {
+    try {
+      const { systemConfig } = await import('./services/SystemConfig');
+      res.json({ ok: true, config: systemConfig.all(), meta: systemConfig.meta() });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // PATCH /api/admin/system-config — update one or many keys
+  app.patch('/api/admin/system-config', requireAdmin, async (req: any, res) => {
+    try {
+      const { systemConfig } = await import('./services/SystemConfig');
+      const adminUid: string = req.user?.uid || req.firebaseUser?.uid || 'unknown';
+      const changes = req.body;
+      if (!changes || typeof changes !== 'object') {
+        return res.status(400).json({ ok: false, error: 'Body must be a JSON object' });
+      }
+      systemConfig.patch(changes, adminUid);
+      res.json({ ok: true, config: systemConfig.all() });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /api/admin/system-config/reset — reset all to defaults
+  app.post('/api/admin/system-config/reset', requireAdmin, async (req: any, res) => {
+    try {
+      const { systemConfig } = await import('./services/SystemConfig');
+      const adminUid: string = req.user?.uid || req.firebaseUser?.uid || 'unknown';
+      systemConfig.reset(adminUid);
+      res.json({ ok: true, config: systemConfig.all() });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // Admin: Get Nayax transactions with filters (Firestore)
   app.get('/api/admin/nayax/transactions', requireAdmin, async (req: any, res) => {
     try {
