@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  Radio, Zap, CheckCircle, Navigation2, Search, Trash2, Wifi, WifiOff
+  Radio, Zap, CheckCircle, Navigation2, Search, Trash2, Wifi, WifiOff, FlaskConical
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -39,7 +39,7 @@ const EVENT_CONFIG: Record<LiveEvent['type'], {
 }> = {
   MATCHING_STARTED:  { icon: Search,     color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-900/20',   labelEn: 'Matching Started' },
   PROVIDER_ACCEPTED: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', labelEn: 'Provider Accepted' },
-  PROVIDER_ARRIVING: { icon: Navigation2, color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amberald-900/20', labelEn: 'Provider Arriving' },
+  PROVIDER_ARRIVING: { icon: Navigation2, color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/20', labelEn: 'Provider Arriving' },
 };
 
 function EventRow({ event }: { event: LiveEvent }) {
@@ -88,6 +88,7 @@ export default function AdminLiveEvents() {
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [connected, setConnected] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [firing, setFiring] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const pausedRef = useRef(false);
 
@@ -155,6 +156,15 @@ export default function AdminLiveEvents() {
     };
   }, [addEvent]);
 
+  const fireTestEvents = useCallback(async () => {
+    setFiring(true);
+    try {
+      await fetch('/api/admin/test/fire-live-events', { method: 'POST' });
+    } finally {
+      setTimeout(() => setFiring(false), 1200);
+    }
+  }, []);
+
   const accepted  = events.filter(e => e.type === 'PROVIDER_ACCEPTED').length;
   const arriving  = events.filter(e => e.type === 'PROVIDER_ARRIVING').length;
   const matching  = events.filter(e => e.type === 'MATCHING_STARTED').length;
@@ -181,6 +191,17 @@ export default function AdminLiveEvents() {
               {connected ? 'Connected' : 'Disconnected'}
               {connected && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fireTestEvents}
+              disabled={firing}
+              className="border-violet-300 text-violet-700 hover:bg-violet-50"
+            >
+              <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
+              {firing ? 'Firing…' : 'Fire test events'}
+            </Button>
 
             <Button
               variant="outline"

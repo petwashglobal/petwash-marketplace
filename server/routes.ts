@@ -11847,6 +11847,38 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // TEST ENDPOINT: Fire all three live-event types to admin WS feed
+  app.post('/api/admin/test/fire-live-events', requireAdmin, async (req: any, res) => {
+    const ts = new Date().toISOString();
+    eventBus.emit('matching.started', {
+      requestId: `test-${Date.now()}`,
+      serviceType: 'grooming',
+      totalCandidates: 4,
+      timestamp: ts,
+    });
+    setTimeout(() => {
+      eventBus.emit('provider.accepted', {
+        requestId: `test-${Date.now()}`,
+        serviceType: 'grooming',
+        providerId: 'prov-test-001',
+        ownerId: 'cust-test-001',
+        newStatus: 'accepted',
+        timestamp: new Date().toISOString(),
+      });
+    }, 400);
+    setTimeout(() => {
+      eventBus.emit('provider.arriving', {
+        requestId: `test-${Date.now()}`,
+        serviceType: 'grooming',
+        providerId: 'prov-test-001',
+        ownerId: 'cust-test-001',
+        eta: '10 min',
+        timestamp: new Date().toISOString(),
+      });
+    }, 800);
+    res.json({ ok: true, fired: ['matching.started', 'provider.accepted', 'provider.arriving'] });
+  });
+
   // TEST ENDPOINT: Send tax report and trigger backups (one-time test)
   app.post('/api/test/send-tax-report-and-backup', async (req, res) => {
     try {
