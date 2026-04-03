@@ -159,6 +159,7 @@ import accountingExportRoutes from "./routes/accounting-export";
 import adminRoutes from "./routes/admin";
 import pinAuthRoutes from "./routes/pin-auth";
 import userProfileRoutes from "./routes/user-profile";
+import userAddressesRoutes from "./routes/user-addresses";
 import accountManagementRoutes from "./routes/account-management";
 import profileSettingsRoutes from "./routes/profile-settings";
 import aiInsightsRoutes from "./routes/ai-insights";
@@ -9793,6 +9794,7 @@ self.addEventListener('notificationclick', (event) => {
   // 🔐 PIN Authentication - December 2025 Edition (4-6 digit PIN, device binding, rate limiting)
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
   app.use('/api/user', optionalFirebaseToken, apiLimiter, userProfileRoutes);
+  app.use('/api/user/addresses', apiLimiter, userAddressesRoutes);
   app.use('/api/account', apiLimiter, accountManagementRoutes);
   app.use('/api/user', optionalFirebaseToken, apiLimiter, profileSettingsRoutes);
 

@@ -16,7 +16,9 @@ import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
-import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { AddressPicker } from "@/components/ui/address-picker";
+import { NavigationButton } from "@/components/NavigationButton";
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
@@ -495,24 +497,19 @@ export default function WalkBookingFlow() {
 
             {/* Pickup Address */}
             <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
-              <div className="mb-2 text-sm font-semibold text-slate-700">
-                כתובת לאיסוף <span className="text-red-500">*</span>
-              </div>
-              <GooglePlacesAutocomplete
+              <AddressPicker
+                label="כתובת לאיסוף"
+                required
                 value={pickupAddress}
                 onChange={(val, details) => {
                   setPickupAddress(val);
-                  if (details) {
-                    setPickupDetails(details);
-                  } else if (!val) {
-                    setPickupDetails(null);
-                  }
+                  if (details) setPickupDetails(details);
+                  else if (!val) setPickupDetails(null);
                 }}
                 onPlaceSelected={(details) => setPickupDetails(details)}
                 placeholder="הקלד/י את כתובת האיסוף..."
-                country={['il']}
-                showExtraFields={false}
-                data-testid="input-pickup-address"
+                isHebrew
+                autoSave
               />
             </section>
 
@@ -794,7 +791,7 @@ export default function WalkBookingFlow() {
             </p>
 
             {/* What happens next section */}
-            <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100 mb-8 text-right max-w-md mx-auto">
+            <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100 mb-4 text-right max-w-md mx-auto">
               <h3 className="text-emerald-900 font-semibold mb-3 flex items-center justify-end gap-2">
                 <Clock className="h-4 w-4" />
                 מה קורה עכשיו?
@@ -803,6 +800,33 @@ export default function WalkBookingFlow() {
                 המוליך שלך יאשר את ההזמנה תוך שעתיים. תקבל הודעת SMS והתראה באפליקציה ברגע שהכל מוכן.
               </p>
             </div>
+
+            {/* Navigation to pickup address */}
+            {(pickupDetails?.lat || (walker as any)?.latitude) && (
+              <div className="max-w-md mx-auto mb-6 space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center mb-2">
+                  ניווט לנקודת האיסוף
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={`https://waze.com/ul?ll=${pickupDetails?.lat ?? (walker as any)?.latitude},${pickupDetails?.lng ?? (walker as any)?.longitude}&navigate=yes&zoom=17`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-700 text-sm font-semibold hover:bg-cyan-100 transition-colors"
+                  >
+                    🚗 Waze
+                  </a>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${pickupDetails?.lat ?? (walker as any)?.latitude},${pickupDetails?.lng ?? (walker as any)?.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors"
+                  >
+                    🗺️ Google Maps
+                  </a>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3 max-w-md mx-auto mb-8">
               <Button

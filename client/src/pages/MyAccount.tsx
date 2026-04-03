@@ -345,6 +345,20 @@ export default function MyAccount() {
     enabled: !!user,
   });
 
+  // Saved address book
+  const { data: savedAddresses = [] } = useQuery<any[]>({
+    queryKey: ['/api/user/addresses'],
+    enabled: !!user,
+  });
+  const deleteAddressMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('DELETE', `/api/user/addresses/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] }),
+  });
+  const setDefaultAddressMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('PATCH', `/api/user/addresses/${id}`, { isDefault: true }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] }),
+  });
+
   // Birthday countdown helper
   function daysUntilBirthday(birthday: string): number {
     if (!birthday) return -1;
@@ -1837,6 +1851,61 @@ export default function MyAccount() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Address Book Card ── */}
+              {savedAddresses.length > 0 && (
+                <div className="pw-section-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-amber-400" />
+                      {isHebrew ? 'ספר כתובות' : 'Address Book'}
+                    </h3>
+                    <span className="text-xs text-gray-400">{savedAddresses.length} {isHebrew ? 'כתובות' : 'saved'}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {savedAddresses.map((addr: any) => {
+                      const icons: Record<string, string> = { home: '🏠', work: '💼', other: '📍', custom: '⭐' };
+                      const labels: Record<string, string> = { home: isHebrew ? 'בית' : 'Home', work: isHebrew ? 'עבודה' : 'Work', other: isHebrew ? 'אחרון' : 'Recent', custom: addr.customLabel || (isHebrew ? 'שמור' : 'Saved') };
+                      return (
+                        <div key={addr.id} className="flex items-start gap-2 p-3 rounded-xl border border-gray-100 hover:border-amber-200 hover:bg-amber-50/30 transition-colors group">
+                          <span className="text-lg leading-none mt-0.5">{icons[addr.label ?? 'other'] ?? '📍'}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{labels[addr.label ?? 'other']}</span>
+                              {addr.isDefault && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                                  {isHebrew ? 'ברירת מחדל' : 'Default'}
+                                </span>
+                              )}
+                              {addr.usageCount > 1 && (
+                                <span className="text-[10px] text-gray-300">×{addr.usageCount}</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-700 truncate mt-0.5">{addr.address}</p>
+                            {addr.city && <p className="text-xs text-gray-400">{addr.city}{addr.postalCode ? ` · ${addr.postalCode}` : ''}</p>}
+                          </div>
+                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            {!addr.isDefault && (
+                              <button
+                                type="button"
+                                onClick={() => setDefaultAddressMutation.mutate(addr.id)}
+                                className="text-[10px] text-amber-500 hover:text-amber-700 font-semibold"
+                                title={isHebrew ? 'הגדר כברירת מחדל' : 'Set default'}
+                              >★</button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => deleteAddressMutation.mutate(addr.id)}
+                              className="text-[10px] text-gray-300 hover:text-red-400"
+                              title={isHebrew ? 'הסר' : 'Remove'}
+                            >✕</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* ── Inbox Preview Card ── */}
               {inboxData?.messages && inboxData.messages.length > 0 && (

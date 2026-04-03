@@ -149,6 +149,32 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── User Saved Addresses (Uber-style address book) ──────────────────────────
+export const userAddresses = pgTable("user_addresses", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  label: varchar("label", { length: 64 }).default("other"), // home | work | other | custom
+  customLabel: varchar("custom_label", { length: 80 }),     // for label = "custom"
+  address: text("address").notNull(),                        // full formatted address
+  street: varchar("street", { length: 200 }),
+  streetNumber: varchar("street_number", { length: 30 }),
+  apartment: varchar("apartment", { length: 50 }),
+  city: varchar("city", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  lat: decimal("lat", { precision: 10, scale: 7 }),
+  lng: decimal("lng", { precision: 10, scale: 7 }),
+  isDefault: boolean("is_default").default(false),
+  usageCount: integer("usage_count").default(1).notNull(),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_user_addresses_user").on(table.userId),
+]);
+
+export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({ id: true, createdAt: true, lastUsedAt: true });
+export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
+export type UserAddress = typeof userAddresses.$inferSelect;
+
 // Verification Tokens — persistent store for OTP + email activation tokens
 export const verificationTokens = pgTable("verification_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

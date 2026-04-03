@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
-import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { AddressPicker } from "@/components/ui/address-picker";
 import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
@@ -557,10 +558,8 @@ export default function SitterBookingFlow() {
 
             {/* Address */}
             <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                כתובת מלאה
-              </label>
-              <GooglePlacesAutocomplete
+              <AddressPicker
+                label="כתובת מלאה"
                 value={address}
                 onChange={(value, details) => {
                   setAddress(value);
@@ -577,12 +576,8 @@ export default function SitterBookingFlow() {
                   if (place.lng != null) setAddressLng(place.lng);
                 }}
                 placeholder="הקלידו כתובת..."
-                country={['il', 'us', 'gb', 'au', 'ca']}
-                showExtraFields={true}
-                apartmentLabel="דירה / קומה / כניסה"
-                postalCodeLabel="מיקוד"
-                apartmentPlaceholder="לדוגמה: דירה 4, קומה 2"
-                postalCodePlaceholder="לדוגמה: 6100000"
+                isHebrew
+                autoSave
               />
             </section>
 
