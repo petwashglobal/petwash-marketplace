@@ -17,6 +17,7 @@ import {
   sitterProfiles,
   trainers,
   users,
+  superAppNotifications,
   type InsertProviderApprovalQueue,
   type ProviderApprovalQueue,
 } from '@shared/schema';
@@ -53,6 +54,16 @@ export interface ProviderApplicationReview {
   completedItems: number;
   totalItems: number;
   readyForApproval: boolean;
+  backgroundCheckDetails: {
+    // Whether the admin has ticked the police check box in the checklist
+    adminCheckedPoliceApproval: boolean;
+    // Whether a real document record exists in providerPoliceChecks table
+    hasRealPoliceCheckRecord: boolean;
+    // Combined trust level shown to admin — 'verified' | 'admin_checked_only' | 'not_completed'
+    trustLevel: 'verified' | 'admin_checked_only' | 'not_completed';
+    // Explicit warning when no real third-party BGC API has been called
+    warning: string | null;
+  };
 }
 
 // Queue statistics
@@ -161,6 +172,49 @@ class AdminProviderReviewService {
       const totalItems = Object.keys(checklist).length;
       const checklistComplete = completedItems === totalItems;
 
+      // ── Background check trust assessment ──────────────────────────────────
+      // Background checks have TWO levels:
+      //   Level 1 (admin_checked_only) — admin ticked policeCheckApproved on checklist.
+      //   Level 2 (verified)           — real document record exists in providerPoliceChecks
+      //                                  with status 'approved' (set by PoliceCheckService).
+      // The system currently has NO third-party BGC API, so Level 2 requires an admin
+      // to manually upload and approve a clearance document.  This warning must remain
+      // visible until a real integration exists.
+      let hasRealPoliceCheckRecord = false;
+      try {
+        const policeCheck = await db
+          .select({ id: providerPoliceChecks.id, status: providerPoliceChecks.status })
+          .from(providerPoliceChecks)
+          .where(
+            and(
+              eq(providerPoliceChecks.providerId, String(app.providerId)),
+              eq(providerPoliceChecks.status, 'approved'),
+            )
+          )
+          .limit(1);
+        hasRealPoliceCheckRecord = policeCheck.length > 0;
+      } catch {
+        hasRealPoliceCheckRecord = false;
+      }
+
+      const adminCheckedPoliceApproval = checklist.policeCheckApproved;
+      let trustLevel: 'verified' | 'admin_checked_only' | 'not_completed';
+      let warning: string | null;
+
+      if (hasRealPoliceCheckRecord) {
+        trustLevel = 'verified';
+        warning = null;
+      } else if (adminCheckedPoliceApproval) {
+        trustLevel = 'admin_checked_only';
+        warning = 'Police check box is ticked but no approved document record exists in providerPoliceChecks. ' +
+          'No third-party BGC API is integrated — a human admin must upload and approve the actual clearance document. ' +
+          'Do NOT mark this as verified or show a police-check badge to customers until a real document is on file.';
+      } else {
+        trustLevel = 'not_completed';
+        warning = 'Background check has NOT been completed. policeCheckApproved is false. ' +
+          'Provider must NOT be activated or shown as trusted until this is resolved.';
+      }
+
       return {
         application: app,
         checklist,
@@ -168,6 +222,12 @@ class AdminProviderReviewService {
         completedItems,
         totalItems,
         readyForApproval: checklistComplete && app.status !== 'approved' && app.status !== 'rejected',
+        backgroundCheckDetails: {
+          adminCheckedPoliceApproval,
+          hasRealPoliceCheckRecord,
+          trustLevel,
+          warning,
+        },
       };
     } catch (error) {
       logger.error('[AdminReview] Error getting application', error);
@@ -357,6 +417,24 @@ class AdminProviderReviewService {
         };
       }
 
+      // SECURITY FIX (item 20): Police check must be approved before any provider can be activated.
+      // BEFORE: approveApplication() never read the checklist — admin could approve without
+      //         verifying policeCheckApproved, making the police clearance requirement cosmetic only.
+      // AFTER:  Hard gate. policeCheckApproved === false throws and returns 422 to the admin UI.
+      //         Admin MUST mark police check approved on the checklist before this succeeds.
+      if (!review.checklist.policeCheckApproved) {
+        logger.warn('[AdminReview] Approval blocked — police check not approved', {
+          applicationId,
+          reviewerId,
+          checklist: review.checklist,
+        });
+        return {
+          success: false,
+          messageHe: 'לא ניתן לאשר — בדיקת המשטרה טרם אושרה. יש לסמן אישור בדיקת משטרה ברשימת הפריטים תחילה.',
+          messageEn: 'Approval blocked — police check has not been approved. Mark police check approved on the checklist first.',
+        };
+      }
+
       await db
         .update(providerApprovalQueue)
         .set({
@@ -471,6 +549,41 @@ class AdminProviderReviewService {
                   data: { type: 'provider_approved', platform: review.application.platform },
                 },
                 debugPayload: { applicationId, platform: review.application.platform },
+              });
+
+              // ── force_token_refresh: tells the frontend to call getIdToken(true) ──
+              // Firebase custom claims are set above but the provider's session token
+              // won't see the new 'provider' role until it naturally expires (~60 min).
+              // This in-app notification signals the frontend to force an immediate refresh.
+              await db.insert(superAppNotifications).values({
+                userId: firebaseUid,
+                type: 'force_token_refresh',
+                title: '✅ בקשתך אושרה! — PetWash™',
+                titleHe: '✅ בקשתך אושרה! — PetWash™',
+                body: 'חשבון הספק שלך אושר. לחץ/י כאן כדי לפתוח את לוח הבקרה שלך.',
+                bodyHe: 'חשבון הספק שלך אושר. לחץ/י כאן כדי לפתוח את לוח הבקרה שלך.',
+                actionType: 'force_token_refresh',
+                actionUrl: '/provider-os',
+                channels: ['in_app'],
+                isRead: false,
+                createdAt: new Date(),
+              });
+
+              // ── schedule_setup: guides newly approved providers to set availability ──
+              // Without availability slots the provider never appears in search results.
+              // A dedicated nudge immediately after approval ensures they don't miss this.
+              await db.insert(superAppNotifications).values({
+                userId: firebaseUid,
+                type: 'setup_schedule',
+                title: '📅 הגדר/י את לוח הזמינות שלך',
+                titleHe: '📅 הגדר/י את לוח הזמינות שלך',
+                body: 'על מנת שלקוחות יוכלו לראות ולהזמין אותך — יש להגדיר את שעות הפעילות שלך בלוח הזמנים.',
+                bodyHe: 'על מנת שלקוחות יוכלו לראות ולהזמין אותך — יש להגדיר את שעות הפעילות שלך בלוח הזמנים.',
+                actionType: 'setup_schedule',
+                actionUrl: '/provider-os?tab=calendar',
+                channels: ['in_app'],
+                isRead: false,
+                createdAt: new Date(),
               });
             } catch (notifErr: any) {
               logger.warn('[AdminReview] Post-approval notification failed (non-fatal)', { error: notifErr?.message });

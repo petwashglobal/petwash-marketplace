@@ -108,7 +108,7 @@ import {
 import { dispatchAcademySms } from '../services/academySmsHelper';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
-import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
+import { isValidAdminSecret } from '../lib/admin-secret';
 
 const router = Router();
 
@@ -1550,7 +1550,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
 // POST /send-luxury-demo — generate + send the luxury pass email (admin use)
 // ─────────────────────────────────────────────────────────
 const luxuryDemoSchema = z.object({
-  email:           z.string().email().default('nir.h@petwash.co.il'),
+  email:           z.string().email(),
   firstName:       z.string().default('ניר'),
   lastName:        z.string().default('הכהן'),
   tier:            z.enum(['pearl','silver','gold','platinum','diamond','emerald','royal','black']).default('black'),
@@ -1582,7 +1582,9 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
     const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 200, margin: 1, color: { dark: '#D4AF37', light: '#000000' } });
 
     // Generate secure wallet pass URLs
-    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls('vdiboz7IrUQEm2RbdO7VZLkBu552', BASE_URL);
+    // SECURITY (T07): Remove hardcoded super-admin UID — use env var SUPER_ADMIN_UID
+    const prestigeAdminUid = process.env.SUPER_ADMIN_UID || '';
+    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls(prestigeAdminUid, BASE_URL);
 
     // Build the luxury email HTML
     const html = buildPrestigePassLuxuryEmail({
@@ -2061,7 +2063,7 @@ const revokePassSchema = z.object({
 
 router.post('/revoke-pass', async (req: Request, res: Response) => {
   try {
-    if (!timingSafeAdminSecretMatch(req)) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2112,7 +2114,7 @@ const adminCreditSchema = z.object({
 
 router.post('/admin/manual-credit', async (req: Request, res: Response) => {
   try {
-    if (!timingSafeAdminSecretMatch(req)) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2163,7 +2165,7 @@ const adminReissueSchema = z.object({
 
 router.post('/admin/reissue', async (req: Request, res: Response) => {
   try {
-    if (!timingSafeAdminSecretMatch(req)) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2217,14 +2219,13 @@ router.post('/admin/reissue', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────
 router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
   try {
-    const adminSecret = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    const provided    = req.headers['x-admin-secret'];
-    if (!adminSecret || provided !== adminSecret) {
+    if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Forbidden' });
     }
 
-    const FOUNDER_EMAIL   = 'nirhadad1@gmail.com';
-    const DEDICATED_EMAIL = 'nir.h@petwash.co.il';
+    const FOUNDER_EMAIL   = process.env.FOUNDER_EMAIL || '';
+    const DEDICATED_EMAIL = process.env.FOUNDER_DEDICATED_EMAIL || '';
+    if (!FOUNDER_EMAIL) return res.status(500).json({ ok: false, error: 'FOUNDER_EMAIL env var not set' });
     const BASE_URL        = process.env.APP_BASE_URL || process.env.BASE_URL || 'https://petwash.co.il';
 
     // 1. Look up UID by Firebase Auth email
@@ -2329,16 +2330,16 @@ router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/admin/send-demo-receipts', async (req: Request, res: Response) => {
   try {
-    const adminSecret = process.env.ADMIN_SECRET || process.env.COOKIE_SECRET;
-    const provided    = req.headers['x-admin-secret'];
-    if (!adminSecret || provided !== adminSecret) {
+    const { isValidAdminSecret: _isValidAdmin } = await import('../lib/admin-secret');
+    if (!_isValidAdmin(req)) {
       return res.status(403).json({ ok: false, error: 'Forbidden' });
     }
 
     const { buildEGiftReceipt, buildProviderTxReceipt } = await import('../email/templates/transaction-receipt-2026');
 
     const now = new Date();
-    const TO  = 'nirhadad1@gmail.com';
+    const TO  = process.env.FOUNDER_EMAIL || process.env.RECEIPT_PREVIEW_EMAIL || '';
+    if (!TO) return res.status(500).json({ ok: false, error: 'FOUNDER_EMAIL or RECEIPT_PREVIEW_EMAIL env var not set' });
 
     // ── 1. E-Gift Card receipt ────────────────────────────────────────────────
     const egiftHtml = buildEGiftReceipt({
@@ -14144,7 +14145,7 @@ router.patch('/admin/wallet/remediation-plans/:id', async (req: Request, res: Re
     const { status } = req.body;
     const allowed = ['suggested', 'accepted', 'dismissed', 'completed'];
     if (!status || !allowed.includes(status)) return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
-    const result = await pool.query(`UPDATE remediation_plans SET status = '${status}' WHERE id = ${parseInt(id, 10)} RETURNING *`);
+    const result = await pool.query('UPDATE remediation_plans SET status = $1 WHERE id = $2 RETURNING *', [status, parseInt(id, 10)]);
     if (!result.rows.length) return res.status(404).json({ error: 'Plan not found' });
     return res.json({ ok: true, plan: result.rows[0] });
   } catch (err: any) {
@@ -14226,13 +14227,14 @@ router.post('/admin/wallet/approval-workload/reassign', async (req: Request, res
     const { requestId, targetApproverUid, reason } = req.body;
     if (!requestId || !targetApproverUid) return res.status(400).json({ error: 'requestId and targetApproverUid required' });
     const result = await pool.query(
-      `UPDATE approval_requests SET assigned_to = '${targetApproverUid}' WHERE id = ${parseInt(requestId, 10)} AND status = 'pending' RETURNING *`
+      'UPDATE approval_requests SET assigned_to = $1 WHERE id = $2 AND status = $3 RETURNING *',
+      [targetApproverUid, parseInt(requestId, 10), 'pending'],
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Approval request not found or not pending' });
-    await pool.query(`
-      INSERT INTO finance_audit_log (event_type, actor_uid, detail_json)
-      VALUES ('approval_reassigned', 'system', '{"requestId": ${parseInt(requestId, 10)}, "targetApproverUid": "${targetApproverUid}", "reason": "${(reason ?? '').replace(/"/g, '\\"')}"}'::jsonb)
-    `).catch(() => {});
+    await pool.query(
+      'INSERT INTO finance_audit_log (event_type, actor_uid, detail_json) VALUES ($1, $2, $3::jsonb)',
+      ['approval_reassigned', 'system', JSON.stringify({ requestId: parseInt(requestId, 10), targetApproverUid, reason: reason ?? '' })],
+    ).catch(() => {});
     return res.json({ ok: true, request: result.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Reassignment failed', detail: err.message });
@@ -14243,13 +14245,14 @@ router.post('/admin/wallet/approval-workload/reassign', async (req: Request, res
 router.get('/admin/wallet/governance-delivery-analytics', async (req: Request, res: Response) => {
   try {
     const { packType, audienceName, from, to } = req.query as Record<string, string>;
+    const params: (string | number)[] = [];
     const conditions: string[] = [];
-    if (packType)     conditions.push(`pack_type = '${packType}'`);
-    if (audienceName) conditions.push(`audience_name = '${audienceName}'`);
-    if (from) conditions.push(`sent_at >= '${from}'`);
-    if (to)   conditions.push(`sent_at <= '${to}'`);
+    if (packType)     { params.push(packType);     conditions.push(`pack_type = $${params.length}`); }
+    if (audienceName) { params.push(audienceName); conditions.push(`audience_name = $${params.length}`); }
+    if (from)         { params.push(from);         conditions.push(`sent_at >= $${params.length}`); }
+    if (to)           { params.push(to);           conditions.push(`sent_at <= $${params.length}`); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const rows = (await pool.query(`SELECT * FROM governance_delivery_analytics ${where} ORDER BY sent_at DESC LIMIT 100`)).rows;
+    const rows = (await pool.query(`SELECT * FROM governance_delivery_analytics ${where} ORDER BY sent_at DESC LIMIT 100`, params)).rows;
     const totalDelivered = rows.reduce((s: number, r: any) => s + parseInt(r.delivered_count ?? '0', 10), 0);
     const totalFailed    = rows.reduce((s: number, r: any) => s + parseInt(r.failed_count    ?? '0', 10), 0);
     const totalSent      = rows.reduce((s: number, r: any) => s + parseInt(r.recipient_count ?? '0', 10), 0);
@@ -14342,8 +14345,9 @@ router.post('/admin/wallet/scenario-quality/recompute', async (req: Request, res
 router.get('/admin/wallet/operating-review-pack', async (req: Request, res: Response) => {
   try {
     const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'month must be YYYY-MM format' });
     // Try cache first
-    const cached = await pool.query(`SELECT * FROM operating_review_packs WHERE month = '${month}'`);
+    const cached = await pool.query('SELECT * FROM operating_review_packs WHERE month = $1', [month]);
     if (cached.rows.length) return res.json({ ok: true, cached: true, pack: cached.rows[0].pack_json, signature: cached.rows[0].signature, generatedAt: cached.rows[0].generated_at });
 
     // Assemble pack from live data
@@ -14387,7 +14391,8 @@ router.get('/admin/wallet/operating-review-pack', async (req: Request, res: Resp
 router.get('/admin/wallet/operating-review-pack/export', async (req: Request, res: Response) => {
   try {
     const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
-    const cached = await pool.query(`SELECT * FROM operating_review_packs WHERE month = '${month}'`);
+    if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'month must be YYYY-MM format' });
+    const cached = await pool.query('SELECT * FROM operating_review_packs WHERE month = $1', [month]);
     if (!cached.rows.length) return res.status(404).json({ error: 'Pack not generated yet — call GET /operating-review-pack first' });
     res.setHeader('Content-Disposition', `attachment; filename="operating-review-${month}.json"`);
     res.setHeader('Content-Type', 'application/json');
@@ -14406,10 +14411,11 @@ router.get('/admin/wallet/operating-review-pack/export', async (req: Request, re
 router.get('/admin/wallet/recommendation-actions', async (req, res) => {
   try {
     const { scoreId, actionType, actorUid } = req.query as Record<string, string>;
+    const params: (string | number)[] = [];
     const conditions: string[] = [];
-    if (scoreId)     conditions.push(`recommendation_score_id = ${parseInt(scoreId)}`);
-    if (actionType)  conditions.push(`action_type = '${actionType}'`);
-    if (actorUid)    conditions.push(`actor_uid = '${actorUid.replace(/'/g,"''")}'`);
+    if (scoreId)    { params.push(parseInt(scoreId, 10)); conditions.push(`recommendation_score_id = $${params.length}`); }
+    if (actionType) { params.push(actionType);            conditions.push(`action_type = $${params.length}`); }
+    if (actorUid)   { params.push(actorUid);              conditions.push(`actor_uid = $${params.length}`); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const rows = await pool.query(`
       SELECT ra.*,
@@ -14419,7 +14425,7 @@ router.get('/admin/wallet/recommendation-actions', async (req, res) => {
       LEFT JOIN recommendation_scores rs ON rs.id = ra.recommendation_score_id
       ${where}
       ORDER BY ra.created_at DESC LIMIT 100
-    `);
+    `, params);
     // SLA breach check — mark sla_met=false for overdue accepted items
     const now = new Date();
     const breached = rows.rows.filter((r: any) => r.action_type === 'accept' && r.sla_due_at && new Date(r.sla_due_at) < now && r.sla_met === null);
@@ -14598,20 +14604,27 @@ router.patch('/admin/wallet/policy-learning-suggestions/:id', async (req, res) =
     const { status, reviewedBy } = req.body;
     const validStatuses = ['pending', 'accepted', 'rejected', 'deferred'];
     if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
-    const reviewedByVal = reviewedBy ? `'${reviewedBy.replace(/'/g,"''")}'` : 'NULL';
-    const r = await pool.query(`
-      UPDATE policy_learning_suggestions
-      SET status = '${status}', reviewed_by = ${reviewedByVal}, reviewed_at = NOW()
-      WHERE id = ${id} RETURNING *
-    `);
+    const r = await pool.query(
+      `UPDATE policy_learning_suggestions
+       SET status = $1, reviewed_by = $2, reviewed_at = NOW()
+       WHERE id = $3 RETURNING *`,
+      [status, reviewedBy ?? null, id],
+    );
     if (!r.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
     // If accepted, apply confidence delta to relevant scores
     if (status === 'accepted' && parseFloat(r.rows[0].confidence_delta) !== 0) {
       const delta = parseFloat(r.rows[0].confidence_delta);
+      const policyArea = `%${r.rows[0].policy_area}%`;
       if (delta > 0) {
-        await pool.query(`UPDATE recommendation_scores SET confidence_score = LEAST(100, confidence_score + ${delta}) WHERE recommendation_type ILIKE '%${r.rows[0].policy_area.replace(/'/g,"''")}%'`);
+        await pool.query(
+          `UPDATE recommendation_scores SET confidence_score = LEAST(100, confidence_score + $1) WHERE recommendation_type ILIKE $2`,
+          [delta, policyArea],
+        );
       } else {
-        await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score + ${delta}) WHERE recommendation_type ILIKE '%${r.rows[0].policy_area.replace(/'/g,"''")}%'`);
+        await pool.query(
+          `UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score + $1) WHERE recommendation_type ILIKE $2`,
+          [delta, policyArea],
+        );
       }
     }
     return res.json({ suggestion: r.rows[0] });

@@ -79,6 +79,18 @@ export default function K9000Redeem() {
   const [error, setError] = useState('');
   const [failureReason, setFailureReason] = useState('');
 
+  // DEMO MODE GUARD (item 21): Query machine status so the confirmation screen can warn
+  // the customer if the physical machine was NOT commanded (MACHINE_ACTIVATION_URL not set).
+  // BEFORE: Confirmation screen always showed "Enjoy the wash!" — even if the machine
+  //         received no command and would not physically start.
+  // AFTER:  Demo-mode banner shown prominently so user knows to contact staff.
+  const { data: systemModeData } = useQuery<{ machineMode: 'live' | 'demo'; messageHe: string; messageEn: string }>({
+    queryKey: ['/api/k9000/system-mode'],
+    enabled: step === 'confirmed',
+    staleTime: 30_000,
+  });
+  const machineIsDemo = systemModeData?.machineMode === 'demo';
+
   const { data: walletData, isLoading: walletLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
   });
@@ -509,15 +521,38 @@ export default function K9000Redeem() {
           {step === 'confirmed' && redemption && (
             <div className="space-y-5 luxury-animate-slide-up">
 
+              {/* DEMO MODE WARNING (item 21): Shown when MACHINE_ACTIVATION_URL is not set.
+                  Customer paid / redeemed credits but the physical machine was not commanded.
+                  This is a legal and consumer-protection requirement — must be visible. */}
+              {machineIsDemo && (
+                <div className="rounded-lg border border-amber-400 bg-amber-50 p-4 flex gap-3 items-start">
+                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      {isHebrew
+                        ? 'המכונה במצב הדגמה — השטיפה הפיזית לא הופעלה'
+                        : 'Machine in Demo Mode — Physical Wash Not Started'}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      {isHebrew
+                        ? 'הזיכוי נרשם בחשבונך. אם המכונה לא מתחילה תוך 30 שניות, יש לפנות לצוות. מס׳ שיחה: תמיכה PetWash.'
+                        : 'Your credit has been recorded. If the machine does not start within 30 seconds, please contact staff. Ref: PetWash Support.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="text-center py-6">
-                <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4 luxury-animate-fade-in">
-                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 luxury-animate-fade-in ${machineIsDemo ? 'bg-amber-100' : 'bg-green-100'}`}>
+                  <CheckCircle2 className={`w-10 h-10 ${machineIsDemo ? 'text-amber-600' : 'text-green-600'}`} />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">
                   {isHebrew ? 'המימוש אושר!' : 'Redemption Confirmed!'}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {isHebrew ? 'תהנה מהשטיפה 🐾' : 'Enjoy the wash 🐾'}
+                  {machineIsDemo
+                    ? (isHebrew ? 'פנה/י לצוות לסיוע' : 'Please contact staff for assistance')
+                    : (isHebrew ? 'תהנה מהשטיפה 🐾' : 'Enjoy the wash 🐾')}
                 </p>
               </div>
 

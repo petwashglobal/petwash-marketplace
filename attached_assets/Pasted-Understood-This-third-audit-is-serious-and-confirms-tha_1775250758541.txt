@@ -1,0 +1,137 @@
+Understood. This third audit is serious and confirms that the repo still has critical security holes, not just architecture issues.
+
+We now have enough evidence to treat this as a real production-risk program, not a cleanup task.
+
+Current bottom line:
+The system is NOT production-safe yet.
+
+Main security risk areas now confirmed:
+1. fake payment success flow
+2. weak / unsafe secret handling
+3. webhook trust and replay weaknesses
+4. unauthenticated invoice and contractor endpoints
+5. caller-controlled roles and missing ownership checks
+6. plaintext / weakly protected sensitive financial data
+7. admin route inconsistency and unsafe secret comparison
+8. public/provider data overexposure
+9. hardware / machine actions that look complete but are not actually enforced
+
+Fix in this exact order.
+
+P0 - immediate stop and lock down
+1. Disable /api/express-checkout immediately
+   - return 503 until real payment processing is wired
+   - no endpoint may return payment success without processor confirmation
+
+2. Remove all hardcoded fallback secrets from payment/webhook/voucher code
+   - Nayax API key
+   - Nayax secret
+   - Nayax webhook secret
+   - voucher salts
+   - unsubscribe HMAC fallback
+   - no public default secrets anywhere
+
+3. Verify and enforce production secrets/config
+   - NAYAX_ALLOWED_IPS must be set in production
+   - DOCUMENT_ENCRYPTION_KEY must be set in production
+   - ADMIN_SECRET must be set in production
+   - hard-fail if missing
+   - no fail-open behavior
+
+4. Protect contractor invoice endpoints immediately
+   - add requireAuth
+   - add ownership or admin checks
+   - do not allow unauthenticated PDF generation/preview
+
+5. Protect all contractor onboarding endpoints immediately
+   - add requireAuth
+   - require req.user.uid === contractorId or admin
+   - never accept contractorId from body without session ownership validation
+
+6. Remove all caller-controlled booking role logic
+   - never trust role from body/query
+   - derive from booking record + auth claims only
+
+P1 - this week
+7. Fix booking ownership/authorization everywhere
+   - transition
+   - confirm
+   - cancel
+   - complete
+   - invoice preview/generate
+   - provider booking access
+   - availability updates
+
+8. Fix webhook security
+   - fail closed if webhook secret missing
+   - fail closed if IP allowlist missing in production
+   - persistent dedup in DB or Redis
+   - replay protection longer than 1 hour
+
+9. Fix admin auth everywhere
+   - use one admin auth method only
+   - use timing-safe comparison everywhere
+   - remove x-admin-key / x-admin-secret inconsistency
+   - remove ADMIN_SECRET fallback to COOKIE_SECRET
+
+10. Fix sensitive PII handling
+   - encrypt tax ID / national insurance / bank account at rest
+   - no plaintext fallback storage
+   - audit whether any plaintext rows already exist
+   - prepare data repair if needed
+
+11. Fix public/provider data exposure
+   - no more ...doc.data() in public provider endpoints
+   - define exact safe allowlist fields only
+
+12. Fix payment and hardware truthfulness
+   - if machine is not actually activated, payment flow must not look complete
+   - do not claim success when service trigger is still a stub
+
+P2 - next
+13. Fix unsafe logging
+   - remove plaintext emails and sensitive PII from logs
+   - use user IDs / hashed identifiers instead
+
+14. Fix voucher redemption trust model
+   - amount must not come from client body
+   - server must derive allowed amount from voucher record
+
+15. Fix provider access logic in super-app bookings
+   - replace TODO ownership checks with real provider validation
+
+16. Review all payment and contractor routes for missing auth and missing ownership
+   - no exceptions
+   - no testing shortcuts left in production code
+
+17. Review all invoice/document wording
+   - no misleading legal labels
+   - no fake invoice numbers
+   - no fake signed/legal claims
+
+Delivery requirement for every fix:
+- exact file changed
+- exact commit
+- exact behavior before
+- exact behavior after
+- proof of the fix
+- whether migration/data repair/secret rotation is required
+
+Also give me one special report after P0:
+1. which secrets must be rotated now
+2. which endpoints were disabled
+3. whether any exposed/plaintext PII exists in the database already
+4. whether any forged/replayed webhook/payment event could have happened historically
+5. whether any fake payment success path was ever reachable from UI
+
+Short version:
+Stop thinking about polish.
+This is now a security and integrity stabilization phase.
+
+Priority order is:
+1. fake payment
+2. secrets
+3. webhook trust
+4. contractor/auth/privacy
+5. booking ownership and role integrity
+6. PII encryption and exposure

@@ -258,22 +258,65 @@ router.post('/wash/start_cycle', async (req, res) => {
     }
 
     // === STEP 2: SEND ACTIVATION COMMAND TO K9000 ===
-    // In production, this would send a command to the K9000 controller
-    // For now, we'll simulate and log the wash start
-    
     const washId = `wash_${Date.now()}_${nanoid(12)}`;
-    
-    // TODO: In production, send HTTP POST to K9000 controller
-    // const machine_url = `http://${clientIP}/api/start/${machineId}`;
-    // const response = await fetch(machine_url, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     program: selectedProgram,
-    //     bayNumber,
-    //     token: process.env.MACHINE_SECRET_KEY,
-    //   }),
-    // });
+    let machineCommandSent = false;
+
+    // INTEGRATION STATUS: The K9000 machine activation command is not yet implemented.
+    // Set MACHINE_ACTIVATION_URL in environment variables to enable real machine control.
+    // Until then, all activations are demo-mode only — no physical machine is commanded.
+    //
+    // To complete the integration:
+    //   1. Set MACHINE_ACTIVATION_URL=http://<k9000-controller-ip>/api/start
+    //   2. Set MACHINE_SECRET_KEY (already configured as env var)
+    //   3. Remove this comment and test with real hardware
+    const machineActivationUrl = process.env.MACHINE_ACTIVATION_URL;
+
+    // PRODUCTION GUARD: if no machine URL is set and we are in production,
+    // block the activation entirely — we cannot charge a customer without
+    // being able to command the physical machine.
+    if (!machineActivationUrl && process.env.NODE_ENV === 'production') {
+      logger.error('[K9000 Wash] FATAL: MACHINE_ACTIVATION_URL not set in production — blocking wash activation', {
+        washId, machineId, transactionId,
+      });
+      return res.status(503).json({
+        error: 'עמדת השטיפה אינה זמינה כעת. אנא נסה שוב מאוחר יותר.',
+        errorEn: 'Wash station is not available. Please try again later.',
+        status: 'MACHINE_NOT_CONFIGURED',
+      });
+    }
+
+    if (machineActivationUrl) {
+      try {
+        const machineRes = await fetch(`${machineActivationUrl}/${machineId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            program: washType,
+            bayNumber,
+            token: process.env.MACHINE_SECRET_KEY,
+            washId,
+            transactionId,
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+        machineCommandSent = machineRes.ok;
+        if (!machineRes.ok) {
+          logger.error('[K9000 Wash] Machine activation HTTP error', {
+            washId, machineId, status: machineRes.status,
+          });
+        } else {
+          logger.info('[K9000 Wash] ✅ Machine activation command sent', { washId, machineId });
+        }
+      } catch (machineErr: any) {
+        logger.error('[K9000 Wash] Machine activation command failed', {
+          washId, machineId, error: machineErr.message,
+        });
+      }
+    } else {
+      logger.warn('[K9000 Wash] DEMO MODE — MACHINE_ACTIVATION_URL not set. Physical machine was NOT commanded. Set MACHINE_ACTIVATION_URL to enable real machine control.', {
+        washId, machineId, transactionId,
+      });
+    }
     
     // === STEP 2.5: BAY LOOKUP — find the specific bay record for this side ===
     // resolvedSide was validated above. If the bay isn't in station_bays yet
@@ -416,6 +459,8 @@ router.post('/wash/start_cycle', async (req, res) => {
         isFreeWash,
         discountPercent,
         washId,
+        machineCommandSent,      // false = demo mode / MACHINE_ACTIVATION_URL not set
+        machineActivationMode: machineActivationUrl ? 'live' : 'demo',
       }),
       ipAddress: clientIP,
       userAgent: req.headers['user-agent'] || null,
@@ -759,6 +804,31 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
       correlationId,
       codeLen: scannedCode.length,
     });
+
+    // ── PRODUCTION GUARD: block wallet debit when machine is not configured ──
+    // In production, MACHINE_ACTIVATION_URL must be set. Without it, the wallet
+    // debit would succeed but the physical machine would never start — customers
+    // would pay without receiving a wash.  This matches the same guard in
+    // the wash/start_cycle route (line ~278) for terminal-based payments.
+    //
+    // In development / staging, we allow the call through with a warning so that
+    // QR-code flow can be tested without real hardware.
+    if (!process.env.MACHINE_ACTIVATION_URL && process.env.NODE_ENV === 'production') {
+      logger.error('[K9000 Redeem] FATAL: MACHINE_ACTIVATION_URL not set in production — blocking wallet redemption to prevent charging without wash delivery', {
+        kioskId, correlationId,
+      });
+      return res.status(503).json({
+        error: 'עמדת השטיפה אינה מוגדרת לעבודה. לא בוצע חיוב. אנא פנה לצוות.',
+        errorEn: 'Wash station is not configured for production. No charge was made. Contact staff.',
+        status: 'MACHINE_NOT_CONFIGURED',
+        correlationId,
+      });
+    }
+    if (!process.env.MACHINE_ACTIVATION_URL) {
+      logger.warn('[K9000 Redeem] DEMO MODE — MACHINE_ACTIVATION_URL not set. Wallet will be debited but physical machine will NOT start. Set MACHINE_ACTIVATION_URL before going live.', {
+        kioskId, correlationId,
+      });
+    }
 
     // ── Step 1: Verify HMAC-signed user token (expiry + nonce + signature) ─
     const verification = verifySignedRedeemToken(scannedCode);

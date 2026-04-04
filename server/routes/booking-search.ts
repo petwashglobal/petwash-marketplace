@@ -465,7 +465,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
               distanceKm,
               rating,
               isVerified: sitter.isVerified || false,
-              hasPoliceCheck: sitter.backgroundCheckStatus === 'passed',
+              hasPoliceCheck: sitter.policeCheckVerified === true,
               totalBookings: sitter.totalBookings || 0,
             }),
           };
@@ -494,7 +494,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
           pricePerHour: null,
           city: sitter.city || '',
           isVerified: sitter.isVerified || false,
-          hasPoliceCheck: sitter.backgroundCheckStatus === 'passed',
+          hasPoliceCheck: sitter.policeCheckVerified === true,
           yearsExperience: sitter.yearsOfExperience || 0,
           acceptedPetTypes: sitter.specializations || ['dog', 'cat'],
           maxPets: housePolicies?.maxPetsAtOnce || 1,
@@ -557,7 +557,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
         pricePerHour: null,
         city: sitter.city || '',
         isVerified: sitter.isVerified || false,
-        hasPoliceCheck: sitter.backgroundCheckStatus === 'passed',
+        hasPoliceCheck: sitter.policeCheckVerified === true,
         yearsExperience: sitter.yearsOfExperience || 0,
         acceptedPetTypes: sitter.specializations || ['dog', 'cat'],
         maxPets: housePolicies?.maxPetsAtOnce || 1,
@@ -1137,7 +1137,11 @@ function buildTrainerBadges(trainer: any): string[] {
 function buildBadges(sitter: any): string[] {
   const badges: string[] = [];
   if (sitter.isVerified) badges.push('verified');
-  if (sitter.backgroundCheckStatus === 'passed') badges.push('police_check');
+  // police_check badge requires the admin-verified flag, NOT just the backgroundCheckStatus
+  // string field.  backgroundCheckStatus can be set without a real third-party check (stub).
+  // policeCheckVerified is set by PoliceCheckService.approvePoliceCheck() only after an admin
+  // reviews the actual uploaded clearance document.
+  if (sitter.policeCheckVerified === true) badges.push('police_check');
   if (sitter.yardSize && sitter.yardSize !== 'none') badges.push('has_yard');
   if ((sitter.yearsOfExperience || 0) >= 5) badges.push('experienced');
   if (parseFloat(sitter.rating || '0') >= 4.8) badges.push('top_rated');

@@ -1,0 +1,158 @@
+We now have enough audits.
+
+This is no longer a bug cleanup.
+This is a production integrity emergency.
+
+Stop all non-critical feature work and fix in this exact order.
+
+PHASE 1 - SECURITY + MONEY P0
+
+1. Fix the 14 SQL injection vulnerabilities in prestige-pass.ts first
+- Replace all raw interpolated SQL with parameterized queries or Drizzle/sql tagged templates
+- This is immediate data exfiltration / data manipulation risk
+
+2. Keep all fake payment paths disabled
+- /api/express-checkout must remain blocked
+- No endpoint may ever return payment success unless a real processor confirmation exists
+
+3. Make all payment/webhook trust fail closed
+- no fallback secrets
+- no webhook signature bypass when secret missing
+- no allowlist bypass in production
+- persistent webhook dedup, not in-memory Set
+
+4. Add idempotency + transaction safety to payment flows
+- booking payment / escrow creation / booking status update must be atomic
+- no charge without booking status consistency
+- no retry double-charge path
+
+5. Remove all plaintext sensitive storage
+- tax ID
+- national insurance
+- bank details
+Everything must be encrypted or rejected.
+
+6. Standardize admin auth now
+- remove hardcoded admin emails from source code
+- use environment-driven super admin list only
+- enforce timing-safe comparison everywhere
+- add real second factor for admin access
+- no single hardcoded UID as super-admin authority
+
+PHASE 2 - MARKETPLACE / ESCROW P0-P1
+
+7. Ensure booking ownership everywhere
+- no transition / confirm / cancel / complete without verifying the user is actually a party to that booking or admin
+- role must never come from request body
+
+8. Prevent illegal completion and illegal payout release
+- no direct user path to completed
+- same user cannot complete both sides
+- completed must be system-only after both real parties complete review
+
+9. Resolve escrow integrity gaps
+- escrow creation failure must be fatal, never warn-and-continue
+- payment.success must move escrow to held
+- payment.failed / expired / cancelled must release slot
+- bookings table must have expiry coverage
+- dispute resolution must actually trigger refund or release, not only change status text
+
+10. Document and contain the multi-escrow architecture
+- identify one authoritative escrow path per booking type
+- prevent dual release across Firestore / Postgres / BillingEngine
+- give me a matrix of which booking flow uses which escrow system
+
+11. Fix K9000 truthfulness
+- if real hardware start is not live and verified, paid customer flow must not imply the wash actually started
+- no fake session success language
+- every activation attempt must record whether real machine command was actually sent
+
+PHASE 3 - SIGNUP / AUTH / PROVIDER ONBOARDING
+
+12. Build one shared post-auth bootstrap function for ALL auth methods
+Every successful auth path must call one common function that ensures:
+- Postgres user exists
+- wallet exists
+- loyalty exists
+- baseline customer/provider profile exists
+- post-login readiness is consistent
+
+This must cover:
+- email
+- phone
+- Google
+- Apple
+- Facebook
+- Instagram
+- TikTok
+
+13. Fix phone OTP dead-end
+- either collect firstName + lastName + email before finalizing
+- or allow complete-profile without deadlock
+
+14. Create a real verify-email flow
+- actual page
+- resend endpoint
+- actual verification handling
+- no redirect to missing route
+
+15. Fix social OAuth architecture completely
+- Facebook server callback must exist
+- Instagram/TikTok must create Postgres users even if email is missing
+- Apple returning users must be found by UID, not only email
+- provider intent must survive OAuth redirect
+- only one place may consume getRedirectResult()
+
+16. Fix provider onboarding blockers
+- no redirect loop while auth is still loading
+- refresh Firebase token after phone verification
+- KYC processing must never deadlock forever
+- background check must not be treated as real if it is only a stub
+- police clearance must be enforced before provider approval where legally required
+- Walk My Pet / Academy self-registration must not create active providers without real verification
+
+PHASE 4 - ARCHITECTURE CLEANUP
+
+17. Unify role source of truth
+- users.role / users.roles / permissions / userRoles must not conflict
+- choose one canonical access model
+
+18. Reduce state fragmentation
+- booking statuses need normalization across platforms
+- users need one real lifecycle source of truth
+- stop using free-text status values where enums should exist
+
+19. Fix provider model fragmentation
+- define one canonical provider identity / registry
+- different provider tables must map cleanly to the same user and approval state
+
+20. Compliance and document correctness
+- sequential invoice numbering
+- clear commission invoice labeling vs customer-paid amount
+- correct VAT wording
+- correct archival / retention strategy
+- provider rejection notifications
+
+SPECIAL ITEMS THAT ALSO NEED FIXING
+- remove VITE_GOOGLE_MAPS_API_KEY usage from server code
+- encrypt Google Drive backups before upload
+- alert on backup failure, not silent log only
+- add file upload size limit to careers.ts memory upload path
+- make reCAPTCHA blocking on OTP send, not decorative
+- fix WebAuthn duplication: choose one implementation only
+- store passkey challenges server-side before verify
+- require proper auth on biometric verify routes
+- remove hardcoded super-admin UID from disputes/provider-trust
+- replace sitter payout bank account 'TBD' with real contractor bank lookup
+
+DELIVERY FORMAT
+For each completed item:
+- exact file changed
+- exact commit
+- before behavior
+- after behavior
+- proof of fix
+- whether migration / backfill / secret rotation / data repair is needed
+
+I do not want summaries.
+I want phased execution and proof.

@@ -6,17 +6,24 @@ import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
-const SUPER_ADMINS = [
-  'nirhadad1@gmail.com',
-  'nir.h@petwash.co.il',
-  'ido.s@petwash.co.il',
-  'idoshaka@gmail.com',
-  'idoshakarzi110@gmail.com',
-];
+// P0-FIX: Super-admin email list must not be hardcoded in source.
+// Set SUPER_ADMIN_EMAILS as a comma-separated list in environment variables.
+// Example: SUPER_ADMIN_EMAILS=ceo@company.com,cfo@company.com
+function getSuperAdminEmails(): string[] {
+  const raw = process.env.SUPER_ADMIN_EMAILS;
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: SUPER_ADMIN_EMAILS environment variable is required in production');
+    }
+    console.warn('[access-requests] WARNING: SUPER_ADMIN_EMAILS not set — all super-admin access will be denied');
+    return [];
+  }
+  return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+}
 
 function isSuperAdmin(email: string | undefined): boolean {
   if (!email) return false;
-  return SUPER_ADMINS.includes(email.toLowerCase());
+  return getSuperAdminEmails().includes(email.toLowerCase());
 }
 
 router.get('/mine', requireAuth, async (req, res) => {

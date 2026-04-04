@@ -27,6 +27,7 @@ import {
   referrals,
   winbackQueue,
   experimentEvents,
+  providerProfiles,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -729,7 +730,23 @@ router.post('/:requestId/respond', async (req, res) => {
     if (booking.providerId !== userId) {
       return res.status(403).json({ error: 'Only the provider can respond to this request' });
     }
-    
+
+    // T10: BGC enforcement — provider must have an approved background check before accepting
+    if (data.action === 'accept') {
+      const [profile] = await db
+        .select({ backgroundCheckStatus: providerProfiles.backgroundCheckStatus })
+        .from(providerProfiles)
+        .where(eq(providerProfiles.userId, userId!))
+        .limit(1);
+      if (!profile || profile.backgroundCheckStatus !== 'approved') {
+        logger.warn('[BookingRequests] Provider accept blocked — BGC not approved', { providerId: userId, backgroundCheckStatus: profile?.backgroundCheckStatus });
+        return res.status(403).json({
+          error: 'BACKGROUND_CHECK_REQUIRED',
+          message: 'Your background check must be approved before you can accept bookings.',
+        });
+      }
+    }
+
     if (booking.status !== 'pending') {
       return res.status(400).json({ error: `Cannot respond to booking with status: ${booking.status}` });
     }
@@ -857,6 +874,52 @@ router.post('/:requestId/respond', async (req, res) => {
       });
     } catch (notifErr: any) {
       logger.warn('[BookingRequests] superAppNotifications insert failed (respond)', { error: notifErr.message });
+    }
+
+    // ── Non-blocking: email + SMS to customer on acceptance ──────────────────
+    if (data.action === 'accept') {
+      (async () => {
+        try {
+          const [ownerUser] = await db
+            .select({ email: users.email, phone: users.phone, firstName: users.firstName })
+            .from(users)
+            .where(eq(users.id, booking.ownerId))
+            .limit(1);
+          if (ownerUser) {
+            const customerName = ownerUser.firstName || 'לקוח';
+            const serviceDateStr = booking.startDate
+              ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric' })
+              : '—';
+            const amountStr = holdCents > 0 ? `₪${(holdCents / 100).toFixed(2)}` : `₪${(booking.totalCents / 100).toFixed(2)}`;
+            const confirmUrl = `https://petwash.co.il/booking/confirmation/${requestId}`;
+            const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;background:#fff;color:#000;">
+<h2 style="color:#000;">✅ ההזמנה שלך אושרה! — PetWash™</h2>
+<p>שלום ${customerName},</p>
+<p>${providerName} אישר/ה את בקשתך. כל הפרטים נמצאים למטה:</p>
+<table style="border-collapse:collapse;width:100%;max-width:480px;margin:16px 0;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;">שירות</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${booking.serviceType || '—'}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;">ספק</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;">תאריך</td><td style="padding:8px;border-bottom:1px solid #eee;">${serviceDateStr}</td></tr>
+  <tr><td style="padding:8px;">סכום</td><td style="padding:8px;font-weight:bold;">${amountStr}</td></tr>
+</table>
+<p><a href="${confirmUrl}" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">פתח/י את ההזמנה</a></p>
+<p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+</body></html>`;
+            await dispatchNotification({
+              uid: booking.ownerId,
+              email: ownerUser.email || undefined,
+              phone: ownerUser.phone || undefined,
+              type: 'booking_accepted',
+              title: `✅ ${providerName} אישר את הבקשה! – PetWash™`,
+              bodyHtml: htmlBody,
+              bodyText: `ההזמנה שלך אושרה!\nספק: ${providerName}\nתאריך: ${serviceDateStr}\nסכום: ${amountStr}\nפרטים: ${confirmUrl}`,
+              channels: ['email', 'sms'],
+            });
+          }
+        } catch (multiChanErr: any) {
+          logger.warn('[BookingRequests] email/SMS dispatch failed on acceptance (non-fatal)', { error: multiChanErr.message });
+        }
+      })();
     }
 
     // ── Non-blocking: Schedule declined_recovery nudge (1 h later) ────────────
@@ -1058,7 +1121,8 @@ router.post('/:requestId/pay', async (req, res) => {
     
     const nayaxTransactionId = transactionId || `NAYAX-${nanoid(16)}`;
     
-    // ENTERPRISE: Create escrow payment via EscrowService (72-hour hold)
+    // P2-FIX: Escrow creation is FATAL — if it fails, booking is NOT confirmed.
+    // Never silently continue without an escrow: money would be taken with no protection.
     try {
       const escrow = await EscrowService.createEscrowPayment(
         requestId,
@@ -1073,7 +1137,6 @@ router.post('/:requestId/pay', async (req, res) => {
           endDate: booking.endDate,
         }
       );
-      
       logger.info('[BookingRequests] Escrow created via EscrowService', {
         requestId,
         escrowId: escrow.id,
@@ -1081,8 +1144,15 @@ router.post('/:requestId/pay', async (req, res) => {
         holdUntil: escrow.holdUntil,
       });
     } catch (escrowError: any) {
-      logger.warn('[BookingRequests] EscrowService failed, continuing with local tracking', {
+      logger.error('[BookingRequests] Escrow creation FAILED — payment flow aborted, booking NOT confirmed', {
         error: escrowError.message,
+        requestId,
+        totalCents: booking.totalCents,
+        nayaxTransactionId,
+      });
+      return res.status(500).json({
+        error: 'Payment processing failed — escrow could not be established. No charge was made. Please retry.',
+        errorCode: 'ESCROW_CREATION_FAILED',
       });
     }
     

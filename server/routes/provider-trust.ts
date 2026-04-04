@@ -28,11 +28,24 @@ import {
   backfillAllProviderRankingScores,
   rankingTier,
 } from '../utils/providerRanking';
-import { requireAuth } from '../customAuth';
+import { requireAuth } from '../middleware/gates';
 
-// SUPER_ADMIN_UID is loaded from environment to avoid hardcoding credentials in source code.
-// If not set, admin operations fail closed (return 403) rather than open.
-const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID || '';
+// P0-FIX: SUPER_ADMIN_UID must be set as SUPER_ADMIN_UID environment variable.
+// Hardcoded Firebase UIDs in source code are a security risk — anyone who reads
+// the repo knows which account to target or can forge requests.
+// Set this in your environment: SUPER_ADMIN_UID=<firebase-uid-of-super-admin>
+const SUPER_ADMIN_UID = (() => {
+  const uid = process.env.SUPER_ADMIN_UID;
+  if (!uid) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: SUPER_ADMIN_UID environment variable is required in production');
+    }
+    // In non-production: warn loudly and disable super-admin routes entirely
+    console.warn('[provider-trust] WARNING: SUPER_ADMIN_UID not set — all super-admin routes will return 403');
+    return '__SUPER_ADMIN_UID_NOT_CONFIGURED__';
+  }
+  return uid;
+})();
 
 const router = Router();
 
@@ -160,6 +173,9 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
 // Real filter-backed provider browse. Returns providerProfiles rows
 // joined with users (name) and bookingRequests aggregate stats.
 // All filters map to real DB predicates.
+// SECURITY: requireAuth guards this endpoint because the response includes
+// PII fields (last_name, background_check_status) and detailed capacity data
+// that must not be exposed to unauthenticated callers.
 router.get('/providers/browse', requireAuth, async (req: Request, res: Response) => {
   const uid = getUid(req);
 

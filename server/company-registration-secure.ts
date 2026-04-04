@@ -9,11 +9,9 @@
 import { db as adminDb } from './lib/firebase-admin';
 import { logger } from './lib/logger';
 
-// Authorized personnel who can access this information
-const AUTHORIZED_USERS = [
-  'nirhadad1@gmail.com',      // Nir Hadad - Owner & CEO
-  'ido.shakarzi@example.com'  // Ido Shakarzi - Approved personnel
-];
+// SECURITY (T07): Remove hardcoded email list — derive from SUPER_ADMIN_EMAILS env var
+const AUTHORIZED_USERS: string[] = (process.env.SUPER_ADMIN_EMAILS || '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 /**
  * Company Registration Information (from Israeli Corporations Authority)
@@ -206,8 +204,8 @@ export async function addAuthorizedUser(
   authorizedBy: string
 ): Promise<boolean> {
   try {
-    // Only Nir Hadad can add authorized users
-    if (authorizedBy.toLowerCase() !== 'nirhadad1@gmail.com') {
+    // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — hardcoded email removed
+    if (!AUTHORIZED_USERS.includes(authorizedBy.toLowerCase())) {
       logger.warn('[Company Registration] Unauthorized attempt to add user', {
         newUserEmail,
         authorizedBy

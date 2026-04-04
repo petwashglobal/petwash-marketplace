@@ -1,0 +1,100 @@
+כן. זה כבר מראה תמונה הרבה יותר חמורה ורחבה.
+
+הבעיה כבר לא רק “כמה באגים”.
+GitHub agent מצא 4 אזורי כשל מרכזיים:
+
+1. כסף, תשלומים, escrow
+
+הכי מסוכן עסקית.
+	•	יש זרימות תשלום שלא מספיק אטומיות
+	•	יש מקומות בלי idempotency
+	•	יש כמה מערכות escrow שונות שלא מדברות נכון אחת עם השנייה
+	•	dispute לא תמיד מזיז כסף בפועל
+	•	K9000 יכול להיראות כאילו התחיל למרות שאין command אמיתי למכונה
+	•	webhook dedup עדיין חלש אם הוא רק בזיכרון
+	•	slot release / expiry / payment state לא תמיד סגורים מושלם
+
+2. אבטחה והרשאות
+
+הכי מסוכן משפטית ותפעולית.
+	•	hardcoded admin identities / fallback secrets
+	•	routeים עם הרשאות לא אחידות
+	•	timing-safe לא מיושם בכל מקום
+	•	חלק מה-endpoints רגישים מדי בלי guard מספיק חזק
+	•	station auth חלש מדי אם מבוסס רק על machine key
+	•	XSS אפשרי אם legal HTML לא עובר sanitization
+	•	SQL injection חמור מאוד ב-prestige-pass.ts
+
+3. signup / auth / provider onboarding
+
+זו כנראה אחת הסיבות הגדולות למה ההרשמה מרגישה שבורה ואיטית.
+	•	email signup הישן מוחזר 410
+	•	phone signup נתקע בגלל חוסר name/email
+	•	verify-email route חסר
+	•	Facebook לא מחובר נכון בצד שרת
+	•	Instagram/TikTok לא תמיד יוצרים user מלא ב-Postgres
+	•	Apple login נשבר בלוגין חוזר
+	•	OAuth intent של “become provider” נאבד
+	•	wallet / loyalty לא נוצרים אחיד לכל auth path
+	•	provider onboarding בנוי על כמה מסלולים לא אחידים
+	•	background check הוא לפעמים stub, לא בדיקה אמיתית
+
+4. ארכיטקטורה ומבנה מערכת
+
+זה החלק שהכי מסביר למה כל פעם צץ משהו חדש.
+	•	כמה מודלים שונים ל-booking states
+	•	כמה מודלים שונים ל-provider
+	•	כמה מודלים שונים ל-role / permissions
+	•	כמה WebAuthn implementations במקביל
+	•	mount paths שלא בנויים נקי
+	•	backup / Google Drive / bucket logic לא מספיק קשיח
+	•	שימוש ב-VITE_ env בצד שרת במקומות שלא אמור להיות
+
+מה הכי חמור מכל מה ששלחת
+
+אם אני מדרג לפי סיכון עסקי אמיתי:
+
+P0 - לעצור הכל ולטפל מייד
+	1.	SQL injection ב-server/routes/prestige-pass.ts
+זה לא “nice to have”. זה עלול לאפשר קריאה ושינוי נתונים.
+	2.	כל מה שקשור ל-money integrity
+	•	payment בלי idempotency
+	•	multi-step payment בלי transaction
+	•	escrow fail-and-continue
+	•	dispute שלא עושה refund/release אמיתי
+	•	K9000 בלי machine command אמיתי
+	3.	signup/auth broken architecture
+	•	אין shared post-auth bootstrap אחיד
+	•	user יכול להיווצר חלקית
+	•	wallet/loyalty/profile לא נוצרים עקבי
+	•	social login paths לא מתכנסים למסלול אחד
+	4.	hardcoded admin / fallback secrets / weak auth edges
+	•	identities hardcoded
+	•	fallback secrets
+	•	inconsistent admin guards
+	•	non-blocking CAPTCHA ל-OTP
+
+P1 - השבוע
+	5.	WebAuthn / passkeys
+	•	לבחור implementation אחד בלבד
+	•	לשמור challenge server-side
+	•	להסיר מסלולים כפולים
+	•	לאחד credential storage
+	6.	Google Drive / Google Sheets / backup security
+	•	להצפין backups לפני upload
+	•	alert על כשל backup
+	•	לקצר signed URL expiry
+	•	לסגור זליגת PII
+	7.	provider onboarding and trust
+	•	police clearance
+	•	background check אמיתי
+	•	KYC deadlock recovery
+	•	no active provider בלי verification אמיתי
+	8.	route and mount cleanup
+	•	/api/k9000 mounted multiple times
+	•	walkMyPetRoutes mounted broad מדי
+	•	deprecated routes שעדיין reachable
+
+מה לומר ל-Replit עכשיו
+
+תשלח לו בדיוק את זה:

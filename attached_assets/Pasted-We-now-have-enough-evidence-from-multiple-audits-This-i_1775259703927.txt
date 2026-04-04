@@ -1,0 +1,128 @@
+We now have enough evidence from multiple audits.
+
+This is not feature work anymore.
+This is production integrity work.
+
+Stop all non-critical development and fix in this exact order.
+
+PHASE 1 - P0 MONEY + SECURITY
+
+1. Fix all SQL injection vulnerabilities in server/routes/prestige-pass.ts immediately
+- replace raw interpolated SQL with parameterized queries or Drizzle/sql templates only
+
+2. Make all payment flows atomic
+- payment creation
+- escrow creation
+- booking status update
+- wallet mutation
+These must be wrapped in real DB transactions or Drizzle transaction wrappers
+
+3. Add idempotency to every payment / charge / escrow creation path
+- especially booking-requests payment flows
+- retries must never double-charge or double-hold funds
+
+4. Remove all hardcoded secrets and hardcoded admin identities
+- no source-code fallback secrets
+- no hardcoded super-admin emails
+- no hardcoded Firebase UID authority
+- use env + role-based authorization only
+
+5. Standardize admin auth
+- timing-safe secret comparison everywhere
+- one admin auth model only
+- enforce second factor for admin access
+
+6. Make CAPTCHA blocking on OTP send
+- no warn-and-continue
+- failed CAPTCHA must reject the request
+
+PHASE 2 - MARKETPLACE + ESCROW
+
+7. Unify escrow truth
+- document exactly which booking flow uses which escrow system
+- prevent any chance of dual release
+- dispute resolution must trigger real refund or real release
+
+8. Ensure payment failure cleanup is complete
+- release slot
+- update booking state
+- void or release payment hold safely
+- add expiry coverage for main marketplace bookings table
+
+9. Fix K9000 truthfulness
+- if machine activation is not real and verified, do not represent the wash as started
+- every session must record whether a real machine command was sent
+
+10. Fix sitter payout plumbing
+- replace sitterBankAccount: 'TBD' with real contractor bank lookup
+- no provider payout path can remain stubbed
+
+PHASE 3 - SIGNUP / AUTH / PROVIDER ONBOARDING
+
+11. Build one shared registerUserPostAuth() path for all auth methods
+It must always:
+- ensure Postgres user exists
+- create wallet
+- create loyalty
+- create baseline profile
+- return consistent post-login state
+
+This must cover:
+- email
+- phone
+- Google
+- Apple
+- Facebook
+- Instagram
+- TikTok
+
+12. Fix phone OTP dead-end
+- collect required fields before finalizing
+or
+- let complete-profile save them without blocking loop
+
+13. Build real verify-email flow
+- page
+- resend endpoint
+- verification handling
+- no redirect to missing route
+
+14. Fix social OAuth completeness
+- Facebook server callback
+- Instagram/TikTok Postgres creation
+- Apple returning-user lookup by UID, not only email
+- preserve provider intent across OAuth redirect
+- only one place may consume redirect result
+
+15. Fix provider onboarding compliance
+- background check cannot be a stub if UI implies real verification
+- police clearance must be enforced before approval where required
+- provider routes cannot create active providers without verification
+- KYC stuck states must recover automatically or via admin tooling
+
+PHASE 4 - STRUCTURAL CLEANUP
+
+16. Choose one source of truth for roles
+17. Choose one source of truth for booking lifecycle states
+18. Choose one source of truth for provider identity
+19. Consolidate WebAuthn to one implementation only
+20. Remove deprecated / shadow / duplicate routes still reachable in production
+
+ALSO FIX THESE PLATFORM RISKS
+- encrypt Google Drive backups before upload
+- add alerting on backup failure
+- remove VITE_* server-side secret usage
+- shorten signed URL expiry
+- add upload file size limit to careers.ts
+- review all buckets and biometric storage env usage
+- secure Google Sheets sensitive exports
+- review all open admin/provider stats endpoints
+- add regression tests for payment, webhook, escrow, RBAC, signup, and provider onboarding
+
+For each completed item I want:
+- exact file changed
+- exact commit
+- before behavior
+- after behavior
+- proof of fix
+- whether migration, backfill, rotation, or data repair is required

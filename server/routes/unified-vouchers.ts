@@ -101,10 +101,13 @@ const stationRedeemSchema = z.object({
   notes: z.string().optional(),
 });
 
+// NOTE: amountIls is intentionally EXCLUDED from webRedeemSchema.
+// For web/app redemptions, the server derives the amount from the voucher's
+// stored remaining balance — the client never controls the redemption value.
+
 const webRedeemSchema = z.object({
   voucherId: z.string().optional(),
   serialNumber: z.string().optional(),
-  amountIls: z.number().positive().optional(),
   washes: z.number().int().positive().optional(),
   externalRef: z.string().optional(), // booking id / order id
   notes: z.string().optional(),
@@ -200,12 +203,32 @@ router.post("/:id/qr-token", requireAuth, validate(qrTokenSchema), async (req: R
 router.post("/redeem/station", requireAuth, validate(stationRedeemSchema), async (req: Request, res: Response) => {
   const tid = traceId();
   try {
+    // SECURITY (T02): Validate client-supplied amountIls against server-side whitelist.
+    // Without this, any authenticated caller could send amountIls=0.01 to redeem a 45 ILS
+    // wash for a fraction of its value. Whitelist matches valid PetWash wash prices.
+    const VALID_WASH_PRICES_ILS = [45, 65, 80, 120, 150, 180, 200];
+    const clientAmountIls = req.body.amountIls;
+    if (clientAmountIls !== undefined && !VALID_WASH_PRICES_ILS.includes(Number(clientAmountIls))) {
+      logger.warn("[UV] Station redeem rejected — invalid amountIls", {
+        traceId: tid,
+        amountIls: clientAmountIls,
+        uid: req.user?.uid,
+        valid: VALID_WASH_PRICES_ILS,
+      });
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_WASH_AMOUNT",
+        valid: VALID_WASH_PRICES_ILS,
+        traceId: tid,
+      });
+    }
+
     const result = await redeemVoucher({
       voucherId: req.body.voucherId,
       serialNumber: req.body.serialNumber,
       qrToken: req.body.qrToken,
       channel: "STATION",
-      amountIls: req.body.amountIls,
+      amountIls: clientAmountIls,
       washes: req.body.washes,
       actorUserId: req.user?.uid,
       actorRole: "station",
@@ -232,21 +255,37 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
     // Resolve channel: APP or WEB based on User-Agent / header
     const channel: Channel = req.headers["x-client-platform"] === "app" ? "APP" : "WEB";
 
-    // Ensure caller owns the voucher (or is admin)
+    // Ensure caller owns the voucher (or is admin) and derive server-side redemption amount
     const voucherId = req.body.voucherId;
     const serialNumber = req.body.serialNumber;
     let ownerId: string | null = null;
+    let serverDerivedAmountIls: number | undefined;
 
     if (voucherId) {
       const [v] = await db.select().from(unifiedVouchers).where(eq(unifiedVouchers.id, voucherId)).limit(1);
-      if (v) ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+      if (v) {
+        ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+        // SECURITY: derive amount from server-side remaining balance, not client input
+        if (v.valueRemaining != null) {
+          serverDerivedAmountIls = parseFloat(v.valueRemaining as string);
+        }
+      }
     } else if (serialNumber) {
       const [v] = await db.select().from(unifiedVouchers).where(eq(unifiedVouchers.serialNumber, serialNumber)).limit(1);
-      if (v) ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+      if (v) {
+        ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+        if (v.valueRemaining != null) {
+          serverDerivedAmountIls = parseFloat(v.valueRemaining as string);
+        }
+      }
     }
 
     if (ownerId && ownerId !== req.user?.uid && !isAdmin(req)) {
       return res.status(403).json({ success: false, error: "Not authorized", traceId: tid });
+    }
+
+    if (serverDerivedAmountIls !== undefined && serverDerivedAmountIls <= 0) {
+      return res.status(400).json({ success: false, error: "No remaining balance on this voucher", traceId: tid });
     }
 
     const result = await redeemVoucher({
@@ -254,7 +293,8 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
       serialNumber: req.body.serialNumber,
       qrToken: req.body.qrToken,
       channel,
-      amountIls: req.body.amountIls,
+      // SECURITY: amount derived from server-side voucher balance — client value ignored
+      amountIls: serverDerivedAmountIls,
       washes: req.body.washes,
       actorUserId: req.user?.uid,
       actorRole: "customer",

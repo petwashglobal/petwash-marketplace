@@ -12,6 +12,10 @@ import multer from "multer";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+// CEO auto-approval bypass — email and display name read from environment only.
+const CEO_BYPASS_EMAIL = (process.env.CEO_BYPASS_EMAIL || '').toLowerCase();
+const CEO_BYPASS_NAME  = process.env.CEO_BYPASS_NAME || 'CEO';
+
 router.get("/tax-rates", async (req: Request, res: Response) => {
   try {
     const asOfDateStr = req.query.asOfDate as string | undefined;
@@ -138,15 +142,14 @@ router.post("/", async (req: Request, res: Response) => {
 
     const validation = await expensePolicyService.validateExpense(expenseToCreate);
 
-    const CEO_EMAIL = 'nirhadad1@gmail.com';
-    const isCEO = user.email.toLowerCase() === CEO_EMAIL.toLowerCase();
+    const isCEO = CEO_BYPASS_EMAIL && user.email.toLowerCase() === CEO_BYPASS_EMAIL;
     
     const finalStatus = isCEO 
       ? (validation.isValid ? 'approved' : 'draft')
       : (validation.isValid ? 'pending' : 'draft');
     
     const approverId = isCEO ? user.id : 'CEO_DEFAULT';
-    const approverName = isCEO ? null : 'Nir Hadad (CEO)';
+    const approverName = isCEO ? null : CEO_BYPASS_NAME;
     
     const newExpense = await db.insert(expenses).values({
       ...expenseToCreate,
@@ -233,8 +236,7 @@ router.get("/pending-approval", async (req: Request, res: Response) => {
       });
     }
 
-    const CEO_EMAIL = 'nirhadad1@gmail.com';
-    const isCEO = user.email.toLowerCase() === CEO_EMAIL.toLowerCase();
+    const isCEO = CEO_BYPASS_EMAIL && user.email.toLowerCase() === CEO_BYPASS_EMAIL;
     
     const whereConditions = isCEO 
       ? and(
@@ -290,8 +292,7 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
       });
     }
 
-    const CEO_EMAIL = 'nirhadad1@gmail.com';
-    const isCEO = user.email.toLowerCase() === CEO_EMAIL.toLowerCase();
+    const isCEO = CEO_BYPASS_EMAIL && user.email.toLowerCase() === CEO_BYPASS_EMAIL;
     const canApprove = expense[0].approverId === user.id || (isCEO && expense[0].approverId === 'CEO_DEFAULT');
     
     if (!canApprove) {
@@ -356,8 +357,7 @@ router.patch("/:id/reject", async (req: Request, res: Response) => {
       });
     }
 
-    const CEO_EMAIL = 'nirhadad1@gmail.com';
-    const isCEO = user.email.toLowerCase() === CEO_EMAIL.toLowerCase();
+    const isCEO = CEO_BYPASS_EMAIL && user.email.toLowerCase() === CEO_BYPASS_EMAIL;
     const canReject = expense[0].approverId === user.id || (isCEO && expense[0].approverId === 'CEO_DEFAULT');
     
     if (!canReject) {

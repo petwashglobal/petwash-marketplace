@@ -586,7 +586,7 @@ router.post('/provider-registration', async (req, res) => {
         businessName: data.businessName, vatNumber: data.vatNumber,
         experienceYears: data.experienceYears, selfieUrl: data.selfieUrl,
         idDocUrl: data.idDocUrl, certDocUrl: data.certDocUrl,
-        bankName: data.bankName, availability: data.availability, bio: data.bio,
+        bankName: data.bankName, bankAccount: data.bankAccount, availability: data.availability, bio: data.bio,
       }).catch(err => logger.warn('[GlobalForms] Provider orchestrator failed', err));
     });
   } catch (err) {

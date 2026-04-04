@@ -1,0 +1,1504 @@
+Audit this repository deeply for production risks and code quality issues.
+
+Focus on:
+
+security vulnerabilities
+auth/session bugs
+broken API wiring between frontend and backend
+duplicate or conflicting business logic
+payment/escrow logic risks
+places where UI claims something the backend does not truly support
+invoice/receipt/tax wording that could be misleading
+weak validation, weak error handling, weak authorization
+dead code / deprecated code that should be removed
+missing tests for critical flows
+Then give me:
+
+the top 20 most important issues
+severity for each
+exact file paths
+exact code areas involved
+what should be fixed first
+which issues are legal/compliance sensitive
+which issues are security sensitive
+Do not give a vague summary. Be concrete and practical.
+
+Copilot started work
+
+Auditing repository for security and quality risks
+7m 23s
+That confirms the fake payment endpoint. Now I have all the data needed for a comprehensive, concrete report.
+
+Here is the full audit with the top 20 most important issues ranked by priority:
+
+PetWash Marketplace — Production Risk Audit
+
+Stack: React 18 + TypeScript (frontend) · Express.js + Drizzle ORM + PostgreSQL + Firestore (backend) · Firebase Auth · Nayax payment gateway · SendGrid · Twilio · Israeli Tax Authority API
+
+TOP 20 ISSUES (Priority Order)
+
+#1 — FAKE PAYMENT ENDPOINT RETURNS SUCCESS WITHOUT CHARGING
+
+Severity: CRITICAL | Legal/Compliance | Payment Risk
+
+File: server/routes.ts:5156–5196
+
+TypeScript
+app.post('/api/express-checkout', async (req, res) => {
+  // ...
+  if (paymentMethod === 'credit_card') {
+    // TODO: Integrate with real payment gateway
+    // For now, just return success
+    res.json({ success: true, message: "Express checkout successful", ... });
+  }
+});
+/api/express-checkout accepts credit_card payment, returns { success: true }, and never charges anyone. There is no auth middleware, no Nayax call, no database write. If this endpoint is wired to any UI "Buy" button, users will believe they paid when they haven't. This is a fake payment flow that confirms purchases it never processes. Fix first.
+
+#2 — TEST/CI AUTH BYPASS WITH HARDCODED DEFAULT TOKEN (AVAILABLE IN ALL NON-PROD ENVIRONMENTS)
+
+Severity: CRITICAL | Security
+
+File: server/middleware/firebase-auth.ts:43–48
+
+TypeScript
+const bypassToken = process.env.TEST_BYPASS_TOKEN || 'playwright-test';
+if (bypassHeader === bypassToken) {
+  return { uid: ..., email: `${uid}@test.local`, ... };
+}
+If TEST_BYPASS_TOKEN env var is not set, any HTTP client that sends x-test-user-bypass: playwright-test bypasses Firebase auth entirely and can impersonate any user. This is NOT guarded by NODE_ENV === 'production' (line 30 checks production only for the DEV_TEST_SECRET path, not the bypass token path). Anyone who knows this token — which is public in this codebase — can authenticate as any UID.
+
+#3 — HARDCODED FALLBACK PAYMENT SECRETS (WEBHOOK & VOUCHER)
+
+Severity: CRITICAL | Security
+
+File: server/nayaxFirestoreService.ts:108–113
+
+TypeScript
+const VOUCHER_SALT     = process.env.VOUCHER_SALT              || 'pet-wash-nayax-voucher-secret-2025';
+const NAYAX_API_KEY    = process.env.NAYAX_API_KEY             || 'mock-api-key';
+const NAYAX_SECRET     = process.env.NAYAX_SECRET              || 'mock-secret';
+const WEBHOOK_SECRET   = process.env.NAYAX_WEBHOOK_SECRET      || 'mock-webhook-secret';
+If any of these env vars are absent, the system silently falls back to public constants. VOUCHER_SALT is used to sign QR voucher tokens (line 367, 384). An attacker who knows the fallback salt can forge valid QR voucher tokens, bypassing payment. WEBHOOK_SECRET fallback means an attacker can forge Nayax webhook events (trigger credits/refunds).
+
+#4 — UNSUBSCRIBE HMAC SECRET HARDCODED IN SOURCE CODE
+
+Severity: HIGH | Security
+
+File: server/emailService.ts:255, 297
+
+TypeScript
+const secret = process.env.UNSUBSCRIBE_HMAC_SECRET || 'petwash-unsubscribe-secret-change-in-production';
+The fallback is the literal string petwash-unsubscribe-secret-change-in-production. Anyone can craft a valid HMAC unsubscribe token for any email address using this known secret, enabling bulk account manipulation or privacy violations (forced unsubscription of any user).
+
+#5 — .secrets-for-nir-only.txt COMMITTED TO REPO AND NOT GITIGNORED
+
+Severity: HIGH | Security
+
+File: .secrets-for-nir-only.txt
+
+The file says # This file is in .gitignore - it will NOT be committed but it is NOT in .gitignore — confirmed by grep. The file currently contains placeholders (<TO_BE_GENERATED>) but the comment says: "NOTE: Previous secrets were compromised by being in documentation. These are freshly rotated." This means a previous version contained real secrets that are now in git history. Rotate WEBAUTHN_COOKIE_SECRET and MOBILE_LINK_SECRET if they were ever placed here, and add this file to .gitignore immediately.
+
+#6 — ADMIN SECRET COMPARED WITH === (TIMING ATTACK)
+
+Severity: HIGH | Security
+
+Files: server/routes/financial-approvals.ts:28 and server/routes.ts:508, 11860
+
+TypeScript
+// financial-approvals.ts:28
+if (req.headers['x-admin-secret'] === process.env.ADMIN_SECRET) {
+
+// routes.ts:508
+if (CONFIGURED_ADMIN_SECRET && adminSecretHeader === CONFIGURED_ADMIN_SECRET) {
+
+// routes.ts:11860
+if (!secret || req.headers['x-admin-secret'] !== secret) {
+These use JavaScript string equality (===) instead of crypto.timingSafeEqual(). The middleware at server/middleware/adminAuth.ts already uses timing-safe comparison correctly — but it is not used in these three locations. This is inconsistent and leaves these admin-protected routes vulnerable to timing side-channel attacks to brute-force the secret byte by byte.
+
+#7 — MISSING PROVIDER OWNERSHIP VERIFICATION ON BOOKING ACCESS
+
+Severity: HIGH | Security | IDOR
+
+File: server/routes/super-app-bookings.ts:211–216
+
+TypeScript
+// SECURITY: Verify user ownership or provider access
+if (booking.userId !== userId) {
+  // Check if user is the provider
+  // TODO: Add provider lookup to verify ownership
+  return res.status(403).json({ error: 'Unauthorized access to booking' });
+}
+If the requesting user is not the booking customer, the code falls through to a 403 — regardless of whether they are the provider. This means legitimate providers cannot access their own bookings through this path. But more critically, the comment says "TODO: Add provider lookup" which means this authorization check was never completed. Any authenticated user who isn't the customer will be blocked, including the actual service provider, but this also signals the authorization model is incomplete and may have gaps elsewhere.
+
+#8 — WEBHOOK DEDUPLICATION IS IN-MEMORY ONLY (LOST ON RESTART)
+
+Severity: HIGH | Payment Risk
+
+File: server/routes/nayax-webhooks.ts:55–57
+
+TypeScript
+// In-memory deduplication cache (use Redis in production)
+const processedWebhooks = new Set<string>();
+const WEBHOOK_CACHE_TTL = 3600000; // 1 hour
+Nayax webhook deduplication uses a JavaScript Set in process memory. On any server restart, crash, or horizontal scaling event, this cache resets. Nayax may retry unacknowledged webhooks, and after a restart the server will re-process them, resulting in duplicate credits, loyalty points, or session triggers. The comment acknowledges this: "use Redis in production."
+
+#9 — XSS VIA dangerouslySetInnerHTML WITH BACKEND-SUPPLIED HTML
+
+Severity: HIGH | Security
+
+File: src/features/legal/LegalFrontend2025.tsx:409
+
+TSX
+dangerouslySetInnerHTML={{ __html: doc.htmlContent }}
+The comment above it says: "Backend must sanitize HTML and remove unsafe elements." There is no evidence of HTML sanitization in the backend routes serving legal documents. If an admin can write to the legal documents table (or if that table is compromised), this is a stored XSS vector affecting all users who visit legal pages. Should use a server-side sanitizer (e.g., DOMPurify or sanitize-html) before storage and/or strip on render.
+
+#10 — x-station-key IS THE ONLY AUTHENTICATION FOR MACHINE CONTROL ENDPOINTS
+
+Severity: HIGH | Security
+
+Files: server/routes.ts:4153–4160, 4230–4237, 4276–4283
+
+TypeScript
+app.post('/api/nayax/redeem', paymentLimiter, async (req, res) => {
+  const stationKey = req.headers['x-station-key'] as string;
+  // No user auth check — machine key is the only guard
+K9000 station endpoints (/api/nayax/redeem, /api/k9000/start-session, /api/k9000/end-session) use only x-station-key header for auth — no user session. The station keys are stored in STATION_KEYS env var parsed as JSON. If any station key leaks (e.g., from a physical device), an attacker can trigger wash sessions, redeem vouchers, and manipulate station state without any user identity. There is no audit trail linking actions to a human actor.
+
+#11 — WALLET BALANCE UPDATE HAS NO TRANSACTION/LOCKING (RACE CONDITION)
+
+Severity: HIGH | Payment Risk
+
+File: server/routes/walk-my-pet.ts:1878–1888
+
+TypeScript
+INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
+  VALUES ($1, $2, $3)
+  ON CONFLICT (user_id) DO UPDATE
+    SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1
+The read–check–update pattern for wallet balance is not wrapped in a database transaction. Under concurrent requests (two simultaneous refunds, or a payment + refund arriving at the same time), both reads can see the old balance and both updates apply, resulting in double-crediting. This needs SELECT ... FOR UPDATE or a serializable transaction.
+
+#12 — K9000 MACHINE CONTROL IS A STUB (TODO: In production, send HTTP POST)
+
+Severity: HIGH | Legal/Compliance | UI vs. Backend Mismatch
+
+File: server/routes/k9000.ts:266
+
+TypeScript
+// TODO: In production, send HTTP POST to K9000 controller
+The K9000 car wash machine does not actually receive any HTTP command when a session is "started." The UI and receipts will show a wash was initiated and payment was processed, but the physical machine is not triggered. This is both a product defect and a legal/consumer protection issue — customers pay for a wash that may never happen.
+
+#13 — EXPRESS CHECKOUT HAS NO AUTH MIDDLEWARE
+
+Severity: HIGH | Security | Payment Risk
+
+File: server/routes.ts:5156
+
+TypeScript
+app.post('/api/express-checkout', async (req, res) => {
+No requireAuth middleware. Combined with Issue #1 (fake success), this unauthenticated endpoint that returns { success: true } for any package purchase is callable by anyone without a session. No user identity is verified, no payment is processed. This combination is the most directly exploitable issue: any HTTP client can hit this endpoint and receive a purchase confirmation.
+
+#14 — DUPLICATE/INCONSISTENT MERCHANT FEE CALCULATION
+
+Severity: MEDIUM | Legal/Compliance | Financial Risk
+
+Files:
+
+server/nayaxFirestoreService.ts:143–149 — calculateMerchantFee() function
+server/routes.ts:6133 — parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055')
+server/routes.ts:6462–6463 — another inline calculation
+The merchant fee (5.5%) is calculated in three separate places. The canonical function in nayaxFirestoreService.ts uses a module-level constant, while routes.ts re-parses NAYAX_MERCHANT_FEE_RATE from env inline. If these diverge (e.g., env var updated but the constant isn't), invoices and ledger entries will have inconsistent fees — a compliance issue for the Israeli Tax Authority.
+
+#15 — parseInt() / parseFloat() WITHOUT VALIDATION ON USER-CONTROLLED INPUTS
+
+Severity: MEDIUM | Security | Stability
+
+File: server/routes.ts (multiple lines: 3530, 3619, 4486–4487, 4528, 4599, 5649, 5717, 5795, 6018, 6336)
+
+Examples:
+
+TypeScript
+const id = parseInt(req.params.id);                          // line 3530 — can be NaN
+const limit = req.query.limit ? parseInt(req.query.limit) : 100;  // line 4528 — no max cap
+amount: parseFloat(amount),                                   // line 5795 — no range check
+None of these check for NaN, negative values, or unreasonably large values. A request with ?limit=999999999 can OOM the server. A parseFloat of a non-numeric amount string returns NaN and will be stored in the database. The id case can silently produce bad DB queries.
+
+#16 — MISSING TESTS FOR ALL CRITICAL FINANCIAL FLOWS
+
+Severity: MEDIUM | Quality/Ops Risk
+
+Files: Only 3 test files exist for the entire system:
+
+server/tests/AuthService.test.ts
+server/tests/nayax-integration.test.ts
+client/src/__tests__/routeVerification.test.ts
+This is 14,867 lines of routes.ts plus 245 additional route files with no test coverage for:
+
+Refund workflows
+Voucher redemption and deduplication
+Loyalty tier progression
+Webhook processing
+Escrow/commission calculations
+RBAC enforcement
+Rate limit behavior
+A regression in any of these areas would go undetected until production.
+
+#17 — NOTIFICATION EMAILS NOT SENT (REJECTION, VOUCHER CANCELLATION, TEMPLATE PLACEHOLDERS NOT REPLACED)
+
+Severity: MEDIUM | Legal/Compliance | UX
+
+Files:
+
+server/routes/provider-applications.ts:1235 — // TODO: Send rejection email
+server/routes.ts:5929–5932 — // TODO: Create voucher and send email / // TODO: Mark voucher as cancelled
+server/routes.ts:8903, 8976 — content: template.content, // TODO: Replace placeholders with recipient data
+Email templates are sent with raw placeholder strings (e.g., {{first_name}}, {{booking_id}}) still in the body. Provider rejection decisions are not communicated to applicants. Israeli consumer law (Consumer Protection Law 5741-1981) likely requires documented rejection notices.
+
+#18 — NO CSRF PROTECTION ON STATE-CHANGING ENDPOINTS
+
+Severity: MEDIUM | Security
+
+CSRF protection is implemented for WebAuthn only. All POST/PUT/DELETE routes — including /api/profile, /api/user/delete, booking mutations, and wallet operations — have no CSRF token requirement. The session cookie uses SameSite: strict in production (mitigates most CSRF), but API endpoints also accept Authorization: Bearer tokens from first-party JS, and any CORS misconfiguration would re-expose the attack surface.
+
+#19 — VAT DISPLAYED/CALCULATED BUT RECEIPT WORDING MAY NOT SATISFY ISRAELI INVOICE LAW
+
+Severity: MEDIUM | Legal/Compliance
+
+Files: server/nayaxFirestoreService.ts:116–117, server/routes.ts:6462–6463, server/smartReceiptService.ts
+
+Israeli invoice law (Heshbonim Law, 5775-2015) requires that VAT registration number, the seller's address, and an itemized VAT line appear on every invoice. The smart receipt stores vatAmount and vatRateUsed in the database but there is no verification that all of these required fields appear on the PDF/rendered receipt. The invoice number format INV-YYYYMMDD-XXXX (nanoid) also needs to be sequential and traceable per Israeli Tax Authority requirements.
+
+#20 — ISRAELI CONTRACTOR COMPLIANCE ROUTES LACK INTERNAL BEARER TOKEN VERIFICATION
+
+Severity: MEDIUM | Legal/Compliance | Security
+
+File: server/routes.ts:9843
+
+TypeScript
+// TODO: Add internal ****** verification to the sensitive write routes in israeli-contractor-compliance.ts
+The Israeli contractor compliance routes (likely containing tax withholding data, contractor classifications, and regulatory filings) are noted as lacking internal auth. These routes process legally-sensitive data; unauthorized writes could create fraudulent tax records.
+
+Priority Order for Fixes
+
+Priority	Issue #	Why First
+P0 — Today	#1, #13	Fake payment returns success; no charges processed
+P0 — Today	#2	Auth bypass with public default token
+P0 — Today	#3, #4	Forgeable payment secrets, forgeable email tokens
+P0 — Today	#5	Rotate secrets, add to .gitignore
+P1 — This Week	#6	Timing attack on admin auth
+P1 — This Week	#8	Replace in-memory webhook dedup with DB/Redis
+P1 — This Week	#9	Sanitize HTML before dangerouslySetInnerHTML
+P1 — This Week	#10, #11	Station key leakage; wallet race condition
+P2 — Next Sprint	#7, #12	IDOR gap; K9000 stub in production
+P2 — Next Sprint	#14, #15	Fee inconsistency; unvalidated numeric inputs
+P3 — Backlog	#16–#20	Tests, notifications, compliance wording
+Legal/Compliance Sensitive Issues
+
+#	Issue	Law/Regulation
+#1	Fake payment confirms uncharged purchases	Consumer Protection Law (IL)
+#12	Machine not triggered but payment taken	Consumer Protection Law (IL)
+#17	Missing rejection notifications; unfilled email templates	Consumer Protection Law; GDPR-equivalent
+#19	VAT receipts may be non-compliant	Heshbonim Law 5775-2015; Israeli Tax Authority
+#20	Contractor compliance routes unprotected	Israeli tax withholding law
+Security Sensitive Issues
+
+#	Issue	Attack Vector
+#2	Auth bypass with default token	Unauthenticated access to any user account
+#3	Forgeable voucher/webhook secrets	Free washes; fake payment credits
+#4	Forgeable unsubscribe tokens	Privacy violation; account manipulation
+#5	Secrets potentially in git history	Full credential compromise
+#6	Timing attack on admin secret	Brute-force admin access
+#9	Stored XSS via legal doc HTML	Session hijack of all users on legal pages
+#10	Station key only auth for machine control	Physical machine control without identity
+You asked
+
+
+Reviewing marketplace platform for safety and reliability issues
+11m 48s
+Now I have all the verification I need. Here is the complete analysis:
+
+PetWash Marketplace — Production Safety Audit
+
+Scope: Booking flows · Escrow · Payouts · Permissions · State transitions · Invoice logic · Frontend completeness · User experience blocking
+
+FINDING 1 — GENERIC TRANSITION ENDPOINT HAS NO BOOKING OWNERSHIP CHECK
+
+Category: Missing Permission Check | Severity: CRITICAL
+
+File: server/routes/marketplace-bookings.ts:548–577
+
+TypeScript
+router.post('/:bookingId/transition', async (req, res) => {
+  const userId = req.user?.uid || req.firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+  const { newStatus, role = 'customer', reason } = req.body;  // role from body — not verified
+
+  await bookingLifecycleService.transitionStatus(
+    bookingId,
+    newStatus as BookingLifecycleStatus,
+    userId,
+    role as 'customer' | 'provider' | 'system' | 'admin',
+    reason
+  );
+Any authenticated user who knows a bookingId can call this endpoint and drive the booking to any valid next state. There is no check that userId is the customer or provider on the booking. The role field is accepted verbatim from the request body — a customer can send role: "admin". BookingLifecycleService.transitionStatus() validates the state machine transitions but never verifies the actor's identity against the booking record.
+
+Impact: User A can advance or cancel User B's booking. A provider can push any customer's booking to disputed. Any authenticated user can impersonate admin role in the audit log.
+
+Fix: Before calling transitionStatus, fetch the booking and assert booking.customerId === userId || booking.providerId === userId (or admin role from Firebase claims). Derive actorRole from the booking record itself, not from the request body.
+
+FINDING 2 — CUSTOMER CAN SELF-COMPLETE BOTH SIDES OF A BOOKING (TRIGGERS ESCROW RELEASE)
+
+Category: Broken State Transition | Race Condition | Severity: CRITICAL
+
+File: server/routes/marketplace-bookings.ts:630–665
+
+TypeScript
+router.post('/:bookingId/complete', async (req, res) => {
+  const { role = 'provider' } = req.body;          // ← controlled by caller
+
+  const targetStatus = role === 'provider'
+    ? 'provider_completion_review'
+    : 'owner_completion_review';
+
+  await bookingLifecycleService.transitionStatus(bookingId, targetStatus, userId, role, ...);
+
+  const ownerReviewed   = booking?.statusHistory.some(h => h.toStatus === 'owner_completion_review');
+  const providerReviewed = booking?.statusHistory.some(h => h.toStatus === 'provider_completion_review');
+
+  if (ownerReviewed && providerReviewed) {
+    await bookingLifecycleService.transitionStatus(bookingId, 'completed', 'system', 'system', ...);
+    // ↑ This triggers scheduleEscrowRelease → payout in 72h
+  }
+Two separate exploits here:
+
+Same user calls /complete twice — once with role: "customer", once with role: "provider". Both status history entries are created with changedByUserId = userId. The check at line 654 only looks at whether both status entries exist, not whether different users made them. One person can set both flags and auto-trigger completion + escrow release.
+
+Compound with Finding 1 — The /transition endpoint permits in_progress → owner_completion_review, then owner_completion_review → completed directly (the transition map allows this). So a customer can skip provider review entirely: call /transition with newStatus: "owner_completion_review", then call /transition again with newStatus: "completed". Both are valid transitions per BOOKING_STATUS_TRANSITIONS.
+
+File: shared/schema.ts
+
+TypeScript
+owner_completion_review: ["completed", "disputed"],  // "completed" is a valid next state
+Fix: The statusHistory completion check must verify that the owner_completion_review entry was created by booking.customerId and the provider_completion_review entry was created by booking.providerId. The /transition endpoint must also block non-admin access to the completed terminal state — it should only be set by the system after both parties have reviewed.
+
+FINDING 3 — TWO PARALLEL ESCROW SYSTEMS, NOT SYNCHRONIZED
+
+Category: Escrow Risk | Payout Risk | Severity: CRITICAL
+
+The codebase has two completely separate escrow implementations operating concurrently:
+
+System 1	System 2
+Storage	Firestore escrow_payments collection	PostgreSQL escrowHoldings table
+Service	server/services/EscrowService.ts	server/services/BookingLifecycleService.ts
+Used by	server/routes/bookings.ts, server/routes/booking-requests.ts	server/routes/marketplace-bookings.ts
+Auto-release	backgroundJobs.ts:435 → EscrowService.autoReleaseExpiredHolds()	backgroundJobs.ts:135 → ProviderPayoutService.autoReleaseExpiredEscrows()
+Status values	held → released → refunded → disputed	pending_payment → releasing → released
+Both cron jobs run independently. There is no cross-reference between them. A booking that uses the new marketplace-bookings.ts flow writes to escrowHoldings (Postgres). If someone queries via the /api/escrow/:id routes (which use EscrowService pointing at Firestore), they get 404 for that escrow — the records don't exist in Firestore.
+
+File: server/backgroundJobs.ts:135–139 (Postgres path):
+
+TypeScript
+if (await this.acquireLock('autoReleaseEscrows')) {
+  await this.autoReleaseEscrowPayouts();   // → ProviderPayoutService → superAppPayouts table
+File: server/backgroundJobs.ts:435–438 (Firestore path):
+
+TypeScript
+if (await this.acquireLock('escrowAutoRelease')) {
+  await this.autoReleaseExpiredEscrow();   // → EscrowService → Firestore escrow_payments
+These run under different lock keys so they can execute simultaneously. If a booking somehow ends up in both stores (e.g., via code path overlap), it could be released twice.
+
+Fix: Consolidate to a single escrow store. Until then, document which booking types use which store and ensure the auto-release jobs target only their respective bookings.
+
+FINDING 4 — SLOT NOT RELEASED WHEN PAYMENT FAILS
+
+Category: User Blocking | Broken State | Severity: HIGH
+
+File: server/routes/nayax-webhooks.ts:605–647
+
+TypeScript
+} else if (payload.event === 'payment.failed') {
+  await db.update(bookings)
+    .set({ status: 'payment_failed', paymentStatus: 'failed', updatedAt: new Date() })
+    .where(eq(bookings.id, payload.bookingId));
+  // ← NO slot release here
+When payment fails, the booking is marked payment_failed but the availabilitySlots record that was set to status: 'booked' during checkout (marketplace-bookings.ts:274) is never returned to status: 'available'.
+
+Compare: when the booking transaction itself fails, the slot IS correctly reverted (marketplace-bookings.ts:364–366):
+
+TypeScript
+// ON TRANSACTION FAILURE (correct):
+await db.update(availabilitySlots)
+  .set({ status: 'available', lockToken: null, lockExpiresAt: null, updatedAt: new Date() })
+  .where(eq(availabilitySlots.id, slotId));
+But on Nayax payment.failed webhook (after checkout succeeded but payment declined) — no such revert exists. The slot stays booked permanently. The same gap exists for payment.expired and payment.cancelled events (lines 649–710), which correctly revert booking to draft but also do not release the slot.
+
+Impact: The customer's chosen time slot remains locked. They cannot re-book it, and no other customer can book it either. The provider's calendar shows a confirmed booking that never happened.
+
+Fix: In the payment.failed, payment.expired, and payment.cancelled webhook handlers, add an UPDATE availabilitySlots SET status = 'available' WHERE bookingId = :bookingId.
+
+FINDING 5 — NEW MARKETPLACE BOOKINGS HAVE NO TIMEOUT/EXPIRY
+
+Category: User Blocking | Severity: HIGH
+
+The server/jobs/booking-expiry.ts job expires stale bookings only for older tables:
+
+TypeScript
+// Line 46: walk_my_pet — expires after 2 hours
+eq(walkBookings.status, 'pending_provider'),
+lt(walkBookings.createdAt, expiryWindow)   // expiryWindow = 2h ago
+
+// Line 88: sitter_suite — expires after 4 hours  
+eq(sitterBookings.status, 'pending_provider'),
+
+// Line 145: trainer_bookings — expires after 45 minutes
+WHERE status IN ('pending', 'payment_pending')
+The new bookings table (used by marketplace-bookings.ts and BookingLifecycleService.ts) is not in any expiry job. A booking stuck in inquiry, quote_sent, pending_provider, or deposit_pending will remain there indefinitely.
+
+Consequences:
+
+Customer's payment held in escrow forever if provider ignores the booking request
+Provider's slot stays locked permanently (compounded by Finding 4)
+No automatic refund trigger for abandoned bookings
+Customer has no self-service way to cancel after payment (only the /cancel endpoint exists, but there is no UI-level fallback timer)
+Fix: Add the bookings table to the expiry job with appropriate timeouts (e.g., 24h for quote_sent, 48h for deposit_pending if no activity).
+
+FINDING 6 — PROVIDER OWNERSHIP CHECK ON AVAILABILITY UPDATES IS EXPLICITLY COMMENTED OUT
+
+Category: Missing Permission Check | Severity: HIGH
+
+File: server/routes/marketplace-bookings.ts:1344–1346
+
+TypeScript
+// For now, allow any authenticated user to update for testing
+// In production, enforce ownership check
+Any authenticated user (including customers) can modify any provider's availability calendar. This was left as a testing shortcut and never hardened for production. A customer could mark a competitor provider's slots as unavailable, or a provider could block another provider's calendar.
+
+Fix: Fetch the provider record and assert provider.userId === req.user.uid before allowing availability changes.
+
+FINDING 7 — INVOICE GENERATION ENDPOINT HAS NO AUTHENTICATION
+
+Category: Missing Permission Check | Legal/Compliance | Severity: HIGH
+
+File: server/routes/contractor-invoices.ts:14–60
+
+TypeScript
+router.get("/:commissionId/generate", async (req, res) => {
+  // No requireAuth, no requireAdmin, no ownership check
+  const { commissionId } = req.params;
+  const [commission] = await db.select()...where(eq(providerCommissions.commissionId, commissionId))...
+  const pdfBuffer = await IsraeliInvoiceGenerator.generateInvoice(commissionId, language);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.send(pdfBuffer);
+Also: router.get("/:commissionId/preview", ...) at line 66 — same issue.
+
+Anyone can download a tax invoice PDF for any provider by guessing or enumerating commissionId values. These PDFs contain the provider's full name, Israeli tax ID (VAT number), banking details, and earnings breakdown. This is a data privacy violation under Israeli Privacy Protection Law and GDPR-equivalent regulations.
+
+Fix: Add requireAuth middleware and verify commission.providerId === req.user.uid (or admin role).
+
+FINDING 8 — CANCELLATION ENDPOINT DOESN'T VERIFY THE CALLER IS A PARTY TO THE BOOKING
+
+Category: Missing Permission Check | Broken State | Severity: HIGH
+
+File: server/routes/marketplace-bookings.ts:675–698
+
+TypeScript
+router.post('/:bookingId/cancel', async (req, res) => {
+  const userId = req.user?.uid || req.firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+  const { reason, role = 'customer' } = req.body;  // ← no ownership check
+
+  await bookingLifecycleService.transitionStatus(bookingId, 'cancelled', userId, role, reason);
+Same root cause as Finding 1. Any authenticated user can cancel any booking they know the ID of.
+
+Same problem exists on /confirm (lines 579–599): role is taken from body without verifying the caller is actually the provider or customer on the booking.
+
+Fix: Same as Finding 1 — fetch booking, assert booking.customerId === userId || booking.providerId === userId, derive role from the record.
+
+FINDING 9 — ESCROW TIMER SET AT BOOKING CREATION, NOT AT SERVICE COMPLETION (POTENTIAL EARLY RELEASE)
+
+Category: Payout / Escrow Risk | Severity: HIGH
+
+File: server/routes/marketplace-bookings.ts:335–353
+
+TypeScript
+// At checkout (booking creation):
+releaseEligibleAt = new Date();
+releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72);  // NOW + 72h
+
+await tx.insert(escrowHoldings).values({
+  status: 'pending_payment',
+  releaseEligibleAt,   // ← Set at checkout time
+  ...
+});
+File: server/services/BookingLifecycleService.ts:486–500
+
+TypeScript
+// At service completion:
+private async scheduleEscrowRelease(bookingId: string): Promise<void> {
+  const releaseTime = new Date(Date.now() + ESCROW_HOURS * 60 * 60 * 1000);  // NOW + 72h again
+
+  await db.update(escrowHoldings)
+    .set({
+      status: 'releasing',           // ← Status changes to 'releasing' only here
+      releaseEligibleAt: releaseTime,
+    })
+The auto-release cron queries status = 'releasing' AND releaseEligibleAt <= NOW (BookingLifecycleService.ts:555). Since the initial status is pending_payment (not releasing), the first releaseEligibleAt = NOW+72h set at checkout is harmless — the cron won't pick it up.
+
+However: the status never progresses from pending_payment to held in the new system. When a Nayax webhook confirms payment (payment.succeeded), the booking status changes but the escrowHoldings.status stays pending_payment. It only becomes releasing when scheduleEscrowRelease runs on booking completion. This means the escrow is in pending_payment for the entire booking duration — there is no intermediate held state update to confirm payment was actually received. If the webhook never arrives (network issue), the escrow stays pending_payment forever with no monitoring.
+
+Fix: On payment.succeeded webhook, update escrowHoldings.status from pending_payment to held to confirm funds are secured. Add a monitoring alert for escrow records stuck in pending_payment for more than 30 minutes.
+
+FINDING 10 — DUPLICATE BOOKING STATUS ENUMS: THREE PARALLEL STATE SYSTEMS
+
+Category: Broken State Transitions | Architecture Risk | Severity: HIGH
+
+shared/schema.ts defines three independent booking status enumerations:
+
+Enum	Location	Values
+bookingStatusEnum	line 7743	draft, pending_payment, pending_provider, confirmed, declined, in_progress, completed, cancelled, disputed, refunded
+bookingLifecycleStatusEnum	line 11146	inquiry, quote_sent, quote_expired, deposit_pending, deposit_received, owner_confirmed, provider_confirmed, in_progress, completed, cancelled, refunded, disputed
+octopusBookingStatusEnum	line 11787	(separate set, used by octopus-engine.ts)
+These are used by different route files with no cross-mapping. The booking-requests.ts system uses pending_provider and accepted. The marketplace-bookings.ts system uses lifecycle states. When a customer checks their booking from a UI that queries one system but the booking was created through another, the status will be unrecognizable or null.
+
+File: server/routes/booking-requests.ts (uses bookingStatusEnum states — pending, accepted) File: server/routes/marketplace-bookings.ts (uses bookingLifecycleStatusEnum states — inquiry, quote_sent, etc.)
+
+A customer booking created via booking-requests.ts will never appear in marketplace-bookings.ts queries, and vice versa. The UI must know which endpoint to call based on how the booking was created — this is not currently tracked.
+
+Fix: Unify on a single booking state model. In the interim, ensure all customer-facing booking queries fan out to both tables and normalize the status values before returning to the frontend.
+
+FINDING 11 — PROVIDER COMPLETION REVIEW → COMPLETED IS A DIRECT ONE-PARTY TRANSITION
+
+Category: Broken State Transition | Escrow Risk | Severity: HIGH
+
+File: shared/schema.ts
+
+TypeScript
+BOOKING_STATUS_TRANSITIONS = {
+  ...
+  provider_completion_review: ["completed", "disputed"],   // ← provider alone can go to "completed"
+  owner_completion_review:    ["completed", "disputed"],   // ← customer alone can go to "completed"
+Both owner_completion_review and provider_completion_review list completed as a valid next state. Combined with Finding 1 (no ownership check on /transition), either party can push the booking from their own review state directly to completed — bypassing the other party's acknowledgment entirely.
+
+The two-party check in the /complete endpoint (lines 654–665) is correct logic, but it only applies when the /complete endpoint is used. The generic /transition endpoint bypasses this entirely.
+
+Fix: Remove completed from both *_completion_review allowed transitions in BOOKING_STATUS_TRANSITIONS. Make completed only reachable by the system actor (internal code) once both reviews are confirmed.
+
+FINDING 12 — /api/express-checkout RETURNS SUCCESS WITHOUT PROCESSING PAYMENT
+
+Category: Frontend Looks Complete but Backend Is Stub | Legal/Compliance | Severity: CRITICAL
+
+File: server/routes.ts:5156–5197
+
+TypeScript
+app.post('/api/express-checkout', async (req, res) => {
+  if (paymentMethod === 'credit_card') {
+    // TODO: Integrate with real payment gateway
+    // For now, just return success
+    res.json({ success: true, message: "Express checkout successful", price: pkg.price });
+  }
+No auth required. No payment charged. No escrow created. No database record written. Any caller — including a frontend "Buy Now" button — receives { success: true } and price: pkg.price (the amount they should have paid) without any money being processed. If any UI component calls this endpoint and shows a success screen, the customer believes they have purchased a service that was never paid for.
+
+Fix: Remove this endpoint or replace it with the real Nayax checkout flow. Do not ship a stub payment endpoint in production.
+
+FINDING 13 — INVOICE NUMBER IS NOT SEQUENTIAL (COMPLIANCE RISK)
+
+Category: Misleading Invoice Logic | Legal/Compliance | Severity: MEDIUM
+
+File: server/routes/marketplace-bookings.ts:373–376
+
+TypeScript
+const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+const invoiceNumber = `INV-${datePart}-${nanoid(6).toUpperCase()}`;
+// Example: INV-20260403-A7K9M2
+Israeli invoice law (Heshbonim Law 5775-2015) requires invoices to be numbered sequentially and without gaps. A random nanoid(6) suffix — even prefixed with a date — does not satisfy this requirement. The Israeli Tax Authority may reject non-sequential invoice numbering during a tax audit. If two invoices happen to generate the same nanoid(6) on the same date, there is also a collision risk producing duplicate invoice numbers.
+
+Fix: Use an auto-incrementing database sequence or a daily counter (e.g., INV-20260403-0001, INV-20260403-0002) with a unique constraint to prevent collisions.
+
+FINDING 14 — INVOICE AMOUNT IS THE PLATFORM COMMISSION, NOT THE CUSTOMER-PAID AMOUNT (WITHOUT CLEAR LABELING)
+
+Category: Misleading Invoice Logic | Legal/Compliance | Severity: MEDIUM
+
+File: server/services/IsraeliInvoiceGenerator.ts:159–163
+
+TypeScript
+const commissionTotal = parseFloat(commission.commissionAmount); // e.g. ₪150 (15% of ₪1000)
+const vatAmount = commissionTotal * (18 / 118);                  // back-calc VAT
+const netAmount = commissionTotal - vatAmount;
+
+doc.text(`₪${commissionTotal.toFixed(2)}`, ...)   // Shows ₪150, not ₪1000
+The PDF invoice the provider receives shows only PetWash's commission (₪150) as the "total to pay." The full service amount the customer paid (₪1000) does not appear. This is correct from a commission-invoice perspective but only if the invoice header clearly states it is a commission invoice from PetWash to the provider. If the provider shows this invoice to their own customers or accountant as a service receipt, the amounts are completely misleading.
+
+The Israeli Tax Authority also requires that a commission invoice reference the underlying service transaction. No such reference number appears in the generated invoice.
+
+Fix: Add a prominent header: "Commission Invoice — PetWash Ltd." Add a line showing the full service amount and the commission rate applied. Add the original booking ID as a reference on the invoice.
+
+FINDING 15 — DISPUTE FLOW HAS NO ADMIN RESOLUTION UI OR SLA ENFORCEMENT
+
+Category: User Blocking | Severity: MEDIUM
+
+The dispute mechanism sets autoReleaseBlocked: true on the Firestore escrow record and logs a row to Google Sheets. There is no:
+
+Admin dashboard endpoint to list open disputes
+Dedicated API endpoint for admin to resolve a dispute (set status to completed or refunded)
+SLA timer or escalation logic
+Notification to admin when a dispute is filed
+File: server/routes/escrow.ts:154–203 — dispute is filed, Google Sheets row appended, funds frozen.
+
+The only way to unfreeze a disputed escrow is via the admin manual override endpoint or by waiting for an admin to directly update Firestore. If the admin Sheets process isn't monitored, disputed funds can remain frozen indefinitely — blocking both customer refund and provider payout.
+
+Fix: Implement a POST /api/admin/disputes/:escrowId/resolve endpoint with requireAdmin middleware. Add a cron alert if a dispute is unresolved after N days.
+
+FINDING 16 — BOOKING EXPIRY JOB DOES NOT COVER THE MAIN MARKETPLACE BOOKING TABLE
+
+Category: User Blocking | Severity: MEDIUM
+
+File: server/jobs/booking-expiry.ts:43–135
+
+The job handles:
+
+walkBookings table (2h timeout)
+sitterBookings table (4h timeout)
+trainer_bookings table (45m timeout)
+Not handled:
+
+bookings table (used by marketplace-bookings.ts and BookingLifecycleService.ts) — no timeout at any state
+A booking in inquiry or quote_sent status in the main marketplace table will never auto-expire. The provider can ignore it indefinitely. The customer has no way to know if the provider saw the request, and no automatic refund is issued.
+
+RECOMMENDED FIX ORDER
+
+Priority	Finding	Why First
+P0 — Today	#1, #8	Any user can cancel or advance any booking — immediate financial and UX damage
+P0 — Today	#2, #11	Customer can self-complete booking and trigger escrow release
+P0 — Today	#12	Fake express-checkout endpoint must be removed or blocked
+P1 — This Week	#4	Slots permanently locked after failed payment — blocks re-booking
+P1 — This Week	#7	Unauthenticated invoice download — privacy law violation
+P1 — This Week	#6	Any user can modify any provider's availability calendar
+P2 — Next Sprint	#3	Dual escrow systems risk double-release or missed payout
+P2 — Next Sprint	#5, #16	Marketplace bookings stuck forever with no expiry
+P2 — Next Sprint	#9	Escrow never confirmed as "held" after payment succeeds
+P3 — Next Sprint	#10	Three separate booking state machines — unify or map
+P3 — Backlog	#13, #14	Invoice compliance — sequential numbers, proper labeling
+P3 — Backlog	#15	Dispute admin resolution tooling
+You asked
+
+
+Reviewing audit findings for security and marketplace safety
+10m 34s
+Now I have everything needed. Here is the complete security review:
+
+Security Review — PetWash Marketplace
+
+CRITICAL
+
+C-1 — Express Checkout Returns Payment Success Without Processing Any Payment
+
+File: server/routes.ts:5179–5188
+
+TypeScript
+// For credit card payments, simulate success (integrate with real payment gateway later)
+if (paymentMethod === 'credit_card') {
+  // TODO: Integrate with real payment gateway
+  // For now, just return success
+  res.json({ success: true, message: "Express checkout successful", packageId, ... });
+No auth required. No payment charged. No database record written. No escrow created. Any caller — including any connected UI — receives { success: true } with the package price in the response body. If any frontend component treats this as a completed purchase, real services will be unlocked without payment.
+
+Action: Disable endpoint immediately. Return 503 with "endpoint disabled" until replaced with the real Nayax checkout flow.
+
+C-2 — Hardcoded Fallback Credentials in Nayax Payment Service
+
+File: server/nayaxService.ts:70–72
+
+TypeScript
+private static readonly API_KEY     = process.env.NAYAX_API_KEY     || 'test_api_key';
+private static readonly NAYAX_SECRET = process.env.NAYAX_SECRET     || 'test_secret';
+private static readonly WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || 'webhook_secret';
+This class is actively called from server/routes/gift-cards.ts:313 for real gift card purchases. If any of the three env vars are missing in a deployment, the service silently falls back to these strings — which means it would attempt Nayax API calls with known-public credentials or fail in an unpredictable and unmonitored way. More importantly the webhook secret fallback ('webhook_secret') would cause signature validation to pass for any attacker who knows this literal string.
+
+Action: Remove all three fallbacks. Hard-fail at startup if any are absent in production.
+
+C-3 — Webhook IP Allowlist Fails Open When Env Var Is Not Set
+
+Files: server/middleware/ipAllowlist.ts:157–163, server/routes/nayax-webhooks.ts:49–53
+
+TypeScript
+// ipAllowlist.ts
+if (process.env.NODE_ENV === 'development' || allowedCIDRs.length === 0) {
+  logger.warn(`IP allowlist not configured - allowing all IPs`);
+  return next();   // ← ALL IPs ALLOWED
+}
+createIPAllowlist reads process.env.NAYAX_ALLOWED_IPS directly. If that variable is not set, allowedCIDRs is empty, the length === 0 branch fires, and the middleware calls next() in production — allowing any IP to send webhook events. The fallback array defined in nayax-webhooks.ts:49 is only a local constant and is never read by the middleware. The net result: if NAYAX_ALLOWED_IPS is absent from the deployment environment, the IP guard is silently disabled in production.
+
+Action: Change the fail condition to hard-block in production when the env var is missing (return res.status(403)). Separately, verify NAYAX_ALLOWED_IPS is set in the production environment today.
+
+C-4 — Webhook Deduplication Is In-Memory Only (Replay Attacks Survive Restarts)
+
+File: server/routes/nayax-webhooks.ts:55–56
+
+TypeScript
+// In-memory deduplication cache (use Redis in production)
+const processedWebhooks = new Set<string>();
+Every server restart clears this Set. A Nayax webhook replayed within the TTL window (1 hour) after a restart will be processed again — duplicate payment confirmations, duplicate escrow creation, duplicate loyalty points. With Cloud Run or any horizontally scaled deployment each instance has its own in-memory Set, so the same event can hit two instances simultaneously and both process it.
+
+Action: Move deduplication to the database. Insert the event ID into a processed_webhook_events table inside the same transaction as the business logic, with a unique constraint.
+
+C-5 — Unauthenticated Contractor Invoice Download (IDOR + Privacy Law Violation)
+
+File: server/routes/contractor-invoices.ts:14, 66
+
+TypeScript
+router.get("/:commissionId/generate", async (req, res) => {
+  // No requireAuth, no ownership check
+  const { commissionId } = req.params;
+  const pdfBuffer = await IsraeliInvoiceGenerator.generateInvoice(commissionId, language);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.send(pdfBuffer);
+Both /generate and /preview endpoints have zero authentication. The PDF contains the provider's legal name, Israeli tax ID (VAT number), national insurance number, and earnings breakdown. This is a violation of the Israeli Privacy Protection Law 5741-1981 and exposes PII to any unauthenticated internet request with a guessable commission ID.
+
+Action: Add requireAuth immediately. Verify req.user.uid === commission.providerId before serving the PDF.
+
+C-6 — Contractor Onboarding Accepts Bank Account Details Without Authentication
+
+File: server/routes/contractor-onboarding.ts:327–350
+
+TypeScript
+router.post("/bank-details", async (req, res) => {  // ← No requireAuth
+  const { contractorId, bankDetails } = req.body;
+  // contractorId comes from request body — not verified against session
+  const bankRecord = { contractorId, accountNumber: encryptBankAccount(...) };
+  await db.insert(contractorBankDetails).values(bankRecord);
+None of the nine contractor onboarding endpoints (/profile, /tax-profile, /bank-details, /insurance, /background-check, /service-area, /capability) have any authentication middleware. The contractorId is taken from the request body — anyone can submit bank account details for any contractor by sending a known or guessed contractorId. Additionally, if DOCUMENT_ENCRYPTION_KEY is not set, bank accounts are stored in plaintext (confirmed by the logger.warn fallback at line 35).
+
+Action: Add requireAuth and ownership assertion (req.user.uid === contractorId) to all nine endpoints. Hard-fail on missing DOCUMENT_ENCRYPTION_KEY.
+
+C-7 — Tax ID and National Insurance Numbers Stored in Plaintext (Acknowledged in Code)
+
+File: server/services/IsraeliContractorCompliance.ts:187–190
+
+TypeScript
+// ⚠️ SECURITY WARNING: Tax IDs and National Insurance numbers are stored in plaintext
+// TODO PRODUCTION: Encrypt sensitive PII (taxId, nationalInsuranceNumber) at rest using AES-256
+// TODO PRODUCTION: Implement field-level encryption for GDPR/Israeli Privacy Law compliance
+// TODO PRODUCTION: Redact sensitive fields in API responses (show only last 4 digits)
+The code inserts these values to the providerTaxCompliance table without encryption. These are government identity numbers — the highest sensitivity class of PII under Israeli law. The TODO comment confirms this is known and unresolved.
+
+Action: Apply the same AES-256-GCM field encryption already used for bank accounts. This requires a migration to re-encrypt existing rows.
+
+HIGH
+
+H-1 — Admin Secret Compared with === in Nine Route Files (Timing Attack)
+
+Files:
+
+server/routes/booking-trace.ts:50
+server/routes/case-actions.ts:49
+server/routes/case-queue.ts:85
+server/routes/case-reports.ts:24
+server/routes/teams.ts:38
+server/routes/manager.ts:34
+server/routes/financial-approvals.ts:28
+server/routes/station-dashboard.ts:47
+server/middleware/stationAuth.ts:35
+server/routes/station-settlements.ts:28
+server/routes.ts:508
+TypeScript
+if (req.headers['x-admin-secret'] === ADMIN_SEC)  // ← timing-vulnerable
+The correct implementation already exists in server/middleware/adminAuth.ts:24 using crypto.timingSafeEqual after SHA-256 hashing, and it is used in server/routes/finance/payout-reconciliation.ts and server/routes/finance/manual-adjustment.ts. Every other admin route bypasses it. A timing attack against a 16–32 character ASCII secret is practical over a low-latency internal network or with statistical averaging over repeated attempts.
+
+Action: Replace every === ADMIN_SEC / === process.env.ADMIN_SECRET comparison with the existing timingSafeAdminSecretMatch(req) utility. This is a one-line change per file.
+
+H-2 — ADMIN_SECRET Falls Back to COOKIE_SECRET in prestige-pass.ts
+
+File: server/routes/prestige-pass.ts:2337
+
+TypeScript
+const adminSecret = process.env.ADMIN_SECRET || process.env.COOKIE_SECRET;
+if (!adminSecret || provided !== adminSecret) { ... }
+The session cookie signing secret is being used as an admin authentication secret. These serve entirely different trust models. If ADMIN_SECRET is not set, the admin endpoint accepts the session key as credentials — meaning anyone who can read or derive the session cookie signing key gains admin access. This guard also uses !== (no timing safety).
+
+Action: Remove the COOKIE_SECRET fallback. Hard-fail if ADMIN_SECRET is not set.
+
+H-3 — Provider List Endpoints Return All Firestore Fields Including Potential PII
+
+File: server/routes/providers.ts:12, 42, 82, 103, 131+
+
+TypeScript
+// All list and detail endpoints do:
+const sitters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+All five unauthenticated endpoints (/sitters, /sitters/:id, /walkers, /walkers/:id, /drivers) spread the entire Firestore document into the API response. The contractor onboarding process stores phoneE164, email, taxId, taxIdType, and — if DOCUMENT_ENCRYPTION_KEY is missing — raw bank account details in those same Firestore profiles. This data is being served publicly to any client.
+
+Action: Define an explicit safe-fields allowlist for public responses. Never use ...doc.data() for public endpoints.
+
+H-4 — Voucher Redemption Accepts amountIls from Request Body Without Server-Side Validation
+
+File: server/routes/unified-vouchers.ts:208, 257
+
+TypeScript
+const result = await redeemVoucher({
+  amountIls: req.body.amountIls,   // ← from untrusted client
+  ...
+});
+Both the station-side and web-side redemption endpoints pass the client-supplied amountIls directly to the redemption service. If the redemption service applies this amount without checking it against the voucher's face value, a customer could redeem a voucher for more than its denomination. The impact depends on whether redeemVoucher validates the amount internally (the function is in server/nayaxFirestoreService.ts — verification required).
+
+Action: Remove amountIls from the request body. The server should look up the voucher's denomination by voucher ID and use that value exclusively.
+
+H-5 — nayax-monyx-events.ts Webhook Signature Validation Skipped When Secret Is Empty
+
+File: server/routes/nayax-monyx-events.ts:26, 160
+
+TypeScript
+const WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || '';  // empty string if unset
+
+if (WEBHOOK_SECRET && !validateSignature(rawBody, sigHeader)) {  // ← skipped entirely if empty
+  return res.status(401).json({ error: 'Invalid signature' });
+}
+If NAYAX_WEBHOOK_SECRET is not present in the environment, the entire signature block is skipped and any HTTP request to this endpoint is processed as a valid webhook event. This endpoint handles loyalty point awards and financial events — an attacker who discovers the URL can award arbitrary points or trigger financial operations.
+
+Action: Invert the condition: if !WEBHOOK_SECRET, reject with 500 (misconfiguration), not accept. Same fix applies to the || '' default in nayax-webhooks.ts:48.
+
+H-6 — K9000 Wash Bay Activation Is a Stub — No Hardware Commands Sent
+
+File: server/routes/k9000.ts:266–276
+
+TypeScript
+// TODO: In production, send HTTP POST to K9000 controller
+// const machine_url = `http://${clientIP}/api/start/${machineId}`;
+// const response = await fetch(machine_url, { ... });
+The entire activation block is commented out. When a customer pays for a car wash and the backend confirms payment, no command is sent to the physical wash bay. The session is logged as started in the database, but the actual machine is never activated. Customers pay but receive no service.
+
+Note: This may be intentional during hardware integration phase, but it means the payment flow should also be disabled until hardware activation is implemented. If the endpoint is reachable by paying customers today, this is a critical service delivery failure.
+
+H-7 — Missing Booking Ownership Check on /complete, /confirm, /cancel Endpoints
+
+File: server/routes/marketplace-bookings.ts:579–698
+
+TypeScript
+const { role = 'provider' } = req.body;          // role from client body, not verified
+await bookingLifecycleService.transitionStatus(bookingId, targetStatus, userId, role, ...);
+// booking.providerId never checked against userId
+Any authenticated user can mark any booking as complete, confirm, or cancel it, as long as they know the booking ID. The role is provided by the caller — a customer sends role: "provider" to impersonate the provider side. These three endpoints share the same root cause as the generic /transition endpoint. (Covered in the marketplace audit but included here as a security finding because it directly enables unauthorized financial actions.)
+
+H-8 — Multiple Admin Endpoints Use Different Header Names (x-admin-secret vs x-admin-key)
+
+Files: server/routes/marketplace-bookings.ts:1481, all others
+
+TypeScript
+// marketplace-bookings.ts:
+const adminKey = req.headers['x-admin-key'];       // different header
+if (adminKey !== process.env.ADMIN_API_KEY) { ... } // different env var, no timing safety
+Two separate admin authentication schemes coexist. This creates maintenance risk (a developer adds a new admin route using the wrong header name and it accepts neither secret), confusion about which secret to rotate, and inconsistent timing safety. The x-admin-key + ADMIN_API_KEY combination in marketplace-bookings.ts is also using plain !==.
+
+MEDIUM
+
+M-1 — Caller-Controlled role Parameter Accepted from Request Body/Query in Multiple Routes
+
+Files:
+
+server/routes/marketplace-bookings.ts:515, 556, 587, 638, 683 — req.body.role and req.query.role
+server/routes/booking-requests.ts:505 — req.query.role
+server/routes/sitter-suite.ts:1124 — req.query.role
+server/routes/loyalty.ts:138 — req.body.role
+The role value derived from the request is used to select what action to take (e.g., which booking state to transition to, what loyalty tier to apply). In none of these cases is the supplied role verified against the authenticated user's actual role in the booking or user record.
+
+M-2 — Email Addresses Logged in Plaintext
+
+Files:
+
+server/routes/documents.ts:386, 646 — req.firebaseUser?.email in info log
+server/routes/pin-auth.ts:169, 199, 400, 494, 571, 902, 977 — email in info log
+server/routes/google-services.ts:730, 765 — userData?.email in info log
+Email is PII under Israeli Privacy Protection Law and GDPR-equivalent obligations. Log aggregation services (Datadog, Elastic, GCP Logging) store these indefinitely. The risk is log exfiltration exposing a user database. Replace with user ID or a hashed token in log entries.
+
+M-3 — Webhook Event ID Deduplication Window Is Only 1 Hour
+
+File: server/routes/nayax-webhooks.ts:57
+
+TypeScript
+const WEBHOOK_CACHE_TTL = 3600000; // 1 hour
+Beyond the in-memory issue (C-4), even if this were persistent, 1 hour is too short. Nayax can retry webhook delivery for up to 24 hours on failure. An event delivered at hour 2 of a 24-hour retry cycle would not be in the cache. Idempotency keys must persist for at least 24 hours beyond the initial delivery.
+
+M-4 — routes.ts Main Admin Guard Uses Plain ===
+
+File: server/routes.ts:508
+
+TypeScript
+if (CONFIGURED_ADMIN_SECRET && adminSecretHeader === CONFIGURED_ADMIN_SECRET) {
+  return next();  // ← plain === on critical auth path
+}
+This is the central RBAC guard that protects all internal API routes. It already imports timingSafeAdminSecretMatch (line 296 and 3330) but doesn't use it on line 508. This is the highest-traffic admin check in the codebase.
+
+M-5 — Synthetic Test Endpoint Hardcodes a Real-Format Password
+
+File: server/routes/synthetic.ts:103
+
+TypeScript
+const testPassword = process.env.SYNTHETIC_TEST_PASSWORD || 'SyntheticTest123!';
+The fallback is a valid password format (upper, lower, digit, special). If committed to version control history and the synthetic account ever exists in production (e.g., after a NODE_ENV check failure), this is a known credential. It also sets a bad precedent of committing password literals.
+
+M-6 — Super-App Bookings Provider Verification Is a TODO
+
+File: server/routes/super-app-bookings.ts:214
+
+TypeScript
+if (booking.userId !== userId) {
+  // Check if user is the provider
+  // TODO: Add provider lookup to verify ownership  ← NOT IMPLEMENTED
+  return res.status(403).json({ error: 'Unauthorized access to booking' });
+}
+The code blocks non-customer access but never grants access to the legitimate provider. A provider trying to view a booking they own is locked out. This appears at five endpoints: /confirm, /cancel, /payment-intents, /complete, and the GET detail endpoint.
+
+M-7 — Bank Account Stored in Plaintext When DOCUMENT_ENCRYPTION_KEY Is Not Set
+
+File: server/routes/contractor-onboarding.ts:33–36
+
+TypeScript
+const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+if (!masterKey || masterKey.length < 32) {
+  logger.warn('[ContractorOnboarding] DOCUMENT_ENCRYPTION_KEY not set — bank account stored unencrypted');
+  return plaintext; // graceful degradation, but warn
+}
+"Graceful degradation" for an Israeli bank account number (which includes routing code + account number) is not acceptable. The encryption should fail hard and return 500 to the caller rather than silently store PII in plaintext. Check whether the production database currently contains unencrypted bank accounts.
+
+Requires data repair if any rows were inserted without the key being set.
+
+Summary: What to Disable Before Anything Else
+
+Item	Action
+POST /api/express-checkout	Disable immediately — return 503
+GET /api/contractor-invoices/:id/generate and /preview	Add requireAuth + ownership check
+All 9 contractor-onboarding endpoints	Add requireAuth + ownership check
+NAYAX_API_KEY, NAYAX_SECRET, NAYAX_WEBHOOK_SECRET env vars	Verify set in production; remove hardcoded fallbacks from code
+NAYAX_ALLOWED_IPS env var	Verify set in production; invert fail-open logic to fail-closed
+DOCUMENT_ENCRYPTION_KEY env var	Verify set; hard-fail if absent; audit DB for plaintext bank accounts
+You asked
+Go over all database , look for bugs errors , wrong routes , security gaps , authentication process , biometrics, iOS android , chrome safari perfect , booking platforms for multi users , petsitter as example , walk my pet , pet wash acedemy, put big business learning , check deep architecture of our platforms and live main website www.petwash.co.il and PetWash.co.il advise us smartly what to improve or correct to our clients , providers and management and admin
+
+
+Conducting database and security audit for PetWash platforms
+12m 15s
+Now I have a thorough picture of the entire system. Here is the consolidated deep architectural review:
+
+PetWash Marketplace — Deep Architectural Review
+
+This covers the full picture: database, booking platforms, authentication, biometrics, mobile/cross-platform, escrow/wallet/payout, and each service vertical. It is written for your management, engineering team, and any outside reviewer.
+
+How the System Is Actually Built
+
+Stack: Node.js + Express backend (TypeScript), React + Vite frontend, PostgreSQL via Neon Serverless with Drizzle ORM, Firestore for real-time and document data, Redis for session caching and OTP, Firebase Authentication as the primary identity provider.
+
+Scale: 645 database tables across 19 schema files, approximately 180 route files, 160+ service files, 8 dedicated service platforms (sitter, walker, K9000, academy, marketplace, booking-requests, PetTrek, booking chat), 3 background cron jobs, and a React Native Expo app for staff.
+
+DATABASE
+
+What is solid
+
+The schema is comprehensive and well-structured for the complexity it covers. Drizzle ORM with parameterised queries eliminates SQL injection across the board. Indexed joins on the most-queried booking table columns exist. Atomic DB transactions are used in the marketplace checkout flow (quote → slot lock → escrow → booking) which prevents double-booking. The wallet and escrow idempotency key pattern is correctly designed.
+
+What is broken or missing
+
+1 — Redundant and conflicting role storage on the users table
+
+users.role (single varchar), users.roles (JSONB array), and users.permissions (JSONB array) all exist simultaneously with no synchronisation mechanism. The application can read from any of the three. There is also a userRoles join table that is maintained in parallel. When a user's role changes, if only one of the four places is updated, the system will produce inconsistent access decisions. This is the most dangerous structural data bug in the entire schema.
+
+Files: shared/schema.ts (lines 35–154), server/services/rbac.ts
+
+2 — 40+ status and state columns are free-text varchar instead of enums
+
+bookings.status, bookingRequests.financeState, users.activationStatus, users.journeyState, and dozens more accept any string. PostgreSQL ENUM constraints would guarantee only valid transitions can be written. As it stands, a code bug, migration error, or direct DB write can put a record in an impossible state silently.
+
+Files: shared/schema.ts throughout
+
+3 — Three separate escrow systems coexist
+
+EscrowService (Firestore collection escrow_payments) — used by Sitter Suite, Walk My Pet, booking-requests, bookings.ts
+escrowHoldings (PostgreSQL table) — used exclusively by marketplace-bookings.ts
+EscrowStateMachine (PostgreSQL table via BillingEngine) — used by BillingEngine for financial settlements
+These three systems are not synchronised with each other. A booking created through marketplace-bookings.ts writes to escrowHoldings. A booking created through booking-requests.ts writes to Firestore. The dispute flow in disputes.ts does not interact with any escrow system at all when resolving — it only updates a status column. This means marking a dispute as "resolved" does not automatically trigger a refund or escrow release. An admin must manually take a separate action.
+
+Files: server/routes/marketplace-bookings.ts:343, server/routes/booking-requests.ts:1028–1054, server/routes/escrow.ts, server/routes/disputes.ts:149–156, server/services/EscrowService.ts, server/services/EscrowStateMachine.ts
+
+4 — EscrowService failure is silently swallowed in booking-requests.ts
+
+TypeScript
+// server/routes/booking-requests.ts:1051
+logger.warn('[BookingRequests] EscrowService failed, continuing with local tracking', {
+  error: escrowError.message,
+});
+A booking can be confirmed and a customer charged even when escrow creation fails. The money is collected with no escrow record. This is a direct financial integrity failure.
+
+5 — Missing indexes on high-frequency query patterns
+
+sitterBookings(ownerId, status, startDate), walkBookings(ownerId, status, scheduledDate), bookingRequests(providerId, status, createdAt), and bookingRequests(financeState, payoutStatus) all lack composite indexes. At scale these become full table scans on every "my bookings" and "provider inbox" query.
+
+6 — Financial booking records have no archival/retention pattern
+
+sitterBookings, walkBookings, bookings, and bookingRequests all have no deletedAt, archivedAt, or isArchived column. Israeli law (Tax Authority, Privacy Protection Law) requires financial records to be retained for 7 years. Hard-delete capability with no protection is a compliance risk.
+
+7 — Sitter payout bank account is hardcoded 'TBD'
+
+TypeScript
+// server/routes/sitter-suite.ts:1219
+sitterBankAccount: 'TBD',
+Every sitter payout call passes 'TBD' as the bank account. This means either all payout calls fail, or the payment gateway ignores the field. Either way, the payout flow is broken in production for the Sitter Suite.
+
+8 — Tax IDs and National Insurance numbers stored in plaintext
+
+TypeScript
+// server/services/IsraeliContractorCompliance.ts:187
+// ⚠️ SECURITY WARNING: Tax IDs and National Insurance numbers are stored in plaintext
+// TODO PRODUCTION: Encrypt sensitive PII using AES-256
+This is a known, documented, unresolved issue. Field-level encryption already exists for bank accounts (AES-256-GCM). The same pattern needs to be applied here, and existing rows need to be migrated.
+
+BOOKING PLATFORMS
+
+Sitter Suite
+
+The booking lifecycle is: pending → pending_provider → confirmed → in_progress → completed | cancelled.
+
+Payment is correctly deferred — money is not captured until the provider accepts, which is the right model. The 15% platform commission + 85% provider payout split is consistently applied. Pricing uses a dedicated SitterAdvancedBookingEngine with holiday surcharge support, which is solid.
+
+What is broken:
+
+The sitterBankAccount: 'TBD' bug (above) makes all Sitter Suite payouts broken.
+There is no explicit expiry on pending or pending_provider bookings. A provider can leave a request unanswered indefinitely, blocking the slot. The reassignmentCount counter exists but no cron job triggers it automatically (only the booking-expiry.ts job fires, which checks a different path).
+No explicit dispute escalation path from the sitter platform — disputes go through the generic disputes.ts route which does not connect back to escrow.
+Walk My Pet
+
+The most technically impressive platform in the codebase. GPS tracking with Haversine geofence calculations, real-time violation alerts, health data from smart collars, video stream flag, emergency walk surge pricing, and a blockchain audit trail with Merkle root for dispute resolution. This is well-architected.
+
+What needs attention:
+
+walkBookings has no expiry window on the pending state either.
+The video stream (isVideoStreamActive) and drone monitoring (isDroneMonitoringActive) flags exist in the schema but there is no implementation for those features in the route or service layer — they are data without function.
+GPS tracking data accumulates indefinitely with no retention policy. At 1–5 second frequency, a one-hour walk generates 720–3,600 rows per booking. A retention policy (delete raw GPS after 90 days, keep summary) is needed before this causes storage and query performance problems.
+Marketplace Bookings
+
+This is the most architecturally sophisticated booking system in the codebase. The quote → 15-minute expiry → atomic slot lock with lockToken → transaction-wrapped booking + escrow insert is correctly designed to prevent race conditions and double bookings.
+
+What is broken:
+
+The booking status transition endpoints (/confirm, /complete, /cancel) do not verify that the calling user is the owner or provider of that booking before executing the transition. Any authenticated user who knows a bookingId can cancel any booking.
+req.body.role is accepted from the client to determine which side of the booking the user is acting from. This is not verified against the user's actual relationship to the booking.
+The quote expiresAt is correctly set, but if payment fails at the gateway, the slot is not released. The atomic transaction wraps the DB insert but the slot's status field is updated to 'booked' before the payment gateway call. If the payment fails after the DB commit, the slot remains 'booked' and is permanently unavailable.
+Files: server/routes/marketplace-bookings.ts:272–360
+
+Pet Wash Academy (Trainer Marketplace)
+
+The platform is implemented and active (server/routes/academy.ts, 802 lines). It includes trainer marketplace, booking system, reviews, and wallet-based payment. The Academy is correctly configured to allow 100% wallet credit coverage (unlike standard bookings which cap at 20% loyalty). This is a complete vertical that works.
+
+K9000 (Car Wash IoT)
+
+The K9000 station system is the most visible incomplete feature in production. The machine activation command is commented out:
+
+TypeScript
+// server/routes/k9000.ts:266-276
+// TODO: In production, send HTTP POST to K9000 controller
+// const machine_url = `http://${clientIP}/api/start/${machineId}`;
+When a customer pays for a car wash and the system confirms the session, no command is sent to the physical machine. The session is created in the database and the customer is charged, but the wash bay does not start. This must be resolved before any real customer uses this flow. The rest of the K9000 architecture (predictive maintenance, bay occupancy, K9000 vouchers, session management) is well-designed.
+
+AUTHENTICATION AND BIOMETRICS
+
+What is solid
+
+The authentication architecture is genuinely well-built. Firebase ID token verification on every request, JWT refresh token rotation with DB-backed jti lookup, bcrypt PIN with rate limiting and 15-minute lockout, WebAuthn/passkeys at NIST AAL2 level, phone OTP with dual rate limiters (send and verify), and proper dev/test bypass fully disabled in production via NODE_ENV check.
+
+WebAuthn is implemented with @simplewebauthn/server@13.2.2 (current). All five security properties are verified: challenge expiry (5 minutes), origin binding, RP ID validation, counter check against cloning, and requireUserVerification: true (enforces biometric, not just device PIN). Credentials are stored in Firestore with AAGUID for hardware audit. This is production-grade work.
+
+Platform compatibility
+
+iOS/Safari: Face ID and Touch ID work via WebAuthn on Safari 16+. The viewport-fit=cover meta tag is correct for notch/Dynamic Island support. Apple-touch-icon, PWA manifest, and apple-mobile-web-app-capable are all correctly configured. Deep linking via Universal Links will not work because there is no apple-app-site-association file at /.well-known/.
+
+Android/Chrome: Biometric works via WebAuthn. PWA install prompt supported. No Android-specific issues found.
+
+Windows: Windows Hello is detected and supported via the RP options.
+
+React Native Staff App: A minimal Expo app exists at /mobile-app/ using expo-local-authentication and expo-secure-store. It is a scaffold only — App.tsx is a single file with no meaningful implementation. It is not the customer app.
+
+No native iOS or Android app exists. The product is a PWA. Apple Pay and Google Pay are mentioned in the HTML meta description but are not wired to any payment flow in the codebase.
+
+What needs attention
+
+1 — Super admin access is gated by a single hardcoded Firebase UID in two route files
+
+TypeScript
+// server/routes/disputes.ts:18
+// server/routes/provider-trust.ts:32
+const SUPER_ADMIN_UID = 'vdiboz7IrUQEm2RbdO7VZLkBu552';
+If this account is compromised, revoked, or accidentally deleted from Firebase, all dispute resolution and provider trust management are locked out. Admin access should be role-based, not UID-based.
+
+2 — WebAuthn RP ID is set to petwash.co.il only
+
+If the live site is accessed via www.petwash.co.il, existing passkeys registered on the bare domain will not authenticate. The RP ID must match the registering origin exactly. Passkeys registered on petwash.co.il are incompatible with www.petwash.co.il. This should be tested on the live domain.
+
+Files: server/routes/webauthn.ts:38–42
+
+3 — Apple App Site Association missing
+
+Without /.well-known/apple-app-site-association, deep links from emails and SMS to open specific screens in the app will not work as Universal Links on iOS. Users will be taken to the browser instead.
+
+ESCROW, WALLET, AND PAYOUT
+
+Wallet system
+
+The wallet architecture is the strongest part of the financial design. Seven balance types (cash, egift, wash packages, loyalty points, promo, referral, pending), a credit priority order (promo → egift → referral → loyalty → cash), idempotent hold/debit/release/refund operations with named keys, and expiry processing for credits. This is well-designed.
+
+Escrow problems (the most important financial issue)
+
+Three separate systems handle escrow with no coordination. The dispute resolution flow updates a status column but does not trigger any escrow action. Concretely:
+
+Customer books through marketplace-bookings.ts → escrowHoldings row created (PostgreSQL)
+Customer opens a dispute through disputes.ts → bookingDisputes row created
+Admin resolves the dispute via PATCH /api/disputes/:id/resolve → only updates bookingDisputes.status and resolvedBy
+The escrowHoldings record is never touched. No refund is issued. No escrow release is triggered.
+The customer and provider are left in financial limbo until someone manually queries and acts on the escrow record through a separate admin tool.
+
+Payout
+
+Provider payouts use ProviderPayoutService which includes an AI verification step (Gemini 2.5 Flash) before releasing funds. This is an interesting design but means every payout has an AI dependency. If Gemini is unavailable, payouts are blocked. There should be an admin override path.
+
+The 15% platform commission is correctly and consistently applied across all three escrow systems. Commission deduction before provider payout is confirmed in EscrowService, BillingEngine, and ProviderPayoutService.
+
+FRANCHISE AND MULTI-TENANCY
+
+The franchise system is architecturally sound. Franchise owners have their own dashboard, financial reports, and governance controls. Revenue sharing is configurable per partnerAgreements.revenueSharePercent. The platforms table provides tenant isolation — a booking always carries a platformId and most queries are scoped to that platform.
+
+What needs attention: The franchise_owners table and the users table are separate. A franchise owner's access is gated by checking the franchise_owners table, not by the users.roles array. This is actually better than the main role system — it is more explicit — but it creates a third role management pattern (users.roles JSONB, userRoles join table, franchise_owners lookup). Three patterns for the same problem creates ongoing confusion.
+
+WHAT IS INCONSISTENT OR INCOMPLETE ACROSS THE SYSTEM
+
+State machine fragmentation
+
+The users table alone has four active state fields: activationStatus, userStatus, journeyState, and accountStatus. There is no single source of truth for whether a user is "active" in the system. The same problem exists for bookings: different platforms use different status strings for the same logical states.
+
+Dispute flow is incomplete
+
+The disputes.ts route resolves disputes in the database but does not:
+
+Trigger a refund through any escrow system
+Cancel the underlying booking
+Notify the provider or customer via email/SMS
+Freeze the escrow during review
+Marking a dispute as "resolved" only changes a status label.
+
+Slot release on payment failure
+
+In the marketplace checkout flow, the slot is marked 'booked' atomically before the payment gateway call. If the payment fails after the DB commit, there is no compensating transaction to release the slot. The slot is permanently blocked.
+
+File: server/routes/marketplace-bookings.ts:272–360
+
+K9000 hardware activation
+
+Already covered. The machine start command is commented out. Customers are being charged without the machine being activated.
+
+Provider availability ownership check
+
+provider-availability.ts correctly verifies that the calling user is a registered provider before modifying availability. provider-slots.ts also correctly scopes slot creation and deletion to the authenticated provider. These are fine. The gap is in the consumer side — marketplace-bookings.ts does not verify that a provider still owns the slot at checkout time by cross-referencing availabilitySlots.providerId against the quote's providerId.
+
+RECOMMENDATIONS — BY AUDIENCE
+
+For engineering (do in order)
+
+Fix EscrowService fail-silent in booking-requests.ts — change the warn-and-continue to a hard error. A charge without escrow is a financial integrity failure.
+Connect dispute resolution to escrow — when a dispute is resolved in disputes.ts, look up the escrow record (whether in escrowHoldings or Firestore) and trigger the appropriate action (refund or release).
+Fix slot release on payment failure — implement a compensating transaction or move the slot status update to after payment confirmation.
+Fix sitterBankAccount: 'TBD' — connect to the contractorBankDetails table before any sitter payout is attempted.
+Replace hardcoded SUPER_ADMIN_UID with a role-based check in disputes.ts and provider-trust.ts.
+Add composite indexes on the four missing query patterns (sitterBookings, walkBookings, bookingRequests by provider inbox, bookingRequests by finance state).
+Resolve the redundant role fields — pick one authoritative source (recommend: userRoles join table) and remove users.role and users.roles JSONB, or at minimum add a DB trigger to keep them in sync.
+Encrypt tax IDs and national insurance numbers — the code already says this is required. Apply the same AES-256-GCM pattern used for bank accounts.
+Add financeState as a database ENUM — the most critical financial state field should have DB-level constraint validation.
+Add archival columns to all booking tables — required for legal compliance.
+For management
+
+K9000 is not production-ready for paid customers until the hardware activation command is uncommented and the integration is tested end-to-end.
+The Sitter Suite payout is broken — the bank account hardcode means no sitter has received funds via the automated flow. Verify manually whether any manual workaround is in place.
+The dispute process does not issue refunds — if customers have won disputes, check whether refunds were manually processed or whether they were silently marked resolved with no financial action.
+There is no native iOS or Android app. The product is a PWA. Apple Pay and Google Pay integrations mentioned in marketing copy are not implemented in the payment flow.
+The React Native staff app is a skeleton — it has dependencies and an App.tsx but no real functionality. If staff are expected to use a mobile app, this needs to be built.
+AI-gated payouts (Gemini requirement before provider receives funds) means Gemini API availability directly affects provider cash flow. Define an SLA and an admin override for when the AI step fails.
+For the www.petwash.co.il website
+
+WebAuthn / Face ID passkeys will only work on the bare domain petwash.co.il, not www.petwash.co.il. Test this on the live URL. If the canonical URL is www., the RP_ID needs to be updated and all registered passkeys must be re-enrolled.
+The PWA is correctly configured for iOS and Android home screen installation.
+No apple-app-site-association file means iOS Universal Links don't work. SMS and email links open in the browser rather than jumping to the correct app screen.
+SEO and structured data appear to be implemented (separate SEO route). This is good.
+Hebrew and English both appear to be supported via TranslationService and multi-language invoice generation, which is correctly designed for an Israeli market product.
+You asked
+Can you check why users cannot sign up as providers and or as new public users want to sign up with email , or mobile , or Facebook, instagram tiktok , Apple , Gmail, or email, why it’s breaking and slow , feels unsafe , there are hidden issues , bugs , blockers , mismatches, wrong code in some areas , or similar commands conflicts, look deep into all,forked folders and find errors , mistakes and problems
+
+
+Analyzing user signup process errors and performance
+13m 26s
+Now I have the complete picture from all four parallel deep-dives. Here is the full consolidated investigation:
+
+PetWash Signup & Provider Registration — Full Bug Investigation
+
+This covers every auth method (email, phone, Google, Apple, Facebook, Instagram, TikTok) and every registration path (new customers and providers), with exact file references.
+
+PART 1 — NEW USER REGISTRATION (ALL METHODS)
+
+Bug 1 — Email/password registration endpoint is dead (returns HTTP 410)
+
+server/routes/auth.ts:76–85
+
+POST /api/auth/register explicitly returns 410 Gone and does nothing else. The replacement is Firebase Auth + POST /api/users/create-profile. The problem is that the replacement flow has its own bugs (see below) and there is no clear client-side migration path guiding every signup surface to the new endpoint.
+
+Bug 2 — Race condition in /api/users/create-profile creates duplicate loyalty records
+
+server/routes.ts:11003–11010
+
+Two simultaneous requests for the same Firebase UID (e.g., user double-taps the submit button) both try to insert the same user. The duplicate key error is caught and silently continues — but both requests then proceed to call assignCustomerMembership(), which has no ON CONFLICT guard. Result: two loyalty profile rows for one user, corrupted points balance from day one.
+
+Bug 3 — Email/social auth users never get a wallet or loyalty profile created
+
+server/routes.ts:10856–11111 vs server/routes/publicAuthRoutes.ts:560–596
+
+Phone OTP users get wallet + loyalty profile created at verification time. Email and all social OAuth users (Google, Apple, Facebook, Instagram, TikTok) go through POST /api/users/create-profile which does neither. Any page that queries wallet balance or loyalty tier for an email/social-auth user will get null or crash. The inconsistency is structural — there is no shared "post-registration setup" function called by all auth paths.
+
+Bug 4 — Phone OTP flow never collects name or email, then blocks profile completion
+
+server/routes/publicAuthRoutes.ts:976–1015 and server/routes/post-login.ts:27–39, 779–801
+
+After phone OTP verification the user has:
+
+✓ Firebase auth
+✓ users.phone populated
+✗ firstName = null, lastName = null, email = null
+The system then sends them to /complete-profile. But POST /api/auth/post-login at line 779–781 returns 400 NAME_REQUIRED if firstName or lastName is empty. The phone signup flow never asked for these fields. The user is in a dead end: they authenticated successfully but cannot proceed anywhere.
+
+Bug 5 — /verify-email redirect destination does not exist
+
+server/routes/post-login.ts:291–301 and client/src/pages/SignIn.tsx:159–214
+
+Email-auth users who haven't verified their address are told to go to /verify-email. The client navigates there. There is no /verify-email page in the client router and no API endpoint to send or confirm verification emails. Users land on a blank page or 404 with no way out.
+
+Bug 6 — Four independent user-creation endpoints with no coordination
+
+server/routes.ts:10856, server/routes/publicAuthRoutes.ts:504, publicAuthRoutes.ts:943, server/routes/user-profile.ts:229
+
+Four separate code paths can each independently INSERT a row into the users table:
+
+POST /api/users/create-profile — main flow for Firebase/email
+POST /api/auth/phone-session — creates Firebase user on phone lookup
+POST /api/auth/phone/otp/verify — creates PostgreSQL user row after verification
+PATCH /api/user/profile — will INSERT if user row is missing
+Only paths 1 and 3 create wallets; only path 3 creates loyalty profiles; none of them coordinate. Each has different field requirements and triggers different side effects.
+
+Bug 7 — Firebase-to-PostgreSQL sync is fire-and-forget, not awaited
+
+server/routes.ts:1088–1150
+
+When a user first authenticates via any Firebase provider, the route calls authService.ensureUserInPostgres() inside an (async () => { ... })() IIFE that is not awaited before the 200 OK response is sent to the client. The client receives a successful session and immediately calls POST /api/auth/post-login. At that point the PostgreSQL row may not exist yet. The post-login handler catches this and tries a recovery upsert, but if that also races or fails, the user gets a 404 USER_NOT_FOUND error on their very first navigation after sign-in.
+
+Bug 8 — Post-login return URL is lost after profile completion
+
+client/src/pages/CompleteProfile.tsx:188–200
+
+If a user is mid-booking and gets redirected to /complete-profile?from=/booking/123, the ?from= parameter is never read or passed forward. After profile completion the server decides the redirect destination (e.g., /home). The booking-in-progress is silently abandoned.
+
+PART 2 — SOCIAL OAUTH (GOOGLE, APPLE, FACEBOOK, INSTAGRAM, TIKTOK)
+
+Bug 9 — Facebook OAuth callback does not exist on the server
+
+server/routes/social-oauth.ts (entire file)
+
+Instagram and TikTok have full OAuth callback routes (lines 79–176 and 178–269 respectively). Facebook has zero server-side implementation. The client can trigger Firebase's FacebookAuthProvider flow, but when Firebase completes the auth there is no /api/auth/social/facebook/callback or equivalent. Firebase creates the user in its system; the PostgreSQL row is never created; the wallet is never created. A Facebook user is Firebase-authenticated but completely invisible to the application database.
+
+Bug 10 — Instagram and TikTok OAuth callbacks create a Firebase user but not a PostgreSQL user
+
+server/routes/social-oauth.ts:137–158 (TikTok) and 232–251 (Instagram)
+
+Both callbacks call adminAuth.createUser(...) in Firebase and issue a custom token, then redirect to /signin?oauthCode=.... There is no INSERT into the users PostgreSQL table. The user claims their custom token, Firebase auth succeeds, and then every server API call that queries users WHERE id = 'tiktok:xxx' returns nothing.
+
+The root cause: AuthService.ensureUserInPostgres() at line 231–233 returns null and does not create the row when email is null. Both TikTok and Instagram can return null emails for users who have not disclosed their email.
+
+Bug 11 — Apple Sign-In: returning users lose their profile on second login
+
+server/routes/post-login.ts:198 and server/services/AuthService.ts:231–233
+
+Apple only sends the user's email on the first sign-in ever. On every subsequent sign-in the email field is absent from Apple's response. The PostgreSQL row for the user already exists (from the first login), but ensureUserInPostgres is called again on each login and receives email = undefined. Because the function returns null when email is missing, it fails silently instead of looking up the existing row by Firebase UID. If the session was created in a fresh environment (new device, cleared cookies), the user effectively cannot be found and gets 404 USER_NOT_FOUND.
+
+Bug 12 — Google OAuth: missing GOOGLE_WEB_CLIENT_SECRET causes a 500 error with no clear message
+
+server/routes/mobile-auth.ts:11–12, 41
+
+GOOGLE_WEB_CLIENT_SECRET has no fallback. If it is unset the client variable is null and the endpoint throws a generic 500 error when called. The environment variable MOBILE_LINK_SECRET (used as JWT secret in this route, line 13) is different from JWT_SECRET used everywhere else. If MOBILE_LINK_SECRET is unset, the JWT token is silently skipped at line 174 — the client may expect a token in the response and breaks without one.
+
+Bug 13 — COOKIE_SECRET missing in production crashes the entire server at startup
+
+server/routes/social-oauth.ts:12–17
+
+TypeScript
+process.env.COOKIE_SECRET ?? (() => {
+  if (NODE_ENV === 'production') throw Error('COOKIE_SECRET must be set in production');
+  return 'dev-only-...';
+})()
+If COOKIE_SECRET is not in the production environment, the module throws synchronously during route registration, and the entire Express server fails to start. All signup flows — not just TikTok/Instagram — go down.
+
+Bug 14 — Social OAuth users have no wallet (except Google via mobile-auth.ts)
+
+server/routes/mobile-auth.ts:134–146 vs. server/routes/social-oauth.ts (entire file)
+
+mobile-auth.ts auto-creates a wallet for Google users. Nothing in social-oauth.ts does the same for Instagram, TikTok, or Facebook. And Apple Sign-In (Firebase-only flow, no dedicated server callback) also never creates a wallet. All non-Google social users cannot use wallet balance, credits, or loyalty points.
+
+Bug 15 — OAuth intent lost after redirect: "Become Provider" via Google goes to /home
+
+client/src/pages/SignIn.tsx:158–196, 217–223
+
+When a user selects "Become Provider" and then clicks "Google Sign-In":
+
+The intent is stored in localStorage.
+Google OAuth redirects away and back.
+handleOAuthCustomToken() completes the sign-in.
+It calls navigate(customRedirect) or navigatePostLogin() — neither reads the stored intent.
+The user ends up at /home instead of /provider-onboarding. The provider signup path via any OAuth method is silently broken.
+
+Bug 16 — Safari ITP loses the OAuth redirect marker
+
+client/src/pages/SignIn.tsx:56–90, 509–588
+
+On cross-domain OAuth redirects (Firebase → petwash.co.il), Safari's Intelligent Tracking Prevention can clear localStorage between the redirect and the return. The redirect marker that tracks which provider the user chose and what they were doing is lost. The code at line 525 has a partial mitigation but the fallback just silently goes to /home. Users on iOS Safari who try OAuth see the login succeed but get dropped with no context.
+
+Bug 17 — OAuth redirect result consumed by two competing handlers
+
+client/src/pages/SignIn.tsx:509–588 and client/src/contexts/AuthProvider.tsx
+
+Both AuthProvider.tsx (on mount) and SignIn.tsx call getRedirectResult(). Firebase clears the result after the first read. Whichever reads second gets null. The second reader shows an error toast "Sign-in not completed" even though the sign-in succeeded. Users see a confusing error message on successful login.
+
+Bug 18 — Account linking fails silently
+
+client/src/pages/SignIn.tsx:1499–1520
+
+When linking a social credential to an existing account, the linkWithCredential() call is inside a try/catch that only logs a warning and clears the pendingOAuthCredential state regardless of success or failure. Users believe they linked their Google account but did not. The next time they try Google login they get "account already exists with this email" again with no explanation.
+
+PART 3 — PROVIDER REGISTRATION
+
+Bug 19 — Provider KYC exception creates a permanent deadlock
+
+server/routes/provider-onboarding.ts:1086–1131
+
+If the async KYC2026 verification step throws an unhandled exception, the rescue handler at line 1087 tries to set status to pending_review. But if the row has already been updated away from processing, the SQL WHERE status = 'processing' matches zero rows. The status never moves, the provider is stuck forever in processing, and there is no admin tool or cron job to recover them.
+
+Bug 20 — Provider bank accounts stored in plaintext when encryption key is missing or short
+
+server/routes/contractor-onboarding.ts:32–44
+
+TypeScript
+if (!masterKey || masterKey.length < 32) {
+  logger.warn('[...] DOCUMENT_ENCRYPTION_KEY not set — bank account stored unencrypted');
+  return plaintext;  // IBAN written to DB in plaintext
+}
+The encryption silently falls back to plaintext instead of failing hard. If DOCUMENT_ENCRYPTION_KEY is absent or less than 32 bytes in any environment, all IBAN numbers are stored in the clear. This is a PCI and Israeli Privacy Protection Law violation.
+
+Bug 21 — Background check endpoint stores a record but runs no actual check
+
+server/routes/contractor-onboarding.ts:277–320
+
+TypeScript
+result: backgroundCheck.result || "PENDING"
+The "Submit Background Check" step saves the request to the database with status PENDING and never calls any external service. The contractor is given a certificate record immediately. No criminal background screening is ever performed.
+
+Bug 22 — Police check not required before provider activation (Israeli law compliance)
+
+server/routes/provider-onboarding.ts and server/routes/police-check.ts
+
+Israeli law (תעודת יושר) requires a police clearance certificate before a service provider can work with animals or children. The police-check.ts route exists as a standalone flow but is not enforced as a required step in provider-onboarding.ts or provider-applications.ts. Providers can reach approved status without submitting one.
+
+Bug 23 — No rejection email sent to declined providers
+
+server/routes/provider-applications.ts:1235
+
+TypeScript
+// TODO: Send rejection email
+When an admin rejects a provider application, the provider receives no notification whatsoever. The comment acknowledges this but the implementation is missing.
+
+Bug 24 — Multiple disconnected provider tables with no foreign keys between them
+
+shared/schema.ts:3996, 4562, 6915, 7815, 9705, 11805
+
+There are six separate tables for different types of providers: sitterProfiles, walkerProfiles, trainers, providers, contractors, and octopusProviders. Only sitterProfiles has a proper FK to users.id. The others reference userId as a plain varchar with no constraint. A user can have a row in all six tables with no relation between them. An admin who approves a walker profile does not affect the trainer profile. An admin query for "all active providers" must union six tables and there is no guarantee the data is consistent.
+
+Bug 25 — Walk My Pet and Academy provider registration require no verification
+
+server/routes/walk-my-pet.ts:48–102, server/routes/academy.ts:575
+
+POST /api/walk-my-pet/walkers/register and the trainer registration equivalent create provider profiles immediately with no document upload, no KYC, no background check, no police clearance check. Any authenticated user can self-register as a professional dog walker or trainer and begin appearing in search results with isActive: true.
+
+Bug 26 — Provider public stats endpoint has no authentication
+
+server/routes/provider-intake.ts:64
+
+GET /api/provider-intake/stats returns counts of pending, approved, and rejected applications. No auth middleware is applied. Any unauthenticated request returns this internal management data.
+
+PART 4 — CLIENT-SIDE REGISTRATION BUGS
+
+Bug 27 — Social OAuth users never call /api/customer/register
+
+client/src/pages/SignIn.tsx:963–984
+
+After OAuth completes, the client only calls /api/loyalty/auto-enroll. Email users who sign up via CustomerSignupModal.tsx call the full /api/customer/register endpoint. The two paths create different levels of completeness in the database. Social auth users are missing customer profile data that the system expects to exist.
+
+Bug 28 — Phone verification claim not refreshed in Firebase token
+
+client/src/pages/ProviderOnboarding.tsx:128–154
+
+After OTP verification the client sets phoneVerified = true in local component state. The Firebase ID token is never refreshed (getIdToken(true) is never called). Backend APIs that verify the phone_verified claim in the Firebase token reject requests with 403 even though the UI shows a green checkmark.
+
+Bug 29 — Provider onboarding redirect loop when auth state is loading
+
+client/src/pages/ProviderOnboarding.tsx:40–45
+
+TypeScript
+useEffect(() => {
+  if (user === null) {
+    navigate('/signin?redirect=/provider-onboarding');
+  }
+}, [user, navigate]);
+During the initial Firebase auth state resolution, user is null before the SDK has finished loading. This fires the redirect immediately, sends the user to /signin, and they loop back again. The guard should be if (user === null && !isLoading).
+
+Bug 30 — Sign-in has 7 sequential API round-trips (3–5 second delay)
+
+client/src/pages/SignIn.tsx:1459–1600
+
+reCAPTCHA → Firebase sign-in → ID token fetch → server session create → session verify → loyalty auto-enroll → analytics — each call waits for the previous one to finish. On a mobile network this produces a visible 3–5 second delay after the user submits their credentials. Loyalty and analytics calls do not need to block navigation and could be deferred.
+
+SUMMARY BY AUDIENCE
+
+For clients (end users)
+
+Issue	Blocked auth path
+Phone signup leaves name/email empty — profile completion loop	Phone OTP
+Facebook login doesn't create an account	Facebook
+Instagram/TikTok login doesn't create an account	Instagram, TikTok
+Apple login breaks on second device	Apple
+Verify-email page doesn't exist	Email signup
+Wallet/loyalty missing for email and social users	All except phone
+Safari: OAuth sign-in shows error toast after success	iOS Safari
+Redirect back to booking lost after login	All OAuth
+For providers
+
+Issue	Impact
+Name/phone loop blocks all new providers from phone signup	Complete block
+Walk My Pet / Academy self-registration has zero verification	Trust & safety risk
+Background check endpoint is a stub — no check actually runs	Legal/compliance
+Police clearance not enforced before approval	Israeli law violation
+Bank accounts stored in plaintext if encryption key absent	Financial data breach risk
+KYC deadlock — stuck in processing permanently	Provider never activated
+No rejection notification when application declined	Provider experience
+"Become Provider" via Google OAuth drops to home page	Broken onboarding path
+For management / admin
+
+Issue	Impact
+COOKIE_SECRET missing in production crashes the entire server	Full outage
+Provider stats endpoint is public (unauthenticated)	Internal data leak
+Super-admin access gated by hardcoded Firebase UID in 2 files	Single point of failure
+Dispute resolution doesn't trigger escrow refund	Financial integrity
+6 disconnected provider tables — no unified provider view	Admin reporting broken
+EscrowService failure silently continues in booking-requests	Money collected with no escrow
+The 5 fixes that unblock the most users immediately
+
+Add ?from= preservation and wallet+loyalty creation to ALL auth paths — a single registerUserInPostgres(uid, provider) helper called from every auth completion point would fix Bugs 3, 9, 10, 11, 14, 27 in one change.
+Phone OTP flow must collect firstName + lastName + email before issuing the token, or /complete-profile must allow saving without them — fixes Bug 4, 6, 7.
+Create the /verify-email page and the resend-verification endpoint — fixes Bug 5, unblocks all email signups.
+Add Facebook server-side OAuth callback mirroring the TikTok/Instagram pattern in social-oauth.ts — fixes Bug 9.
+Guard provider onboarding redirect with !isLoading and refresh Firebase token after phone OTP — fixes Bugs 28, 29, relieves the provider signup loop.

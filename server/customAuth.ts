@@ -163,8 +163,13 @@ export function setupCustomAuth(app: Express) {
 // Middleware to check authentication (Firebase-based)
 export async function requireAuth(req: Request, res: Response, next: any) {
   try {
-    // DEVELOPMENT TESTING BYPASS: Allow Playwright tests with special header
-    if (process.env.NODE_ENV === 'development' && req.headers['x-test-user-bypass'] === 'playwright-test') {
+    // DEVELOPMENT TESTING BYPASS: Allow Playwright tests with special header.
+    // P0-FIX: Must use TEST_BYPASS_TOKEN env var — never the hardcoded 'playwright-test' string.
+    // This mirrors the fix already applied in firebase-auth.ts. If TEST_BYPASS_TOKEN is not set,
+    // bypass is completely disabled (fail closed). Set it only in test environments.
+    const bypassHeader = req.headers['x-test-user-bypass'] as string | undefined;
+    const bypassToken = process.env.TEST_BYPASS_TOKEN; // NO default — must be explicitly set
+    if (bypassToken && bypassHeader === bypassToken) {
       const testUserId = req.headers['x-test-user-id'] as string || 'test-user-default';
       const testEmail = req.headers['x-test-user-email'] as string || `${testUserId}@test.petwash.local`;
       

@@ -9,7 +9,7 @@
  * - Step 5: Proceed to Nayax payment
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -98,6 +98,9 @@ export default function MarketplaceBookingFlow() {
 
   // Quote state (fetched from backend)
   const [quoteId, setQuoteId] = useState<string | null>(null);
+  // Stable idempotency key per quote — same UUID if checkout is retried
+  // for the same slot/time, new UUID when a fresh quote is created.
+  const checkoutIdempotencyKey = useMemo(() => crypto.randomUUID(), [quoteId]);
   const [quoteData, setQuoteData] = useState<{
     baseAmountCents: number;
     additionalPetsCents: number;
@@ -258,25 +261,38 @@ export default function MarketplaceBookingFlow() {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       if (!quoteId) throw new Error('No quote available');
-      const response = await apiRequest('POST', `/api/marketplace-bookings/${quoteId}/checkout`, {
-        slotId: selectedSlotId,
-        lockToken,
-        petIds: selectedPetId ? [selectedPetId] : [],
-        specialInstructions,
-        addons: selectedAddons,
-        ...(appliedCredits ? {
-          creditBreakdown: {
-            egiftCents: appliedCredits.egiftCents,
-            washPackages: appliedCredits.washPackages,
-            loyaltyPointsCents: appliedCredits.loyaltyPointsCents,
-            promoCents: appliedCredits.promoCents,
-            referralCents: appliedCredits.referralCents,
-            totalCreditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
-            cashPaidCents: appliedCredits.cashPaidCents,
+      const response = await apiRequest(
+        `/api/marketplace-bookings/${quoteId}/checkout`,
+        {
+          method: 'POST',
+          headers: {
+            // requireStrictIdempotency enforces this header on the server.
+            // checkoutIdempotencyKey is stable per quote — same UUID on retry,
+            // new UUID if the user goes back and selects a different slot.
+            'Idempotency-Key': checkoutIdempotencyKey,
+            'Content-Type': 'application/json',
           },
-          redemptionSessionId: appliedCredits.redemptionSessionId,
-        } : {}),
-      });
+          body: JSON.stringify({
+            slotId: selectedSlotId,
+            lockToken,
+            petIds: selectedPetId ? [selectedPetId] : [],
+            specialInstructions,
+            addons: selectedAddons,
+            ...(appliedCredits ? {
+              creditBreakdown: {
+                egiftCents: appliedCredits.egiftCents,
+                washPackages: appliedCredits.washPackages,
+                loyaltyPointsCents: appliedCredits.loyaltyPointsCents,
+                promoCents: appliedCredits.promoCents,
+                referralCents: appliedCredits.referralCents,
+                totalCreditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
+                cashPaidCents: appliedCredits.cashPaidCents,
+              },
+              redemptionSessionId: appliedCredits.redemptionSessionId,
+            } : {}),
+          }),
+        },
+      );
       return response.json();
     },
     onSuccess: (data) => {

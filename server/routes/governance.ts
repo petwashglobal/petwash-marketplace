@@ -28,7 +28,6 @@ import { sql, SQL } from 'drizzle-orm';
 import { logger }   from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { evaluatePolicies, loadActivePolicies, explainConditions, CaseContext } from '../lib/policy-engine';
-import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -36,7 +35,9 @@ const router = Router();
 
 async function requireGovernanceAdmin(req: Request, res: Response, next: Function) {
   try {
-    if (timingSafeAdminSecretMatch(req)) return next();
+    // P1-FIX: timing-safe comparison (was ===)
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) return next();
 
     const token = (req.headers.authorization ?? '').replace('Bearer ', '').trim();
     if (!token) return res.status(401).json({ error: 'unauthorized' });

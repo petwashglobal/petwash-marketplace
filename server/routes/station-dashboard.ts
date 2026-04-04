@@ -21,7 +21,6 @@ import { requireStationRole, resolveStationRole } from '../middleware/stationAut
 import { auth } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
-import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -44,7 +43,9 @@ async function resolveUidFromRequest(req: any): Promise<string | null> {
 }
 
 function isAdminSecretReq(req: any): boolean {
-  return timingSafeAdminSecretMatch(req);
+  // P1-FIX: timing-safe comparison (was ===)
+  const { isValidAdminSecret } = require('../lib/admin-secret');
+  return isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET');
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

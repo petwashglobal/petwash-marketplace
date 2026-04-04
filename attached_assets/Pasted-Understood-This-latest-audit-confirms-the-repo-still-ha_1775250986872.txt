@@ -1,0 +1,149 @@
+Understood. This latest audit confirms the repo still has multiple critical production blockers.
+
+This is now a security stabilization and marketplace integrity phase.
+
+Do not work on design, UX polish, or secondary features until these are addressed.
+
+Current bottom line:
+The system is not production-safe because of:
+- fake payment success paths
+- weak secret handling
+- fail-open webhook trust
+- unauthenticated contractor/invoice flows
+- missing booking ownership checks
+- caller-controlled role logic
+- plaintext/high-risk PII handling
+- inconsistent admin authentication
+- public overexposure of provider data
+- machine/service flows that may report success without actual fulfillment
+
+Fix in this exact order.
+
+P0 - immediate stop and lock down
+
+1. Disable fake checkout now
+- Disable POST /api/express-checkout
+- Return 503 until replaced with real processor flow
+- No payment endpoint may return success without real processor confirmation
+
+2. Remove hardcoded payment/webhook fallbacks
+Files include:
+- server/nayaxService.ts
+- any Nayax webhook/voucher/payment services with fallback strings
+Action:
+- remove fallback API key / secret / webhook secret
+- hard-fail startup in production if missing
+
+3. Enforce fail-closed webhook security
+- If NAYAX_ALLOWED_IPS is missing in production, block requests
+- If NAYAX_WEBHOOK_SECRET is missing, reject webhooks as misconfigured
+- Do not allow signature validation to be skipped when secret is empty
+
+4. Protect contractor invoice endpoints immediately
+- Add requireAuth
+- Add ownership check or admin check
+- No public generate/preview endpoints for contractor invoices
+
+5. Protect all contractor onboarding endpoints immediately
+- Add requireAuth to all onboarding routes
+- Never trust contractorId from request body without ownership validation
+- req.user.uid must match contractorId unless admin
+
+6. Remove plaintext / graceful-degradation handling for sensitive financial data
+- If DOCUMENT_ENCRYPTION_KEY is absent or weak, fail hard
+- Do not store bank details in plaintext
+- Prepare audit/data repair for any existing plaintext bank rows
+
+7. Encrypt highest-risk personal identifiers
+- Encrypt tax ID
+- Encrypt national insurance number
+- Redact these fields in responses/logs
+- Prepare migration for existing data
+
+P1 - this week
+
+8. Fix booking ownership and authorization everywhere
+- transition
+- complete
+- confirm
+- cancel
+- booking access/detail endpoints
+- provider-side booking access
+No booking mutation may rely only on bookingId + authenticated session.
+All actions must verify the user is actually a party to the booking or an admin.
+
+9. Remove caller-controlled role logic
+- Never trust role from body or query
+- Derive role from booking record and auth claims only
+
+10. Standardize admin authentication
+- One header name only
+- One secret source only
+- Timing-safe compare everywhere
+- Remove ADMIN_SECRET fallback to COOKIE_SECRET
+- Remove x-admin-key / x-admin-secret inconsistency
+
+11. Fix provider public data exposure
+- Stop returning ...doc.data() from public provider routes
+- Create explicit allowlist of safe public fields only
+
+12. Fix webhook replay protection
+- Replace in-memory Set with persistent DB or Redis dedup
+- Persist idempotency longer than 1 hour
+- Target at least 24h+ retention for replay protection
+
+13. Fix voucher redemption trust model
+- Do not accept amountIls from client body as truth
+- Server must derive voucher value from stored voucher record
+
+14. Fix marketplace booking security paths
+- Same user must not complete both sides
+- No direct user path to completed
+- No booking action without ownership verification
+
+P2 - next
+
+15. Fix unsafe logs
+- Remove plaintext emails and any sensitive PII from logs
+- Use IDs or hashed tokens instead
+
+16. Fix super-app booking provider verification TODOs
+- Replace TODO authorization with real provider ownership logic
+
+17. Review all routes for missing auth / missing ownership systematically
+Especially:
+- contractor
+- invoices
+- bookings
+- provider availability
+- payout-related routes
+
+18. Review all payment/machine flows for false success
+- If K9000/hardware activation is still a stub, do not allow customer-facing success flow to imply service actually started
+- Payment success must not imply fulfillment unless real hardware/service trigger occurred
+
+Delivery requirement for each fix
+
+For every fixed item I want:
+- exact file changed
+- exact commit
+- before behavior
+- after behavior
+- proof of the fix
+- whether migration, secret rotation, or data repair is required
+
+Special report required after P0
+
+After P0, send one focused report with:
+1. which secrets were removed from fallback logic
+2. which secrets must be rotated now
+3. which endpoints were disabled immediately
+4. whether production currently has required env vars set
+5. whether plaintext bank/tax/national-insurance data may already exist
+6. whether any public provider endpoints were leaking extra Firestore fields
+7. whether any fake payment or unauthenticated invoice flow was reachable from UI
+
+Short version:
+This repo is currently unsafe due to payment trust, webhook trust, booking authorization, contractor privacy, and secret handling.
+Stabilize security first.
+Only after that continue with marketplace or invoice work.

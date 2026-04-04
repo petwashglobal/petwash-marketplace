@@ -20,11 +20,53 @@ import {
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { requireIdempotency, requireStrictIdempotency } from '../middleware/idempotency';
 import bookingLifecycleService from '../services/BookingLifecycleService';
 import { EmailService } from '../emailService';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// P0-FIX: Booking ownership enforcement
+// ---------------------------------------------------------------------------
+// Fetches the booking and determines whether the authenticated user is the
+// customer, the provider, or an admin. Returns the booking + derived role,
+// or throws a 403 if the caller has no stake in the booking.
+//
+// BEFORE: role was accepted from req.body — any authenticated user could
+//         drive any booking they knew the ID of.
+// AFTER:  role is derived exclusively from booking.userId (customer) and
+//         booking.providerId (provider), or from admin claims.
+// ---------------------------------------------------------------------------
+async function assertBookingParty(
+  bookingId: string,
+  userId: string,
+  userRole?: string,
+  res?: any
+): Promise<{ booking: typeof bookings.$inferSelect; derivedRole: 'customer' | 'provider' | 'admin' } | null> {
+  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+
+  if (!booking) {
+    if (res) res.status(404).json({ error: 'Booking not found' });
+    return null;
+  }
+
+  // Admin bypass — requires admin role in user claims
+  if (userRole === 'admin') {
+    return { booking, derivedRole: 'admin' };
+  }
+
+  const isCustomer = booking.userId === userId;
+  const isProvider = booking.providerId === userId;
+
+  if (!isCustomer && !isProvider) {
+    if (res) res.status(403).json({ error: 'Access denied — you are not a party to this booking' });
+    return null;
+  }
+
+  return { booking, derivedRole: isCustomer ? 'customer' : 'provider' };
+}
 
 // Helper to generate friendly display names from provider IDs
 function formatProviderName(providerId: string): string {
@@ -132,7 +174,7 @@ router.post('/quote', async (req, res) => {
   }
 });
 
-router.post('/create', async (req, res) => {
+router.post('/create', requireIdempotency, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -177,7 +219,7 @@ router.post('/create', async (req, res) => {
   }
 });
 
-router.post('/:quoteId/checkout', async (req, res) => {
+router.post('/:quoteId/checkout', requireStrictIdempotency, async (req, res) => {
   try {
     const { quoteId } = req.params;
     const userId = req.user?.uid || req.firebaseUser?.uid;
@@ -262,6 +304,19 @@ router.post('/:quoteId/checkout', async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         error: 'Slot reservation expired. Please select a new time.' 
+      });
+    }
+
+    // ── Self-booking guard ────────────────────────────────────────────────────
+    // quote.providerId is the provider's Firebase UID (varchar); userId is the
+    // customer's Firebase UID. If they are the same account, reject — money
+    // would flow from the user to themselves through escrow, enabling loyalty
+    // abuse and balance inflation. Set ALLOW_SELF_BOOKING=true for test accounts.
+    if (quote.providerId && userId === quote.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {
+      logger.warn('[MarketplaceBookings] Self-booking rejected', { userId });
+      return res.status(409).json({
+        success: false,
+        error: 'Self-booking is not permitted. You cannot book yourself as a provider.',
       });
     }
 
@@ -553,13 +608,29 @@ router.post('/:bookingId/transition', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { newStatus, role = 'customer', reason } = req.body;
+    const { newStatus, reason } = req.body;
+
+    // P0-FIX: role is no longer accepted from request body.
+    // It is derived from the booking record — only the actual customer or provider may act.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    // P0-FIX: Block direct user transitions to 'completed'.
+    // 'completed' can only be reached via the /complete endpoint after both parties
+    // have independently confirmed — enforced by the system actor.
+    // Admin may override via admin tools, not this endpoint.
+    if (newStatus === 'completed' && party.derivedRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Direct transition to completed is not allowed. Use the /complete endpoint.'
+      });
+    }
 
     await bookingLifecycleService.transitionStatus(
       bookingId,
       newStatus as BookingLifecycleStatus,
       userId,
-      role as 'customer' | 'provider' | 'system' | 'admin',
+      party.derivedRole,
       reason
     );
 
@@ -584,15 +655,19 @@ router.post('/:bookingId/confirm', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { role = 'customer' } = req.body;
 
-    const targetStatus = role === 'provider' ? 'provider_confirmed' : 'owner_confirmed';
-    
+    // P0-FIX: role no longer accepted from body — derived from booking record.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    const targetStatus = party.derivedRole === 'provider' ? 'provider_confirmed' : 'owner_confirmed';
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       targetStatus as BookingLifecycleStatus,
       userId,
-      role as 'customer' | 'provider',
+      party.derivedRole,
       'Booking confirmed'
     );
 
@@ -611,7 +686,16 @@ router.post('/:bookingId/start', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    
+
+    // P0-FIX: Only the actual provider of this booking may start it.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    if (party.derivedRole !== 'provider' && party.derivedRole !== 'admin') {
+      return res.status(403).json({ error: 'Only the provider can start a service' });
+    }
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       'in_progress',
@@ -635,26 +719,38 @@ router.post('/:bookingId/complete', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { role = 'provider' } = req.body;
 
-    const targetStatus = role === 'provider' 
-      ? 'provider_completion_review' 
+    // P0-FIX: role is no longer accepted from request body.
+    // Derived from booking record. This also prevents the same user from
+    // self-completing both sides: their role is fixed by who they are in the booking.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
+    const targetStatus = party.derivedRole === 'provider'
+      ? 'provider_completion_review'
       : 'owner_completion_review';
-    
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       targetStatus as BookingLifecycleStatus,
       userId,
-      role as 'customer' | 'provider',
+      party.derivedRole === 'admin' ? 'system' : party.derivedRole,
       'Service marked complete'
     );
 
     const booking = await bookingLifecycleService.getBookingWithHistory(bookingId);
-    
-    const ownerReviewed = booking?.statusHistory.some(h => h.toStatus === 'owner_completion_review');
-    const providerReviewed = booking?.statusHistory.some(h => h.toStatus === 'provider_completion_review');
 
-    if (ownerReviewed && providerReviewed) {
+    // P0-FIX: Verify that the two completion events came from DIFFERENT users.
+    // Without this, a single user who is both customer and provider (e.g. demo/test data)
+    // could trigger escrow release unilaterally.
+    const ownerEntry = booking?.statusHistory.find((h: any) => h.toStatus === 'owner_completion_review');
+    const providerEntry = booking?.statusHistory.find((h: any) => h.toStatus === 'provider_completion_review');
+    const ownerReviewed = !!ownerEntry;
+    const providerReviewed = !!providerEntry;
+    const distinctActors = ownerEntry && providerEntry && ownerEntry.changedByUserId !== providerEntry.changedByUserId;
+
+    if (ownerReviewed && providerReviewed && distinctActors) {
       await bookingLifecycleService.transitionStatus(
         bookingId,
         'completed',
@@ -680,13 +776,18 @@ router.post('/:bookingId/cancel', async (req, res) => {
     }
 
     const { bookingId } = req.params;
-    const { reason, role = 'customer' } = req.body;
+    const { reason } = req.body;
+
+    // P0-FIX: role no longer accepted from body — derived from booking record.
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
 
     await bookingLifecycleService.transitionStatus(
       bookingId,
       'cancelled',
       userId,
-      role as 'customer' | 'provider',
+      party.derivedRole === 'admin' ? 'system' : party.derivedRole,
       reason || 'Booking cancelled'
     );
 
@@ -1330,19 +1431,14 @@ router.post('/provider/:providerId/availability', async (req, res) => {
     const { providerId } = req.params;
     const { dates, isAvailable, customPrice, platform, maxBookings, notes } = req.body;
 
-    // Validate provider owns this rate card
-    const [rateCard] = await db.select()
-      .from(providerRateCards)
-      .where(
-        and(
-          eq(providerRateCards.providerId, providerId),
-          eq(providerRateCards.providerId, userId)
-        )
-      )
-      .limit(1);
-
-    // For now, allow any authenticated user to update for testing
-    // In production, enforce ownership check
+    // P1-FIX: Enforce that the caller IS the provider — or is an admin.
+    // Before this fix the ownership check was commented out ("for testing"),
+    // meaning any authenticated user could block/unblock any provider's calendar.
+    const callerIsAdmin = req.user?.customClaims?.admin === true ||
+      req.user?.email?.endsWith('@petwash.co.il');
+    if (userId !== providerId && !callerIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Not authorized to modify this provider\'s availability' });
+    }
 
     const results = [];
     for (const dateStr of dates as string[]) {
@@ -1477,8 +1573,16 @@ router.post('/provider/rate-card', async (req, res) => {
 
 router.post('/process-escrow-releases', async (req, res) => {
   try {
-    const adminKey = req.headers['x-admin-key'];
-    if (adminKey !== process.env.ADMIN_API_KEY) {
+    // SECURITY FIX (item 25): Plain === comparison is vulnerable to timing attacks.
+    // BEFORE: adminKey !== process.env.ADMIN_API_KEY  — leaks secret length and prefix via timing.
+    // AFTER:  timingSafeEqual with fixed-length buffers eliminates the timing oracle.
+    const { timingSafeEqual } = await import('crypto');
+    const adminKey = (req.headers['x-admin-key'] as string) || '';
+    const expectedKey = process.env.ADMIN_API_KEY || '';
+    const adminKeyMatches = expectedKey.length > 0 &&
+      adminKey.length === expectedKey.length &&
+      timingSafeEqual(Buffer.from(adminKey), Buffer.from(expectedKey));
+    if (!adminKeyMatches) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

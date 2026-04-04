@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import sanitizeHtml from 'sanitize-html';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -3939,7 +3940,7 @@ export default function MyAccount() {
                               <div className="mt-3 pt-3 border-t border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: msg.bodyHtml || '' }}
+                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.bodyHtml || '', { allowedTags: sanitizeHtml.defaults.allowedTags, allowedAttributes: sanitizeHtml.defaults.allowedAttributes }) }}
                                 />
                                 {msg.meta?.voucherCode && (
                                   <div className="mt-3 flex items-center gap-2">

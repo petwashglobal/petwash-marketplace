@@ -92,25 +92,50 @@ class BookingLifecycleService {
     if (!customerId) return null;
 
     try {
-      const result = await db.select({
-        completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
-        averageRating: sql<number>`COALESCE(AVG(customer_rating) FILTER (WHERE status = 'completed' AND customer_rating IS NOT NULL), 0)`,
-      })
-      .from(bookings)
-      .where(eq(bookings.userId, customerId));
+      const [statsRow, userRow] = await Promise.all([
+        db.select({
+          completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
+          averageRating: sql<number>`COALESCE(AVG(customer_rating) FILTER (WHERE status = 'completed' AND customer_rating IS NOT NULL), 0)`,
+        })
+        .from(bookings)
+        .where(eq(bookings.userId, customerId))
+        .then((r) => r[0]),
 
-      const completedBookings = Number(result[0]?.completedCount) || 0;
-      const averageRating = Number(result[0]?.averageRating) || 0;
+        // Read the canonical loyalty_tier persisted by the points-based loyalty
+        // system (loyaltySync.updateLoyalty). A customer who earned tier 'gold'
+        // through K9000 washes should get the gold discount at marketplace checkout
+        // even if they have fewer than 15 completed marketplace bookings.
+        db.select({ loyaltyTier: users.loyaltyTier })
+          .from(users)
+          .where(eq(users.id, customerId))
+          .limit(1)
+          .then((r) => r[0] ?? null),
+      ]);
 
-      // Determine tier (highest matching)
+      const completedBookings = Number(statsRow?.completedCount) || 0;
+      const averageRating = Number(statsRow?.averageRating) || 0;
+
+      // Determine tier from booking-count history (original logic)
       let tier = 'none';
       let discountPercent = 0;
-
       for (const [tierName, thresholds] of Object.entries(LOYALTY_TIERS).reverse()) {
         if (completedBookings >= thresholds.minBookings && averageRating >= thresholds.minRating) {
           tier = tierName;
           discountPercent = thresholds.discountPercent;
           break;
+        }
+      }
+
+      // Compare with the stored loyalty tier — use whichever gives the better discount.
+      // The stored tier reflects the points-based system (K9000 washes, referrals, etc.)
+      // so a customer who earned a higher tier outside of marketplace bookings still
+      // receives their entitled discount at checkout.
+      if (userRow?.loyaltyTier) {
+        const storedTier = userRow.loyaltyTier.toLowerCase();
+        const storedConfig = LOYALTY_TIERS[storedTier as keyof typeof LOYALTY_TIERS];
+        if (storedConfig && storedConfig.discountPercent > discountPercent) {
+          tier = storedTier;
+          discountPercent = storedConfig.discountPercent;
         }
       }
 
@@ -267,6 +292,12 @@ class BookingLifecycleService {
   }
 
   async createBooking(input: CreateBookingInput, tx?: any): Promise<{ bookingId: string; bookingNumber: string }> {
+    // Defense-in-depth: self-booking guard. The route layer checks this too,
+    // but we repeat here because createBooking can be called from other paths.
+    if (input.customerId === input.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {
+      throw new Error('Self-booking is not permitted: customer and provider cannot be the same user');
+    }
+
     const dbOrTx = tx ?? db;
     const bookingId = nanoid(16);
     const bookingNumber = `PW-${Date.now().toString(36).toUpperCase()}-${nanoid(4).toUpperCase()}`;
@@ -401,6 +432,18 @@ class BookingLifecycleService {
 
     if (!allowedTransitions.includes(newStatus)) {
       throw new Error(`Invalid transition from ${currentStatus} to ${newStatus}`);
+    }
+
+    // SERVICE-LAYER GUARD (item 5): The state machine allows owner_completion_review → completed
+    // and provider_completion_review → completed, but that must ONLY happen via the system
+    // auto-advance that verifies both sides confirmed by distinct actors. Any direct call
+    // to transitionStatus('completed') from outside that path is rejected at the service layer —
+    // not just the route layer — so new code paths cannot bypass it.
+    if (newStatus === 'completed' && actorRole !== 'system' && actorRole !== 'admin') {
+      throw new Error(
+        `Direct transition to 'completed' is not allowed for role '${actorRole}'. ` +
+        `Completion must be triggered by the system after both parties confirm independently.`
+      );
     }
 
     await db.update(bookings)

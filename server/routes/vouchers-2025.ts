@@ -7,7 +7,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { z } from "zod";
 import { db } from "../db";
 import { petWashVouchers2025, voucherUsageHistory } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { 
   buildBaseVoucher, 
   generateVoucherId, 
@@ -514,15 +514,30 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
         });
       }
 
-      // Update voucher
-      await db
+      // SECURITY (T03): Atomic conditional UPDATE prevents double-spend race condition.
+      // Old code: read remaining → check in JS → write new value (gap allows two concurrent
+      //           requests both to pass the check and both decrement).
+      // Fix: WHERE washes_remaining >= ${washesToRedeem} — if two requests race, the second
+      //      UPDATE returns 0 rows and we throw an error instead of double-spending.
+      const [updatedWash] = await db
         .update(petWashVouchers2025)
         .set({
-          washesRemaining: remaining - washesToRedeem,
+          washesRemaining: sql`washes_remaining - ${washesToRedeem}`,
           lastUsed: new Date(),
           updatedAt: new Date()
         })
-        .where(eq(petWashVouchers2025.id, dbVoucher.id));
+        .where(and(
+          eq(petWashVouchers2025.id, dbVoucher.id),
+          sql`washes_remaining >= ${washesToRedeem}`
+        ))
+        .returning({ washesRemaining: petWashVouchers2025.washesRemaining });
+
+      if (!updatedWash) {
+        return res.status(409).json({
+          success: false,
+          error: "Insufficient washes remaining or concurrent redemption conflict — please retry"
+        });
+      }
 
       // Log usage
       await db.insert(voucherUsageHistory).values({
@@ -538,7 +553,7 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
       res.json({ 
         success: true, 
         message: `Redeemed ${washesToRedeem} wash(es)`,
-        remaining_washes: remaining - washesToRedeem
+        remaining_washes: updatedWash.washesRemaining ?? 0
       });
 
     } else if (dbVoucher.valueType === "currency") {
@@ -559,15 +574,26 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
         });
       }
 
-      // Update voucher
-      await db
+      // SECURITY (T03): Atomic conditional UPDATE — prevents double-spend on currency vouchers.
+      const [updatedCurr] = await db
         .update(petWashVouchers2025)
         .set({
-          valueRemaining: (remaining - amountToRedeem).toString(),
+          valueRemaining: sql`(value_remaining::numeric - ${amountToRedeem})::text`,
           lastUsed: new Date(),
           updatedAt: new Date()
         })
-        .where(eq(petWashVouchers2025.id, dbVoucher.id));
+        .where(and(
+          eq(petWashVouchers2025.id, dbVoucher.id),
+          sql`value_remaining::numeric >= ${amountToRedeem}`
+        ))
+        .returning({ valueRemaining: petWashVouchers2025.valueRemaining });
+
+      if (!updatedCurr) {
+        return res.status(409).json({
+          success: false,
+          error: "Insufficient value remaining or concurrent redemption conflict — please retry"
+        });
+      }
 
       // Log usage
       await db.insert(voucherUsageHistory).values({
@@ -583,7 +609,7 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
       res.json({ 
         success: true, 
         message: `Redeemed ${dbVoucher.currency}${amountToRedeem}`,
-        remaining_value: remaining - amountToRedeem
+        remaining_value: Number(updatedCurr.valueRemaining ?? 0)
       });
     }
 

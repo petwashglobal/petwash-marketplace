@@ -22,7 +22,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { trackSwitchAccount } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
-import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, getBiometricMethodName, isChromeiOS, getBrowserName } from "@/auth/passkey";
+import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, getBiometricMethodName, isChromeiOS, getBrowserName, isSafariIOS } from "@/auth/passkey";
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
 import { executeReCaptcha, preloadReCaptcha } from "@/components/ReCaptcha";
@@ -621,8 +621,36 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     try {
       setPasskeyLoading(true);
       logger.info("Passkey sign-in initiated", { browser: getBrowserName() });
-      
+
       const passkeyStartTime = performance.now();
+
+      // On iOS Safari, conditional mediation triggers the native one-tap Face ID
+      // prompt rather than the QR-code modal — always prefer it when available.
+      // If it returns false (user dismissed, no passkey, or not supported), we fall
+      // through to the standard modal flow below.
+      if (isSafariIOS()) {
+        try {
+          const conditionalOk = await signInWithPasskeyConditional();
+          if (conditionalOk) {
+            logger.info("Conditional Face ID sign-in succeeded (Safari iOS)");
+            trackEvent({
+              action: 'auth_conditional_passkey_success',
+              category: 'authentication',
+              label: 'face_id_button_safari',
+              language,
+            });
+            window.scrollTo(0, 0);
+            navigatePostLogin();
+            return;
+          }
+        } catch (conditionalErr) {
+          // Conditional UI was aborted / not triggered — fall through to modal
+          logger.debug("Conditional Face ID did not complete, falling back to modal", {
+            error: conditionalErr instanceof Error ? conditionalErr.message : 'unknown',
+          });
+        }
+      }
+
       const result = await signInWithPasskey();
       
       if (result.success) {

@@ -58,6 +58,7 @@ import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
+import adminEscrowReconciliationRoutes, { startEscrowDriftMonitor } from "./routes/admin-escrow-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
 import { startSettlementReconciliationJob } from "./services/SettlementReconciliationJob";
@@ -296,6 +297,12 @@ import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClie
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
 
+const MAX_QUERY_LIMIT = 500;
+const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
+  const n = parseInt(raw as string, 10);
+  return isNaN(n) || n < 1 ? defaultVal : Math.min(n, max);
+};
+
 export async function registerRoutes(app: Express): Promise<void> {
   
   // NOTE: Static assets now served by serveStatic() in production mode
@@ -447,6 +454,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // ✅ K9000 public system-mode endpoint — no auth required.
+    // Returns machineMode: 'live' | 'demo' based on MACHINE_ACTIVATION_URL env var.
+    // Frontend queries this on the confirmed redemption step to warn users about demo mode.
+    if (path === '/api/k9000/system-mode') {
+      return next();
+    }
+
     // ✅ K9000 IoT hardware bypass — kiosks authenticate via either:
     //   A) HMAC signed headers (X-K9000-ID + X-K9000-TS + X-K9000-SIGN) — production path
     //   B) body.machineSecret — DEV fallback
@@ -502,10 +516,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     }
 
-    // 🔑 Admin secret bypass — allows server-side and automation access to internal routes
-    const adminSecretHeader = req.headers['x-admin-secret'];
-    const CONFIGURED_ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-    if (CONFIGURED_ADMIN_SECRET && adminSecretHeader === CONFIGURED_ADMIN_SECRET) {
+    // 🔑 Admin secret bypass — allows server-side and automation access to internal routes (timing-safe)
+    if (timingSafeAdminSecretMatch(req)) {
       return next();
     }
 
@@ -1085,118 +1097,142 @@ self.addEventListener('notificationclick', (event) => {
         logger.warn('[Session] Failed to set super_admin role claim (non-blocking)', claimsErr);
       }
 
-      (async () => {
+      // ── Critical path: ensure PostgreSQL user row exists BEFORE responding ──
+      // This must be awaited so the client's immediate /api/auth/post-login call
+      // (fired ~100 ms after this response) finds the row.  3-second timeout
+      // prevents slow DB/Firestore from blocking session creation.
+      let _syncResult: { user: any; isNewUser: boolean } | null = null;
+      let _syncFirstName: string | undefined;
+      let _syncLastName: string | undefined;
+      let _syncPhone: string | undefined;
+      let _syncCountry: string | undefined;
+      let _syncLang: string | undefined;
+      let _syncDecoded: any = null;
+
+      try {
+        const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
+        _syncDecoded = decoded;
+        const { authService } = await import('./services/AuthService');
+
+        let firstName: string | undefined;
+        let lastName: string | undefined;
+        let phone: string | undefined;
+        let country: string | undefined;
+        let lang: string | undefined;
+
         try {
-          const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
-          const { authService } = await import('./services/AuthService');
-          
-          let firstName: string | undefined;
-          let lastName: string | undefined;
-          let phone: string | undefined;
-          let country: string | undefined;
-          let lang: string | undefined;
-          let dob: string | undefined;
-          let marketingConsent: boolean | undefined;
-          
-          try {
-            const profileDoc = await firestoreDb.collection('users').doc(decoded.uid).collection('profile').doc('data').get();
-            if (profileDoc.exists) {
-              const profile = profileDoc.data();
-              firstName = profile?.firstName;
-              lastName = profile?.lastName;
-              phone = profile?.phone;
-              country = profile?.country === 'Israel' ? 'IL' : profile?.country;
-              lang = profile?.lang;
-              dob = profile?.dob;
-              marketingConsent = profile?.marketing;
-            }
-          } catch (profileErr) {
-            logger.debug('[Session] Could not fetch Firestore profile for sync', profileErr);
+          const profileDoc = await firestoreDb
+            .collection('users').doc(decoded.uid)
+            .collection('profile').doc('data').get();
+          if (profileDoc.exists) {
+            const profile = profileDoc.data();
+            firstName = profile?.firstName;
+            lastName = profile?.lastName;
+            phone = profile?.phone;
+            country = profile?.country === 'Israel' ? 'IL' : profile?.country;
+            lang = profile?.lang;
           }
-          
-          if (!firstName) {
-            const nameParts = (decoded.name || '').split(' ');
-            firstName = nameParts[0] || undefined;
-            lastName = nameParts.slice(1).join(' ') || undefined;
-          }
-          
-          const syncResult = await authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
-            firstName,
-            lastName,
-            phone: phone || decoded.phone_number || undefined,
-            profileImageUrl: decoded.picture || undefined,
-            country,
-            language: lang,
-          });
-          logger.info('[Session] ✅ PostgreSQL user sync complete', { uid: decoded.uid });
-
-          // Social OAuth providers (Google, Apple, Facebook) implicitly accept PetWash
-          // terms through the OAuth consent screen. Stamp termsAcceptedAt so the
-          // postLoginDecider does not redirect them to /complete-profile.
-          const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
-          const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
-          if (socialOAuthProviders.includes(signInProviderForTerms) && syncResult?.user && !(syncResult.user as any).termsAcceptedAt) {
-            try {
-              const consentNow = new Date();
-              await authService.updateUser(decoded.uid, {
-                termsAcceptedAt: consentNow,
-                privacyAcceptedAt: consentNow,
-              });
-              logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', { uid: decoded.uid, provider: signInProviderForTerms });
-            } catch (termsErr) {
-              logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
-            }
-          }
-
-          if (syncResult?.isNewUser) {
-            try {
-              const { logRegistration } = await import('./services/googleSheetsIntegration');
-              await logRegistration({
-                userId: decoded.uid,
-                firstName: firstName || '',
-                lastName: lastName || '',
-                email: decoded.email || '',
-                phone: phone || decoded.phone_number || '',
-                country: country || 'IL',
-                registrationSource: decoded.firebase?.sign_in_provider === 'google.com' ? 'google_auth' : 'phone_auth',
-                profilePhotoUrl: decoded.picture || '',
-                language: lang || 'he',
-              });
-              logger.info('[Session] ✅ Google Sheets registration logged', { uid: decoded.uid });
-            } catch (sheetsErr) {
-              logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
-            }
-
-            // ── HubSpot CRM: capture every new social/phone sign-up ───────────────
-            // Previously, Google/Apple/Phone sign-ups bypassed HubSpot entirely.
-            // This is the authoritative server-side capture — fires regardless of client JS.
-            try {
-              const { syncUserToHubSpot, trackHubSpotEvent } = await import('./hubspot');
-              const provider = (decoded as any).firebase?.sign_in_provider || 'unknown';
-              await syncUserToHubSpot({
-                uid: decoded.uid,
-                email: decoded.email || '',
-                firstname: firstName,
-                lastname: lastName,
-                phone: phone || decoded.phone_number || undefined,
-                lang: lang || 'he',
-                country: country || 'IL',
-              });
-              await trackHubSpotEvent(decoded.email || '', 'petwash_user_registered', {
-                registrationSource: provider,
-                language: lang || 'he',
-                country: country || 'IL',
-                registeredAt: new Date().toISOString(),
-              });
-              logger.info('[Session] ✅ HubSpot new user synced', { uid: decoded.uid, provider });
-            } catch (hubspotErr) {
-              logger.warn('[Session] HubSpot new user sync failed (non-blocking)', hubspotErr);
-            }
-          }
-        } catch (syncErr) {
-          logger.warn('[Session] PostgreSQL auto-sync failed (non-blocking)', syncErr);
+        } catch (profileErr) {
+          logger.debug('[Session] Could not fetch Firestore profile for sync', profileErr);
         }
-      })();
+
+        if (!firstName) {
+          const nameParts = (decoded.name || '').split(' ');
+          firstName = nameParts[0] || undefined;
+          lastName = nameParts.slice(1).join(' ') || undefined;
+        }
+
+        _syncFirstName = firstName;
+        _syncLastName  = lastName;
+        _syncPhone     = phone;
+        _syncCountry   = country;
+        _syncLang      = lang;
+
+        // Race against 3-second ceiling: user creation must win to prevent the
+        // post-login 404-USER_NOT_FOUND race. If DB is slower, we continue anyway
+        // and post-login's own recovery upsert picks it up.
+        const syncRace = authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
+          firstName, lastName,
+          phone: phone || decoded.phone_number || undefined,
+          profileImageUrl: decoded.picture || undefined,
+          country,
+          language: lang,
+        });
+        const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000));
+        _syncResult = await Promise.race([syncRace, timeoutPromise]) as typeof _syncResult;
+
+        logger.info('[Session] ✅ PostgreSQL user sync complete', {
+          uid: decoded.uid, isNewUser: _syncResult?.isNewUser ?? 'timeout',
+        });
+
+        // Social OAuth providers implicitly consent via OAuth screen — stamp terms
+        // immediately so postLoginDecider does not redirect to /complete-profile.
+        const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
+        const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
+        if (socialOAuthProviders.includes(signInProviderForTerms) && _syncResult?.user && !(_syncResult.user as any).termsAcceptedAt) {
+          try {
+            const consentNow = new Date();
+            await authService.updateUser(decoded.uid, {
+              termsAcceptedAt: consentNow,
+              privacyAcceptedAt: consentNow,
+            });
+            logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', {
+              uid: decoded.uid, provider: signInProviderForTerms,
+            });
+          } catch (termsErr) {
+            logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
+          }
+        }
+      } catch (syncErr) {
+        logger.warn('[Session] Critical PostgreSQL sync failed (non-blocking) — post-login recovery will retry', syncErr);
+      }
+
+      // ── Non-critical async path: external CRM / analytics (fire-and-forget) ─
+      if (_syncResult?.isNewUser && _syncDecoded) {
+        (async () => {
+          const decoded = _syncDecoded;
+          const firstName = _syncFirstName;
+          const lastName  = _syncLastName;
+          const phone     = _syncPhone;
+          const country   = _syncCountry;
+          const lang      = _syncLang;
+          try {
+            const { logRegistration } = await import('./services/googleSheetsIntegration');
+            await logRegistration({
+              userId:             decoded.uid,
+              firstName:          firstName || '',
+              lastName:           lastName  || '',
+              email:              decoded.email || '',
+              phone:              phone || decoded.phone_number || '',
+              country:            country || 'IL',
+              registrationSource: decoded.firebase?.sign_in_provider === 'google.com' ? 'google_auth' : 'phone_auth',
+              profilePhotoUrl:    decoded.picture || '',
+              language:           lang || 'he',
+            });
+            logger.info('[Session] ✅ Google Sheets registration logged', { uid: decoded.uid });
+          } catch (sheetsErr) {
+            logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
+          }
+
+          try {
+            const { syncUserToHubSpot, trackHubSpotEvent } = await import('./hubspot');
+            const provider = (decoded as any).firebase?.sign_in_provider || 'unknown';
+            await syncUserToHubSpot({
+              uid: decoded.uid, email: decoded.email || '',
+              firstname: firstName, lastname: lastName,
+              phone: phone || decoded.phone_number || undefined,
+              lang: lang || 'he', country: country || 'IL',
+            });
+            await trackHubSpotEvent(decoded.email || '', 'petwash_user_registered', {
+              registrationSource: provider, language: lang || 'he',
+              country: country || 'IL', registeredAt: new Date().toISOString(),
+            });
+            logger.info('[Session] ✅ HubSpot new user synced', { uid: decoded.uid, provider });
+          } catch (hubspotErr) {
+            logger.warn('[Session] HubSpot new user sync failed (non-blocking)', hubspotErr);
+          }
+        })();
+      }
       
       logger.info('[Session] ✅ Session cookie created successfully', {
         traceId,
@@ -3660,7 +3696,7 @@ self.addEventListener('notificationclick', (event) => {
     const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex').substring(0, 8);
     
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = safeLimit(req.query.limit, 50);
       const cursor = req.query.cursor ? parseInt(req.query.cursor as string) : undefined;
 
       if (limit > 100) {
@@ -4483,7 +4519,7 @@ self.addEventListener('notificationclick', (event) => {
       const filters = {
         status: req.query.status as string | undefined,
         q: req.query.q as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit) : 100,
+        limit: safeLimit(req.query.limit, 100),
         page: req.query.page ? parseInt(req.query.page) : 1,
       };
 
@@ -4525,7 +4561,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { getStationAlerts } = await import('./stationsService');
       const stationId = req.params.stationId;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const limit = safeLimit(req.query.limit, 100);
 
       const alerts = await getStationAlerts(stationId, limit);
 
@@ -4596,7 +4632,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/monitoring/tests', requireAdmin, async (req: any, res) => {
     try {
       const { db: adminDb } = await import('./lib/firebase-admin');
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = safeLimit(req.query.limit, 50);
 
       const testsSnapshot = await adminDb.collection('monitoring_tests')
         .orderBy('timestamp', 'desc')
@@ -4853,7 +4889,9 @@ self.addEventListener('notificationclick', (event) => {
   // Founder member endpoint
   app.get("/api/founder-member", async (req, res) => {
     try {
-      const founderUser = await storage.getUserByEmail("nirhadad1@gmail.com");
+      // SECURITY (T07): Founder email loaded from env var — not hardcoded
+      const founderEmail = process.env.FOUNDER_EMAIL || '';
+      const founderUser = founderEmail ? await storage.getUserByEmail(founderEmail) : null;
       if (!founderUser) {
         return res.status(404).json({ message: "Founder member not found" });
       }
@@ -4884,7 +4922,8 @@ self.addEventListener('notificationclick', (event) => {
       const { packageId, customerEmail, customerName, phone, isGiftCard } = req.body;
       
       // Use provided details or defaults
-      const email = customerEmail || 'nirhadad1@gmail.com';
+      // SECURITY (T07): Remove hardcoded personal email fallback — require explicit input
+      const email = customerEmail || process.env.ADMIN_NOTIFICATION_EMAIL || 'test@internal.invalid';
       const name = customerName || 'Nir Hadad';
       const phoneNumber = phone || '+614197773360';
       const selectedPackageId = packageId || 1;
@@ -5152,48 +5191,14 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Express checkout endpoint (unauthenticated quick checkout)
-  app.post('/api/express-checkout', async (req, res) => {
-    try {
-      const { packageId, email, paymentMethod } = req.body;
-      
-      if (!packageId || !email) {
-        return res.status(400).json({ message: "Package ID and email are required" });
-      }
-      
-      // SECURITY: Block Nayax payments until API keys are configured
-      if (paymentMethod === 'nayax') {
-        logger.warn('[Express Checkout] Nayax payment blocked - feature disabled until API keys configured', { email, packageId });
-        return res.status(503).json({ 
-          message: "Mobile payment (Nayax) coming soon. Please use card payment.",
-          messageHe: "תשלום נייד (Nayax) בקרוב. אנא השתמש בתשלום בכרטיס."
-        });
-      }
-      
-      // Get package details
-      const pkg = await storage.getWashPackage(packageId);
-      if (!pkg) {
-        return res.status(404).json({ message: "Package not found" });
-      }
-      
-      // For credit card payments, simulate success (integrate with real payment gateway later)
-      if (paymentMethod === 'credit_card') {
-        // TODO: Integrate with real payment gateway
-        // For now, just return success
-        res.json({
-          success: true,
-          message: "Express checkout successful",
-          packageId,
-          email,
-          price: pkg.price
-        });
-      } else {
-        res.status(400).json({ message: "Invalid payment method" });
-      }
-    } catch (error) {
-      logger.error('Express checkout error:', error);
-      res.status(500).json({ message: "Express checkout failed" });
-    }
+  // P0-FIX: Express checkout stub REMOVED — returned {success:true} with no real payment processor,
+  // no auth, and no DB record. Use /api/checkout (authenticated) with a real payment flow instead.
+  app.post('/api/express-checkout', (_req, res) => {
+    res.status(410).json({
+      error: 'endpoint_removed',
+      message: 'This endpoint has been permanently removed. Use /api/checkout with authenticated payment flow.',
+      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש ב-/api/checkout עם זרימת תשלום מאומתת.'
+    });
   });
 
   // Purchase/Checkout endpoint for wash packages (authenticated with discounts)
@@ -5646,7 +5651,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/vouchers/my-vouchers', requireAuth, verifyAppCheckTokenOptional, async (req: any, res) => {
     try {
       const userId = req.user?.uid || req.firebaseUser?.uid;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const limit = safeLimit(req.query.limit, 20);
       const cursor = req.query.cursor as string | undefined;
       
       const result = await storage.getMyVouchers(userId, { limit, cursor });
@@ -5714,7 +5719,7 @@ self.addEventListener('notificationclick', (event) => {
   // Admin: List all vouchers with search
   app.get('/api/admin/vouchers', requireAdmin, async (req: any, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = safeLimit(req.query.limit, 50);
       const cursor = req.query.cursor as string | undefined;
       const status = req.query.status as string | undefined;
       const search = req.query.search as string | undefined;
@@ -5901,38 +5906,61 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // T04: Persistent idempotency dedup for Nayax voucher webhook.
+  // In-memory Map with 24-hour TTL; prevents double-processing across rapid retries.
+  // For multi-instance deployments, upgrade to a Redis SET or PostgreSQL webhook_events table.
+  const _voucherWebhookSeen = new Map<string, number>();
+  const _VOUCHER_DEDUP_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  function _voucherDedup(eventId: string): boolean {
+    const now = Date.now();
+    // Evict expired entries
+    for (const [k, ts] of _voucherWebhookSeen) {
+      if (now - ts > _VOUCHER_DEDUP_TTL_MS) _voucherWebhookSeen.delete(k);
+    }
+    if (_voucherWebhookSeen.has(eventId)) return true; // already processed
+    _voucherWebhookSeen.set(eventId, now);
+    return false;
+  }
+
   // Nayax webhook for voucher purchases
   app.post('/api/vouchers/webhooks/nayax', async (req, res) => {
     const correlationId = crypto.randomUUID();
     try {
       const signature = req.headers['x-nayax-signature'] as string;
       const secret = process.env.NAYAX_WEBHOOK_SECRET;
-      
+
       if (!secret) {
         logger.error('NAYAX_WEBHOOK_SECRET not configured', { correlationId });
         return res.status(500).json({ error: 'Webhook not configured' });
       }
-      
+
       const expectedSignature = crypto
         .createHmac('sha256', secret)
         .update(JSON.stringify(req.body))
         .digest('hex');
-      
+
       if (signature !== expectedSignature) {
         logger.error('Invalid Nayax webhook signature', { correlationId });
         return res.status(401).json({ error: 'Invalid signature' });
       }
-      
+
+      // T04: Idempotency — deduplicate by event_id from payload
+      const eventId: string | undefined = req.body?.event_id || req.body?.eventId;
+      if (eventId && _voucherDedup(eventId)) {
+        logger.info('Nayax voucher webhook duplicate ignored', { correlationId, eventId });
+        return res.json({ received: true, duplicate: true });
+      }
+
       const { type, data } = req.body;
-      
+
       if (type === 'voucher.purchased') {
         // TODO: Create voucher and send email
-        logger.info('Nayax voucher purchase webhook received', { correlationId, data });
+        logger.info('Nayax voucher purchase webhook received', { correlationId, eventId, data });
       } else if (type === 'voucher.refunded') {
         // TODO: Mark voucher as cancelled
-        logger.info('Nayax voucher refund webhook received', { correlationId, data });
+        logger.info('Nayax voucher refund webhook received', { correlationId, eventId, data });
       }
-      
+
       res.json({ received: true });
     } catch (error) {
       logger.error('Nayax webhook error', error, { correlationId });
@@ -6333,7 +6361,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/backups/logs', requireAdmin, async (req: any, res) => {
     try {
       const { db } = await import('./lib/firebase-admin');
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = safeLimit(req.query.limit, 50);
       const type = req.query.type as string | undefined; // 'code' or 'firestore'
       
       let query = db.collection('backup_logs')
@@ -6610,7 +6638,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/users/:userId/receipts', requireAuth, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = safeLimit(req.query.limit, 10);
       
       // Check if user can access these receipts
       const requestingUserId = req.user.claims.sub;
@@ -9745,6 +9773,25 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/documents', validateFirebaseToken, adminLimiter, documentsRoutes);
   
   // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
+  // K9000 PUBLIC SYSTEM MODE (item 21): Tells the frontend whether the physical machine
+  // is in demo mode (MACHINE_ACTIVATION_URL not set). Registered BEFORE IoT routes so it
+  // is not blocked by machine-secret IP/HMAC auth middleware on k9000IotRoutes.
+  // Frontend: K9000Redeem.tsx queries this and shows a banner when machineMode === 'demo'.
+  app.get('/api/k9000/system-mode', apiLimiter, (req, res) => {
+    const machineActivationUrl = process.env.MACHINE_ACTIVATION_URL;
+    const machineMode = machineActivationUrl ? 'live' : 'demo';
+    res.json({
+      machineMode,
+      configured: !!machineActivationUrl,
+      messageHe: machineMode === 'demo'
+        ? 'המכונה במצב הדגמה — פעולה פיזית לא מופעלת. יש לפנות לצוות.'
+        : 'המכונה פעילה ומחוברת.',
+      messageEn: machineMode === 'demo'
+        ? 'Machine is in demo mode — physical wash will not start. Contact staff if needed.'
+        : 'Machine is live and connected.',
+    });
+  });
+
   // MUST be registered FIRST — IoT routes use machine-secret auth (not Firebase).
   // The supplier/dashboard routers apply validateFirebaseToken globally; registering
   // them first would block unauthenticated kiosk hardware from reaching IoT endpoints.
@@ -9929,6 +9976,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
   app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
   app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
+  app.use('/api/admin/escrow', adminLimiter, adminEscrowReconciliationRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
@@ -10682,7 +10730,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).send('<h1>Invalid approval link</h1>');
       }
       
-      const success = await processFeatureDecision(token, 'approved', 'nirhadad1@gmail.com');
+      // SECURITY (T07): Use env var for admin email — not hardcoded personal email
+      const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
+      const success = await processFeatureDecision(token, 'approved', adminEmail);
       
       if (success) {
         res.send(`
@@ -10710,7 +10760,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).send('<h1>Invalid rejection link</h1>');
       }
       
-      const success = await processFeatureDecision(token, 'rejected', 'nirhadad1@gmail.com');
+      // SECURITY (T07): Use env var for admin email — not hardcoded personal email
+      const adminEmail2 = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
+      const success = await processFeatureDecision(token, 'rejected', adminEmail2);
       
       if (success) {
         res.send(`
@@ -11041,6 +11093,17 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // ===== PHASE 2: Best-effort side effects (failures do NOT block registration) =====
+
+      // ── Wallet + loyalty bootstrap (idempotent ON CONFLICT guards) ───────────────────
+      // authService.createUser() calls these for brand-new users; this block covers
+      // the returning-user path where createUser() returns early without calling them.
+      try {
+        await authService.ensureWalletAccount(userId);
+        await authService.ensureLoyaltyProfile(userId);
+        logger.info(`[Phase2] ✅ Wallet + loyalty ensured uid=${userId}`, { traceId });
+      } catch (bootstrapErr: any) {
+        logger.warn(`[Phase2] Wallet/loyalty bootstrap failed (non-blocking)`, { traceId, error: bootstrapErr.message });
+      }
       
       // Firestore profile (best-effort - user can still log in without it)
       try {
@@ -11689,7 +11752,9 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Verify admin email
-      if (decodedToken.email !== 'nirhadad1@gmail.com') {
+      // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — not hardcoded personal email
+      const _saEmails11725 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!decodedToken.email || !_saEmails11725.includes(decodedToken.email.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
       }
       
@@ -11753,7 +11818,9 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Verify admin email
-      if (decodedToken.email !== 'nirhadad1@gmail.com') {
+      // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — not hardcoded personal email
+      const _saEmails11789 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!decodedToken.email || !_saEmails11789.includes(decodedToken.email.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
       }
       
@@ -11812,7 +11879,9 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Verify admin email
-      if (decodedToken.email !== 'nirhadad1@gmail.com') {
+      // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — not hardcoded personal email
+      const _saEmails11848 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!decodedToken.email || !_saEmails11848.includes(decodedToken.email.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
       }
       
@@ -11856,11 +11925,11 @@ self.addEventListener('notificationclick', (event) => {
   // confirmations to the admin. Used for legal demo / investor walk-throughs.
   // Auth: x-admin-secret header (ADMIN_SECRET env var).
   app.post('/api/internal/demo-booking-notify', async (req: any, res) => {
-    const secret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-    if (!secret || req.headers['x-admin-secret'] !== secret) {
+    if (!timingSafeAdminSecretMatch(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const ADMIN_EMAIL  = 'nirhadad1@gmail.com';
+    // SECURITY (T07): Admin contact loaded from env var — not hardcoded
+    const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
     const ADMIN_PHONE  = '+972549833355';
     const ADMIN_NAME   = 'ניר הדד';
 
@@ -13528,7 +13597,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/loyalty/top-performers', requireAdmin, async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = safeLimit(req.query.limit, 10);
       const performers = await loyaltyActivityMonitor.getTopPerformers(limit);
       res.json(performers);
     } catch (error: any) {
@@ -14798,6 +14867,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Heals commercial↔financial drift (accepted booking + finance_state=hold_active).
   const { startWalletReconciliationJob } = await import('./jobs/wallet-reconciliation');
   startWalletReconciliationJob();
+
+  // T06: Dual escrow drift monitor — Firestore vs PostgreSQL, every 30 min ──
+  startEscrowDriftMonitor();
 
   // ── Async Google secondary job worker — polls pw_async_jobs every 30s ─────
   // Handles: ARCHIVE_TAX_DOCUMENT_TO_DRIVE, EXPORT_RECONCILIATION_TO_SHEETS,

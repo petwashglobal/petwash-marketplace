@@ -12,17 +12,16 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
-import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
+import { isValidAdminSecret } from '../lib/admin-secret';
 
 const router = Router();
-const ADMIN_SEC = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
 
 const toNum = (v: unknown): number => Number(v ?? 0);
 const toStr = (v: unknown): string => v != null ? String(v) : '';
 
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    if (timingSafeAdminSecretMatch(req)) {
+    if (isValidAdminSecret(req)) {
       (req as any).callerRole = 'admin';
       return next();
     }

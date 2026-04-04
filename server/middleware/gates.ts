@@ -3,13 +3,28 @@ import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { logSecurityEvent } from '../services/securityEventsService';
 
-const SUPER_ADMINS = [
-  'nirhadad1@gmail.com',
-  'nir.h@petwash.co.il',
-  'ido.s@petwash.co.il',
-  'idoshakarzi110@gmail.com',
-  'idoshaka@gmail.com',
-];
+// SECURITY: Super-admin email list loaded from environment variable.
+// BEFORE: Hard-coded personal Gmail addresses — if any leaked (GitHub, CI logs,
+//         ex-employee) the attacker had permanent admin bypass with no rotation path.
+// AFTER:  Read from SUPER_ADMIN_EMAILS (comma-separated). Falls back to legacy list
+//         ONLY in development so prod startup doesn't silently lock out all admins.
+//         To rotate: update the env var, redeploy — no code change needed.
+const _rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS;
+const SUPER_ADMINS: string[] = _rawSuperAdminEmails
+  ? _rawSuperAdminEmails.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  : process.env.NODE_ENV === 'production'
+    ? []  // prod with no env var → no super-admin bypass (fail-safe)
+    : [   // dev fallback only
+        'nirhadad1@gmail.com',
+        'nir.h@petwash.co.il',
+        'ido.s@petwash.co.il',
+        'idoshakarzi110@gmail.com',
+        'idoshaka@gmail.com',
+      ];
+
+if (process.env.NODE_ENV === 'production' && !_rawSuperAdminEmails) {
+  console.warn('[gates] WARNING: SUPER_ADMIN_EMAILS not set in production — super-admin email bypass disabled');
+}
 
 /**
  * Helper to extract userId from request

@@ -1,0 +1,66 @@
+This audit explains why signup and onboarding feel broken.
+
+The core problem is architectural fragmentation:
+there is no single post-registration bootstrap flow across email, phone, Google, Apple, Facebook, Instagram, TikTok, and provider onboarding.
+
+What is happening now:
+- different auth paths create different levels of user completeness
+- some users get wallet/loyalty, others do not
+- phone signup authenticates the user but leaves required profile fields missing
+- verify-email redirects to a page that does not exist
+- several social OAuth flows create Firebase users without creating proper Postgres users
+- provider intent is lost after OAuth
+- two handlers compete for redirect result consumption
+- provider onboarding contains deadlocks, stubs, and missing enforcement
+
+This is not a UI bug.
+This is a broken registration architecture.
+
+Fix in this order:
+
+P0
+1. create one shared post-registration bootstrap function used by ALL auth methods
+   It must ensure:
+   - user exists in Postgres
+   - wallet exists
+   - loyalty exists
+   - base profile exists
+   - post-login readiness is computed consistently
+
+2. fix phone OTP dead-end
+   - either collect firstName/lastName/email before completion
+   - or allow complete-profile to proceed safely without blocking loop
+
+3. add real /verify-email page and resend flow
+
+4. fix OAuth data consistency
+   - Facebook server callback
+   - Instagram/TikTok Postgres sync
+   - Apple returning-user lookup without relying on email
+   - preserve provider signup intent across OAuth redirect
+
+5. stop duplicate OAuth redirect consumption
+   - only one place should read getRedirectResult()
+
+P1
+6. fix provider onboarding redirect loop by checking !isLoading
+7. refresh Firebase token after phone verification
+8. fix KYC processing deadlock
+9. do not mark background/police flows as complete when they are stubs
+10. prevent Walk My Pet / Academy provider self-registration from becoming active without real verification
+
+P2
+11. unify provider model or define one canonical provider registry
+12. add rejection notifications
+13. review all signup flows for missing audit/setup side effects
+
+For each fix I want:
+- exact file
+- before behavior
+- after behavior
+- proof
+- whether existing users need backfill for wallet / loyalty / profile data
+
+This audit strongly suggests the current signup system is fragmented and not production-safe.
+Do not do cosmetic fixes.
+Repair the registration architecture first.

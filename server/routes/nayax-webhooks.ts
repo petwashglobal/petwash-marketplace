@@ -18,9 +18,10 @@
 import express from 'express';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { redis } from '../services/redis';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
-import { paymentIntents, bookings, bookingStatusHistory } from '@shared/schema';
+import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
@@ -46,26 +47,16 @@ const captureRawBody = express.raw({
 // ==================== CONFIGURATION ====================
 
 const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || '';
+const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') || [
+  // Nayax Israel production webhook servers
+  // These IPs should be obtained from Nayax documentation
+  '185.60.216.0/24', // Example - replace with actual Nayax IPs
+];
 
-// NAYAX_ALLOWED_IPS must be set in the environment with the real Nayax server IPs.
-// The example CIDR below is NOT a real Nayax IP — it is a placeholder and must be replaced.
-// If NAYAX_ALLOWED_IPS is not set in production, the in-process allowlist blocks all calls
-// (the createIPAllowlist middleware enforces this).
-const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') || ((): never => {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('[Nayax Webhook] FATAL: NAYAX_ALLOWED_IPS is not set in production. Set the real Nayax server IPs before deploying.');
-  }
-  // Non-production: warn loudly and default to deny-all (empty list = no IPs allowed).
-  console.error('[Nayax Webhook] WARNING: NAYAX_ALLOWED_IPS not set — all webhook calls will be rejected until configured.');
-  return [] as never;
-})();
-
-// In-memory deduplication cache — OPEN RISK: does not survive process restart or horizontal scale.
-// TODO: replace with PostgreSQL-backed nonce table (INSERT ... ON CONFLICT DO NOTHING) before
-// running multiple instances or deploying without sticky sessions.
-// Restart risk: processed webhook IDs are lost, allowing replay of any past event ID.
-const processedWebhooks = new Set<string>();
-const WEBHOOK_CACHE_TTL = 3600000; // 1 hour
+// Redis-based deduplication — survives restarts and horizontal scaling.
+// Falls back to accepting (non-deduplicating) when Redis is unavailable,
+// logging a warning so ops can see when dedup is degraded.
+const WEBHOOK_DEDUP_TTL_SECONDS = 86400; // 24 hours — covers Nayax retry window
 
 // ==================== MIDDLEWARE ====================
 
@@ -152,8 +143,10 @@ function validateNayaxSignature(
 
 /**
  * Check if webhook has already been processed (idempotency)
+ * Uses Redis SET NX (atomic) — survives server restarts and horizontal scaling.
+ * Falls back gracefully when Redis is unavailable (logs a WARN, does not block).
  */
-function checkIdempotency(
+async function checkIdempotency(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
@@ -165,17 +158,19 @@ function checkIdempotency(
     return res.status(400).json({ error: 'Missing event ID' });
   }
   
-  if (processedWebhooks.has(eventId)) {
-    logger.info('[NayaxWebhook] Duplicate webhook ignored', { eventId });
-    return res.status(200).json({ 
-      received: true, 
-      message: 'Webhook already processed',
-    });
-  }
+  const dedupKey = `nayax:webhook:dedup:${eventId}`;
   
-  // Add to cache with TTL cleanup
-  processedWebhooks.add(eventId);
-  setTimeout(() => processedWebhooks.delete(eventId), WEBHOOK_CACHE_TTL);
+  if (redis.isConnected()) {
+    // setNx returns true if key was newly set (first time), false if already existed (replay)
+    const isNew = await redis.setNx(dedupKey, { processedAt: new Date().toISOString() }, WEBHOOK_DEDUP_TTL_SECONDS);
+    if (!isNew) {
+      logger.info('[NayaxWebhook] Duplicate webhook ignored (Redis dedup)', { eventId });
+      return res.status(200).json({ received: true, message: 'Webhook already processed' });
+    }
+  } else {
+    // Redis unavailable — log degraded dedup so ops knows, but do not block payments
+    logger.warn('[NayaxWebhook] Redis unavailable — webhook dedup degraded. Manual review may be required.', { eventId });
+  }
   
   next();
 }
@@ -544,39 +539,52 @@ router.post(
           });
         }
 
-        // ── [2] Store transaction ID + update booking atomically ──────────────
-        await db
-          .update(bookings)
-          .set({
-            status: 'pending_confirmation',
-            paymentStatus: 'paid',
-            paymentIntentId: payload.transactionId,  // [2] indexed DB column
-            updatedAt: new Date(),
-          } as any)
-          .where(
-            // Extra guard: only update if still in pending_payment (race condition protection)
-            eq(bookings.id, payload.bookingId)
-          );
+        // ── [2] Atomic transaction: booking + status history + escrow ────────
+        // All three writes are PostgreSQL. Wrapping them in db.transaction()
+        // guarantees atomicity: if the escrow update fails, the booking status
+        // update also rolls back — no "paid but escrow still pending_payment" drift.
+        await db.transaction(async (tx) => {
+          await tx
+            .update(bookings)
+            .set({
+              status: 'pending_confirmation',
+              paymentStatus: 'paid',
+              paymentIntentId: payload.transactionId,  // [2] indexed DB column
+              updatedAt: new Date(),
+            } as any)
+            .where(eq(bookings.id, payload.bookingId));
 
-        // ── Record status history ─────────────────────────────────────────────
-        await db.insert(bookingStatusHistory).values({
-          bookingId: payload.bookingId,
-          fromStatus: 'pending_payment' as any,
-          toStatus: 'pending_confirmation' as any,
-          changedBy: 'nayax_webhook',
-          reason: `Nayax online payment confirmed — txId: ${payload.transactionId}`,
-          metadata: {
-            nayaxTransactionId: payload.transactionId,
-            nayaxSessionId: payload.sessionId,
-            amountCents: payload.amountCents,
-            bookingTotalCents,
-            currency: payload.currency || 'ILS',
-            webhookTimestamp: payload.timestamp,
-            signatureVerified: !!signature,
-          },
+          await tx.insert(bookingStatusHistory).values({
+            bookingId: payload.bookingId,
+            fromStatus: 'pending_payment' as any,
+            toStatus: 'pending_confirmation' as any,
+            changedBy: 'nayax_webhook',
+            reason: `Nayax online payment confirmed — txId: ${payload.transactionId}`,
+            metadata: {
+              nayaxTransactionId: payload.transactionId,
+              nayaxSessionId: payload.sessionId,
+              amountCents: payload.amountCents,
+              bookingTotalCents,
+              currency: payload.currency || 'ILS',
+              webhookTimestamp: payload.timestamp,
+              signatureVerified: !!signature,
+            },
+          });
+
+          // Transition escrow_holdings pending_payment → held inside same transaction.
+          // Created at checkout, confirmed only on real Nayax payment.callback.
+          await tx
+            .update(escrowHoldings)
+            .set({
+              status: 'held',
+              capturedAt: new Date(),
+              paymentIntentId: payload.transactionId,
+              updatedAt: new Date(),
+            } as any)
+            .where(eq(escrowHoldings.bookingId, payload.bookingId));
         });
 
-        logger.info('[NayaxPaymentWebhook] ✅ Payment confirmed — booking → pending_confirmation', {
+        logger.info('[NayaxPaymentWebhook] ✅ Atomic transaction committed — booking paid, escrow held', {
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
           amountCents: payload.amountCents,
@@ -620,7 +628,27 @@ router.post(
           .set({ status: 'payment_failed', paymentStatus: 'failed', updatedAt: new Date() } as any)
           .where(eq(bookings.id, payload.bookingId));
 
-        logger.warn('[NayaxPaymentWebhook] Payment failed — booking marked payment_failed', {
+        // ── [P1-FIX] Release the booked slot so it can be re-booked ─────────
+        // Without this the slot stays 'booked' forever even though no payment happened.
+        await db
+          .update(availabilitySlots)
+          .set({
+            status: 'available',
+            bookingId: null,
+            lockToken: null,
+            lockExpiresAt: null,
+            lockedByUid: null,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+
+        // ── [P1-FIX] Void the escrow record — payment never captured ─────────
+        await db
+          .update(escrowHoldings)
+          .set({ status: 'refunded', updatedAt: new Date() } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.warn('[NayaxPaymentWebhook] Payment failed — booking marked payment_failed, slot released, escrow voided', {
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
         });
@@ -665,7 +693,25 @@ router.post(
           .set({ status: 'draft', paymentStatus: 'expired', updatedAt: new Date() } as any)
           .where(eq(bookings.id, payload.bookingId));
 
-        logger.warn('[NayaxPaymentWebhook] Payment session expired — booking reverted to draft', {
+        // ── [P1-FIX] Release slot + void escrow ──────────────────────────────
+        await db
+          .update(availabilitySlots)
+          .set({
+            status: 'available',
+            bookingId: null,
+            lockToken: null,
+            lockExpiresAt: null,
+            lockedByUid: null,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+
+        await db
+          .update(escrowHoldings)
+          .set({ status: 'refunded', updatedAt: new Date() } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.warn('[NayaxPaymentWebhook] Payment session expired — booking reverted to draft, slot released, escrow voided', {
           bookingId: payload.bookingId,
         });
 
@@ -707,7 +753,25 @@ router.post(
           .set({ status: 'draft', paymentStatus: 'cancelled', updatedAt: new Date() } as any)
           .where(eq(bookings.id, payload.bookingId));
 
-        logger.info('[NayaxPaymentWebhook] Payment cancelled by customer — booking reverted to draft', {
+        // ── [P1-FIX] Release slot + void escrow ──────────────────────────────
+        await db
+          .update(availabilitySlots)
+          .set({
+            status: 'available',
+            bookingId: null,
+            lockToken: null,
+            lockExpiresAt: null,
+            lockedByUid: null,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+
+        await db
+          .update(escrowHoldings)
+          .set({ status: 'refunded', updatedAt: new Date() } as any)
+          .where(eq(escrowHoldings.bookingId, payload.bookingId));
+
+        logger.info('[NayaxPaymentWebhook] Payment cancelled by customer — booking reverted to draft, slot released, escrow voided', {
           bookingId: payload.bookingId,
         });
 

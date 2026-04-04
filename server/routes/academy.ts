@@ -22,6 +22,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
+import { requireAdmin as requireAdminMiddleware } from '../adminAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walletService } from '../services/WalletService';
@@ -631,6 +632,13 @@ router.post('/trainers/register', async (req, res) => {
 });
 
 // ==================== ADMIN ENDPOINTS ====================
+// All /admin/* routes require Firebase auth + verified admin claims.
+// requireAdminMiddleware populates (req as any).user; the isAdmin flag is set
+// by the gate below so that existing handler-level checks continue to work.
+router.use('/admin', requireAuth, requireAdminMiddleware, (req: any, _res: any, next: any) => {
+  if (req.user) req.user.isAdmin = true;
+  next();
+});
 
 /**
  * POST /api/academy/admin/trainers - Create trainer profile (admin only)

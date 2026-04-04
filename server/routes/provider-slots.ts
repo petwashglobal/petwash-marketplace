@@ -67,6 +67,23 @@ async function hasOverlap(
   return !!existing;
 }
 
+// ── Recurring slot expansion helper ────────────────────────────────────────
+/**
+ * Parse a recurrenceRule string and return the interval in milliseconds.
+ * Supported values: 'daily', 'weekly', 'biweekly', 'monthly',
+ *                   RRULE:FREQ=DAILY, RRULE:FREQ=WEEKLY, RRULE:FREQ=MONTHLY
+ * Returns null if the rule is unrecognised.
+ */
+function parseIntervalMs(recurrenceRule: string): number | null {
+  const DAY = 24 * 60 * 60 * 1000;
+  const rule = recurrenceRule.toLowerCase();
+  if (rule === 'daily'    || rule.includes('freq=daily'))   return DAY;
+  if (rule === 'weekly'   || rule.includes('freq=weekly'))  return 7  * DAY;
+  if (rule === 'biweekly')                                  return 14 * DAY;
+  if (rule === 'monthly'  || rule.includes('freq=monthly')) return 30 * DAY;
+  return null;
+}
+
 // ── Schema for request bodies ───────────────────────────────────────────────
 
 const createSlotsBodySchema = z.object({
@@ -204,6 +221,64 @@ router.post('/', async (req, res) => {
         .returning();
 
       created.push(inserted);
+
+      // ── Recurring expansion ─────────────────────────────────────────────
+      // The anchor slot above stores the recurrence metadata. Now expand it
+      // into individual occurrence slots so the calendar shows real available
+      // dates without any client-side expansion logic.
+      //
+      // Each occurrence slot is a plain, non-recurring slot (isRecurring=false)
+      // so the expansion runs exactly once and is idempotent.
+      if (s.isRecurring && s.recurrenceRule && s.recurrenceEnd) {
+        const intervalMs = parseIntervalMs(s.recurrenceRule);
+        if (intervalMs) {
+          const recurrenceEndDate = new Date(s.recurrenceEnd);
+          const durationMs = endTime.getTime() - startTime.getTime();
+          const MAX_OCCURRENCES = 52; // cap: one year of weekly slots
+          let occurrenceStart = new Date(startTime.getTime() + intervalMs);
+          let occurrenceCount = 0;
+
+          while (occurrenceStart <= recurrenceEndDate && occurrenceCount < MAX_OCCURRENCES) {
+            const occurrenceEnd = new Date(occurrenceStart.getTime() + durationMs);
+
+            // Skip occurrences that conflict with existing slots
+            const occurrenceOverlaps = await hasOverlap(
+              providerRow.id, platformId, occurrenceStart, occurrenceEnd
+            );
+            if (!occurrenceOverlaps && occurrenceEnd > new Date()) {
+              const [occ] = await db
+                .insert(availabilitySlots)
+                .values({
+                  providerId:    providerRow.id,
+                  platformId,
+                  startTime:     occurrenceStart,
+                  endTime:       occurrenceEnd,
+                  timezone:      s.timezone,
+                  bufferBefore:  s.bufferBefore,
+                  bufferAfter:   s.bufferAfter,
+                  notes:         s.notes ?? null,
+                  isRecurring:   false,       // occurrences are not themselves recurring
+                  recurrenceRule: null,
+                  recurrenceEnd:  null,
+                  modeOverride:  s.modeOverride ?? null,
+                  status:        'available',
+                })
+                .returning();
+              created.push(occ);
+            }
+
+            occurrenceStart = new Date(occurrenceStart.getTime() + intervalMs);
+            occurrenceCount++;
+          }
+
+          logger.info('[ProviderSlots] Recurring slot expanded', {
+            uid,
+            providerId: providerRow.id,
+            rule: s.recurrenceRule,
+            occurrencesCreated: occurrenceCount,
+          });
+        }
+      }
     }
 
     logger.info('[ProviderSlots] Slots created', {

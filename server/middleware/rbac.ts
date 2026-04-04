@@ -9,15 +9,15 @@ import {
 } from '../../shared/schema-enterprise';
 import { logger } from '../lib/logger';
 
-// Super Admin emails — loaded exclusively from the SUPER_ADMIN_EMAILS environment variable.
-// Hardcoded personal email addresses have been removed for security.
-// If SUPER_ADMIN_EMAILS is not set in production, an error is logged and no one gets super admin.
-// Set SUPER_ADMIN_EMAILS as a comma-separated list in secrets manager.
+// Super Admin emails — loaded from SUPER_ADMIN_EMAILS environment variable only.
+// No hardcoded fallback. If the env var is not set the list is empty (fail-closed).
+// To configure: set SUPER_ADMIN_EMAILS as a comma-separated list in secrets.
 // Example: SUPER_ADMIN_EMAILS=ceo@petwash.co.il,ops@petwash.co.il
+
 function loadSuperAdmins(): string[] {
   const raw = process.env.SUPER_ADMIN_EMAILS || '';
   if (!raw.trim()) {
-    logger.error('[RBAC] SUPER_ADMIN_EMAILS env var is not set — no super admins will be recognized. Set this env var before deploying.');
+    logger.error('[RBAC] SUPER_ADMIN_EMAILS env var is not set — super-admin gate is CLOSED');
     return [];
   }
   return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);

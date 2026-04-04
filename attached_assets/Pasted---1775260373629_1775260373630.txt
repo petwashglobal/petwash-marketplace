@@ -1,0 +1,167 @@
+כן, זה כבר דוח חזק מאוד, והוא מצביע על בעיות שורש, לא רק על כמה באגים.
+
+המשמעות העסקית:
+המערכת כרגע סובלת מ-3 שכבות סיכון במקביל:
+	1.	סיכון אבטחה אמיתי
+	2.	סיכון כספי ותפעולי
+	3.	סיכון מוצרי, כי יש flows שנראים שלמים אבל backend לא באמת סגור
+
+מה ש-GitHub agent מצא כאן הכי חשוב:
+
+1. SQL injection ב-prestige-pass.ts
+
+זה הכי מסוכן טכנית.
+אם באמת יש שם raw SQL עם interpolation, זו חולשה ברמה קריטית.
+
+מה להגיד ל-Replit:
+	•	לעצור הכל
+	•	לעבור על כל pool.query() בקובץ הזה
+	•	להחליף הכל ל-parameterized queries בלבד
+	•	בלי string interpolation בכלל
+	•	להחזיר רשימת כל השורות שתוקנו + diff ברור
+
+2. admin access מבולגן ומסוכן
+
+יש hardcoded emails, hardcoded UID, checks לא אחידים, וחלק בלי middleware נכון.
+
+מה להגיד:
+	•	למחוק hardcoded admin emails מכל קובץ
+	•	למחוק hardcoded Firebase UID כסמכות
+	•	source of truth יחיד: env + roles + verified claims
+	•	כל admin route חייב middleware אחיד אחד בלבד
+	•	להוסיף admin MFA אמיתי, לפחות mobile OTP / TOTP
+	•	לתקן כל comparison של secrets ל-timing-safe only
+
+3. Passkeys / Face ID / WebAuthn לא בנוי נכון
+
+כאן יש בעיית אמון במערכת הביומטרית:
+	•	שני implementations במקביל
+	•	challenge לא נשמר נכון
+	•	/authenticate/verify חלש
+	•	attestation validation זה stub
+	•	credentials נשמרים בכמה backends
+
+מה להגיד:
+	•	לבחור implementation אחד בלבד ל-WebAuthn
+	•	למחוק או לנטרל את השני
+	•	challenge חייב להישמר server-side
+	•	verify route חייב להיות מוגן נכון
+	•	attestation לא יכול להיות return true
+	•	source of truth יחיד ל-credentials
+
+4. signup ו-provider onboarding עדיין שבורים מהיסוד
+
+זו כנראה אחת הסיבות הגדולות למה users לא מצליחים להירשם.
+
+הבעיות המרכזיות:
+	•	email flow הישן מחזיר 410
+	•	phone OTP נתקע בגלל name/email
+	•	Facebook בכלל לא שלם
+	•	Instagram/TikTok/Apple לא תמיד יוצרים user מלא
+	•	wallet/loyalty לא נוצרים אחיד
+	•	provider intent נאבד ב-OAuth
+	•	verify-email route חסר
+	•	provider verification לא באמת סגור
+
+מה להגיד:
+	•	לבנות פונקציה אחת משותפת אחרי כל auth:
+registerUserPostAuth()
+שיוצרת תמיד:
+	•	Postgres user
+	•	wallet
+	•	loyalty
+	•	baseline profile
+	•	כל auth method חייב לעבור דרכה
+	•	לתקן את phone flow כדי שלא יתקע
+	•	לבנות verify-email אמיתי
+	•	להשלים Facebook callback אמיתי
+	•	לשמר redirect intent ב-OAuth
+
+5. payment / escrow / booking integrity עדיין מסוכן
+
+זו בעיה עסקית אמיתית.
+
+הדברים החמורים כאן:
+	•	אין idempotency חזק ב-payment paths
+	•	אין transaction אטומי במקומות שצריכים
+	•	escrow יכול להיווצר בלי שכל שאר ה-flow נסגר נכון
+	•	dispute resolution לא מזיז כסף באמת
+	•	כמה מערכות escrow שונות
+	•	K9000 עדיין יכול להיראות כאילו התחיל בלי machine command אמיתי
+
+מה להגיד:
+	•	כל payment flow חייב להיות transaction אחד
+	•	להוסיף idempotency key לכל charge / escrow creation
+	•	אם escrow נכשל, אסור להמשיך
+	•	dispute resolve חייב לעשות refund / release אמיתי
+	•	לבחור escrow source of truth אחד
+	•	אם המכונה לא קיבלה command אמיתי, אסור להציג wash started
+
+6. integrations ו-data handling
+
+גם כאן יש בעיות כבדות:
+	•	Google Maps key עם VITE_ בצד שרת
+	•	Google Drive backups לא מוצפנים
+	•	backup failures שקטים
+	•	Google Sheets עם מידע רגיש
+	•	reCAPTCHA לא blocking
+	•	careers upload בלי file size limit
+	•	signed URLs לשנה שלמה
+
+מה להגיד:
+	•	להסיר שימוש ב-VITE_* secrets מהשרת
+	•	להצפין backups לפני upload
+	•	להוסיף alert על backup failure
+	•	reCAPTCHA / Turnstile חייבים להיות blocking
+	•	להוסיף upload size limit
+	•	לקצר signed URL expiry
+
+7. booking routing ו-mounts לא נקיים
+
+זה מסביר התנגשויות וכפתורים שבורים:
+	•	/api/k9000 mounted כמה פעמים
+	•	walkMyPetRoutes mounted רחב מדי
+	•	deprecated routes עדיין reachable
+	•	state machines מרובים
+	•	provider tables מרובים ולא אחידים
+
+מה להגיד:
+	•	לעשות route map מלא
+	•	להסיר duplicate mounts
+	•	לנעול deprecated routes
+	•	לאחד booking state model
+	•	לאחד provider identity model
+
+מה הכי דחוף עכשיו
+
+אם צריך סדר עבודה חד ל-Replit:
+
+P0 - מייד
+	1.	SQL injection ב-prestige-pass.ts
+	2.	admin auth cleanup
+	3.	WebAuthn consolidation
+	4.	payment idempotency + transactions
+	5.	shared post-auth bootstrap לכל signup
+	6.	reCAPTCHA blocking
+	7.	K9000 truthfulness, לא fake started
+
+P1 - השבוע
+	8.	dispute -> real escrow action
+	9.	remove hardcoded admin identities
+	10.	Google Drive backup encryption + alerts
+	11.	Facebook/Apple/Instagram/TikTok completion
+	12.	verify-email flow
+	13.	careers upload limit
+	14.	signed URL tightening
+
+P2
+	15.	unify roles
+	16.	unify provider model
+	17.	unify booking statuses
+	18.	remove deprecated route surface
+	19.	add regression tests on auth/payment/escrow/signup
+	20.	compliance pass על invoices / VAT / provider verification
+
+מה לשלוח ל-Replit
+
+תוכל לשלוח לו את זה כמו שהוא:

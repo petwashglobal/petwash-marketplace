@@ -26,11 +26,9 @@ const router = Router();
 //
 // Full-admin gate: delegates to isSuperAdmin() which reads SUPER_ADMIN_EMAILS env var.
 // Viewer list: separate read-only allowlist managed here.
-const ADMIN_VIEWER_EMAILS = [
-  'ido.s@petwash.co.il',
-  'avner9000@gmail.com',
-  'shiri.shakarzi1@gmail.com',
-];
+// Viewer-only access list — read from ADMIN_VIEWER_EMAILS env var (comma-separated)
+const ADMIN_VIEWER_EMAILS: string[] = (process.env.ADMIN_VIEWER_EMAILS || '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 // Check if user has any admin/viewer access
 const requireAdminOrViewer = (req: any, res: any, next: any) => {
@@ -947,18 +945,18 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
 // ============================================
 
 // CEO-only access middleware
+// SECURITY: CEO email list loaded from SUPER_ADMIN_EMAILS env var (same pool as super-admins).
+// Hard-coded personal Gmail was removed — see gates.ts for rotation instructions.
 const requireCEO = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const rawCEO = process.env.CEO_EMAILS || '';
-  const CEO_EMAILS = rawCEO.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-  if (CEO_EMAILS.length === 0) {
-    logger.error('[Security] CEO_EMAILS env var is not set — blocking CEO endpoint access');
-    return res.status(403).json({ error: 'CEO access not configured on server' });
-  }
+  const CEO_EMAILS_RAW = process.env.SUPER_ADMIN_EMAILS || '';
+  const CEO_EMAILS = CEO_EMAILS_RAW.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+  
   if (!CEO_EMAILS.includes(userEmail)) {
     logger.warn(`[Security] Unauthorized CEO endpoint access attempt by ${req.firebaseUser?.email}`);
     return res.status(403).json({ 
       error: 'CEO access required',
+      message: 'This endpoint is restricted to designated super-admin users.',
     });
   }
   

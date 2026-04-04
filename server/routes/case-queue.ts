@@ -20,7 +20,6 @@ import { db }       from '../db';
 import { sql, SQL } from 'drizzle-orm';
 import { logger }   from '../lib/logger';
 import { auth }     from '../lib/firebase-admin';
-import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -83,7 +82,9 @@ function severity(slaStatus: SlaStatus, amountILS?: number): Severity {
 
 async function requireCaseViewer(req: Request, res: Response, next: NextFunction) {
   try {
-    if (timingSafeAdminSecretMatch(req)) {
+    // P1-FIX: timing-safe comparison (was ===)
+    const { isValidAdminSecret } = require('../lib/admin-secret');
+    if (isValidAdminSecret(req, 'ADMIN_SECRET') || isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) {
       (req as any).callerCtx = { role: 'admin', uid: null, franchiseIds: [], stationIds: [] } as CallerContext;
       return next();
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,8 @@ function getRoleConfig(role: string) {
 
 export default function CompleteProfile() {
   const [, navigate] = useLocation();
+  const searchString = useSearch();
+  const fromParam = new URLSearchParams(searchString).get("from") || null;
   const { toast } = useToast();
   const lang = localStorage.getItem("i18nextLng") || "he";
   const isHe = lang === "he";
@@ -192,7 +194,12 @@ export default function CompleteProfile() {
           credentials: "include",
         });
         const postLoginData = await postLoginRes.json();
-        navigate(postLoginData.nextUrl || postLoginData.redirectTo || "/home");
+        // Restore booking or page context that was interrupted by the profile-completion redirect.
+        // ?from= param is set by post-login when it redirects here (e.g. /booking/123).
+        // Server nextUrl takes priority only if it is not /complete-profile itself (avoid loops).
+        const serverNext = postLoginData.nextUrl || postLoginData.redirectTo;
+        const isLoop = serverNext && serverNext.startsWith('/complete-profile');
+        navigate(fromParam || (!isLoop ? serverNext : null) || "/home");
       } else {
         toast({ variant: "destructive", title: data.error || "Error saving profile" });
       }
