@@ -1,0 +1,496 @@
+Do a full hostile principal-level audit of the entire PetWash codebase, architecture, UX, security, payments, KYC, provider onboarding, wallets, dashboards, mobile behavior, and platform wiring.
+
+I want one giant evidence-based review with exact code proof.
+Do not trust any prior “fixed” claim unless you verify the exact current code path.
+Do not give me marketing summaries.
+Treat this as a production readiness, fraud, trust, safety, finance, UX, security, mobile, and architecture review.
+
+OUTPUT RULES
+For every finding provide:
+1. severity
+2. exact file and line range
+3. route / service / component / job / table involved
+4. who is affected:
+   - public customer
+   - loyalty member
+   - e-gift buyer
+   - package buyer
+   - provider applicant
+   - approved provider
+   - admin / finance / ops
+5. exploit path or user break path
+6. business impact
+7. exact fix
+8. whether already fixed, partially fixed, or still open
+
+Group all findings into:
+- Critical exploitable now
+- Critical user-breaking now
+- High architecture debt
+- Financial integrity risks
+- Fraud and abuse risks
+- Mobile / Safari / iPhone / Android issues
+- UX / business-logic mismatches
+- Admin / finance / provider operations issues
+
+VERIFY THESE AREAS DEEPLY
+
+A. AUTH, SIGN UP, LOGIN, REGISTRATION
+Audit every path for new public users and providers:
+- email / password
+- mobile OTP
+- Google / Gmail
+- Apple
+- Facebook
+- Instagram
+- TikTok
+- passkey / WebAuthn / Face ID / Touch ID
+- redirect flows
+- session creation
+- profile creation
+- wallet creation
+- loyalty creation
+- onboarding state
+- complete-profile
+- verify-email
+- provider intent after OAuth
+- account linking
+- duplicate handlers
+- race conditions
+- fire-and-forget DB sync
+- missing pages
+- dead routes
+- loops
+- slow sequential API calls
+- storage loss on Safari ITP
+- getRedirectResult conflicts
+- token refresh / claims propagation
+- mobile device trust prompts like “save this device”, “allow Face ID”, “remember this device”
+
+Specifically verify:
+1. Why public sign-up is breaking or feels unsafe
+2. Why provider sign-up is breaking
+3. Why Gmail / Google login is failing or inconsistent
+4. Why Apple repeat sign-in may fail
+5. Why Facebook / Instagram / TikTok users may not exist in PostgreSQL after auth
+6. Whether wallet and loyalty are created on every auth path
+7. Whether return URL / from query is preserved after forced profile completion
+8. Whether verify-email route/page/API truly exists and works
+9. Whether provider onboarding loops when auth is still loading
+10. Whether phone sign-up collects enough data or traps users in NAME_REQUIRED / profile loops
+
+B. PROVIDER ONBOARDING, KYC, TRUST, SAFETY
+Audit the entire provider onboarding pipeline deeply:
+- application intake
+- provider application tables
+- onboarding cases
+- stage progression
+- document uploads
+- selfie / face scan only
+- face scan storage
+- government ID scan
+- driver license scan
+- passport scan
+- police check
+- background check
+- admin review
+- approval
+- rejection
+- notification emails
+- dashboard state before and after approval
+- token claims refresh after approval
+
+Identity document support to audit:
+- Israeli Teudat Zehut
+- Israeli Driver License
+- Israeli Passport
+- Australian Passport
+- Australian Driver License
+- UK Passport
+- UK Driver License
+- US Passport
+- US Driver License
+- French Passport
+- Russian Passport
+
+Check for:
+1. selfie capture flow
+2. liveness detection being real or heuristic only
+3. whether face matching is real or superficial
+4. whether similarity score is enforced or only logged
+5. whether spoofing with photo / screen / print is possible
+6. whether IDs are encrypted at rest
+7. whether DOCUMENT_ENCRYPTION_KEY is mandatory or optional
+8. whether plaintext bank details or ID details can still be stored
+9. whether signed URLs are too long-lived
+10. whether documents can be guessed or reused
+11. whether same document can be used by multiple users
+12. whether provider can bypass KYC and still become active
+13. whether Walk My Pet and Academy allow instant provider self-registration without checks
+14. whether police check is hard required before approval
+15. whether background check is real or stub only
+16. whether KYC exceptions deadlock providers in “processing”
+17. whether providers get clear pending / approved / rejected communication
+18. whether rejected providers are emailed in all rejection paths, including auto-KYC rejection
+19. whether support@petwash.co.il actually receives the correct notifications
+20. whether provider dashboard during pending is acceptable or broken
+
+C. BOOKING SYSTEMS ACROSS ALL PLATFORMS
+Learn and audit the real function of each platform and whether it is wired correctly to backend, wallet, escrow, notifications, dashboards, and status logic.
+
+Platforms to audit:
+- The Sitter Suite
+- Walk My Pet
+- Pet Wash Academy
+- K9000
+- PetTrek
+- Paw Finder / Pet Finder logic if present
+- legacy Octopus / V1 flows if still reachable
+- provider slots / availability / calendars
+- booking chat
+- quote engine
+- booking requests
+- marketplace bookings
+- super-app bookings
+
+Check:
+1. booking creation
+2. quote lock
+3. slot lock
+4. slot release on failure / expiry / cancellation
+5. booking expiry jobs
+6. provider acceptance / rejection
+7. completion flow
+8. dual actor confirmation requirements
+9. transition endpoint permissions
+10. confirm / cancel / complete ownership checks
+11. direct one-sided completion risks
+12. provider availability ownership
+13. recurring slot generation
+14. provider onboarding forcing schedule creation or not
+15. no-availability dead ends
+16. custom date request fallback
+17. platform-specific dashboards showing wrong or missing data
+18. whether different booking tables and status enums are fragmented
+19. whether customer-facing “my bookings” unifies all booking systems correctly
+20. whether provider-facing booking inbox is complete
+21. whether accepted bookings notify customers by in-app, email, and SMS
+22. whether provider receives booking notifications by all needed channels
+23. whether bookings can get stuck forever
+24. whether disputes are wired back to escrow and refunds
+25. whether PetTrek status in UI matches reality
+26. whether Paw Finder actually exists, is wired, or is missing
+27. whether K9000 routes are mounted correctly once or multiple times
+28. whether Walk My Pet routes are mounted too broadly at /api and may collide
+29. whether Google address autocomplete and forms are wired properly in booking / profile / onboarding forms
+30. whether Google auto-suggested address selection is saved, normalized, geocoded, and used consistently
+
+D. FINANCIAL CYCLE, PAYMENTS, WALLETS, ESCROW, REDEEM
+Trace full financial life cycle for every product and platform.
+
+Audit:
+- top-up
+- wallet balance
+- pending holds
+- debit
+- release
+- refund
+- escrow
+- provider payout
+- commission
+- VAT
+- invoice
+- receipt
+- e-gift purchase
+- e-gift send to friend
+- package purchase
+- package redeem
+- wash package usage
+- voucher QR
+- Nayax kiosk redemption
+- wallet credit use at checkout
+- loyalty credit use
+- promo / referral / e-gift / package / cash wallet priority order
+- wallet dashboard
+- provider earnings dashboard
+- finance reconciliation jobs
+- idempotency
+- race conditions
+- fake payment paths
+- webhook dedup
+- merchant fee calculation consistency
+- dispute resolution
+- contractor invoices
+- Israeli tax compliance routes
+
+Specifically test and verify:
+1. fake /api/express-checkout or any other fake-success payment flow
+2. whether any checkout route returns success without actual charge
+3. whether requireAuth exists on all money-moving routes
+4. whether wallet holds are race-safe
+5. whether two simultaneous booking holds can over-allocate one wallet
+6. whether payment routes use idempotency keys
+7. whether payment + booking + escrow updates are transactional
+8. whether webhook dedup is in-memory only or persistent
+9. whether webhook IP allowlist fails open
+10. whether hardcoded payment fallback secrets still exist anywhere
+11. whether voucher signing salt can be forged
+12. whether packages redeem correctly decrement entitlements
+13. whether e-gift redemption can exceed face value
+14. whether wallet credit cap logic is correct and consistent
+15. whether loyalty benefits are actually applied at checkout
+16. whether loyalty points are actually awarded after bookings and K9000 usage
+17. whether wallet tier and loyalty tier are synced
+18. whether Prestige Pass reads stale tier
+19. whether provider payout bank account still uses placeholders like TBD
+20. whether invoice numbers are sequential and legally compliant
+21. whether invoice labeling is misleading
+22. whether contractor invoice endpoints require auth and ownership
+23. whether disputes actually freeze, release, or refund escrow
+24. whether dual escrow systems still exist and drift
+25. whether reconciliation jobs detect all drift or only part of it
+26. whether packages, e-gifts, wallet, and Nayax scanner all work together correctly
+27. whether QR Nayax scanner can be abused or replayed
+28. whether fraud on redeem paths is possible
+29. whether refunds can double-credit wallet balances
+30. whether financial dashboards for customer, provider, ops, and finance are accurate
+
+E. FORMS, ADDRESS, UX, BUSINESS LOGIC
+Audit all forms, business logic, and common-sense flows:
+- registration forms
+- provider onboarding forms
+- booking forms
+- checkout forms
+- address forms
+- profile forms
+- package / e-gift flows
+- K9000 redemption
+- dashboards
+- support / contact forms
+
+Check:
+1. Google Places / address autocomplete works everywhere needed
+2. saved addresses are normalized consistently
+3. postal address vs geocode mismatch issues
+4. broken validation or NaN / parseFloat / parseInt misuse
+5. fields missing required labels or wrong defaults
+6. dead buttons
+7. buttons visible but not wired
+8. hidden prevention logic
+9. duplicated components with conflicting behavior
+10. provider and customer dashboards showing irrelevant modules
+11. dashboard should adapt by role:
+   - public user only buying e-gift should not see provider workflow
+   - provider should not see irrelevant buyer-only flows first
+   - admin / ops / finance should have clean separated panels
+12. mobile forms on iPhone Safari, iPad, Samsung Galaxy, Android Chrome
+13. keyboard overlap
+14. OTP inputs
+15. Face ID / passkey prompts
+16. deep links from SMS / email
+17. “remember this device” and trusted device logic
+18. back button behavior mid-onboarding
+19. lost progress on refresh
+20. compare UX against Rover / Madpaws / Stripe-level onboarding and trust flows
+
+F. MOBILE, SAFARI, IOS, ANDROID, PASSKEYS
+Audit mobile quality deeply:
+- iPhone Safari
+- iPhone Chrome
+- iPad
+- Android Chrome
+- Samsung Galaxy
+- passkeys
+- Face ID
+- Touch ID
+- autofill
+- saved credentials
+- PWA behavior
+- dynamic island / notch / safe areas
+- universal links
+- app-site-association
+- webauthn rp id
+- duplicate webauthn implementations
+- challenge storage
+- auth verify endpoint security
+- attestation validation
+- storage backend conflicts for passkeys
+
+Check:
+1. one-tap conditional passkey UI on iPhone
+2. manual passkey fallback
+3. whether SignIn.tsx calls the correct passkey method
+4. whether passkeys work on www.petwash.co.il and petwash.co.il consistently
+5. whether RP ID mismatch breaks login
+6. whether challenge is stored server-side
+7. whether email enumeration is possible in passkey flow
+8. whether Apple / Android attestation validation is real or stubbed
+9. whether biometric bucket uses wrong env var
+10. whether credential storage exists in multiple conflicting backends
+
+G. ADMIN, OPS, OWNER, FINANCE, CONTROL PANEL
+Audit internal business operations logic:
+- admin login
+- super admin restrictions
+- OTP / phone-only admin login possibility
+- role-based access
+- hardcoded admin emails / UIDs
+- timing-safe secret comparison
+- admin-only routes
+- claims-based checks vs email checks
+- provider approval queues
+- finance approvals
+- payout reconciliation
+- manual adjustments
+- booking trace
+- station dashboard
+- provider trust
+- disputes
+- ops notifications
+- support handling
+
+Specifically verify:
+1. hardcoded admin emails in source
+2. hardcoded super-admin UIDs
+3. admin routes using plain === secret compare
+4. multiple admin headers / schemes like x-admin-secret vs x-admin-key
+5. admin flows protected only by email, not role/claim/OTP
+6. whether admin can sign in only with allowed super-admin methods
+7. whether nirhadad1@gmail.com and +61419773360 can be enforced as only temporary super-admin entry points if desired
+8. whether finance routes and contractor compliance routes are internally protected
+9. whether provider intake stats or internal dashboards leak publicly
+10. whether owner / finance / ops dashboards actually match their real needs
+
+H. GOOGLE, DRIVE, SHEETS, CALENDAR, MAPS, WEATHER, SENDGRID, SMS
+Audit all integrations:
+- Google Drive backups
+- Google Sheets
+- Google Calendar
+- Google Maps
+- Google Places autocomplete
+- weather APIs
+- SendGrid
+- Gmail fallback
+- Twilio / SMS / OTP
+- Nayax
+- any backup buckets / storage buckets
+
+Check:
+1. backup encryption before Google Drive upload
+2. backup failure alerting
+3. whether sensitive raw JSON is uploaded unencrypted
+4. whether Sheets contain sensitive data without protection
+5. whether Google Calendar env vars are startup validated
+6. whether Maps key is exposed to browser via VITE_
+7. whether Places autocomplete is properly restricted and normalized
+8. whether weather APIs degrade safely
+9. whether SendGrid rate limiting is only in-memory
+10. whether Gmail fallback hides outages
+11. whether SMS send path is secure
+12. whether CAPTCHA is blocking or decorative only
+13. whether phone number sanitization is enough
+14. whether hackers can abuse OTP sends
+15. whether rate limits survive restart or not
+
+I. STORAGE, FILES, BUCKETS, DOCS, IMAGES
+Audit:
+- contractor docs
+- KYC docs
+- careers uploads
+- signed URLs
+- bucket permissions
+- retention
+- delete behavior
+- backup inclusion
+- memoryStorage DOS risks
+- path traversal checks
+- file size limits
+- mime validation
+- public exposure
+- year-long signed URLs
+
+J. VISUAL, WHITE-BACKGROUND ENFORCEMENT, BRAND SYSTEM
+Audit the recent “pure white only” refactor:
+1. verify whether any non-white page backgrounds still exist
+2. verify whether gray / cream / off-white / dark mode classes still remain
+3. verify whether status badges, buttons, borders, charts, modals, overlays, hover states, sidebars, and image wrappers still violate the rule
+4. verify whether pure black text everywhere causes accessibility or UX breakages
+5. verify whether gold accents on buttons / badges / gradients still conflict with stated requirement
+6. verify whether backend admin panels also follow same visual rule
+7. list any remaining background color violations with exact files
+
+K. FORMS, PACKAGES, E-GIFTS, REDEEM, FRAUD, QR, DASHBOARDS
+Do a hostile product and fraud audit specifically on:
+- e-gift purchase
+- e-gift send
+- e-gift redeem
+- wash packages buy
+- wash packages redeem
+- partial package usage
+- credit use
+- wallet use
+- QR code generation
+- QR Nayax scanner redemption
+- package + wallet + promo stacking
+- fraud attempts
+- self-redeem abuse
+- replay attack on vouchers / QR
+- dashboard balances
+- provider payout views
+- owner finance views
+- customer loyalty views
+- support troubleshooting views
+
+Questions to answer:
+1. Can a user buy an e-gift without real payment?
+2. Can an e-gift be redeemed more than once?
+3. Can QR / voucher be forged or replayed?
+4. Can wallet credit be overused?
+5. Can package redemption desync from balance?
+6. Can Nayax scanner redeem in wrong amount?
+7. Are customer dashboards accurate after redeem / refund / dispute?
+8. Are provider dashboards accurate after acceptance / completion / payout?
+9. Are owner / finance dashboards consistent with DB truth?
+10. Are there role-based dashboard mismatches or missing widgets?
+
+L. ASK THESE HARD QUESTIONS AND ANSWER THEM WITH CODE PROOF
+1. What is still dangerously broken even after recent fixes?
+2. Which “fixed” items are only partially fixed?
+3. Which fixes created new risks or regressions?
+4. Which flows still look polished in frontend but are fake or incomplete in backend?
+5. Which platforms are genuinely production ready right now?
+6. Which platforms should be disabled immediately?
+7. Which routes should return 503 until properly implemented?
+8. Which features are demo-only but not transparently disclosed?
+9. Where does business logic still fail basic common sense for:
+   - customer
+   - provider
+   - owner
+   - admin
+   - finance
+   - support
+10. What top 25 issues remain if you ignore cosmetic items and focus only on real risk?
+
+FINAL REQUIRED OUTPUT
+Give me:
+1. Top 25 critical findings
+2. Top 25 high but not critical findings
+3. Top 20 UX / business-logic failures
+4. Top 15 finance / wallet / escrow / payment integrity issues
+5. Top 15 KYC / identity / provider safety issues
+6. Top 10 mobile / Safari / iPhone / passkey issues
+7. Top 10 dashboard / role-fit issues
+8. Top 10 forms / address / autocomplete issues
+9. Top 10 integration / API / backup risks
+10. Exact “disable now” list
+11. Exact “fix this week” list
+12. Exact “architecture next” list
+13. Which platform routes are healthy, partial, fake, deprecated, or dangerous
+14. What should the ideal Octopus main global control panel own centrally vs what should stay platform-specific
+
+Important:
+- Be brutally honest.
+- Verify exact code.
+- Treat every TODO as suspicious until proven harmless.
+- Assume attackers, fraudsters, and confused real customers all exist.
+- Think like the owner, public client, provider, ops, finance, and support team at once.
