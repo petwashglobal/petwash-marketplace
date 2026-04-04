@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { auth } from "@/lib/firebase";
 import { formatDistanceToNow } from "date-fns";
 import {
   Bell, X, CheckCheck, Dog, Cat, PawPrint, ChevronRight, Inbox,
@@ -24,6 +25,7 @@ interface NotifGroup {
   ids: string[];
   actionUrl: string | null;
   notificationType?: string | null;
+  actionType?: string | null;
   rebookTriggerId?: number | null;
 }
 
@@ -180,6 +182,29 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
     if (group.rebookTriggerId) {
       apiRequest('POST', `/api/booking-requests/rebook-triggers/${group.rebookTriggerId}/clicked`).catch(() => {});
     }
+
+    // ── force_token_refresh ─────────────────────────────────────────────────
+    // When the backend approves a provider, it sets Firebase custom claims
+    // (role: 'provider') and inserts this actionType into superAppNotifications.
+    // The provider's frontend session token is stale — tapping this notification
+    // forces an immediate token refresh so the new claims propagate instantly
+    // instead of waiting up to 60 minutes for natural expiry.
+    if (group.actionType === 'force_token_refresh' || group.notificationType === 'force_token_refresh') {
+      auth.currentUser?.getIdToken(true)
+        .then(() => {
+          // Reload the page after token refresh so all role-gated components re-evaluate
+          qc.invalidateQueries();
+          onClose();
+          const target = group.actionUrl ?? '/provider-os';
+          setLocation(target);
+        })
+        .catch(() => {
+          onClose();
+          setLocation(group.actionUrl ?? '/provider-os');
+        });
+      return;
+    }
+
     // Prefer explicit actionUrl (always set for new notifications).
     const fallback = group.bookingId
       ? isMessageType(group)

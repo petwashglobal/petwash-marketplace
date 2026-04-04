@@ -17,6 +17,7 @@ import {
   sitterProfiles,
   trainers,
   users,
+  superAppNotifications,
   type InsertProviderApprovalQueue,
   type ProviderApprovalQueue,
 } from '@shared/schema';
@@ -548,6 +549,41 @@ class AdminProviderReviewService {
                   data: { type: 'provider_approved', platform: review.application.platform },
                 },
                 debugPayload: { applicationId, platform: review.application.platform },
+              });
+
+              // ── force_token_refresh: tells the frontend to call getIdToken(true) ──
+              // Firebase custom claims are set above but the provider's session token
+              // won't see the new 'provider' role until it naturally expires (~60 min).
+              // This in-app notification signals the frontend to force an immediate refresh.
+              await db.insert(superAppNotifications).values({
+                userId: firebaseUid,
+                type: 'force_token_refresh',
+                title: '✅ בקשתך אושרה! — PetWash™',
+                titleHe: '✅ בקשתך אושרה! — PetWash™',
+                body: 'חשבון הספק שלך אושר. לחץ/י כאן כדי לפתוח את לוח הבקרה שלך.',
+                bodyHe: 'חשבון הספק שלך אושר. לחץ/י כאן כדי לפתוח את לוח הבקרה שלך.',
+                actionType: 'force_token_refresh',
+                actionUrl: '/provider-os',
+                channels: ['in_app'],
+                isRead: false,
+                createdAt: new Date(),
+              });
+
+              // ── schedule_setup: guides newly approved providers to set availability ──
+              // Without availability slots the provider never appears in search results.
+              // A dedicated nudge immediately after approval ensures they don't miss this.
+              await db.insert(superAppNotifications).values({
+                userId: firebaseUid,
+                type: 'setup_schedule',
+                title: '📅 הגדר/י את לוח הזמינות שלך',
+                titleHe: '📅 הגדר/י את לוח הזמינות שלך',
+                body: 'על מנת שלקוחות יוכלו לראות ולהזמין אותך — יש להגדיר את שעות הפעילות שלך בלוח הזמנים.',
+                bodyHe: 'על מנת שלקוחות יוכלו לראות ולהזמין אותך — יש להגדיר את שעות הפעילות שלך בלוח הזמנים.',
+                actionType: 'setup_schedule',
+                actionUrl: '/provider-os?tab=calendar',
+                channels: ['in_app'],
+                isRead: false,
+                createdAt: new Date(),
               });
             } catch (notifErr: any) {
               logger.warn('[AdminReview] Post-approval notification failed (non-fatal)', { error: notifErr?.message });
