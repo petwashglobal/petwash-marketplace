@@ -46,13 +46,24 @@ const captureRawBody = express.raw({
 // ==================== CONFIGURATION ====================
 
 const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || '';
-const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') || [
-  // Nayax Israel production webhook servers
-  // These IPs should be obtained from Nayax documentation
-  '185.60.216.0/24', // Example - replace with actual Nayax IPs
-];
 
-// In-memory deduplication cache (use Redis in production)
+// NAYAX_ALLOWED_IPS must be set in the environment with the real Nayax server IPs.
+// The example CIDR below is NOT a real Nayax IP — it is a placeholder and must be replaced.
+// If NAYAX_ALLOWED_IPS is not set in production, the in-process allowlist blocks all calls
+// (the createIPAllowlist middleware enforces this).
+const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') || ((): never => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[Nayax Webhook] FATAL: NAYAX_ALLOWED_IPS is not set in production. Set the real Nayax server IPs before deploying.');
+  }
+  // Non-production: warn loudly and default to deny-all (empty list = no IPs allowed).
+  console.error('[Nayax Webhook] WARNING: NAYAX_ALLOWED_IPS not set — all webhook calls will be rejected until configured.');
+  return [] as never;
+})();
+
+// In-memory deduplication cache — OPEN RISK: does not survive process restart or horizontal scale.
+// TODO: replace with PostgreSQL-backed nonce table (INSERT ... ON CONFLICT DO NOTHING) before
+// running multiple instances or deploying without sticky sessions.
+// Restart risk: processed webhook IDs are lost, allowing replay of any past event ID.
 const processedWebhooks = new Set<string>();
 const WEBHOOK_CACHE_TTL = 3600000; // 1 hour
 
