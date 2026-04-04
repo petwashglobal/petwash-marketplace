@@ -20,6 +20,7 @@ import {
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { requireIdempotency } from '../middleware/idempotency';
 import bookingLifecycleService from '../services/BookingLifecycleService';
 import { EmailService } from '../emailService';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
@@ -173,7 +174,7 @@ router.post('/quote', async (req, res) => {
   }
 });
 
-router.post('/create', async (req, res) => {
+router.post('/create', requireIdempotency, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -218,7 +219,7 @@ router.post('/create', async (req, res) => {
   }
 });
 
-router.post('/:quoteId/checkout', async (req, res) => {
+router.post('/:quoteId/checkout', requireIdempotency, async (req, res) => {
   try {
     const { quoteId } = req.params;
     const userId = req.user?.uid || req.firebaseUser?.uid;
