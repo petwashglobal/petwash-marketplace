@@ -27,7 +27,7 @@ import crypto from "crypto";
 
 const router = Router();
 
-// ─── Bank Account Encryption (AES-256-GCM) ─────────────────────────────────
+// ─── Bank Account, Tax ID, and NI Encryption (AES-256-GCM) ─────────────────
 // Uses DOCUMENT_ENCRYPTION_KEY (same key used for document security)
 function encryptBankAccount(plaintext: string): string {
   const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
@@ -43,6 +43,11 @@ function encryptBankAccount(plaintext: string): string {
   // Format: enc:<base64iv>:<base64tag>:<base64ciphertext>
   return `enc:${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
 }
+
+// Reuse same AES-256-GCM logic for NI and tax IDs (same key, same format).
+// In production DOCUMENT_ENCRYPTION_KEY must be set — plaintext NI/tax IDs are a
+// legal liability under Israeli Privacy Law 2025 and GDPR.
+const encryptPII = encryptBankAccount;
 
 /**
  * POST /api/contractor-onboarding/profile
@@ -183,15 +188,16 @@ router.post("/tax-profile", async (req, res) => {
     }
 
     // Create or update tax compliance record
+    // taxId and nationalInsuranceNumber are encrypted at rest (AES-256-GCM via encryptPII).
     const taxRecord: InsertProviderTaxCompliance = {
       providerId: contractorId,
       providerType: "contractor",
       taxIdType: taxData.taxIdType,
-      taxId: taxData.taxId,
+      taxId: taxData.taxId ? encryptPII(taxData.taxId) : taxData.taxId,
       taxRegistrationNumber: taxData.taxRegistrationNumber || null,
       isVatRegistered: taxData.isVatRegistered || false,
-      vatNumber: taxData.vatNumber || null,
-      nationalInsuranceNumber: taxData.nationalInsuranceNumber,
+      vatNumber: taxData.vatNumber ? encryptPII(taxData.vatNumber) : null,
+      nationalInsuranceNumber: taxData.nationalInsuranceNumber ? encryptPII(taxData.nationalInsuranceNumber) : taxData.nationalInsuranceNumber,
       isBituachLeumiActive: true,
       verificationStatus: "pending",
       isCompliant: false,

@@ -83,8 +83,14 @@ router.post('/invoices/create', async (req, res) => {
       });
       return;
     }
+
+    // createdBy must come from the authenticated user — never trust the client value.
+    const invoiceData = {
+      ...validationResult.data,
+      createdBy: req.user!.uid,
+    };
     
-    const invoice = await ElectronicInvoicingService.createInvoice(validationResult.data);
+    const invoice = await ElectronicInvoicingService.createInvoice(invoiceData);
     
     res.status(201).json({
       success: true,

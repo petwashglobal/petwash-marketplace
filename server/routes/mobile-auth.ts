@@ -9,7 +9,7 @@ import { authService } from '../services/AuthService';
 const router = Router();
 
 // SECURE: Load credentials from environment variables
-const WEB_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_WEB_CLIENT_ID;
+const WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID;
 const WEB_CLIENT_SECRET = process.env.GOOGLE_WEB_CLIENT_SECRET;
 const JWT_SECRET = process.env.MOBILE_LINK_SECRET;
 
