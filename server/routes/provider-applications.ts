@@ -470,7 +470,7 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
           </div>
         </div>`;
       await sendLuxuryEmail({
-        to: 'nirhadad1@gmail.com',
+        to: process.env.SUPPORT_EMAIL || 'support@petwash.co.il',
         subject: `[Pet Wash™] New Provider Application #${application.id} — ${formData.firstName} ${formData.lastName}`,
         html: adminHtml,
         from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
@@ -1232,8 +1232,55 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
       req
     );
     
-    // TODO: Send rejection email
-    
+    // Send rejection notification to the applicant
+    if (application.email) {
+      try {
+        const isHebrew = application.preferredLanguage === 'he' || !application.preferredLanguage;
+        const rejectionSubject = isHebrew
+          ? `[Pet Wash™] עדכון בנוגע לבקשתך`
+          : `[Pet Wash™] Update on Your Provider Application`;
+        const rejectionHtml = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
+            <div style="background:#1a1a1a;padding:24px;text-align:center">
+              <h1 style="color:#c9a96e;margin:0;font-size:22px;letter-spacing:2px">Pet Wash™</h1>
+            </div>
+            <div style="padding:32px 24px">
+              <p style="font-size:16px;color:#1a1a1a">${isHebrew ? `שלום ${application.firstName},` : `Hello ${application.firstName},`}</p>
+              <p style="font-size:15px;color:#374151;line-height:1.6">
+                ${isHebrew
+                  ? 'לאחר בחינת בקשתך, נאלצנו לסרב לה בשלב זה.'
+                  : 'After reviewing your application, we are unable to approve it at this time.'}
+              </p>
+              ${reason ? `<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:4px;margin:16px 0">
+                <p style="margin:0;font-size:14px;color:#991b1b"><strong>${isHebrew ? 'סיבה:' : 'Reason:'}</strong> ${reason}</p>
+              </div>` : ''}
+              <p style="font-size:14px;color:#6b7280;line-height:1.6">
+                ${isHebrew
+                  ? 'אם יש לך שאלות נוספות או ברצונך לערער על ההחלטה, אנא צור קשר עם צוות התמיכה שלנו.'
+                  : 'If you have questions or wish to appeal this decision, please contact our support team.'}
+              </p>
+              <div style="margin-top:24px;text-align:center">
+                <a href="mailto:support@petwash.co.il" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">
+                  ${isHebrew ? 'צור קשר עם תמיכה' : 'Contact Support'}
+                </a>
+              </div>
+            </div>
+            <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af">
+              Pet Wash™ · support@petwash.co.il
+            </div>
+          </div>`;
+        await sendLuxuryEmail({
+          to: application.email,
+          subject: rejectionSubject,
+          html: rejectionHtml,
+          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
+        });
+        logger.info('[ProviderApplication] Rejection email sent', { applicationId, email: application.email });
+      } catch (rejEmailError) {
+        logger.error('[ProviderApplication] Failed to send rejection email', { rejEmailError, applicationId });
+      }
+    }
+
     logger.info('[ProviderApplication] Application rejected', {
       applicationId,
       rejectedBy: user.uid,

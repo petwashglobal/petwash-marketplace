@@ -15,20 +15,24 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 /**
- * Loyalty tier thresholds
+ * Loyalty tier thresholds — aligned with shared/schema-loyalty.ts LOYALTY_TIER_THRESHOLDS
  */
 const TIER_THRESHOLDS = {
-  BRONZE: 0,
-  SILVER: 100,
-  GOLD: 500,
-  PLATINUM: 1000,
-  DIAMOND: 5000,
+  BRONZE:   0,
+  SILVER:   2500,
+  GOLD:     7500,
+  PLATINUM: 15000,
+  DIAMOND:  25000,
+  EMERALD:  40000,
+  ROYAL:    50000,
 };
 
 /**
  * Calculate loyalty tier based on points
  */
 function calculateTier(points: number): string {
+  if (points >= TIER_THRESHOLDS.ROYAL) return 'ROYAL';
+  if (points >= TIER_THRESHOLDS.EMERALD) return 'EMERALD';
   if (points >= TIER_THRESHOLDS.DIAMOND) return 'DIAMOND';
   if (points >= TIER_THRESHOLDS.PLATINUM) return 'PLATINUM';
   if (points >= TIER_THRESHOLDS.GOLD) return 'GOLD';
@@ -40,14 +44,16 @@ function calculateTier(points: number): string {
  * Get tier discount percentage
  */
 function getTierDiscount(tier: string): number {
-  const discounts = {
-    BRONZE: 0,
-    SILVER: 5,
-    GOLD: 10,
+  const discounts: Record<string, number> = {
+    BRONZE:   0,
+    SILVER:   5,
+    GOLD:     10,
     PLATINUM: 15,
-    DIAMOND: 20,
+    DIAMOND:  20,
+    EMERALD:  25,
+    ROYAL:    30,
   };
-  return discounts[tier as keyof typeof discounts] || 0;
+  return discounts[tier.toUpperCase()] ?? 0;
 }
 
 /**
@@ -340,6 +346,12 @@ export async function getLoyaltyStatus(userId: string) {
     } else if (data.points < TIER_THRESHOLDS.DIAMOND) {
       nextTier = 'DIAMOND';
       pointsToNext = TIER_THRESHOLDS.DIAMOND - data.points;
+    } else if (data.points < TIER_THRESHOLDS.EMERALD) {
+      nextTier = 'EMERALD';
+      pointsToNext = TIER_THRESHOLDS.EMERALD - data.points;
+    } else if (data.points < TIER_THRESHOLDS.ROYAL) {
+      nextTier = 'ROYAL';
+      pointsToNext = TIER_THRESHOLDS.ROYAL - data.points;
     }
     
     return {

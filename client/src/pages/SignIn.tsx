@@ -29,6 +29,7 @@ import { executeReCaptcha, preloadReCaptcha } from "@/components/ReCaptcha";
 import { TurnstileWidget, TURNSTILE_CONFIGURED, executeTurnstileInvisible } from "@/components/TurnstileWidget";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
+import { normalizePhoneE164 } from "@/lib/authUtils";
 import { motion, AnimatePresence } from "framer-motion";
 
 function getBiometricButtonLabel(language: Language): string {
@@ -1261,7 +1262,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   // Phone Auth Handlers - Twilio SMS Verification
   const handleSendPhoneCode = async () => {
-    if (!phoneNumber || !phoneNumber.startsWith('+') || phoneNumber.length < 8) {
+    // Normalize Israeli local format (05X → +9725X) before validation
+    let normalizedPhone = normalizePhoneE164(phoneNumber);
+    if (normalizedPhone !== phoneNumber.trim()) {
+      setPhoneNumber(normalizedPhone);
+    }
+    if (!normalizedPhone || normalizedPhone.length < 8) {
       toast({
         variant: "destructive",
         title: phoneErrTitle[language] || phoneErrTitle.en,
@@ -1272,7 +1278,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
     setPhoneLoading(true);
     try {
-      const formattedPhone = phoneNumber.trim();
+      const formattedPhone = normalizedPhone;
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
 

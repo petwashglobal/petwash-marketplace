@@ -45,6 +45,7 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { EmailService } from '../emailService';
 import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
+import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
@@ -381,6 +382,21 @@ router.post('/', async (req, res) => {
       },
       { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
+
+    // Notify provider of new booking request (non-blocking, best-effort)
+    if (booking.providerId) {
+      dispatchNotification({
+        uid: booking.providerId,
+        type: 'booking_request',
+        title: '📅 New Booking Request',
+        body: `You have a new ${data.serviceType?.replace(/_/g, ' ') || 'service'} booking request`,
+        actionUrl: `/provider/bookings/${requestId}`,
+        channels: ['in_app'],
+        priority: 10,
+      }).catch((notifErr: any) =>
+        logger.warn('[BookingRequests] Provider notification failed (non-blocking)', { error: notifErr?.message, requestId })
+      );
+    }
 
     // Intelligence — advance customer journey state to ready_to_book
     if (booking.ownerId) {
@@ -1448,6 +1464,12 @@ router.post('/:requestId/confirm', async (req, res) => {
       try {
         const ownerId = booking.ownerId;
         const bId = booking.id;
+
+        // 0. Award spend-based loyalty points: 1 point per ₪ spent (100 cents = 1 point)
+        const spendPoints = Math.floor((booking.totalCents || 0) / 100);
+        if (spendPoints > 0) {
+          await updateLoyalty(ownerId, spendPoints, 'booking_completed', { bookingId: bId });
+        }
 
         // 1. Count owner's lifetime completed bookings
         const [{ completedCount }] = await db

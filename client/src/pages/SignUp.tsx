@@ -19,6 +19,7 @@ import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { trackSignUp } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
+import { normalizePhoneE164 } from "@/lib/authUtils";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import {
   Dialog,
@@ -284,8 +285,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
   // ── Phone OTP signup ──────────────────────────────────────────────────────
   const handleSendPhoneCode = async () => {
-    if (!phoneNumber || !phoneNumber.startsWith('+') || phoneNumber.length < 8) {
-      toast({ variant: 'destructive', title: language === 'he' ? 'מספר טלפון שגוי' : 'Invalid phone number', description: language === 'he' ? 'הזן מספר טלפון בינלאומי תקין (לדוגמה: +972501234567)' : 'Enter a valid international phone number (e.g. +972501234567)' });
+    // Normalize Israeli local format (05X → +9725X) before validation
+    let normalizedPhone = normalizePhoneE164(phoneNumber);
+    if (normalizedPhone !== phoneNumber.trim()) {
+      setPhoneNumber(normalizedPhone);
+    }
+    if (!normalizedPhone || normalizedPhone.length < 8) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'מספר טלפון שגוי' : 'Invalid phone number', description: language === 'he' ? 'הזן מספר טלפון תקין (לדוגמה: 0501234567 או +972501234567)' : 'Enter a valid phone number (e.g. 0501234567 or +972501234567)' });
       return;
     }
     setPhoneLoading(true);
@@ -301,13 +307,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: phoneNumber.trim(), language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
+        body: JSON.stringify({ phone: normalizedPhone, language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
       });
       const result = await res.json();
       if (!result.ok) throw new Error(result.error || result.message || (language === 'he' ? 'שליחת הקוד נכשלה' : 'Failed to send code'));
 
-      setConfirmationResult({ phone: phoneNumber.trim() });
-      toast({ title: language === 'he' ? 'קוד נשלח! 📲' : 'Code sent! 📲', description: language === 'he' ? `קוד אימות נשלח ל-${phoneNumber}` : `Verification code sent to ${phoneNumber}` });
+      setConfirmationResult({ phone: normalizedPhone });
+      toast({ title: language === 'he' ? 'קוד נשלח! 📲' : 'Code sent! 📲', description: language === 'he' ? `קוד אימות נשלח ל-${normalizedPhone}` : `Verification code sent to ${normalizedPhone}` });
     } catch (err: any) {
       logger.error('[PhoneAuth] Send code failed:', err);
       toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: err.message || (language === 'he' ? 'שליחת הקוד נכשלה. נסה שוב.' : 'Failed to send code. Please try again.') });
