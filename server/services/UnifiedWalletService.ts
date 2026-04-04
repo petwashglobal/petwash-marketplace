@@ -12,7 +12,7 @@ import { eventBus } from './EventBus';
 import { walletService } from './WalletService';
 import { db } from '../db';
 import { walletAccounts } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 export interface WalletBalance {
@@ -95,40 +95,47 @@ export class UnifiedWalletService {
   }
 
   /**
-   * Deduct funds from wallet — operates on promo/cash balance atomically
+   * Deduct funds from wallet — promo balance consumed first, then cash.
+   *
+   * SECURITY (hostile audit T01): The old implementation read the wallet,
+   * computed the new balance in JS, then ran a separate UPDATE — a classic
+   * "check-then-act" race condition that allows double-debits if two requests
+   * arrive concurrently.
+   *
+   * Fix: single atomic SQL UPDATE with a conditional WHERE clause. The database
+   * checks balance sufficiency AND applies the deduction in one statement. If the
+   * WHERE clause fails (balance insufficient), zero rows are updated and we throw.
+   * This is equivalent to an optimistic-lock CAS — no separate SELECT needed.
    */
   async deductFunds(userId: string, amount: number, platform: string, description: string, referenceId?: string): Promise<WalletTransaction> {
     try {
       const amountCents = Math.round(amount * 100);
-
-      const wallet = await walletService.getOrCreateWallet(userId);
-      const available = (wallet.promoBalanceCents || 0) + (wallet.cashWalletBalanceCents || 0);
-
-      if (available < amountCents) {
-        throw new Error(`Insufficient balance: need ${amountCents}, have ${available}`);
-      }
-
-      let remaining = amountCents;
-      const updates: Partial<typeof walletAccounts.$inferInsert> = {};
-
-      const promo = wallet.promoBalanceCents || 0;
-      if (promo > 0 && remaining > 0) {
-        const fromPromo = Math.min(promo, remaining);
-        updates.promoBalanceCents = promo - fromPromo;
-        remaining -= fromPromo;
-      }
-      const cash = wallet.cashWalletBalanceCents || 0;
-      if (cash > 0 && remaining > 0) {
-        const fromCash = Math.min(cash, remaining);
-        updates.cashWalletBalanceCents = cash - fromCash;
-        remaining -= fromCash;
-      }
-
       const txId = `UNI-DEB-${nanoid(12).toUpperCase()}`;
 
-      await db.update(walletAccounts)
-        .set({ ...updates, updatedAt: new Date(), lastActivityAt: new Date() })
-        .where(eq(walletAccounts.userId, userId));
+      // Single atomic statement:
+      //   1. Deducts from promo first (LEAST(promo, amount))
+      //   2. Deducts remainder from cash
+      //   3. WHERE guard: total available >= amountCents (fails if insufficient)
+      //   4. RETURNING: lets us confirm the row was actually updated
+      const [updated] = await db.update(walletAccounts)
+        .set({
+          promoBalanceCents: sql`GREATEST(0, COALESCE(promo_balance_cents, 0) - LEAST(COALESCE(promo_balance_cents, 0), ${amountCents}))`,
+          cashWalletBalanceCents: sql`GREATEST(0, COALESCE(cash_wallet_balance_cents, 0) - GREATEST(0, ${amountCents} - LEAST(COALESCE(promo_balance_cents, 0), ${amountCents})))`,
+          updatedAt: new Date(),
+          lastActivityAt: new Date(),
+        })
+        .where(
+          sql`user_id = ${userId}
+              AND (COALESCE(promo_balance_cents, 0) + COALESCE(cash_wallet_balance_cents, 0)) >= ${amountCents}`
+        )
+        .returning();
+
+      if (!updated) {
+        // Either user has no wallet or insufficient funds — get actual balance to report correctly
+        const wallet = await walletService.getOrCreateWallet(userId);
+        const available = (wallet.promoBalanceCents || 0) + (wallet.cashWalletBalanceCents || 0);
+        throw new Error(`Insufficient balance: need ${amountCents} agorot, have ${available} agorot`);
+      }
 
       await eventBus.publish({
         eventType: 'wallet.withdrawn',
@@ -138,7 +145,7 @@ export class UnifiedWalletService {
         data: { transactionId: txId, amount, description, referenceId },
       });
 
-      logger.info('[Unified Wallet] Funds deducted', { userId, amount, platform });
+      logger.info('[Unified Wallet] Funds deducted (atomic)', { userId, amountCents, platform, txId });
 
       return {
         id: txId,

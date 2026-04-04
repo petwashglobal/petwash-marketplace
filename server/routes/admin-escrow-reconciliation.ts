@@ -419,6 +419,75 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
   }
 });
 
+// ─── T06: Scheduled escrow drift monitor ─────────────────────────────────────
+/**
+ * Runs once after startup (60s delay) then every 30 minutes.
+ * Compares the 50 most recent PG escrow holdings against Firestore to surface drift.
+ * Logs WARN for each drifted record so alerts / log aggregation can pick it up.
+ * To escalate to PagerDuty/email, wire this function to your alerting pipeline.
+ */
+export async function startEscrowDriftMonitor(): Promise<void> {
+  const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+  const check = async () => {
+    try {
+      const pgRows = await db
+        .select({ escrowId: escrowHoldings.escrowId, status: escrowHoldings.status, bookingId: escrowHoldings.bookingId })
+        .from(escrowHoldings)
+        .orderBy(desc(escrowHoldings.createdAt))
+        .limit(50);
+
+      if (!pgRows.length) return;
+
+      const escrowIds = pgRows.map(r => r.escrowId).filter(Boolean) as string[];
+      const CHUNK = 10;
+      const fsMap = new Map<string, any>();
+
+      for (let i = 0; i < escrowIds.length; i += CHUNK) {
+        const chunk = escrowIds.slice(i, i + CHUNK);
+        const snaps = await firestore
+          .collection('escrow_payments')
+          .where('__name__', 'in', chunk)
+          .get();
+        snaps.docs.forEach(d => fsMap.set(d.id, d.data()));
+      }
+
+      let driftCount = 0;
+      for (const row of pgRows) {
+        if (!row.escrowId) continue;
+        const fsDoc = fsMap.get(row.escrowId);
+        const pgNorm = canonicalStatus(row.status);
+        const fsNorm = canonicalStatus(fsDoc?.status);
+        if (pgNorm !== fsNorm) {
+          driftCount++;
+          logger.warn('[EscrowDriftMonitor] Drift detected', {
+            escrowId: row.escrowId,
+            bookingId: row.bookingId,
+            pgStatus: row.status,
+            fsStatus: fsDoc?.status ?? 'MISSING',
+          });
+        }
+      }
+
+      if (driftCount === 0) {
+        logger.info('[EscrowDriftMonitor] Clean — no drift in last 50 holdings');
+      } else {
+        logger.error(`[EscrowDriftMonitor] ${driftCount} drifted escrow records — run /api/admin/escrow/reconciliation to investigate`);
+      }
+    } catch (err: any) {
+      logger.error('[EscrowDriftMonitor] Check failed', { error: err.message });
+    }
+  };
+
+  // Startup delay so DB is warm, then recurring
+  setTimeout(async () => {
+    await check();
+    setInterval(check, CHECK_INTERVAL_MS);
+  }, 60_000);
+
+  logger.info('[EscrowDriftMonitor] Scheduled — first check in 60 s, then every 30 min');
+}
+
 // ─── helper ──────────────────────────────────────────────────────────────────
 function buildDriftDetail(pgStatus: string | null, fsDoc: any | null): string {
   if (!fsDoc) return `PostgreSQL record exists (status: ${pgStatus}) but no matching Firestore document`;

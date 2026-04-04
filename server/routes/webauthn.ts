@@ -35,11 +35,17 @@ const router = express.Router();
 const db = admin.firestore();
 
 // WebAuthn Configuration
-const RP_NAME = "Pet Wash Group";
-const RP_ID = process.env.NODE_ENV === "production" ? "petwash.co.il" : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "localhost");
-const ORIGIN = process.env.NODE_ENV === "production"
-  ? "https://petwash.co.il"
-  : (process.env.BASE_URL || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "http://localhost:5000"));
+// T16: Use env vars WEBAUTHN_RP_ID / WEBAUTHN_ORIGIN as canonical source of truth,
+// matching server/auth/passkey.ts. Fallback to environment-derived values only in dev.
+const RP_NAME = "Pet Wash Ltd";
+const RP_ID = process.env.WEBAUTHN_RP_ID
+  || (process.env.NODE_ENV === "production"
+      ? "petwash.co.il"
+      : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "localhost"));
+const ORIGIN = process.env.WEBAUTHN_ORIGIN
+  || (process.env.NODE_ENV === "production"
+      ? "https://petwash.co.il"
+      : (process.env.BASE_URL || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "http://localhost:5000")));
 
 /**
  * POST /webauthn/register/options

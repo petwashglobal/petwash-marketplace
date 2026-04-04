@@ -34,7 +34,13 @@ interface FeatureApproval {
   decidedBy?: string; // Email of decision maker
 }
 
-const ADMIN_EMAIL = 'nirhadad1@gmail.com'; // Nir Hadad - sole decision maker
+// SECURITY (T07): Remove hardcoded personal email — use env var ADMIN_NOTIFICATION_EMAIL
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ADMIN_NOTIFICATION_EMAIL env var must be set in production');
+  }
+  return 'admin@petwash.co.il';
+})();
 const BASE_URL = process.env.BASE_URL || 'https://petwash.co.il';
 
 /**

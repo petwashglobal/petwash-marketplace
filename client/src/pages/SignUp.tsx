@@ -66,6 +66,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [confirmationResult, setConfirmationResult] = useState<{ phone: string } | null>(null);
   const [webviewBlocked, setWebviewBlocked] = useState(false);
   const [phoneTermsAccepted, setPhoneTermsAccepted] = useState(false);
+  // T12: Name collection step after OTP — prevents NAME_REQUIRED dead-end
+  const [phoneNameStep, setPhoneNameStep] = useState(false);
+  const [phoneFirstName, setPhoneFirstName] = useState('');
+  const [phoneLastName, setPhoneLastName] = useState('');
 
   // Detect in-app browsers (Instagram, TikTok) that block OAuth popups
   useEffect(() => {
@@ -359,12 +363,43 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
       trackSignUp('phone', sessionData.userId || confirmationResult.phone);
       trackEvent({ action: 'signup_success', category: 'authentication', label: 'phone_otp_signup', language });
-      toast({ title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉', description: language === 'he' ? 'ההרשמה הצליחה' : 'Sign-up successful' });
-      window.scrollTo(0, 0);
-      navigate('/dashboard');
+      // T12: Transition to name collection step — phone users have no displayName yet
+      setPhoneNameStep(true);
     } catch (err: any) {
       logger.error('[PhoneAuth] Verification failed:', err);
       toast({ variant: 'destructive', title: language === 'he' ? 'אימות נכשל' : 'Verification failed', description: err.message || (language === 'he' ? 'הקוד שגוי או פג תוקף. נסה שוב.' : 'Incorrect or expired code. Please try again.') });
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  // T12: Complete phone signup by collecting name and calling post-login
+  const handlePhoneNameSubmit = async () => {
+    if (!phoneFirstName.trim()) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: language === 'he' ? 'נא להזין שם פרטי' : 'First name is required' });
+      return;
+    }
+    setPhoneLoading(true);
+    try {
+      const res = await fetch(getApiUrl('/api/auth/post-login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          firstName: phoneFirstName.trim(),
+          lastName: phoneLastName.trim(),
+          intent: localStorage.getItem('signup_intent') || 'customer',
+        }),
+      });
+      localStorage.removeItem('signup_intent');
+      const data = res.ok ? await res.json() : null;
+      toast({ title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉', description: language === 'he' ? 'ההרשמה הצליחה' : 'Sign-up successful' });
+      window.scrollTo(0, 0);
+      navigate(data?.nextUrl || data?.redirectTo || '/dashboard');
+    } catch (err: any) {
+      logger.error('[PhoneAuth] Name submission failed:', err);
+      // Non-blocking: navigate to dashboard even if post-login fails
+      navigate('/dashboard');
     } finally {
       setPhoneLoading(false);
     }
@@ -897,7 +932,38 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                         }
                       </label>
                     </div>
-                    {!confirmationResult ? (
+                    {phoneNameStep ? (
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-center text-gray-700">
+                          {language === 'he' ? '✅ הטלפון אומת! כמה פרטים נוספים:' : '✅ Phone verified! Just a couple more details:'}
+                        </p>
+                        <input
+                          type="text"
+                          placeholder={language === 'he' ? 'שם פרטי *' : 'First name *'}
+                          value={phoneFirstName}
+                          onChange={e => setPhoneFirstName(e.target.value)}
+                          className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          placeholder={language === 'he' ? 'שם משפחה' : 'Last name'}
+                          value={phoneLastName}
+                          onChange={e => setPhoneLastName(e.target.value)}
+                          className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handlePhoneNameSubmit}
+                          disabled={phoneLoading || !phoneFirstName.trim()}
+                          className="luxury-btn-primary w-full h-12"
+                          data-testid="button-phone-name-submit"
+                        >
+                          {phoneLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <ChevronRight className="h-5 w-5 mr-2" />}
+                          {language === 'he' ? 'המשך' : 'Continue'}
+                        </Button>
+                      </div>
+                    ) : !confirmationResult ? (
                       <Button
                         type="button"
                         onClick={handleSendPhoneCode}

@@ -14,6 +14,59 @@ import { eq, and, gte, lte, desc, asc, sql, count, sum } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
+import crypto from "crypto";
+
+// ─── T09: Bank account field encryption (AES-256-GCM, deterministic IV) ──────
+// Deterministic: same plaintext → same ciphertext so UNIQUE constraint is preserved.
+// IV = first 12 bytes of HMAC-SHA256(masterKey, "bank-v1:" + plaintext).
+function encryptBankField(plaintext: string): string {
+  const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!masterKey || masterKey.length < 32) {
+    const msg = '[Bank] FATAL: DOCUMENT_ENCRYPTION_KEY not set or too short — refusing to store bank data in plaintext';
+    logger.error(msg);
+    throw new Error(msg);
+  }
+  if (!plaintext) return plaintext;
+  const key = crypto.createHash('sha256').update(masterKey).digest();
+  const iv = crypto.createHmac('sha256', key).update('bank-v1:' + plaintext).digest().subarray(0, 12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `enc:v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+}
+
+function safeDecryptBankField(value: string | null | undefined): string | null | undefined {
+  if (!value || !value.startsWith('enc:v1:')) return value;
+  try {
+    const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+    if (!masterKey || masterKey.length < 32) return '[ENCRYPTED]';
+    const key = crypto.createHash('sha256').update(masterKey).digest();
+    const parts = value.split(':');
+    if (parts.length !== 5) return '[MALFORMED]';
+    const iv  = Buffer.from(parts[2], 'base64');
+    const tag = Buffer.from(parts[3], 'base64');
+    const ct  = Buffer.from(parts[4], 'base64');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
+    return decipher.update(ct) + decipher.final('utf8');
+  } catch {
+    return '[DECRYPT_FAILED]';
+  }
+}
+
+function encryptBankAccount(data: Record<string, any>): Record<string, any> {
+  const out = { ...data };
+  if (out.accountNumber) out.accountNumber = encryptBankField(out.accountNumber);
+  if (out.iban)          out.iban          = encryptBankField(out.iban);
+  return out;
+}
+
+function decryptBankAccount(row: Record<string, any>): Record<string, any> {
+  const out = { ...row };
+  out.accountNumber = safeDecryptBankField(out.accountNumber) ?? out.accountNumber;
+  out.iban          = safeDecryptBankField(out.iban)          ?? out.iban;
+  return out;
+}
 
 const router = Router();
 
@@ -80,9 +133,8 @@ router.use(financialAuth);
 router.get("/accounts", async (req: Request, res: Response) => {
   try {
     const accounts = await db.select().from(bankAccounts).orderBy(desc(bankAccounts.createdAt));
-    
     logger.info("[Bank API] Retrieved bank accounts", { count: accounts.length });
-    res.json(accounts);
+    res.json(accounts.map(a => decryptBankAccount(a as Record<string, any>)));
   } catch (error) {
     logger.error("[Bank API] Error fetching accounts", error);
     res.status(500).json({ error: "Failed to fetch bank accounts" });
@@ -94,12 +146,10 @@ router.get("/accounts/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const account = await db.select().from(bankAccounts).where(eq(bankAccounts.id, parseInt(id)));
-    
     if (account.length === 0) {
       return res.status(404).json({ error: "Bank account not found" });
     }
-    
-    res.json(account[0]);
+    res.json(decryptBankAccount(account[0] as Record<string, any>));
   } catch (error) {
     logger.error("[Bank API] Error fetching account", error);
     res.status(500).json({ error: "Failed to fetch bank account" });
@@ -110,17 +160,13 @@ router.get("/accounts/:id", async (req: Request, res: Response) => {
 router.post("/accounts", async (req: Request, res: Response) => {
   try {
     const user = (req as Request & { user?: AuthenticatedUser }).user;
-    const accountData = req.body;
-    
-    const [newAccount] = await db.insert(bankAccounts).values(accountData).returning();
-    
-    logger.info("[Bank API] Created bank account", { 
+    const accountData = encryptBankAccount(req.body);
+    const [newAccount] = await db.insert(bankAccounts).values(accountData as any).returning();
+    logger.info("[Bank API] Created bank account", {
       accountId: newAccount.id,
-      accountNumber: newAccount.accountNumber,
-      createdBy: user?.email
+      createdBy: user?.email,
     });
-    
-    res.status(201).json(newAccount);
+    res.status(201).json(decryptBankAccount(newAccount as Record<string, any>));
   } catch (error) {
     logger.error("[Bank API] Error creating account", error);
     res.status(500).json({ error: "Failed to create bank account" });
@@ -131,20 +177,17 @@ router.post("/accounts", async (req: Request, res: Response) => {
 router.patch("/accounts/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-    
+    const updates = encryptBankAccount(req.body);
     const [updatedAccount] = await db
       .update(bankAccounts)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date() } as any)
       .where(eq(bankAccounts.id, parseInt(id)))
       .returning();
-    
     if (!updatedAccount) {
       return res.status(404).json({ error: "Bank account not found" });
     }
-    
     logger.info("[Bank API] Updated bank account", { accountId: id });
-    res.json(updatedAccount);
+    res.json(decryptBankAccount(updatedAccount as Record<string, any>));
   } catch (error) {
     logger.error("[Bank API] Error updating account", error);
     res.status(500).json({ error: "Failed to update bank account" });

@@ -58,7 +58,7 @@ import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
-import adminEscrowReconciliationRoutes from "./routes/admin-escrow-reconciliation";
+import adminEscrowReconciliationRoutes, { startEscrowDriftMonitor } from "./routes/admin-escrow-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
 import { startSettlementReconciliationJob } from "./services/SettlementReconciliationJob";
@@ -4889,7 +4889,9 @@ self.addEventListener('notificationclick', (event) => {
   // Founder member endpoint
   app.get("/api/founder-member", async (req, res) => {
     try {
-      const founderUser = await storage.getUserByEmail("nirhadad1@gmail.com");
+      // SECURITY (T07): Founder email loaded from env var — not hardcoded
+      const founderEmail = process.env.FOUNDER_EMAIL || '';
+      const founderUser = founderEmail ? await storage.getUserByEmail(founderEmail) : null;
       if (!founderUser) {
         return res.status(404).json({ message: "Founder member not found" });
       }
@@ -4920,7 +4922,8 @@ self.addEventListener('notificationclick', (event) => {
       const { packageId, customerEmail, customerName, phone, isGiftCard } = req.body;
       
       // Use provided details or defaults
-      const email = customerEmail || 'nirhadad1@gmail.com';
+      // SECURITY (T07): Remove hardcoded personal email fallback — require explicit input
+      const email = customerEmail || process.env.ADMIN_NOTIFICATION_EMAIL || 'test@internal.invalid';
       const name = customerName || 'Nir Hadad';
       const phoneNumber = phone || '+614197773360';
       const selectedPackageId = packageId || 1;
@@ -5903,38 +5906,61 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // T04: Persistent idempotency dedup for Nayax voucher webhook.
+  // In-memory Map with 24-hour TTL; prevents double-processing across rapid retries.
+  // For multi-instance deployments, upgrade to a Redis SET or PostgreSQL webhook_events table.
+  const _voucherWebhookSeen = new Map<string, number>();
+  const _VOUCHER_DEDUP_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  function _voucherDedup(eventId: string): boolean {
+    const now = Date.now();
+    // Evict expired entries
+    for (const [k, ts] of _voucherWebhookSeen) {
+      if (now - ts > _VOUCHER_DEDUP_TTL_MS) _voucherWebhookSeen.delete(k);
+    }
+    if (_voucherWebhookSeen.has(eventId)) return true; // already processed
+    _voucherWebhookSeen.set(eventId, now);
+    return false;
+  }
+
   // Nayax webhook for voucher purchases
   app.post('/api/vouchers/webhooks/nayax', async (req, res) => {
     const correlationId = crypto.randomUUID();
     try {
       const signature = req.headers['x-nayax-signature'] as string;
       const secret = process.env.NAYAX_WEBHOOK_SECRET;
-      
+
       if (!secret) {
         logger.error('NAYAX_WEBHOOK_SECRET not configured', { correlationId });
         return res.status(500).json({ error: 'Webhook not configured' });
       }
-      
+
       const expectedSignature = crypto
         .createHmac('sha256', secret)
         .update(JSON.stringify(req.body))
         .digest('hex');
-      
+
       if (signature !== expectedSignature) {
         logger.error('Invalid Nayax webhook signature', { correlationId });
         return res.status(401).json({ error: 'Invalid signature' });
       }
-      
+
+      // T04: Idempotency — deduplicate by event_id from payload
+      const eventId: string | undefined = req.body?.event_id || req.body?.eventId;
+      if (eventId && _voucherDedup(eventId)) {
+        logger.info('Nayax voucher webhook duplicate ignored', { correlationId, eventId });
+        return res.json({ received: true, duplicate: true });
+      }
+
       const { type, data } = req.body;
-      
+
       if (type === 'voucher.purchased') {
         // TODO: Create voucher and send email
-        logger.info('Nayax voucher purchase webhook received', { correlationId, data });
+        logger.info('Nayax voucher purchase webhook received', { correlationId, eventId, data });
       } else if (type === 'voucher.refunded') {
         // TODO: Mark voucher as cancelled
-        logger.info('Nayax voucher refund webhook received', { correlationId, data });
+        logger.info('Nayax voucher refund webhook received', { correlationId, eventId, data });
       }
-      
+
       res.json({ received: true });
     } catch (error) {
       logger.error('Nayax webhook error', error, { correlationId });
@@ -10704,7 +10730,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).send('<h1>Invalid approval link</h1>');
       }
       
-      const success = await processFeatureDecision(token, 'approved', 'nirhadad1@gmail.com');
+      // SECURITY (T07): Use env var for admin email — not hardcoded personal email
+      const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
+      const success = await processFeatureDecision(token, 'approved', adminEmail);
       
       if (success) {
         res.send(`
@@ -10732,7 +10760,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).send('<h1>Invalid rejection link</h1>');
       }
       
-      const success = await processFeatureDecision(token, 'rejected', 'nirhadad1@gmail.com');
+      // SECURITY (T07): Use env var for admin email — not hardcoded personal email
+      const adminEmail2 = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
+      const success = await processFeatureDecision(token, 'rejected', adminEmail2);
       
       if (success) {
         res.send(`
@@ -11722,7 +11752,9 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Verify admin email
-      if (decodedToken.email !== 'nirhadad1@gmail.com') {
+      // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — not hardcoded personal email
+      const _saEmails11725 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!decodedToken.email || !_saEmails11725.includes(decodedToken.email.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
       }
       
@@ -11786,7 +11818,9 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Verify admin email
-      if (decodedToken.email !== 'nirhadad1@gmail.com') {
+      // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — not hardcoded personal email
+      const _saEmails11789 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!decodedToken.email || !_saEmails11789.includes(decodedToken.email.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
       }
       
@@ -11845,7 +11879,9 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Verify admin email
-      if (decodedToken.email !== 'nirhadad1@gmail.com') {
+      // SECURITY (T07): Use SUPER_ADMIN_EMAILS env var — not hardcoded personal email
+      const _saEmails11848 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!decodedToken.email || !_saEmails11848.includes(decodedToken.email.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
       }
       
@@ -11892,7 +11928,8 @@ self.addEventListener('notificationclick', (event) => {
     if (!timingSafeAdminSecretMatch(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const ADMIN_EMAIL  = 'nirhadad1@gmail.com';
+    // SECURITY (T07): Admin contact loaded from env var — not hardcoded
+    const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
     const ADMIN_PHONE  = '+972549833355';
     const ADMIN_NAME   = 'ניר הדד';
 
@@ -14830,6 +14867,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Heals commercial↔financial drift (accepted booking + finance_state=hold_active).
   const { startWalletReconciliationJob } = await import('./jobs/wallet-reconciliation');
   startWalletReconciliationJob();
+
+  // T06: Dual escrow drift monitor — Firestore vs PostgreSQL, every 30 min ──
+  startEscrowDriftMonitor();
 
   // ── Async Google secondary job worker — polls pw_async_jobs every 30s ─────
   // Handles: ARCHIVE_TAX_DOCUMENT_TO_DRIVE, EXPORT_RECONCILIATION_TO_SHEETS,

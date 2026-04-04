@@ -131,18 +131,17 @@ router.post('/google', async (req: Request, res: Response) => {
       });
       logger.info(`[Mobile Auth] New Pet Wash user registered: ${email} (New tier)`);
 
-      // Auto-create PostgreSQL wallet — idempotent UPSERT so re-registration never duplicates
+      // Auto-create PostgreSQL wallet AND loyalty profile — idempotent, non-blocking.
+      // SECURITY (T11): Mobile auth path must mirror the canonical post-auth bootstrap
+      // (authService.ensureWalletAccount + ensureLoyaltyProfile) so mobile users receive
+      // the same loyalty account every other registration path provides.
       try {
-        const walletId = `WALLET-${uid.slice(0, 20)}`;
-        await pool.query(
-          `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
-           VALUES ($1, $2, 0, NOW())
-           ON CONFLICT (wallet_id) DO NOTHING`,
-          [walletId, uid],
-        );
-        logger.info(`[Mobile Auth] Wallet auto-created for new user ${uid}`);
+        const { authService } = await import('../services/AuthService');
+        await authService.ensureWalletAccount(uid);
+        await authService.ensureLoyaltyProfile(uid);
+        logger.info(`[Mobile Auth] Wallet + loyalty ensured for new user ${uid}`);
       } catch (walletErr: any) {
-        logger.warn('[Mobile Auth] Wallet auto-creation failed (non-blocking)', { error: walletErr.message });
+        logger.warn('[Mobile Auth] Wallet/loyalty bootstrap failed (non-blocking)', { error: walletErr.message });
       }
     } else {
       // Existing user - update last login

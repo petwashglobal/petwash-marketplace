@@ -27,6 +27,7 @@ import {
   referrals,
   winbackQueue,
   experimentEvents,
+  providerProfiles,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -696,7 +697,23 @@ router.post('/:requestId/respond', async (req, res) => {
     if (booking.providerId !== userId) {
       return res.status(403).json({ error: 'Only the provider can respond to this request' });
     }
-    
+
+    // T10: BGC enforcement — provider must have an approved background check before accepting
+    if (data.action === 'accept') {
+      const [profile] = await db
+        .select({ backgroundCheckStatus: providerProfiles.backgroundCheckStatus })
+        .from(providerProfiles)
+        .where(eq(providerProfiles.userId, userId!))
+        .limit(1);
+      if (!profile || profile.backgroundCheckStatus !== 'approved') {
+        logger.warn('[BookingRequests] Provider accept blocked — BGC not approved', { providerId: userId, backgroundCheckStatus: profile?.backgroundCheckStatus });
+        return res.status(403).json({
+          error: 'BACKGROUND_CHECK_REQUIRED',
+          message: 'Your background check must be approved before you can accept bookings.',
+        });
+      }
+    }
+
     if (booking.status !== 'pending') {
       return res.status(400).json({ error: `Cannot respond to booking with status: ${booking.status}` });
     }

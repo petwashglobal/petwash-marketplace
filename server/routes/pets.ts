@@ -177,7 +177,9 @@ router.delete('/:petId', validateFirebaseToken, async (req, res) => {
 
 const isAdmin = (req: any, res: any, next: any) => {
   const adminEmail = req.firebaseUser?.email;
-  if (adminEmail === 'nirhadad1@gmail.com' || adminEmail?.includes('@petwash.co.il')) {
+  // SECURITY (T07): Use env-driven super-admin list instead of hardcoded personal email
+  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  if ((adminEmail && superAdminEmails.includes(adminEmail.toLowerCase())) || adminEmail?.includes('@petwash.co.il')) {
     next();
   } else {
     res.status(403).json({ error: 'Admin access required' });

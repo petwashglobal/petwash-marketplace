@@ -1582,7 +1582,9 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
     const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 200, margin: 1, color: { dark: '#D4AF37', light: '#000000' } });
 
     // Generate secure wallet pass URLs
-    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls('vdiboz7IrUQEm2RbdO7VZLkBu552', BASE_URL);
+    // SECURITY (T07): Remove hardcoded super-admin UID — use env var SUPER_ADMIN_UID
+    const prestigeAdminUid = process.env.SUPER_ADMIN_UID || '';
+    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls(prestigeAdminUid, BASE_URL);
 
     // Build the luxury email HTML
     const html = buildPrestigePassLuxuryEmail({

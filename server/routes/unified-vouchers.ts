@@ -203,12 +203,32 @@ router.post("/:id/qr-token", requireAuth, validate(qrTokenSchema), async (req: R
 router.post("/redeem/station", requireAuth, validate(stationRedeemSchema), async (req: Request, res: Response) => {
   const tid = traceId();
   try {
+    // SECURITY (T02): Validate client-supplied amountIls against server-side whitelist.
+    // Without this, any authenticated caller could send amountIls=0.01 to redeem a 45 ILS
+    // wash for a fraction of its value. Whitelist matches valid PetWash wash prices.
+    const VALID_WASH_PRICES_ILS = [45, 65, 80, 120, 150, 180, 200];
+    const clientAmountIls = req.body.amountIls;
+    if (clientAmountIls !== undefined && !VALID_WASH_PRICES_ILS.includes(Number(clientAmountIls))) {
+      logger.warn("[UV] Station redeem rejected — invalid amountIls", {
+        traceId: tid,
+        amountIls: clientAmountIls,
+        uid: req.user?.uid,
+        valid: VALID_WASH_PRICES_ILS,
+      });
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_WASH_AMOUNT",
+        valid: VALID_WASH_PRICES_ILS,
+        traceId: tid,
+      });
+    }
+
     const result = await redeemVoucher({
       voucherId: req.body.voucherId,
       serialNumber: req.body.serialNumber,
       qrToken: req.body.qrToken,
       channel: "STATION",
-      amountIls: req.body.amountIls,
+      amountIls: clientAmountIls,
       washes: req.body.washes,
       actorUserId: req.user?.uid,
       actorRole: "station",

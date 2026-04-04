@@ -494,89 +494,94 @@ class WalletService {
     const now = new Date();
     const refundTransactions: any[] = [];
 
+    // SECURITY (hostile audit T01): All refund restores use atomic SQL increments
+    // so that concurrent refund attempts on the same session cannot produce a
+    // double-credit (lost-update race). The session status gate above prevents
+    // a second call reaching here, but the SQL increment is a defence-in-depth.
+
     // Restore e-gift
     if ((session.egiftAppliedCents || 0) > 0) {
-      const newBalance = (wallet.egiftBalanceCents || 0) + (session.egiftAppliedCents || 0);
+      const [upd] = await db.update(walletAccounts)
+        .set({ egiftBalanceCents: sql`COALESCE(egift_balance_cents, 0) + ${session.egiftAppliedCents}`, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId))
+        .returning({ egiftBalanceCents: walletAccounts.egiftBalanceCents });
       refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'egift',
         transactionType: 'refund',
         amountCents: session.egiftAppliedCents,
-        balanceAfterCents: newBalance,
+        balanceAfterCents: upd?.egiftBalanceCents ?? 0,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
         description: `E-gift refunded: ${reason}`,
         initiatedBy,
       });
-      await db.update(walletAccounts)
-        .set({ egiftBalanceCents: newBalance, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
     // Restore wash packages
     if ((session.washPackagesApplied || 0) > 0) {
-      const newBalance = (wallet.washPackageCredits || 0) + (session.washPackagesApplied || 0);
+      const [upd] = await db.update(walletAccounts)
+        .set({ washPackageCredits: sql`COALESCE(wash_package_credits, 0) + ${session.washPackagesApplied}`, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId))
+        .returning({ washPackageCredits: walletAccounts.washPackageCredits });
       refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'wash_package',
         transactionType: 'refund',
         amountUnits: session.washPackagesApplied,
-        balanceAfterUnits: newBalance,
+        balanceAfterUnits: upd?.washPackageCredits ?? 0,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
         description: `Wash package refunded: ${reason}`,
         initiatedBy,
       });
-      await db.update(walletAccounts)
-        .set({ washPackageCredits: newBalance, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
     // Restore loyalty points
     if ((session.loyaltyPointsApplied || 0) > 0) {
       const pointsToRestore = Math.ceil((session.loyaltyPointsApplied || 0) / 10);
-      const newBalance = (wallet.loyaltyPointsBalance || 0) + pointsToRestore;
+      const [upd] = await db.update(walletAccounts)
+        .set({ loyaltyPointsBalance: sql`COALESCE(loyalty_points_balance, 0) + ${pointsToRestore}`, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId))
+        .returning({ loyaltyPointsBalance: walletAccounts.loyaltyPointsBalance });
       refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'loyalty_points',
         transactionType: 'refund',
         amountUnits: pointsToRestore,
-        balanceAfterUnits: newBalance,
+        balanceAfterUnits: upd?.loyaltyPointsBalance ?? 0,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
         description: `Loyalty points refunded: ${reason}`,
         initiatedBy,
       });
-      await db.update(walletAccounts)
-        .set({ loyaltyPointsBalance: newBalance, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
     // Restore promo credits
     if ((session.promoAppliedCents || 0) > 0) {
-      const newBalance = (wallet.promoBalanceCents || 0) + (session.promoAppliedCents || 0);
+      const [upd] = await db.update(walletAccounts)
+        .set({ promoBalanceCents: sql`COALESCE(promo_balance_cents, 0) + ${session.promoAppliedCents}`, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId))
+        .returning({ promoBalanceCents: walletAccounts.promoBalanceCents });
       refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'promo_credit',
         transactionType: 'refund',
         amountCents: session.promoAppliedCents,
-        balanceAfterCents: newBalance,
+        balanceAfterCents: upd?.promoBalanceCents ?? 0,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
         description: `Promo credit refunded: ${reason}`,
         initiatedBy,
       });
-      await db.update(walletAccounts)
-        .set({ promoBalanceCents: newBalance, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
     // Insert refund transaction records
@@ -639,46 +644,55 @@ class WalletService {
     sourceId?: string,
     description?: string
   ): Promise<void> {
+    // SECURITY (hostile audit T01): Use atomic SQL increments instead of
+    // read-compute-write. The old pattern had a race window: two concurrent
+    // addCredits calls would both read the same balance, compute independently,
+    // and the second UPDATE would silently overwrite the first (lost update).
+    // SQL `+= amount` at the DB level is inherently serialised by the engine.
     const wallet = await this.getOrCreateWallet(userId);
     const transactionId = `TXN-${nanoid(12).toUpperCase()}`;
-
-    const updates: Partial<typeof walletAccounts.$inferInsert> = {
-      updatedAt: new Date(),
-      lastActivityAt: new Date(),
-    };
-
-    let balanceAfter = 0;
+    const now = new Date();
     let isUnits = false;
+
+    let updateExpr: Record<string, any> = { updatedAt: now, lastActivityAt: now };
 
     switch (creditType) {
       case 'egift':
-        updates.egiftBalanceCents = (wallet.egiftBalanceCents || 0) + amount;
-        balanceAfter = updates.egiftBalanceCents;
+        updateExpr.egiftBalanceCents = sql`COALESCE(egift_balance_cents, 0) + ${amount}`;
         break;
       case 'wash_package':
-        updates.washPackageCredits = (wallet.washPackageCredits || 0) + amount;
-        balanceAfter = updates.washPackageCredits;
+        updateExpr.washPackageCredits = sql`COALESCE(wash_package_credits, 0) + ${amount}`;
         isUnits = true;
         break;
       case 'loyalty_points':
-        updates.loyaltyPointsBalance = (wallet.loyaltyPointsBalance || 0) + amount;
-        updates.tierPointsThisYear = (wallet.tierPointsThisYear || 0) + amount;
-        balanceAfter = updates.loyaltyPointsBalance;
+        updateExpr.loyaltyPointsBalance = sql`COALESCE(loyalty_points_balance, 0) + ${amount}`;
+        updateExpr.tierPointsThisYear  = sql`COALESCE(tier_points_this_year, 0) + ${amount}`;
         isUnits = true;
         break;
       case 'promo_credit':
-        updates.promoBalanceCents = (wallet.promoBalanceCents || 0) + amount;
-        balanceAfter = updates.promoBalanceCents;
+        updateExpr.promoBalanceCents = sql`COALESCE(promo_balance_cents, 0) + ${amount}`;
         break;
       case 'referral_credit':
-        updates.referralBalanceCents = (wallet.referralBalanceCents || 0) + amount;
-        balanceAfter = updates.referralBalanceCents;
+        updateExpr.referralBalanceCents = sql`COALESCE(referral_balance_cents, 0) + ${amount}`;
         break;
     }
 
-    await db.update(walletAccounts)
-      .set(updates)
-      .where(eq(walletAccounts.walletId, wallet.walletId));
+    const [updated] = await db.update(walletAccounts)
+      .set(updateExpr)
+      .where(eq(walletAccounts.walletId, wallet.walletId))
+      .returning();
+
+    // Derive balanceAfter from the RETURNING row (reflects the committed value)
+    let balanceAfter = 0;
+    if (updated) {
+      switch (creditType) {
+        case 'egift':         balanceAfter = updated.egiftBalanceCents ?? 0; break;
+        case 'wash_package':  balanceAfter = updated.washPackageCredits ?? 0; break;
+        case 'loyalty_points':balanceAfter = updated.loyaltyPointsBalance ?? 0; break;
+        case 'promo_credit':  balanceAfter = updated.promoBalanceCents ?? 0; break;
+        case 'referral_credit':balanceAfter = updated.referralBalanceCents ?? 0; break;
+      }
+    }
 
     await db.insert(creditTransactions).values({
       transactionId,
@@ -695,11 +709,12 @@ class WalletService {
       initiatedBy: 'system',
     });
 
-    logger.info('[Wallet] Credits added', { 
+    logger.info('[Wallet] Credits added (atomic)', { 
       walletId: wallet.walletId, 
       creditType, 
       amount, 
-      sourceType 
+      sourceType,
+      balanceAfter,
     });
   }
 
