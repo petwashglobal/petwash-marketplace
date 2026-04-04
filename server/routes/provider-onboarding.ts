@@ -49,6 +49,12 @@ const router = Router();
 function encryptBiometricBuffer(buffer: Buffer): { data: Buffer; contentType: string } {
   const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
   if (!masterKey || masterKey.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[ProviderOnboarding] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
+        'Refusing to store plaintext biometric data.'
+      );
+    }
     logger.warn('[ProviderOnboarding] DOCUMENT_ENCRYPTION_KEY not set — biometric file stored unencrypted');
     return { data: buffer, contentType: 'application/octet-stream' };
   }
@@ -602,10 +608,11 @@ router.post('/apply', upload.fields([
     let drivingRecordUrl = '';
     if (files.drivingLicenseFile && files.drivingLicenseFile[0]) {
       const dlFile = files.drivingLicenseFile[0];
-      const dlFileName = `providers/${authenticatedUser.uid}/docs/driving_license_${Date.now()}.${dlFile.mimetype.split('/')[1]}`;
+      const dlFileName = `providers/${authenticatedUser.uid}/docs/driving_license_${Date.now()}.enc`;
       const dlUpload = bucket.file(dlFileName);
-      await dlUpload.save(dlFile.buffer, {
-        metadata: { contentType: dlFile.mimetype },
+      const { data: dlData, contentType: dlContentType } = encryptBiometricBuffer(dlFile.buffer);
+      await dlUpload.save(dlData, {
+        metadata: { contentType: dlContentType },
       });
       drivingRecordUrl = dlFileName;
     }

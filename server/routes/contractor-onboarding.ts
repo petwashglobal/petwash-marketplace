@@ -32,8 +32,14 @@ const router = Router();
 function encryptBankAccount(plaintext: string): string {
   const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
   if (!masterKey || masterKey.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[ContractorOnboarding] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
+        'Refusing to store plaintext PII/financial data.'
+      );
+    }
     logger.warn('[ContractorOnboarding] DOCUMENT_ENCRYPTION_KEY not set — bank account stored unencrypted');
-    return plaintext; // graceful degradation, but warn
+    return plaintext; // graceful degradation in non-production only
   }
   const key = crypto.createHash('sha256').update(masterKey).digest(); // 32 bytes
   const iv = crypto.randomBytes(12);
