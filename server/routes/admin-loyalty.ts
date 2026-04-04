@@ -30,20 +30,13 @@ import {
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { adjustLoyaltyBalance } from '../utils/loyaltyLedger';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
-// ── Email-based admin guard (mirrors admin.ts pattern) ────────────────────────
-const FULL_ADMIN_EMAILS = [
-  'nirhadad1@gmail.com',
-  'nir.h@petwash.co.il',
-  'admin@petwash.co.il',
-  'Support@PetWash.co.il',
-];
-
 function requireAdmin(req: any, res: any, next: any) {
-  const email = req.firebaseUser?.email;
-  if (!FULL_ADMIN_EMAILS.includes(email || '')) {
+  const email = (req.firebaseUser?.email || '').toLowerCase();
+  if (!isSuperAdmin(email)) {
     return res.status(403).json({ error: 'Full admin access required' });
   }
   next();

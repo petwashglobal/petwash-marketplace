@@ -839,7 +839,8 @@ router.post('/email-cards', requireAuth, async (req, res) => {
  * 🔒 Requires valid Firebase token from SUPER_ADMIN email
  * Used by CEO to trigger wallet pass delivery without logging in as target user
  */
-const SUPER_ADMIN_EMAILS = ['nirhadad1@gmail.com', 'nir.h@petwash.co.il', 'ido.s@petwash.co.il'];
+const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 router.post('/admin-send', async (req, res) => {
   try {

@@ -26,11 +26,9 @@ const router = Router();
 //
 // Full-admin gate: delegates to isSuperAdmin() which reads SUPER_ADMIN_EMAILS env var.
 // Viewer list: separate read-only allowlist managed here.
-const ADMIN_VIEWER_EMAILS = [
-  'ido.s@petwash.co.il',
-  'avner9000@gmail.com',
-  'shiri.shakarzi1@gmail.com',
-];
+// Viewer-only access list — read from ADMIN_VIEWER_EMAILS env var (comma-separated)
+const ADMIN_VIEWER_EMAILS: string[] = (process.env.ADMIN_VIEWER_EMAILS || '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 // Check if user has any admin/viewer access
 const requireAdminOrViewer = (req: any, res: any, next: any) => {

@@ -59,9 +59,9 @@ router.get('/', requireAuth, requireAdmin, async (req, res) => {
 
 /**
  * GET /api/provider-intake/stats
- * Get intake queue statistics for management dashboard (PUBLIC - no auth)
+ * Get intake queue statistics for management dashboard (admin only)
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
   try {
     const allRecords = await db
       .select()
