@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { MarketplacePlatformId } from '@shared/schema';
 import { BookingCalendar } from '@/components/marketplace/BookingCalendar';
+import { MobileDatePicker } from '@/components/ui/mobile-date-picker';
 import { CreditWalletCard } from '@/components/wallet/CreditWalletCard';
 
 interface BookingStep {
@@ -60,6 +61,8 @@ export default function MarketplaceBookingFlow() {
   const [lockSecondsLeft, setLockSecondsLeft] = useState<number>(0);
   const [selectedSlotStart, setSelectedSlotStart] = useState<Date | null>(null);
   const [selectedSlotEnd, setSelectedSlotEnd] = useState<Date | null>(null);
+  // Custom date request mode — active when provider has no slots for selected date
+  const [customDateMode, setCustomDateMode] = useState(false);
 
   // T005: Upsell add-ons
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
@@ -512,7 +515,31 @@ export default function MarketplaceBookingFlow() {
                     providerId={Number(id)}
                     onSlotSelected={handleSlotSelected}
                     bookingMode="SINGLE_SLOT"
+                    onRequestCustomDate={() => {
+                      setCustomDateMode(true);
+                      setLockToken('custom_request'); // satisfy the Next button guard
+                      setSelectedDate(new Date());
+                    }}
                   />
+
+                  {customDateMode && (
+                    <div className="mt-4 p-4 border border-purple-200 rounded-lg bg-purple-50 dark:bg-purple-900/20 space-y-3">
+                      <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                        {isHebrew ? 'בקשת תאריך מותאם' : 'Custom Date Request'}
+                      </p>
+                      <p className="text-xs text-purple-600 dark:text-purple-300">
+                        {isHebrew
+                          ? 'בחר תאריך ושעה מועדפים. הספק ישיב לבקשתך תוך 24 שעות.'
+                          : 'Choose your preferred date and time. The provider will respond within 24 hours.'}
+                      </p>
+                      <MobileDatePicker
+                        value={selectedDate}
+                        onChange={(d) => { setSelectedDate(d); setSelectedSlotStart(d || null); setSelectedSlotEnd(d || null); }}
+                        label={isHebrew ? 'תאריך ושעה' : 'Date & Time'}
+                        minDate={new Date()}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex gap-4 mt-6">
                     <Button

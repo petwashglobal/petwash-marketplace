@@ -3,8 +3,9 @@ export function isUnauthorizedError(error: Error): boolean {
 }
 
 /**
- * Normalise a phone number to E.164 format.
- * Accepts Israeli local format (05XXXXXXXX) and converts to +97250XXXXXXX.
+ * Normalize a phone number to E.164 format.
+ * Matches Israeli local format: 05XXXXXXXX (10 digits starting with 0)
+ * e.g. 0501234567 → +972501234567, 050123456 → +97250123456
  * Strings that are already E.164 (+...) are returned unchanged.
  */
 export function normalizePhoneE164(phone: string): string {

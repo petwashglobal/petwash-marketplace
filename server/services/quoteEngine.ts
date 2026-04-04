@@ -455,6 +455,7 @@ export async function calculateQuote(
   }
 
   // 8. Wallet credit (cash + promo + referral balances)
+  //    Cap = min(available, floor(subtotal × 50%), remaining) — mirrors loyalty credit cap.
   let walletCreditAppliedCents = 0;
   if (req.useWalletCredit && remaining > 0 && req.userId) {
     const wallet = await getWallet(req.userId);
@@ -463,7 +464,8 @@ export async function calculateQuote(
         (wallet.cashWalletBalanceCents ?? 0) +
         (wallet.promoBalanceCents ?? 0) +
         (wallet.referralBalanceCents ?? 0);
-      walletCreditAppliedCents = Math.min(available, remaining);
+      const cap = Math.min(available, Math.floor(subtotal * 0.5));
+      walletCreditAppliedCents = Math.min(cap, remaining);
       remaining = clampAboveZero(remaining - walletCreditAppliedCents);
       if (walletCreditAppliedCents > 0) {
         adjustments.push({ type: "wallet_credit", amountCents: walletCreditAppliedCents });

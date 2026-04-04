@@ -383,15 +383,30 @@ router.post('/', async (req, res) => {
       { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
 
-    // Notify provider of new booking request (non-blocking, best-effort)
+    // Notify provider of new booking request — in-app + email + SMS (non-blocking, best-effort)
     if (booking.providerId) {
+      // Fetch provider contact details for email/SMS channels
+      const [providerUser] = await db
+        .select({ email: users.email, phone: users.phone })
+        .from(users)
+        .where(eq(users.id, booking.providerId))
+        .limit(1)
+        .catch(() => []);
+
+      const serviceLabel = data.serviceType?.replace(/_/g, ' ') || 'service';
+      const notifBody = `You have a new ${serviceLabel} booking request. Check your dashboard to accept or decline.`;
+
       dispatchNotification({
         uid: booking.providerId,
+        email: providerUser?.email ?? undefined,
+        phone: providerUser?.phone ?? undefined,
         type: 'booking_request',
         title: '📅 New Booking Request',
-        body: `You have a new ${data.serviceType?.replace(/_/g, ' ') || 'service'} booking request`,
-        actionUrl: `/provider/bookings/${requestId}`,
-        channels: ['in_app'],
+        bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}">review and respond</a> within 24 hours.</p>`,
+        bodyText: notifBody,
+        ctaText: 'View Booking',
+        ctaUrl: `${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}`,
+        channels: ['in_app', 'email', 'sms'],
         priority: 10,
       }).catch((notifErr: any) =>
         logger.warn('[BookingRequests] Provider notification failed (non-blocking)', { error: notifErr?.message, requestId })
@@ -1814,7 +1829,9 @@ router.post('/:requestId/cancel', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
-    const { reason } = req.body;
+    // Validate and sanitize the optional reason to prevent HTML/log injection
+    const rawReason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 500) : null;
+    const reason = rawReason || null;
     
     const [booking] = await db.select()
       .from(bookingRequests)

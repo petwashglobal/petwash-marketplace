@@ -100,12 +100,21 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     const onboardingStatus = INITIAL_STATUS[userType];
     const redirectTo = ROUTE_MAP[userType];
 
-    await db.insert(onboardingCases).values({
-      userId: normalizedEmail,
-      context: userType,
-      status: onboardingStatus,
-      currentStep: 'registration_complete',
-    });
+    // Idempotent: skip insert if a case for this email+context already exists
+    // (prevents duplicate rows from double-submit or concurrent requests)
+    const [existingCase] = await db.select({ id: onboardingCases.id })
+      .from(onboardingCases)
+      .where(eq(onboardingCases.userId, normalizedEmail))
+      .limit(1);
+
+    if (!existingCase) {
+      await db.insert(onboardingCases).values({
+        userId: normalizedEmail,
+        context: userType,
+        status: onboardingStatus,
+        currentStep: 'registration_complete',
+      });
+    }
 
     logger.info('[CompleteRegistration] Registration completed', {
       userType,

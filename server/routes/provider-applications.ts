@@ -1103,7 +1103,8 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     
     const invitationUrl = `${process.env.APP_URL || 'https://petwash.co.il'}/provider/onboard?token=${invitationToken}`;
     
-    // Send invitation email
+    // Send invitation email — track real result
+    let invitationEmailSent = false;
     try {
       const { EmailService } = await import('../emailService');
       await EmailService.send({
@@ -1155,15 +1156,43 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
             </div>
           `
       });
+      invitationEmailSent = true;
       logger.info('[ProviderApplication] Invitation email sent', { email: application.email });
     } catch (emailError) {
       logger.error('[ProviderApplication] Failed to send invitation email', { emailError });
+      // Non-fatal: admin can resend manually; record the failure in response
+    }
+
+    // Send in-app notification to prompt provider to refresh their session so Firebase claims propagate
+    if (application.userId) {
+      try {
+        const { superAppNotifications: notifTable } = await import('@shared/schema');
+        await db.insert(notifTable).values({
+          userId: application.userId,
+          type: 'provider_approved',
+          title: application.preferredLanguage === 'he' ? '🎉 הבקשה שלך אושרה!' : '🎉 Your application is approved!',
+          body: application.preferredLanguage === 'he'
+            ? 'לחץ כאן כדי לרענן את הסשן שלך ולגשת ללוח הבקרה של הספק.'
+            : 'Tap here to refresh your session and access your provider dashboard.',
+          actionUrl: '/provider/dashboard',
+          // 'force_token_refresh' is a sentinel value the frontend watches for;
+          // on receipt it calls user.getIdToken(true) to pull the updated Firebase
+          // custom claims (role: 'provider') that were just set by admin approval.
+          actionType: 'force_token_refresh',
+          channels: ['in_app'],
+          isRead: false,
+          createdAt: new Date(),
+        });
+      } catch (notifErr) {
+        logger.warn('[ProviderApplication] Could not create in-app approval notification (non-fatal)', { notifErr });
+      }
     }
     
     logger.info('[ProviderApplication] Application approved', {
       applicationId,
       approvedBy: user.uid,
-      invitationToken: invitationToken.substring(0, 8) + '...'
+      invitationToken: invitationToken.substring(0, 8) + '...',
+      invitationEmailSent,
     });
     
     res.json({
@@ -1171,7 +1200,8 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       message: 'Application approved',
       invitationUrl,
       invitationExpiresAt: expiresAt,
-      emailSent: true
+      emailSent: invitationEmailSent,
+      ...(invitationEmailSent ? {} : { emailNote: 'Invitation email could not be delivered — please resend manually.' }),
     });
     
   } catch (error) {

@@ -4,6 +4,7 @@ import { auth, db as firestore } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import jwt from 'jsonwebtoken';
 import { pool } from '../db';
+import { authService } from '../services/AuthService';
 
 const router = Router();
 
@@ -117,7 +118,7 @@ router.post('/google', async (req: Request, res: Response) => {
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      // New user - create profile with New tier
+      // New user - create Firestore profile
       await userRef.set({
         email,
         name: name || email.split('@')[0],
@@ -131,25 +132,28 @@ router.post('/google', async (req: Request, res: Response) => {
       });
       logger.info(`[Mobile Auth] New Pet Wash user registered: ${email} (New tier)`);
 
-      // Auto-create PostgreSQL wallet — idempotent UPSERT so re-registration never duplicates
-      try {
-        const walletId = `WALLET-${uid.slice(0, 20)}`;
-        await pool.query(
-          `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
-           VALUES ($1, $2, 0, NOW())
-           ON CONFLICT (wallet_id) DO NOTHING`,
-          [walletId, uid],
-        );
-        logger.info(`[Mobile Auth] Wallet auto-created for new user ${uid}`);
-      } catch (walletErr: any) {
-        logger.warn('[Mobile Auth] Wallet auto-creation failed (non-blocking)', { error: walletErr.message });
+      // Ensure PostgreSQL users row + loyalty profile + wallet account are all created
+      // (authService.ensureUserInPostgres also calls ensureLoyaltyProfile + ensureWalletAccount)
+      const pgResult = await authService.ensureUserInPostgres(uid, email, {
+        firstName: name?.split(' ')[0] || undefined,
+        lastName: name?.split(' ').slice(1).join(' ') || undefined,
+        profileImageUrl: picture || undefined,
+        country: 'IL',
+        language: 'he',
+      });
+      if (!pgResult) {
+        logger.error('[Mobile Auth] Failed to create PostgreSQL user row — user may not be able to book', { uid });
+      } else {
+        logger.info(`[Mobile Auth] PostgreSQL user + wallet ready for ${email} (isNew=${pgResult.isNewUser})`);
       }
     } else {
-      // Existing user - update last login
+      // Existing user — update last login in Firestore and ensure DB row exists
       await userRef.update({
         lastLogin: new Date().toISOString(),
         googleId, // Update if not set
       });
+      // Idempotent: ensures wallet/loyalty exist even if they were missed previously
+      await authService.ensureUserInPostgres(uid, email);
     }
 
     // Store refresh token if provided (for offline Google API access)
