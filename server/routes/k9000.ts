@@ -270,6 +270,21 @@ router.post('/wash/start_cycle', async (req, res) => {
     //   2. Set MACHINE_SECRET_KEY (already configured as env var)
     //   3. Remove this comment and test with real hardware
     const machineActivationUrl = process.env.MACHINE_ACTIVATION_URL;
+
+    // PRODUCTION GUARD: if no machine URL is set and we are in production,
+    // block the activation entirely — we cannot charge a customer without
+    // being able to command the physical machine.
+    if (!machineActivationUrl && process.env.NODE_ENV === 'production') {
+      logger.error('[K9000 Wash] FATAL: MACHINE_ACTIVATION_URL not set in production — blocking wash activation', {
+        washId, machineId, transactionId,
+      });
+      return res.status(503).json({
+        error: 'עמדת השטיפה אינה זמינה כעת. אנא נסה שוב מאוחר יותר.',
+        errorEn: 'Wash station is not available. Please try again later.',
+        status: 'MACHINE_NOT_CONFIGURED',
+      });
+    }
+
     if (machineActivationUrl) {
       try {
         const machineRes = await fetch(`${machineActivationUrl}/${machineId}`, {

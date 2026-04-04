@@ -20,6 +20,7 @@
 // - This is a 2025 style implementation, but it does not replace legal advice.
 
 import React, { useEffect, useMemo, useState } from "react";
+import DOMPurify from "dompurify";
 
 // -----------------------------
 // 1. Types and shared constants
@@ -404,9 +405,9 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
       {!loading && !error && doc && (
         <article
           className="legal-document-content"
-          // This uses htmlContent returned from backend.
-          // Backend must sanitize HTML and remove unsafe elements.
-          dangerouslySetInnerHTML={{ __html: doc.htmlContent }}
+          // Sanitized on the client with DOMPurify before render.
+          // Even if the backend is compromised, script injection is blocked here.
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(doc.htmlContent, { USE_PROFILES: { html: true } }) }}
         />
       )}
     </LegalShellLayout>
