@@ -93,13 +93,13 @@ export async function optionalEmployeeProfile(
     const uid = req.firebaseUser.uid;
     const email = req.firebaseUser.email;
     
-    // SUPER ADMIN BYPASS: Hard-coded access for founder
-    const SUPER_ADMIN_EMAIL = 'nirhadad1@gmail.com';
-    if (email === SUPER_ADMIN_EMAIL) {
-      logger.info(`[Auth] Super admin access granted: ${email}`);
+    // SECURITY: Super-admin bypass reads from env var (not hardcoded email).
+    const _superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (email && _superAdminEmails.includes(email.toLowerCase())) {
+      logger.info(`[Auth] Super admin access granted (optionalEmployeeProfile): ${email}`);
       req.employee = {
         uid,
-        fullName: 'Nir Hadad',
+        fullName: email,
         email: email,
         role: 'admin',
         stations: [],
@@ -178,13 +178,13 @@ export async function loadEmployeeProfile(
     const uid = req.firebaseUser.uid;
     const email = req.firebaseUser.email;
     
-    // SUPER ADMIN BYPASS: Hard-coded access for founder
-    const SUPER_ADMIN_EMAIL = 'nirhadad1@gmail.com';
-    if (email === SUPER_ADMIN_EMAIL) {
-      logger.info(`[Auth] Super admin access granted: ${email}`);
+    // SECURITY: Super-admin bypass reads from env var (not hardcoded email).
+    const _superAdminEmails2 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (email && _superAdminEmails2.includes(email.toLowerCase())) {
+      logger.info(`[Auth] Super admin access granted (loadEmployeeProfile): ${email}`);
       req.employee = {
         uid,
-        fullName: 'Nir Hadad',
+        fullName: email,
         email: email,
         role: 'admin',
         stations: [],

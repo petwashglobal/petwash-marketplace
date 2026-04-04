@@ -28,6 +28,7 @@ import {
   backfillAllProviderRankingScores,
   rankingTier,
 } from '../utils/providerRanking';
+import { requireAuth } from '../middleware/gates';
 
 // P0-FIX: SUPER_ADMIN_UID must be set as SUPER_ADMIN_UID environment variable.
 // Hardcoded Firebase UIDs in source code are a security risk — anyone who reads
@@ -172,7 +173,10 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
 // Real filter-backed provider browse. Returns providerProfiles rows
 // joined with users (name) and bookingRequests aggregate stats.
 // All filters map to real DB predicates.
-router.get('/providers/browse', async (req: Request, res: Response) => {
+// SECURITY: requireAuth guards this endpoint because the response includes
+// PII fields (last_name, background_check_status) and detailed capacity data
+// that must not be exposed to unauthenticated callers.
+router.get('/providers/browse', requireAuth, async (req: Request, res: Response) => {
   const uid = getUid(req);
 
   const {

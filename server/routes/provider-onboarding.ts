@@ -801,8 +801,13 @@ router.post('/apply', upload.fields([
               outcomeStatus = 'pending_review';
               decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match) + liveness passed, but forced to manual review — ${forceReviewFlags.join(', ')}`;
             } else {
-              outcomeStatus = 'approved';
-              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete, quality good`;
+              // SECURITY (hostile audit): auto-approval removed.
+              // Even a perfect KYC score MUST route through human admin review.
+              // Reasons: liveness is heuristic (not ISO 30107-3), no criminal background
+              // check is integrated, and a deepfake/printed-photo can pass face match.
+              // ALL providers → pending_review → human must click approve in admin panel.
+              outcomeStatus = 'pending_review';
+              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete — queued for human admin review`;
             }
           } else if (faceScore >= 55) {
             outcomeStatus = 'pending_review';
@@ -2114,8 +2119,10 @@ router.post(
                 outcomeStatus = 'pending_review';
                 decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100 + liveness passed but flagged — ${forceReviewFlags.join(', ')}`;
               } else {
-                outcomeStatus = 'approved';
-                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete`;
+                // SECURITY: auto-approval removed — same policy as initial submission.
+                // Resubmission passing KYC still requires human admin sign-off.
+                outcomeStatus = 'pending_review';
+                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete — queued for human admin review`;
               }
             } else if (faceScore >= 55) {
               outcomeStatus = 'pending_review';

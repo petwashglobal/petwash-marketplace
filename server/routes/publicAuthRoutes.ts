@@ -312,6 +312,35 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
         securitySource = 'recaptcha';
         logger.info('[PublicAuth] Phone send-code: reCAPTCHA passed (bonus)', { phone: phone.slice(-4), score: captchaResult.score });
       } else {
+        // SECURITY (hostile audit): block when reCAPTCHA explicitly returns a real
+        // score below 0.3 — indicative of automated abuse (scripted bot, emulator).
+        // We guard on `typeof score === 'number'` to preserve the fail-open path when
+        // credentials are not configured in Cloud Run (score would be undefined/null
+        // there, not a real number), preventing a permanent lockout in that environment.
+        // Turnstile (configured via TURNSTILE_SECRET_KEY) is a stronger CAPTCHA layer
+        // and already handles the primary anti-bot signal on the frontend.
+        if (typeof captchaResult.score === 'number' && captchaResult.score < 0.3 && captchaResult.source !== 'error') {
+          logger.warn('[PublicAuth] Phone send-code: reCAPTCHA score critically low — blocking request', {
+            phone: phone.slice(-4),
+            score: captchaResult.score,
+            reason: captchaResult.reason,
+            source: captchaResult.source,
+            traceId,
+          });
+          db.insert(authEvents).values({
+            eventType: 'CAPTCHA_PHONE_OTP_BLOCKED',
+            success: false,
+            reason: `reCAPTCHA score ${captchaResult.score} < 0.3 — request blocked`,
+            ip: callerIpEarly,
+            userAgent: req.headers['user-agent'] || null,
+            traceId,
+          }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents insert failed', { error: dbErr?.message }));
+          return res.status(429).json({
+            ok: false,
+            error: language === 'he' ? 'נדרש אימות אנושי — נסה שוב' : 'Human verification required — please try again',
+            code: 'CAPTCHA_BLOCKED',
+          });
+        }
         securitySource = 'captcha-failed-proceed';
         logger.warn('[PublicAuth] Phone send-code: reCAPTCHA failed (non-blocking — proceeding with rate-limit protection)', {
           phone: phone.slice(-4),

@@ -945,15 +945,18 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
 // ============================================
 
 // CEO-only access middleware
+// SECURITY: CEO email list loaded from SUPER_ADMIN_EMAILS env var (same pool as super-admins).
+// Hard-coded personal Gmail was removed — see gates.ts for rotation instructions.
 const requireCEO = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const CEO_EMAILS = ['nirhadad1@gmail.com', 'nir.h@petwash.co.il'];
+  const CEO_EMAILS_RAW = process.env.SUPER_ADMIN_EMAILS || '';
+  const CEO_EMAILS = CEO_EMAILS_RAW.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
   
   if (!CEO_EMAILS.includes(userEmail)) {
     logger.warn(`[Security] Unauthorized CEO endpoint access attempt by ${req.firebaseUser?.email}`);
     return res.status(403).json({ 
       error: 'CEO access required',
-      message: 'Only the CEO (Nir Hadad) can access this endpoint',
+      message: 'This endpoint is restricted to designated super-admin users.',
     });
   }
   

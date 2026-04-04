@@ -66,6 +66,39 @@ function generateId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
 }
 
+// ─── SECURITY: V1 Booking & Provider Routes — HTTP 410 Gone ─────────────────
+// These V1 endpoints are fully superseded and must no longer accept requests.
+// Returning 410 (Gone — permanent removal) rather than 404 (Not Found) signals
+// to callers that they MUST migrate; their retry will never succeed.
+// Wallet (/v1/wallet*), ledger (/v1/ledger*) and egift routes are NOT deprecated
+// and remain active — this interceptor only covers booking & provider paths.
+router.all('/v1/bookings*', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'Gone',
+    code: 'V1_DEPRECATED',
+    message: 'Octopus V1 booking routes have been permanently removed. Migrate to the canonical booking API.',
+    migration: {
+      create:  'POST   /api/booking-requests',
+      list:    'GET    /api/booking-requests',
+      get:     'GET    /api/booking-requests/:id',
+      action:  'PATCH  /api/provider-dashboard/v2/bookings/:id/:action',
+    },
+  });
+});
+
+router.all('/v1/providers*', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'Gone',
+    code: 'V1_DEPRECATED',
+    message: 'Octopus V1 provider routes have been permanently removed. Migrate to the canonical provider API.',
+    migration: {
+      onboard: 'POST   /api/provider-onboarding/apply',
+      profile: 'GET    /api/provider-dashboard/v2/profile',
+      approve: 'PATCH  /api/admin/providers/:id/approve  (admin only)',
+    },
+  });
+});
+
 // =================== CREATE BOOKING ===================
 const createBookingSchema = z.object({
   userId: z.string().min(1),
@@ -75,7 +108,9 @@ const createBookingSchema = z.object({
   idempotencyKey: z.string().optional(),
 });
 
-// [DEPRECATED V1] Use POST /api/booking-requests instead
+// [DEAD CODE] The router.all handlers above intercept all /v1/bookings* and
+// /v1/providers* requests — these handlers can never be reached. Kept for
+// reference until a future cleanup sprint removes them entirely.
 router.post("/v1/bookings", async (req: Request, res: Response) => {
   logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings called — migrate to POST /api/booking-requests');
   try {
