@@ -453,6 +453,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // ✅ K9000 public system-mode endpoint — no auth required.
+    // Returns machineMode: 'live' | 'demo' based on MACHINE_ACTIVATION_URL env var.
+    // Frontend queries this on the confirmed redemption step to warn users about demo mode.
+    if (path === '/api/k9000/system-mode') {
+      return next();
+    }
+
     // ✅ K9000 IoT hardware bypass — kiosks authenticate via either:
     //   A) HMAC signed headers (X-K9000-ID + X-K9000-TS + X-K9000-SIGN) — production path
     //   B) body.machineSecret — DEV fallback
@@ -9715,6 +9722,25 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/documents', validateFirebaseToken, adminLimiter, documentsRoutes);
   
   // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
+  // K9000 PUBLIC SYSTEM MODE (item 21): Tells the frontend whether the physical machine
+  // is in demo mode (MACHINE_ACTIVATION_URL not set). Registered BEFORE IoT routes so it
+  // is not blocked by machine-secret IP/HMAC auth middleware on k9000IotRoutes.
+  // Frontend: K9000Redeem.tsx queries this and shows a banner when machineMode === 'demo'.
+  app.get('/api/k9000/system-mode', apiLimiter, (req, res) => {
+    const machineActivationUrl = process.env.MACHINE_ACTIVATION_URL;
+    const machineMode = machineActivationUrl ? 'live' : 'demo';
+    res.json({
+      machineMode,
+      configured: !!machineActivationUrl,
+      messageHe: machineMode === 'demo'
+        ? 'המכונה במצב הדגמה — פעולה פיזית לא מופעלת. יש לפנות לצוות.'
+        : 'המכונה פעילה ומחוברת.',
+      messageEn: machineMode === 'demo'
+        ? 'Machine is in demo mode — physical wash will not start. Contact staff if needed.'
+        : 'Machine is live and connected.',
+    });
+  });
+
   // MUST be registered FIRST — IoT routes use machine-secret auth (not Firebase).
   // The supplier/dashboard routers apply validateFirebaseToken globally; registering
   // them first would block unauthenticated kiosk hardware from reaching IoT endpoints.

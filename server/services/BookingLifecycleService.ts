@@ -434,6 +434,18 @@ class BookingLifecycleService {
       throw new Error(`Invalid transition from ${currentStatus} to ${newStatus}`);
     }
 
+    // SERVICE-LAYER GUARD (item 5): The state machine allows owner_completion_review → completed
+    // and provider_completion_review → completed, but that must ONLY happen via the system
+    // auto-advance that verifies both sides confirmed by distinct actors. Any direct call
+    // to transitionStatus('completed') from outside that path is rejected at the service layer —
+    // not just the route layer — so new code paths cannot bypass it.
+    if (newStatus === 'completed' && actorRole !== 'system' && actorRole !== 'admin') {
+      throw new Error(
+        `Direct transition to 'completed' is not allowed for role '${actorRole}'. ` +
+        `Completion must be triggered by the system after both parties confirm independently.`
+      );
+    }
+
     await db.update(bookings)
       .set({ 
         status: newStatus,

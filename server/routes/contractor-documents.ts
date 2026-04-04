@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { Storage } from "@google-cloud/storage";
 import multer from "multer";
 import { nanoid } from "nanoid";
@@ -10,27 +10,23 @@ import {
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAuth } from "../middleware/gates";
 
 const router = Router();
 
-// Initialize Google Cloud Storage
+// SECURITY FIX (items 9 & 27): requireAuth applied router-wide.
+// Previously mounted with optionalFirebaseToken — zero enforcement.
+// contractorProfiles.id IS the Firebase UID, so ownership check is a direct UID comparison.
+router.use(requireAuth);
+
 const storage = new Storage();
 const bucketName = process.env.CONTRACTOR_DOCS_BUCKET || "petwash-contractor-documents";
 
-// Configure multer for memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // Allow images and PDFs only
-    const allowedMimes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "application/pdf",
-    ];
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -39,43 +35,69 @@ const upload = multer({
   },
 });
 
+function getCallerId(req: any): string | null {
+  return req.firebaseUser?.uid || req.user?.uid || (req as any).userId || null;
+}
+
+function isAdminCaller(req: any): boolean {
+  return (
+    req.firebaseUser?.claims?.admin === true ||
+    req.firebaseUser?.customClaims?.admin === true ||
+    req.user?.customClaims?.admin === true
+  );
+}
+
+// SECURITY: Caller must own the contractor profile (callerId === contractorId) OR be admin.
+// contractorProfiles.id is the Firebase UID, so direct comparison is correct — no DB join needed.
+async function assertContractorAccess(
+  req: any,
+  res: Response,
+  contractorId: string
+): Promise<boolean> {
+  const callerId = getCallerId(req);
+  if (!callerId) {
+    res.status(401).json({ error: "Authentication required" });
+    return false;
+  }
+  if (isAdminCaller(req)) return true;
+  if (callerId === contractorId) return true;
+  logger.warn("[Contractor Documents] Ownership check failed", { callerId, contractorId });
+  res.status(403).json({ error: "Access denied — not your documents" });
+  return false;
+}
+
 /**
  * POST /api/contractor-documents/upload
- * Upload a contractor document to Google Cloud Storage
+ * Upload a contractor document. Caller must be the contractor (or admin).
+ * BEFORE: No auth. Any HTTP client could upload documents to any contractor.
+ * AFTER:  requireAuth + ownership check (callerId === contractorId || admin).
  */
-router.post("/upload", upload.single("file"), async (req, res) => {
+router.post("/upload", upload.single("file"), async (req: any, res) => {
   try {
     const { contractorId, type, country } = req.body;
     const file = req.file;
 
-    if (!file) {
-      return res.status(400).json({ error: "No file provided" });
-    }
-
+    if (!file) return res.status(400).json({ error: "No file provided" });
     if (!contractorId || !type) {
-      return res.status(400).json({
-        error: "Missing required fields: contractorId, type",
-      });
+      return res.status(400).json({ error: "Missing required fields: contractorId, type" });
     }
 
-    // Verify contractor exists
+    const allowed = await assertContractorAccess(req, res, contractorId);
+    if (!allowed) return;
+
     const contractor = await db
       .select()
       .from(contractorProfiles)
       .where(eq(contractorProfiles.id, contractorId))
       .limit(1);
 
-    if (contractor.length === 0) {
-      return res.status(404).json({ error: "Contractor not found" });
-    }
+    if (contractor.length === 0) return res.status(404).json({ error: "Contractor not found" });
 
-    // Generate unique filename
     const timestamp = Date.now();
     const randomId = nanoid(8);
     const fileExtension = file.originalname.split(".").pop();
     const filename = `${contractorId}/${type}/${timestamp}-${randomId}.${fileExtension}`;
 
-    // Upload to Google Cloud Storage
     const bucket = storage.bucket(bucketName);
     const blob = bucket.file(filename);
 
@@ -85,29 +107,20 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         metadata: {
           contractorId,
           documentType: type,
-          uploadedBy: req.firebaseUser?.uid || req.user?.uid || "unknown",
+          uploadedBy: getCallerId(req) || "unknown",
           uploadedAt: new Date().toISOString(),
         },
       },
     });
 
-    // Make the file publicly readable (or use signed URLs for private access)
-    // For now, we'll use signed URLs for security
     const [url] = await blob.getSignedUrl({
       action: "read",
-      expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+      expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
     });
 
-    // Save document record to database
     const [document] = await db
       .insert(contractorDocuments)
-      .values({
-        contractorId,
-        type,
-        country: country || "IL",
-        url,
-        uploadedAt: new Date(),
-      })
+      .values({ contractorId, type, country: country || "IL", url, uploadedAt: new Date() })
       .returning();
 
     logger.info("[Contractor Documents] Document uploaded", {
@@ -115,29 +128,28 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       contractorId,
       type,
       filename,
+      uploadedBy: getCallerId(req),
     });
 
-    res.status(201).json({
-      success: true,
-      document,
-      message: "Document uploaded successfully",
-    });
+    res.status(201).json({ success: true, document, message: "Document uploaded successfully" });
   } catch (error) {
     logger.error("[Contractor Documents] Upload failed", error);
-    res.status(500).json({
-      error: "Failed to upload document",
-      details: error instanceof Error ? error.message : "Unknown error",
-    });
+    res.status(500).json({ error: "Failed to upload document", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
 /**
  * GET /api/contractor-documents/:contractorId
- * Get all documents for a contractor
+ * List documents. Caller must be the contractor (or admin).
+ * BEFORE: No auth. Any caller with a contractorId (sequential int) got full list including national IDs.
+ * AFTER:  requireAuth + ownership check.
  */
-router.get("/:contractorId", async (req, res) => {
+router.get("/:contractorId", async (req: any, res) => {
   try {
     const { contractorId } = req.params;
+
+    const allowed = await assertContractorAccess(req, res, contractorId);
+    if (!allowed) return;
 
     const documents = await db
       .select()
@@ -145,35 +157,29 @@ router.get("/:contractorId", async (req, res) => {
       .where(eq(contractorDocuments.contractorId, contractorId))
       .orderBy(desc(contractorDocuments.uploadedAt));
 
-    res.json({
-      success: true,
-      documents,
-      count: documents.length,
-    });
+    res.json({ success: true, documents, count: documents.length });
   } catch (error) {
     logger.error("[Contractor Documents] Failed to fetch documents", error);
-    res.status(500).json({
-      error: "Failed to fetch documents",
-      details: error instanceof Error ? error.message : "Unknown error",
-    });
+    res.status(500).json({ error: "Failed to fetch documents", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
 /**
  * POST /api/contractor-documents/:documentId/verify
- * Admin: Verify a contractor document
+ * Admin-only verification. Non-admin callers get 403 unconditionally.
+ * BEFORE: Only checked if firebaseUser.uid was present (any authenticated user could verify docs).
+ * AFTER:  Admin claim required.
  */
-router.post("/:documentId/verify", async (req, res) => {
+router.post("/:documentId/verify", async (req: any, res) => {
   try {
-    const { documentId } = req.params;
-    const { expiresAt, notes } = req.body;
-    const verifiedByUserId = req.firebaseUser?.uid || req.user?.uid;
-
-    if (!verifiedByUserId) {
-      return res.status(401).json({ error: "Authentication required" });
+    if (!isAdminCaller(req)) {
+      return res.status(403).json({ error: "Admin access required to verify documents" });
     }
 
-    // Update document verification status
+    const { documentId } = req.params;
+    const { expiresAt, notes } = req.body;
+    const verifiedByUserId = getCallerId(req)!;
+
     const [document] = await db
       .update(contractorDocuments)
       .set({
@@ -185,9 +191,7 @@ router.post("/:documentId/verify", async (req, res) => {
       .where(eq(contractorDocuments.id, documentId))
       .returning();
 
-    if (!document) {
-      return res.status(404).json({ error: "Document not found" });
-    }
+    if (!document) return res.status(404).json({ error: "Document not found" });
 
     logger.info("[Contractor Documents] Document verified", {
       documentId,
@@ -195,86 +199,71 @@ router.post("/:documentId/verify", async (req, res) => {
       verifiedByUserId,
     });
 
-    res.json({
-      success: true,
-      document,
-      message: "Document verified successfully",
-    });
+    res.json({ success: true, document, message: "Document verified successfully" });
   } catch (error) {
     logger.error("[Contractor Documents] Verification failed", error);
-    res.status(500).json({
-      error: "Failed to verify document",
-      details: error instanceof Error ? error.message : "Unknown error",
-    });
+    res.status(500).json({ error: "Failed to verify document", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
 /**
  * DELETE /api/contractor-documents/:documentId
- * Delete a contractor document
+ * Delete a document. Caller must own the parent contractor profile (or be admin).
+ * BEFORE: No auth. Any caller could delete any document by ID.
+ * AFTER:  requireAuth + ownership check derived from the document's contractorId.
  */
-router.delete("/:documentId", async (req, res) => {
+router.delete("/:documentId", async (req: any, res) => {
   try {
     const { documentId } = req.params;
 
-    // Get document to retrieve storage path
     const [document] = await db
       .select()
       .from(contractorDocuments)
       .where(eq(contractorDocuments.id, documentId))
       .limit(1);
 
-    if (!document) {
-      return res.status(404).json({ error: "Document not found" });
-    }
+    if (!document) return res.status(404).json({ error: "Document not found" });
 
-    // Delete from Google Cloud Storage
-    // Extract filename from signed URL
-    const urlObj = new URL(document.url);
-    const pathParts = urlObj.pathname.split("/");
-    const filename = pathParts.slice(2).join("/"); // Remove bucket name
+    const allowed = await assertContractorAccess(req, res, document.contractorId);
+    if (!allowed) return;
 
     try {
+      const urlObj = new URL(document.url);
+      const pathParts = urlObj.pathname.split("/");
+      const filename = pathParts.slice(2).join("/");
       const bucket = storage.bucket(bucketName);
       await bucket.file(filename).delete();
     } catch (storageError) {
-      logger.warn("[Contractor Documents] Failed to delete from storage", {
-        storageError,
-        filename,
-      });
-      // Continue anyway - database cleanup is more important
+      logger.warn("[Contractor Documents] Failed to delete from storage", { storageError, documentId });
     }
 
-    // Delete from database
-    await db
-      .delete(contractorDocuments)
-      .where(eq(contractorDocuments.id, documentId));
+    await db.delete(contractorDocuments).where(eq(contractorDocuments.id, documentId));
 
     logger.info("[Contractor Documents] Document deleted", {
       documentId,
       contractorId: document.contractorId,
+      deletedBy: getCallerId(req),
     });
 
-    res.json({
-      success: true,
-      message: "Document deleted successfully",
-    });
+    res.json({ success: true, message: "Document deleted successfully" });
   } catch (error) {
     logger.error("[Contractor Documents] Deletion failed", error);
-    res.status(500).json({
-      error: "Failed to delete document",
-      details: error instanceof Error ? error.message : "Unknown error",
-    });
+    res.status(500).json({ error: "Failed to delete document", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
 /**
  * GET /api/contractor-documents/type/:contractorId/:type
- * Get specific document type for a contractor
+ * Get documents by type. Caller must be the contractor (or admin).
+ * BEFORE: No auth.
+ * AFTER:  requireAuth + ownership check.
  */
-router.get("/type/:contractorId/:type", async (req, res) => {
+router.get("/type/:contractorId/:type", async (req: any, res) => {
   try {
     const { contractorId, type } = req.params;
+
+    const allowed = await assertContractorAccess(req, res, contractorId);
+    if (!allowed) return;
 
     const documents = await db
       .select()
@@ -287,17 +276,10 @@ router.get("/type/:contractorId/:type", async (req, res) => {
       )
       .orderBy(desc(contractorDocuments.uploadedAt));
 
-    res.json({
-      success: true,
-      documents,
-      count: documents.length,
-    });
+    res.json({ success: true, documents, count: documents.length });
   } catch (error) {
-    logger.error("[Contractor Documents] Failed to fetch document by type", error, {  });
-    res.status(500).json({
-      error: "Failed to fetch documents",
-      details: error instanceof Error ? error.message : "Unknown error",
-    });
+    logger.error("[Contractor Documents] Failed to fetch document by type", error);
+    res.status(500).json({ error: "Failed to fetch documents", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 

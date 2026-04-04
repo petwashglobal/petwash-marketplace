@@ -357,6 +357,24 @@ class AdminProviderReviewService {
         };
       }
 
+      // SECURITY FIX (item 20): Police check must be approved before any provider can be activated.
+      // BEFORE: approveApplication() never read the checklist — admin could approve without
+      //         verifying policeCheckApproved, making the police clearance requirement cosmetic only.
+      // AFTER:  Hard gate. policeCheckApproved === false throws and returns 422 to the admin UI.
+      //         Admin MUST mark police check approved on the checklist before this succeeds.
+      if (!review.checklist.policeCheckApproved) {
+        logger.warn('[AdminReview] Approval blocked — police check not approved', {
+          applicationId,
+          reviewerId,
+          checklist: review.checklist,
+        });
+        return {
+          success: false,
+          messageHe: 'לא ניתן לאשר — בדיקת המשטרה טרם אושרה. יש לסמן אישור בדיקת משטרה ברשימת הפריטים תחילה.',
+          messageEn: 'Approval blocked — police check has not been approved. Mark police check approved on the checklist first.',
+        };
+      }
+
       await db
         .update(providerApprovalQueue)
         .set({

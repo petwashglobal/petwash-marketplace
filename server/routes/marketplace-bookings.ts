@@ -1573,8 +1573,16 @@ router.post('/provider/rate-card', async (req, res) => {
 
 router.post('/process-escrow-releases', async (req, res) => {
   try {
-    const adminKey = req.headers['x-admin-key'];
-    if (adminKey !== process.env.ADMIN_API_KEY) {
+    // SECURITY FIX (item 25): Plain === comparison is vulnerable to timing attacks.
+    // BEFORE: adminKey !== process.env.ADMIN_API_KEY  — leaks secret length and prefix via timing.
+    // AFTER:  timingSafeEqual with fixed-length buffers eliminates the timing oracle.
+    const { timingSafeEqual } = await import('crypto');
+    const adminKey = (req.headers['x-admin-key'] as string) || '';
+    const expectedKey = process.env.ADMIN_API_KEY || '';
+    const adminKeyMatches = expectedKey.length > 0 &&
+      adminKey.length === expectedKey.length &&
+      timingSafeEqual(Buffer.from(adminKey), Buffer.from(expectedKey));
+    if (!adminKeyMatches) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
