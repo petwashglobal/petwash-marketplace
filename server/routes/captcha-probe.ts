@@ -23,7 +23,6 @@ const router = Router();
 router.get('/', (_req: Request, res: Response) => {
   const siteKey =
     process.env.RECAPTCHA_SITE_KEY ||
-    process.env.VITE_RECAPTCHA_SITE_KEY ||
     '';
 
   const html = /* html */ `<!DOCTYPE html>
@@ -297,8 +296,7 @@ router.post('/assess', async (req: Request, res: Response) => {
 
   try {
     const siteKey =
-      (process.env.RECAPTCHA_SITE_KEY || '').trim() ||
-      (process.env.VITE_RECAPTCHA_SITE_KEY || '').trim();
+      (process.env.RECAPTCHA_SITE_KEY || '').trim();
 
     const projectId = (process.env.RECAPTCHA_GCP_PROJECT_ID || '').trim() || 'signinpetwash';
 

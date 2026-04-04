@@ -591,7 +591,20 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
     const userId = req.user!.uid;
 
     const bookingDoc = await db.collection("bookings").doc(bookingId).get();
+    if (!bookingDoc.exists) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
     const booking = bookingDoc.data();
+
+    // Ownership check: only the booking's customer, provider, or a super admin may complete.
+    const callerEmail = ((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase();
+    const isAdmin = isSuperAdmin(callerEmail);
+    const isCustomer = booking?.customerId === userId || booking?.userId === userId;
+    const isProvider = booking?.providerId === userId;
+    if (!isAdmin && !isCustomer && !isProvider) {
+      logger.warn('[Bookings] Unauthorized complete attempt', { userId, bookingId });
+      return res.status(403).json({ error: 'Forbidden: not the booking owner or provider' });
+    }
 
     await db.collection("bookings").doc(bookingId).update({
       status: "completed",

@@ -28,8 +28,11 @@ import {
   backfillAllProviderRankingScores,
   rankingTier,
 } from '../utils/providerRanking';
+import { requireAuth } from '../customAuth';
 
-const SUPER_ADMIN_UID = 'vdiboz7IrUQEm2RbdO7VZLkBu552';
+// SUPER_ADMIN_UID is loaded from environment to avoid hardcoding credentials in source code.
+// If not set, admin operations fail closed (return 403) rather than open.
+const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID || '';
 
 const router = Router();
 
@@ -157,7 +160,7 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
 // Real filter-backed provider browse. Returns providerProfiles rows
 // joined with users (name) and bookingRequests aggregate stats.
 // All filters map to real DB predicates.
-router.get('/providers/browse', async (req: Request, res: Response) => {
+router.get('/providers/browse', requireAuth, async (req: Request, res: Response) => {
   const uid = getUid(req);
 
   const {

@@ -801,8 +801,10 @@ router.post('/apply', upload.fields([
               outcomeStatus = 'pending_review';
               decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match) + liveness passed, but forced to manual review — ${forceReviewFlags.join(', ')}`;
             } else {
-              outcomeStatus = 'approved';
-              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete, quality good`;
+              // All providers require human review regardless of KYC score.
+              // Automated approval is disabled — background checks must be performed by a human.
+              outcomeStatus = 'pending_review';
+              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete, quality good — pending human review`;
             }
           } else if (faceScore >= 55) {
             outcomeStatus = 'pending_review';
@@ -906,16 +908,10 @@ router.post('/apply', upload.fields([
             }),
           };
 
-          // Auto-approve: generate providerId
-          if (outcomeStatus === 'approved') {
-            const providerPrefix = providerType.toUpperCase().substring(0, 6);
-            const randomId = randomBytes(5).toString('hex').toUpperCase();
-            updatePayload.approvedAsProviderId = `${providerPrefix}-${randomId}`;
-            updatePayload.reviewedAt = new Date();
-            updatePayload.reviewedBy = 'system-kyc2026';
-            updatePayload.backgroundCheckStatus = 'passed';
-            updatePayload.backgroundCheckDate = new Date();
-          }
+          // Auto-approval has been removed. All providers route to pending_review for human sign-off.
+          // backgroundCheckStatus must only be set by a human reviewer or a real police check service.
+          // The block below is intentionally disabled — do not restore without human review gate.
+          // if (outcomeStatus === 'approved') { ... }
 
           await db.update(providerApplications)
             .set(updatePayload)
@@ -1293,7 +1289,7 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
 
     if (app.selfiePhotoUrl) {
       try {
-        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || `${process.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`);
+        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
         const [url] = await bucket.file(app.selfiePhotoUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
         selfieSignedUrl = url;
       } catch { /* non-fatal */ }
@@ -1301,7 +1297,7 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
 
     if (app.governmentIdUrl) {
       try {
-        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || `${process.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`);
+        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
         const [url] = await bucket.file(app.governmentIdUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
         idSignedUrl = url;
       } catch { /* non-fatal */ }
@@ -2114,8 +2110,10 @@ router.post(
                 outcomeStatus = 'pending_review';
                 decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100 + liveness passed but flagged — ${forceReviewFlags.join(', ')}`;
               } else {
-                outcomeStatus = 'approved';
-                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete`;
+                // All providers require human review regardless of KYC score.
+                // Automated approval is disabled — background checks must be performed by a human.
+                outcomeStatus = 'pending_review';
+                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete — pending human review`;
               }
             } else if (faceScore >= 55) {
               outcomeStatus = 'pending_review';

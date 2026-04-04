@@ -18,14 +18,14 @@ import {
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 function isAdminRequest(req: any): boolean {
-  const adminSecret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-  return !!(adminSecret && req.headers['x-admin-secret'] === adminSecret);
+  return timingSafeAdminSecretMatch(req);
 }
 
 async function resolveUidOrNull(req: any): Promise<string | null> {

@@ -25,6 +25,7 @@ import { sql, SQL } from 'drizzle-orm';
 import { logger }   from '../lib/logger';
 import { auth }     from '../lib/firebase-admin';
 import { applyGovernance } from '../lib/policy-engine';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 const ADMIN_SEC = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
@@ -46,7 +47,7 @@ const toDate = (v: unknown): string | null => v ? (v as Date).toISOString() : nu
 
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+    if (timingSafeAdminSecretMatch(req)) {
       (req as any).callerCtx = { role: 'admin', uid: null, franchiseIds: [], stationIds: [] } as CallerContext;
       return next();
     }

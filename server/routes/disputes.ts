@@ -15,7 +15,9 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
-const SUPER_ADMIN_UID = 'vdiboz7IrUQEm2RbdO7VZLkBu552';
+// SUPER_ADMIN_UID is loaded from environment to avoid hardcoding credentials in source code.
+// If not set, admin operations fail closed (return 403) rather than open.
+const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID || '';
 
 async function requireAuth(req: Request, res: Response): Promise<string | null> {
   const authHeader = req.headers.authorization;

@@ -108,6 +108,7 @@ import {
 import { dispatchAcademySms } from '../services/academySmsHelper';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -2060,9 +2061,7 @@ const revokePassSchema = z.object({
 
 router.post('/revoke-pass', async (req: Request, res: Response) => {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+    if (!timingSafeAdminSecretMatch(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2113,9 +2112,7 @@ const adminCreditSchema = z.object({
 
 router.post('/admin/manual-credit', async (req: Request, res: Response) => {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+    if (!timingSafeAdminSecretMatch(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
@@ -2166,9 +2163,7 @@ const adminReissueSchema = z.object({
 
 router.post('/admin/reissue', async (req: Request, res: Response) => {
   try {
-    const adminSecret = req.headers['x-admin-secret'];
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
-    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+    if (!timingSafeAdminSecretMatch(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 

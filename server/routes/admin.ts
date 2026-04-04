@@ -949,13 +949,16 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
 // CEO-only access middleware
 const requireCEO = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const CEO_EMAILS = ['nirhadad1@gmail.com', 'nir.h@petwash.co.il'];
-  
+  const rawCEO = process.env.CEO_EMAILS || '';
+  const CEO_EMAILS = rawCEO.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+  if (CEO_EMAILS.length === 0) {
+    logger.error('[Security] CEO_EMAILS env var is not set — blocking CEO endpoint access');
+    return res.status(403).json({ error: 'CEO access not configured on server' });
+  }
   if (!CEO_EMAILS.includes(userEmail)) {
     logger.warn(`[Security] Unauthorized CEO endpoint access attempt by ${req.firebaseUser?.email}`);
     return res.status(403).json({ 
       error: 'CEO access required',
-      message: 'Only the CEO (Nir Hadad) can access this endpoint',
     });
   }
   

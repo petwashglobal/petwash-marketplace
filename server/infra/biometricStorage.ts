@@ -11,7 +11,7 @@
 import { Storage } from "@google-cloud/storage";
 import { logger } from "../lib/logger";
 
-const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || "signinpetwash";
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || '';
 
 const BIOMETRIC_BUCKET_NAME =
   process.env.BIOMETRIC_BUCKET_NAME || `${PROJECT_ID}.firebasestorage.app`;

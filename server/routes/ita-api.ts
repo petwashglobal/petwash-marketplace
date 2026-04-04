@@ -8,8 +8,14 @@ import { electronicInvoices } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
+import { requireAuth } from '../customAuth';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
+
+// All ITA routes require authentication. Unauthenticated access would allow
+// arbitrary invoice submission to the Israeli Tax Authority.
+router.use(requireAuth);
 
 const createInvoiceSchema = z.object({
   invoiceNumber: z.string().min(1, 'Invoice number is required').optional(),

@@ -533,7 +533,9 @@ router.get('/', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
-    const role = req.query.role as string; // 'owner' or 'provider'
+    // role determines which side of the booking to filter on (owner vs provider).
+    // Either way, the query is scoped to the authenticated user's own UID — no IDOR risk.
+    const role = req.query.role as string; // 'provider' or anything else → defaults to owner
     const status = req.query.status as string;
     
     let conditions;

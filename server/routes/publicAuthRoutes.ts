@@ -293,27 +293,27 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
     const callerIpEarly = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
     let securitySource = 'rate-limit-only';
 
-    // ── Best-effort captcha (never blocks — phone OTP IS the authentication factor) ──
-    // Security is enforced by: rate limiter (10/min/IP) + per-phone lockout +
-    // daily SMS cap (5/phone/day) + global cap (150/day) + the OTP itself.
-    // Captcha is bonus signal only. reCAPTCHA backend credentials are not
-    // configured in Cloud Run, so blocking on captcha failure = permanent lockout.
+    // ── Captcha check: fail closed when explicit failure (not missing) ──
+    // Turnstile is preferred. reCAPTCHA is used if Turnstile is not configured.
+    // A missing token is treated as rate-limit-only (mobile flows may not send token).
+    // An explicit fail (token present but rejected) blocks the request to prevent bots.
     if (turnstileToken) {
       const turnstileResult = await verifyTurnstileToken(turnstileToken, callerIpEarly);
       if (turnstileResult.valid) {
         securitySource = 'turnstile';
-        logger.info('[PublicAuth] Phone send-code: Turnstile passed (bonus)', { phone: phone.slice(-4) });
+        logger.info('[PublicAuth] Phone send-code: Turnstile passed', { phone: phone.slice(-4) });
       } else {
-        logger.warn('[PublicAuth] Phone send-code: Turnstile failed (non-blocking)', { phone: phone.slice(-4), reason: turnstileResult.reason });
+        logger.warn('[PublicAuth] Phone send-code: Turnstile failed — blocking', { phone: phone.slice(-4), reason: turnstileResult.reason });
+        return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל. נסה שוב.' : 'Security check failed. Please refresh and try again.' });
       }
     } else if (captchaToken) {
       const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_login');
       if (captchaResult.valid) {
         securitySource = 'recaptcha';
-        logger.info('[PublicAuth] Phone send-code: reCAPTCHA passed (bonus)', { phone: phone.slice(-4), score: captchaResult.score });
+        logger.info('[PublicAuth] Phone send-code: reCAPTCHA passed', { phone: phone.slice(-4), score: captchaResult.score });
       } else {
-        securitySource = 'captcha-failed-proceed';
-        logger.warn('[PublicAuth] Phone send-code: reCAPTCHA failed (non-blocking — proceeding with rate-limit protection)', {
+        securitySource = 'captcha-failed-block';
+        logger.warn('[PublicAuth] Phone send-code: reCAPTCHA failed — blocking', {
           phone: phone.slice(-4),
           reason: captchaResult.reason,
           score: captchaResult.score,
@@ -322,11 +322,12 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
         db.insert(authEvents).values({
           eventType: 'CAPTCHA_PHONE_OTP_FAILED',
           success: false,
-          reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source}) — non-blocking`,
+          reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source}) — blocked`,
           ip: callerIpEarly,
           userAgent: req.headers['user-agent'] || null,
           traceId,
         }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents captcha insert failed', { error: dbErr?.message }));
+        return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל. נסה שוב.' : 'Security check failed. Please refresh and try again.' });
       }
     } else {
       logger.info('[PublicAuth] Phone send-code: no captcha token — proceeding with rate-limit protection only', { phone: phone.slice(-4) });

@@ -9,6 +9,7 @@ import {
   explainFinancialApproval,
   type ApprovalRule,
 } from '../lib/financial-approvals';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ function getClientIpFA(req: Request): string {
 
 function getActingRole(req: Request): string {
   // Admin secret = admin — enforce IP allowlist when configured
-  if (req.headers['x-admin-secret'] === process.env.ADMIN_SECRET) {
+  if (timingSafeAdminSecretMatch(req)) {
     if (ALLOWED_MACHINE_IPS_FA.length > 0) {
       const clientIp = getClientIpFA(req);
       if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) return 'agent'; // fall through to token auth

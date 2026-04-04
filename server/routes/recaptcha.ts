@@ -17,7 +17,6 @@ function sanitizeKey(raw: string): string {
 
 const RECAPTCHA_SITE_KEY = sanitizeKey(
   process.env.RECAPTCHA_SITE_KEY ||
-  process.env.VITE_RECAPTCHA_SITE_KEY ||
   ''
 );
 const RECAPTCHA_SECRET_KEY = sanitizeKey(process.env.RECAPTCHA_SECRET_KEY || '');

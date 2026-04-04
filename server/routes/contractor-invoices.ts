@@ -4,8 +4,14 @@ import { providerCommissions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { IsraeliInvoiceGenerator } from "../services/IsraeliInvoiceGenerator";
 import { logger } from "../lib/logger";
+import { requireAuth } from "../customAuth";
+import { isSuperAdmin } from "../middleware/rbac";
 
 const router = Router();
+
+// All contractor invoice routes require authentication.
+// Users may only access invoices for commissions that belong to them.
+router.use(requireAuth);
 
 /**
  * GET /api/contractor-invoices/:commissionId/generate
@@ -15,6 +21,9 @@ router.get("/:commissionId/generate", async (req, res) => {
   try {
     const { commissionId } = req.params;
     const language = (req.query.lang as "he" | "en") || "he";
+    const callerUid = req.user!.uid;
+    const callerEmail = ((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase();
+    const admin = isSuperAdmin(callerEmail);
 
     // Verify commission exists
     const [commission] = await db
@@ -25,6 +34,12 @@ router.get("/:commissionId/generate", async (req, res) => {
 
     if (!commission) {
       return res.status(404).json({ error: "Commission not found" });
+    }
+
+    // Ownership check: caller must own this commission or be a super admin
+    if (!admin && commission.providerId !== callerUid) {
+      logger.warn("[Contractor Invoices] Ownership check failed", { callerUid, commissionId });
+      return res.status(403).json({ error: "Forbidden: not your commission" });
     }
 
     // Generate PDF invoice
@@ -67,6 +82,9 @@ router.get("/:commissionId/preview", async (req, res) => {
   try {
     const { commissionId } = req.params;
     const language = (req.query.lang as "he" | "en") || "he";
+    const callerUid = req.user!.uid;
+    const callerEmail = ((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase();
+    const admin = isSuperAdmin(callerEmail);
 
     // Verify commission exists
     const [commission] = await db
@@ -77,6 +95,12 @@ router.get("/:commissionId/preview", async (req, res) => {
 
     if (!commission) {
       return res.status(404).json({ error: "Commission not found" });
+    }
+
+    // Ownership check: caller must own this commission or be a super admin
+    if (!admin && commission.providerId !== callerUid) {
+      logger.warn("[Contractor Invoices] Ownership check failed on preview", { callerUid, commissionId });
+      return res.status(403).json({ error: "Forbidden: not your commission" });
     }
 
     // Generate PDF invoice

@@ -1118,13 +1118,17 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
 /**
  * GET /api/sitter-suite/bookings - Get user's bookings
  */
-router.get('/bookings', async (req, res) => {
+router.get('/bookings', requireAuth, async (req, res) => {
   try {
-    const userId = req.query.userId as string;
+    // Use authenticated user's UID — do not trust userId from query params.
+    const userId = req.user?.uid || (req as any).firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     const role = req.query.role as 'owner' | 'sitter'; // owner or sitter
     
-    if (!userId || !role) {
-      return res.status(400).json({ error: 'userId and role required' });
+    if (!role) {
+      return res.status(400).json({ error: 'role required' });
     }
     
     let bookings;

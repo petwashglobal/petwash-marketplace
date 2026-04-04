@@ -15,6 +15,7 @@ import { db }     from '../db';
 import { sql }    from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -29,8 +30,7 @@ function getClientIp(req: Request): string {
 
 async function requireExec(req: Request, res: Response, next: Function) {
   try {
-    const secret = req.headers['x-admin-secret'];
-    if (secret && (secret === process.env.ADMIN_SECRET || secret === process.env.PETWASH_ADMIN_SECRET)) {
+    if (timingSafeAdminSecretMatch(req)) {
       if (ALLOWED_MACHINE_IPS.length > 0) {
         const clientIp = getClientIp(req);
         if (!ALLOWED_MACHINE_IPS.includes(clientIp)) {

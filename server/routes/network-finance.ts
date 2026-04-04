@@ -29,6 +29,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router({ mergeParams: true });
 
@@ -73,8 +74,7 @@ async function requireNetworkOwner(req: Request, res: Response, next: NextFuncti
     (req as any).ownerType = ownerType;
 
     // Admin bypass via header secret (works for both company and franchise)
-    const adminHeader = req.headers['x-admin-secret'];
-    if (adminHeader && adminHeader === ADMIN_SECRET) return next();
+    if (timingSafeAdminSecretMatch(req)) return next();
 
     // Bearer token path
     const authHeader = req.headers.authorization;

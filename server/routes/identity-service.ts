@@ -166,8 +166,7 @@ router.post("/login/standard", async (req, res) => {
     // CRITICAL FIX: Verify password using Firebase Identity Toolkit REST API
     try {
       // Call Firebase Auth REST API to verify credentials (works in Node.js)
-      // Use server-side API key (FIREBASE_WEB_API_KEY) or fallback to VITE_ prefix for development
-      const apiKey = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY;
+      const apiKey = process.env.FIREBASE_WEB_API_KEY;
       
       if (!apiKey) {
         logger.error("[Identity] Firebase Web API key not configured!");

@@ -21,6 +21,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { timingSafeAdminSecretMatch } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -47,7 +48,7 @@ async function requireTraceViewer(req: Request, res: Response, next: NextFunctio
     const bookingId = req.params.bookingId;
 
     // ── Admin bypass via header secret ──────────────────────────────────────
-    if (req.headers['x-admin-secret'] === ADMIN_SEC) {
+    if (timingSafeAdminSecretMatch(req)) {
       (req as any).callerRole = 'admin' as CallerRole;
       (req as any).callerUid  = null;
       return next();
