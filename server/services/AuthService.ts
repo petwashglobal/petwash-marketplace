@@ -225,6 +225,10 @@ export class AuthService {
       const existing = await this.getUserById(firebaseUid);
       if (existing) {
         await this.ensureLoyaltyProfile(existing.id);
+        // Idempotent — skips if wallet already exists. Covers users created before
+        // ensureWalletAccount was introduced, and social-OAuth users whose signup
+        // path did not previously call this (Google/Apple/Facebook).
+        await this.ensureWalletAccount(existing.id);
         return { user: existing, isNewUser: false };
       }
 

@@ -92,25 +92,50 @@ class BookingLifecycleService {
     if (!customerId) return null;
 
     try {
-      const result = await db.select({
-        completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
-        averageRating: sql<number>`COALESCE(AVG(customer_rating) FILTER (WHERE status = 'completed' AND customer_rating IS NOT NULL), 0)`,
-      })
-      .from(bookings)
-      .where(eq(bookings.userId, customerId));
+      const [statsRow, userRow] = await Promise.all([
+        db.select({
+          completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
+          averageRating: sql<number>`COALESCE(AVG(customer_rating) FILTER (WHERE status = 'completed' AND customer_rating IS NOT NULL), 0)`,
+        })
+        .from(bookings)
+        .where(eq(bookings.userId, customerId))
+        .then((r) => r[0]),
 
-      const completedBookings = Number(result[0]?.completedCount) || 0;
-      const averageRating = Number(result[0]?.averageRating) || 0;
+        // Read the canonical loyalty_tier persisted by the points-based loyalty
+        // system (loyaltySync.updateLoyalty). A customer who earned tier 'gold'
+        // through K9000 washes should get the gold discount at marketplace checkout
+        // even if they have fewer than 15 completed marketplace bookings.
+        db.select({ loyaltyTier: users.loyaltyTier })
+          .from(users)
+          .where(eq(users.id, customerId))
+          .limit(1)
+          .then((r) => r[0] ?? null),
+      ]);
 
-      // Determine tier (highest matching)
+      const completedBookings = Number(statsRow?.completedCount) || 0;
+      const averageRating = Number(statsRow?.averageRating) || 0;
+
+      // Determine tier from booking-count history (original logic)
       let tier = 'none';
       let discountPercent = 0;
-
       for (const [tierName, thresholds] of Object.entries(LOYALTY_TIERS).reverse()) {
         if (completedBookings >= thresholds.minBookings && averageRating >= thresholds.minRating) {
           tier = tierName;
           discountPercent = thresholds.discountPercent;
           break;
+        }
+      }
+
+      // Compare with the stored loyalty tier — use whichever gives the better discount.
+      // The stored tier reflects the points-based system (K9000 washes, referrals, etc.)
+      // so a customer who earned a higher tier outside of marketplace bookings still
+      // receives their entitled discount at checkout.
+      if (userRow?.loyaltyTier) {
+        const storedTier = userRow.loyaltyTier.toLowerCase();
+        const storedConfig = LOYALTY_TIERS[storedTier as keyof typeof LOYALTY_TIERS];
+        if (storedConfig && storedConfig.discountPercent > discountPercent) {
+          tier = storedTier;
+          discountPercent = storedConfig.discountPercent;
         }
       }
 

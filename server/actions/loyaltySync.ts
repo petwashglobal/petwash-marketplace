@@ -111,6 +111,16 @@ export async function updateLoyalty(
         SET loyalty_tier = ${newTier}
         WHERE firebase_uid = ${userId}
       `);
+
+      // Keep wallet_accounts.loyalty_tier in sync — the Prestige Pass card reads
+      // directly from wallet_accounts, so a stale tier there causes the card to
+      // show the wrong tier after an upgrade. ON CONFLICT: if wallet row doesn't
+      // exist yet, this is a no-op (0 rows updated), which is safe.
+      await tx.execute(sql`
+        UPDATE wallet_accounts
+        SET    loyalty_tier = ${newTier}
+        WHERE  user_id      = ${userId}
+      `);
       
       // Log activity in same transaction
       await tx.execute(sql`
