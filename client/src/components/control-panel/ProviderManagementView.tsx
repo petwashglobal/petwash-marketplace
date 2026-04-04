@@ -103,11 +103,11 @@ const statusStyles: Record<string, string> = {
   rejected: "bg-red-100 text-red-800 border-red-200",
   on_hold: "bg-orange-100 text-orange-800 border-orange-200",
   under_review: "bg-blue-100 text-blue-800 border-blue-200",
-  expired: "bg-gray-100 text-gray-800 border-gray-200",
+  expired: "bg-white text-gray-800 border-gray-200",
 };
 
 const priorityStyles: Record<string, string> = {
-  low: "bg-gray-100 text-gray-700",
+  low: "bg-white text-gray-700",
   normal: "bg-blue-100 text-blue-700",
   high: "bg-orange-100 text-orange-700",
   urgent: "bg-red-100 text-red-700 animate-pulse",

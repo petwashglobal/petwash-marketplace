@@ -71,7 +71,7 @@ export default function PlatformLegalFramework() {
 
           {/* Platform Services Overview */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3">
+            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
               <Shield className="h-8 w-8 text-blue-600" />
               {isHebrew ? 'שירותי הפלטפורמה - מודל העסקי' : 'Platform Services - Business Model'}
             </h2>
@@ -153,7 +153,7 @@ export default function PlatformLegalFramework() {
 
           {/* Legal Protection Principles */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3">
+            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
               <Lock className="h-8 w-8 text-purple-600" />
               {isHebrew ? 'עקרונות הגנה משפטית' : 'Legal Protection Principles'}
             </h2>
@@ -161,17 +161,17 @@ export default function PlatformLegalFramework() {
             <div className="space-y-6">
               {/* Independent Contractor Status */}
               <div className="luxury-glass-panel rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-black">
                   {isHebrew ? '1. סטטוס קבלן עצמאי' : '1. Independent Contractor Status'}
                 </h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                <p className="text-gray-700 dark:text-black leading-relaxed mb-4">
                   {isHebrew ? (
                     <>כל ספקי השירותים (שמרטפים, מטיילים, מפעילי תחנות) הם <strong>קבלנים עצמאיים</strong>, לא עובדים של Pet Wash Ltd. הם:</>
                   ) : (
                     <>All service providers (sitters, walkers, station operators) are <strong>independent contractors</strong>, NOT employees of Pet Wash Ltd. They:</>
                   )}
                 </p>
-                <ul className="space-y-2 text-gray-700 dark:text-gray-300 mr-6">
+                <ul className="space-y-2 text-gray-700 dark:text-black mr-6">
                   <li>✓ {isHebrew ? 'קובעים את המחירים שלהם' : 'Set their own prices'}</li>
                   <li>✓ {isHebrew ? 'בוחרים את לוח הזמנים שלהם' : 'Choose their own schedules'}</li>
                   <li>✓ {isHebrew ? 'מנהלים את העסקים שלהם' : 'Run their own businesses'}</li>
@@ -182,13 +182,13 @@ export default function PlatformLegalFramework() {
 
               {/* Platform Role */}
               <div className="luxury-glass-panel rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-black">
                   {isHebrew ? '2. תפקיד הפלטפורמה - מקשרת טכנולוגית בלבד' : '2. Platform Role - Technology Connector Only'}
                 </h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                <p className="text-gray-700 dark:text-black leading-relaxed mb-4">
                   {isHebrew ? 'Pet Wash מספקת רק:' : 'Pet Wash provides ONLY:'}
                 </p>
-                <ul className="space-y-2 text-gray-700 dark:text-gray-300 mr-6">
+                <ul className="space-y-2 text-gray-700 dark:text-black mr-6">
                   <li>✓ {isHebrew ? 'תשתית טכנולוגית (אתר, אפליקציה, מסד נתונים)' : 'Technology infrastructure (website, app, database)'}</li>
                   <li>✓ {isHebrew ? 'עיבוד תשלומים (דרך Nayax)' : 'Payment processing (via Nayax)'}</li>
                   <li>✓ {isHebrew ? 'אימות ובדיקת רקע ראשונית' : 'Initial verification & background checks'}</li>
@@ -225,14 +225,14 @@ export default function PlatformLegalFramework() {
 
           {/* Security & Identity Protection */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3">
+            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
               <Eye className="h-8 w-8 text-green-600" />
               {isHebrew ? 'אבטחה והגנת זהות' : 'Security & Identity Protection'}
             </h2>
             
             <div className="grid md:grid-cols-2 gap-6">
               {/* Biometric KYC */}
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 border-2 border-green-200 dark:border-green-700">
+              <div className="bg-green-50 dark:bg-white rounded-xl p-6 border-2 border-green-200 dark:border-green-700">
                 <h3 className="text-lg font-bold mb-3 text-green-900 dark:text-green-200">
                   {isHebrew ? 'אימות KYC ביומטרי (רמת בנקאות)' : 'Biometric KYC Verification (Banking-Level)'}
                 </h3>
@@ -245,7 +245,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Transaction Security */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
+              <div className="bg-blue-50 dark:bg-white rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
                 <h3 className="text-lg font-bold mb-3 text-blue-900 dark:text-blue-200">
                   {isHebrew ? 'אבטחת עסקאות' : 'Transaction Security'}
                 </h3>
@@ -258,7 +258,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Data Protection */}
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
+              <div className="bg-purple-50 dark:bg-white rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
                 <h3 className="text-lg font-bold mb-3 text-purple-900 dark:text-purple-200">
                   {isHebrew ? 'הגנת נתונים' : 'Data Protection'}
                 </h3>
@@ -271,7 +271,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Fraud Prevention */}
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-6 border-2 border-red-200 dark:border-red-700">
+              <div className="bg-red-50 dark:bg-white rounded-xl p-6 border-2 border-red-200 dark:border-red-700">
                 <h3 className="text-lg font-bold mb-3 text-red-900 dark:text-red-200">
                   {isHebrew ? 'מניעת הונאה' : 'Fraud Prevention'}
                 </h3>
@@ -287,14 +287,14 @@ export default function PlatformLegalFramework() {
 
           {/* Clear Expectations */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3">
+            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
               <FileText className="h-8 w-8 text-blue-600" />
               {isHebrew ? 'ציפיות ברורות - שני הצדדים' : 'Clear Expectations - Both Sides'}
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Customer Expectations */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
+              <div className="bg-blue-50 dark:bg-white rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
                 <h3 className="text-xl font-bold mb-4 text-blue-900 dark:text-blue-200">
                   {isHebrew ? '👤 ציפיות לקוחות' : '👤 Customer Expectations'}
                 </h3>
@@ -321,7 +321,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Service Provider Expectations */}
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
+              <div className="bg-purple-50 dark:bg-white rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
                 <h3 className="text-xl font-bold mb-4 text-purple-900 dark:text-purple-200">
                   {isHebrew ? '🛠️ ציפיות ספקי שירותים' : '🛠️ Service Provider Expectations'}
                 </h3>
@@ -368,12 +368,12 @@ export default function PlatformLegalFramework() {
 
           {/* Related Links */}
           <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-black">
               {isHebrew ? 'מסמכים משפטיים קשורים' : 'Related Legal Documents'}
             </h3>
             <div className="grid md:grid-cols-3 gap-4">
               <Link href="/sitter-suite/terms-conditions">
-                <Button className="w-full p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-left transition-colors">
+                <Button className="w-full p-4 bg-blue-50 dark:bg-white hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-left transition-colors">
                   <p className="font-semibold text-blue-900 dark:text-blue-200">
                     {isHebrew ? 'תנאי Sitter Suite' : 'Sitter Suite Terms'}
                   </p>
@@ -383,7 +383,7 @@ export default function PlatformLegalFramework() {
                 </Button>
               </Link>
               <Link href="/sitter-suite/privacy-policy">
-                <Button className="w-full p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg text-left transition-colors">
+                <Button className="w-full p-4 bg-purple-50 dark:bg-white hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg text-left transition-colors">
                   <p className="font-semibold text-purple-900 dark:text-purple-200">
                     {isHebrew ? 'מדיניות פרטיות' : 'Privacy Policy'}
                   </p>
@@ -393,7 +393,7 @@ export default function PlatformLegalFramework() {
                 </Button>
               </Link>
               <Link href="/sitter-suite/disclaimer">
-                <Button className="w-full p-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-left transition-colors">
+                <Button className="w-full p-4 bg-red-50 dark:bg-white hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-left transition-colors">
                   <p className="font-semibold text-red-900 dark:text-red-200">
                     {isHebrew ? 'כתב ויתור' : 'Disclaimer'}
                   </p>

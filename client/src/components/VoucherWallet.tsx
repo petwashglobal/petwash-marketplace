@@ -195,11 +195,11 @@ function UnifiedVoucherCard({ voucher, isRTL }: { voucher: UnifiedVoucher; isRTL
       case 'PARTIALLY_REDEEMED':
         return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">{isRTL ? 'נוצל חלקית' : 'Partial'}</Badge>;
       case 'REDEEMED':
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">{isRTL ? 'נוצל' : 'Redeemed'}</Badge>;
+        return <Badge className="bg-white text-gray-800 dark:bg-white dark:text-black">{isRTL ? 'נוצל' : 'Redeemed'}</Badge>;
       case 'CANCELLED':
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">{isRTL ? 'מבוטל' : 'Cancelled'}</Badge>;
       case 'EXPIRED':
-        return <Badge className="bg-gray-100 text-gray-600">{isRTL ? 'פג תוקף' : 'Expired'}</Badge>;
+        return <Badge className="bg-white text-gray-600">{isRTL ? 'פג תוקף' : 'Expired'}</Badge>;
       default:
         return null;
     }
@@ -207,7 +207,7 @@ function UnifiedVoucherCard({ voucher, isRTL }: { voucher: UnifiedVoucher; isRTL
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-white rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className={`bg-gradient-to-r ${gradient} p-4 text-white`}>
           <div className="flex items-center justify-between mb-2">
             <Badge className={voucher.voucherType === 'WASH_PACKAGE' ? 'bg-blue-500 text-white border-0' : 'bg-purple-500 text-white border-0'}>
@@ -220,13 +220,13 @@ function UnifiedVoucherCard({ voucher, isRTL }: { voucher: UnifiedVoucher; isRTL
         </div>
         <div className="p-4 space-y-3">
           {voucher.voucherType === 'WASH_PACKAGE' ? (
-            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-2 text-gray-700 dark:text-black">
               <Droplets className="w-5 h-5 text-blue-500" />
               <span className="font-semibold text-lg">{voucher.washesRemaining ?? 0}</span>
               <span className="text-gray-500 text-sm">/ {voucher.washesOriginal ?? 0} {isRTL ? 'שטיפות' : 'washes'}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-2 text-gray-700 dark:text-black">
               <CreditCard className="w-5 h-5 text-purple-500" />
               <span className="font-semibold text-lg">₪{parseFloat(voucher.valueRemaining ?? '0').toFixed(2)}</span>
               <span className="text-gray-500 text-sm">{isRTL ? 'נותר מתוך' : 'of'} ₪{parseFloat(voucher.valueOriginal ?? '0').toFixed(2)}</span>
@@ -343,7 +343,7 @@ export function VoucherWallet() {
       },
       FULLY_REDEEMED: {
         label: isRTL ? 'נוצל במלואו' : 'Fully Redeemed',
-        className: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+        className: 'bg-white text-gray-800 dark:bg-white dark:text-black'
       },
       EXPIRED: {
         label: isRTL ? 'פג תוקף' : 'Expired',
@@ -372,7 +372,7 @@ export function VoucherWallet() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Quick Claim Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-purple-200 dark:border-purple-800">
+        <div className="bg-white dark:bg-white rounded-lg p-4 border-2 border-purple-200 dark:border-purple-800">
           <h3 className="font-semibold text-sm text-purple-900 dark:text-purple-100 mb-3">
             {isRTL ? '⚡ מימוש מהיר' : '⚡ Quick Claim'}
           </h3>
@@ -426,7 +426,7 @@ export function VoucherWallet() {
 
           {/* Legacy Tab */}
           <TabsContent value="legacy" className="space-y-3 mt-4">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="font-semibold text-gray-900 dark:text-black">
               {isRTL ? `השוברים שלי (${vouchers.length})` : `My Vouchers (${vouchers.length})`}
             </h3>
 
@@ -436,7 +436,7 @@ export function VoucherWallet() {
                 <p className="text-sm text-gray-500 mt-2">{isRTL ? 'טוען...' : 'Loading...'}</p>
               </div>
             ) : vouchers.length === 0 ? (
-              <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+              <div className="text-center py-8 bg-white dark:bg-white rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
                 <Gift className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                 <p className="text-gray-500 dark:text-gray-400">
                   {isRTL ? 'אין לך שוברים עדיין' : 'No vouchers yet'}
@@ -449,7 +449,7 @@ export function VoucherWallet() {
               vouchers.map((voucher) => (
                 <div
                   key={voucher.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+                  className="bg-white dark:bg-white rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -508,8 +508,8 @@ export function VoucherWallet() {
 
                       {/* Redemption History */}
                       {redemptions.length > 0 && (
-                        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-                          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                        <div className="bg-white dark:bg-white rounded-lg p-3">
+                          <h4 className="text-xs font-semibold text-gray-700 dark:text-black mb-2 flex items-center gap-1">
                             <History className="w-3 h-3" />
                             {isRTL ? 'היסטוריית פדיון' : 'Redemption History'}
                           </h4>
@@ -540,7 +540,7 @@ export function VoucherWallet() {
                 <p className="text-sm text-gray-500 mt-2">{isRTL ? 'טוען...' : 'Loading...'}</p>
               </div>
             ) : unifiedVouchers.length === 0 ? (
-              <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+              <div className="text-center py-8 bg-white dark:bg-white rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
                 <Ticket className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                 <p className="text-gray-500 dark:text-gray-400">
                   {isRTL ? 'אין שוברים עדיין' : 'No vouchers yet'}

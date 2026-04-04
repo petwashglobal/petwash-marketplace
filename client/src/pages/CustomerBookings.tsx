@@ -250,7 +250,7 @@ function StatusTimeline({ booking, isRTL }: { booking: Booking; isRTL: boolean }
                   }
                 </div>
                 {(!isLast || isTerminal) && (
-                  <div className={`w-0.5 flex-1 min-h-[18px] mt-0.5 ${reached ? 'bg-emerald-200' : 'bg-gray-100'}`} />
+                  <div className={`w-0.5 flex-1 min-h-[18px] mt-0.5 ${reached ? 'bg-emerald-200' : 'bg-white'}`} />
                 )}
               </div>
               <div className={`pb-3 flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
@@ -529,7 +529,7 @@ function BookingCard({
 
   // Duration pill
   const durationPill = nights > 0 ? (
-    <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+    <span className="text-[10px] font-medium text-gray-400 bg-white px-2 py-0.5 rounded-full">
       {nights === 1
         ? (isRTL ? 'לילה אחד' : '1 night')
         : isRTL ? `${nights} לילות` : `${nights} nights`}
@@ -549,7 +549,7 @@ function BookingCard({
             {booking.providerName ? (
               <ProviderAvatar name={booking.providerName} size={44} />
             ) : (
-              <div className="w-11 h-11 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl flex-shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-xl flex-shrink-0">
                 {service.emoji}
               </div>
             )}
@@ -700,7 +700,7 @@ function BookingCard({
 
         {/* ── Action footer ─────────────────────────────────────────── */}
         <div
-          className={`px-4 py-2.5 border-t border-gray-50 bg-gray-50/60 flex items-center gap-2 flex-wrap ${isRTL ? 'flex-row-reverse' : ''}`}
+          className={`px-4 py-2.5 border-t border-gray-50 bg-white/60 flex items-center gap-2 flex-wrap ${isRTL ? 'flex-row-reverse' : ''}`}
         >
           {/* Cancel */}
           {canCancel && (
@@ -828,7 +828,7 @@ export default function CustomerBookings() {
   const activeServiceLabel = SERVICE_TYPES.find(s => s.id === selectedService);
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-[100dvh] bg-white pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Sticky header ──────────────────────────────────────────────── */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
@@ -905,7 +905,7 @@ export default function CustomerBookings() {
                 {count > 0 && (
                   <span
                     className={`text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center ${
-                      isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
+                      isActive ? 'bg-gray-900 text-white' : 'bg-white text-gray-500'
                     }`}
                   >
                     {count}

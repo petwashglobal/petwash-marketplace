@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import { randomBytes } from 'crypto';
 import { db } from '../db';
 import { eq, desc, and, gte, lte } from 'drizzle-orm';
+import { authService } from '../services/AuthService';
 import {
   loyaltyProfiles,
   pointsTransactions,
@@ -306,6 +307,13 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
     }
 
     logger.info(`[Loyalty] New user auto-enrolled via ${provider} as ${userRole}`, { userId, welcomePoints });
+
+    // Ensure wallet account exists for this user (idempotent — no-op if already exists)
+    // Covers Google/Apple/social login users whose wallet may not yet have been created
+    authService.ensureWalletAccount(userId).catch((walletErr: any) =>
+      logger.warn('[Loyalty] Wallet ensure failed after auto-enroll (non-blocking)', { error: walletErr?.message, userId })
+    );
+
     res.json({ success: true, enrolled: true, welcomePoints, role: userRole, profile });
   } catch (error) {
     logger.error('Error in loyalty auto-enroll:', error);

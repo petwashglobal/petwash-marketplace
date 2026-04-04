@@ -143,7 +143,7 @@ export function ChatInterface({
                   className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                     isOwn
                       ? "bg-gradient-to-r from-amber-500 to-yellow-600 text-white"
-                      : "bg-gray-100 text-gray-900"
+                      : "bg-white text-gray-900"
                   }`}
                 >
                   {message.type === "text" && (
@@ -243,7 +243,7 @@ export function ConversationList({
       <Card className="p-4">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded"></div>
+            <div key={i} className="h-16 bg-white rounded"></div>
           ))}
         </div>
       </Card>
@@ -265,7 +265,7 @@ export function ConversationList({
             <div
               key={conv.id}
               onClick={() => onSelectConversation(conv.id)}
-              className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+              className={`p-4 hover:bg-white cursor-pointer transition-colors ${
                 selectedConversationId === conv.id ? "bg-white" : ""
               }`}
               data-testid={`conversation-${conv.id}`}

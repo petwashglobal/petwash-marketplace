@@ -37,28 +37,28 @@ const TIER_VISUAL_CONFIG: Record<string, { color: string; bgColor: string; icon:
   },
   silver: { 
     color: 'from-gray-300 to-gray-400', 
-    bgColor: 'bg-gray-100 dark:bg-gray-900/20',
+    bgColor: 'bg-white dark:bg-white/20',
     icon: Medal,
     badge: 'bg-gray-400',
     emoji: '🥈'
   },
   gold: { 
     color: 'from-yellow-400 to-amber-500', 
-    bgColor: 'bg-yellow-100 dark:bg-yellow-900/20',
+    bgColor: 'bg-yellow-100 dark:bg-white',
     icon: Crown,
     badge: 'bg-yellow-500',
     emoji: '🥇'
   },
   platinum: { 
     color: 'from-slate-200 to-slate-300', 
-    bgColor: 'bg-slate-100 dark:bg-slate-800/20',
+    bgColor: 'bg-white dark:bg-white/20',
     icon: Award,
     badge: 'bg-slate-300',
     emoji: '💎'
   },
   diamond: { 
     color: 'from-blue-400 to-cyan-500', 
-    bgColor: 'bg-blue-100 dark:bg-blue-900/20',
+    bgColor: 'bg-blue-100 dark:bg-white',
     icon: Gem,
     badge: 'bg-blue-500',
     emoji: '💠'
@@ -72,7 +72,7 @@ const TIER_VISUAL_CONFIG: Record<string, { color: string; bgColor: string; icon:
   },
   royal: { 
     color: 'from-purple-500 to-violet-600', 
-    bgColor: 'bg-purple-100 dark:bg-purple-900/20',
+    bgColor: 'bg-purple-100 dark:bg-white',
     icon: Trophy,
     badge: 'bg-gradient-to-r from-purple-600 to-violet-600',
     emoji: '👑'
@@ -126,9 +126,9 @@ const MainLoyaltyWidget = ({
         {/* Points Info */}
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-3">
-            <TierIcon className="w-8 h-8 text-gray-700 dark:text-white" />
+            <TierIcon className="w-8 h-8 text-gray-700 dark:text-black" />
             <div>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+              <div className="text-3xl font-bold text-gray-900 dark:text-black">
                 {tierVisual.emoji} {isHebrew ? currentTierConfig.nameHe : currentTierConfig.name}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -255,7 +255,7 @@ export default function LoyaltyDashboard() {
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
+                <h3 className="font-semibold text-gray-800 dark:text-black text-sm">
                   {isHebrew ? 'מסר אישי מ-AI' : 'Your AI Concierge Message'}
                 </h3>
                 <p className="text-xs text-amber-600 dark:text-amber-400">
@@ -264,7 +264,7 @@ export default function LoyaltyDashboard() {
               </div>
             </div>
             {aiLoyaltyMsg ? (
-              <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed bg-white/60 dark:bg-white/5 rounded-xl px-4 py-3 border border-amber-100 dark:border-amber-800/30 mb-3 italic">
+              <p className="text-sm text-gray-700 dark:text-black leading-relaxed bg-white/60 dark:bg-white/5 rounded-xl px-4 py-3 border border-amber-100 dark:border-amber-800/30 mb-3 italic">
                 {aiLoyaltyMsg}
               </p>
             ) : (
@@ -330,7 +330,7 @@ export default function LoyaltyDashboard() {
                             <Icon className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <div className="text-base font-bold text-gray-900 dark:text-white">
+                            <div className="text-base font-bold text-gray-900 dark:text-black">
                               {visualConfig.emoji} {isHebrew ? tierConfig.nameHe : tierConfig.name}
                             </div>
                           </div>
@@ -351,16 +351,16 @@ export default function LoyaltyDashboard() {
                           </span>
                         </div>
                         <div className="space-y-1.5 text-xs">
-                          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <div className="flex items-center gap-2 text-gray-700 dark:text-black">
                             <Gift className="w-3 h-3 text-green-600" />
                             <span>{tierConfig.benefits.discountPercent}% {isHebrew ? 'הנחה' : 'Discount'}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <div className="flex items-center gap-2 text-gray-700 dark:text-black">
                             <TrendingUp className="w-3 h-3 text-blue-600" />
                             <span>{tierConfig.benefits.pointsMultiplier}x {isHebrew ? 'נקודות' : 'Points'}</span>
                           </div>
                           {tierConfig.benefits.conciergeService && (
-                            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                            <div className="flex items-center gap-2 text-gray-700 dark:text-black">
                               <Crown className="w-3 h-3 text-purple-600" />
                               <span>{isHebrew ? 'שירות קונסיירז׳' : 'Concierge'}</span>
                             </div>
@@ -406,7 +406,7 @@ export default function LoyaltyDashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="font-bold text-lg text-gray-900 dark:text-white mb-1">
+                      <div className="font-bold text-lg text-gray-900 dark:text-black mb-1">
                         {reward.name}
                       </div>
                       <div className="flex items-center gap-2">
@@ -448,7 +448,7 @@ export default function LoyaltyDashboard() {
             <div className="mt-6 text-center">
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-full px-6 py-3">
                 <Sparkles className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-semibold text-gray-700 dark:text-black">
                   {isHebrew 
                     ? 'המגמה שלך: עולה! המשך כך 🚀' 
                     : 'Your trend: Rising! Keep it up 🚀'}

@@ -238,14 +238,14 @@ export function BiometricConsentDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir={isHebrew ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl font-serif">
-            <IconComponent className="w-7 h-7 text-black dark:text-white" />
+            <IconComponent className="w-7 h-7 text-black dark:text-black" />
             {t.title}
           </DialogTitle>
           <DialogDescription className="text-base mt-4">
             {t.description}
           </DialogDescription>
           <div className="mt-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            <p className="text-sm font-medium text-gray-700 dark:text-black">
               {passkeyContent.method}
             </p>
           </div>
@@ -255,18 +255,18 @@ export function BiometricConsentDialog({
           {/* What is a Passkey */}
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-6 rounded-xl border border-gray-200 dark:border-gray-600">
             <h3 className="font-bold text-lg mb-3 flex items-center gap-2 font-serif">
-              <Key className="w-5 h-5 text-black dark:text-white" />
+              <Key className="w-5 h-5 text-black dark:text-black" />
               {passkeyContent.whatIsIt}
             </h3>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
+            <p className="text-sm text-gray-700 dark:text-black">
               {passkeyContent.whatIsItDesc}
             </p>
           </div>
 
           {/* Biometric Data Processing */}
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-300 dark:border-gray-600 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+          <div className="bg-white dark:bg-white p-6 rounded-xl border border-gray-300 dark:border-gray-600 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2 font-serif">
-              <Shield className="w-5 h-5 text-black dark:text-white" />
+              <Shield className="w-5 h-5 text-black dark:text-black" />
               {passkeyContent.dataCollected}
             </h3>
             <ul className="space-y-3">
@@ -281,7 +281,7 @@ export function BiometricConsentDialog({
           {/* Platform-Specific Compliance */}
           <div className="grid md:grid-cols-3 gap-4">
             {/* Apple */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="bg-white dark:bg-white p-4 rounded-lg border border-gray-200 dark:border-gray-800">
               <h4 className="font-semibold text-sm mb-3">{passkeyContent.appleCompliance}</h4>
               <ul className="space-y-2">
                 {passkeyContent.appleItems.map((item, index) => (
@@ -293,7 +293,7 @@ export function BiometricConsentDialog({
             </div>
 
             {/* Google/Android */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="bg-white dark:bg-white p-4 rounded-lg border border-gray-200 dark:border-gray-800">
               <h4 className="font-semibold text-sm mb-3">{passkeyContent.googleCompliance}</h4>
               <ul className="space-y-2">
                 {passkeyContent.googleItems.map((item, index) => (
@@ -305,7 +305,7 @@ export function BiometricConsentDialog({
             </div>
 
             {/* Microsoft */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="bg-white dark:bg-white p-4 rounded-lg border border-gray-200 dark:border-gray-800">
               <h4 className="font-semibold text-sm mb-3">{passkeyContent.microsoftCompliance}</h4>
               <ul className="space-y-2">
                 {passkeyContent.microsoftItems.map((item, index) => (
@@ -325,7 +325,7 @@ export function BiometricConsentDialog({
             </h3>
             <ul className="space-y-2">
               {passkeyContent.gdprItems.map((item, index) => (
-                <li key={index} className="text-sm text-gray-700 dark:text-gray-300">
+                <li key={index} className="text-sm text-gray-700 dark:text-black">
                   • {item}
                 </li>
               ))}
@@ -340,7 +340,7 @@ export function BiometricConsentDialog({
             </h3>
             <ul className="space-y-2">
               {passkeyContent.securityItems.map((item, index) => (
-                <li key={index} className="text-sm text-gray-700 dark:text-gray-300">
+                <li key={index} className="text-sm text-gray-700 dark:text-black">
                   • {item}
                 </li>
               ))}

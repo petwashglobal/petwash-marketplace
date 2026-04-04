@@ -57,13 +57,13 @@ const SERVICE_LABELS: Record<string, { en: string; he: string; emoji: string; ba
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Awaiting Response', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', icon: Clock },
-  accepted: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', icon: CheckCircle2 },
-  meet_greet_scheduled: { label: 'Meet & Greet Set', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300', icon: Calendar },
-  confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
+  accepted: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-300', icon: CheckCircle2 },
+  meet_greet_scheduled: { label: 'Meet & Greet Set', color: 'bg-purple-100 text-purple-800 dark:bg-white dark:text-purple-300', icon: Calendar },
+  confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-300', icon: CheckCircle2 },
   in_progress: { label: 'In Progress', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300', icon: Scissors },
-  completed: { label: 'Completed', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300', icon: CheckCircle2 },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: XCircle },
-  declined: { label: 'Declined', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: XCircle },
+  completed: { label: 'Completed', color: 'bg-white text-gray-700 dark:bg-white/40 dark:text-black', icon: CheckCircle2 },
+  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300', icon: XCircle },
+  declined: { label: 'Declined', color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300', icon: XCircle },
 };
 
 function fmt(cents: number) { return `₪${(cents / 100).toFixed(0)}`; }
@@ -166,7 +166,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-600 flex items-center justify-center text-xl shadow-md">{svc.emoji}</div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{isHebrew ? svc.he : svc.en}</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-black">{isHebrew ? svc.he : svc.en}</h3>
               <p className="text-sm text-gray-500 flex items-center gap-1"><PawPrint className="w-3.5 h-3.5" />{petName} · {ownerName}</p>
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
         </div>
 
         {booking.ownerMessage && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-4 text-sm text-blue-700 dark:text-blue-300">
+          <div className="bg-blue-50 dark:bg-white rounded-lg p-3 mb-4 text-sm text-blue-700 dark:text-blue-300">
             <MessageCircle className="w-3.5 h-3.5 inline mr-1.5" />"{booking.ownerMessage}"
           </div>
         )}
@@ -336,7 +336,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
                     <CardContent className="p-6">
                       <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-3`}><Icon className="w-5 h-5 text-white" /></div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-0.5">{value}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-black mt-0.5">{value}</p>
                       <p className="text-xs text-gray-400 mt-1">{sub}</p>
                     </CardContent>
                   </Card>
@@ -356,7 +356,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
                             <div className="flex items-center gap-3">
                               <span className="text-xl">{svc.emoji}</span>
                               <div>
-                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{isHebrew ? (SERVICE_LABELS[b.serviceType]?.he || b.serviceType) : svc.en}</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-black">{isHebrew ? (SERVICE_LABELS[b.serviceType]?.he || b.serviceType) : svc.en}</p>
                                 <p className="text-xs text-gray-400">{fmtDate(b.serviceCompletedAt || b.updatedAt)}</p>
                               </div>
                             </div>
@@ -396,7 +396,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
                             <AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-600 text-white font-bold">{ownerName.slice(0,2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100">{ownerName}</p>
+                            <p className="font-semibold text-gray-900 dark:text-black">{ownerName}</p>
                             <p className="text-sm text-gray-500 flex items-center gap-1"><PawPrint className="w-3.5 h-3.5" />{petName}</p>
                           </div>
                         </div>
@@ -407,7 +407,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
                       </div>
                       <div className="flex flex-wrap gap-1 mb-3">
                         {[...new Set(ownerBookings.map(b => b.serviceType))].slice(0,4).map(sType => (
-                          <span key={sType} className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
+                          <span key={sType} className="text-xs bg-white dark:bg-white text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
                             {SERVICE_LABELS[sType]?.emoji} {isHebrew ? SERVICE_LABELS[sType]?.he : SERVICE_LABELS[sType]?.en || sType}
                           </span>
                         ))}
@@ -436,7 +436,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{svc.emoji}</span>
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{isHebrew ? svc.he : svc.en}</p>
+                          <p className="font-medium text-gray-900 dark:text-black text-sm">{isHebrew ? svc.he : svc.en}</p>
                           <p className="text-xs text-gray-400">{isHebrew ? svc.en : svc.he}</p>
                         </div>
                       </div>
@@ -451,7 +451,7 @@ export default function GroomersProviderDashboard({ language: langProp }: Groome
                           </>
                         ) : (
                           <>
-                            <span className="font-bold text-gray-800 dark:text-gray-200">₪{servicePrices[key]}</span>
+                            <span className="font-bold text-gray-800 dark:text-black">₪{servicePrices[key]}</span>
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditingService(key)}><Edit2 className="w-3.5 h-3.5" /></Button>
                           </>
                         )}

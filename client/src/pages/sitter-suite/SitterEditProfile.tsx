@@ -159,7 +159,7 @@ export default function SitterEditProfile() {
 
   return (
     <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-purple-100 dark:border-purple-900/30">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-white/80 backdrop-blur-xl border-b border-purple-100 dark:border-purple-900/30">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <Button 
@@ -176,7 +176,7 @@ export default function SitterEditProfile() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-white rounded-3xl shadow-xl overflow-hidden">
           <div className="relative bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 p-8">
             <div className="flex flex-col items-center">
               <div className="relative group">
@@ -203,7 +203,7 @@ export default function SitterEditProfile() {
                 
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-purple-200"
+                  className="absolute bottom-0 right-0 p-3 bg-white dark:bg-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-purple-200"
                   disabled={isUploading}
                 >
                   <Camera className="h-5 w-5 text-purple-600" />
@@ -236,7 +236,7 @@ export default function SitterEditProfile() {
           <div className="p-8 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-gray-700 dark:text-gray-300 font-medium">
+                <Label htmlFor="firstName" className="text-gray-700 dark:text-black font-medium">
                   {t.firstName}
                 </Label>
                 <Input
@@ -248,7 +248,7 @@ export default function SitterEditProfile() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-gray-700 dark:text-gray-300 font-medium">
+                <Label htmlFor="lastName" className="text-gray-700 dark:text-black font-medium">
                   {t.lastName}
                 </Label>
                 <Input
@@ -262,7 +262,7 @@ export default function SitterEditProfile() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-2">
+                <Label htmlFor="phone" className="text-gray-700 dark:text-black font-medium flex items-center gap-2">
                   <Phone className="h-4 w-4" />
                   {t.phone}
                 </Label>
@@ -276,7 +276,7 @@ export default function SitterEditProfile() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="city" className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-2">
+                <Label htmlFor="city" className="text-gray-700 dark:text-black font-medium flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   {t.city}
                 </Label>
@@ -301,7 +301,7 @@ export default function SitterEditProfile() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bio" className="text-gray-700 dark:text-gray-300 font-medium">
+              <Label htmlFor="bio" className="text-gray-700 dark:text-black font-medium">
                 {t.bio}
               </Label>
               <Textarea
@@ -315,7 +315,7 @@ export default function SitterEditProfile() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="experience" className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-2">
+                <Label htmlFor="experience" className="text-gray-700 dark:text-black font-medium flex items-center gap-2">
                   <Star className="h-4 w-4" />
                   {t.experience}
                 </Label>
@@ -331,7 +331,7 @@ export default function SitterEditProfile() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="price" className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-2">
+                <Label htmlFor="price" className="text-gray-700 dark:text-black font-medium flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
                   {t.pricePerDay}
                 </Label>

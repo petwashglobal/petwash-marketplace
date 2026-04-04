@@ -449,7 +449,7 @@ export default function Careers() {
       </section>
       
       {/* Why Join Us */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -608,7 +608,7 @@ export default function Careers() {
       )}
       
       {/* All Positions */}
-      <section id="positions" className="py-20 bg-gray-50">
+      <section id="positions" className="py-20 bg-white">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -629,10 +629,10 @@ export default function Careers() {
               {[1, 2, 3].map(i => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
-                    <div className="h-14 w-14 bg-gray-200 rounded-xl mb-4" />
-                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
-                    <div className="h-4 bg-gray-200 rounded w-full mb-4" />
-                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-14 w-14 bg-white rounded-xl mb-4" />
+                    <div className="h-6 bg-white rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-white rounded w-full mb-4" />
+                    <div className="h-4 bg-white rounded w-1/2" />
                   </CardContent>
                 </Card>
               ))}
@@ -765,13 +765,13 @@ export default function Careers() {
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                     currentStep >= step 
                       ? 'bg-emerald-600 text-white' 
-                      : 'bg-gray-200 text-gray-500'
+                      : 'bg-white text-gray-500'
                   }`}
                 >
                   {currentStep > step ? <CheckCircle2 className="w-5 h-5" /> : step}
                 </div>
                 {step < 3 && (
-                  <div className={`w-12 h-1 mx-1 ${currentStep > step ? 'bg-emerald-600' : 'bg-gray-200'}`} />
+                  <div className={`w-12 h-1 mx-1 ${currentStep > step ? 'bg-emerald-600' : 'bg-white'}`} />
                 )}
               </div>
             ))}
@@ -1045,7 +1045,7 @@ export default function Careers() {
                 {isRTL ? 'הסכמות ואישורים' : 'Consents & Agreements'}
               </h3>
               
-              <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+              <div className="space-y-3 p-4 bg-white rounded-lg">
                 <div className="flex items-start gap-3">
                   <Checkbox 
                     id="consentDataProcessing"

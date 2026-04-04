@@ -394,10 +394,10 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-3 bg-white rounded-full overflow-hidden">
                                 <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all" style={{ width: `${incomeWidth}%` }} />
                               </div>
-                              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-3 bg-white rounded-full overflow-hidden">
                                 <div className="h-full bg-gradient-to-r from-red-400 to-rose-500 rounded-full transition-all" style={{ width: `${costsWidth}%` }} />
                               </div>
                             </div>
@@ -560,7 +560,7 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                               <p className="text-xs text-gray-400">{totalPct}%</p>
                             </div>
                           </div>
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-white rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-red-400 to-rose-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                           </div>
                         </div>

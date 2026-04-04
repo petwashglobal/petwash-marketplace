@@ -41,7 +41,7 @@ export default function PetTrekBookingFlow() {
           </p>
         </div>
 
-        <div className="bg-gray-50 border border-gray-200 rounded-lg px-5 py-4 text-sm text-gray-700 space-y-1">
+        <div className="bg-white border border-gray-200 rounded-lg px-5 py-4 text-sm text-gray-700 space-y-1">
           <p className="font-medium">PetTrek is not licensed for operation in Israel at this time.</p>
           <p>The service is suspended pending regulatory requirements.</p>
         </div>

@@ -160,7 +160,7 @@ export default function K9000Documents() {
       case 'k9000_contract':
         return 'bg-white text-orange-700 border-orange-200';
       default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return 'bg-white text-gray-700 border-gray-200';
     }
   };
 

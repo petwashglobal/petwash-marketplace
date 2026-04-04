@@ -23,6 +23,7 @@ import { logProviderMessage } from '../services/providerMessageLog';
 import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFromDecision as _queuePriority } from '../services/providerQueue';
 import { decideProviderKyc } from '../services/providerDecisionEngine';
 import { pool } from '../db';
+import { DocumentEncryption } from '../document-security-2025';
 import {
   buildAdminReviewAlertEmail,
   buildResubmissionNeededEmail,
@@ -37,6 +38,30 @@ import {
 } from '../email/templates/provider-workflow-emails';
 
 const router = Router();
+
+/**
+ * Encrypt a biometric/KYC file buffer before writing to GCS.
+ * Uses DocumentEncryption (AES-256-GCM) if DOCUMENT_ENCRYPTION_KEY is set.
+ * In production, the key must be set — plaintext biometric storage is a
+ * legal liability under Israeli Privacy Law 2025 and GDPR.
+ * Returns the packed encrypted buffer and the GCS content type to use.
+ */
+function encryptBiometricBuffer(buffer: Buffer): { data: Buffer; contentType: string } {
+  const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!masterKey || masterKey.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[ProviderOnboarding] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
+        'Refusing to store plaintext biometric data.'
+      );
+    }
+    logger.warn('[ProviderOnboarding] DOCUMENT_ENCRYPTION_KEY not set — biometric file stored unencrypted');
+    return { data: buffer, contentType: 'application/octet-stream' };
+  }
+  const { encryptedData, iv, authTag, salt } = DocumentEncryption.encrypt(buffer, masterKey);
+  const packed = DocumentEncryption.pack(encryptedData, iv, authTag, salt);
+  return { data: packed, contentType: 'application/octet-stream+encrypted' };
+}
 
 // Allowed MIME types for document uploads
 const ALLOWED_MIME_TYPES = [
@@ -524,10 +549,11 @@ router.post('/apply', upload.fields([
         logger.warn('[Provider Onboarding] Image moderation failed (allowing upload)', modErr);
       }
 
-      const selfieFileName = `providers/${authenticatedUser.uid}/kyc/selfie_${Date.now()}.${selfieFile.mimetype.split('/')[1]}`;
+      const selfieFileName = `providers/${authenticatedUser.uid}/kyc/selfie_${Date.now()}.enc`;
       const selfieUpload = bucket.file(selfieFileName);
-      await selfieUpload.save(selfieFile.buffer, {
-        metadata: { contentType: selfieFile.mimetype },
+      const { data: selfieData, contentType: selfieContentType } = encryptBiometricBuffer(selfieFile.buffer);
+      await selfieUpload.save(selfieData, {
+        metadata: { contentType: selfieContentType },
       });
       selfieUrl = selfieFileName; // Store path only — signed URLs generated on demand
     }
@@ -535,10 +561,11 @@ router.post('/apply', upload.fields([
     // Upload government ID
     if (files.governmentId && files.governmentId[0]) {
       const idFile = files.governmentId[0];
-      const idFileName = `providers/${authenticatedUser.uid}/kyc/government_id_${Date.now()}.${idFile.mimetype.split('/')[1]}`;
+      const idFileName = `providers/${authenticatedUser.uid}/kyc/government_id_${Date.now()}.enc`;
       const idUpload = bucket.file(idFileName);
-      await idUpload.save(idFile.buffer, {
-        metadata: { contentType: idFile.mimetype },
+      const { data: idData, contentType: idContentType } = encryptBiometricBuffer(idFile.buffer);
+      await idUpload.save(idData, {
+        metadata: { contentType: idContentType },
       });
       governmentIdUrl = idFileName;
     }
@@ -581,10 +608,11 @@ router.post('/apply', upload.fields([
     let drivingRecordUrl = '';
     if (files.drivingLicenseFile && files.drivingLicenseFile[0]) {
       const dlFile = files.drivingLicenseFile[0];
-      const dlFileName = `providers/${authenticatedUser.uid}/docs/driving_license_${Date.now()}.${dlFile.mimetype.split('/')[1]}`;
+      const dlFileName = `providers/${authenticatedUser.uid}/docs/driving_license_${Date.now()}.enc`;
       const dlUpload = bucket.file(dlFileName);
-      await dlUpload.save(dlFile.buffer, {
-        metadata: { contentType: dlFile.mimetype },
+      const { data: dlData, contentType: dlContentType } = encryptBiometricBuffer(dlFile.buffer);
+      await dlUpload.save(dlData, {
+        metadata: { contentType: dlContentType },
       });
       drivingRecordUrl = dlFileName;
     }
@@ -801,13 +829,10 @@ router.post('/apply', upload.fields([
               outcomeStatus = 'pending_review';
               decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match) + liveness passed, but forced to manual review — ${forceReviewFlags.join(', ')}`;
             } else {
-              // SECURITY (hostile audit): auto-approval removed.
-              // Even a perfect KYC score MUST route through human admin review.
-              // Reasons: liveness is heuristic (not ISO 30107-3), no criminal background
-              // check is integrated, and a deepfake/printed-photo can pass face match.
-              // ALL providers → pending_review → human must click approve in admin panel.
+              // All providers require human review regardless of KYC score.
+              // Automated approval is disabled — background checks must be performed by a human.
               outcomeStatus = 'pending_review';
-              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete — queued for human admin review`;
+              decisionReason = `KYC2026: face ${faceScore.toFixed(1)}/100 (match), liveness ${livenessScore.toFixed(0)}%, OCR complete, quality good — pending human review`;
             }
           } else if (faceScore >= 55) {
             outcomeStatus = 'pending_review';
@@ -911,16 +936,10 @@ router.post('/apply', upload.fields([
             }),
           };
 
-          // Auto-approve: generate providerId
-          if (outcomeStatus === 'approved') {
-            const providerPrefix = providerType.toUpperCase().substring(0, 6);
-            const randomId = randomBytes(5).toString('hex').toUpperCase();
-            updatePayload.approvedAsProviderId = `${providerPrefix}-${randomId}`;
-            updatePayload.reviewedAt = new Date();
-            updatePayload.reviewedBy = 'system-kyc2026';
-            updatePayload.backgroundCheckStatus = 'passed';
-            updatePayload.backgroundCheckDate = new Date();
-          }
+          // Auto-approval has been removed. All providers route to pending_review for human sign-off.
+          // backgroundCheckStatus must only be set by a human reviewer or a real police check service.
+          // The block below is intentionally disabled — do not restore without human review gate.
+          // if (outcomeStatus === 'approved') { ... }
 
           await db.update(providerApplications)
             .set(updatePayload)
@@ -1298,7 +1317,7 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
 
     if (app.selfiePhotoUrl) {
       try {
-        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || `${process.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`);
+        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
         const [url] = await bucket.file(app.selfiePhotoUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
         selfieSignedUrl = url;
       } catch { /* non-fatal */ }
@@ -1306,7 +1325,7 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
 
     if (app.governmentIdUrl) {
       try {
-        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || `${process.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`);
+        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
         const [url] = await bucket.file(app.governmentIdUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
         idSignedUrl = url;
       } catch { /* non-fatal */ }
@@ -1970,8 +1989,9 @@ router.post(
       if (files?.selfiePhoto?.[0]) {
         const f = files.selfiePhoto[0];
         const ext = f.mimetype.split('/')[1] || 'jpg';
-        const path = `providers/${userId}/kyc/resubmit_v${version}_selfie_${Date.now()}.${ext}`;
-        await bucket.file(path).save(f.buffer, { metadata: { contentType: f.mimetype } });
+        const path = `providers/${userId}/kyc/resubmit_v${version}_selfie_${Date.now()}.enc`;
+        const { data: resubmitSelfieData, contentType: resubmitSelfieContentType } = encryptBiometricBuffer(f.buffer);
+        await bucket.file(path).save(resubmitSelfieData, { metadata: { contentType: resubmitSelfieContentType } });
         newSelfieUrl = path;
         filesUploaded++;
 
@@ -1987,8 +2007,9 @@ router.post(
       if (files?.governmentId?.[0]) {
         const f = files.governmentId[0];
         const ext = f.mimetype.split('/')[1] || 'jpg';
-        const path = `providers/${userId}/kyc/resubmit_v${version}_gov_id_${Date.now()}.${ext}`;
-        await bucket.file(path).save(f.buffer, { metadata: { contentType: f.mimetype } });
+        const path = `providers/${userId}/kyc/resubmit_v${version}_gov_id_${Date.now()}.enc`;
+        const { data: resubmitIdData, contentType: resubmitIdContentType } = encryptBiometricBuffer(f.buffer);
+        await bucket.file(path).save(resubmitIdData, { metadata: { contentType: resubmitIdContentType } });
         newGovIdUrl = path;
         filesUploaded++;
 
@@ -2119,10 +2140,10 @@ router.post(
                 outcomeStatus = 'pending_review';
                 decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100 + liveness passed but flagged — ${forceReviewFlags.join(', ')}`;
               } else {
-                // SECURITY: auto-approval removed — same policy as initial submission.
-                // Resubmission passing KYC still requires human admin sign-off.
+                // All providers require human review regardless of KYC score.
+                // Automated approval is disabled — background checks must be performed by a human.
                 outcomeStatus = 'pending_review';
-                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete — queued for human admin review`;
+                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete — pending human review`;
               }
             } else if (faceScore >= 55) {
               outcomeStatus = 'pending_review';

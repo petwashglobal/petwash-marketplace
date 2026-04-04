@@ -597,12 +597,12 @@ export default function ProviderApplicationForm() {
                   <div key={i} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        s.done ? 'bg-emerald-500' : s.current ? 'bg-amber-500' : 'bg-gray-200'
+                        s.done ? 'bg-emerald-500' : s.current ? 'bg-amber-500' : 'bg-white'
                       }`}>
                         <s.icon className={`h-5 w-5 ${s.done || s.current ? 'text-white' : 'text-gray-400'}`} />
                       </div>
                       {i < arr.length - 1 && (
-                        <div className={`w-0.5 h-8 mt-1 ${s.done ? 'bg-emerald-300' : 'bg-gray-200'}`} />
+                        <div className={`w-0.5 h-8 mt-1 ${s.done ? 'bg-emerald-300' : 'bg-white'}`} />
                       )}
                     </div>
                     <div className="pb-6">
@@ -695,7 +695,7 @@ export default function ProviderApplicationForm() {
                         </label>
                         <label className="cursor-pointer">
                           <input type="file" accept="image/*" onChange={handleDocumentCapture(setIdFrontPhoto)} className="hidden" />
-                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg text-sm hover:bg-white transition-colors">
                             <Upload className="h-4 w-4" />
                             {isHebrew ? 'העלה' : 'Upload'}
                           </span>
@@ -707,7 +707,7 @@ export default function ProviderApplicationForm() {
                   {/* ID Back */}
                   <div className={`rounded-xl border-2 p-4 transition-colors ${idBackPhoto ? 'border-emerald-400 bg-emerald-50' : 'border-dashed border-gray-200 bg-white'}`}>
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
                         <ScanLine className="h-4 w-4 text-gray-500" />
                       </div>
                       <div>
@@ -727,14 +727,14 @@ export default function ProviderApplicationForm() {
                       <div className="flex gap-2">
                         <label className="cursor-pointer">
                           <input type="file" accept="image/*" capture="environment" onChange={handleDocumentCapture(setIdBackPhoto)} className="hidden" />
-                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg text-sm hover:bg-white transition-colors">
                             <Camera className="h-4 w-4" />
                             {isHebrew ? 'צלם' : 'Capture'}
                           </span>
                         </label>
                         <label className="cursor-pointer">
                           <input type="file" accept="image/*" onChange={handleDocumentCapture(setIdBackPhoto)} className="hidden" />
-                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                          <span className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg text-sm hover:bg-white transition-colors">
                             <Upload className="h-4 w-4" />
                             {isHebrew ? 'העלה' : 'Upload'}
                           </span>
@@ -774,7 +774,7 @@ export default function ProviderApplicationForm() {
                           </label>
                           <label className="cursor-pointer">
                             <input type="file" accept="image/*" onChange={handleDocumentCapture(setDrivingLicensePhoto)} className="hidden" />
-                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg text-sm hover:bg-white transition-colors">
                               <Upload className="h-4 w-4" />
                               {isHebrew ? 'העלה' : 'Upload'}
                             </span>
@@ -836,7 +836,7 @@ export default function ProviderApplicationForm() {
               </Link>
               <Link
                 href="/"
-                className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 bg-white border border-gray-200 text-black hover:bg-gray-50 px-6 py-3 rounded-2xl font-semibold transition-all duration-200"
+                className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 bg-white border border-gray-200 text-black hover:bg-white px-6 py-3 rounded-2xl font-semibold transition-all duration-200"
               >
                 {isHebrew ? 'דף הבית' : 'Home'}
               </Link>
@@ -898,7 +898,7 @@ export default function ProviderApplicationForm() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 font-semibold text-gray-700 shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed mb-4"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border-2 border-gray-200 bg-white hover:bg-white hover:border-gray-300 transition-all duration-200 font-semibold text-gray-700 shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed mb-4"
               >
                 {googleLoading
                   ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
@@ -938,7 +938,7 @@ export default function ProviderApplicationForm() {
                           ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg shadow-emerald-500/30'
                           : step === s 
                             ? 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/30'
-                            : 'bg-gray-100 border border-gray-300 text-gray-500'
+                            : 'bg-white border border-gray-300 text-gray-500'
                       }`}
                     >
                       {step > s ? <Check className="h-6 w-6 text-white" /> : <span className={step === s ? 'text-white' : ''}>{s}</span>}
@@ -1049,7 +1049,7 @@ export default function ProviderApplicationForm() {
                           <div className={`absolute top-3 ${isHebrew ? 'left-3' : 'right-3'} w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${
                             isSelected 
                               ? 'bg-white/30' 
-                              : 'bg-gray-100 border border-gray-300'
+                              : 'bg-white border border-gray-300'
                           }`}>
                             {isSelected ? (
                               <Check className="h-5 w-5 text-white" />
@@ -1111,7 +1111,7 @@ export default function ProviderApplicationForm() {
                       return (
                         <div 
                           key={platformId}
-                          className="bg-gray-50 rounded-2xl p-6 border border-gray-200"
+                          className="bg-white rounded-2xl p-6 border border-gray-200"
                         >
                           <div className="flex items-center gap-3 mb-6">
                             <div className={`p-3 rounded-xl bg-gradient-to-br ${platform.color} shadow-lg`}>
@@ -1436,7 +1436,7 @@ export default function ProviderApplicationForm() {
                           </button>
                         </div>
                       ) : (
-                        <div className="w-24 h-24 rounded-2xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
+                        <div className="w-24 h-24 rounded-2xl bg-white flex items-center justify-center border-2 border-dashed border-gray-300">
                           <User className="h-10 w-10 text-gray-400" />
                         </div>
                       )}
@@ -1447,7 +1447,7 @@ export default function ProviderApplicationForm() {
                           onChange={handleProfilePhotoChange}
                           className="hidden"
                         />
-                        <span className="inline-flex items-center gap-2 px-5 py-3 bg-gray-100 border border-gray-300 text-black rounded-xl hover:bg-gray-200 hover:border-gray-400 transition-all duration-300">
+                        <span className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 text-black rounded-xl hover:bg-white hover:border-gray-400 transition-all duration-300">
                           <Camera className="h-4 w-4 text-amber-400" />
                           {profilePhoto ? (isHebrew ? 'שנה תמונה' : 'Change') : t.uploadPhoto}
                         </span>
@@ -1472,7 +1472,7 @@ export default function ProviderApplicationForm() {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <div className="bg-white rounded-2xl p-6 border border-gray-200">
                     <h3 className="font-semibold text-black mb-2 flex items-center gap-2">
                       <Crown className="h-5 w-5 text-amber-400" />
                       {isHebrew ? 'הכשרות והסמכות' : 'Qualifications & Certifications'}
@@ -1668,7 +1668,7 @@ export default function ProviderApplicationForm() {
 
                   <div className="space-y-4">
                     {/* Terms of Service */}
-                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                    <div className="bg-white rounded-2xl p-6 border border-gray-200">
                       <FormField
                         control={form.control}
                         name="agreeToTerms"
@@ -1699,7 +1699,7 @@ export default function ProviderApplicationForm() {
                     </div>
 
                     {/* Privacy Policy */}
-                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                    <div className="bg-white rounded-2xl p-6 border border-gray-200">
                       <FormField
                         control={form.control}
                         name="agreeToPrivacy"
@@ -1762,7 +1762,7 @@ export default function ProviderApplicationForm() {
                   </div>
 
                   {/* Disclaimer */}
-                  <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 border border-gray-200">
+                  <div className="bg-white rounded-xl p-4 text-sm text-gray-600 border border-gray-200">
                     <p>
                       {isHebrew 
                         ? '⁦Pet Wash™⁩ משמש כפלטפורמת תיווך בין בעלי חיות מחמד לספקי שירות עצמאיים. ⁦Pet Wash™⁩ אינה מעסיקה את הספקים ואינה אחראית ישירות לשירותים הניתנים.'
@@ -1779,7 +1779,7 @@ export default function ProviderApplicationForm() {
                   <button
                     type="button"
                     onClick={() => { setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-black transition-colors rounded-xl hover:bg-gray-100"
+                    className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-black transition-colors rounded-xl hover:bg-white"
                   >
                     <ArrowLeft className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
                     {t.back}
@@ -1874,7 +1874,7 @@ export default function ProviderApplicationForm() {
 
         {/* Luxury Trust Badges */}
         <div className="mt-10 text-center">
-          <div className="inline-flex items-center justify-center gap-8 px-6 py-4 rounded-2xl bg-gray-50 border border-gray-200">
+          <div className="inline-flex items-center justify-center gap-8 px-6 py-4 rounded-2xl bg-white border border-gray-200">
             <div className="flex items-center gap-2 text-black">
               <Shield className="h-5 w-5 text-emerald-400" />
               <span className="text-sm font-medium">{isHebrew ? 'מאובטח' : 'Secure'}</span>

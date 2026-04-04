@@ -168,7 +168,7 @@ export default function ProviderRegistrationBanner({
 
               <div className="grid grid-cols-2 gap-4 mb-8">
                 {benefits.map((benefit, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                  <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-200">
                     <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
                       <benefit.icon className="w-5 h-5 text-emerald-600" />
                     </div>
@@ -203,7 +203,7 @@ export default function ProviderRegistrationBanner({
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding(type.id);
                     }}
-                    className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-gray-50 border-gray-100' : 'cursor-pointer bg-gray-50 border-gray-200 hover:border-emerald-400 hover:scale-105 hover:bg-gray-100 active:scale-95'}`}
+                    className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white border-gray-100' : 'cursor-pointer bg-white border-gray-200 hover:border-emerald-400 hover:scale-105 hover:bg-white active:scale-95'}`}
                   >
                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4 ${type.comingSoon ? '' : 'group-hover:scale-110'} transition-transform`}>
                       <type.icon className="w-7 h-7 text-white" />
@@ -255,7 +255,7 @@ export default function ProviderRegistrationBanner({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding(type.id);
               }}
-              className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-gray-50 border-gray-100' : 'cursor-pointer bg-gray-50 border-gray-200 hover:border-emerald-400 hover:scale-105 active:scale-95'}`}
+              className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white border-gray-100' : 'cursor-pointer bg-white border-gray-200 hover:border-emerald-400 hover:scale-105 active:scale-95'}`}
             >
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4`}>
                 <type.icon className="w-6 h-6 text-white" />

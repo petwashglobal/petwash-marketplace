@@ -191,7 +191,7 @@ export function QueueHealthCard() {
                 key={trig}
                 className={`rounded-xl border p-3 text-[10px] space-y-1.5 ${
                   stuck > 0 ? 'border-red-200 bg-red-50/20' :
-                  !isArmed  ? 'border-gray-100 bg-gray-50/50' :
+                  !isArmed  ? 'border-gray-100 bg-white/50' :
                               'border-gray-100 bg-white'
                 }`}
               >
@@ -212,7 +212,7 @@ export function QueueHealthCard() {
                 </div>
 
                 {cap != null && cap > 0 && (
-                  <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-1 rounded-full bg-white overflow-hidden">
                     <div
                       className={`h-full rounded-full ${sent >= cap ? 'bg-red-400' : 'bg-emerald-400'}`}
                       style={{ width: `${Math.min((sent / cap) * 100, 100)}%` }}

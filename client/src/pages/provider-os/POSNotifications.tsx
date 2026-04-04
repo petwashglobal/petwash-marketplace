@@ -92,7 +92,7 @@ export default function POSNotifications() {
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                activeTab === tab.id ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                activeTab === tab.id ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-white'
               }`}>
               {tab.label}
               {tab.id === 'unread' && unreadCount > 0 && (

@@ -76,7 +76,7 @@ export function OAuthConsentDialog({
         <div className="px-6 py-6 space-y-6">
           {/* User info if available */}
           {userEmail && userEmail.length > 0 && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0a2540] to-[#1a365d] flex items-center justify-center text-white font-semibold">
                 {userEmail[0]?.toUpperCase() || '?'}
               </div>
@@ -95,7 +95,7 @@ export function OAuthConsentDialog({
             </h3>
             <div className="space-y-3">
               {scopesGranted.map((scope, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-white transition-colors">
                   <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{scope.title}</p>
@@ -133,7 +133,7 @@ export function OAuthConsentDialog({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 py-4 bg-gray-50 flex-row gap-3 sm:justify-between">
+        <DialogFooter className="px-6 py-4 bg-white flex-row gap-3 sm:justify-between">
           <Button
             onClick={onClose}
             variant="outline"

@@ -134,12 +134,12 @@ export function TransactionOTPModal({
                 </p>
                 <div className="flex items-center justify-center gap-3 text-sm">
                   {sentVia.includes('sms') && (
-                    <span className="flex items-center gap-1 text-slate-700 bg-slate-100 px-3 py-1 rounded-full">
+                    <span className="flex items-center gap-1 text-slate-700 bg-white px-3 py-1 rounded-full">
                       <Smartphone className="w-3.5 h-3.5" /> {isHebrew ? 'SMS' : 'SMS'}
                     </span>
                   )}
                   {sentVia.includes('email') && (
-                    <span className="flex items-center gap-1 text-slate-700 bg-slate-100 px-3 py-1 rounded-full">
+                    <span className="flex items-center gap-1 text-slate-700 bg-white px-3 py-1 rounded-full">
                       <Mail className="w-3.5 h-3.5" /> {isHebrew ? 'אימייל' : 'Email'}
                     </span>
                   )}
@@ -254,7 +254,7 @@ export function TransactionOTPModal({
           )}
         </div>
 
-        <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
+        <div className="bg-white px-6 py-3 border-t border-slate-100">
           <p className="text-[11px] text-slate-400 text-center">
             {isHebrew
               ? 'לעולם אל תשתפו קוד זה עם אף אחד. \u2066Pet Wash\u2122\u2069 לעולם לא יבקשו ממכם קוד אימות.'

@@ -30,9 +30,9 @@ export default function Disclaimer() {
             {isHebrew ? 'עודכן לאחרונה: 29 באוקטובר 2025' : 'Last Updated: October 29, 2025'}
           </p>
 
-          <div className="space-y-8 text-gray-700 dark:text-gray-300">
+          <div className="space-y-8 text-gray-700 dark:text-black">
             {/* Critical Notice */}
-            <div className="bg-red-50 dark:bg-red-900/20 border-4 border-red-600 p-8 rounded-xl">
+            <div className="bg-red-50 dark:bg-white border-4 border-red-600 p-8 rounded-xl">
               <div className="flex items-start gap-4">
                 <AlertTriangle className="h-12 w-12 text-red-600 flex-shrink-0 mt-1" />
                 <div>
@@ -52,7 +52,7 @@ export default function Disclaimer() {
 
             {/* Platform Role */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '1. תפקיד הפלטפורמה - מקשר בלבד' : '1. Platform Role - Connector Only'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'Pet Wash Ltd פועלת במודל עסקי הדומה ל:' : 'Pet Wash Ltd operates in a business model similar to:'}</p>
@@ -72,7 +72,7 @@ export default function Disclaimer() {
 
             {/* Zero Liability */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '2. אפס אחריות - Pet Wash Ltd לא אחראית' : '2. Zero Liability - Pet Wash Ltd Not Responsible'}
               </h2>
               <p className="leading-relaxed mb-4 font-bold">
@@ -84,7 +84,7 @@ export default function Disclaimer() {
               </p>
               
               <div className="space-y-4">
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white p-4 rounded-lg">
                   <h3 className="font-bold mb-2">{isHebrew ? '🚫 אין אחריות לפציעות או מוות' : '🚫 NO Liability for Injury or Death'}</h3>
                   <ul className="list-disc list-inside space-y-1 mr-6 text-sm">
                     <li>{isHebrew ? 'פציעות, מחלות, או מוות של חיות מחמד במהלך או לאחר שירותי טיפול' : 'Injuries, illnesses, or death of pets during or after care services'}</li>
@@ -94,7 +94,7 @@ export default function Disclaimer() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white p-4 rounded-lg">
                   <h3 className="font-bold mb-2">{isHebrew ? '🚫 אין אחריות לנזק רכוש' : '🚫 NO Liability for Property Damage'}</h3>
                   <ul className="list-disc list-inside space-y-1 mr-6 text-sm">
                     <li>{isHebrew ? 'נזק לבית, רהיטים, או חפצים של בעלים' : 'Damage to homes, furniture, or belongings of owners'}</li>
@@ -104,7 +104,7 @@ export default function Disclaimer() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white p-4 rounded-lg">
                   <h3 className="font-bold mb-2">{isHebrew ? '🚫 אין אחריות לרשלנות' : '🚫 NO Liability for Negligence'}</h3>
                   <ul className="list-disc list-inside space-y-1 mr-6 text-sm">
                     <li>{isHebrew ? 'רשלנות או התנהגות לא מקצועית של שמרטפים' : 'Negligence or unprofessional behavior by sitters'}</li>
@@ -114,7 +114,7 @@ export default function Disclaimer() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white p-4 rounded-lg">
                   <h3 className="font-bold mb-2">{isHebrew ? '🚫 אין אחריות להונאה או פעילות פלילית' : '🚫 NO Liability for Fraud or Criminal Activity'}</h3>
                   <ul className="list-disc list-inside space-y-1 mr-6 text-sm">
                     <li>{isHebrew ? 'זהויות כוזבות או מסמכי אימות מזויפים' : 'False identities or forged verification documents'}</li>
@@ -124,7 +124,7 @@ export default function Disclaimer() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white p-4 rounded-lg">
                   <h3 className="font-bold mb-2">{isHebrew ? '🚫 אין אחריות לכשלים טכניים' : '🚫 NO Liability for Technical Failures'}</h3>
                   <ul className="list-disc list-inside space-y-1 mr-6 text-sm">
                     <li>{isHebrew ? 'הפסקות פלטפורמה, השבתות, או זמן השבתה' : 'Platform outages, downtimes, or unavailability'}</li>
@@ -134,7 +134,7 @@ export default function Disclaimer() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white p-4 rounded-lg">
                   <h3 className="font-bold mb-2">{isHebrew ? '🚫 אין אחריות למחלוקות' : '🚫 NO Liability for Disputes'}</h3>
                   <ul className="list-disc list-inside space-y-1 mr-6 text-sm">
                     <li>{isHebrew ? 'מחלוקות בין בעלים ושמרטפים (תמחור, שירות, ביקורות)' : 'Disputes between owners and sitters (pricing, service, reviews)'}</li>
@@ -148,7 +148,7 @@ export default function Disclaimer() {
 
             {/* Biometric Verification */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '3. אימות ביומטרי - חובה אך לא מובטח' : '3. Biometric Verification - Required But Not Guaranteed'}
               </h2>
               <p className="leading-relaxed mb-4">
@@ -164,7 +164,7 @@ export default function Disclaimer() {
                 <li><strong>{isHebrew ? 'התאמה ביומטרית:' : 'Biometric Match:'}</strong> {isHebrew ? 'המערכת משתמשת ב-Google Vision API כדי להשוות פנים' : 'System uses Google Vision API to match faces'}</li>
               </ul>
               
-              <div className="bg-white dark:bg-yellow-900/20 border-r-4 border-yellow-500 p-6 rounded-lg mt-4">
+              <div className="bg-white dark:bg-white border-r-4 border-yellow-500 p-6 rounded-lg mt-4">
                 <p className="font-bold mb-2">{isHebrew ? '⚠️ כתב ויתור לאימות:' : '⚠️ Verification Disclaimer:'}</p>
                 <p className="leading-relaxed">
                   {isHebrew ? (
@@ -184,7 +184,7 @@ export default function Disclaimer() {
 
             {/* Force Majeure */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '4. כוח עליון - אירועים מחוץ לשליטתנו' : '4. Force Majeure - Events Beyond Our Control'}
               </h2>
               <p className="leading-relaxed mb-4">
@@ -207,10 +207,10 @@ export default function Disclaimer() {
 
             {/* Independent Contractors */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '5. קבלנים עצמאיים - לא עובדים' : '5. Independent Contractors - Not Employees'}
               </h2>
-              <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
+              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
                 <p className="font-bold mb-2">{isHebrew ? 'הצהרה חשובה:' : 'Important Declaration:'}</p>
                 <p className="leading-relaxed">
                   {isHebrew ? (
@@ -231,7 +231,7 @@ export default function Disclaimer() {
 
             {/* User Responsibilities */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '6. אחריות המשתמשים' : '6. User Responsibilities'}
               </h2>
               <p className="leading-relaxed mb-4 font-bold">
@@ -248,10 +248,10 @@ export default function Disclaimer() {
 
             {/* Indemnification */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '7. שיפוי - אתה מגן על Pet Wash' : '7. Indemnification - You Protect Pet Wash'}
               </h2>
-              <div className="bg-red-50 dark:bg-red-900/20 border-r-4 border-red-600 p-6 rounded-lg">
+              <div className="bg-red-50 dark:bg-white border-r-4 border-red-600 p-6 rounded-lg">
                 <p className="font-bold mb-4">
                   {isHebrew ? (
                     <>אתה מסכים לשפות, להגן, ולפטור את Pet Wash Ltd (וכל הדירקטורים, עובדים, שותפים, וסוכנים שלה) מכל:</>
@@ -271,10 +271,10 @@ export default function Disclaimer() {
 
             {/* Maximum Liability Cap */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '8. תקרת אחריות מקסימלית' : '8. Maximum Liability Cap'}
               </h2>
-              <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+              <div className="bg-white dark:bg-white p-6 rounded-lg">
                 <p className="font-bold text-xl mb-4">
                   {isHebrew ? (
                     <>במקרה הבלתי סביר שבית משפט ימצא את Pet Wash Ltd אחראית:</>
@@ -282,7 +282,7 @@ export default function Disclaimer() {
                     <>In the unlikely event a court finds Pet Wash Ltd liable:</>
                   )}
                 </p>
-                <p className="text-2xl font-bold text-center py-4 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <p className="text-2xl font-bold text-center py-4 bg-red-100 dark:bg-white rounded-lg">
                   {isHebrew ? (
                     <>האחריות המקסימלית מוגבלת ל: <u>עמלת תיווך של 7% עבור אותה הזמנה ספציפית</u></>
                   ) : (
@@ -301,7 +301,7 @@ export default function Disclaimer() {
 
             {/* Governing Law */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '9. חוק שופט ובוררות' : '9. Governing Law & Arbitration'}
               </h2>
               <p className="leading-relaxed mb-4">
@@ -315,10 +315,10 @@ export default function Disclaimer() {
 
             {/* Acceptance */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '10. קבלה של כתב ויתור זה' : '10. Acceptance of This Disclaimer'}
               </h2>
-              <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
+              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
                 <p className="leading-relaxed font-bold">
                   {isHebrew ? (
                     <>על ידי שימוש ב-⁦The Sitter Suite™⁩, אתה מאשר ומקבל את כל תנאי כתב הויתור הזה. אם אינך מסכים, אל תשתמש בפלטפורמה.</>
@@ -331,10 +331,10 @@ export default function Disclaimer() {
 
             {/* Contact */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '11. יצירת קשר' : '11. Contact Us'}
               </h2>
-              <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
+              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
                 <p className="font-semibold mb-2">Pet Wash Ltd</p>
                 <p className="mt-2">
                   {isHebrew ? 'דוא"ל משפטי:' : 'Legal Email:'} <a href="mailto:legal@petwash.co.il" className="text-blue-600 hover:underline">legal@petwash.co.il</a>

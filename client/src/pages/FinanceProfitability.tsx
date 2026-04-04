@@ -153,7 +153,7 @@ function MarginBar({ pct, max = 50 }: { pct: number; max?: number }) {
   const color = pct >= 20 ? 'bg-emerald-500' : pct >= 10 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-2 min-w-[80px]">
-      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${w}%` }} />
       </div>
       <span className="text-xs font-mono w-10 text-right">{pct.toFixed(1)}%</span>
@@ -165,7 +165,7 @@ function RiskScoreBar({ score }: { score: number }) {
   const color = score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-2 min-w-[70px]">
-      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${score}%` }} />
       </div>
       <span className="text-xs font-bold w-6 text-right">{score}</span>
@@ -456,7 +456,7 @@ function FrictionTable({ stations, totals }: { stations: FrictionStation[]; tota
           ['Mismatch affected', totals.mismatchAffectedCents, 'text-purple-700'],
           ['Total friction', totals.frictionTotalCents, 'text-red-800 font-bold'],
         ].map(([label, val, color]) => (
-          <div key={label as string} className="bg-gray-50 rounded-lg p-2 border text-center">
+          <div key={label as string} className="bg-white rounded-lg p-2 border text-center">
             <div className="text-muted-foreground mb-0.5">{label}</div>
             <div className={`font-semibold ${color}`}>{ils(val as number)}</div>
           </div>
@@ -503,7 +503,7 @@ function FrictionTable({ stations, totals }: { stations: FrictionStation[]; tota
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
-                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-[40px]">
+                    <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden min-w-[40px]">
                       <div
                         className={`h-full rounded-full ${s.frictionPctOfGross > 20 ? 'bg-red-500' : s.frictionPctOfGross > 10 ? 'bg-amber-500' : 'bg-blue-400'}`}
                         style={{ width: `${Math.min(s.frictionPctOfGross * 2, 100)}%` }}
@@ -558,7 +558,7 @@ export default function FinanceProfitability() {
   ) ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -594,7 +594,7 @@ export default function FinanceProfitability() {
         {/* 1. KPI strip */}
         {summaryData?.kpis
           ? <KPIStrip kpis={summaryData.kpis} />
-          : <div className="grid grid-cols-6 gap-3">{[...Array(6)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />)}</div>}
+          : <div className="grid grid-cols-6 gap-3">{[...Array(6)].map((_, i) => <div key={i} className="h-20 bg-white rounded-lg animate-pulse" />)}</div>}
 
         {/* 2. Station profitability */}
         <Card>
@@ -606,7 +606,7 @@ export default function FinanceProfitability() {
           </CardHeader>
           <CardContent>
             {stationLoading
-              ? <div className="h-32 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-32 bg-white rounded animate-pulse" />
               : <StationTable stations={stations} />}
           </CardContent>
         </Card>
@@ -619,7 +619,7 @@ export default function FinanceProfitability() {
           </CardHeader>
           <CardContent className="p-0 pb-2">
             {networkLoading
-              ? <div className="h-24 bg-gray-100 mx-4 rounded animate-pulse" />
+              ? <div className="h-24 bg-white mx-4 rounded animate-pulse" />
               : <NetworkTable network={networkData?.network ?? []} />}
           </CardContent>
         </Card>
@@ -632,7 +632,7 @@ export default function FinanceProfitability() {
           </CardHeader>
           <CardContent>
             {ownershipLoading
-              ? <div className="h-32 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-32 bg-white rounded animate-pulse" />
               : ownershipData
                 ? <OwnershipPanel data={ownershipData} />
                 : <EmptyState msg="No ownership data" />}
@@ -651,7 +651,7 @@ export default function FinanceProfitability() {
           </CardHeader>
           <CardContent>
             {signalLoading
-              ? <div className="h-24 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-24 bg-white rounded animate-pulse" />
               : <SignalsQueue signals={signalData?.signals ?? []} />}
           </CardContent>
         </Card>
@@ -666,7 +666,7 @@ export default function FinanceProfitability() {
           </CardHeader>
           <CardContent>
             {frictionLoading
-              ? <div className="h-32 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-32 bg-white rounded animate-pulse" />
               : <FrictionTable stations={frictionData?.stations ?? []} totals={frictionData?.totals ?? {}} />}
           </CardContent>
         </Card>

@@ -35,12 +35,24 @@ const NAYAX_API_KEY = process.env.NAYAX_API_KEY;
 const NAYAX_TERMINAL_ID_MAIN = process.env.NAYAX_TERMINAL_ID_MAIN;
 const NAYAX_TERMINAL_ID_SECONDARY = process.env.NAYAX_TERMINAL_ID_SECONDARY;
 
-// DEMO MODE: Controlled by explicit environment variable for safety
-// Only enabled when NAYAX_DEMO_MODE=true AND no API key exists
-const DEMO_MODE = process.env.NAYAX_DEMO_MODE === 'true' && !NAYAX_API_KEY;
+// DEMO MODE: Only allowed in explicit non-production environments.
+// In production, missing NAYAX_API_KEY is a fatal startup error — payments must never
+// silently fall back to demo mode (free-service risk).
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const DEMO_MODE_REQUESTED = process.env.NAYAX_DEMO_MODE === 'true';
+
+if (IS_PRODUCTION && !NAYAX_API_KEY) {
+  // Fatal: cannot run payment service without credentials in production.
+  throw new Error(
+    '[Nayax] FATAL: NAYAX_API_KEY is not set in production environment. ' +
+    'Payment service cannot start. Set NAYAX_API_KEY before deploying.'
+  );
+}
+
+const DEMO_MODE = !IS_PRODUCTION && DEMO_MODE_REQUESTED && !NAYAX_API_KEY;
 
 if (DEMO_MODE) {
-  logger.warn('[Nayax] Running in DEMO MODE - Payment simulation enabled (NAYAX_DEMO_MODE=true)');
+  logger.warn('[Nayax] Running in DEMO MODE - Payment simulation enabled (development/staging only)');
 } else if (!NAYAX_API_KEY) {
   logger.warn('[Nayax] API keys not configured - Nayax features disabled until keys are provided');
 }

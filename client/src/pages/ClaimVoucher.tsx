@@ -112,7 +112,7 @@ export default function ClaimVoucher() {
                 {isRTL ? '✅ השובר נקלט בהצלחה!' : '✅ Voucher Claimed Successfully!'}
               </h1>
               
-              <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-6 space-y-3">
+              <div className="bg-green-50 dark:bg-white border-2 border-green-200 dark:border-green-800 rounded-xl p-6 space-y-3">
                 <p className="text-sm text-green-700 dark:text-green-300 font-medium">
                   {isRTL ? 'פרטי השובר' : 'Voucher Details'}
                 </p>
@@ -205,7 +205,7 @@ export default function ClaimVoucher() {
 
             {/* Sign In Notice for Non-Authenticated Users */}
             {!user && (
-              <div className="bg-white dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-4 flex items-start gap-3">
+              <div className="bg-white dark:bg-white border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-4 flex items-start gap-3">
                 <XCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                 <div className="space-y-2">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
@@ -230,7 +230,7 @@ export default function ClaimVoucher() {
 
             {/* Voucher Code Input */}
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-gray-700 dark:text-black">
                 {isRTL ? 'קוד השובר' : 'Voucher Code'}
               </label>
               <Input
@@ -271,7 +271,7 @@ export default function ClaimVoucher() {
             </Button>
 
             {/* Help Section */}
-            <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl p-6 space-y-4">
+            <div className="bg-purple-50 dark:bg-white border-2 border-purple-200 dark:border-purple-800 rounded-xl p-6 space-y-4">
               <h3 className="font-semibold text-purple-900 dark:text-purple-100 text-center">
                 {isRTL ? '❓ שאלות נפוצות' : '❓ Frequently Asked Questions'}
               </h3>

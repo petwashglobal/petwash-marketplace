@@ -182,14 +182,14 @@ export default function TeamCards() {
                 {/* Contact Info */}
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">Email:</span>
+                    <span className="font-medium text-gray-700 dark:text-black">Email:</span>
                     <br />
                     <a href={`mailto:${member.email}`} className="text-indigo-600 hover:underline">
                       {member.email}
                     </a>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">Phone:</span>
+                    <span className="font-medium text-gray-700 dark:text-black">Phone:</span>
                     <br />
                     <a href={`tel:${member.phone}`} className="text-indigo-600 hover:underline">
                       {member.phone}
@@ -197,7 +197,7 @@ export default function TeamCards() {
                   </div>
                   {member.mobile && (
                     <div>
-                      <span className="font-medium text-gray-700 dark:text-gray-300">Mobile:</span>
+                      <span className="font-medium text-gray-700 dark:text-black">Mobile:</span>
                       <br />
                       <a href={`tel:${member.mobile}`} className="text-indigo-600 hover:underline">
                         {member.mobile}
@@ -208,7 +208,7 @@ export default function TeamCards() {
 
                 {/* Wallet Buttons - Coming Soon */}
                 <div className="space-y-2">
-                  <div className="text-center py-3 px-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-500">
+                  <div className="text-center py-3 px-4 bg-white dark:bg-white rounded-lg text-sm text-gray-500">
                     {isHebrew ? '🚀 Wallet בקרוב...' : '🚀 Wallet Coming Soon...'}
                   </div>
                 </div>

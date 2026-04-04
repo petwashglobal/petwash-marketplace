@@ -166,7 +166,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                 <div className="px-5 pt-12 pb-5">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base">{groomer.name}</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-black text-base">{groomer.name}</h3>
                       <p className="text-sm text-gray-500 flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5" />{groomer.city}
                       </p>
@@ -174,7 +174,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                     <div className="text-right">
                       <div className="flex items-center gap-1 text-amber-500">
                         <Star className="w-4 h-4 fill-current" />
-                        <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{groomer.rating}</span>
+                        <span className="font-bold text-sm text-gray-800 dark:text-black">{groomer.rating}</span>
                         <span className="text-xs text-gray-400">({groomer.reviews})</span>
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{groomer.experience} yrs exp</p>
@@ -185,7 +185,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
 
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {groomer.badges.map(badge => (
-                      <span key={badge} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium">
+                      <span key={badge} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-white text-purple-700 dark:text-purple-300 text-xs font-medium">
                         <CheckCircle className="w-3 h-3" />{badge}
                       </span>
                     ))}
@@ -195,7 +195,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                     {groomer.services.slice(0,3).map(svcKey => {
                       const svcLabel = SERVICES_FILTER.find(s => s.key === svcKey);
                       return svcLabel && svcLabel.key !== 'all' ? (
-                        <span key={svcKey} className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">{isHebrew ? svcLabel.he : svcLabel.label}</span>
+                        <span key={svcKey} className="text-xs bg-white dark:bg-white text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">{isHebrew ? svcLabel.he : svcLabel.label}</span>
                       ) : null;
                     })}
                     {groomer.services.length > 3 && <span className="text-xs text-gray-400">+{groomer.services.length - 3} more</span>}

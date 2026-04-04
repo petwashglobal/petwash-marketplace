@@ -122,7 +122,7 @@ export function SocialShare({
         icon={Link2}
         label="העתק קישור"
         onClick={copyLink}
-        color="text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
+        color="text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-white"
       />
     </div>
   );

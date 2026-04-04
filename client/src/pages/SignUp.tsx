@@ -19,6 +19,7 @@ import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { trackSignUp } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
+import { normalizePhoneE164 } from "@/lib/authUtils";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import {
   Dialog,
@@ -288,8 +289,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
   // ── Phone OTP signup ──────────────────────────────────────────────────────
   const handleSendPhoneCode = async () => {
-    if (!phoneNumber || !phoneNumber.startsWith('+') || phoneNumber.length < 8) {
-      toast({ variant: 'destructive', title: language === 'he' ? 'מספר טלפון שגוי' : 'Invalid phone number', description: language === 'he' ? 'הזן מספר טלפון בינלאומי תקין (לדוגמה: +972501234567)' : 'Enter a valid international phone number (e.g. +972501234567)' });
+    // Normalize Israeli local format (05X → +9725X) before validation
+    let normalizedPhone = normalizePhoneE164(phoneNumber);
+    if (normalizedPhone !== phoneNumber.trim()) {
+      setPhoneNumber(normalizedPhone);
+    }
+    if (!normalizedPhone || normalizedPhone.length < 8) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'מספר טלפון שגוי' : 'Invalid phone number', description: language === 'he' ? 'הזן מספר טלפון תקין (לדוגמה: 0501234567 או +972501234567)' : 'Enter a valid phone number (e.g. 0501234567 or +972501234567)' });
       return;
     }
     setPhoneLoading(true);
@@ -305,13 +311,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: phoneNumber.trim(), language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
+        body: JSON.stringify({ phone: normalizedPhone, language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
       });
       const result = await res.json();
       if (!result.ok) throw new Error(result.error || result.message || (language === 'he' ? 'שליחת הקוד נכשלה' : 'Failed to send code'));
 
-      setConfirmationResult({ phone: phoneNumber.trim() });
-      toast({ title: language === 'he' ? 'קוד נשלח! 📲' : 'Code sent! 📲', description: language === 'he' ? `קוד אימות נשלח ל-${phoneNumber}` : `Verification code sent to ${phoneNumber}` });
+      setConfirmationResult({ phone: normalizedPhone });
+      toast({ title: language === 'he' ? 'קוד נשלח! 📲' : 'Code sent! 📲', description: language === 'he' ? `קוד אימות נשלח ל-${normalizedPhone}` : `Verification code sent to ${normalizedPhone}` });
     } catch (err: any) {
       logger.error('[PhoneAuth] Send code failed:', err);
       toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: err.message || (language === 'he' ? 'שליחת הקוד נכשלה. נסה שוב.' : 'Failed to send code. Please try again.') });
@@ -775,7 +781,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           {/* Close/Back Button */}
           <button
             onClick={() => navigate("/")}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white transition-colors z-10"
             aria-label={t('common.close', language)}
             data-testid="button-close-signup"
           >
@@ -824,7 +830,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               variant="outline"
               onClick={() => performOAuthSignup('google')}
               disabled={!!socialLoading || loading}
-              className="w-full h-13 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              className="w-full h-13 !bg-white hover:!bg-white !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-google-signup"
             >
               {socialLoading === 'google' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaGoogle className="h-5 w-5 text-[#4285F4]" />}
@@ -889,7 +895,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               variant="outline"
               onClick={() => { setSignupMode(signupMode === 'phone' ? 'email' : 'phone'); setConfirmationResult(null); setVerificationCode(''); }}
               disabled={!!socialLoading || loading}
-              className="w-full h-13 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              className="w-full h-13 !bg-white hover:!bg-white !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-phone-signup-toggle"
             >
               {signupMode === 'phone' ? <ArrowLeft className="h-5 w-5" /> : <Phone className="h-5 w-5 text-purple-600" />}
@@ -1139,7 +1145,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               </Select>
             </div>
 
-            <div className="space-y-4 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+            <div className="space-y-4 bg-white/50 p-6 rounded-2xl border border-gray-100">
               <div className="checkbox-wrapper">
                 <Checkbox
                   id="loyaltyProgram"

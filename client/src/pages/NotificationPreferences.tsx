@@ -140,7 +140,7 @@ export default function NotificationPreferences() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                       <div className="flex items-center gap-3">
                         <Mail className="h-5 w-5 text-blue-600" />
                         <div>
@@ -161,7 +161,7 @@ export default function NotificationPreferences() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                       <div className="flex items-center gap-3">
                         <Smartphone className="h-5 w-5 text-green-600" />
                         <div>
@@ -182,7 +182,7 @@ export default function NotificationPreferences() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                       <div className="flex items-center gap-3">
                         <Bell className="h-5 w-5 text-purple-600" />
                         <div>

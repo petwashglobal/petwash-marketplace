@@ -107,7 +107,7 @@ export default function MenuDesigns() {
               Current Layout Preview
             </h2>
             <div className="luxury-glass-card luxury-shadow-xl p-8 rounded-lg max-w-4xl mx-auto">
-              <div className="bg-white/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 p-4 rounded-t-lg">
+              <div className="bg-white/50 dark:bg-white/50 border-b border-gray-200 dark:border-gray-700 p-4 rounded-t-lg">
                 <div className="grid grid-cols-3 items-center gap-4">
                   {/* Left - Social Icons */}
                   <div className="flex items-center justify-start space-x-3">

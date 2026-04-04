@@ -133,7 +133,7 @@ function RiskBar({ score }: { score: number }) {
   const color = score <= 20 ? 'bg-emerald-500' : score <= 50 ? 'bg-amber-500' : score <= 75 ? 'bg-orange-500' : 'bg-red-600';
   return (
     <div className="flex items-center gap-2 min-w-[80px]">
-      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${score}%` }} />
       </div>
       <span className="text-xs font-bold w-7 text-right">{score}</span>
@@ -181,7 +181,7 @@ function ForecastCards({ windows }: { windows: ForecastWindow[] }) {
                 {w.expected_held_outflow_cents > 0 && <div className="bg-amber-400" style={{ width: pct(w.expected_held_outflow_cents, gross) }} title="Held" />}
                 {w.expected_risky_outflow_cents > 0 && <div className="bg-orange-400" style={{ width: pct(w.expected_risky_outflow_cents, gross) }} title="Risky" />}
                 {w.expected_failed_retry_outflow_cents > 0 && <div className="bg-red-500" style={{ width: pct(w.expected_failed_retry_outflow_cents, gross) }} title="Failed" />}
-                {gross === 0 && <div className="bg-gray-200 flex-1" />}
+                {gross === 0 && <div className="bg-white flex-1" />}
               </div>
             </CardContent>
           </Card>
@@ -328,7 +328,7 @@ function ReserveAgeingTable({ data }: { data: ReserveAgeing }) {
                   {b.oldest_reserve_days}d
                 </TableCell>
                 <TableCell>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden w-full">
+                  <div className="h-2 bg-white rounded-full overflow-hidden w-full">
                     <div
                       className={`h-full rounded-full ${b.bucket === '31+d' ? 'bg-red-500' : b.bucket === '15-30d' ? 'bg-orange-400' : b.bucket === '8-14d' ? 'bg-amber-400' : 'bg-blue-400'}`}
                       style={{ width: `${Math.round((b.reserve_amount_cents / maxAmt) * 100)}%` }}
@@ -447,11 +447,11 @@ function ForecastVsActual({ data }: { data: { cycles: ForecastVsActualCycle[]; s
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <div className="bg-gray-50 rounded-lg p-3 border">
+        <div className="bg-white rounded-lg p-3 border">
           <div className="text-xs text-muted-foreground">Total forecasted</div>
           <div className="font-bold">{ils(summary.total_forecasted_cents)}</div>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 border">
+        <div className="bg-white rounded-lg p-3 border">
           <div className="text-xs text-muted-foreground">Total actual paid</div>
           <div className="font-bold">{ils(summary.total_actual_cents)}</div>
         </div>
@@ -459,7 +459,7 @@ function ForecastVsActual({ data }: { data: { cycles: ForecastVsActualCycle[]; s
           <div className="text-xs text-muted-foreground">Variance</div>
           <div className={`font-bold ${summary.total_variance_cents !== 0 ? 'text-red-700' : 'text-emerald-700'}`}>{ils(summary.total_variance_cents)}</div>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 border">
+        <div className="bg-white rounded-lg p-3 border">
           <div className="text-xs text-muted-foreground">Avg abs variance</div>
           <div className={`font-bold ${summary.avg_abs_variance_pct > 10 ? 'text-red-700' : summary.avg_abs_variance_pct > 5 ? 'text-amber-700' : 'text-emerald-700'}`}>
             {summary.avg_abs_variance_pct}%
@@ -565,7 +565,7 @@ export default function TreasuryForecast() {
   const criticalCount = warningsData?.warnings?.filter(w => w.severity === 'critical').length ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -605,7 +605,7 @@ export default function TreasuryForecast() {
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Forecast Snapshot</h2>
           </div>
           {forecastLoading
-            ? <div className="h-32 bg-gray-100 rounded-lg animate-pulse" />
+            ? <div className="h-32 bg-white rounded-lg animate-pulse" />
             : <ForecastCards windows={forecastData?.windows ?? []} />}
         </div>
 
@@ -616,7 +616,7 @@ export default function TreasuryForecast() {
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Liquidity Pressure</h2>
           </div>
           {pressureLoading
-            ? <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+            ? <div className="h-24 bg-white rounded-lg animate-pulse" />
             : pressureData
               ? <LiquidityGauge data={pressureData} />
               : <EmptyState message="Could not load pressure data" />}
@@ -630,7 +630,7 @@ export default function TreasuryForecast() {
           </CardHeader>
           <CardContent className="p-0 pb-2">
             {calendarLoading
-              ? <div className="h-24 bg-gray-100 mx-4 rounded animate-pulse" />
+              ? <div className="h-24 bg-white mx-4 rounded animate-pulse" />
               : <CalendarForecast cycles={calendarData?.cycles ?? []} />}
           </CardContent>
         </Card>
@@ -643,7 +643,7 @@ export default function TreasuryForecast() {
           </CardHeader>
           <CardContent>
             {ageingLoading
-              ? <div className="h-24 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-24 bg-white rounded animate-pulse" />
               : ageingData
                 ? <ReserveAgeingTable data={ageingData} />
                 : <EmptyState message="No reserve ageing data" />}
@@ -658,7 +658,7 @@ export default function TreasuryForecast() {
           </CardHeader>
           <CardContent className="p-0 pb-2">
             {riskLoading
-              ? <div className="h-24 bg-gray-100 mx-4 rounded animate-pulse" />
+              ? <div className="h-24 bg-white mx-4 rounded animate-pulse" />
               : <RiskTable entities={riskData?.entities ?? []} />}
           </CardContent>
         </Card>
@@ -679,7 +679,7 @@ export default function TreasuryForecast() {
           </CardHeader>
           <CardContent>
             {warningsLoading
-              ? <div className="h-16 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-16 bg-white rounded animate-pulse" />
               : <WarningsList warnings={warningsData?.warnings ?? []} />}
           </CardContent>
         </Card>
@@ -692,7 +692,7 @@ export default function TreasuryForecast() {
           </CardHeader>
           <CardContent>
             {fvaLoading
-              ? <div className="h-24 bg-gray-100 rounded animate-pulse" />
+              ? <div className="h-24 bg-white rounded animate-pulse" />
               : fvaData
                 ? <ForecastVsActual data={fvaData} />
                 : <EmptyState message="No completed cycles yet" />}

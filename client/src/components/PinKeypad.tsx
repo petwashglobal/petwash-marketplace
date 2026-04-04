@@ -140,7 +140,7 @@ export function PinKeypad({
     <div className={cn('flex flex-col items-center p-6', className)}>
       {title && (
         <h2 
-          className="text-2xl font-serif font-bold text-gray-900 dark:text-white mb-2"
+          className="text-2xl font-serif font-bold text-gray-900 dark:text-black mb-2"
           data-testid="pin-title"
         >
           {title}
@@ -155,7 +155,7 @@ export function PinKeypad({
 
       {error && (
         <div 
-          className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg mb-4 text-sm"
+          className="bg-red-50 dark:bg-white text-red-600 dark:text-red-400 px-4 py-2 rounded-lg mb-4 text-sm"
           data-testid="pin-error"
         >
           {error}
@@ -184,7 +184,7 @@ export function PinKeypad({
               <Button
                 key={index}
                 variant="ghost"
-                className="w-20 h-16 text-xl rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="w-20 h-16 text-xl rounded-xl hover:bg-white dark:hover:bg-white"
                 onClick={handleDelete}
                 disabled={loading || pin.length === 0}
                 data-testid="pin-delete"
@@ -201,8 +201,8 @@ export function PinKeypad({
               variant="ghost"
               className={cn(
                 'w-20 h-16 text-2xl font-semibold rounded-xl transition-all',
-                'hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white',
-                'active:scale-95 active:bg-gray-200 dark:active:bg-gray-700'
+                'hover:bg-white dark:hover:bg-white hover:text-black dark:hover:text-white',
+                'active:scale-95 active:bg-white dark:active:bg-gray-700'
               )}
               onClick={() => handleDigit(key)}
               disabled={loading}

@@ -116,12 +116,12 @@ function bookingStatusBadge(status: string) {
     completed:   'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
     confirmed:   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     in_progress: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
-    cancelled:   'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    cancelled:   'bg-white text-gray-700 dark:bg-white dark:text-black',
     disputed:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    draft:       'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    draft:       'bg-white text-gray-600 dark:bg-white dark:text-gray-400',
   };
   return (
-    <Badge className={cn('border-0 text-xs', map[status] ?? 'bg-gray-100 text-gray-600')}>
+    <Badge className={cn('border-0 text-xs', map[status] ?? 'bg-white text-gray-600')}>
       {status.replace(/_/g, ' ')}
     </Badge>
   );
@@ -131,18 +131,18 @@ function settlementBadge(status: string) {
   if (status === 'settled')  return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Settled</Badge>;
   if (status === 'disputed') return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-0 text-xs"><XCircle className="h-3 w-3 mr-1" />Disputed</Badge>;
   if (status === 'pending')  return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-0 text-xs"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-  if (status === 'none')     return <Badge className="bg-gray-100 text-gray-600 border-0 text-xs">No settlement</Badge>;
-  return <Badge className="bg-gray-100 text-gray-600 border-0 text-xs">{status}</Badge>;
+  if (status === 'none')     return <Badge className="bg-white text-gray-600 border-0 text-xs">No settlement</Badge>;
+  return <Badge className="bg-white text-gray-600 border-0 text-xs">{status}</Badge>;
 }
 
 function disputeBadge(status: string) {
   if (status === 'open')         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-0 text-xs"><ShieldAlert className="h-3 w-3 mr-1" />Open</Badge>;
   if (status === 'under_review') return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-0 text-xs"><Clock className="h-3 w-3 mr-1" />Under Review</Badge>;
   if (status === 'resolved')     return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Resolved</Badge>;
-  if (status === 'rejected')     return <Badge className="bg-gray-100 text-gray-700 border-0 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-  if (status === 'closed')       return <Badge className="bg-gray-100 text-gray-600 border-0 text-xs">Closed</Badge>;
-  if (status === 'none')         return <Badge className="bg-gray-100 text-gray-500 border-0 text-xs">No dispute</Badge>;
-  return <Badge className="bg-gray-100 text-gray-600 border-0 text-xs">{status}</Badge>;
+  if (status === 'rejected')     return <Badge className="bg-white text-gray-700 border-0 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+  if (status === 'closed')       return <Badge className="bg-white text-gray-600 border-0 text-xs">Closed</Badge>;
+  if (status === 'none')         return <Badge className="bg-white text-gray-500 border-0 text-xs">No dispute</Badge>;
+  return <Badge className="bg-white text-gray-600 border-0 text-xs">{status}</Badge>;
 }
 
 function nextActionBadge(owner: string) {
@@ -187,7 +187,7 @@ export default function BookingTrace() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4">
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4">
         <div className="max-w-4xl mx-auto space-y-4">
           <Skeleton className="h-8 w-48" />
           <div className="grid grid-cols-3 gap-3">
@@ -202,11 +202,11 @@ export default function BookingTrace() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
         <Card className="border-0 shadow-sm max-w-sm w-full">
           <CardContent className="p-6 text-center">
             <XCircle className="h-8 w-8 text-red-500 mx-auto mb-3" />
-            <p className="font-medium text-gray-800 dark:text-gray-200">Booking not found</p>
+            <p className="font-medium text-gray-800 dark:text-black">Booking not found</p>
             <p className="text-sm text-gray-500 mt-1">You may not have access to this booking.</p>
             <Button variant="outline" className="mt-4" onClick={() => window.history.back()}>
               Go back
@@ -233,7 +233,7 @@ export default function BookingTrace() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
 
         {/* Back navigation */}
@@ -247,7 +247,7 @@ export default function BookingTrace() {
 
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{booking.bookingNumber}</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-black">{booking.bookingNumber}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {station ? `${station.name}${station.stationCode ? ` · ${station.stationCode}` : ''}` : 'No station'}
             {booking.serviceType && ` · ${booking.serviceType}`}
@@ -259,7 +259,7 @@ export default function BookingTrace() {
           <Card className="border-0 shadow-sm col-span-2 sm:col-span-1">
             <CardContent className="p-3">
               <p className="text-xs text-gray-500 mb-1">Booking Amount</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt(booking.total)}</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-black">{fmt(booking.total)}</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
@@ -441,7 +441,7 @@ export default function BookingTrace() {
                 {dispute.description && (
                   <div className="col-span-2">
                     <p className="text-gray-500 text-xs">Description</p>
-                    <p className="bg-gray-50 dark:bg-gray-900 rounded p-2 text-sm">{dispute.description}</p>
+                    <p className="bg-white dark:bg-white rounded p-2 text-sm">{dispute.description}</p>
                   </div>
                 )}
                 {dispute.adminNotes && (
@@ -547,7 +547,7 @@ export default function BookingTrace() {
                   <p className="text-xs text-gray-500 font-medium mb-2">Wallet Credits</p>
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-gray-50 dark:bg-gray-800">
+                      <TableRow className="bg-white dark:bg-white">
                         <TableHead className="text-xs">Reference</TableHead>
                         <TableHead className="text-xs">Type</TableHead>
                         <TableHead className="text-xs text-right">Amount</TableHead>

@@ -16,7 +16,7 @@ export default function BlockedPage() {
   const he = isHebrew();
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
       <Card className="max-w-md w-full mx-auto bg-white">
         <CardHeader className="text-center pb-2">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
@@ -32,7 +32,7 @@ export default function BlockedPage() {
               ? "החשבון שלך הושעה. לפרטים נוספים או לערעור, אנא צור קשר עם התמיכה שלנו."
               : "Your account has been suspended. For more details or to appeal, please contact our support team."}
           </p>
-          <div className="bg-neutral-50 rounded-lg p-3">
+          <div className="bg-white rounded-lg p-3">
             <a
               href="mailto:support@petwash.co.il"
               className="text-primary font-medium text-sm hover:underline"

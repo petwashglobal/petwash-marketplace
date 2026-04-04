@@ -8,13 +8,13 @@ import { electronicInvoices } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
-import { requireAuth } from '../middleware/gates';
+import { requireAuth } from '../customAuth';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
-// SECURITY: All ITA / Israeli Tax Authority routes require authentication.
-// Without this guard, unauthenticated callers could create or query tax invoices
-// for any user's commission — a financial and compliance violation.
+// All ITA routes require authentication. Unauthenticated access would allow
+// arbitrary invoice submission to the Israeli Tax Authority.
 router.use(requireAuth);
 
 const createInvoiceSchema = z.object({
@@ -83,8 +83,14 @@ router.post('/invoices/create', async (req, res) => {
       });
       return;
     }
+
+    // createdBy must come from the authenticated user — never trust the client value.
+    const invoiceData = {
+      ...validationResult.data,
+      createdBy: req.user!.uid,
+    };
     
-    const invoice = await ElectronicInvoicingService.createInvoice(validationResult.data);
+    const invoice = await ElectronicInvoicingService.createInvoice(invoiceData);
     
     res.status(201).json({
       success: true,

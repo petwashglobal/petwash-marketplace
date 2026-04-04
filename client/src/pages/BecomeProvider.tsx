@@ -344,7 +344,7 @@ export default function BecomeProvider() {
       <Layout>
         <div className="min-h-screen relative overflow-hidden">
           {/* Luxury Background */}
-          <div className="absolute inset-0 bg-gray-50" />
+          <div className="absolute inset-0 bg-white" />
           <div className="absolute inset-0 opacity-30" style={{
             backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(198, 166, 100, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 50%)'
           }} />
@@ -378,19 +378,19 @@ export default function BecomeProvider() {
                 {/* Benefits Preview */}
                 <div className="grid grid-cols-3 gap-4 mb-8">
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white flex items-center justify-center">
                       <Heart className="w-6 h-6 text-pink-400" />
                     </div>
                     <p className="text-xs text-gray-500">{isHebrew ? 'גמישות' : 'Flexibility'}</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white flex items-center justify-center">
                       <Award className="w-6 h-6 text-amber-400" />
                     </div>
                     <p className="text-xs text-gray-500">{isHebrew ? 'הכנסה' : 'Income'}</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white flex items-center justify-center">
                       <Shield className="w-6 h-6 text-emerald-400" />
                     </div>
                     <p className="text-xs text-gray-500">{isHebrew ? 'ביטוח' : 'Insurance'}</p>
@@ -478,7 +478,7 @@ export default function BecomeProvider() {
                   <Link href="/">
                     <Button 
                       variant="outline" 
-                      className="w-full py-5 text-lg rounded-2xl border-gray-300 text-gray-700 hover:bg-gray-100"
+                      className="w-full py-5 text-lg rounded-2xl border-gray-300 text-gray-700 hover:bg-white"
                       data-testid="button-back-home"
                     >
                       {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
@@ -497,7 +497,7 @@ export default function BecomeProvider() {
     <Layout>
       <div className="min-h-screen relative overflow-hidden">
         {/* Luxury Dark Background */}
-        <div className="absolute inset-0 bg-gray-50" />
+        <div className="absolute inset-0 bg-white" />
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 40%)'
         }} />
@@ -540,7 +540,7 @@ export default function BecomeProvider() {
                             ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg shadow-emerald-500/30'
                             : step.id === currentStep 
                               ? 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/30'
-                              : 'bg-gray-100 border border-gray-300'
+                              : 'bg-white border border-gray-300'
                         }`}
                       >
                         {step.id < currentStep ? (
@@ -561,7 +561,7 @@ export default function BecomeProvider() {
                       <div className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-2 sm:mx-4 ${
                         step.id < currentStep 
                           ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' 
-                          : 'bg-gray-200'
+                          : 'bg-white'
                       }`} />
                     )}
                   </div>
@@ -716,7 +716,7 @@ export default function BecomeProvider() {
                             className={`p-3 rounded-xl cursor-pointer text-center transition-all duration-300 ${
                               isSelected
                                 ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10'
-                                : 'bg-gray-50 border border-gray-300 hover:border-amber-500/30'
+                                : 'bg-white border border-gray-300 hover:border-amber-500/30'
                             }`}
                           >
                             <span className={`text-sm font-medium ${isSelected ? 'text-amber-600' : 'text-gray-600'}`}>
@@ -826,7 +826,7 @@ export default function BecomeProvider() {
                             className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
                               isSelected 
                                 ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/50 shadow-lg shadow-purple-500/10'
-                                : 'bg-gray-50 border border-gray-300 hover:border-purple-500/30'
+                                : 'bg-white border border-gray-300 hover:border-purple-500/30'
                             }`}
                             data-testid={`platform-${platform.id}`}
                           >
@@ -886,7 +886,7 @@ export default function BecomeProvider() {
                             className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
                               isSelected 
                                 ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10'
-                                : 'bg-gray-50 border border-gray-300 hover:border-amber-500/30'
+                                : 'bg-white border border-gray-300 hover:border-amber-500/30'
                             }`}
                             data-testid={`service-${service.id}`}
                           >
@@ -931,7 +931,7 @@ export default function BecomeProvider() {
                             className={`px-5 py-3 rounded-xl cursor-pointer transition-all font-medium ${
                               isSelected 
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-gray-50 border border-gray-300 text-gray-400 hover:border-amber-500/30'
+                                : 'bg-white border border-gray-300 text-gray-400 hover:border-amber-500/30'
                             }`}
                             data-testid={`pet-${pet.id}`}
                           >
@@ -967,7 +967,7 @@ export default function BecomeProvider() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-4 p-5 rounded-2xl bg-gray-50 border border-gray-200">
+                  <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white border border-gray-200">
                     <div className="flex items-center gap-3">
                       <Checkbox 
                         id="hasVehicle"
@@ -1042,7 +1042,7 @@ export default function BecomeProvider() {
                             className={`px-5 py-3 rounded-xl cursor-pointer transition-all font-medium ${
                               isSelected 
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-gray-50 border border-gray-300 text-gray-400 hover:border-amber-500/30'
+                                : 'bg-white border border-gray-300 text-gray-400 hover:border-amber-500/30'
                             }`}
                             data-testid={`lang-${lang.id}`}
                           >
@@ -1166,7 +1166,7 @@ export default function BecomeProvider() {
                     </div>
                   </div>
 
-                  <div className="space-y-5 p-5 rounded-2xl bg-gray-50 border border-gray-200">
+                  <div className="space-y-5 p-5 rounded-2xl bg-white border border-gray-200">
                     <div className="flex items-start gap-3">
                       <Checkbox 
                         id="privacyConsent"
@@ -1327,11 +1327,11 @@ export default function BecomeProvider() {
                       <button
                         type="button"
                         onClick={() => photoInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-gray-50 group"
+                        className="w-full border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-white group"
                         data-testid="button-upload-photo"
                       >
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-16 h-16 rounded-full bg-gray-100 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
+                          <div className="w-16 h-16 rounded-full bg-white group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
                             <Camera className="w-8 h-8 text-gray-400 group-hover:text-amber-400 transition-colors" />
                           </div>
                           <div className="text-center">
@@ -1388,10 +1388,10 @@ export default function BecomeProvider() {
                         <button
                           type="button"
                           onClick={() => galleryInputRef.current?.click()}
-                          className="aspect-square border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl transition-all hover:bg-gray-50 group flex flex-col items-center justify-center gap-2"
+                          className="aspect-square border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl transition-all hover:bg-white group flex flex-col items-center justify-center gap-2"
                           data-testid="button-add-gallery"
                         >
-                          <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
+                          <div className="w-12 h-12 rounded-full bg-white group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
                             <Upload className="w-6 h-6 text-gray-400 group-hover:text-amber-400 transition-colors" />
                           </div>
                           <p className="text-gray-500 text-xs font-medium">
@@ -1411,7 +1411,7 @@ export default function BecomeProvider() {
                   variant="outline"
                   onClick={prevStep}
                   disabled={currentStep === 1}
-                  className="flex items-center gap-2 px-6 py-5 rounded-xl border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-30"
+                  className="flex items-center gap-2 px-6 py-5 rounded-xl border-gray-300 text-gray-600 hover:bg-white disabled:opacity-30"
                   data-testid="button-prev"
                 >
                   <ChevronLeft className="w-5 h-5" />

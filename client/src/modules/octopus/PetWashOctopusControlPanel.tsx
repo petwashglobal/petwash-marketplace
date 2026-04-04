@@ -399,7 +399,7 @@ const LuxeButton: React.FC<LuxeButtonProps> = ({
   } else if (variant === "ghost") {
     variantClasses = [
       "bg-white/50",
-      "hover:bg-slate-100/70",
+      "hover:bg-white/70",
       "text-slate-700",
       "border border-slate-200/70",
     ].join(" ");
@@ -408,7 +408,7 @@ const LuxeButton: React.FC<LuxeButtonProps> = ({
       "bg-transparent",
       "text-slate-800",
       "border border-slate-300/80",
-      "hover:bg-slate-50/70",
+      "hover:bg-white/70",
     ].join(" ");
   } else if (variant === "pill") {
     variantClasses = [
@@ -416,7 +416,7 @@ const LuxeButton: React.FC<LuxeButtonProps> = ({
       "backdrop-blur",
       "text-slate-800",
       "border border-slate-200/70",
-      "hover:bg-slate-100/70",
+      "hover:bg-white/70",
       luxe.radiusPill,
     ].join(" ");
   }
@@ -502,7 +502,7 @@ const PlatformStatusBadge: React.FC<{ status: PetWashPlatform["status"] }> = ({
       className={[
         "inline-flex items-center gap-1 text-xs px-3 py-1",
         luxe.radiusPill,
-        "border border-slate-200 bg-slate-50 text-slate-600",
+        "border border-slate-200 bg-white text-slate-600",
       ].join(" ")}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
@@ -632,7 +632,7 @@ const BookingStatusPill: React.FC<{ status: BookingSummary["status"] }> = ({
   if (status === "completed") {
     return (
       <span
-        className={`${base} border-slate-200 bg-slate-50 text-slate-700`}
+        className={`${base} border-slate-200 bg-white text-slate-700`}
       >
         Completed
       </span>
@@ -814,7 +814,7 @@ const TalentPanel: React.FC<{ talent: TalentProfile[] }> = ({ talent }) => {
                   {t.badges.map((b) => (
                     <span
                       key={b}
-                      className="text-[10px] px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600"
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600"
                     >
                       {b}
                     </span>
@@ -897,7 +897,7 @@ const LoyaltyAndInvoicesPanel: React.FC<{
               of {Math.round(loyalty.pointsIssued / 1000)}k pts
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div className="mt-2 h-1.5 w-full rounded-full bg-white overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"
               style={{
@@ -955,7 +955,7 @@ const LoyaltyAndInvoicesPanel: React.FC<{
                   inv.status === "paid"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                     : inv.status === "issued"
-                    ? "border-slate-200 bg-slate-50 text-slate-700"
+                    ? "border-slate-200 bg-white text-slate-700"
                     : "border-amber-200 bg-amber-50 text-amber-700",
                 ].join(" ")}
               >
@@ -1208,14 +1208,14 @@ const LocationDashboardPanel: React.FC = () => {
               <div className="text-xl font-bold text-emerald-700">{providers.length}</div>
               <div className="text-xs text-emerald-500 mt-0.5">Providers online</div>
             </div>
-            <div className="flex-1 bg-slate-50 rounded-xl px-4 py-3 text-center border border-slate-200">
+            <div className="flex-1 bg-white rounded-xl px-4 py-3 text-center border border-slate-200">
               <div className="text-xl font-bold text-slate-700">{locations.length}</div>
               <div className="text-xs text-slate-500 mt-0.5">Total stamped</div>
             </div>
           </div>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {locations.map((loc: any) => (
-              <div key={loc.id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 transition-colors">
+              <div key={loc.id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-100 bg-white hover:bg-white transition-colors">
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
                   loc.role === 'provider'
                     ? 'bg-emerald-100 text-emerald-700'
@@ -1344,7 +1344,7 @@ const LiveBookingDemoPanel: React.FC = () => {
   useEffect(() => () => clearTimer(), []);
 
   const phaseBadge: Record<DemoPhase, { label: string; color: string }> = {
-    idle: { label: 'Standby', color: 'bg-slate-100 text-slate-500' },
+    idle: { label: 'Standby', color: 'bg-white text-slate-500' },
     request_in: { label: '📨 Request In', color: 'bg-blue-100 text-blue-700' },
     matching: { label: '🔍 Matching Providers', color: 'bg-amber-100 text-amber-700' },
     providers_notified: { label: '🔔 Providers Notified', color: 'bg-violet-100 text-violet-700' },
@@ -1369,7 +1369,7 @@ const LiveBookingDemoPanel: React.FC = () => {
 
       {/* Booking card */}
       <div className={`rounded-2xl border p-4 mb-4 transition-all duration-500 ${
-        phase === 'idle' ? 'border-slate-200 bg-slate-50/50 opacity-50' : 'border-blue-200 bg-blue-50/40 opacity-100'
+        phase === 'idle' ? 'border-slate-200 bg-white/50 opacity-50' : 'border-blue-200 bg-blue-50/40 opacity-100'
       }`}>
         <div className="flex items-center gap-2 mb-3">
           <div className="h-9 w-9 rounded-full bg-gradient-to-br from-fuchsia-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold">מ</div>
@@ -1475,7 +1475,7 @@ const LiveBookingDemoPanel: React.FC = () => {
           </div>
           <button
             onClick={resetDemo}
-            className="w-full py-2 rounded-xl border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition-colors"
+            className="w-full py-2 rounded-xl border border-slate-200 text-slate-600 text-xs hover:bg-white transition-colors"
           >
             🔄 הפעל מחדש
           </button>

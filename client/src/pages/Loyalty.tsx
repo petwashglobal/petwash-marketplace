@@ -870,7 +870,7 @@ export default function Loyalty() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.06 }}
-                  className="flex items-center gap-4 p-4 bg-white hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-4 p-4 bg-white hover:bg-white transition-colors"
                   style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}
                 >
                   <div className="w-9 h-9 flex items-center justify-center flex-shrink-0" style={{ background: `${gold}10`, borderRadius: '2px' }}>
@@ -903,7 +903,7 @@ export default function Loyalty() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: i * 0.1 }}
-                      className="flex items-start gap-4 p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                      className="flex items-start gap-4 p-4 bg-white hover:bg-white transition-colors"
                       style={{ borderRadius: '2px' }}
                     >
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 bg-white shadow-sm" style={{ borderRadius: '2px', color: gold }}>
@@ -955,7 +955,7 @@ export default function Loyalty() {
               </motion.div>
 
               {/* Tier Journey Card */}
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-gray-50 p-6" style={{ borderRadius: '2px' }}>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-white p-6" style={{ borderRadius: '2px' }}>
                 <h3 className="text-lg font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                   {t('loyalty.allTiers', language)}
                 </h3>

@@ -75,9 +75,9 @@ interface RolloutEvaluation {
 // ---------------------------------------------------------------------------
 
 const STATUS_CFG: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-  draft:       { color: 'text-gray-700 bg-gray-100 border-gray-300',       icon: <Clock className="w-3 h-3" />,        label: 'Draft' },
+  draft:       { color: 'text-gray-700 bg-white border-gray-300',       icon: <Clock className="w-3 h-3" />,        label: 'Draft' },
   active:      { color: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Active' },
-  archived:    { color: 'text-gray-500 bg-gray-50 border-gray-200',         icon: <Layers className="w-3 h-3" />,       label: 'Archived' },
+  archived:    { color: 'text-gray-500 bg-white border-gray-200',         icon: <Layers className="w-3 h-3" />,       label: 'Archived' },
   planned:     { color: 'text-blue-700 bg-blue-50 border-blue-200',         icon: <Clock className="w-3 h-3" />,        label: 'Planned' },
   paused:      { color: 'text-amber-700 bg-amber-50 border-amber-200',      icon: <Minus className="w-3 h-3" />,        label: 'Paused' },
   rolled_back: { color: 'text-red-700 bg-red-50 border-red-200',            icon: <RotateCcw className="w-3 h-3" />,    label: 'Rolled back' },
@@ -340,7 +340,7 @@ function EvaluationPanel({ rolloutId }: { rolloutId: number }) {
             <div className="text-xs text-muted-foreground">Avg margin Δ</div>
             <DeltaValue value={ev.avgMarginDelta} />
           </div>
-          <div className="col-span-2 sm:col-span-4 text-xs text-muted-foreground italic bg-gray-50 border rounded p-2">
+          <div className="col-span-2 sm:col-span-4 text-xs text-muted-foreground italic bg-white border rounded p-2">
             {ev.note}
           </div>
         </div>
@@ -392,7 +392,7 @@ function PolicyConfigsSection({ policyKeys }: { policyKeys: Record<string, Polic
       </CardHeader>
       <CardContent className="p-0 pb-2">
         {isLoading ? (
-          <div className="p-4 space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
+          <div className="p-4 space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-10 bg-white rounded animate-pulse" />)}</div>
         ) : configs.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             No policy configs yet. Create a draft to get started.
@@ -421,7 +421,7 @@ function PolicyConfigsSection({ policyKeys }: { policyKeys: Record<string, Polic
                     <TableCell className="text-right font-mono text-sm">v{c.version}</TableCell>
                     <TableCell><StatusBadge status={c.status} /></TableCell>
                     <TableCell>
-                      <code className="text-xs bg-gray-50 border rounded px-1.5 py-0.5 max-w-[180px] block truncate">
+                      <code className="text-xs bg-white border rounded px-1.5 py-0.5 max-w-[180px] block truncate">
                         {JSON.stringify(c.config)}
                       </code>
                     </TableCell>
@@ -504,7 +504,7 @@ function RolloutsSection({ configs }: { configs: PolicyConfig[] }) {
       </CardHeader>
       <CardContent className="p-0 pb-2">
         {isLoading ? (
-          <div className="p-4 space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />)}</div>
+          <div className="p-4 space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-16 bg-white rounded animate-pulse" />)}</div>
         ) : rollouts.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             No rollouts yet. Create one from an active policy config.
@@ -569,7 +569,7 @@ export default function PolicyRollout() {
   const configs    = configsData?.configs ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -623,7 +623,7 @@ export default function PolicyRollout() {
         {/* Phase 12.24 tables */}
         {keysLoading ? (
           <div className="space-y-4">
-            {[...Array(2)].map((_, i) => <div key={i} className="h-40 bg-gray-200 rounded-xl animate-pulse" />)}
+            {[...Array(2)].map((_, i) => <div key={i} className="h-40 bg-white rounded-xl animate-pulse" />)}
           </div>
         ) : (
           <>

@@ -573,7 +573,7 @@ export default function ProviderOnboarding() {
         aria-label={isHebrew ? 'סגור' : 'Close'}
         data-testid="button-close-onboarding"
       >
-        <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+        <X className="w-5 h-5 text-gray-700 dark:text-black" />
       </Button>
 
       <div className="max-w-4xl mx-auto">
@@ -589,21 +589,21 @@ export default function ProviderOnboarding() {
         {/* Progress Steps - Luxury Gradient Circles */}
         <div className="flex items-center justify-center gap-2 md:gap-4 mb-8 px-4 luxury-animate-slide-up luxury-delay-1">
           <div className={`flex items-center gap-2 ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
               1
             </div>
             <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'פלטפורמה ופרטים' : 'Platform & Info'}</span>
           </div>
           <div className={`h-0.5 w-8 ${step >= 2 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
               2
             </div>
             <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'מסמכים' : 'Documents'}</span>
           </div>
           <div className={`h-0.5 w-8 ${step >= 3 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
               3
             </div>
             <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'רקע' : 'Background'}</span>
@@ -1111,7 +1111,7 @@ export default function ProviderOnboarding() {
             {/* Step 3: Declarations & Background Check (2026 Spec) */}
             {step === 3 && (
               <div className="space-y-6">
-                <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                <Alert className="border-blue-500 bg-blue-50 dark:bg-white">
                   <Shield className="h-5 w-5 text-blue-600" />
                   <AlertDescription>
                     <strong className="text-blue-900 dark:text-blue-200">{t.backgroundCheck}</strong>
@@ -1134,7 +1134,7 @@ export default function ProviderOnboarding() {
 
                   {/* Driver Declarations (PetTrek) */}
                   {hasProviderType('driver') && (
-                    <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-white rounded-lg border border-blue-200 dark:border-blue-800">
                       <h4 className="font-semibold text-blue-900 dark:text-blue-200">
                         🚗 {isHebrew ? 'הצהרות נהג (PetTrek)' : 'Driver Declarations (PetTrek)'}
                       </h4>
@@ -1173,7 +1173,7 @@ export default function ProviderOnboarding() {
 
                   {/* Trainer Declarations (Academy) */}
                   {hasProviderType('trainer') && (
-                    <div className="space-y-3 mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="space-y-3 mb-6 p-4 bg-green-50 dark:bg-white rounded-lg border border-green-200 dark:border-green-800">
                       <h4 className="font-semibold text-green-900 dark:text-green-200">
                         🎓 {isHebrew ? 'הצהרות מאמן (Academy)' : 'Trainer Declarations (Academy)'}
                       </h4>
@@ -1220,8 +1220,8 @@ export default function ProviderOnboarding() {
                   )}
 
                   {/* Universal Declarations (All Roles) */}
-                  <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-200">
+                  <div className="space-y-3 p-4 bg-white dark:bg-white/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <h4 className="font-semibold text-gray-900 dark:text-black">
                       ✅ {isHebrew ? 'הצהרות כלליות (חובה)' : 'General Declarations (Required)'}
                     </h4>
                     

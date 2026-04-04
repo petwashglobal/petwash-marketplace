@@ -146,7 +146,7 @@ export function NavigationButton({
               <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
                 {t('Address')}:
               </div>
-              <div className="text-xs font-medium text-gray-900 dark:text-white break-words">
+              <div className="text-xs font-medium text-gray-900 dark:text-black break-words">
                 {address || placeName}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">

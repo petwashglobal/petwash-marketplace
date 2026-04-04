@@ -220,7 +220,7 @@ export default function ServiceLandingPage() {
           </h2>
           <div className="space-y-3">
             {REVIEWS.map((r, i) => (
-              <div key={i} className="p-4 bg-gray-50 rounded-2xl">
+              <div key={i} className="p-4 bg-white rounded-2xl">
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"

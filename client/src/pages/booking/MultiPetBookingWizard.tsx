@@ -290,7 +290,7 @@ function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
                     ? "bg-[#C5A55A] text-white shadow-sm"
                     : i === idx
                     ? "bg-[#C5A55A] text-white ring-4 ring-[#C5A55A]/20 shadow-md"
-                    : "bg-gray-100 text-gray-400"
+                    : "bg-white text-gray-400"
                 }`}
               >
                 {i < idx ? <Check className="w-3.5 h-3.5" /> : i + 1}
@@ -302,7 +302,7 @@ function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-1 mb-4 rounded-full transition-all duration-300 ${i < idx ? "bg-[#C5A55A]" : "bg-gray-100"}`} />
+              <div className={`h-0.5 flex-1 mx-1 mb-4 rounded-full transition-all duration-300 ${i < idx ? "bg-[#C5A55A]" : "bg-white"}`} />
             )}
           </div>
         ))}
@@ -429,7 +429,7 @@ function ScheduleStep({
   return (
     <div className="p-4 space-y-5">
       {/* Provider card */}
-      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+      <div className="flex items-center gap-3 p-3 bg-white rounded-xl">
         {provider?.photoUrl ? (
           <img src={provider.photoUrl} alt={provider.name} className="w-12 h-12 rounded-full object-cover" />
         ) : (
@@ -572,7 +572,7 @@ function PetsStep({
                     : "border-gray-100 bg-white hover:border-gray-200"
                 }`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${selected ? "bg-[#C5A55A]/20" : "bg-gray-100"}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${selected ? "bg-[#C5A55A]/20" : "bg-white"}`}>
                   {pet.photoUrl
                     ? <img src={pet.photoUrl} alt={pet.name} className="w-10 h-10 rounded-full object-cover" />
                     : petEmoji(pet.species)
@@ -595,7 +595,7 @@ function PetsStep({
             onClick={() => setLocation("/pets?return=/booking")}
             className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#C5A55A]/40 hover:text-[#C5A55A] transition-all"
           >
-            <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
               <Plus className="w-4 h-4" />
             </div>
             <span className="text-sm">הוסף חיית מחמד חדשה</span>
@@ -628,7 +628,7 @@ function CareStep({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full bg-gray-50 rounded-xl p-1">
+        <TabsList className="w-full bg-white rounded-xl p-1">
           {petCares.map(pc => (
             <TabsTrigger
               key={pc.clientRef}
@@ -721,7 +721,7 @@ function PetCareForm({
 
       {/* Boolean flags */}
       {fields.includes("medication") && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
             <Pill className="w-4 h-4 text-blue-500" />
             <div>
@@ -738,7 +738,7 @@ function PetCareForm({
       )}
 
       {fields.includes("behavior") && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <div>
@@ -755,7 +755,7 @@ function PetCareForm({
       )}
 
       {fields.includes("special_needs") && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-purple-500" />
             <div>
@@ -772,7 +772,7 @@ function PetCareForm({
       )}
 
       {fields.includes("leash_trained") && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
             <span className="text-base">🐕</span>
             <p className="text-sm font-medium text-gray-800">מאולף לרצועה</p>
@@ -786,7 +786,7 @@ function PetCareForm({
       )}
 
       {fields.includes("dog_park") && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
             <span className="text-base">🌳</span>
             <p className="text-sm font-medium text-gray-800">מתאים לפארק כלבים</p>
@@ -889,7 +889,7 @@ function AddonsStep({
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#C5A55A]" />
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">🔖 לכל ההזמנה</p>
-            <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">חיוב אחד</span>
+            <span className="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded-full">חיוב אחד</span>
           </div>
           {bookingAddons.map(addon => {
             const selected = isSelected(addon.code);
@@ -901,7 +901,7 @@ function AddonsStep({
                   selected ? "border-[#C5A55A] bg-[#C5A55A]/5 shadow-sm" : "border-gray-100 bg-white hover:border-[#C5A55A]/30"
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${selected ? "bg-[#C5A55A]/20" : "bg-gray-50"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${selected ? "bg-[#C5A55A]/20" : "bg-white"}`}>
                   {addon.icon}
                 </div>
                 <div className="flex-1 text-right">
@@ -926,7 +926,7 @@ function AddonsStep({
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-400" />
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">🐾 לפי חיית מחמד</p>
-            <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">חיוב לכל חיה</span>
+            <span className="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded-full">חיוב לכל חיה</span>
           </div>
           {petCares.map(pc => (
             <div key={pc.clientRef} className="space-y-2">
@@ -934,7 +934,7 @@ function AddonsStep({
               <div className="flex items-center gap-2 px-1 py-1">
                 <span className="text-base">{petEmoji(pc.petType)}</span>
                 <span className="text-sm font-semibold text-gray-700">{pc.petName}</span>
-                <div className="flex-1 h-px bg-gray-100" />
+                <div className="flex-1 h-px bg-white" />
               </div>
               {petAddons.map(addon => {
                 const selected = isSelected(addon.code, pc.clientRef);
@@ -946,7 +946,7 @@ function AddonsStep({
                       selected ? "border-blue-300 bg-blue-50/50 shadow-sm" : "border-gray-100 bg-white hover:border-blue-200"
                     }`}
                   >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${selected ? "bg-blue-100" : "bg-gray-50"}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${selected ? "bg-blue-100" : "bg-white"}`}>
                       {addon.icon}
                     </div>
                     <div className="flex-1 text-right">
@@ -984,13 +984,13 @@ function QuoteSkeleton() {
     <div className="animate-pulse space-y-2 p-4">
       {[1, 2, 3].map(i => (
         <div key={i} className="flex justify-between">
-          <div className="h-3 bg-gray-100 rounded w-32" />
-          <div className="h-3 bg-gray-100 rounded w-12" />
+          <div className="h-3 bg-white rounded w-32" />
+          <div className="h-3 bg-white rounded w-12" />
         </div>
       ))}
       <div className="border-t border-gray-100 pt-3 mt-2">
         <div className="flex justify-between">
-          <div className="h-4 bg-gray-100 rounded w-20" />
+          <div className="h-4 bg-white rounded w-20" />
           <div className="h-5 bg-[#C5A55A]/10 rounded w-16" />
         </div>
       </div>
@@ -1074,19 +1074,19 @@ function ConfirmStep({
       <div className="px-5 py-4">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">לוח זמנים</p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-50 rounded-xl p-3">
+          <div className="bg-white rounded-xl p-3">
             <p className="text-xs text-gray-400 mb-0.5">{isMultiDay ? "כניסה" : "תאריך"}</p>
             <p className="text-sm font-semibold text-gray-800">{startDate}</p>
             <p className="text-xs text-gray-500">{startTime}</p>
           </div>
           {isMultiDay ? (
-            <div className="bg-gray-50 rounded-xl p-3">
+            <div className="bg-white rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">יציאה</p>
               <p className="text-sm font-semibold text-gray-800">{endDate}</p>
               <p className="text-xs text-gray-500">{endTime}</p>
             </div>
           ) : (
-            <div className="bg-gray-50 rounded-xl p-3">
+            <div className="bg-white rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">שעת סיום</p>
               <p className="text-sm font-semibold text-gray-800">{endTime}</p>
               <p className="text-xs text-gray-500">{quote?.durationLabel || ""}</p>
@@ -1102,7 +1102,7 @@ function ConfirmStep({
         </p>
         <div className="space-y-2">
           {petCares.map(pc => (
-            <div key={pc.clientRef} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+            <div key={pc.clientRef} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5">
               <span className="text-lg">{petEmoji(pc.petType)}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800">{pc.petName}</p>
@@ -1145,7 +1145,7 @@ function ConfirmStep({
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.scope === "booking" ? "bg-[#C5A55A]" : "bg-blue-400"}`} />
                     <p className="text-sm text-gray-700 truncate">{a.addonName}</p>
                     {petName && (
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
+                      <span className="text-xs text-gray-400 bg-white px-1.5 py-0.5 rounded-full shrink-0">
                         {petName}
                       </span>
                     )}
@@ -1181,7 +1181,7 @@ function ConfirmStep({
           <div className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
             applyLoyaltyCredits
               ? "bg-emerald-50 border-emerald-200"
-              : "bg-gray-50 border-gray-100"
+              : "bg-white border-gray-100"
           } ${!loyaltyToggleEnabled ? "opacity-50" : ""}`}>
             <div className="flex items-center gap-2.5">
               <Coins className={`w-4 h-4 ${applyLoyaltyCredits ? "text-emerald-600" : "text-gray-400"}`} />
@@ -1735,7 +1735,7 @@ export default function MultiPetBookingWizard() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
+          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-white">
             <ChevronRight className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="font-semibold text-gray-900 flex-1 text-center">

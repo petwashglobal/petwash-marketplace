@@ -172,7 +172,7 @@ export default function StaffApplication() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
+            <div className="bg-white dark:bg-white p-4 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">Your Application ID:</p>
               <p className="text-2xl font-mono font-bold" data-testid="application-id">
                 #{applicationId}

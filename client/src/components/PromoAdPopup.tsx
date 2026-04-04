@@ -154,7 +154,7 @@ function FullscreenTemplate({ config, title, subtitle, ctaText, onCta }: Templat
       {ctaText && (
         <button
           onClick={onCta}
-          className="px-12 py-4 rounded-2xl bg-white text-gray-900 font-bold text-lg hover:bg-gray-100 transition-all shadow-xl hover:scale-105"
+          className="px-12 py-4 rounded-2xl bg-white text-gray-900 font-bold text-lg hover:bg-white transition-all shadow-xl hover:scale-105"
           data-testid="button-promo-cta"
         >
           {ctaText}
@@ -188,7 +188,7 @@ function SplitRewardsTemplate({ config, title, subtitle, ctaText, onCta }: Templ
         <div className="space-y-3 mb-6">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div className="h-3 bg-gray-200 rounded w-32" />
+              <div className="h-3 bg-white rounded w-32" />
               <div className="flex gap-8">
                 <span className="w-3 h-3 rounded-full bg-gray-800" />
                 <span className="w-3 h-3 rounded-full bg-gray-800" />
@@ -229,7 +229,7 @@ function SplitAppTemplate({ config, title, subtitle, ctaText, onCta }: TemplateP
       <div className="w-full md:w-1/2 p-8 flex items-center justify-center">
         <div className="w-64 bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="p-4 border-b">
-            <div className="h-4 bg-gray-200 rounded w-24 mb-2" />
+            <div className="h-4 bg-white rounded w-24 mb-2" />
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 text-amber-500" />
               <span className="text-2xl font-bold text-gray-800">278</span>
@@ -240,7 +240,7 @@ function SplitAppTemplate({ config, title, subtitle, ctaText, onCta }: TemplateP
             {[25, 50, 150, 200].map((points) => (
               <div key={points} className="flex items-center gap-3">
                 <span className="text-sm font-bold text-amber-600">{points}<Star className="w-3 h-3 inline ml-0.5" /></span>
-                <div className="h-2 bg-gray-100 rounded flex-1" />
+                <div className="h-2 bg-white rounded flex-1" />
               </div>
             ))}
           </div>
@@ -302,7 +302,7 @@ function MembershipTiersTemplate({ config, title, subtitle, ctaText, onCta }: Te
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Trade points for voucher</p>
             <div className="flex gap-2">
               {[20, 25, 30].map((discount, i) => (
-                <div key={i} className={`flex-1 p-2 rounded-lg text-center ${i === 2 ? 'bg-amber-400' : i === 1 ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}>
+                <div key={i} className={`flex-1 p-2 rounded-lg text-center ${i === 2 ? 'bg-amber-400' : i === 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}>
                   <p className="text-xs font-bold">{discount}% OFF</p>
                   <p className="text-[10px] mt-1 opacity-70">{(i + 1) * 2500}</p>
                 </div>

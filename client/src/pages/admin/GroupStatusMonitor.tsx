@@ -148,21 +148,21 @@ export default function GroupStatusMonitor() {
     switch (status) {
       case "operational":
         return (
-          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 flex items-center gap-1">
+          <Badge className="bg-green-100 text-green-800 dark:bg-white dark:text-green-400 flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" />
             Operational
           </Badge>
         );
       case "degraded":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 flex items-center gap-1">
+          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-white dark:text-yellow-400 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" />
             Degraded
           </Badge>
         );
       case "down":
         return (
-          <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 flex items-center gap-1">
+          <Badge className="bg-red-100 text-red-800 dark:bg-white dark:text-red-400 flex items-center gap-1">
             <XCircle className="h-3 w-3" />
             Down
           </Badge>

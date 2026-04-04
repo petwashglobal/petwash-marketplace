@@ -17,7 +17,7 @@ const STATUS_CONFIG: Record<string, { label: string; labelHe: string; color: str
   cleanup:     { label: "Cleanup in progress",  labelHe: "ניקוי מתבצע",     color: "text-amber-700",   bg: "bg-amber-50 border-amber-200",     icon: Clock },
   fault:       { label: "Fault",                labelHe: "תקלה",            color: "text-red-700",     bg: "bg-red-50 border-red-200",         icon: AlertTriangle },
   maintenance: { label: "Maintenance",          labelHe: "תחזוקה",          color: "text-purple-700",  bg: "bg-purple-50 border-purple-200",   icon: Wrench },
-  offline:     { label: "Offline",              labelHe: "לא מחובר",        color: "text-gray-500",    bg: "bg-gray-50 border-gray-200",       icon: WifiOff },
+  offline:     { label: "Offline",              labelHe: "לא מחובר",        color: "text-gray-500",    bg: "bg-white border-gray-200",       icon: WifiOff },
 };
 
 function HeartbeatAge({ ts }: { ts: string | null }) {
@@ -43,7 +43,7 @@ function LevelBar({ pct, label, color }: { pct: number | null; label: string; co
       <div className="flex justify-between text-[10px] text-gray-500 mb-0.5">
         <span>{label}</span><span>{val}%</span>
       </div>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-white rounded-full overflow-hidden">
         <div className={cn("h-full rounded-full", color)} style={{ width: `${Math.min(val, 100)}%` }} />
       </div>
     </div>
@@ -113,7 +113,7 @@ export default function AdminBayMap() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sides.map((side) => {
               const bay = bays[side];
-              const cfg = STATUS_CONFIG[bay.status] ?? { label: bay.status, labelHe: bay.status, color: "text-gray-600", bg: "bg-gray-50 border-gray-200", icon: Activity };
+              const cfg = STATUS_CONFIG[bay.status] ?? { label: bay.status, labelHe: bay.status, color: "text-gray-600", bg: "bg-white border-gray-200", icon: Activity };
               const Icon = cfg.icon;
 
               return (

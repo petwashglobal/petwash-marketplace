@@ -506,7 +506,7 @@ function GooglePlacesLocationInput({
         type="button"
         onClick={handleUseMyLocation}
         disabled={isGettingLocation}
-        className="absolute end-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+        className="absolute end-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
         title="Use my location"
         data-testid="button-use-my-location"
       >
@@ -532,7 +532,7 @@ function GooglePlacesLocationInput({
             <button
               key={pred.placeId}
               type="button"
-              className="w-full px-4 py-3 text-start hover:bg-gray-50 flex items-start gap-3 text-sm border-b border-gray-50 last:border-b-0"
+              className="w-full px-4 py-3 text-start hover:bg-white flex items-start gap-3 text-sm border-b border-gray-50 last:border-b-0"
               style={{ minHeight: '48px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               onPointerDown={(e) => {
                 e.preventDefault();
@@ -836,7 +836,7 @@ export function ProviderSearch({
                         className={`w-full flex items-start gap-3 p-3 rounded-xl transition-colors text-start ${
                           isSelected 
                             ? `${t.selectedBg} border-2 ${t.selectedBorder}` 
-                            : 'hover:bg-gray-50 border-2 border-transparent'
+                            : 'hover:bg-white border-2 border-transparent'
                         }`}
                         data-testid={`option-service-${service.id}`}
                       >
@@ -892,7 +892,7 @@ export function ProviderSearch({
                           className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-start ${
                             isSelected 
                               ? `${t.selectedBg} ${t.selectedText}` 
-                              : 'hover:bg-gray-50'
+                              : 'hover:bg-white'
                           }`}
                           data-testid={`option-pet-${pet.id}`}
                         >
@@ -916,7 +916,7 @@ export function ProviderSearch({
               <div className="flex items-center gap-1 h-12 px-2 bg-white border border-gray-200 rounded-xl">
                 <button
                   onClick={() => setPetCount(Math.max(1, petCount - 1))}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white transition-colors disabled:opacity-50"
                   disabled={petCount <= 1}
                   data-testid="button-pet-minus"
                 >
@@ -927,7 +927,7 @@ export function ProviderSearch({
                 </span>
                 <button
                   onClick={() => setPetCount(Math.min(10, petCount + 1))}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white transition-colors disabled:opacity-50"
                   disabled={petCount >= 10}
                   data-testid="button-pet-plus"
                 >
@@ -1050,7 +1050,7 @@ export function ProviderSearch({
                       caption: "flex justify-center pt-2 pb-3 relative items-center",
                       caption_label: "text-sm font-semibold text-gray-900",
                       nav: "flex items-center",
-                      nav_button: "h-8 w-8 p-0 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors touch-manipulation",
+                      nav_button: "h-8 w-8 p-0 rounded-full hover:bg-white flex items-center justify-center transition-colors touch-manipulation",
                       nav_button_previous: "absolute start-1",
                       nav_button_next: "absolute end-1",
                       table: "w-full border-collapse",
@@ -1058,12 +1058,12 @@ export function ProviderSearch({
                       head_cell: "text-gray-400 w-11 h-9 font-medium text-xs flex items-center justify-center",
                       row: "flex w-full mt-0",
                       cell: `h-11 w-11 text-center text-sm p-0 relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-full [&:has([aria-selected].day-range-start)]:rounded-l-full [&:has([aria-selected])]:${t.selectedBg} first:[&:has([aria-selected])]:rounded-l-full last:[&:has([aria-selected])]:rounded-r-full`,
-                      day: "h-11 w-11 p-0 font-medium rounded-full text-gray-900 hover:bg-gray-100 transition-colors aria-selected:opacity-100 touch-manipulation cursor-pointer select-none",
+                      day: "h-11 w-11 p-0 font-medium rounded-full text-gray-900 hover:bg-white transition-colors aria-selected:opacity-100 touch-manipulation cursor-pointer select-none",
                       day_range_start: `day-range-start !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-fuchsia-500'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-fuchsia-600'}`,
                       day_range_end: `day-range-end !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-fuchsia-500'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-fuchsia-600'}`,
                       day_range_middle: `!${t.selectedBg} !${t.selectedText} aria-selected:!rounded-none`,
                       day_selected: `${t.accent === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-fuchsia-500 hover:bg-fuchsia-600'} text-white font-bold rounded-full`,
-                      day_today: "bg-gray-100 text-gray-900 font-bold",
+                      day_today: "bg-white text-gray-900 font-bold",
                       day_outside: `text-gray-300 opacity-50 aria-selected:${t.selectedBg}/50 aria-selected:${t.selectedText}`,
                       day_disabled: "text-gray-200 opacity-40 cursor-not-allowed line-through",
                       day_hidden: "invisible",
@@ -1125,7 +1125,7 @@ export function ProviderSearch({
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all ${
                     advancedTab === tab.id
                       ? `${t.selectedBg} ${t.selectedText}`
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white text-gray-600 hover:bg-white'
                   }`}
                   data-testid={`tab-${tab.id}`}
                 >
@@ -1172,7 +1172,7 @@ export function ProviderSearch({
                           className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-all ${
                             isChecked
                               ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border`
-                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-white'
                           }`}
                           data-testid={`checkbox-service-${service.id}`}
                         >
@@ -1247,7 +1247,7 @@ export function ProviderSearch({
                       <button
                         onClick={() => setPetGender('male')}
                         className={`flex-1 h-10 rounded-xl text-sm font-medium transition-all ${
-                          petGender === 'male' ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border` : 'bg-gray-50 border border-gray-200 text-gray-600'
+                          petGender === 'male' ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border` : 'bg-white border border-gray-200 text-gray-600'
                         }`}
                         data-testid="button-gender-male"
                       >
@@ -1256,7 +1256,7 @@ export function ProviderSearch({
                       <button
                         onClick={() => setPetGender('female')}
                         className={`flex-1 h-10 rounded-xl text-sm font-medium transition-all ${
-                          petGender === 'female' ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border` : 'bg-gray-50 border border-gray-200 text-gray-600'
+                          petGender === 'female' ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border` : 'bg-white border border-gray-200 text-gray-600'
                         }`}
                         data-testid="button-gender-female"
                       >
@@ -1279,7 +1279,7 @@ export function ProviderSearch({
                           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                             petSize === size.id
                               ? `${t.selectedBg} ${t.selectedText}`
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              : 'bg-white text-gray-600 hover:bg-white'
                           }`}
                           data-testid={`button-size-${size.id}`}
                         >
@@ -1300,7 +1300,7 @@ export function ProviderSearch({
                           className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                             energyLevel === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              : 'bg-white text-gray-600 hover:bg-white'
                           }`}
                           data-testid={`button-energy-${level.id}`}
                         >
@@ -1354,7 +1354,7 @@ export function ProviderSearch({
                           className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-all ${
                             socialWithDogs === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
-                              : 'hover:bg-gray-100 text-gray-600'
+                              : 'hover:bg-white text-gray-600'
                           }`}
                           data-testid={`button-social-dogs-${level.id}`}
                         >
@@ -1375,7 +1375,7 @@ export function ProviderSearch({
                           className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-all ${
                             socialWithCats === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
-                              : 'hover:bg-gray-100 text-gray-600'
+                              : 'hover:bg-white text-gray-600'
                           }`}
                           data-testid={`button-social-cats-${level.id}`}
                         >
@@ -1396,7 +1396,7 @@ export function ProviderSearch({
                           className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-all ${
                             socialWithChildren === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
-                              : 'hover:bg-gray-100 text-gray-600'
+                              : 'hover:bg-white text-gray-600'
                           }`}
                           data-testid={`button-social-children-${level.id}`}
                         >

@@ -182,7 +182,7 @@ export default function ProviderApplicationStatus() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -190,7 +190,7 @@ export default function ProviderApplicationStatus() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 pb-8 text-center space-y-4">
             <Info className="h-10 w-10 mx-auto text-muted-foreground" />
@@ -212,7 +212,7 @@ export default function ProviderApplicationStatus() {
   const messages = messagesData?.messages || [];
 
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50">
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
 
         {/* Header */}
@@ -394,7 +394,7 @@ export default function ProviderApplicationStatus() {
               { label: 'Submitted', value: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString('he-IL') : '—' },
               { label: 'Resubmissions', value: `${app.resubmission_count || 0} / 3` },
             ].map(({ label, value }) => (
-              <div key={label} className="bg-slate-50 rounded p-3">
+              <div key={label} className="bg-white rounded p-3">
                 <div className="text-xs text-muted-foreground mb-0.5">{label}</div>
                 <div className="font-medium capitalize">{value}</div>
               </div>

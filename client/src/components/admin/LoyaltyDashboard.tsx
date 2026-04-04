@@ -69,11 +69,11 @@ const getTierColor = (tier: string) => {
     case 'gold':
       return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     case 'silver':
-      return 'bg-gray-100 text-gray-800 border-gray-200';
+      return 'bg-white text-gray-800 border-gray-200';
     case 'new':
-      return 'bg-slate-100 text-slate-800 border-slate-200';
+      return 'bg-white text-slate-800 border-slate-200';
     default:
-      return 'bg-slate-100 text-slate-800 border-slate-200';
+      return 'bg-white text-slate-800 border-slate-200';
   }
 };
 

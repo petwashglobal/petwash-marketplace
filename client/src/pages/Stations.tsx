@@ -463,13 +463,13 @@ export default function Stations() {
                 </span>
               )}
               {filters.accessible && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-gray-700 text-xs font-medium">
                   <Accessibility className="w-4 h-4" />
                   {tx('accessible', language)}
                 </span>
               )}
               {filters.wifi && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-gray-700 text-xs font-medium">
                   <Wifi className="w-4 h-4" />
                   WiFi
                 </span>
@@ -536,7 +536,7 @@ export default function Stations() {
                       </span>
                     )}
                     {station.status === "closed" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-gray-700 text-xs font-medium">
                         <XCircle className="w-4 h-4" />
                         {tx('closed', language)}
                       </span>
@@ -658,7 +658,7 @@ export default function Stations() {
                       </span>
                     )}
                     {selectedStation.status === "closed" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-gray-700 text-xs font-medium">
                         <XCircle className="w-4 h-4" />
                         {tx('temporarilyClosed', language)}
                       </span>

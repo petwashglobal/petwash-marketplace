@@ -152,7 +152,7 @@ export default function TrackTrip() {
                           ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/50' 
                           : step.status === 'current'
                           ? 'bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50 animate-pulse'
-                          : 'bg-gray-100'
+                          : 'bg-white'
                       }`}>
                         {step.status === 'completed' ? (
                           <CheckCircle className="h-6 w-6 text-white" />
@@ -166,7 +166,7 @@ export default function TrackTrip() {
                       {/* Connecting Line */}
                       {index < timelineSteps.length - 1 && (
                         <div className={`absolute left-1/2 top-10 w-0.5 h-8 -ml-px ${
-                          step.status === 'completed' ? 'bg-gradient-to-b from-green-500 to-purple-400' : 'bg-gray-100'
+                          step.status === 'completed' ? 'bg-gradient-to-b from-green-500 to-purple-400' : 'bg-white'
                         }`}></div>
                       )}
                     </div>
@@ -252,7 +252,7 @@ export default function TrackTrip() {
               <div className="text-center mb-6">
                 <div className="relative inline-block mb-4">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 p-1">
-                    <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                       <User className="h-12 w-12 text-gray-400" />
                     </div>
                   </div>

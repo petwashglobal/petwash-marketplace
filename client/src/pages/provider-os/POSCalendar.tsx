@@ -64,7 +64,7 @@ export default function POSCalendar() {
   return (
     <div className="space-y-5">
       {/* Tab switcher */}
-      <div className="flex bg-gray-100 rounded-xl p-1">
+      <div className="flex bg-white rounded-xl p-1">
         {[
           { id: 'calendar', label: 'Calendar' },
           { id: 'schedule', label: 'Weekly Schedule' },
@@ -103,11 +103,11 @@ export default function POSCalendar() {
       {activeTab === 'calendar' && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onClick={prevMonth} className="p-1.5 hover:bg-white rounded-lg transition-colors">
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
             <h3 className="text-sm font-semibold text-gray-900">{MONTHS[viewMonth]} {viewYear}</h3>
-            <button onClick={nextMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onClick={nextMonth} className="p-1.5 hover:bg-white rounded-lg transition-colors">
               <ChevronRight className="w-4 h-4 text-gray-600" />
             </button>
           </div>
@@ -126,7 +126,7 @@ export default function POSCalendar() {
                   className={`m-0.5 aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
                     isBlocked ? 'bg-red-100 text-red-700 border border-red-200' :
                     isToday ? 'bg-amber-500 text-white' :
-                    'hover:bg-gray-100 text-gray-700'
+                    'hover:bg-white text-gray-700'
                   }`}>
                   {day}
                 </button>

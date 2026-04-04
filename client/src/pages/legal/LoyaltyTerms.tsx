@@ -116,7 +116,7 @@ export default function LoyaltyTerms() {
                   <method.icon className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  <h4 className="font-semibold text-gray-900 dark:text-black mb-1">
                     {method.title}
                   </h4>
                   <p className="luxury-text-small">{method.desc}</p>
@@ -127,7 +127,7 @@ export default function LoyaltyTerms() {
 
           {/* Points Calculation Example */}
           <div className="luxury-glass-minimal p-6 border-l-4 border-purple-500">
-            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            <h4 className="font-semibold text-gray-900 dark:text-black mb-4">
               Example Calculation:
             </h4>
             <div className="space-y-2">
@@ -141,7 +141,7 @@ export default function LoyaltyTerms() {
               </div>
               <div className="luxury-divider my-2"></div>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Total Points</span>
+                <span className="font-semibold text-gray-900 dark:text-black">Total Points</span>
                 <span className="luxury-heading-lg luxury-text-gradient">650</span>
               </div>
             </div>

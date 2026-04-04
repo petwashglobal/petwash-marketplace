@@ -206,7 +206,7 @@ export function ProviderSearchHero({ filters, onChange, onSearch, onSearchDeboun
               <Button
                 onClick={onSearch}
                 disabled={loading}
-                className="bg-zinc-900 hover:bg-zinc-700 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 shrink-0"
+                className="bg-zinc-900 hover:bg-zinc-700 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-white shrink-0"
                 data-testid="button-search"
               >
                 <Search className="h-4 w-4" />

@@ -31,7 +31,7 @@ function statusClass(status: Proposal['status']) {
     case 'accepted': return 'bg-blue-100 text-blue-800 border-blue-200';
     case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
     case 'promoted': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-    default:         return 'bg-slate-100 text-slate-800 border-slate-200';
+    default:         return 'bg-white text-slate-800 border-slate-200';
   }
 }
 
@@ -39,7 +39,7 @@ function confidenceClass(c: Proposal['confidence']) {
   switch (c) {
     case 'high':   return 'bg-emerald-100 text-emerald-800';
     case 'medium': return 'bg-amber-100 text-amber-800';
-    default:       return 'bg-slate-100 text-slate-800';
+    default:       return 'bg-white text-slate-800';
   }
 }
 
@@ -142,7 +142,7 @@ export default function Optimizer() {
             {loading ? 'Generating...' : 'Generate proposals'}
           </button>
           <Link href="/finance/policy-rollout">
-            <span className="rounded-lg border px-4 py-2 text-sm font-medium cursor-pointer hover:bg-slate-50 inline-block">
+            <span className="rounded-lg border px-4 py-2 text-sm font-medium cursor-pointer hover:bg-white inline-block">
               Go to rollout control
             </span>
           </Link>
@@ -151,7 +151,7 @@ export default function Optimizer() {
 
       {/* Generation result banner */}
       {lastGenerated && (
-        <div className="rounded-lg bg-slate-50 border px-4 py-2 text-sm flex items-center gap-4 flex-wrap">
+        <div className="rounded-lg bg-white border px-4 py-2 text-sm flex items-center gap-4 flex-wrap">
           <span>Generated: <strong>{lastGenerated.generated}</strong></span>
           <span>Skipped duplicates: <strong>{lastGenerated.skipped}</strong></span>
           <span>Measurement readiness: <strong>{lastGenerated.readiness}</strong></span>
@@ -233,7 +233,7 @@ export default function Optimizer() {
                   {(p.rationale?.findingIds ?? []).length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {p.rationale.findingIds!.map(f => (
-                        <span key={f} className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 font-mono">
+                        <span key={f} className="inline-flex rounded-md bg-white px-2 py-1 text-xs text-slate-700 font-mono">
                           {f}
                         </span>
                       ))}
@@ -319,7 +319,7 @@ export default function Optimizer() {
               <div className="grid gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">Current config</div>
-                  <pre className="rounded-lg bg-slate-50 p-3 text-xs overflow-x-auto border font-mono leading-relaxed">
+                  <pre className="rounded-lg bg-white p-3 text-xs overflow-x-auto border font-mono leading-relaxed">
                     {pretty(p.current_config)}
                   </pre>
                 </div>

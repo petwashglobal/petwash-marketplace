@@ -307,7 +307,7 @@ function VerificationRow({
               </Button>
             </div>
             {disabled && progress > 0 && (
-              <div className="w-24 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-24 h-1 bg-white rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${progress}%` }}

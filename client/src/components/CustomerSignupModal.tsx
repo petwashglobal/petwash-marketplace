@@ -258,7 +258,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                     setStep('form');
                   }}
                   variant="outline"
-                  className="h-14 rounded-2xl border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="h-14 rounded-2xl border-2 border-gray-200 hover:border-gray-400 hover:bg-white transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
                   <Apple className="h-6 w-6 text-gray-900" />
                 </Button>
@@ -450,7 +450,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                     <Button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className={`absolute inset-y-0 ${isRTL ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200`}
+                      className={`absolute inset-y-0 ${isRTL ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center hover:bg-white rounded-lg transition-colors duration-200`}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
                     </Button>
@@ -472,7 +472,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                     <Button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className={`absolute inset-y-0 ${isRTL ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200`}
+                      className={`absolute inset-y-0 ${isRTL ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center hover:bg-white rounded-lg transition-colors duration-200`}
                     >
                       {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
                     </Button>

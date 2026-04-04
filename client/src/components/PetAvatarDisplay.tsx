@@ -102,7 +102,7 @@ export function PetAvatarDisplay({
       <div className={`${sizeClasses[size]} ${className}`}>
         <div className="relative w-full h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-pink-400 to-blue-400 rounded-full animate-pulse" />
-          <div className="absolute inset-2 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center text-4xl">
+          <div className="absolute inset-2 bg-white dark:bg-white rounded-full flex items-center justify-center text-4xl">
             🐾
           </div>
         </div>
@@ -134,14 +134,14 @@ export function PetAvatarDisplay({
       </div>
       
       {showName && (
-        <p className="mt-2 font-semibold text-lg text-gray-800 dark:text-gray-200">
+        <p className="mt-2 font-semibold text-lg text-gray-800 dark:text-black">
           {defaultAvatar.petName}
         </p>
       )}
       
       {greeting && (
         <div className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-pink-100 dark:from-amber-900/30 dark:to-pink-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
-          <p className="text-sm text-gray-700 dark:text-gray-300 text-center">
+          <p className="text-sm text-gray-700 dark:text-black text-center">
             {greeting}
           </p>
         </div>

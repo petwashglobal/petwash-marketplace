@@ -106,7 +106,7 @@ export function IsraeliTaxInvoice({ data, language = 'he', showActions = true }:
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { font-family: Arial, sans-serif; background: white; color: #111; font-size: 13px; }
           .wrap { max-width: 800px; margin: 0 auto; padding: 32px; }
-          .notice { background:#FFF8E1;border:1.5px solid #F0A500;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:11px;color:#7A5000; }
+          .notice { background:#ffffff;border:1.5px solid #F0A500;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:11px;color:#000000; }
           @media print { body { print-color-adjust: exact; } }
         </style>
       </head>
@@ -214,10 +214,10 @@ export function IsraeliTaxInvoice({ data, language = 'he', showActions = true }:
             <tbody>
               {data.lineItems.map((item, i) => (
                 <tr key={i}>
-                  <td style={{ padding: '10px 12px', fontSize: 13, borderBottom: '1px solid #eee', background: i % 2 === 1 ? '#fafafa' : 'white' }}>{item.descriptionHe || item.description}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'center', borderBottom: '1px solid #eee', background: i % 2 === 1 ? '#fafafa' : 'white' }}>{item.quantity}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'left', borderBottom: '1px solid #eee', background: i % 2 === 1 ? '#fafafa' : 'white', fontFamily: 'monospace' }}>{fmt(item.unitPrice)}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'left', borderBottom: '1px solid #eee', background: i % 2 === 1 ? '#fafafa' : 'white', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(item.total)}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13, borderBottom: '1px solid #eee', background: 'white' }}>{item.descriptionHe || item.description}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'center', borderBottom: '1px solid #eee', background: 'white' }}>{item.quantity}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'left', borderBottom: '1px solid #eee', background: 'white', fontFamily: 'monospace' }}>{fmt(item.unitPrice)}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'left', borderBottom: '1px solid #eee', background: 'white', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(item.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -259,7 +259,7 @@ export function IsraeliTaxInvoice({ data, language = 'he', showActions = true }:
 
           {/* Notes */}
           {(data.notesHe || data.notes) && (
-            <div style={{ marginTop: 14, padding: 12, background: '#fffbeb', borderRadius: 8, fontSize: 12, color: '#555' }}>
+            <div style={{ marginTop: 14, padding: 12, background: '#ffffff', borderRadius: 8, fontSize: 12, color: '#000000' }}>
               <span style={{ fontWeight: 700 }}>{isHebrew ? 'הערות: ' : 'Notes: '}</span>
               {data.notesHe || data.notes}
             </div>

@@ -310,7 +310,7 @@ export function ProviderBrowseGrid({
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder={isHebrew ? 'חפש לפי מיקום...' : 'City or neighbourhood...'}
-                className="pl-11 h-11 rounded-full border-gray-200 bg-gray-50 focus:bg-white text-sm"
+                className="pl-11 h-11 rounded-full border-gray-200 bg-white focus:bg-white text-sm"
                 value={filters.location}
                 onChange={(e) => updateFilter('location', e.target.value)}
               />
@@ -364,7 +364,7 @@ export function ProviderBrowseGrid({
 
           {/* Expanded Filter Panel */}
           {showFilters && (
-            <div className="mt-4 p-6 bg-gray-50 rounded-2xl animate-in slide-in-from-top-2 space-y-5">
+            <div className="mt-4 p-6 bg-white rounded-2xl animate-in slide-in-from-top-2 space-y-5">
               {/* Price Range — frontend-only note */}
               <div>
                 <label className="text-sm font-semibold text-gray-700 mb-1 flex items-center">
@@ -431,7 +431,7 @@ export function ProviderBrowseGrid({
                         <div
                           onClick={() => updateFilter(key as keyof FilterState, !filters[key as keyof FilterState] as any)}
                           className={`w-10 h-6 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ${
-                            filters[key as keyof FilterState] ? 'bg-gray-900' : 'bg-gray-200'
+                            filters[key as keyof FilterState] ? 'bg-gray-900' : 'bg-white'
                           }`}
                         >
                           <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
@@ -499,9 +499,9 @@ export function ProviderBrowseGrid({
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="aspect-[4/3] bg-gray-100 rounded-3xl mb-4" />
-                  <div className="h-5 bg-gray-100 rounded-lg w-3/4 mb-2" />
-                  <div className="h-4 bg-gray-100 rounded-lg w-1/2" />
+                  <div className="aspect-[4/3] bg-white rounded-3xl mb-4" />
+                  <div className="h-5 bg-white rounded-lg w-3/4 mb-2" />
+                  <div className="h-4 bg-white rounded-lg w-1/2" />
                 </div>
               ))}
             </div>
@@ -551,7 +551,7 @@ export function ProviderBrowseGrid({
                       data-testid={`card-provider-${provider.userId}`}
                     >
                       {/* Image Container */}
-                      <div className="relative aspect-[4/3] rounded-3xl overflow-hidden mb-4 bg-gray-100">
+                      <div className="relative aspect-[4/3] rounded-3xl overflow-hidden mb-4 bg-white">
                         {provider.profileImageUrl ? (
                           <img
                             src={provider.profileImageUrl}

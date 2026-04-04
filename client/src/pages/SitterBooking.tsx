@@ -295,7 +295,7 @@ export default function SitterBooking() {
 
                 {/* High Alert Banner */}
                 {selectedPet?.highAlertFlag && (
-                  <Alert variant="destructive" className="border-red-500 bg-red-50 dark:bg-red-900/20">
+                  <Alert variant="destructive" className="border-red-500 bg-red-50 dark:bg-white">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription className="font-semibold">
                       HIGH ALERT: {selectedPet.petName} has critical allergies or special needs. 

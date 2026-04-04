@@ -349,14 +349,14 @@ export default function GeminiWatchdogDashboard() {
                             {new Date(issue.detectedAt).toLocaleString(isHebrew ? "he-IL" : "en-US")}
                           </span>
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-black mb-1">
                           {issue.affectedService}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                           {issue.description}
                         </p>
                         {issue.suggestedFix && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3 mt-2">
+                          <div className="bg-blue-50 dark:bg-white border border-blue-200 dark:border-blue-800 rounded p-3 mt-2">
                             <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">
                               {isHebrew ? "תיקון מוצע:" : "Suggested Fix:"}
                             </p>
@@ -433,7 +433,7 @@ export default function GeminiWatchdogDashboard() {
                             {new Date(struggle.detectedAt).toLocaleString(isHebrew ? "he-IL" : "en-US")}
                           </span>
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-black mb-1">
                           {isHebrew ? "פעולה: " : "Action: "}
                           {struggle.action}
                         </h3>
@@ -442,7 +442,7 @@ export default function GeminiWatchdogDashboard() {
                           {struggle.userId}
                         </p>
                         {struggle.likelyCause && (
-                          <div className="bg-white dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 mt-2">
+                          <div className="bg-white dark:bg-white border border-yellow-200 dark:border-yellow-800 rounded p-3 mt-2">
                             <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-300 mb-1">
                               {isHebrew ? "סיבה אפשרית:" : "Likely Cause:"}
                             </p>
@@ -452,7 +452,7 @@ export default function GeminiWatchdogDashboard() {
                           </div>
                         )}
                         {struggle.suggestedGuidance && (
-                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-3 mt-2">
+                          <div className="bg-green-50 dark:bg-white border border-green-200 dark:border-green-800 rounded p-3 mt-2">
                             <p className="text-xs font-semibold text-green-900 dark:text-green-300 mb-1">
                               {isHebrew ? "הנחיה מוצעת:" : "Suggested Guidance:"}
                             </p>
@@ -539,7 +539,7 @@ export default function GeminiWatchdogDashboard() {
                           {fix.fixDescription}
                         </p>
                         {!fix.success && fix.errorMessage && (
-                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3 mt-2">
+                          <div className="bg-red-50 dark:bg-white border border-red-200 dark:border-red-800 rounded p-3 mt-2">
                             <p className="text-xs font-semibold text-red-900 dark:text-red-300 mb-1">
                               {isHebrew ? "שגיאה:" : "Error:"}
                             </p>

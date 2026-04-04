@@ -215,11 +215,11 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
           <div className="text-xs text-gray-600 text-center space-y-1">
             <div>
               {t.seePolicy}{' '}
-              <a href="/privacy-policy" target="_blank" className="text-black dark:text-white hover:underline">
+              <a href="/privacy-policy" target="_blank" className="text-black dark:text-black hover:underline">
                 {t.privacyPolicy}
               </a>
               {' '}{t.and}{' '}
-              <a href="/terms" target="_blank" className="text-black dark:text-white hover:underline">
+              <a href="/terms" target="_blank" className="text-black dark:text-black hover:underline">
                 {t.termsOfService}
               </a>
             </div>

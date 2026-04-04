@@ -588,7 +588,7 @@ export default function Hub() {
                       </Button>
                     )}
                     {platform.comingSoon && (
-                      <div className="w-full mt-2 py-2 rounded-lg bg-gray-200 text-gray-500 text-sm font-medium text-center cursor-default">
+                      <div className="w-full mt-2 py-2 rounded-lg bg-white text-gray-500 text-sm font-medium text-center cursor-default">
                         {tx('comingSoon', language)}
                       </div>
                     )}
@@ -613,7 +613,7 @@ export default function Hub() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-gray-900 dark:text-black">
                         {tx(activity.titleKey, language)}
                       </h4>
                       <span className={`luxury-badge ${
@@ -649,7 +649,7 @@ export default function Hub() {
                 </p>
               </div>
               
-              <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-6">
+              <div className="relative h-3 bg-white dark:bg-white rounded-full overflow-hidden mb-6">
                 <div 
                   className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
                   style={{ width: '62.5%' }}

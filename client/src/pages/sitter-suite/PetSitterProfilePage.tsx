@@ -129,11 +129,11 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                   ({ratingCount} {isHebrew ? 'ביקורות' : 'reviews'})
                 </span>
               </div>
-              <span className="h-3 w-px bg-gray-200" />
+              <span className="h-3 w-px bg-white" />
               <span className="rounded-full border border-emerald-500/40 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                 {isHebrew ? 'מארח 7 כוכבים מהימן' : 'Trusted 7-star host'}
               </span>
-              <span className="h-3 w-px bg-gray-200" />
+              <span className="h-3 w-px bg-white" />
               <span>{locationLabel}</span>
             </div>
           </div>
@@ -165,7 +165,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
         <section className="mb-10 grid gap-3 sm:grid-cols-3 sm:grid-rows-2">
           {/* Main image */}
           <div className="relative sm:col-span-2 sm:row-span-2">
-            <div className="group h-64 overflow-hidden rounded-3xl border border-gray-200 bg-gray-100 sm:h-full">
+            <div className="group h-64 overflow-hidden rounded-3xl border border-gray-200 bg-white sm:h-full">
               <img
                 src={heroImageUrl}
                 alt={`${sitterName} with pets`}
@@ -185,7 +185,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
           {galleryImages.slice(0, 3).map((src, index) => (
             <div
               key={index}
-              className="group relative h-28 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 sm:h-full"
+              className="group relative h-28 overflow-hidden rounded-2xl border border-gray-200 bg-white sm:h-full"
             >
               <img
                 src={src}
@@ -291,7 +291,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 {isHebrew ? 'שירותים ומחירים' : 'Services and pricing'}
               </h2>
 
-              <div className="mt-3 inline-flex rounded-full bg-gray-100 p-1 text-xs text-gray-700">
+              <div className="mt-3 inline-flex rounded-full bg-white p-1 text-xs text-gray-700">
                 <button
                   type="button"
                   onClick={() => setStayType("sitterHome")}
@@ -351,7 +351,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     {addOns.map((addOn) => (
                       <label
                         key={addOn.id}
-                        className="flex cursor-pointer items-start gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 hover:border-emerald-500/60"
+                        className="flex cursor-pointer items-start gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-3 hover:border-emerald-500/60"
                       >
                         <input
                           type="checkbox"
@@ -514,7 +514,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     className={`rounded-2xl border px-3 py-2 text-start text-[11px] transition ${
                       stayType === "sitterHome"
                         ? "border-emerald-500 bg-white text-gray-900 shadow-sm"
-                        : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-400"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
                     }`}
                   >
                     <div className="font-medium">
@@ -530,7 +530,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     className={`rounded-2xl border px-3 py-2 text-start text-[11px] transition ${
                       stayType === "ownerHome"
                         ? "border-emerald-500 bg-white text-gray-900 shadow-sm"
-                        : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-400"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
                     }`}
                   >
                     <div className="font-medium">
@@ -605,7 +605,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
               </div>
 
               {/* Safety copy */}
-              <div className="mt-4 rounded-2xl bg-gray-50 p-3 text-[11px] text-gray-600">
+              <div className="mt-4 rounded-2xl bg-white p-3 text-[11px] text-gray-600">
                 <div className="mb-1 flex items-center gap-1.5 text-gray-800">
                   <span className="text-emerald-500">⛑</span>
                   <span className="font-semibold">

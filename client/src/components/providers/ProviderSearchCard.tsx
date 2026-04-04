@@ -48,7 +48,7 @@ export function ProviderSearchCard({ item }: Props) {
 
   return (
     <div
-      className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group border border-zinc-100 dark:border-zinc-800"
+      className="bg-white dark:bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group border border-zinc-100 dark:border-zinc-800"
       onClick={() => setLocation(`/provider/${item.providerSlug}`)}
       data-testid={`provider-card-${item.providerId}`}
     >
@@ -96,7 +96,7 @@ export function ProviderSearchCard({ item }: Props) {
 
           {/* Distance chip — bottom right */}
           {typeof item.distanceKm === "number" && (
-            <div className="absolute bottom-3 right-3 bg-white/95 dark:bg-zinc-900/95 px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm border border-zinc-100 dark:border-zinc-700">
+            <div className="absolute bottom-3 right-3 bg-white/95 dark:bg-white/95 px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm border border-zinc-100 dark:border-zinc-700">
               <Navigation className="h-3 w-3 text-emerald-600" />
               <span className="text-emerald-700 dark:text-emerald-400">
                 {item.distanceKm < 1
@@ -208,7 +208,7 @@ export function ProviderSearchCard({ item }: Props) {
             </Button>
             <Button
               size="sm"
-              className="flex-1 bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 text-sm font-semibold"
+              className="flex-1 bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-white text-sm font-semibold"
               onClick={(e) => {
                 e.stopPropagation();
                 setLocation(`/provider/${item.providerSlug}`);

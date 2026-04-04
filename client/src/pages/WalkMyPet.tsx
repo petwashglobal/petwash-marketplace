@@ -830,7 +830,7 @@ export default function WalkMyPet() {
                     className="mb-2"
                     data-testid="slider-price-range"
                   />
-                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
+                  <div className="flex justify-between text-sm text-gray-600 dark:text-black">
                     <span>₪{priceRange[0]}</span>
                     <span>₪{priceRange[1]}</span>
                   </div>
@@ -1022,21 +1022,21 @@ function EarningsCalculator({ isHebrew, t }: { isHebrew: boolean; t: any }) {
 
       <div className="space-y-4">
         <GlassCard className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-          <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t.weeklyEarnings}</div>
+          <div className="text-sm text-gray-600 dark:text-black mb-2">{t.weeklyEarnings}</div>
           <div className="text-4xl font-black text-green-600 dark:text-green-400">
             ₪{weeklyEarnings.toFixed(0)}
           </div>
         </GlassCard>
 
         <GlassCard className="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
-          <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t.monthlyEarnings}</div>
+          <div className="text-sm text-gray-600 dark:text-black mb-2">{t.monthlyEarnings}</div>
           <div className="text-4xl font-black text-blue-600 dark:text-blue-400">
             ₪{monthlyEarnings.toFixed(0)}
           </div>
         </GlassCard>
 
         <GlassCard className="p-6 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/20">
-          <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t.yearlyEarnings}</div>
+          <div className="text-sm text-gray-600 dark:text-black mb-2">{t.yearlyEarnings}</div>
           <div className="text-4xl font-black text-amber-600 dark:text-amber-400">
             ₪{yearlyEarnings.toFixed(0)}
           </div>

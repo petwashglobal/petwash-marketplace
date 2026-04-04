@@ -37,7 +37,7 @@ export default function FranchiseStationSettlements() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
 
         {/* Back navigation */}
@@ -56,7 +56,7 @@ export default function FranchiseStationSettlements() {
               <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-black">
                 {isLoading ? '...' : data?.stationName ?? `Station ${stationId}`}
               </h1>
               {data?.stationCode && (

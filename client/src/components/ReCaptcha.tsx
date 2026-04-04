@@ -276,7 +276,7 @@ export function SecurityCheckpoint({
       <div 
         className={`
           flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 cursor-pointer select-none
-          ${status === 'idle' ? 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100' : ''}
+          ${status === 'idle' ? 'border-gray-200 bg-white hover:border-gray-300 hover:bg-white' : ''}
           ${status === 'verifying' ? 'border-blue-200 bg-blue-50' : ''}
           ${status === 'verified' ? 'border-green-200 bg-green-50' : ''}
           ${status === 'failed' ? 'border-red-200 bg-red-50' : ''}
@@ -415,7 +415,7 @@ export function ReCaptcha({
   return (
     <div className="recaptcha-wrapper w-full">
       <div className="flex items-center justify-center gap-2 py-2">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800/50">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-white/50">
           {isVerified ? (
             <>
               <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />

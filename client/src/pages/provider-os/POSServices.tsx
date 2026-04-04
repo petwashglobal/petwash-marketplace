@@ -143,7 +143,7 @@ export default function POSServices() {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+        {[1, 2, 3].map(i => <div key={i} className="h-20 bg-white rounded-xl animate-pulse" />)}
       </div>
     );
   }
@@ -212,7 +212,7 @@ export default function POSServices() {
               {/* Service header row */}
               <div className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${svc.enabled ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${svc.enabled ? 'bg-amber-50' : 'bg-white'}`}>
                     <Icon className={`w-5 h-5 ${svc.enabled ? meta.color : 'text-gray-300'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -255,7 +255,7 @@ export default function POSServices() {
 
               {/* Expanded editor */}
               {svc.enabled && isExpanded && (
-                <div className="border-t border-gray-100 p-4 space-y-4 bg-gray-50">
+                <div className="border-t border-gray-100 p-4 space-y-4 bg-white">
                   {/* Base price */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">

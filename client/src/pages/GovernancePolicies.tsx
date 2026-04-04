@@ -136,7 +136,7 @@ const OUTCOME_META: Record<string, { label: string; color: string }> = {
   level_2_required:   { label: 'LEVEL-2 REQUIRED',   color: 'bg-red-100 text-red-700 border-red-200' },
   level_1_required:   { label: 'MANAGER REVIEW',     color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   actions_queued:     { label: 'ACTIONS QUEUED',      color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  no_match:           { label: 'NO POLICIES MATCHED', color: 'bg-gray-100 text-gray-600 border-gray-200' },
+  no_match:           { label: 'NO POLICIES MATCHED', color: 'bg-white text-gray-600 border-gray-200' },
 };
 
 const CHANGE_TYPE_META: Record<string, { label: string; color: string }> = {
@@ -148,7 +148,7 @@ const CHANGE_TYPE_META: Record<string, { label: string; color: string }> = {
 };
 
 function TypeBadge({ type }: { type: string }) {
-  const meta = TYPE_META[type] ?? { label: type, icon: null, color: 'bg-gray-100 text-gray-600' };
+  const meta = TYPE_META[type] ?? { label: type, icon: null, color: 'bg-white text-gray-600' };
   return (
     <Badge className={cn('border-0 text-xs gap-1 flex items-center w-fit', meta.color)}>
       {meta.icon}{meta.label}
@@ -166,7 +166,7 @@ function ConditionRow({ c }: { c: ConditionResult }) {
         ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
         : <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />}
       <div className="min-w-0">
-        <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">{c.key}</span>
+        <span className="font-mono font-semibold text-gray-700 dark:text-black">{c.key}</span>
         {c.note && <span className="ml-2 text-gray-500">{c.note}</span>}
       </div>
     </div>
@@ -406,12 +406,12 @@ function SimulateTab() {
     } finally { setLoading(false); }
   };
 
-  const outcomeInfo = result ? (OUTCOME_META[result.summary.outcome] ?? { label: result.summary.outcome, color: 'bg-gray-100 text-gray-600 border-gray-200' }) : null;
+  const outcomeInfo = result ? (OUTCOME_META[result.summary.outcome] ?? { label: result.summary.outcome, color: 'bg-white text-gray-600 border-gray-200' }) : null;
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Policy Simulation</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-black mb-0.5">Policy Simulation</h3>
         <p className="text-xs text-gray-500">
           See exactly which policies would fire — and WHY each condition passed or failed. No side-effects, no writes.
         </p>
@@ -494,7 +494,7 @@ function SimulateTab() {
                   <Collapsible key={p.policyId} open={expanded.has(p.policyId + 10000)} onOpenChange={() => toggleExpand(p.policyId + 10000)}>
                     <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden opacity-70 hover:opacity-100 transition-opacity">
                       <CollapsibleTrigger asChild>
-                        <button className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <button className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-white dark:hover:bg-white transition-colors">
                           <div className="flex items-center gap-2">
                             <TypeBadge type={p.policyType} />
                             <span className="text-sm">{p.name}</span>
@@ -552,7 +552,7 @@ function TraceTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Decision Trace</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-black mb-0.5">Decision Trace</h3>
         <p className="text-xs text-gray-500">Full policy decision chain for any case — from trigger to actions taken, with per-condition breakdown.</p>
       </div>
 
@@ -584,7 +584,7 @@ function TraceTab() {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="text-xs text-gray-500 font-mono">{trace.caseType}:{trace.caseRefId}</div>
-            <Badge className="border-0 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 text-xs">
+            <Badge className="border-0 bg-white text-gray-600 dark:bg-white dark:text-black text-xs">
               {trace.totalSteps} decision{trace.totalSteps !== 1 ? 's' : ''}
             </Badge>
           </div>
@@ -598,7 +598,7 @@ function TraceTab() {
           {/* Timeline */}
           <div className="relative">
             {trace.trace.length > 1 && (
-              <div className="absolute left-[19px] top-7 bottom-7 w-0.5 bg-gray-200 dark:bg-gray-700" />
+              <div className="absolute left-[19px] top-7 bottom-7 w-0.5 bg-white dark:bg-white" />
             )}
             <div className="space-y-3">
               {trace.trace.map((step) => (
@@ -611,7 +611,7 @@ function TraceTab() {
 
                     <div className="flex-1 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                       <CollapsibleTrigger asChild>
-                        <button className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <button className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-white dark:hover:bg-white transition-colors">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <TypeBadge type={step.policyType} />
@@ -701,7 +701,7 @@ function VersionsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Policy Version History</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-black mb-0.5">Policy Version History</h3>
         <p className="text-xs text-gray-500">Every policy change is snapshotted. Select a policy to view its full history and roll back to any previous version.</p>
       </div>
 
@@ -713,7 +713,7 @@ function VersionsTab() {
             {allPolicies.map(p => (
               <SelectItem key={p.id} value={String(p.id)}>
                 <span className="flex items-center gap-2">
-                  <span className={cn('text-xs px-1.5 py-0.5 rounded', !p.isActive ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700')}>
+                  <span className={cn('text-xs px-1.5 py-0.5 rounded', !p.isActive ? 'bg-white text-gray-500' : 'bg-green-100 text-green-700')}>
                     {p.isActive ? 'active' : 'inactive'}
                   </span>
                   {p.name}
@@ -734,7 +734,7 @@ function VersionsTab() {
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50 dark:bg-gray-900">
+                  <TableRow className="bg-white dark:bg-white">
                     <TableHead className="text-xs">Version</TableHead>
                     <TableHead className="text-xs">Change</TableHead>
                     <TableHead className="text-xs">Changed By</TableHead>
@@ -745,7 +745,7 @@ function VersionsTab() {
                 </TableHeader>
                 <TableBody>
                   {versions.map((v, idx) => {
-                    const meta = CHANGE_TYPE_META[v.changeType] ?? { label: v.changeType, color: 'bg-gray-100 text-gray-600' };
+                    const meta = CHANGE_TYPE_META[v.changeType] ?? { label: v.changeType, color: 'bg-white text-gray-600' };
                     const isCurrent = idx === 0;
                     return (
                       <TableRow key={v.versionId} className={isCurrent ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''}>
@@ -834,7 +834,7 @@ function ExecutionLog() {
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 dark:bg-gray-900">
+          <TableRow className="bg-white dark:bg-white">
             <TableHead className="text-xs">Policy</TableHead>
             <TableHead className="text-xs">Case</TableHead>
             <TableHead className="text-xs">Trigger</TableHead>
@@ -853,7 +853,7 @@ function ExecutionLog() {
                 </TableCell>
                 <TableCell className="py-2.5 font-mono text-xs text-gray-500">{e.caseType}:{e.caseRefId.slice(0, 10)}…</TableCell>
                 <TableCell className="py-2.5 text-xs">
-                  <Badge className="border-0 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 text-xs">{e.triggerEvent}</Badge>
+                  <Badge className="border-0 bg-white text-gray-600 dark:bg-white dark:text-black text-xs">{e.triggerEvent}</Badge>
                 </TableCell>
                 <TableCell className="py-2.5">
                   <div className="flex flex-wrap gap-1">
@@ -951,7 +951,7 @@ function PoliciesTab({ onEdit, onCreate }: { onEdit: (p: Policy) => void; onCrea
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-900">
+              <TableRow className="bg-white dark:bg-white">
                 <TableHead className="text-xs w-8">Pri</TableHead>
                 <TableHead className="text-xs">Type</TableHead>
                 <TableHead className="text-xs">Name</TableHead>
@@ -973,13 +973,13 @@ function PoliciesTab({ onEdit, onCreate }: { onEdit: (p: Policy) => void; onCrea
                     {p.caseTypes.length === 0
                       ? <span className="text-xs text-gray-400">all types</span>
                       : <div className="flex flex-wrap gap-1">
-                          {p.caseTypes.map(t => <Badge key={t} className="border-0 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 text-xs">{t}</Badge>)}
+                          {p.caseTypes.map(t => <Badge key={t} className="border-0 bg-white text-gray-600 dark:bg-white dark:text-black text-xs">{t}</Badge>)}
                         </div>}
                   </TableCell>
                   <TableCell className="py-2.5">
                     {p.isActive
                       ? <Badge className="border-0 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 text-xs">Active</Badge>
-                      : <Badge className="border-0 bg-gray-100 text-gray-500 text-xs">Inactive</Badge>}
+                      : <Badge className="border-0 bg-white text-gray-500 text-xs">Inactive</Badge>}
                   </TableCell>
                   <TableCell className="py-2.5 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -1047,13 +1047,13 @@ export default function GovernancePolicies() {
   const handleSaved  = ()           => qc.invalidateQueries({ queryKey: ['/api/governance/policies'] });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-black flex items-center gap-3">
               <ShieldCheck className="h-6 w-6 text-blue-600" />
               Governance & Automation
             </h1>
@@ -1079,7 +1079,7 @@ export default function GovernancePolicies() {
         </div>
 
         {/* Content */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+        <div className="bg-white dark:bg-white rounded-xl border border-gray-200 dark:border-gray-800 p-6">
           {activeTab === 'policies' && <PoliciesTab onEdit={handleEdit} onCreate={handleCreate} />}
           {activeTab === 'simulate' && <SimulateTab />}
           {activeTab === 'trace'    && <TraceTab />}

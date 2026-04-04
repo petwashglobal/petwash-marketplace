@@ -78,10 +78,10 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
           {/* Close Button */}
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-700 flex items-center justify-center transition-all shadow-lg hover:scale-110"
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/80 dark:bg-white/80 hover:bg-white dark:hover:bg-white flex items-center justify-center transition-all shadow-lg hover:scale-110"
             data-testid="button-close-kenzo-welcome"
           >
-            <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+            <X className="w-5 h-5 text-gray-700 dark:text-black" />
           </button>
 
           <div className="relative p-8">
@@ -111,25 +111,25 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
               <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 animate-gradient">
                 {content.greeting}
               </h2>
-              <p className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+              <p className="text-xl font-semibold text-gray-800 dark:text-black">
                 {content.intro}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+              <p className="text-sm text-gray-600 dark:text-black mt-1">
                 {content.subtitle}
               </p>
             </div>
 
             {/* Welcome Message */}
             <div className="space-y-4 mb-6 text-center">
-              <p className="text-lg font-semibold text-gray-800 dark:text-gray-100 leading-relaxed">
+              <p className="text-lg font-semibold text-gray-800 dark:text-black leading-relaxed">
                 {content.welcome}
               </p>
               
-              <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-5 shadow-inner">
-                <p className="text-base text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
+              <div className="bg-white/60 dark:bg-white/60 backdrop-blur-sm rounded-2xl p-5 shadow-inner">
+                <p className="text-base text-gray-700 dark:text-black leading-relaxed mb-3">
                   {content.message}
                 </p>
-                <p className="text-base font-medium text-gray-800 dark:text-gray-100 leading-relaxed flex items-center justify-center gap-2">
+                <p className="text-base font-medium text-gray-800 dark:text-black leading-relaxed flex items-center justify-center gap-2">
                   {content.promise}
                 </p>
               </div>

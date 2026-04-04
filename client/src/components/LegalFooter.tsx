@@ -306,7 +306,7 @@ Support Phone: 1-700-700-PET (738)
   return (
     <div className="border-t-2 border-black dark:border-white bg-gradient-to-r from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black py-8 px-4">
       <div className="max-w-6xl mx-auto text-center">
-        <h3 className="text-lg font-bold text-black dark:text-white mb-4">
+        <h3 className="text-lg font-bold text-black dark:text-black mb-4">
           {t('legal.title', language)}
         </h3>
         
@@ -323,7 +323,7 @@ Support Phone: 1-700-700-PET (738)
           
           <DialogContent className="max-w-4xl max-h-[80vh] bg-white dark:bg-black border-2 border-black dark:border-white">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-black dark:text-white">
+              <DialogTitle className="text-2xl font-bold text-black dark:text-black">
                 {t('legal.dialogTitle', language)}
               </DialogTitle>
               <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -332,7 +332,7 @@ Support Phone: 1-700-700-PET (738)
             </DialogHeader>
 
             <Tabs defaultValue="privacy" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-900">
+              <TabsList className="grid w-full grid-cols-3 bg-white dark:bg-white">
                 <TabsTrigger 
                   value="privacy"
                   className="data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black"
@@ -358,7 +358,7 @@ Support Phone: 1-700-700-PET (738)
 
               <TabsContent value="privacy" className="mt-4">
                 <ScrollArea className="h-[500px] w-full pr-4">
-                  <div className="prose prose-sm max-w-none text-black dark:text-white">
+                  <div className="prose prose-sm max-w-none text-black dark:text-black">
                     <div className="whitespace-pre-wrap" dir={language === 'he' ? 'rtl' : 'ltr'}>
                       {privacyContent[currentLang].content}
                     </div>
@@ -368,7 +368,7 @@ Support Phone: 1-700-700-PET (738)
 
               <TabsContent value="terms" className="mt-4">
                 <ScrollArea className="h-[500px] w-full pr-4">
-                  <div className="prose prose-sm max-w-none text-black dark:text-white">
+                  <div className="prose prose-sm max-w-none text-black dark:text-black">
                     <div className="whitespace-pre-wrap" dir={language === 'he' ? 'rtl' : 'ltr'}>
                       {termsContent[currentLang].content}
                     </div>
@@ -378,7 +378,7 @@ Support Phone: 1-700-700-PET (738)
 
               <TabsContent value="disclaimer" className="mt-4">
                 <ScrollArea className="h-[500px] w-full pr-4">
-                  <div className="prose prose-sm max-w-none text-black dark:text-white">
+                  <div className="prose prose-sm max-w-none text-black dark:text-black">
                     <div className="whitespace-pre-wrap" dir={language === 'he' ? 'rtl' : 'ltr'}>
                       {disclaimerContent[currentLang].content}
                     </div>

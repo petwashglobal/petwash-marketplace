@@ -96,7 +96,7 @@ export default function POSSafety() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-xl p-1 gap-0.5 overflow-x-auto">
+      <div className="flex bg-white rounded-xl p-1 gap-0.5 overflow-x-auto">
         {[
           { id: 'report', label: 'Report', icon: AlertTriangle },
           { id: 'block', label: 'Block', icon: UserX },

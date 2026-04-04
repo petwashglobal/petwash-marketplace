@@ -671,7 +671,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                         
                         {/* Data Snapshot for Transparency */}
                         {schedule.weather.dataSnapshot && (
-                          <details className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-300">
+                          <details className="mt-4 p-4 bg-white rounded-lg border border-gray-300">
                             <summary className="cursor-pointer font-semibold text-sm text-gray-700 flex items-center gap-2">
                               📊 {isHebrew ? 'נתוני החלטה AI (שקיפות)' : 'AI Decision Data Snapshot (Transparency)'}
                             </summary>

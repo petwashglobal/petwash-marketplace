@@ -32,33 +32,34 @@
    ============================================================================ */
 @layer base {
   :root {
+    /* PURE WHITE backgrounds everywhere, PURE BLACK text everywhere */
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
     
-    /* Card and Popover */
+    /* Card and Popover — pure white */
     --card: 0 0% 100%;
     --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
     
-    /* PURE BLACK - Gucci Style */
+    /* PURE BLACK primary */
     --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
     
     --secondary: 0 0% 100%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary-foreground: 0 0% 0%;
     
     --muted: 0 0% 100%;
-    --muted-foreground: 0 0% 20%;
+    --muted-foreground: 0 0% 0%;
     
     --accent: 0 0% 100%;
-    --accent-foreground: 0 0% 10%;
+    --accent-foreground: 0 0% 0%;
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
     --border: 0 0% 90%;
-    --input: 0 0% 90%;
+    --input: 0 0% 100%;
     --ring: 0 0% 0%;
     --radius: 0.75rem;
     
@@ -69,44 +70,45 @@
     --chart-4: 0 0% 60%;
     --chart-5: 0 0% 80%;
     
-    /* Sidebar - Black/White themed */
+    /* Sidebar — pure white background, pure black text */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 0%;
     --sidebar-primary: 0 0% 0%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 100%;
-    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 0%;
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 0 0% 0%;
   }
   
+  /* Dark mode: also pure white backgrounds and pure black text */
   .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
     
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
     
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
     
-    --secondary: 0 0% 20%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
     
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 100%;
+    --muted-foreground: 0 0% 0%;
     
-    --accent: 0 0% 25%;
-    --accent-foreground: 0 0% 90%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
     
     --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
     
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 0%;
   }
 }
 
@@ -485,11 +487,11 @@ html, body, #root {
 }
 
 /* FORCE PURE WHITE: Override ALL off-white Tailwind bg utilities globally */
-.bg-gray-50, .bg-gray-100, .bg-gray-200,
-.bg-stone-50, .bg-stone-100, .bg-stone-200,
-.bg-neutral-50, .bg-neutral-100, .bg-neutral-200,
-.bg-zinc-50, .bg-zinc-100, .bg-zinc-200,
-.bg-slate-50, .bg-slate-100, .bg-slate-200,
+.bg-white, .bg-white, .bg-white,
+.bg-white, .bg-stone-100, .bg-stone-200,
+.bg-white, .bg-neutral-100, .bg-neutral-200,
+.bg-white, .bg-white, .bg-zinc-200,
+.bg-white, .bg-white, .bg-slate-200,
 .bg-amber-50, .bg-amber-100,
 .bg-yellow-50, .bg-yellow-100,
 .bg-orange-50, .bg-orange-100,
@@ -4196,7 +4198,7 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
 }
 
 .social-button {
-  @apply relative w-full flex items-center justify-center py-3 px-4 border rounded-lg transition-all active:scale-[0.98] bg-white hover:bg-gray-50 text-black font-medium;
+  @apply relative w-full flex items-center justify-center py-3 px-4 border rounded-lg transition-all active:scale-[0.98] bg-white hover:bg-white text-black font-medium;
 }
 
 /* Fix for accessibility icon overlap */

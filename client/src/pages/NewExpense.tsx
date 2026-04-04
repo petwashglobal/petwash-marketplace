@@ -232,7 +232,7 @@ export default function NewExpense() {
               />
 
               {vatDetails && (
-                <Alert className="bg-gray-100 dark:bg-gray-900 border-2 border-black dark:border-white">
+                <Alert className="bg-white dark:bg-white border-2 border-black dark:border-white">
                   <Info className="w-5 h-5" />
                   <AlertDescription>
                     <div className="grid grid-cols-2 gap-4 text-sm font-mono">
@@ -254,12 +254,12 @@ export default function NewExpense() {
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-black dark:text-white text-lg font-bold">
+                    <FormLabel className="text-black dark:text-black text-lg font-bold">
                       קטגוריה / Category
                     </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="border-2 border-black dark:border-white text-black dark:text-white">
+                        <SelectTrigger className="border-2 border-black dark:border-white text-black dark:text-black">
                           <SelectValue placeholder="בחר קטגוריה" />
                         </SelectTrigger>
                       </FormControl>
@@ -282,7 +282,7 @@ export default function NewExpense() {
                   name="mileageKm"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-black dark:text-white text-lg font-bold">
+                      <FormLabel className="text-black dark:text-black text-lg font-bold">
                         קילומטרים / Kilometers
                       </FormLabel>
                       <FormControl>
@@ -291,7 +291,7 @@ export default function NewExpense() {
                           step="0.1"
                           placeholder="0.0"
                           {...field}
-                          className="border-2 border-black dark:border-white text-black dark:text-white"
+                          className="border-2 border-black dark:border-white text-black dark:text-black"
                           data-testid="input-mileage"
                         />
                       </FormControl>
@@ -306,7 +306,7 @@ export default function NewExpense() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-black dark:text-white text-lg font-bold">
+                    <FormLabel className="text-black dark:text-black text-lg font-bold">
                       תיאור / Description
                     </FormLabel>
                     <FormControl>
@@ -314,7 +314,7 @@ export default function NewExpense() {
                         placeholder="לדוגמה: ארוחת צהריים עם לקוח פוטנציאלי..."
                         rows={4}
                         {...field}
-                        className="border-2 border-black dark:border-white text-black dark:text-white resize-none"
+                        className="border-2 border-black dark:border-white text-black dark:text-black resize-none"
                         data-testid="input-description"
                       />
                     </FormControl>
@@ -329,7 +329,7 @@ export default function NewExpense() {
                 <Button
                   type="submit"
                   disabled={submitExpenseMutation.isPending}
-                  className="w-full max-w-md bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black font-bold text-lg py-6 border-2 border-black dark:border-white transition-all"
+                  className="w-full max-w-md bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-white text-white dark:text-black font-bold text-lg py-6 border-2 border-black dark:border-white transition-all"
                   data-testid="button-submit-expense"
                 >
                   {submitExpenseMutation.isPending ? 'שולח...' : 'שלח הוצאה / Submit Expense'}
@@ -340,8 +340,8 @@ export default function NewExpense() {
         </Card>
 
         {taxRates?.data && (
-          <Card className="mt-6 p-6 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700">
-            <h3 className="font-bold mb-4 text-black dark:text-white">
+          <Card className="mt-6 p-6 bg-white dark:bg-white border border-gray-300 dark:border-gray-700">
+            <h3 className="font-bold mb-4 text-black dark:text-black">
               📊 שיעורי מס עדכניים / Current Tax Rates
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">

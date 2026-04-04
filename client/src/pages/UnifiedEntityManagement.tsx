@@ -167,7 +167,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(jvPartners) && jvPartners.slice(0, 3).map((partner: any) => (
-                    <div key={partner.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-jv-partner-${partner.id}`}>
+                    <div key={partner.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-jv-partner-${partner.id}`}>
                       <div>
                         <p className="font-medium text-sm">{partner.partnerName}</p>
                         <p className="text-xs text-muted-foreground">{partner.equityPercentage}% equity</p>
@@ -199,7 +199,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(suppliers) && suppliers.slice(0, 3).map((supplier: any) => (
-                    <div key={supplier.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-supplier-${supplier.id}`}>
+                    <div key={supplier.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-supplier-${supplier.id}`}>
                       <div>
                         <p className="font-medium text-sm">{supplier.supplierName}</p>
                         <p className="text-xs text-muted-foreground">{supplier.category}</p>
@@ -231,12 +231,12 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(stations) && stations.slice(0, 3).map((station: any) => (
-                    <div key={station.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-station-${station.id}`}>
+                    <div key={station.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-station-${station.id}`}>
                       <div>
                         <p className="font-medium text-sm">{station.stationId}</p>
                         <p className="text-xs text-muted-foreground">{station.locationName}</p>
                       </div>
-                      <Badge variant="outline" className={station.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700'}>
+                      <Badge variant="outline" className={station.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-gray-700'}>
                         {station.status}
                       </Badge>
                     </div>
@@ -270,12 +270,12 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(employees) && employees.slice(0, 3).map((employee: any) => (
-                    <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-employee-${employee.id}`}>
+                    <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-employee-${employee.id}`}>
                       <div>
                         <p className="font-medium text-sm">{employee.firstName} {employee.lastName}</p>
                         <p className="text-xs text-muted-foreground">{employee.jobTitle}</p>
                       </div>
-                      <Badge variant="outline" className={employee.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700'}>
+                      <Badge variant="outline" className={employee.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-gray-700'}>
                         {employee.status}
                       </Badge>
                     </div>
@@ -304,7 +304,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(departments) && departments.slice(0, 3).map((dept: any) => (
-                    <div key={dept.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-department-${dept.id}`}>
+                    <div key={dept.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-department-${dept.id}`}>
                       <div>
                         <p className="font-medium text-sm">{dept.departmentName}</p>
                         <p className="text-xs text-muted-foreground">{dept.managerName || 'No manager assigned'}</p>
@@ -339,7 +339,7 @@ export default function UnifiedEntityManagement() {
             <CardContent>
               <div className="space-y-2">
                 {Array.isArray(opportunities) && opportunities.slice(0, 5).map((opp: any) => (
-                  <div key={opp.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-opportunity-${opp.id}`}>
+                  <div key={opp.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-opportunity-${opp.id}`}>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{opp.name}</p>
                       <p className="text-xs text-muted-foreground">{opp.accountName}</p>
@@ -378,7 +378,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(tasks) && tasks.slice(0, 3).map((task: any) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-task-${task.id}`}>
+                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-task-${task.id}`}>
                       <div>
                         <p className="font-medium text-sm">{task.title}</p>
                         <p className="text-xs text-muted-foreground">{task.assignedTo || 'Unassigned'}</p>
@@ -410,7 +410,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(incidents) && incidents.slice(0, 3).map((incident: any) => (
-                    <div key={incident.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-incident-${incident.id}`}>
+                    <div key={incident.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-incident-${incident.id}`}>
                       <div>
                         <p className="font-medium text-sm">{incident.title}</p>
                         <p className="text-xs text-muted-foreground">Priority: {incident.priority}</p>
@@ -449,12 +449,12 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(warehouses) && warehouses.slice(0, 3).map((warehouse: any) => (
-                    <div key={warehouse.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-warehouse-${warehouse.id}`}>
+                    <div key={warehouse.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-warehouse-${warehouse.id}`}>
                       <div>
                         <p className="font-medium text-sm">{warehouse.name}</p>
                         <p className="text-xs text-muted-foreground">{warehouse.location}</p>
                       </div>
-                      <Badge variant="outline" className={warehouse.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700'}>
+                      <Badge variant="outline" className={warehouse.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-gray-700'}>
                         {warehouse.status}
                       </Badge>
                     </div>
@@ -483,7 +483,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(inventory) && inventory.slice(0, 3).map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-inventory-${item.id}`}>
+                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-inventory-${item.id}`}>
                       <div>
                         <p className="font-medium text-sm">{item.itemName}</p>
                         <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
@@ -522,7 +522,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(accountsPayable) && accountsPayable.slice(0, 3).map((ap: any) => (
-                    <div key={ap.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-ap-${ap.id}`}>
+                    <div key={ap.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-ap-${ap.id}`}>
                       <div>
                         <p className="font-medium text-sm">{ap.vendorName}</p>
                         <p className="text-xs text-muted-foreground">₪{parseFloat(ap.totalAmount || 0).toLocaleString()}</p>
@@ -556,7 +556,7 @@ export default function UnifiedEntityManagement() {
               <CardContent>
                 <div className="space-y-2">
                   {Array.isArray(accountsReceivable) && accountsReceivable.slice(0, 3).map((ar: any) => (
-                    <div key={ar.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-ar-${ar.id}`}>
+                    <div key={ar.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-ar-${ar.id}`}>
                       <div>
                         <p className="font-medium text-sm">{ar.customerName}</p>
                         <p className="text-xs text-muted-foreground">₪{parseFloat(ar.totalAmount || 0).toLocaleString()}</p>

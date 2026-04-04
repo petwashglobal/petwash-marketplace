@@ -322,7 +322,7 @@ export default function ComplianceControlTower() {
                                 {doc.documentType.replace(/_/g, " ")}
                               </span>
                             </div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            <h4 className="font-semibold text-gray-900 dark:text-black mb-1">
                               {isHebrew ? doc.titleHe : doc.title}
                             </h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -421,7 +421,7 @@ export default function ComplianceControlTower() {
                                 </Badge>
                               )}
                             </div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            <h4 className="font-semibold text-gray-900 dark:text-black mb-1">
                               {isHebrew ? task.titleHe : task.title}
                             </h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -485,7 +485,7 @@ export default function ComplianceControlTower() {
                             />
                           </div>
                         </div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                        <h4 className="font-semibold text-gray-900 dark:text-black mb-2">
                           {isHebrew ? seal.titleHe : seal.title}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400">

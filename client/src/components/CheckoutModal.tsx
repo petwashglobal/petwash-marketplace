@@ -150,13 +150,13 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
             <div className="flex items-center space-x-2">
               <button
                 onClick={toggleLanguage}
-                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-white transition-colors"
               >
                 {currentLanguage.toUpperCase()}
               </button>
               <button
                 onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white transition-colors"
               >
                 <X className="w-4 h-4 text-gray-500" />
               </button>
@@ -167,7 +167,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
         {/* Content */}
         <div className="px-6 py-6 space-y-6">
           {/* Package Summary - Clean Card */}
-          <div className="bg-gray-50 rounded-xl p-4">
+          <div className="bg-white rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900">
                 {currentLanguage === 'en' ? pkg.name : pkg.nameHe}
@@ -191,7 +191,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
                 onClick={() => setSelectedPayment('credit_card')}
                 className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
                   selectedPayment === 'credit_card' 
-                    ? 'border-gray-900 bg-gray-50' 
+                    ? 'border-gray-900 bg-white' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -213,7 +213,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
               <button
                 type="button"
                 disabled={true}
-                className="w-full flex items-center justify-between p-4 rounded-lg border-2 border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed relative"
+                className="w-full flex items-center justify-between p-4 rounded-lg border-2 border-gray-200 bg-white opacity-60 cursor-not-allowed relative"
               >
                 <div className="flex items-center space-x-3">
                   <Smartphone className="w-5 h-5 text-gray-400" />

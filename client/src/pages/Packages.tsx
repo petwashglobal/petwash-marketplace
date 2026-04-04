@@ -168,7 +168,7 @@ export default function Packages() {
       <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-16" dir={dir}>
         <div className="max-w-md w-full text-center">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-[#f8f5f0] flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
               <CheckCircle className="w-10 h-10 text-[#c9a96e]" strokeWidth={1.2} />
             </div>
           </div>

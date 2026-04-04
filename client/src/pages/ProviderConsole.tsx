@@ -229,7 +229,7 @@ function DashboardTab() {
               { label: 'No-shows Today', value: perf?.bookings.noShow ?? 0, icon: AlertTriangle, color: 'text-orange-500' },
               { label: 'Cancelled', value: perf?.bookings.cancelled ?? 0, icon: XCircle, color: 'text-red-500' },
             ].map((item) => (
-              <div key={item.label} className="bg-gray-50 rounded-lg p-3 text-center">
+              <div key={item.label} className="bg-white rounded-lg p-3 text-center">
                 <item.icon className={`w-4 h-4 ${item.color} mx-auto mb-1`} />
                 <p className="text-lg font-bold text-gray-900">{item.value}</p>
                 <p className="text-[10px] text-gray-500">{item.label}</p>
@@ -442,7 +442,7 @@ function CalendarTab() {
                       <button
                         key={key}
                         onClick={() => toggleRecurring(key)}
-                        className={`rounded p-1 border transition-colors ${recurring[key] ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                        className={`rounded p-1 border transition-colors ${recurring[key] ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-200 text-gray-400'}`}
                       >
                         {recurring[key] ? '✓' : '·'}
                       </button>
@@ -537,7 +537,7 @@ function BookingCard({ booking, platform }: { booking: any; platform: string }) 
     confirmed: 'bg-blue-100 text-blue-700',
     in_progress: 'bg-purple-100 text-purple-700',
     completed: 'bg-green-100 text-green-700',
-    cancelled: 'bg-gray-100 text-gray-600',
+    cancelled: 'bg-white text-gray-600',
     disputed: 'bg-red-100 text-red-700',
     no_show: 'bg-red-50 text-red-600',
   };
@@ -553,11 +553,11 @@ function BookingCard({ booking, platform }: { booking: any; platform: string }) 
               {booking.ownerId ? ` · Owner: ${booking.ownerId.slice(0, 8)}…` : ''}
             </p>
           </div>
-          <Badge className={`text-xs ${statusColors[status] || 'bg-gray-100'}`}>{status}</Badge>
+          <Badge className={`text-xs ${statusColors[status] || 'bg-white'}`}>{status}</Badge>
         </div>
 
         {showReasonInput ? (
-          <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
+          <div className="space-y-2 p-3 bg-white rounded-lg">
             <Select value={reasonCode} onValueChange={setReasonCode}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Select reason" />
@@ -965,7 +965,7 @@ function PerformanceTab() {
                     <span className="text-gray-600">{name} Rate</span>
                     <span className="font-medium" style={{ color: CHART_COLORS[i] }}>{value}%</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-white rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{ width: `${value}%`, backgroundColor: CHART_COLORS[i] }}
@@ -1035,7 +1035,7 @@ function SafetyTab() {
   });
 
   const riskColors: Record<string, string> = {
-    low: 'bg-gray-100 text-gray-600',
+    low: 'bg-white text-gray-600',
     medium: 'bg-amber-100 text-amber-700',
     high: 'bg-red-100 text-red-700',
   };
@@ -1079,7 +1079,7 @@ function SafetyTab() {
           {blocked.length === 0 ? (
             <p className="text-xs text-gray-400 py-4 text-center">No blocked entries</p>
           ) : blocked.map((entry) => (
-            <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={entry.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
               <div>
                 <p className="text-xs font-medium">{entry.blockedName || entry.blockedRef}</p>
                 <p className="text-xs text-gray-500">{entry.blockedType} · {entry.reason || 'No reason given'}</p>
@@ -1136,7 +1136,7 @@ function SafetyTab() {
           {safetyNotes.length === 0 ? (
             <p className="text-xs text-gray-400 py-4 text-center">No safety notes</p>
           ) : safetyNotes.map((note) => (
-            <div key={note.id} className="p-3 bg-gray-50 rounded-lg space-y-1">
+            <div key={note.id} className="p-3 bg-white rounded-lg space-y-1">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium">{note.subjectName || note.subjectId}</p>
                 <Badge className={`text-xs ${riskColors[note.riskLevel]}`}>{note.riskLevel}</Badge>
@@ -1196,7 +1196,7 @@ function AIAssistantTab() {
             <button
               key={label}
               onClick={() => send(query)}
-              className="w-full text-left p-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 text-xs text-gray-700 transition-colors flex items-center justify-between group"
+              className="w-full text-left p-2.5 rounded-lg border border-gray-100 bg-white hover:bg-purple-50 hover:border-purple-200 text-xs text-gray-700 transition-colors flex items-center justify-between group"
             >
               {label}
               <ChevronRight className="w-3 h-3 text-gray-300 group-hover:text-purple-400" />
@@ -1226,7 +1226,7 @@ function AIAssistantTab() {
                   <div className={`max-w-[85%] p-3 rounded-xl text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-800'
+                      : 'bg-white text-gray-800'
                   }`}>
                     {msg.text}
                   </div>
@@ -1234,7 +1234,7 @@ function AIAssistantTab() {
               ))}
               {queryMutation.isPending && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 p-3 rounded-xl">
+                  <div className="bg-white p-3 rounded-xl">
                     <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
                   </div>
                 </div>
@@ -1274,7 +1274,7 @@ const TABS = [
 
 export default function ProviderConsole() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">

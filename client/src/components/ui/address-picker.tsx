@@ -216,7 +216,7 @@ export function AddressPicker({
                   className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-right transition-all
                     ${isSelected
                       ? "bg-amber-50 border border-amber-300 text-amber-900"
-                      : "bg-gray-50 border border-gray-100 hover:bg-gray-100 text-gray-800"
+                      : "bg-white border border-gray-100 hover:bg-white text-gray-800"
                     }`}
                 >
                   <span className={`shrink-0 ${isSelected ? "text-amber-500" : "text-gray-400"}`}>

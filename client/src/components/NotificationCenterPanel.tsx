@@ -249,7 +249,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
       >
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-white" />
         </div>
 
         {/* Header */}
@@ -288,7 +288,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold transition-all duration-200 ${
                   activeTab === tab.key
                     ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-white text-gray-600 hover:bg-white'
                 }`}
               >
                 {isHebrew ? tab.labelHe : tab.label}
@@ -330,7 +330,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
 
           {!isLoading && filteredGroups.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mb-4">
+              <div className="w-14 h-14 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-4">
                 <Inbox className="w-7 h-7 text-gray-300" />
               </div>
               <p className="text-sm font-semibold text-gray-400">
@@ -507,7 +507,7 @@ export function NotificationBell({ className = "", language = 'en' }: Notificati
 
       <button
         onClick={() => setOpen(true)}
-        className={`relative w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors ${className}`}
+        className={`relative w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-white transition-colors ${className}`}
         aria-label={`Notifications${count > 0 ? ` (${count} unread)` : ""}`}
       >
         <Bell className={`w-5 h-5 transition-transform ${isPulsing ? 'bell-animate' : ''}`} />

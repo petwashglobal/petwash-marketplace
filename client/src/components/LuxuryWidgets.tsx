@@ -160,11 +160,11 @@ export const MetricWidget = ({
   }[color] || 'from-blue-500 to-blue-600';
 
   return (
-    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+    <div className="text-center p-4 bg-white dark:bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow">
       <div className={`w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br ${colorClasses} flex items-center justify-center text-white`}>
         {icon}
       </div>
-      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{value}</div>
+      <div className="text-3xl font-bold text-gray-900 dark:text-black mb-1">{value}</div>
       <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
       {trend !== undefined && (
         <div className={`text-xs mt-1 ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -184,10 +184,10 @@ export const StatusBadge = ({
   className?: string;
 }) => {
   const variants = {
-    active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-    pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
-    inactive: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300',
-    verified: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    active: 'bg-green-100 text-green-700 dark:bg-white dark:text-green-300',
+    pending: 'bg-yellow-100 text-yellow-700 dark:bg-white dark:text-yellow-300',
+    inactive: 'bg-white text-gray-700 dark:bg-white/30 dark:text-black',
+    verified: 'bg-blue-100 text-blue-700 dark:bg-white dark:text-blue-300',
   };
 
   return (
@@ -212,10 +212,10 @@ export const NavigationButton = ({
   return (
     <Button
       onClick={onClick}
-      className={`fixed top-20 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 ${className}`}
+      className={`fixed top-20 left-4 z-50 p-3 bg-white dark:bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 ${className}`}
       data-testid={`button-${type}`}
     >
-      <Icon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+      <Icon className="w-5 h-5 text-gray-700 dark:text-black" />
     </Button>
   );
 };
@@ -229,7 +229,7 @@ export const GlassCard = ({
   className?: string;
 }) => {
   return (
-    <div className={`backdrop-blur-xl bg-white/70 dark:bg-gray-800/70 rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700/20 ${className}`}>
+    <div className={`backdrop-blur-xl bg-white/70 dark:bg-white/70 rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700/20 ${className}`}>
       {children}
     </div>
   );

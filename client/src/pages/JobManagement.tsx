@@ -82,7 +82,7 @@ const roleColors: Record<string, { bg: string; text: string; gradient: string }>
   sitter: { bg: 'bg-purple-100', text: 'text-purple-700', gradient: 'from-purple-500 to-violet-600' },
   host: { bg: 'bg-amber-100', text: 'text-amber-700', gradient: 'from-amber-500 to-orange-600' },
   supplier: { bg: 'bg-emerald-100', text: 'text-emerald-700', gradient: 'from-emerald-500 to-teal-600' },
-  admin: { bg: 'bg-slate-100', text: 'text-slate-700', gradient: 'from-slate-500 to-gray-600' },
+  admin: { bg: 'bg-white', text: 'text-slate-700', gradient: 'from-slate-500 to-gray-600' },
   trainer: { bg: 'bg-yellow-100', text: 'text-yellow-700', gradient: 'from-yellow-500 to-amber-600' },
 };
 
@@ -271,7 +271,7 @@ export default function JobManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-6 py-4">

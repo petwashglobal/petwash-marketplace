@@ -8,11 +8,35 @@ import { providerIntakeQueue, biometricCertificateVerifications } from '@shared/
 import { eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomUUID, randomBytes, createCipheriv } from 'crypto';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 
 const router = Router();
+
+// ─── Biometric / KYC base64 encryption (AES-256-GCM) ────────────────────────
+// Encrypts raw base64 image payloads before PostgreSQL write.
+// Format stored: enc:<base64_iv>:<base64_authTag>:<base64_ciphertext>
+// In production, DOCUMENT_ENCRYPTION_KEY must be set — missing key is fatal.
+function encryptBase64Doc(plaintext: string): string {
+  const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!masterKey || masterKey.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[ProviderIntake] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
+        'Refusing to store plaintext biometric data.'
+      );
+    }
+    logger.warn('[ProviderIntake] DOCUMENT_ENCRYPTION_KEY not set — biometric data stored unencrypted');
+    return plaintext;
+  }
+  const key = createHash('sha256').update(masterKey).digest(); // 32 bytes
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `enc:${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+}
 
 /**
  * PROVIDER INTAKE QUEUE API
@@ -411,9 +435,9 @@ router.post('/submit', async (req, res) => {
           documentType: 'national_id',
           documentCountry: 'IL',
           documentNumber: data.idNumber || undefined,
-          documentFrontUrl: data.idDocumentFrontBase64!,
-          documentBackUrl: data.idDocumentBackBase64 || undefined,
-          selfiePhotoUrl: data.selfieDocBase64!,
+          documentFrontUrl: encryptBase64Doc(data.idDocumentFrontBase64!),
+          documentBackUrl: data.idDocumentBackBase64 ? encryptBase64Doc(data.idDocumentBackBase64) : undefined,
+          selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64!),
           biometricMatchStatus: 'pending',
           verificationStatus: 'pending',
           verificationMethod: 'automatic',
@@ -421,7 +445,7 @@ router.post('/submit', async (req, res) => {
           userAgent: req.headers['user-agent'] || undefined,
         });
         biometricRecordCreated = true;
-        logger.info('[Provider Intake] Biometric verification record created', { intakeId, firebaseUid: data.firebaseUid });
+        logger.info('[Provider Intake] Biometric verification record created (encrypted)', { intakeId, firebaseUid: data.firebaseUid });
 
         // Also store driving license as a separate record if provided
         if (data.drivingLicenseBase64) {
@@ -429,8 +453,8 @@ router.post('/submit', async (req, res) => {
             userId: data.firebaseUid!,
             documentType: 'drivers_license',
             documentCountry: 'IL',
-            documentFrontUrl: data.drivingLicenseBase64,
-            selfiePhotoUrl: data.selfieDocBase64!,
+            documentFrontUrl: encryptBase64Doc(data.drivingLicenseBase64),
+            selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64!),
             biometricMatchStatus: 'pending',
             verificationStatus: 'pending',
             verificationMethod: 'automatic',
@@ -536,9 +560,9 @@ router.post('/submit-documents', async (req, res) => {
       userId: data.firebaseUid,
       documentType: 'national_id',
       documentCountry: 'IL',
-      documentFrontUrl: data.idDocumentFrontBase64,
-      documentBackUrl: data.idDocumentBackBase64 || undefined,
-      selfiePhotoUrl: data.selfieDocBase64,
+      documentFrontUrl: encryptBase64Doc(data.idDocumentFrontBase64),
+      documentBackUrl: data.idDocumentBackBase64 ? encryptBase64Doc(data.idDocumentBackBase64) : undefined,
+      selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64),
       biometricMatchStatus: 'pending',
       verificationStatus: 'pending',
       verificationMethod: 'automatic',
@@ -552,8 +576,8 @@ router.post('/submit-documents', async (req, res) => {
         userId: data.firebaseUid,
         documentType: 'drivers_license',
         documentCountry: 'IL',
-        documentFrontUrl: data.drivingLicenseBase64,
-        selfiePhotoUrl: data.selfieDocBase64,
+        documentFrontUrl: encryptBase64Doc(data.drivingLicenseBase64),
+        selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64),
         biometricMatchStatus: 'pending',
         verificationStatus: 'pending',
         verificationMethod: 'automatic',

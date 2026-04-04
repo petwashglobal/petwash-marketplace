@@ -110,7 +110,7 @@ const SIGNAL_CFG: Record<ExpansionSignal, { label: string; color: string; icon: 
   freeze_capex:          { label: 'Freeze capex',         color: 'bg-orange-100 text-orange-800 border-orange-300',   icon: <Minus className="w-3 h-3" /> },
   review_franchise:      { label: 'Review franchise',     color: 'bg-purple-100 text-purple-800 border-purple-300',   icon: <AlertTriangle className="w-3 h-3" /> },
   restructure:           { label: 'Restructure',          color: 'bg-red-100 text-red-800 border-red-300',            icon: <TrendingDown className="w-3 h-3" /> },
-  maintain:              { label: 'Maintain',             color: 'bg-gray-100 text-gray-700 border-gray-300',         icon: <Minus className="w-3 h-3" /> },
+  maintain:              { label: 'Maintain',             color: 'bg-white text-gray-700 border-gray-300',         icon: <Minus className="w-3 h-3" /> },
 };
 
 const GRADE_CFG: Record<NetworkGrade, { color: string; label: string }> = {
@@ -148,7 +148,7 @@ function ScoreBar({ value, max = 100 }: { value: number; max?: number }) {
   const color = value >= 75 ? 'bg-emerald-500' : value >= 50 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-1.5 min-w-[80px]">
-      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs font-mono w-6 text-right">{Math.round(value)}</span>
@@ -294,7 +294,7 @@ function StationRanking({ stations }: { stations: ExpansionStationScore[] }) {
                 <div className="font-medium text-sm">{s.stationName}</div>
                 <div className="text-xs text-muted-foreground flex flex-wrap gap-1 mt-0.5">
                   {s.reasons.map(rc => (
-                    <span key={rc} className="bg-gray-100 text-gray-600 px-1 rounded">{label(rc)}</span>
+                    <span key={rc} className="bg-white text-gray-600 px-1 rounded">{label(rc)}</span>
                   ))}
                 </div>
               </TableCell>
@@ -374,7 +374,7 @@ function OwnershipDecision({ decision }: { decision: OwnershipComparisonDecision
 
   const winnerLabel = winner === 'company' ? 'Company-owned outperforms' : winner === 'franchise' ? 'Franchise-owned outperforms' : 'Performance is comparable';
   const winnerColor = winner === 'tie'
-    ? 'bg-gray-50 border-gray-200 text-gray-700'
+    ? 'bg-white border-gray-200 text-gray-700'
     : 'bg-blue-50 border-blue-200 text-blue-800';
 
   return (
@@ -388,7 +388,7 @@ function OwnershipDecision({ decision }: { decision: OwnershipComparisonDecision
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="border rounded-lg p-3 bg-gray-50">
+        <div className="border rounded-lg p-3 bg-white">
           <div className="text-xs text-muted-foreground mb-1">Margin delta</div>
           <div className={`flex items-center gap-1 font-bold text-lg ${deltaMarginPct > 0 ? 'text-blue-700' : deltaMarginPct < 0 ? 'text-purple-700' : 'text-gray-600'}`}>
             {deltaMarginPct > 0 ? <ChevronUp className="w-4 h-4" /> : deltaMarginPct < 0 ? <ChevronDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
@@ -396,12 +396,12 @@ function OwnershipDecision({ decision }: { decision: OwnershipComparisonDecision
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">Company − Franchise</div>
         </div>
-        <div className="border rounded-lg p-3 bg-gray-50">
+        <div className="border rounded-lg p-3 bg-white">
           <div className="text-xs text-muted-foreground mb-1">Held capital delta</div>
           <div className="font-bold text-lg">{ils(Math.abs(deltaHeldILS))}</div>
           <div className="text-xs text-muted-foreground mt-0.5">{deltaHeldILS < 0 ? 'Franchise holds more' : deltaHeldILS > 0 ? 'Company holds more' : 'Equal'}</div>
         </div>
-        <div className="border rounded-lg p-3 bg-gray-50">
+        <div className="border rounded-lg p-3 bg-white">
           <div className="text-xs text-muted-foreground mb-1">Blocked capital delta</div>
           <div className="font-bold text-lg">{ils(Math.abs(deltaBlockedILS))}</div>
           <div className="text-xs text-muted-foreground mt-0.5">{deltaBlockedILS < 0 ? 'Franchise blocks more' : deltaBlockedILS > 0 ? 'Company blocks more' : 'Equal'}</div>
@@ -411,7 +411,7 @@ function OwnershipDecision({ decision }: { decision: OwnershipComparisonDecision
       {explanation.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {explanation.map(e => (
-            <span key={e} className="text-xs bg-gray-100 border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+            <span key={e} className="text-xs bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
               {label(e)}
             </span>
           ))}
@@ -434,7 +434,7 @@ export default function BoardPack() {
   const criticalFlags = data?.boardFlags.filter(f => f.severity === 'critical') ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -474,7 +474,7 @@ export default function BoardPack() {
 
         {isLoading ? (
           <div className="space-y-4">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-200 rounded-xl animate-pulse" />)}
+            {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-white rounded-xl animate-pulse" />)}
           </div>
         ) : data ? (
           <>

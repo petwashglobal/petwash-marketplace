@@ -19,7 +19,7 @@ const SelectTrigger = React.forwardRef<
     className={cn(
       "flex h-14 w-full items-center justify-between rounded-2xl",
       "border-2 border-neutral-200/50 dark:border-neutral-700/50",
-      "bg-white dark:bg-neutral-900",
+      "bg-white dark:bg-white",
       "px-5 py-4",
       "text-[16px] font-normal leading-relaxed tracking-wide",
       "text-neutral-900 dark:text-neutral-100",
@@ -33,7 +33,7 @@ const SelectTrigger = React.forwardRef<
       "hover:border-neutral-300/70 dark:hover:border-neutral-600/70",
       "hover:shadow-md hover:shadow-neutral-200/20 dark:hover:shadow-neutral-800/20",
       "disabled:cursor-not-allowed disabled:opacity-40",
-      "disabled:bg-neutral-50/50 dark:disabled:bg-neutral-900/30",
+      "disabled:bg-white/50 dark:disabled:bg-neutral-900/30",
       "disabled:border-neutral-200/30 dark:disabled:border-neutral-800/30",
       "touch-manipulation",
       className
@@ -103,7 +103,7 @@ const SelectContent = React.forwardRef<
         // LUXURY 2025: Premium dropdown with glassmorphism
         "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-2xl",
         "border-2 border-neutral-200/50 dark:border-neutral-700/50",
-        "bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl",
+        "bg-white/95 dark:bg-white/95 backdrop-blur-xl",
         "shadow-2xl shadow-neutral-900/10 dark:shadow-neutral-950/30",
         // LUXURY 2025: Premium animations
         "data-[state=open]:animate-in data-[state=closed]:animate-out",

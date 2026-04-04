@@ -53,10 +53,10 @@ export function DatePicker({
           data-testid={testId}
           className={cn(
             "w-full justify-start text-left font-normal h-12",
-            "bg-white dark:bg-gray-900",
+            "bg-white dark:bg-white",
             "border border-gray-200 dark:border-gray-700",
             "shadow-sm hover:shadow-md",
-            "hover:bg-gray-50 dark:hover:bg-gray-800",
+            "hover:bg-white dark:hover:bg-white",
             "hover:border-gray-300 dark:hover:border-gray-600",
             "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
             "transition-all duration-200",
@@ -68,7 +68,7 @@ export function DatePicker({
         >
           <CalendarIcon className="mr-2.5 h-4 w-4 text-gray-500 dark:text-gray-400 transition-colors" />
           {value ? (
-            <span className="text-gray-900 dark:text-gray-100 font-medium tracking-tight">
+            <span className="text-gray-900 dark:text-black font-medium tracking-tight">
               {format(dateValue!, "PPP")}
             </span>
           ) : (
@@ -79,7 +79,7 @@ export function DatePicker({
       <PopoverContent 
         className={cn(
           "w-auto p-0",
-          "bg-white dark:bg-gray-900",
+          "bg-white dark:bg-white",
           "border border-gray-200 dark:border-gray-700",
           "rounded-2xl shadow-lg"
         )}

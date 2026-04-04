@@ -153,7 +153,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
         {/* Progress */}
         <div className="flex gap-1.5 mb-4">
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} className={`flex-1 h-1.5 rounded-full transition-all ${i < step ? 'bg-black' : 'bg-gray-100'}`} />
+            <div key={i} className={`flex-1 h-1.5 rounded-full transition-all ${i < step ? 'bg-black' : 'bg-white'}`} />
           ))}
         </div>
         <p className="text-xs text-gray-400 mb-4">{isHebrew ? `שלב ${step} מתוך ${totalSteps}` : `Step ${step} of ${totalSteps}`} — <span className="font-semibold text-gray-700">{stepTitle}</span></p>
@@ -161,7 +161,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
         {/* ── Step 1: Health status ── */}
         {step === 1 && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? `${petName} בריא/ה כרגע` : `${petName} is currently healthy`}</Label>
               <Switch checked={form.isHealthy} onCheckedChange={v => set('isHealthy', v)} />
             </div>
@@ -173,7 +173,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
                 </p>
               </div>
             )}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'פרעושים / קרציות' : 'Fleas / Ticks detected'}</Label>
               <Switch checked={form.hasFleasOrTicks} onCheckedChange={v => set('hasFleasOrTicks', v)} />
             </div>
@@ -182,7 +182,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
                 {isHebrew ? '⚠️ נדרש טיפול בפרעושים לפני השירות' : '⚠️ Flea/tick treatment required before service'}
               </Badge>
             )}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'מחלה לאחרונה (30 יום)' : 'Recent illness (last 30 days)'}</Label>
               <Switch checked={form.hasRecentIllness} onCheckedChange={v => set('hasRecentIllness', v)} />
             </div>
@@ -201,7 +201,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
         {/* ── Step 2: Vaccinations & Medical ── */}
         {step === 2 && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'חיסונים בתוקף' : 'Vaccinations up to date'}</Label>
               <Switch checked={form.hasCurrentVaccinations} onCheckedChange={v => set('hasCurrentVaccinations', v)} />
             </div>
@@ -213,7 +213,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
               <Label className="text-xs text-gray-500">{isHebrew ? 'תאריך חיסון כלבת (קנין / חתולים)' : 'Rabies vaccine date (dogs/cats)'}</Label>
               <Input type="date" value={form.rabiesVaccineDate} onChange={e => set('rabiesVaccineDate', e.target.value)} className="text-sm" />
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'חיסון שיעול הכלבות (Bordetella)' : 'Kennel cough (Bordetella) vaccine'}</Label>
               <Switch checked={form.hasKennelCoughVaccine} onCheckedChange={v => set('hasKennelCoughVaccine', v)} />
             </div>
@@ -243,7 +243,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
         {/* ── Step 3: Behavior ── */}
         {step === 3 && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'נוטה לתוקפנות' : 'Shows aggression'}</Label>
               <Switch checked={form.isAggressive} onCheckedChange={v => set('isAggressive', v)} />
             </div>
@@ -256,11 +256,11 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
                 className="text-sm border-red-200"
               />
             )}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'חרד/ה או לחוץ/ה בסביבה חדשה' : 'Anxious/stressed in new environments'}</Label>
               <Switch checked={form.isAnxious} onCheckedChange={v => set('isAnxious', v)} />
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'חרדת פרידה' : 'Separation anxiety'}</Label>
               <Switch checked={form.isSeparationAnxious} onCheckedChange={v => set('isSeparationAnxious', v)} />
             </div>
@@ -288,7 +288,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
         {/* ── Step 4: Consent & Signature ── */}
         {step === 4 && (
           <div className="space-y-4">
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+            <div className="p-4 bg-white rounded-xl border border-gray-100 space-y-3">
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"

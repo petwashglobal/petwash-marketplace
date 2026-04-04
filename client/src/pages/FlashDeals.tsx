@@ -41,7 +41,7 @@ function SlotBar({ fill, urgency }: { fill: number; urgency: string }) {
     normal: '#16A34A',
   };
   return (
-    <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+    <div className="w-full h-1 bg-white rounded-full overflow-hidden">
       <motion.div
         className="h-full rounded-full"
         style={{ backgroundColor: colors[urgency as keyof typeof colors] || '#16A34A' }}
@@ -209,7 +209,7 @@ export default function FlashDeals() {
         {isLoading ? (
           <div className="space-y-4">
             {[0, 1, 2].map(i => (
-              <div key={i} className="h-40 bg-gray-50 rounded-2xl animate-pulse" />
+              <div key={i} className="h-40 bg-white rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : deals.length === 0 ? (

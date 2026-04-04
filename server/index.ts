@@ -61,7 +61,7 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
     const m = raw.match(/6L[A-Za-z0-9_-]{38,}/);
     return m ? m[0] : raw.trim();
   }
-  const viteKey    = extractSiteKey(process.env.VITE_RECAPTCHA_SITE_KEY || '');
+  const viteKey    = extractSiteKey(process.env.VITE_RECAPTCHA_SITE_KEY || ''); // frontend build-time key (for mismatch check only)
   const backendKey = extractSiteKey(process.env.RECAPTCHA_SITE_KEY || '');
   if (viteKey && backendKey && viteKey !== backendKey) {
     const msg =

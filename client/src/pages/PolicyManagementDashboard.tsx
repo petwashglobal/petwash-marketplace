@@ -376,7 +376,7 @@ export default function PolicyManagementDashboard() {
                           </div>
                           <div>
                             <span className="text-muted-foreground block mb-1">Status</span>
-                            <Badge className={cert.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700'}>
+                            <Badge className={cert.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-gray-700'}>
                               {cert.status}
                             </Badge>
                           </div>

@@ -81,7 +81,7 @@ export function LuxuryButton({
 
   const variants = {
     primary: 'bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 text-white shadow-lg hover:shadow-xl hover:from-purple-700 hover:via-pink-700 hover:to-purple-800',
-    secondary: 'bg-white/10 backdrop-blur-lg border border-white/20 text-gray-900 dark:text-white hover:bg-white/20',
+    secondary: 'bg-white/10 backdrop-blur-lg border border-white/20 text-gray-900 dark:text-black hover:bg-white/20',
     ghost: 'bg-transparent hover:bg-white/10',
   };
 

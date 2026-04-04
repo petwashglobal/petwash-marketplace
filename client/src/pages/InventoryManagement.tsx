@@ -353,7 +353,7 @@ export default function InventoryManagement() {
                         {getItemIcon(item.itemType)}
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-black">
                               {item.stationName}
                             </h3>
                             <Badge variant="outline">{item.stationCode}</Badge>
@@ -369,7 +369,7 @@ export default function InventoryManagement() {
                       <div className="text-right">
                         {getStatusBadge(item.status)}
                         <div className="mt-2">
-                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                          <span className="text-2xl font-bold text-gray-900 dark:text-black">
                             {item.currentLevel}
                           </span>
                           <span className="text-sm text-gray-500">/{item.maxCapacity} {item.unit}</span>
@@ -379,7 +379,7 @@ export default function InventoryManagement() {
 
                     {/* Progress Bar */}
                     <div className="mb-3">
-                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-3 bg-white dark:bg-white rounded-full overflow-hidden">
                         <div
                           className={`h-full transition-all ${getProgressColor(item.status)}`}
                           style={{ width: `${(item.currentLevel / item.maxCapacity) * 100}%` }}

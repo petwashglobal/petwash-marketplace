@@ -121,7 +121,7 @@ const stageColors: Record<string, string> = {
   admin_final_review: 'bg-indigo-100 text-indigo-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
-  withdrawn: 'bg-gray-100 text-gray-700',
+  withdrawn: 'bg-white text-gray-700',
 };
 
 export default function ProviderReview() {
@@ -266,12 +266,12 @@ export default function ProviderReview() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-white dark:bg-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-black">
               {isHebrew ? 'ניהול בקשות ספקים' : 'Provider Applications'}
             </h1>
             <p className="text-gray-500 mt-1">
@@ -369,15 +369,15 @@ export default function ProviderReview() {
                     urgent: 'bg-red-600 text-white',
                     high:   'bg-orange-500 text-white',
                     normal: 'bg-slate-200 text-slate-700',
-                    low:    'bg-slate-100 text-slate-500',
+                    low:    'bg-white text-slate-500',
                   };
                   return (
                     <Link key={app.applicationId} href={`/admin/providers/review/${app.applicationId}`}>
-                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-amber-200 rounded-lg px-4 py-3 hover:shadow-sm cursor-pointer transition-shadow">
+                      <div className="flex items-center justify-between bg-white dark:bg-white border border-amber-200 rounded-lg px-4 py-3 hover:shadow-sm cursor-pointer transition-shadow">
                         <div className="flex items-center gap-3">
                           <User className="h-4 w-4 text-amber-600 shrink-0" />
                           <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <p className="text-sm font-medium text-slate-900 dark:text-black">
                               {app.firstName} {app.lastName}
                             </p>
                             <p className="text-xs text-muted-foreground font-mono">{app.applicationId}</p>
@@ -479,7 +479,7 @@ export default function ProviderReview() {
                 {filteredApplicants.map((applicant) => (
                   <div
                     key={applicant.id}
-                    className="p-4 rounded-xl border hover:border-purple-300 cursor-pointer transition-all bg-white dark:bg-gray-800"
+                    className="p-4 rounded-xl border hover:border-purple-300 cursor-pointer transition-all bg-white dark:bg-white"
                     onClick={() => setSelectedApplicant(applicant as any)}
                     data-testid={`applicant-row-${applicant.id}`}
                   >
@@ -503,7 +503,7 @@ export default function ProviderReview() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge className={stageColors[applicant.stage] || 'bg-gray-100'}>
+                        <Badge className={stageColors[applicant.stage] || 'bg-white'}>
                           {stageLabels[applicant.stage]?.[isHebrew ? 'he' : 'en'] || applicant.stage}
                         </Badge>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -536,7 +536,7 @@ export default function ProviderReview() {
                         <h2 className="text-xl font-bold">
                           {applicantDetails.firstName} {applicantDetails.lastName}
                         </h2>
-                        <Badge className={stageColors[applicantDetails.stage] || 'bg-gray-100'}>
+                        <Badge className={stageColors[applicantDetails.stage] || 'bg-white'}>
                           {stageLabels[applicantDetails.stage]?.[isHebrew ? 'he' : 'en']}
                         </Badge>
                       </div>
@@ -619,7 +619,7 @@ export default function ProviderReview() {
                         <p className="text-sm text-gray-500">{isHebrew ? 'לא הועלו מסמכים' : 'No documents uploaded'}</p>
                       ) : (
                         applicantDetails.documents.map((doc) => (
-                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-white">
                             <div className="flex items-center gap-3">
                               <FileText className="w-4 h-4 text-gray-500" />
                               <div>
@@ -655,7 +655,7 @@ export default function ProviderReview() {
                         <p className="text-sm text-gray-500">{isHebrew ? 'לא בוצעו בדיקות' : 'No checks performed'}</p>
                       ) : (
                         applicantDetails.backgroundChecks.map((check) => (
-                          <div key={check.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <div key={check.id} className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-white">
                             <div className="flex items-center gap-3">
                               <Shield className="w-4 h-4 text-purple-500" />
                               <span className="text-sm capitalize">{check.checkType.replace('_', ' ')}</span>
@@ -712,7 +712,7 @@ export default function ProviderReview() {
                             : 'Check all items before approving. Each case is reviewed on its own merit.'}
                         </p>
                         
-                        <div className="grid gap-2 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200">
+                        <div className="grid gap-2 p-4 bg-purple-50 dark:bg-white rounded-lg border border-purple-200">
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
                             <Checkbox checked={checkIdVerified} onCheckedChange={(checked) => setCheckIdVerified(!!checked)} className="w-4 h-4" data-testid="check-id-verified" />
                             <span className="text-sm">{isHebrew ? '✅ זהות אומתה (ת.ז./דרכון)' : '✅ ID Verified (National ID/Passport)'}</span>

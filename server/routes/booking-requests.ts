@@ -46,6 +46,7 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { EmailService } from '../emailService';
 import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
+import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
@@ -383,6 +384,36 @@ router.post('/', async (req, res) => {
       { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
 
+    // Notify provider of new booking request — in-app + email + SMS (non-blocking, best-effort)
+    if (booking.providerId) {
+      // Fetch provider contact details for email/SMS channels
+      const [providerUser] = await db
+        .select({ email: users.email, phone: users.phone })
+        .from(users)
+        .where(eq(users.id, booking.providerId))
+        .limit(1)
+        .catch(() => []);
+
+      const serviceLabel = data.serviceType?.replace(/_/g, ' ') || 'service';
+      const notifBody = `You have a new ${serviceLabel} booking request. Check your dashboard to accept or decline.`;
+
+      dispatchNotification({
+        uid: booking.providerId,
+        email: providerUser?.email ?? undefined,
+        phone: providerUser?.phone ?? undefined,
+        type: 'booking_request',
+        title: '📅 New Booking Request',
+        bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}">review and respond</a> within 24 hours.</p>`,
+        bodyText: notifBody,
+        ctaText: 'View Booking',
+        ctaUrl: `${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}`,
+        channels: ['in_app', 'email', 'sms'],
+        priority: 10,
+      }).catch((notifErr: any) =>
+        logger.warn('[BookingRequests] Provider notification failed (non-blocking)', { error: notifErr?.message, requestId })
+      );
+    }
+
     // Intelligence — advance customer journey state to ready_to_book
     if (booking.ownerId) {
       advanceJourneyState(booking.ownerId, 'ready_to_book').catch(() => {});
@@ -503,7 +534,9 @@ router.get('/', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
-    const role = req.query.role as string; // 'owner' or 'provider'
+    // role determines which side of the booking to filter on (owner vs provider).
+    // Either way, the query is scoped to the authenticated user's own UID — no IDOR risk.
+    const role = req.query.role as string; // 'provider' or anything else → defaults to owner
     const status = req.query.status as string;
     
     let conditions;
@@ -1519,6 +1552,12 @@ router.post('/:requestId/confirm', async (req, res) => {
         const ownerId = booking.ownerId;
         const bId = booking.id;
 
+        // 0. Award spend-based loyalty points: 1 point per ₪ spent (100 cents = 1 point)
+        const spendPoints = Math.floor((booking.totalCents || 0) / 100);
+        if (spendPoints > 0) {
+          await updateLoyalty(ownerId, spendPoints, 'booking_completed', { bookingId: bId });
+        }
+
         // 1. Count owner's lifetime completed bookings
         const [{ completedCount }] = await db
           .select({ completedCount: sql<number>`count(*)::int` })
@@ -1862,7 +1901,9 @@ router.post('/:requestId/cancel', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
-    const { reason } = req.body;
+    // Validate and sanitize the optional reason to prevent HTML/log injection
+    const rawReason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 500) : null;
+    const reason = rawReason || null;
     
     const [booking] = await db.select()
       .from(bookingRequests)

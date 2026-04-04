@@ -120,10 +120,10 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
               <span className="font-medium">{t.header}</span>
             </div>
             <div className="flex gap-2">
-              <Button className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+              <Button className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center">
                 <span className="text-gray-600">aA</span>
               </Button>
-              <Button className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+              <Button className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center">
                 <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -165,7 +165,7 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
                   </div>
 
                   {/* Info Button */}
-                  <Button className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center flex-shrink-0 group relative">
+                  <Button className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center flex-shrink-0 group relative">
                     <Info className="w-5 h-5 text-gray-500" />
                     {/* Tooltip */}
                     <div className="absolute right-0 top-10 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
@@ -225,7 +225,7 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
             onClick={onCancel}
             variant="outline"
             disabled={isProcessing}
-            className="px-6 h-10 border-gray-300 hover:bg-gray-50 text-[#1a73e8] font-medium"
+            className="px-6 h-10 border-gray-300 hover:bg-white text-[#1a73e8] font-medium"
             data-testid="button-cancel-google-oauth"
           >
             {t.cancel}

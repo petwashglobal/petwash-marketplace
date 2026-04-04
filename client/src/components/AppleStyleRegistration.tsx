@@ -236,7 +236,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-white rounded-full transition-colors"
               aria-label={t('registration.close', language)}
             >
               ×
@@ -248,7 +248,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           {/* Profile Picture */}
           <div className="text-center">
             <div className="relative inline-block">
-              <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center overflow-hidden">
                 {profilePreview ? (
                   <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
@@ -452,7 +452,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           )}
 
           {/* Preferences - Pre-checked legal options */}
-          <div className="space-y-4 bg-gray-50 p-4 rounded-xl">
+          <div className="space-y-4 bg-white p-4 rounded-xl">
             <div className="flex items-center space-x-3">
               <Checkbox
                 id="clubMember"

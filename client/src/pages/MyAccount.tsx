@@ -1208,11 +1208,11 @@ export default function MyAccount() {
                           : 'Verify your email and phone to unlock all features including profile photo, bookings and services'}
                       </p>
                       <div className="flex flex-wrap gap-3">
-                        <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.emailVerified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")}>
+                        <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.emailVerified ? "bg-green-100 text-green-800" : "bg-white text-gray-600")}>
                           {verificationStatus.emailVerified ? <CheckCircle2 className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
                           {isHebrew ? 'אימייל' : 'Email'} {verificationStatus.emailVerified ? '✓' : ''}
                         </div>
-                        <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.phoneVerified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")}>
+                        <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.phoneVerified ? "bg-green-100 text-green-800" : "bg-white text-gray-600")}>
                           {verificationStatus.phoneVerified ? <CheckCircle2 className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
                           {isHebrew ? 'טלפון' : 'Phone'} {verificationStatus.phoneVerified ? '✓' : ''}
                         </div>
@@ -1456,7 +1456,7 @@ export default function MyAccount() {
 
                   {/* ── Marketing Consent ── */}
                   {isEditing && (
-                    <div className="md:col-span-2 flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50">
+                    <div className="md:col-span-2 flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-white">
                       <input
                         type="checkbox"
                         id="marketingConsent"
@@ -1939,15 +1939,15 @@ export default function MyAccount() {
                       const typeColors: Record<string, string> = {
                         receipt: 'bg-green-100 text-green-700',
                         promo:   'bg-pink-100 text-pink-700',
-                        system:  'bg-gray-100 text-gray-600',
+                        system:  'bg-white text-gray-600',
                         voucher: 'bg-blue-100 text-blue-700',
                       };
                       return (
                         <div
                           key={msg.id}
-                          className={`flex items-start gap-3 rounded-xl p-3 transition-colors ${msg.readAt ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}`}
+                          className={`flex items-start gap-3 rounded-xl p-3 transition-colors ${msg.readAt ? 'bg-white hover:bg-white' : 'bg-white hover:bg-white'}`}
                         >
-                          <span className={`shrink-0 text-xs font-medium rounded-full px-2 py-0.5 mt-0.5 ${typeColors[msg.type] || 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`shrink-0 text-xs font-medium rounded-full px-2 py-0.5 mt-0.5 ${typeColors[msg.type] || 'bg-white text-gray-600'}`}>
                             {typeLabels[msg.type] || msg.type}
                           </span>
                           <div className="flex-1 min-w-0">
@@ -2025,7 +2025,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-100"
+                      className="border-gray-200 text-gray-600 hover:bg-white"
                       onClick={() => setShowEmailChangeDialog(true)}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -2074,7 +2074,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-100"
+                      className="border-gray-200 text-gray-600 hover:bg-white"
                       onClick={() => setShowPhoneVerifyDialog(true)}
                     >
                       <Phone className="w-4 h-4 mr-2" />
@@ -2324,7 +2324,7 @@ export default function MyAccount() {
                 ) : (
                   <div className="space-y-2 mb-4">
                     {passkeys.map((pk: any) => (
-                      <div key={pk.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 bg-gray-50">
+                      <div key={pk.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
                           <span className="text-xl">{pk.deviceIcon || '📱'}</span>
                           <div>
@@ -2386,7 +2386,7 @@ export default function MyAccount() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
+                <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white">
                   <div>
                     <p className="text-sm font-semibold text-gray-800">
                       {isHebrew ? 'הפעל אימות דו-שלבי' : 'Enable Two-Step Verification'}
@@ -2424,7 +2424,7 @@ export default function MyAccount() {
                 <div className="space-y-2">
                   <a
                     href="/my-devices"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer group hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 cursor-pointer group hover:bg-white transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <CreditCard className="w-5 h-5 text-gray-400" />
@@ -2440,7 +2440,7 @@ export default function MyAccount() {
                     onClick={() => exportDataMutation.mutate()}
                     disabled={exportDataMutation.isPending}
                     variant="ghost"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer group w-full h-auto hover:bg-gray-100"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 cursor-pointer group w-full h-auto hover:bg-white"
                   >
                     <div className="flex items-center gap-4">
                       <Download className="w-5 h-5 text-gray-400" />
@@ -2647,7 +2647,7 @@ export default function MyAccount() {
                   <Button 
                     variant="outline" 
                     onClick={() => setShowFreezeDialog(false)}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
+                    className="border-gray-200 text-gray-600 hover:bg-white"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -2776,7 +2776,7 @@ export default function MyAccount() {
                       setDeleteConfirmPhrase('');
                       setDeleteAcknowledgements({ credits: false, data: false, egift: false });
                     }}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
+                    className="border-gray-200 text-gray-600 hover:bg-white"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -2904,7 +2904,7 @@ export default function MyAccount() {
                       setEmailVerificationCode('');
                       setEmailChangeStep('request');
                     }}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
+                    className="border-gray-200 text-gray-600 hover:bg-white"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -3031,7 +3031,7 @@ export default function MyAccount() {
                       setPhoneVerificationCode('');
                       phoneVerification.reset();
                     }}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
+                    className="border-gray-200 text-gray-600 hover:bg-white"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -3094,7 +3094,7 @@ export default function MyAccount() {
                           return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}`;
                         })();
                         return (
-                          <div key={entry.id} className={`rounded-xl border p-4 flex flex-col gap-2 ${isToday ? 'border-pink-300 bg-pink-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
+                          <div key={entry.id} className={`rounded-xl border p-4 flex flex-col gap-2 ${isToday ? 'border-pink-300 bg-pink-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-2xl">{entry.emoji}</span>
@@ -3109,7 +3109,7 @@ export default function MyAccount() {
                                   {isHebrew ? 'היום!' : 'Today!'}
                                 </span>
                               ) : (
-                                <span className={`flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-0.5 ${isSoon ? 'text-amber-700 bg-amber-100' : 'text-gray-600 bg-gray-200'}`}>
+                                <span className={`flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-0.5 ${isSoon ? 'text-amber-700 bg-amber-100' : 'text-gray-600 bg-white'}`}>
                                   <Timer className="w-3 h-3" />
                                   {isHebrew ? `עוד ${days} ימים` : `${days}d`}
                                 </span>
@@ -3158,7 +3158,7 @@ export default function MyAccount() {
                   </div>
                 ) : (!petsData?.pets || petsData.pets.length === 0) ? (
                   <div className="py-12 text-center">
-                    <div className="w-20 h-20 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <div className="w-20 h-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mx-auto mb-4">
                       <Dog className="w-10 h-10 text-gray-200" />
                     </div>
                     <p className="text-sm font-medium text-gray-400">{isHebrew ? 'טרם נוספו חיות מחמד' : 'No pets added yet'}</p>
@@ -3176,7 +3176,7 @@ export default function MyAccount() {
                       return (
                         <div key={pet.id} className="rounded-2xl border border-gray-100 overflow-hidden">
                           {/* Card header */}
-                          <div className="flex items-center justify-between px-4 py-3.5 bg-gray-50/70">
+                          <div className="flex items-center justify-between px-4 py-3.5 bg-white/70">
                             <div className="flex items-center gap-3">
                               <div className="w-11 h-11 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center text-2xl select-none">
                                 {emoji}
@@ -3244,7 +3244,7 @@ export default function MyAccount() {
                                   const label = VACCINE_LABELS[vKey] ?? { en: vKey, he: vKey };
                                   const isDueSoon = vVal?.dueDate && daysUntilBirthday(vVal.dueDate) <= 30;
                                   return (
-                                    <div key={vKey} className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs border ${isDueSoon ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100'}`}>
+                                    <div key={vKey} className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs border ${isDueSoon ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'}`}>
                                       <span className="font-semibold text-gray-700">💉 {isHebrew ? label.he : label.en}</span>
                                       <div className="flex items-center gap-2">
                                         {vVal?.lastGiven && <span className="text-gray-400">{isHebrew ? 'ניתן' : 'Given'}: {vVal.lastGiven}</span>}
@@ -3322,7 +3322,7 @@ export default function MyAccount() {
 
                           {/* Physical details row */}
                           {(pet.weight || pet.color || pet.microchip) && (
-                            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+                            <div className="px-4 py-3 border-t border-gray-100 bg-white/50">
                               <div className="flex flex-wrap gap-3 text-xs">
                                 {pet.weight && <span className="text-gray-500">⚖️ {pet.weight} kg</span>}
                                 {pet.color && <span className="text-gray-500">🎨 {pet.color}</span>}
@@ -3372,7 +3372,7 @@ export default function MyAccount() {
                         </h3>
                         <p className="text-xs text-gray-400 mt-0.5">{isHebrew ? 'מלא את פרטי החיה' : 'Fill in your pet\'s details'}</p>
                       </div>
-                      <button onClick={() => setShowPetForm(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                      <button onClick={() => setShowPetForm(false)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-500 hover:bg-white transition-colors">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -3402,7 +3402,7 @@ export default function MyAccount() {
                               key={sp.value}
                               type="button"
                               onClick={() => setPetFormData((p: any) => ({ ...p, species: sp.value }))}
-                              className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-center ${petFormData.species === sp.value ? 'border-black bg-black/5' : 'border-gray-100 bg-gray-50 hover:border-gray-300'}`}
+                              className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-center ${petFormData.species === sp.value ? 'border-black bg-black/5' : 'border-gray-100 bg-white hover:border-gray-300'}`}
                             >
                               <span className="text-xl">{sp.emoji}</span>
                               <span className="text-[10px] font-semibold text-gray-600">{isHebrew ? sp.labelHe : sp.labelEn}</span>
@@ -3451,7 +3451,7 @@ export default function MyAccount() {
                         </label>
                         <div className="space-y-2.5">
                           {Object.entries(VACCINE_LABELS).map(([vKey, labels]) => (
-                            <div key={vKey} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                            <div key={vKey} className="bg-white rounded-2xl p-4 border border-gray-100">
                               <p className="text-xs font-bold text-gray-700 mb-3">{isHebrew ? labels.he : labels.en}</p>
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
@@ -3653,7 +3653,7 @@ export default function MyAccount() {
                     <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-3">
                       <button
                         onClick={() => setShowPetForm(false)}
-                        className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                        className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-sm font-semibold text-gray-600 hover:bg-white transition-colors"
                       >
                         {isHebrew ? 'ביטול' : 'Cancel'}
                       </button>
@@ -3700,7 +3700,7 @@ export default function MyAccount() {
                 ) : (
                   <div className="space-y-3">
                     {myTransactions.map((tx: any) => (
-                      <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+                      <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-base">🧾</div>
                           <div>
@@ -3765,7 +3765,7 @@ export default function MyAccount() {
                 ) : (
                   <div className="space-y-2">
                     {mySignedDocs.documents.map((doc: any) => (
-                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
+                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
                           <span className="text-lg">📄</span>
                           <div>
@@ -3814,7 +3814,7 @@ export default function MyAccount() {
                 ) : (
                   <div className="space-y-2">
                     {intakeFormsData.forms.map((f: any) => (
-                      <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
+                      <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
                           <span className="text-lg">🐾</span>
                           <div>
@@ -3868,7 +3868,7 @@ export default function MyAccount() {
                       <button
                         key={f}
                         onClick={() => setInboxFilter(f)}
-                        className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${inboxFilter === f ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${inboxFilter === f ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-white'}`}
                       >
                         {f === 'all' ? (isHebrew ? 'הכל' : 'All')
                           : f === 'receipt' ? (isHebrew ? 'קבלות' : 'Receipts')
@@ -3901,14 +3901,14 @@ export default function MyAccount() {
                         const typeColors: Record<string, string> = {
                           receipt: 'bg-green-100 text-green-700 border-green-200',
                           promo:   'bg-pink-100 text-pink-700 border-pink-200',
-                          system:  'bg-gray-100 text-gray-600 border-gray-200',
+                          system:  'bg-white text-gray-600 border-gray-200',
                           voucher: 'bg-blue-100 text-blue-700 border-blue-200',
                         };
 
                         return (
                           <div
                             key={msg.id}
-                            className={`rounded-xl border p-4 transition-all cursor-pointer ${msg.readAt ? 'border-gray-100 hover:border-gray-200' : 'border-gray-200 bg-gray-50 hover:bg-white'}`}
+                            className={`rounded-xl border p-4 transition-all cursor-pointer ${msg.readAt ? 'border-gray-100 hover:border-gray-200' : 'border-gray-200 bg-white hover:bg-white'}`}
                             onClick={async () => {
                               setInboxExpanded(prev => ({ ...prev, [msg.id]: !prev[msg.id] }));
                               if (!msg.readAt) {
@@ -3920,7 +3920,7 @@ export default function MyAccount() {
                             }}
                           >
                             <div className="flex items-start gap-3">
-                              <span className={`shrink-0 text-xs font-medium rounded-full px-2 py-0.5 border mt-0.5 ${typeColors[msg.type] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              <span className={`shrink-0 text-xs font-medium rounded-full px-2 py-0.5 border mt-0.5 ${typeColors[msg.type] || 'bg-white text-gray-600 border-gray-200'}`}>
                                 {typeLabels[msg.type] || msg.type}
                               </span>
                               <div className="flex-1 min-w-0">
@@ -3944,7 +3944,7 @@ export default function MyAccount() {
                                 />
                                 {msg.meta?.voucherCode && (
                                   <div className="mt-3 flex items-center gap-2">
-                                    <code className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm font-mono font-bold tracking-widest text-gray-900 text-center">
+                                    <code className="flex-1 bg-white rounded-lg px-3 py-2 text-sm font-mono font-bold tracking-widest text-gray-900 text-center">
                                       {msg.meta.voucherCode}
                                     </code>
                                     <Button
@@ -4007,7 +4007,7 @@ function ActivityHistorySection({ isHebrew, firebaseUser }: { isHebrew: boolean;
     if (s === 'confirmed') return 'bg-blue-100 text-blue-800';
     if (s === 'cancelled') return 'bg-red-100 text-red-800';
     if (s === 'disputed') return 'bg-orange-100 text-orange-800';
-    return 'bg-gray-100 text-gray-600';
+    return 'bg-white text-gray-600';
   };
 
   return (

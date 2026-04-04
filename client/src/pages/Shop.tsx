@@ -46,7 +46,7 @@ export default function Shop() {
               <input
                 type="text"
                 placeholder="Search products..."
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600"
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-white border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600"
                 data-testid="input-search-products"
               />
             </div>

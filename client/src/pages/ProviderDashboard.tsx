@@ -531,7 +531,7 @@ export default function ProviderDashboard() {
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-serif text-gray-900">{'\u05D4\u05D9\u05E1\u05D8\u05D5\u05E8\u05D9\u05D9\u05EA \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA'}</h2>
                   {bookingsData && (
-                    <span className="text-xs text-gray-400 bg-gray-100/80 px-2 py-1" style={{ borderRadius: '2px' }}>
+                    <span className="text-xs text-gray-400 bg-white/80 px-2 py-1" style={{ borderRadius: '2px' }}>
                       {bookingsData.total} {'\u05E1\u05D4\u05F4\u05DB'}
                     </span>
                   )}
@@ -611,7 +611,7 @@ export default function ProviderDashboard() {
                                       {formatShortDate(job.startTime)} {new Date(job.startTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                     <span>{'\u00B7'}</span>
-                                    <span className="font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5" style={{ borderRadius: '2px' }}>
+                                    <span className="font-mono text-gray-400 bg-white px-1.5 py-0.5" style={{ borderRadius: '2px' }}>
                                       {job.userId.slice(0, 8)}
                                     </span>
                                   </div>
@@ -701,7 +701,7 @@ export default function ProviderDashboard() {
                           size="sm"
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                           disabled={currentPage <= 1}
-                          className="border-gray-200/60 hover:bg-gray-50"
+                          className="border-gray-200/60 hover:bg-white"
                           style={{ borderRadius: '2px' }}
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -711,7 +711,7 @@ export default function ProviderDashboard() {
                           size="sm"
                           onClick={() => setCurrentPage(p => Math.min(bookingsData.totalPages, p + 1))}
                           disabled={currentPage >= bookingsData.totalPages}
-                          className="border-gray-200/60 hover:bg-gray-50"
+                          className="border-gray-200/60 hover:bg-white"
                           style={{ borderRadius: '2px' }}
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -902,7 +902,7 @@ export default function ProviderDashboard() {
                   </div>
                 </div>
                 {statementLoading ? (
-                  <div className="p-6 space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="p-6 space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-white animate-pulse rounded" />)}</div>
                 ) : !statementData?.entries?.length ? (
                   <div className="p-8 text-center text-sm text-gray-400">אין תשלומים שהתקבלו עדיין</div>
                 ) : (
@@ -914,7 +914,7 @@ export default function ProviderDashboard() {
                         { label: 'עמלה', cents: statementData.totals?.commissionCents ?? 0, dim: true },
                         { label: 'נטו לקבלה', cents: statementData.totals?.netCents ?? 0, bold: true },
                       ].map(c => (
-                        <div key={c.label} className={`rounded p-3 ${c.bold ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50'}`}>
+                        <div key={c.label} className={`rounded p-3 ${c.bold ? 'bg-emerald-50 border border-emerald-200' : 'bg-white'}`}>
                           <div className="text-xs text-gray-500 mb-1">{c.label}</div>
                           <div className={`font-bold ${c.dim ? 'text-red-600' : c.bold ? 'text-emerald-700' : ''}`}>
                             {c.dim ? '-' : ''}₪{(c.cents / 100).toFixed(2)}
@@ -925,14 +925,14 @@ export default function ProviderDashboard() {
                     {/* Per-batch breakdown */}
                     {(statementData.byBatch ?? []).map((batch: any) => (
                       <div key={batch.batchId} className="border rounded overflow-hidden" style={{ borderRadius: '2px' }}>
-                        <div className="px-4 py-2 bg-gray-50 border-b flex justify-between items-center">
+                        <div className="px-4 py-2 bg-white border-b flex justify-between items-center">
                           <span className="text-xs font-mono text-gray-700">{batch.batchId}</span>
                           <span className="text-xs text-gray-500">{batch.paidAt ? new Date(batch.paidAt).toLocaleDateString('he-IL') : ''}</span>
                           <span className="text-xs font-semibold">נטו: ₪{(batch.netCents / 100).toFixed(2)}</span>
                         </div>
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-left text-gray-400 border-b bg-gray-50">
+                            <tr className="text-left text-gray-400 border-b bg-white">
                               <th className="px-3 py-1.5">חלוקה</th>
                               <th className="px-3 py-1.5">הזמנה</th>
                               <th className="px-3 py-1.5">ברוטו</th>
@@ -942,7 +942,7 @@ export default function ProviderDashboard() {
                           </thead>
                           <tbody>
                             {batch.entries.map((e: any) => (
-                              <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50">
+                              <tr key={e.id} className="border-b last:border-0 hover:bg-white">
                                 <td className="px-3 py-2">{e.divisionCode}</td>
                                 <td className="px-3 py-2 font-mono">{e.bookingId ?? '—'}</td>
                                 <td className="px-3 py-2">₪{(e.grossCents / 100).toFixed(2)}</td>
@@ -968,7 +968,7 @@ export default function ProviderDashboard() {
                       <button
                         key={s}
                         onClick={() => setPayoutStatusFilter(s)}
-                        className={`text-xs px-2 py-1 rounded border ${payoutStatusFilter === s ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                        className={`text-xs px-2 py-1 rounded border ${payoutStatusFilter === s ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-500 border-gray-200 hover:bg-white'}`}
                         style={{ borderRadius: '2px' }}
                       >
                         {s === '' ? 'הכל' : s === 'earned' ? 'הרוויח' : s === 'held' ? 'בהמתנה' : s === 'paid' ? 'שולם' : 'הוחזר'}
@@ -979,7 +979,7 @@ export default function ProviderDashboard() {
                 {payoutLedgerLoading ? (
                   <div className="p-6 space-y-2">
                     {[...Array(4)].map((_, i) => (
-                      <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />
+                      <div key={i} className="h-10 bg-white animate-pulse rounded" />
                     ))}
                   </div>
                 ) : !payoutLedgerData?.entries?.length ? (
@@ -991,7 +991,7 @@ export default function ProviderDashboard() {
                   <>
                     {/* Totals row */}
                     {payoutLedgerData?.totals && (
-                      <div className="grid grid-cols-3 gap-px bg-gray-100 border-b border-gray-100">
+                      <div className="grid grid-cols-3 gap-px bg-white border-b border-gray-100">
                         {[
                           { label: 'ברוטו', val: payoutLedgerData.totals.grossCents },
                           { label: 'נטו', val: payoutLedgerData.totals.netCents },
@@ -1020,7 +1020,7 @@ export default function ProviderDashboard() {
                           <div key={entry.id} className="px-5 py-3 flex items-center justify-between gap-4">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusChip[entry.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusChip[entry.status] ?? 'bg-white text-gray-600 border-gray-200'}`}>
                                   {statusLabel[entry.status] ?? entry.status}
                                 </span>
                                 <span className="text-xs text-gray-400">{entry.divisionCode}</span>
@@ -1067,7 +1067,7 @@ export default function ProviderDashboard() {
               </div>
               <div className="p-5">
                 {clawbackLoading ? (
-                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-10 bg-white animate-pulse rounded" />)}</div>
                 ) : !clawbackData?.total || clawbackData.total === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-4">אין קיזוזים — מצוין!</p>
                 ) : (
@@ -1114,7 +1114,7 @@ export default function ProviderDashboard() {
                 {/* Summary tiles */}
                 {settlementLoading ? (
                   <div className="grid grid-cols-3 gap-3">
-                    {[...Array(3)].map((_,i) => <div key={i} className="h-14 bg-gray-100 animate-pulse rounded" />)}
+                    {[...Array(3)].map((_,i) => <div key={i} className="h-14 bg-white animate-pulse rounded" />)}
                   </div>
                 ) : settlementData?.summary && (
                   <div className="grid grid-cols-3 gap-3">
@@ -1132,7 +1132,7 @@ export default function ProviderDashboard() {
                 )}
                 {/* Entries table */}
                 {settlementLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_,i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_,i) => <div key={i} className="h-8 bg-white animate-pulse rounded" />)}</div>
                 ) : !(settlementData?.entries?.length) ? (
                   <div className="text-xs text-gray-400 text-center py-6 border-2 border-dashed rounded-lg">
                     No payout entries yet.
@@ -1143,7 +1143,7 @@ export default function ProviderDashboard() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs border-collapse">
                         <thead>
-                          <tr className="bg-gray-50 text-gray-500 text-[10px] uppercase">
+                          <tr className="bg-white text-gray-500 text-[10px] uppercase">
                             <th className="px-2 py-2 text-left">Batch</th>
                             <th className="px-2 py-2 text-right">Net (₪)</th>
                             <th className="px-2 py-2 text-center">Status</th>
@@ -1155,7 +1155,7 @@ export default function ProviderDashboard() {
                           {settlementData.entries.map((e: any) => {
                             const remit = settlementData.remittances.find((r: any) => r.batch_id === e.payout_batch_id);
                             return (
-                              <tr key={e.id} className="border-t hover:bg-gray-50">
+                              <tr key={e.id} className="border-t hover:bg-white">
                                 <td className="px-2 py-1.5 font-mono text-blue-700 text-[10px]">{e.payout_batch_id}</td>
                                 <td className="px-2 py-1.5 text-right font-semibold">₪{((e.net_cents ?? 0)/100).toFixed(2)}</td>
                                 <td className="px-2 py-1.5 text-center">
@@ -1163,7 +1163,7 @@ export default function ProviderDashboard() {
                                     e.status === 'settled'   ? 'bg-green-100 text-green-700' :
                                     e.status === 'exported' ? 'bg-blue-100 text-blue-700' :
                                     e.status === 'clawback' ? 'bg-red-100 text-red-700' :
-                                    'bg-gray-100 text-gray-600'
+                                    'bg-white text-gray-600'
                                   }`}>{e.status}</span>
                                 </td>
                                 <td className="px-2 py-1.5 text-center">
@@ -1171,7 +1171,7 @@ export default function ProviderDashboard() {
                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
                                       remit.status === 'sent' ? 'bg-green-100 text-green-700' :
                                       remit.status === 'failed' ? 'bg-red-100 text-red-700' :
-                                      'bg-gray-100 text-gray-600'
+                                      'bg-white text-gray-600'
                                     }`}>{remit.status}</span>
                                   ) : <span className="text-gray-300">—</span>}
                                 </td>
@@ -1194,13 +1194,13 @@ export default function ProviderDashboard() {
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Remittance History</div>
                     <div className="space-y-1.5">
                       {settlementData.remittances.map((r: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between text-xs border rounded px-3 py-2 bg-gray-50">
+                        <div key={i} className="flex items-center justify-between text-xs border rounded px-3 py-2 bg-white">
                           <span className="font-mono text-gray-600">{r.batch_id}</span>
                           <div className="flex items-center gap-2">
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
                               r.status === 'sent' ? 'bg-green-100 text-green-700' :
                               r.status === 'failed' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-600'
+                              'bg-white text-gray-600'
                             }`}>{r.status}</span>
                             {r.sent_at && <span className="text-gray-400">{new Date(r.sent_at).toLocaleDateString('he-IL')}</span>}
                             {r.retry_count > 0 && <span className="text-amber-600">↺ {r.retry_count}</span>}
@@ -1316,7 +1316,7 @@ export default function ProviderDashboard() {
                                   "text-[11px] px-2 py-0.5 font-medium border",
                                   profile.isActive
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-gray-50 text-gray-500 border-gray-200'
+                                    : 'bg-white text-gray-500 border-gray-200'
                                 )} style={{ borderRadius: '2px' }}>
                                   {profile.isActive ? '\u05E4\u05E2\u05D9\u05DC' : '\u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC'}
                                 </span>

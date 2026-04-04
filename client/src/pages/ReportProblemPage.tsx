@@ -132,7 +132,7 @@ export default function ReportProblemPage() {
         <div className="text-center mb-6 pt-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <AlertTriangle className="w-6 h-6 text-orange-500" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-black">
               {isHebrew ? "דיווח על בעיה" : "Report a Problem"}
             </h1>
           </div>
@@ -162,7 +162,7 @@ export default function ReportProblemPage() {
             </RadioGroup>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-black block mb-2">
                 {isHebrew ? "פרטים נוספים (אופציונלי)" : "Additional details (optional)"}
               </label>
               <Textarea
@@ -179,7 +179,7 @@ export default function ReportProblemPage() {
               />
             </div>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 dark:bg-purple-900/20 dark:border-purple-800">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 dark:bg-white dark:border-purple-800">
               <div className="flex items-start gap-2">
                 <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-purple-700 dark:text-purple-300">

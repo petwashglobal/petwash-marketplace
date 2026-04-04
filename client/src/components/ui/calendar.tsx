@@ -21,14 +21,14 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-3 pb-4 relative items-center",
-        caption_label: "text-base font-semibold text-gray-900 dark:text-white tracking-tight",
+        caption_label: "text-base font-semibold text-gray-900 dark:text-black tracking-tight",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
           "h-9 w-9 p-0",
-          "bg-white dark:bg-gray-800",
+          "bg-white dark:bg-white",
           "border border-gray-200 dark:border-gray-700",
-          "hover:bg-gray-50 dark:hover:bg-gray-700",
+          "hover:bg-white dark:hover:bg-white",
           "transition-colors duration-200",
           "rounded-lg"
         ),
@@ -54,9 +54,9 @@ function Calendar({
         ),
         day: cn(
           "h-11 w-11 p-0 font-medium rounded-lg",
-          "text-gray-900 dark:text-white",
-          "hover:bg-gray-100 dark:hover:bg-gray-700",
-          "focus:bg-gray-100 dark:focus:bg-gray-700",
+          "text-gray-900 dark:text-black",
+          "hover:bg-white dark:hover:bg-white",
+          "focus:bg-white dark:focus:bg-gray-700",
           "transition-colors duration-150",
           "aria-selected:opacity-100",
           "touch-manipulation",
@@ -73,7 +73,7 @@ function Calendar({
           "rounded-lg"
         ),
         day_today: cn(
-          "bg-gray-100 dark:bg-gray-800",
+          "bg-white dark:bg-white",
           "text-blue-600 dark:text-blue-400",
           "font-bold"
         ),

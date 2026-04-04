@@ -477,7 +477,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
         aria-modal="true"
         aria-labelledby="accessibility-menu-title"
       >
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-white rounded-t-2xl">
           <h2 id="accessibility-menu-title" className="text-lg font-bold text-gray-900">{t('title')}</h2>
           <Button
             variant="ghost"

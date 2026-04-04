@@ -171,7 +171,7 @@ export function MarketplaceFAQ({ platform, language = 'en', className = '' }: Ma
           <AccordionItem 
             key={faq.id} 
             value={faq.id}
-            className="border border-gray-100 rounded-2xl px-5 data-[state=open]:border-gray-200 data-[state=open]:bg-gray-50/50"
+            className="border border-gray-100 rounded-2xl px-5 data-[state=open]:border-gray-200 data-[state=open]:bg-white/50"
           >
             <AccordionTrigger className="text-left text-gray-900 hover:no-underline py-4 text-base">
               {isHebrew ? faq.questionHe : faq.question}

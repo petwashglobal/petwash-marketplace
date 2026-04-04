@@ -274,7 +274,7 @@ export default function AuthHealthCheck() {
               {healthResults.map((result, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border"
+                  className="flex items-start gap-3 p-3 bg-white rounded-lg border"
                 >
                   <div className="mt-0.5">{getStatusIcon(result.status)}</div>
                   <div className="flex-1">
@@ -325,19 +325,19 @@ export default function AuthHealthCheck() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center p-2 bg-white rounded">
                   <span className="text-sm font-medium text-gray-600">reCAPTCHA Site Key:</span>
                   <Badge variant={firebaseConfig.recaptchaSiteKey.includes('✅') ? 'default' : 'destructive'}>
                     {firebaseConfig.recaptchaSiteKey}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center p-2 bg-white rounded">
                   <span className="text-sm font-medium text-gray-600">App Check Site Key:</span>
                   <Badge variant="outline">
                     {firebaseConfig.appCheckSiteKey}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center p-2 bg-white rounded">
                   <span className="text-sm font-medium text-gray-600">App Check Enabled:</span>
                   <Badge variant={firebaseConfig.appCheckEnabled ? 'default' : 'outline'}>
                     {firebaseConfig.appCheckEnabled ? 'Yes' : 'No'}
@@ -345,15 +345,15 @@ export default function AuthHealthCheck() {
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center p-2 bg-white rounded">
                   <span className="text-sm font-medium text-gray-600">Auth Domain:</span>
                   <span className="text-sm text-gray-900 font-mono">{firebaseConfig.authDomain}</span>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center p-2 bg-white rounded">
                   <span className="text-sm font-medium text-gray-600">Project ID:</span>
                   <span className="text-sm text-gray-900 font-mono">{firebaseConfig.projectId}</span>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center p-2 bg-white rounded">
                   <span className="text-sm font-medium text-gray-600">Environment:</span>
                   <Badge variant={firebaseConfig.environment === 'production' ? 'default' : 'outline'}>
                     {firebaseConfig.environment}

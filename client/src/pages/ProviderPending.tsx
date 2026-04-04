@@ -163,7 +163,7 @@ export default function ProviderPending() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="animate-spin w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full" />
       </div>
     );
@@ -171,7 +171,7 @@ export default function ProviderPending() {
 
   if (!appData) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
         <Card className="max-w-md w-full mx-auto bg-white">
           <CardContent className="text-center py-8 space-y-4">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
@@ -189,7 +189,7 @@ export default function ProviderPending() {
 
   if (appData.status === "rejected") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
         <Card className="max-w-md w-full mx-auto bg-white">
           <CardHeader className="text-center pb-2">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
@@ -224,7 +224,7 @@ export default function ProviderPending() {
   const allDocsUploaded = pendingDocs.length === 0;
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-8 px-4" dir={he ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-white py-8 px-4" dir={he ? "rtl" : "ltr"}>
       <div className="max-w-lg mx-auto space-y-4">
 
         {/* Status Card */}
@@ -294,7 +294,7 @@ export default function ProviderPending() {
                   };
                   return (
                     <div key={stage} className="flex flex-col items-center gap-1 flex-1">
-                      <div className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-gray-200"}`} />
+                      <div className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-white"}`} />
                       <span className={`text-xs ${active ? "text-amber-700 font-medium" : "text-gray-400"}`}>
                         {he ? labels.he[i] : labels.en[i]}
                       </span>
@@ -308,8 +308,8 @@ export default function ProviderPending() {
               <div className="flex items-center gap-1 justify-center">
                 {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => (
                   <div key={stage} className="flex items-center gap-1">
-                    <div className={`w-3 h-3 rounded-full ${stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-gray-200"}`} />
-                    {i < 3 && <div className={`w-8 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-gray-200"}`} />}
+                    <div className={`w-3 h-3 rounded-full ${stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-white"}`} />
+                    {i < 3 && <div className={`w-8 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-white"}`} />}
                   </div>
                 ))}
               </div>
@@ -384,7 +384,7 @@ export default function ProviderPending() {
                     <div
                       key={docType}
                       className={`flex items-center gap-3 p-3 rounded-lg border ${
-                        uploaded ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"
+                        uploaded ? "border-green-200 bg-green-50" : "border-gray-200 bg-white"
                       }`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${

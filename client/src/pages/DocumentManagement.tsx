@@ -149,7 +149,7 @@ export default function DocumentManagement() {
       trademark: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
       certificate: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
     };
-    return colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    return colors[type] || 'bg-white text-gray-800 dark:bg-white dark:text-black';
   };
 
   const handleDownload = async (doc: Document) => {

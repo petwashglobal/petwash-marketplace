@@ -88,12 +88,12 @@ export default function DriverDashboard() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { color: string; label: string }> = {
-      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400', label: 'New Request' },
-      accepted: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400', label: 'Accepted' },
-      arrived: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400', label: 'Arrived' },
-      in_progress: { color: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400', label: 'In Transit' },
-      completed: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400', label: 'Completed' },
-      cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400', label: 'Cancelled' },
+      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-white dark:text-yellow-400', label: 'New Request' },
+      accepted: { color: 'bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-400', label: 'Accepted' },
+      arrived: { color: 'bg-purple-100 text-purple-800 dark:bg-white dark:text-purple-400', label: 'Arrived' },
+      in_progress: { color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-400', label: 'In Transit' },
+      completed: { color: 'bg-white text-gray-800 dark:bg-white/20 dark:text-gray-400', label: 'Completed' },
+      cancelled: { color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-400', label: 'Cancelled' },
     };
     const { color, label } = variants[status] || variants.pending;
     return <Badge className={color}>{label}</Badge>;

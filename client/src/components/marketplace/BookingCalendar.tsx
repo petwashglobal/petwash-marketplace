@@ -18,6 +18,8 @@ interface BookingCalendarProps {
     endTime: Date;
   }) => void;
   bookingMode: 'SINGLE_SLOT' | 'MULTI_SLOT';
+  /** Called when the user taps "Request Custom Date" on the empty-slots message */
+  onRequestCustomDate?: () => void;
 }
 
 interface AvailabilitySlot {
@@ -30,7 +32,7 @@ interface AvailabilitySlot {
   timezone: string;
 }
 
-export function BookingCalendar({ platform, providerId, onSlotSelected, bookingMode }: BookingCalendarProps) {
+export function BookingCalendar({ platform, providerId, onSlotSelected, bookingMode, onRequestCustomDate }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
   const { toast } = useToast();
@@ -151,11 +153,21 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
           )}
 
           {!isLoading && !error && slotsForSelectedDate.length === 0 && (
-            <Card className="border-yellow-200 bg-white dark:bg-yellow-900/20">
-              <CardContent className="p-4">
+            <Card className="border-yellow-200 bg-white dark:bg-white">
+              <CardContent className="p-4 space-y-3">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  No available slots for this date. Please select another day.
+                  No available slots for this date. Please select another day or send a custom request.
                 </p>
+                {onRequestCustomDate && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onRequestCustomDate}
+                    className="w-full border-yellow-400 text-yellow-900 dark:text-yellow-200 hover:bg-yellow-50 dark:hover:bg-yellow-900/40"
+                  >
+                    Request Custom Date →
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
@@ -193,7 +205,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
       )}
 
       {selectedSlot && (
-        <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+        <Card className="border-green-200 bg-green-50 dark:bg-white">
           <CardContent className="p-4">
             <p className="text-sm text-green-800 dark:text-green-200">
               ✓ Selected: {new Date(selectedSlot.start).toLocaleDateString()} at {new Date(selectedSlot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

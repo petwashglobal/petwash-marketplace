@@ -345,7 +345,7 @@ function CasesTable({ cases }: { cases: InterventionCase[] }) {
                 <TableCell className="text-xs text-muted-foreground font-mono">{c.id}</TableCell>
                 <TableCell>
                   <div className="font-medium text-sm">{c.entityName}</div>
-                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${c.entityType === 'station' ? 'bg-blue-50 text-blue-700 border-blue-200' : c.entityType === 'network' ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${c.entityType === 'station' ? 'bg-blue-50 text-blue-700 border-blue-200' : c.entityType === 'network' ? 'bg-white text-slate-700 border-slate-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
                     {c.entityType}
                   </span>
                 </TableCell>
@@ -412,7 +412,7 @@ export default function Interventions() {
   const counts = data?.counts ?? { open: 0, inProgress: 0, resolved: 0, escalated: 0, total: 0 };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -478,7 +478,7 @@ export default function Interventions() {
           </CardHeader>
           <CardContent className="p-0 pb-2">
             {isLoading
-              ? <div className="h-40 bg-gray-100 mx-4 rounded animate-pulse" />
+              ? <div className="h-40 bg-white mx-4 rounded animate-pulse" />
               : <CasesTable cases={cases} />}
           </CardContent>
         </Card>

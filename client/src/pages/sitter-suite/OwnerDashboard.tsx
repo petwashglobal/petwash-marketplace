@@ -343,7 +343,7 @@ export default function OwnerDashboard() {
                                 <MessageCircle className="w-4 h-4 mr-2" />
                                 {t('sitterHub.message')}
                               </Button>
-                              <Button variant="outline" size="sm" className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 font-semibold" data-testid={`button-view-${booking.id}`}>
+                              <Button variant="outline" size="sm" className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:bg-white font-semibold" data-testid={`button-view-${booking.id}`}>
                                 {t('sitterHub.viewDetails')}
                                 <ChevronRight className="w-4 h-4 ml-1" />
                               </Button>

@@ -139,7 +139,7 @@ export default function ProviderDetail() {
     if (provider.kind === 'walker') {
       if (provider.bodyCamera) {
         badges.push(
-          <Badge key="bodycam" variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" data-testid="badge-body-camera">
+          <Badge key="bodycam" variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-400" data-testid="badge-body-camera">
             <Video className="w-4 h-4 mr-1" />
             {isHebrew ? 'מצלמת גוף' : 'Body Camera'}
           </Badge>
@@ -147,7 +147,7 @@ export default function ProviderDetail() {
       }
       if (provider.droneAccess) {
         badges.push(
-          <Badge key="drone" variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" data-testid="badge-drone">
+          <Badge key="drone" variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-white dark:text-purple-400" data-testid="badge-drone">
             <Plane className="w-4 h-4 mr-1" />
             {isHebrew ? 'גישה לרחפן' : 'Drone Access'}
           </Badge>
@@ -157,7 +157,7 @@ export default function ProviderDetail() {
 
     if (provider.kind === 'sitter' && provider.hasOwnPets) {
       badges.push(
-        <Badge key="pets" variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" data-testid="badge-has-pets">
+        <Badge key="pets" variant="secondary" className="bg-green-100 text-green-800 dark:bg-white dark:text-green-400" data-testid="badge-has-pets">
           <Dog className="w-4 h-4 mr-1" />
           {isHebrew ? 'יש חיות מחמד' : 'Has Pets'}
         </Badge>
@@ -188,7 +188,7 @@ export default function ProviderDetail() {
                         data-testid="img-provider-photo"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900">
+                      <div className="w-full h-full flex items-center justify-center bg-white dark:bg-white">
                         <Users className="w-24 h-24 text-purple-400" />
                       </div>
                     )}
@@ -224,7 +224,7 @@ export default function ProviderDetail() {
                   
                   <p className="text-lg text-gray-600 dark:text-gray-400 mb-3">{platformLabel}</p>
 
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-4">
+                  <div className="flex items-center gap-2 text-gray-700 dark:text-black mb-4">
                     <MapPin className="w-6 h-6 text-purple-600" />
                     <span className="text-xl font-medium" data-testid="text-provider-city">{provider.city}</span>
                   </div>
@@ -291,7 +291,7 @@ export default function ProviderDetail() {
                   <div className="p-5 rounded-2xl border-2 border-amber-100 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-900/10">
                     <div className="flex items-center gap-2 mb-4">
                       <TrendingUp className="w-5 h-5 text-amber-600" />
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-black">
                         {isHebrew ? 'אמינות ספק' : 'Provider Trust'}
                       </h3>
                       {trustStats?.trustScore != null && (
@@ -309,7 +309,7 @@ export default function ProviderDetail() {
 
                     <div className="grid grid-cols-2 gap-3">
                       {trustStats?.acceptanceRatePct != null && (
-                        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border border-blue-100">
+                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-blue-100">
                           <UserCheck className="w-4 h-4 text-blue-500 shrink-0" />
                           <div>
                             <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז קבלה' : 'Acceptance'}</p>
@@ -318,7 +318,7 @@ export default function ProviderDetail() {
                         </div>
                       )}
                       {trustStats?.completionRatePct != null && (
-                        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border border-green-100">
+                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-green-100">
                           <CheckSquare className="w-4 h-4 text-green-500 shrink-0" />
                           <div>
                             <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז השלמה' : 'Completion'}</p>
@@ -327,7 +327,7 @@ export default function ProviderDetail() {
                         </div>
                       )}
                       {trustStats?.responseRatePct != null && (
-                        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border border-purple-100">
+                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-purple-100">
                           <Clock className="w-4 h-4 text-purple-500 shrink-0" />
                           <div>
                             <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז תגובה' : 'Response'}</p>
@@ -336,7 +336,7 @@ export default function ProviderDetail() {
                         </div>
                       )}
                       {trustStats?.cancellationRatePct != null && (
-                        <div className={`flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border ${trustStats.cancellationRatePct > 10 ? 'border-red-100' : trustStats.cancellationRatePct > 5 ? 'border-amber-100' : 'border-green-100'}`}>
+                        <div className={`flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border ${trustStats.cancellationRatePct > 10 ? 'border-red-100' : trustStats.cancellationRatePct > 5 ? 'border-amber-100' : 'border-green-100'}`}>
                           <AlertTriangle className={`w-4 h-4 shrink-0 ${trustStats.cancellationRatePct > 10 ? 'text-red-400' : trustStats.cancellationRatePct > 5 ? 'text-amber-400' : 'text-green-400'}`} />
                           <div>
                             <p className="text-[10px] text-gray-500">{isHebrew ? 'סיכון ביטול' : 'Cancel risk'}</p>
@@ -375,7 +375,7 @@ export default function ProviderDetail() {
                   <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                     {isHebrew ? 'אודות' : 'About'}
                   </h3>
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg" data-testid="text-provider-bio">
+                  <p className="text-gray-700 dark:text-black leading-relaxed text-lg" data-testid="text-provider-bio">
                     {provider.bio || (isHebrew ? 'אין תיאור זמין' : 'No description available')}
                   </p>
                 </div>
@@ -391,7 +391,7 @@ export default function ProviderDetail() {
                         <Badge
                           key={index}
                           variant="outline"
-                          className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-3 py-1"
+                          className="bg-green-50 dark:bg-white text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-3 py-1"
                           data-testid={`badge-certification-${index}`}
                         >
                           <CheckCircle2 className="w-4 h-4 mr-1" />
@@ -446,8 +446,8 @@ export default function ProviderDetail() {
                 </div>
 
                 {/* Note about Availability */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="bg-blue-50 dark:bg-white p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-gray-700 dark:text-black">
                     <CalendarIcon className="w-4 h-4 inline mr-2 text-blue-600" />
                     {isHebrew 
                       ? 'זמינות ותאריכים יוצגו בשלב הבא של ההזמנה' 
@@ -475,7 +475,7 @@ export default function ProviderDetail() {
                     />
                   </div>
                   {/* Placeholder for additional photos */}
-                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 flex items-center justify-center">
+                  <div className="aspect-square rounded-xl bg-white dark:bg-white border-2 border-gray-200 dark:border-gray-800 flex items-center justify-center">
                     <p className="text-sm text-gray-400 dark:text-gray-600 text-center px-2">
                       {isHebrew ? 'תמונות נוספות בקרוב' : 'More photos coming soon'}
                     </p>
@@ -499,13 +499,13 @@ export default function ProviderDetail() {
                     {provider.email && (
                       <div className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-800">
                         <Mail className="w-5 h-5 text-purple-600" />
-                        <span className="text-gray-700 dark:text-gray-300" data-testid="text-provider-email">{provider.email}</span>
+                        <span className="text-gray-700 dark:text-black" data-testid="text-provider-email">{provider.email}</span>
                       </div>
                     )}
                     {provider.phone && (
                       <div className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-800">
                         <Phone className="w-5 h-5 text-purple-600" />
-                        <span className="text-gray-700 dark:text-gray-300" data-testid="text-provider-phone">{provider.phone}</span>
+                        <span className="text-gray-700 dark:text-black" data-testid="text-provider-phone">{provider.phone}</span>
                       </div>
                     )}
                   </div>
@@ -541,7 +541,7 @@ export default function ProviderDetail() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                   </div>
                 ) : reviewList.length === 0 ? (
-                  <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid="reviews-empty-state">
+                  <div className="text-center py-8 bg-white dark:bg-white/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid="reviews-empty-state">
                     <Star className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
                     <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
                       {isHebrew ? 'אין ביקורות עדיין' : 'No reviews yet'}
@@ -555,10 +555,10 @@ export default function ProviderDetail() {
                 ) : (
                   <div className="space-y-4" data-testid="reviews-list">
                     {reviewList.map((review: any, index: number) => (
-                      <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid={`review-${index}`}>
+                      <div key={index} className="p-4 bg-white dark:bg-white/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid={`review-${index}`}>
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">{review.customerName || 'Anonymous'}</p>
+                            <p className="font-semibold text-gray-900 dark:text-black">{review.customerName || 'Anonymous'}</p>
                             <div className="flex items-center gap-1 mt-1">
                               {[...Array(5)].map((_, i) => (
                                 <Star
@@ -570,7 +570,7 @@ export default function ProviderDetail() {
                           </div>
                           <p className="text-sm text-gray-500">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}</p>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300">{review.comment || ''}</p>
+                        <p className="text-gray-700 dark:text-black">{review.comment || ''}</p>
                       </div>
                     ))}
                   </div>

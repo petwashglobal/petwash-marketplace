@@ -299,7 +299,7 @@ export default function PlatformShowcase() {
               </span>
             </h2>
             
-            <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 max-w-4xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-slate-600 dark:text-black max-w-4xl mx-auto leading-relaxed">
               Building a better world for pets, people, and our planet — one wash at a time
             </p>
           </div>
@@ -309,14 +309,14 @@ export default function PlatformShowcase() {
             {/* Global Shelter Donations */}
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-50 transition-all duration-300" />
-              <Card className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-2 border-green-200 dark:border-green-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="relative bg-white/90 dark:bg-white/90 backdrop-blur-xl border-2 border-green-200 dark:border-green-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <Globe className="h-10 w-10 text-white drop-shadow-md" strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-black mb-3">
                   🌍 Global Shelter Donations
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-slate-600 dark:text-black leading-relaxed">
                   Supporting animals worldwide with monthly contributions to shelters and rescue organizations across the globe
                 </p>
                 <Badge className="mt-4 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
@@ -328,14 +328,14 @@ export default function PlatformShowcase() {
             {/* Disability Discount */}
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-50 transition-all duration-300" />
-              <Card className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-2 border-blue-200 dark:border-blue-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="relative bg-white/90 dark:bg-white/90 backdrop-blur-xl border-2 border-blue-200 dark:border-blue-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <HandHeart className="h-10 w-10 text-white drop-shadow-md" strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-black mb-3">
                   🤝 Disability Discount Program
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-2">
+                <p className="text-slate-600 dark:text-black leading-relaxed mb-2">
                   Additional 15% discount for approved members (הנחת נכות) — because accessibility is a human right
                 </p>
                 <Badge className="mt-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
@@ -347,14 +347,14 @@ export default function PlatformShowcase() {
             {/* Senior Citizens */}
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-50 transition-all duration-300" />
-              <Card className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-2 border-purple-200 dark:border-purple-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="relative bg-white/90 dark:bg-white/90 backdrop-blur-xl border-2 border-purple-200 dark:border-purple-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <Gift className="h-10 w-10 text-white drop-shadow-md" strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-black mb-3">
                   👵 Senior Citizen Benefits
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-slate-600 dark:text-black leading-relaxed">
                   Extra 10% discount for pensioners with government certificate — honoring our elders
                 </p>
                 <Badge className="mt-4 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100">
@@ -366,14 +366,14 @@ export default function PlatformShowcase() {
             {/* FREE Paw Finder */}
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-orange-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-50 transition-all duration-300" />
-              <Card className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-2 border-red-200 dark:border-red-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="relative bg-white/90 dark:bg-white/90 backdrop-blur-xl border-2 border-red-200 dark:border-red-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <Heart className="h-10 w-10 text-white drop-shadow-md fill-white" strokeWidth={2} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-black mb-3">
                   🆓 FREE ⁦Paw Finder™⁩
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-slate-600 dark:text-black leading-relaxed">
                   Lost pet reunions with ZERO fees or commissions — reuniting families is priceless
                 </p>
                 <Badge className="mt-4 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
@@ -385,14 +385,14 @@ export default function PlatformShowcase() {
             {/* Environmental Sustainability */}
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-teal-600 to-green-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-50 transition-all duration-300" />
-              <Card className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-2 border-teal-200 dark:border-teal-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="relative bg-white/90 dark:bg-white/90 backdrop-blur-xl border-2 border-teal-200 dark:border-teal-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-green-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <TreePine className="h-10 w-10 text-white drop-shadow-md" strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-black mb-3">
                   🌿 Environmental Sustainability
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-slate-600 dark:text-black leading-relaxed">
                   Organic products, eco-friendly operations, and carbon-neutral goals by 2030
                 </p>
                 <Badge className="mt-4 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-100">
@@ -404,14 +404,14 @@ export default function PlatformShowcase() {
             {/* Community Education */}
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-amber-600 to-yellow-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-50 transition-all duration-300" />
-              <Card className="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-2 border-amber-200 dark:border-amber-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="relative bg-white/90 dark:bg-white/90 backdrop-blur-xl border-2 border-amber-200 dark:border-amber-700 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <GraduationCap className="h-10 w-10 text-white drop-shadow-md" strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-black mb-3">
                   📚 Community Education
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-slate-600 dark:text-black leading-relaxed">
                   FREE workshops on pet care and animal welfare — knowledge should be accessible to all
                 </p>
                 <Badge className="mt-4 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
@@ -425,7 +425,7 @@ export default function PlatformShowcase() {
           <div className="mt-16 text-center">
             <div className="relative inline-block">
               <div className="absolute -inset-4 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-3xl blur-2xl opacity-20" />
-              <Card className="relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-2 border-green-300 dark:border-green-600 p-10 rounded-3xl shadow-2xl">
+              <Card className="relative bg-white/80 dark:bg-white/80 backdrop-blur-xl border-2 border-green-300 dark:border-green-600 p-10 rounded-3xl shadow-2xl">
                 <div className="flex justify-center mb-6">
                   <div className="flex gap-2">
                     <Heart className="h-12 w-12 text-red-500 fill-red-500 animate-pulse" />
@@ -436,7 +436,7 @@ export default function PlatformShowcase() {
                 <h3 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
                   Our Legacy Mission
                 </h3>
-                <p className="text-xl md:text-2xl text-slate-700 dark:text-slate-200 leading-relaxed max-w-4xl mx-auto">
+                <p className="text-xl md:text-2xl text-slate-700 dark:text-black leading-relaxed max-w-4xl mx-auto">
                   Building a better world for our children and grand-grandchildren — 
                   where every pet is loved, every person is valued, and our planet thrives 🌍
                 </p>

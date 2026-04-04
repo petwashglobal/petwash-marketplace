@@ -347,7 +347,7 @@ export default function WalkTracking() {
 
         {/* Emergency Alerts */}
         {activeAlerts.length > 0 && (
-          <div className="mb-8 luxury-glass-card border-2 border-red-500 bg-red-50/80 dark:bg-red-900/30 p-6 luxury-animate-slide-up luxury-hover-glow">
+          <div className="mb-8 luxury-glass-card border-2 border-red-500 bg-red-50/80 dark:bg-white p-6 luxury-animate-slide-up luxury-hover-glow">
             <div className="flex items-start gap-4">
               <AlertTriangle className="w-6 h-6 text-red-600 animate-pulse" />
               <div className="flex-1">
@@ -632,7 +632,7 @@ export default function WalkTracking() {
 
             {/* Walk Summary */}
             {walk.status === 'completed' && (
-              <div className="luxury-glass-card border-2 border-green-400 bg-green-50/50 dark:bg-green-900/20 luxury-animate-scale-in luxury-delay-7">
+              <div className="luxury-glass-card border-2 border-green-400 bg-green-50/50 dark:bg-white luxury-animate-scale-in luxury-delay-7">
                 <div className="p-6">
                   <h2 className="luxury-heading-sm flex items-center gap-2 text-green-700 dark:text-green-400 mb-4">
                     <CheckCircle className="w-6 h-6" />

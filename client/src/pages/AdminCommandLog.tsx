@@ -19,7 +19,7 @@ const CMD_LABELS: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  pending:      { label: "ממתין",     color: "bg-gray-100 text-gray-700",    icon: Clock },
+  pending:      { label: "ממתין",     color: "bg-white text-gray-700",    icon: Clock },
   sent:         { label: "נשלח",      color: "bg-blue-100 text-blue-700",    icon: Zap },
   acknowledged: { label: "אושר",      color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
   completed:    { label: "הושלם",     color: "bg-emerald-100 text-emerald-800", icon: CheckCircle2 },
@@ -107,7 +107,7 @@ export default function AdminCommandLog() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50/50">
+                    <tr className="border-b border-gray-100 bg-white/50">
                       <th className="text-right py-2 px-3 font-medium text-gray-500">פקודה</th>
                       <th className="text-right py-2 px-3 font-medium text-gray-500">סטטוס</th>
                       <th className="text-right py-2 px-3 font-medium text-gray-500">נסיונות</th>
@@ -119,12 +119,12 @@ export default function AdminCommandLog() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {commands.map((cmd: any) => {
-                      const cfg = STATUS_CONFIG[cmd.status] ?? { label: cmd.status, color: "bg-gray-100 text-gray-700", icon: Clock };
+                      const cfg = STATUS_CONFIG[cmd.status] ?? { label: cmd.status, color: "bg-white text-gray-700", icon: Clock };
                       const Icon = cfg.icon;
                       const needsComp = !!cmd.compensationTriggeredAt;
                       return (
                         <tr key={cmd.id} className={cn(
-                          "hover:bg-gray-50/60 transition-colors",
+                          "hover:bg-white/60 transition-colors",
                           cmd.status === "failed" && "bg-red-50/40",
                           needsComp && "bg-orange-50/40",
                         )}>

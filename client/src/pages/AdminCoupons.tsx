@@ -203,7 +203,7 @@ function actionColor(action: string): string {
   if (action === 'created')    return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
   if (action === 'deactivated') return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
   if (action === 'cloned')     return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
-  return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  return 'bg-white text-gray-700 dark:bg-white dark:text-black';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -350,7 +350,7 @@ export default function AdminCoupons() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4" dir={dir}>
+    <div className="min-h-screen bg-white dark:bg-white p-4" dir={dir}>
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
@@ -360,7 +360,7 @@ export default function AdminCoupons() {
               <Tag className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">מנהל קופונים</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-black">מנהל קופונים</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">PetWash™ Coupon Engine — Phase 2</p>
             </div>
           </div>
@@ -444,7 +444,7 @@ export default function AdminCoupons() {
                           <>
                             <TableRow
                               key={coupon.id}
-                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                              className="cursor-pointer hover:bg-white dark:hover:bg-white"
                               onClick={() => setExpandedId(expandedId === coupon.id ? null : coupon.id)}
                             >
                               <TableCell>
@@ -523,7 +523,7 @@ export default function AdminCoupons() {
                             </TableRow>
 
                             {expandedId === coupon.id && (
-                              <TableRow key={`${coupon.id}-detail`} className="bg-gray-50 dark:bg-gray-800/40">
+                              <TableRow key={`${coupon.id}-detail`} className="bg-white dark:bg-white/40">
                                 <TableCell colSpan={9} className="py-3 px-6">
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                                     <div><div className="text-gray-400 text-xs mb-1">מינ׳ רכישה</div><div>{fmtCents(coupon.min_spend_cents)}</div></div>
@@ -721,7 +721,7 @@ export default function AdminCoupons() {
                   <span className="text-sm font-medium">ניתן לצבירה כללית</span>
                 </label>
               </div>
-              <div className="border rounded-lg p-3 space-y-2 bg-gray-50 dark:bg-gray-800">
+              <div className="border rounded-lg p-3 space-y-2 bg-white dark:bg-white">
                 <div className="text-xs font-semibold text-gray-500 mb-2">מטריצת ניתן לצבירה עם:</div>
                 <div className="grid grid-cols-2 gap-2">
                   {STACKABILITY_FIELDS.map(f => (
@@ -763,7 +763,7 @@ export default function AdminCoupons() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="text-sm text-gray-600 dark:text-gray-300">
+            <div className="text-sm text-gray-600 dark:text-black">
               ביטול קמפיין <span className="font-mono font-bold">{deactivateTarget?.code}</span>.
               פעולה זו תירשם בלוג הביקורת.
             </div>

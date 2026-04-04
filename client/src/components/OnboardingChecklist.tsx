@@ -76,7 +76,7 @@ export function OnboardingChecklist() {
 
       {/* Progress bar */}
       <div className="px-4 pt-2.5">
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-white rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{ width: `${data.percentComplete}%`, background: "linear-gradient(90deg,#0B57D0,#4E8DF7)" }}
@@ -89,7 +89,7 @@ export function OnboardingChecklist() {
       {!collapsed && (
         <div className="px-4 pb-4 space-y-1 mt-1">
           {data.checklist.map(m => (
-            <div key={m.key} className={`flex items-center gap-2.5 py-1.5 rounded-lg px-1 transition-colors ${m.completed ? "opacity-50" : "hover:bg-gray-50"}`}>
+            <div key={m.key} className={`flex items-center gap-2.5 py-1.5 rounded-lg px-1 transition-colors ${m.completed ? "opacity-50" : "hover:bg-white"}`}>
               {m.completed ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
               ) : (

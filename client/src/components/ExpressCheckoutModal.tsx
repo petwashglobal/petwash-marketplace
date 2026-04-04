@@ -216,7 +216,7 @@ export function ExpressCheckoutModal({
         </div>
 
         <form ref={formRef} onSubmit={handleSubmit} className="px-5 py-5 space-y-4">
-          <div className="p-4 bg-[#FAFAF8] border border-[#eee]" style={{ borderRadius: '2px' }}>
+          <div className="p-4 bg-white border border-[#eee]" style={{ borderRadius: '2px' }}>
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-medium text-[#1a1a1a] text-sm" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                 {displayName}

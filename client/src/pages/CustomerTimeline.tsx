@@ -37,8 +37,8 @@ const BOOKING_STATUS_COLOR: Record<string, string> = {
   in_progress: "bg-blue-100 text-blue-800",
   confirmed:   "bg-blue-100 text-blue-800",
   pending:     "bg-yellow-100 text-yellow-800",
-  cancelled:   "bg-gray-100 text-gray-600",
-  declined:    "bg-gray-100 text-gray-600",
+  cancelled:   "bg-white text-gray-600",
+  declined:    "bg-white text-gray-600",
   disputed:    "bg-red-100 text-red-700",
 };
 
@@ -57,7 +57,7 @@ function TimelineItem({ item }: { item: any }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">{cfg.label}</span>
           {item.status && BOOKING_STATUS_LABELS[item.status] && (
-            <Badge className={cn("text-xs", BOOKING_STATUS_COLOR[item.status] ?? "bg-gray-100 text-gray-600")}>
+            <Badge className={cn("text-xs", BOOKING_STATUS_COLOR[item.status] ?? "bg-white text-gray-600")}>
               {BOOKING_STATUS_LABELS[item.status]}
             </Badge>
           )}

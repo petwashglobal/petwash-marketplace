@@ -387,7 +387,7 @@ export function OnboardingVerification({
           className="w-11 h-14 sm:w-13 sm:h-16 text-center text-2xl font-bold border-2 rounded-sm focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all duration-200"
           style={{
             borderColor: digit ? '#1a1a1a' : '#d1d5db',
-            background: digit ? '#f8f9fa' : '#ffffff',
+            background: '#ffffff',
             fontFamily: "'Courier New', monospace",
           }}
         />
@@ -398,7 +398,7 @@ export function OnboardingVerification({
   const ProgressBar = () => (
     <div className="flex items-center gap-1 mb-8">
       {[1, 2, 3].map(s => (
-        <div key={s} className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-100">
+        <div key={s} className="flex-1 h-1.5 rounded-full overflow-hidden bg-white">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -497,14 +497,14 @@ export function OnboardingVerification({
               </Button>
 
               <div className="flex items-center gap-3 py-2">
-                <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex-1 h-px bg-white" />
                 <span className="text-xs text-gray-400 whitespace-nowrap">
                   {t.or}
                 </span>
-                <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex-1 h-px bg-white" />
               </div>
 
-              <div className="text-center p-3 rounded-sm border border-gray-100 bg-gray-50">
+              <div className="text-center p-3 rounded-sm border border-gray-100 bg-white">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   {linkPolling ? (
                     <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />

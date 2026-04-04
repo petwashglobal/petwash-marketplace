@@ -37,7 +37,7 @@ const EVENT_CONFIG: Record<LiveEvent['type'], {
   bg: string;
   labelEn: string;
 }> = {
-  MATCHING_STARTED:  { icon: Search,     color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-900/20',   labelEn: 'Matching Started' },
+  MATCHING_STARTED:  { icon: Search,     color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-white',   labelEn: 'Matching Started' },
   PROVIDER_ACCEPTED: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', labelEn: 'Provider Accepted' },
   PROVIDER_ARRIVING: { icon: Navigation2, color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/20', labelEn: 'Provider Arriving' },
 };
@@ -53,11 +53,11 @@ function EventRow({ event }: { event: LiveEvent }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-semibold text-gray-900 dark:text-black">
             {cfg.labelEn}
           </span>
           {event.serviceType && (
-            <Badge className="text-[10px] h-4 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border-0">
+            <Badge className="text-[10px] h-4 bg-white text-gray-600 dark:bg-white dark:text-black border-0">
               {event.serviceType}
             </Badge>
           )}
@@ -186,7 +186,7 @@ export default function AdminLiveEvents() {
 
           <div className="flex items-center gap-2">
             {/* Connection status */}
-            <div className={cn('flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full', connected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
+            <div className={cn('flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full', connected ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-500')}>
               {connected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
               {connected ? 'Connected' : 'Disconnected'}
               {connected && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
@@ -234,7 +234,7 @@ export default function AdminLiveEvents() {
             <div key={label} className="luxury-glass-card p-4 flex items-center gap-3">
               <Icon className={cn('h-5 w-5 flex-shrink-0', color)} />
               <div>
-                <p className="text-xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">{value}</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-black tabular-nums">{value}</p>
                 <p className="text-xs text-muted-foreground">{label}</p>
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function AdminLiveEvents() {
         {/* Event feed */}
         <div className="luxury-glass-card luxury-shadow-lg">
           <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <p className="text-sm font-medium text-gray-700 dark:text-black">
               Event Feed
               {paused && (
                 <span className="ml-2 text-amber-600 text-xs font-normal">(paused)</span>

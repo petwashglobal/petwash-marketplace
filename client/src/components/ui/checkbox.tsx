@@ -14,7 +14,7 @@ const Checkbox = React.forwardRef<
       // LUXURY 2025: Premium checkbox with glassmorphism and sophisticated styling
       "peer h-6 w-6 shrink-0 rounded-lg",
       "border-2 border-neutral-300/70 dark:border-neutral-600/70",
-      "bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl",
+      "bg-white/80 dark:bg-white/80 backdrop-blur-xl",
       "ring-offset-background",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2",
       "transition-all duration-300 ease-out",
@@ -23,7 +23,7 @@ const Checkbox = React.forwardRef<
       "hover:shadow-md hover:shadow-primary/10",
       "active:scale-95",
       "disabled:cursor-not-allowed disabled:opacity-40",
-      "disabled:bg-neutral-50/50 dark:disabled:bg-neutral-900/30",
+      "disabled:bg-white/50 dark:disabled:bg-neutral-900/30",
       // LUXURY 2025: Premium checked state with gradient
       "data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-primary data-[state=checked]:to-primary/90",
       "data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground",

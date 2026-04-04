@@ -235,9 +235,9 @@ export default function BookingSearch() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6">
-      <Card className="bg-white dark:bg-zinc-900 border-0 shadow-xl">
+      <Card className="bg-white dark:bg-white border-0 shadow-xl">
         <CardHeader className="pb-4">
-          <CardTitle className="text-2xl font-bold text-black dark:text-white">
+          <CardTitle className="text-2xl font-bold text-black dark:text-black">
             {isHebrew ? 'חפש שירות לחיית המחמד שלך' : 'Find Care for Your Pet'}
           </CardTitle>
         </CardHeader>
@@ -296,7 +296,7 @@ export default function BookingSearch() {
                   data-testid="button-use-location"
                   className={filters.latitude ? 'border-black dark:border-white' : ''}
                 >
-                  <Navigation className={`h-4 w-4 ${locating ? 'animate-pulse' : ''} ${filters.latitude ? 'text-black dark:text-white' : ''}`} />
+                  <Navigation className={`h-4 w-4 ${locating ? 'animate-pulse' : ''} ${filters.latitude ? 'text-black dark:text-black' : ''}`} />
                 </Button>
               </div>
               {filters.latitude && (
@@ -543,7 +543,7 @@ export default function BookingSearch() {
                       data-testid="toggle-verified-only"
                       onClick={() => setFilters(prev => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
                       className={`w-12 h-6 rounded-full transition-colors ${
-                        filters.verifiedOnly ? 'bg-black dark:bg-white' : 'bg-gray-200'
+                        filters.verifiedOnly ? 'bg-black dark:bg-white' : 'bg-white'
                       }`}
                     >
                       <span className={`block w-5 h-5 rounded-full bg-white dark:bg-black shadow transform transition-transform ${
@@ -564,7 +564,7 @@ export default function BookingSearch() {
                       {isHebrew ? 'נקה הכל' : 'Clear All'}
                     </Button>
                     <Button
-                      className="flex-1 bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                      className="flex-1 bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-white"
                       onClick={() => { setShowFilters(false); handleSearch(); }}
                     >
                       <Search className="h-4 w-4 mr-2" />
@@ -603,7 +603,7 @@ export default function BookingSearch() {
             <Button
               onClick={handleSearch}
               disabled={searchMutation.isPending}
-              className="bg-black hover:bg-zinc-800 text-white dark:bg-white dark:text-black dark:hover:bg-zinc-200 px-8"
+              className="bg-black hover:bg-zinc-800 text-white dark:bg-white dark:text-black dark:hover:bg-white px-8"
               data-testid="button-search"
             >
               <Search className="h-4 w-4 mr-2" />
@@ -795,7 +795,7 @@ function ProviderCard({ provider, isHebrew }: { provider: Provider; isHebrew: bo
         </div>
 
         {provider.bio && (
-          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
+          <p className="text-sm text-gray-600 dark:text-black line-clamp-2 mb-3">
             {provider.bio}
           </p>
         )}
