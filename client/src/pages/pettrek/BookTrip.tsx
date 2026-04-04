@@ -268,7 +268,7 @@ export default function BookTrip() {
                 </div>
                 {step < 3 && (
                   <div className={`flex-1 h-1 mx-2 rounded ${
-                    step < currentStep ? 'bg-gradient-to-r from-purple-500 to-purple-700' : 'bg-gray-200'
+                    step < currentStep ? 'bg-gradient-to-r from-purple-500 to-purple-700' : 'bg-white'
                   }`} />
                 )}
               </div>
@@ -342,7 +342,7 @@ export default function BookTrip() {
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                               petSize === size.id 
                                 ? 'bg-purple-600 text-white shadow-md' 
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-white text-gray-700 hover:bg-white'
                             }`}
                             data-testid={`button-size-${size.id}`}
                           >
@@ -365,7 +365,7 @@ export default function BookTrip() {
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                               selectedServiceType === service.id 
                                 ? 'bg-purple-600 text-white shadow-md' 
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-white text-gray-700 hover:bg-white'
                             }`}
                             data-testid={`button-service-${service.id}`}
                           >

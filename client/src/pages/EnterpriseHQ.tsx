@@ -173,7 +173,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                     `}
                     data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                   >
-                    <div className={`p-2 rounded-lg ${isActive ? 'luxury-bg-primary' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                    <div className={`p-2 rounded-lg ${isActive ? 'luxury-bg-primary' : 'bg-white dark:bg-white'}`}>
                       <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-gray-600 dark:text-gray-400"}`} />
                     </div>
                     <span className="font-semibold text-sm">{item.name}</span>
@@ -228,7 +228,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                 data-testid={`card-metric-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="luxury-heading-sm text-gray-700 dark:text-gray-300">{stat.title}</h3>
+                  <h3 className="luxury-heading-sm text-gray-700 dark:text-black">{stat.title}</h3>
                   <div className={`p-3 rounded-xl ${stat.color.replace('text-', 'bg-').replace('-600', '-100')}`}>
                     <Icon className={`h-5 w-5 ${stat.color}`} />
                   </div>
@@ -349,7 +349,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                         <Building2 className="h-5 w-5 text-white" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-gray-100">{station.stationName}</p>
+                        <p className="font-semibold text-gray-900 dark:text-black">{station.stationName}</p>
                         <p className="luxury-text-small">
                           {station.stationCode} • {station.city}
                         </p>
@@ -385,7 +385,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                     data-testid={`franchisee-row-${franchisee.id}`}
                   >
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">{franchisee.companyName}</p>
+                      <p className="font-semibold text-gray-900 dark:text-black">{franchisee.companyName}</p>
                       <p className="luxury-text-small">
                         {franchisee.contactFirstName} {franchisee.contactLastName} • 
                         <span className="luxury-badge luxury-badge-gold ml-2 px-2 py-0.5 text-xs">
@@ -426,7 +426,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                   </div>
                   <div className="luxury-divider"></div>
                   <p className="luxury-text-small">
-                    Total Amount: <span className="font-semibold text-gray-900 dark:text-gray-100">{analyticsData?.bills?.totalAmount || '0.00'} ILS</span>
+                    Total Amount: <span className="font-semibold text-gray-900 dark:text-black">{analyticsData?.bills?.totalAmount || '0.00'} ILS</span>
                   </p>
                 </div>
               </div>

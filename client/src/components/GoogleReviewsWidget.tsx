@@ -49,7 +49,7 @@ export function GoogleReviewsWidget({
         <CardContent>
           <div className="animate-pulse space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+              <div key={i} className="h-24 bg-white dark:bg-white rounded-lg"></div>
             ))}
           </div>
         </CardContent>
@@ -147,7 +147,7 @@ export function GoogleReviewsWidget({
             </div>
 
             {locationName && (
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+              <div className="flex items-center gap-2 text-gray-700 dark:text-black">
                 <MapPin className="w-5 h-5" />
                 <span className="font-medium">{locationName}</span>
               </div>
@@ -230,7 +230,7 @@ export function GoogleReviewsWidget({
                         href={review.authorUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="font-semibold text-gray-900 dark:text-black hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       >
                         {review.authorName}
                       </a>
@@ -246,7 +246,7 @@ export function GoogleReviewsWidget({
                   </div>
 
                   {/* Review Text */}
-                  <p className="mt-3 text-gray-700 dark:text-gray-300 leading-relaxed">
+                  <p className="mt-3 text-gray-700 dark:text-black leading-relaxed">
                     {review.text}
                   </p>
                 </div>

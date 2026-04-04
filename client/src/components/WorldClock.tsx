@@ -69,13 +69,13 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
     const config = SUPPORTED_LANGUAGES[userLang as keyof typeof SUPPORTED_LANGUAGES] || SUPPORTED_LANGUAGES.he;
     
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-800">
+      <div className="bg-white dark:bg-white rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
             <Clock className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 dark:text-white">
+            <h3 className="font-bold text-gray-900 dark:text-black">
               {config.country} {config.flag}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -85,7 +85,7 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
         </div>
         
         <div className="text-center">
-          <div className="text-4xl font-bold font-mono text-gray-900 dark:text-white mb-2">
+          <div className="text-4xl font-bold font-mono text-gray-900 dark:text-black mb-2">
             {times[userLang]}
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -100,12 +100,12 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
   const priorityCountries = ['he', 'en', 'ar', 'ru', 'fr', 'es']; // Show top 6
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-800">
+    <div className="bg-white dark:bg-white rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
           <Globe className="h-6 w-6 text-white" />
         </div>
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-black">
           World Clock
         </h3>
       </div>
@@ -118,12 +118,12 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
           return (
             <div
               key={code}
-              className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:shadow-md transition-all"
+              className="p-4 bg-white dark:bg-white rounded-xl hover:shadow-md transition-all"
             >
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">{config.flag}</span>
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                  <p className="font-semibold text-gray-900 dark:text-black text-sm">
                     {config.country}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -132,7 +132,7 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
                 </div>
               </div>
               
-              <div className="text-2xl font-mono font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-mono font-bold text-gray-900 dark:text-black">
                 {times[code]}
               </div>
               

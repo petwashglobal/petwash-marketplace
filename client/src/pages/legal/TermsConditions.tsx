@@ -25,10 +25,10 @@ export default function TermsConditions() {
             {isHebrew ? 'עודכן לאחרונה: 29 באוקטובר 2025' : 'Last Updated: October 29, 2025'}
           </p>
 
-          <div className="space-y-8 text-gray-700 dark:text-gray-300">
+          <div className="space-y-8 text-gray-700 dark:text-black">
             {/* Agreement */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '1. הסכם' : '1. Agreement'}
               </h2>
               <p className="leading-relaxed">
@@ -42,10 +42,10 @@ export default function TermsConditions() {
 
             {/* Platform Role */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '2. תפקיד הפלטפורמה - פלטפורמת מקשרת בלבד' : '2. Platform Role - Connector Platform Only'}
               </h2>
-              <div className="bg-white dark:bg-yellow-900/20 border-r-4 border-yellow-500 p-6 rounded-lg">
+              <div className="bg-white dark:bg-white border-r-4 border-yellow-500 p-6 rounded-lg">
                 <p className="font-bold mb-2">{isHebrew ? '⚠️ חשוב: Pet Wash היא פלטפורמת מקשרת' : '⚠️ IMPORTANT: Pet Wash is a Connector Platform'}</p>
                 <ul className="list-disc list-inside space-y-2 mr-6">
                   <li>{isHebrew ? 'אנו מקשרים בין בעלי חיות מחמד לשמרטפים עצמאיים (כמו cars.com.au או Airbnb)' : 'We connect pet owners with independent sitters (like cars.com.au or Airbnb)'}</li>
@@ -59,7 +59,7 @@ export default function TermsConditions() {
 
             {/* Eligibility */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '3. זכאות' : '3. Eligibility'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'כדי להשתמש בפלטפורמה, אתה חייב:' : 'To use the Platform, you must:'}</p>
@@ -73,7 +73,7 @@ export default function TermsConditions() {
 
             {/* Account Responsibilities */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '4. אחריות חשבון' : '4. Account Responsibilities'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'אתה אחראי ל:' : 'You are responsible for:'}</p>
@@ -87,10 +87,10 @@ export default function TermsConditions() {
 
             {/* Booking Process */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '5. תהליך הזמנה' : '5. Booking Process'}
               </h2>
-              <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">
+              <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-black">
                 {isHebrew ? '5.1 הזמנת שירות' : '5.1 Booking a Service'}
               </h3>
               <ol className="list-decimal list-inside space-y-2 mr-6">
@@ -102,7 +102,7 @@ export default function TermsConditions() {
                 <li>{isHebrew ? 'הזמנה מאושרת רק לאחר שני הצדדים חתמו דיגיטלית' : 'Booking confirmed only after both parties digitally sign'}</li>
               </ol>
 
-              <h3 className="text-xl font-semibold mb-3 mt-6 text-gray-800 dark:text-gray-200">
+              <h3 className="text-xl font-semibold mb-3 mt-6 text-gray-800 dark:text-black">
                 {isHebrew ? '5.2 הארכת הזמנה' : '5.2 Booking Extensions'}
               </h3>
               <ul className="list-disc list-inside space-y-2 mr-6">
@@ -115,13 +115,13 @@ export default function TermsConditions() {
 
             {/* Payments & Fees */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '6. תשלומים ועמלות' : '6. Payments & Fees'}
               </h2>
-              <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">
+              <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-black">
                 {isHebrew ? '6.1 מבנה מחירים' : '6.1 Pricing Structure'}
               </h3>
-              <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
+              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
                 <p className="font-semibold mb-2">{isHebrew ? 'סיכום עמלות:' : 'Fee Breakdown:'}</p>
                 <ul className="space-y-1">
                   <li>{isHebrew ? '• מחיר בסיס: תעריף הספק × ימים/שעות' : '• Base Price: Provider\'s rate × days/hours'}</li>
@@ -131,7 +131,7 @@ export default function TermsConditions() {
                 </ul>
               </div>
 
-              <h3 className="text-xl font-semibold mb-3 mt-6 text-gray-800 dark:text-gray-200">
+              <h3 className="text-xl font-semibold mb-3 mt-6 text-gray-800 dark:text-black">
                 {isHebrew ? '6.2 תהליך תשלום' : '6.2 Payment Process'}
               </h3>
               <ul className="list-disc list-inside space-y-2 mr-6">
@@ -144,21 +144,21 @@ export default function TermsConditions() {
 
             {/* Cancellation Policy */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '7. מדיניות ביטול' : '7. Cancellation Policy'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'מדיניות ביטול משתנה לפי בחירת השמרטף:' : 'Cancellation policy varies by sitter\'s choice:'}</p>
               
               <div className="space-y-4">
-                <div className="border-r-4 border-green-500 bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                <div className="border-r-4 border-green-500 bg-green-50 dark:bg-white p-4 rounded-lg">
                   <p className="font-bold mb-2">{isHebrew ? '✅ גמיש:' : '✅ Flexible:'}</p>
                   <p>{isHebrew ? 'החזר מלא עד 24 שעות לפני תחילת השירות' : 'Full refund up to 24 hours before service start'}</p>
                 </div>
-                <div className="border-r-4 border-yellow-500 bg-white dark:bg-yellow-900/20 p-4 rounded-lg">
+                <div className="border-r-4 border-yellow-500 bg-white dark:bg-white p-4 rounded-lg">
                   <p className="font-bold mb-2">{isHebrew ? '⚠️ מתון:' : '⚠️ Moderate:'}</p>
                   <p>{isHebrew ? 'החזר מלא עד 5 ימים לפני, 50% החזר עד 48 שעות לפני' : 'Full refund up to 5 days before, 50% refund up to 48 hours before'}</p>
                 </div>
-                <div className="border-r-4 border-red-500 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                <div className="border-r-4 border-red-500 bg-red-50 dark:bg-white p-4 rounded-lg">
                   <p className="font-bold mb-2">{isHebrew ? '🚫 קפדני:' : '🚫 Strict:'}</p>
                   <p>{isHebrew ? 'החזר מלא עד 7 ימים לפני, 50% החזר עד 14 ימים לפני, אין החזר לאחר מכן' : 'Full refund up to 7 days before, 50% refund up to 14 days before, no refund after'}</p>
                 </div>
@@ -167,7 +167,7 @@ export default function TermsConditions() {
 
             {/* Sitter Vetting */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '8. תהליך אימות שמרטפים' : '8. Sitter Vetting Process'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'כל השמרטפים עוברים תהליך אימות מחמיר:' : 'All sitters undergo a strict vetting process:'}</p>
@@ -182,10 +182,10 @@ export default function TermsConditions() {
 
             {/* Safety & Complaints */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '9. בטיחות ומערכת תלונות' : '9. Safety & Complaint System'}
               </h2>
-              <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">
+              <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-black">
                 {isHebrew ? '9.1 התראות בטיחות גבוהות' : '9.1 High Alert Safety Banners'}
               </h3>
               <p className="leading-relaxed mb-4">
@@ -196,7 +196,7 @@ export default function TermsConditions() {
                 )}
               </p>
 
-              <h3 className="text-xl font-semibold mb-3 mt-6 text-gray-800 dark:text-gray-200">
+              <h3 className="text-xl font-semibold mb-3 mt-6 text-gray-800 dark:text-black">
                 {isHebrew ? '9.2 מערכת תלונות שקטה' : '9.2 Silent Complaint System'}
               </h3>
               <ul className="list-disc list-inside space-y-2 mr-6">
@@ -209,7 +209,7 @@ export default function TermsConditions() {
 
             {/* Prohibited Activities */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '10. פעילויות אסורות' : '10. Prohibited Activities'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'המשתמשים אסורים מ:' : 'Users are prohibited from:'}</p>
@@ -225,10 +225,10 @@ export default function TermsConditions() {
 
             {/* Limitation of Liability */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '11. הגבלת אחריות' : '11. Limitation of Liability'}
               </h2>
-              <div className="bg-red-50 dark:bg-red-900/20 border-r-4 border-red-500 p-6 rounded-lg">
+              <div className="bg-red-50 dark:bg-white border-r-4 border-red-500 p-6 rounded-lg">
                 <p className="font-bold mb-4">{isHebrew ? '⚠️ כלל חשוב:' : '⚠️ IMPORTANT NOTICE:'}</p>
                 <p className="leading-relaxed mb-4">
                   {isHebrew ? (
@@ -256,7 +256,7 @@ export default function TermsConditions() {
 
             {/* Dispute Resolution */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '12. פתרון מחלוקות' : '12. Dispute Resolution'}
               </h2>
               <ol className="list-decimal list-inside space-y-2 mr-6">
@@ -268,7 +268,7 @@ export default function TermsConditions() {
 
             {/* Termination */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '13. סיום' : '13. Termination'}
               </h2>
               <p className="leading-relaxed mb-4">{isHebrew ? 'אנו שומרים את הזכות להשעות או לסיים חשבונות בגין:' : 'We reserve the right to suspend or terminate accounts for:'}</p>
@@ -283,7 +283,7 @@ export default function TermsConditions() {
 
             {/* Governing Law */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '14. חוק שופט' : '14. Governing Law'}
               </h2>
               <p className="leading-relaxed">
@@ -297,7 +297,7 @@ export default function TermsConditions() {
 
             {/* Changes to Terms */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '15. שינויים לתנאים' : '15. Changes to Terms'}
               </h2>
               <p className="leading-relaxed">
@@ -311,10 +311,10 @@ export default function TermsConditions() {
 
             {/* Contact */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '16. יצירת קשר' : '16. Contact Us'}
               </h2>
-              <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
+              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
                 <p className="font-semibold mb-2">Pet Wash Ltd</p>
                 <p className="mt-2">
                   {isHebrew ? 'דוא"ל תמיכה:' : 'Support Email:'} <a href="mailto:Support@PetWash.co.il" className="text-blue-600 hover:underline">Support@PetWash.co.il</a>

@@ -175,7 +175,7 @@ export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
             'px-4 py-1.5 font-medium transition-colors',
             value === key
               ? 'bg-black text-white dark:bg-white dark:text-black'
-              : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800'
+              : 'bg-white text-gray-600 hover:bg-white dark:bg-white dark:text-gray-400 dark:hover:bg-white'
           )}
         >
           {label}
@@ -271,7 +271,7 @@ export function FinanceSummaryPanel({ data, ownerType, isLoading }: FinanceSumma
               </div>
               <p className={cn(
                 'text-xl font-semibold tracking-tight',
-                t.dimmed ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'
+                t.dimmed ? 'text-gray-400' : 'text-gray-900 dark:text-black'
               )}>
                 {t.value}
               </p>
@@ -318,8 +318,8 @@ interface StationFinancialsTableProps {
 function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: 'asc' | 'desc' }) {
   if (!active) return <ChevronsUpDown className="h-3 w-3 text-gray-400 ml-1 inline" />;
   return dir === 'desc'
-    ? <ChevronDown className="h-3 w-3 ml-1 inline text-gray-900 dark:text-gray-100" />
-    : <ChevronUp   className="h-3 w-3 ml-1 inline text-gray-900 dark:text-gray-100" />;
+    ? <ChevronDown className="h-3 w-3 ml-1 inline text-gray-900 dark:text-black" />
+    : <ChevronUp   className="h-3 w-3 ml-1 inline text-gray-900 dark:text-black" />;
 }
 
 export function StationFinancialsTable({ stations, ownerType, isLoading, buildDrilldownUrl }: StationFinancialsTableProps) {
@@ -376,7 +376,7 @@ export function StationFinancialsTable({ stations, ownerType, isLoading, buildDr
   return (
     <Card className="border-0 shadow-sm overflow-hidden">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <CardTitle className="text-sm font-semibold text-gray-700 dark:text-black">
           Station Performance
         </CardTitle>
       </CardHeader>
@@ -384,7 +384,7 @@ export function StationFinancialsTable({ stations, ownerType, isLoading, buildDr
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-800">
+              <TableRow className="bg-white dark:bg-white">
                 <TableHead className="text-xs">Station</TableHead>
                 <Th col="grossRevenue"   label="Gross Revenue" />
                 <Th col="platformFees"   label="Platform" />
@@ -434,7 +434,7 @@ export function StationFinancialsTable({ stations, ownerType, isLoading, buildDr
                     )}
                     <TableCell className="py-2.5">{fmt(st.stationPayouts)}</TableCell>
                     <TableCell className="py-2.5 text-center">
-                      <span className="text-gray-700 dark:text-gray-300">{st.bookingCount}</span>
+                      <span className="text-gray-700 dark:text-black">{st.bookingCount}</span>
                     </TableCell>
                     <TableCell className="py-2.5 text-gray-600 dark:text-gray-400">{fmt(st.avgOrderValue)}</TableCell>
                     <TableCell className="py-2.5">
@@ -470,7 +470,7 @@ const CYCLE_STATUS_CONFIG: Record<CycleStatus, { label: string; className: strin
   pending:     { label: 'Pending',            className: 'border-yellow-400 text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-300',  icon: <Clock className="h-3 w-3 mr-1" /> },
   in_progress: { label: 'In Progress',        className: 'border-blue-400 text-blue-700 bg-blue-50 dark:bg-blue-950 dark:text-blue-300',             icon: <Wrench className="h-3 w-3 mr-1" /> },
   completed:   { label: 'Completed',          className: 'border-green-400 text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-300',         icon: <CheckCircle2 className="h-3 w-3 mr-1" /> },
-  internal:    { label: 'Internal Settlement', className: 'border-gray-300 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-400',             icon: <CalendarCheck className="h-3 w-3 mr-1" /> },
+  internal:    { label: 'Internal Settlement', className: 'border-gray-300 text-gray-600 bg-white dark:bg-white dark:text-gray-400',             icon: <CalendarCheck className="h-3 w-3 mr-1" /> },
 };
 
 export function PayoutCycleList({ cycles, ownerType, isLoading }: PayoutCycleListProps) {
@@ -566,7 +566,7 @@ export function PayoutCycleList({ cycles, ownerType, isLoading }: PayoutCycleLis
                     <p className="text-xs text-gray-500 text-right">
                       {cycle.status === 'completed' ? 'Settled' : 'Expected'}
                       <br />
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                      <span className="font-medium text-gray-700 dark:text-black">
                         {cycle.expectedPayoutDate}
                       </span>
                     </p>
@@ -646,7 +646,7 @@ export function AuditEventFeed({ events, isLoading }: AuditEventFeedProps) {
         return (
           <div
             key={`${ev.refId}-${idx}`}
-            className="flex items-stretch gap-0 rounded-md border border-gray-100 dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900"
+            className="flex items-stretch gap-0 rounded-md border border-gray-100 dark:border-gray-800 overflow-hidden bg-white dark:bg-white"
           >
             {/* Severity colour strip — left edge */}
             <div className={cn('w-1 flex-shrink-0', SEVERITY_STRIP[ev.severity])} />
@@ -743,7 +743,7 @@ export function SettlementLedger({ rows, summary, ownerType, isLoading }: Settle
       {/* Summary bar */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: 'Total',    value: summary.total,    color: 'text-gray-700 dark:text-gray-300' },
+          { label: 'Total',    value: summary.total,    color: 'text-gray-700 dark:text-black' },
           { label: 'Settled',  value: summary.settled,  color: 'text-emerald-700 dark:text-emerald-400' },
           { label: 'Pending',  value: summary.pending,  color: 'text-yellow-700 dark:text-yellow-400' },
           { label: 'Disputed', value: summary.disputed, color: 'text-red-700 dark:text-red-400' },
@@ -771,7 +771,7 @@ export function SettlementLedger({ rows, summary, ownerType, isLoading }: Settle
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50 dark:bg-gray-800">
+                  <TableRow className="bg-white dark:bg-white">
                     <TableHead className="text-xs">Booking</TableHead>
                     <TableHead className="text-xs">Date</TableHead>
                     <TableHead className="text-xs">Status</TableHead>

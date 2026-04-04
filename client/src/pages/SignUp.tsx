@@ -746,7 +746,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           {/* Close/Back Button */}
           <button
             onClick={() => navigate("/")}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white transition-colors z-10"
             aria-label={t('common.close', language)}
             data-testid="button-close-signup"
           >
@@ -795,7 +795,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               variant="outline"
               onClick={() => performOAuthSignup('google')}
               disabled={!!socialLoading || loading}
-              className="w-full h-13 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              className="w-full h-13 !bg-white hover:!bg-white !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-google-signup"
             >
               {socialLoading === 'google' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaGoogle className="h-5 w-5 text-[#4285F4]" />}
@@ -860,7 +860,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               variant="outline"
               onClick={() => { setSignupMode(signupMode === 'phone' ? 'email' : 'phone'); setConfirmationResult(null); setVerificationCode(''); }}
               disabled={!!socialLoading || loading}
-              className="w-full h-13 !bg-white hover:!bg-gray-50 !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              className="w-full h-13 !bg-white hover:!bg-white !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-phone-signup-toggle"
             >
               {signupMode === 'phone' ? <ArrowLeft className="h-5 w-5" /> : <Phone className="h-5 w-5 text-purple-600" />}
@@ -1079,7 +1079,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               </Select>
             </div>
 
-            <div className="space-y-4 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+            <div className="space-y-4 bg-white/50 p-6 rounded-2xl border border-gray-100">
               <div className="checkbox-wrapper">
                 <Checkbox
                   id="loyaltyProgram"

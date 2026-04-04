@@ -315,7 +315,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
             </div>
 
             {galleryImages.slice(0, 4).map((img, idx) => (
-              <div key={idx} className="relative group overflow-hidden rounded-2xl cursor-pointer bg-gray-100">
+              <div key={idx} className="relative group overflow-hidden rounded-2xl cursor-pointer bg-white">
                 <img
                   src={img}
                   alt={`Gallery ${idx + 1}`}
@@ -362,7 +362,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                   <span className="font-semibold text-gray-900">{ratingAverage.toFixed(1)}</span>
                   <span className="text-gray-400">({reviewCount} {isHebrew ? 'ביקורות' : 'reviews'})</span>
                 </div>
-                <div className="h-4 w-px bg-gray-200" />
+                <div className="h-4 w-px bg-white" />
                 <div className="flex items-center gap-1.5 text-gray-600">
                   <MapPin className="w-4 h-4" />
                   <span>{location}</span>
@@ -370,7 +370,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {/* Completed bookings — real count from API */}
                 {!statsLoading && stats && (
                   <>
-                    <div className="h-4 w-px bg-gray-200" />
+                    <div className="h-4 w-px bg-white" />
                     <div className="flex items-center gap-1.5 text-gray-600">
                       <Award className="w-4 h-4" />
                       <span>{stats.completedBookingsCount} {isHebrew ? 'הזמנות' : 'bookings'}</span>
@@ -380,7 +380,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {/* Responds quickly — only when real responseRatePct ≥ 90 */}
                 {quickResponder && (
                   <>
-                    <div className="h-4 w-px bg-gray-200" />
+                    <div className="h-4 w-px bg-white" />
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-100">
                       <Zap className="w-3 h-3" />
                       {isHebrew ? 'מגיב מהר' : 'Responds quickly'}
@@ -390,7 +390,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {/* Repeat clients — only when real repeatClientCount > 0 */}
                 {stats?.repeatClientCount !== null && (stats?.repeatClientCount ?? 0) > 0 && (
                   <>
-                    <div className="h-4 w-px bg-gray-200" />
+                    <div className="h-4 w-px bg-white" />
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold border border-violet-100">
                       <Users className="w-3 h-3" />
                       {stats!.repeatClientCount} {isHebrew ? 'לקוחות חוזרים' : 'repeat clients'}
@@ -400,7 +400,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {/* Bookings this month — only when prop says >= 3 */}
                 {showScarcity && (
                   <>
-                    <div className="h-4 w-px bg-gray-200" />
+                    <div className="h-4 w-px bg-white" />
                     <div className="flex items-center gap-1.5 text-orange-600 text-xs font-semibold">
                       <TrendingUp className="w-3.5 h-3.5" />
                       {isHebrew ? `הוזמן ${bookingsThisMonth} פעמים החודש` : `Booked ${bookingsThisMonth}× this month`}
@@ -413,16 +413,16 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
             {/* Quick Stats Cards — only real data */}
             <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {statCards.map((stat, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-2xl p-4 text-center hover:bg-gray-100 transition-colors">
+                <div key={idx} className="bg-white rounded-2xl p-4 text-center hover:bg-white transition-colors">
                   <stat.icon className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
                   <div className="text-xl font-light text-gray-900">{stat.value}</div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{stat.label}</div>
                 </div>
               ))}
               {statsLoading && [1, 2].map(i => (
-                <div key={i} className="bg-gray-50 rounded-2xl p-4 animate-pulse">
-                  <div className="w-5 h-5 bg-gray-200 rounded-full mx-auto mb-2" />
-                  <div className="h-5 bg-gray-200 rounded w-12 mx-auto" />
+                <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
+                  <div className="w-5 h-5 bg-white rounded-full mx-auto mb-2" />
+                  <div className="h-5 bg-white rounded w-12 mx-auto" />
                 </div>
               ))}
             </section>
@@ -491,7 +491,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                     <div
                       key={key}
                       className={`flex items-center gap-3 p-4 rounded-2xl border ${
-                        value ? 'border-emerald-100 bg-emerald-50/50' : 'border-gray-100 bg-gray-50/50'
+                        value ? 'border-emerald-100 bg-emerald-50/50' : 'border-gray-100 bg-white/50'
                       }`}
                     >
                       <Icon className={`w-5 h-5 shrink-0 ${value ? 'text-emerald-500' : 'text-gray-400'}`} />
@@ -537,7 +537,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {isHebrew ? 'שירותים ומחירים' : 'Services & Pricing'}
               </h2>
 
-              <div className="inline-flex p-1 bg-gray-100 rounded-full mb-6">
+              <div className="inline-flex p-1 bg-white rounded-full mb-6">
                 <button
                   onClick={() => setServiceMode('providerLocation')}
                   className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
@@ -560,7 +560,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {activeServices.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-5 bg-white rounded-2xl hover:bg-white transition-colors cursor-pointer group"
                     onClick={() => onBook?.(serviceMode, service.id)}
                   >
                     <div className="flex-1">

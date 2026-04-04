@@ -275,7 +275,7 @@ export default function SitterSuite() {
                         placeholder={t.hero.searchPlaceholder}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-12 h-14 text-lg bg-white dark:bg-gray-800 border-2"
+                        className="pl-12 h-14 text-lg bg-white dark:bg-white border-2"
                         data-testid="input-search-sitters"
                       />
                     </div>
@@ -922,7 +922,7 @@ export default function SitterSuite() {
                     <div className="w-24 h-24 mx-auto bg-gradient-to-br from-pink-600 via-pink-500 to-pink-700 rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-2xl luxury-hover-glow">
                       {step.num}
                     </div>
-                    <div className="absolute -bottom-3 -right-3 w-14 h-14 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-xl border-4 border-pink-100 dark:border-pink-900">
+                    <div className="absolute -bottom-3 -right-3 w-14 h-14 bg-white dark:bg-white rounded-xl flex items-center justify-center shadow-xl border-4 border-pink-100 dark:border-pink-900">
                       <step.icon className="w-7 h-7 text-pink-600" />
                     </div>
                     </div>

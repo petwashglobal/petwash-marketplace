@@ -56,7 +56,7 @@ type TierFilter = 'prestige' | 'gold' | 'silver' | 'bronze' | undefined;
 const TIER_CONFIG = {
   prestige: { label: 'Prestige', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300' },
   gold: { label: 'Gold', icon: Award, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-  silver: { label: 'Silver', icon: Shield, color: 'bg-gray-100 text-gray-600 border-gray-300' },
+  silver: { label: 'Silver', icon: Shield, color: 'bg-white text-gray-600 border-gray-300' },
   bronze: { label: 'Bronze', icon: Zap, color: 'bg-orange-100 text-orange-700 border-orange-300' },
   at_risk: { label: 'At Risk', icon: Zap, color: 'bg-red-100 text-red-700 border-red-300' },
   new: { label: 'New', icon: TrendingUp, color: 'bg-blue-100 text-blue-700 border-blue-300' },
@@ -150,7 +150,7 @@ export default function Marketplace() {
       </div>
 
       {/* Platform Switcher */}
-      <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-white border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <Tabs
             value={selectedPlatform}
@@ -311,7 +311,7 @@ export default function Marketplace() {
           <div className="lg:col-span-3">
             {/* Results Header */}
             <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex-1">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-black flex-1">
                 {isLoading ? (
                   'Searching...'
                 ) : data?.total ? (

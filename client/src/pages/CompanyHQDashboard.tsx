@@ -153,7 +153,7 @@ export default function CompanyHQDashboard() {
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-gray-500 flex-shrink-0" />
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-black">
                 HQ Finance
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -170,7 +170,7 @@ export default function CompanyHQDashboard() {
             )}
             <Link
               href="/case-queue"
-              className="inline-flex items-center gap-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
             >
               <Filter className="h-3.5 w-3.5" />
               Exception Queue
@@ -201,7 +201,7 @@ export default function CompanyHQDashboard() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="h-4 w-4 text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-black">
                 Internal Settlement Cycles
               </h2>
             </div>
@@ -216,7 +216,7 @@ export default function CompanyHQDashboard() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-4 w-4 text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-black">
                 Network Events
               </h2>
               <span className="ml-auto text-xs text-gray-400">High severity first</span>

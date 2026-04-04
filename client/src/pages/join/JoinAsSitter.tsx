@@ -218,7 +218,7 @@ export default function JoinAsSitter() {
           {!user && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
               <p className="text-amber-800 text-sm mb-3">Sign in to save your application</p>
-              <Button onClick={handleGoogleSignIn} disabled={googleLoading} variant="outline" className="w-full border-slate-300 bg-white hover:bg-gray-50 text-gray-800">
+              <Button onClick={handleGoogleSignIn} disabled={googleLoading} variant="outline" className="w-full border-slate-300 bg-white hover:bg-white text-gray-800">
                 {googleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FaGoogle className="h-4 w-4 mr-2 text-red-500" />}
                 Continue with Google
               </Button>
@@ -420,7 +420,7 @@ export default function JoinAsSitter() {
                   <div className="bg-purple-600 text-white rounded-xl px-4 py-2 text-lg font-bold min-w-[100px] text-center">₪{(form.pricePerDayCents / 100).toFixed(0)}</div>
                 </div>
               </div>
-              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+              <div className="bg-white rounded-xl p-4 space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <Checkbox checked={form.agreeToTerms} onCheckedChange={v => update("agreeToTerms", v)} className="mt-0.5" />
                   <span className="text-sm text-slate-700">I agree to the <span className="text-purple-600 underline cursor-pointer">Sitter Suite™ Terms of Service</span> and understand the 15% platform commission.</span>

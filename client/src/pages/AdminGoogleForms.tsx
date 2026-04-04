@@ -99,7 +99,7 @@ export default function AdminGoogleForms() {
   const availableTypes = FORM_TYPES.filter(f => !usedTypes.includes(f.value));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/admin/backend">

@@ -535,7 +535,7 @@ export default function MyWallet() {
                         return (
                           <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
                                 <TxIcon className={`w-4 h-4 ${txType.color}`} />
                               </div>
                               <div>

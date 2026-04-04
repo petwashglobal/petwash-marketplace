@@ -305,7 +305,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     "relative flex items-start gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-300",
                     isSelected
                       ? "border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 shadow-lg shadow-amber-500/20"
-                      : "border-gray-200 dark:border-gray-700 hover:border-amber-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      : "border-gray-200 dark:border-gray-700 hover:border-amber-300 hover:bg-white dark:hover:bg-white"
                   )}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -320,17 +320,17 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
                     isSelected 
                       ? "bg-gradient-to-br from-amber-500 to-orange-600" 
-                      : "bg-gray-100 dark:bg-gray-700"
+                      : "bg-white dark:bg-white"
                   )}>
                     <Icon className={cn(
                       "w-6 h-6",
-                      isSelected ? "text-white" : "text-gray-600 dark:text-gray-300"
+                      isSelected ? "text-white" : "text-gray-600 dark:text-black"
                     )} />
                   </div>
                   <div className="flex-1">
                     <h4 className={cn(
                       "font-semibold mb-1",
-                      isSelected ? "text-amber-700 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"
+                      isSelected ? "text-amber-700 dark:text-amber-400" : "text-gray-800 dark:text-black"
                     )}>
                       {isHebrew ? service.labelHe : service.labelEn}
                     </h4>
@@ -370,7 +370,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     "w-12 h-12 rounded-xl flex items-center justify-center",
                     filters.pets[key] > 0
                       ? "bg-gradient-to-br from-amber-500 to-orange-600"
-                      : "bg-gray-100 dark:bg-gray-700"
+                      : "bg-white dark:bg-white"
                   )}>
                     <Icon className={cn(
                       filters.pets[key] > 0 ? "text-white" : "text-gray-500",
@@ -379,7 +379,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   </div>
                   <span className={cn(
                     "font-semibold text-lg",
-                    filters.pets[key] > 0 ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"
+                    filters.pets[key] > 0 ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-black"
                   )}>
                     {isHebrew ? labelHe : labelEn}
                   </span>
@@ -395,7 +395,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="w-8 text-center font-bold text-xl text-gray-900 dark:text-white">
+                  <span className="w-8 text-center font-bold text-xl text-gray-900 dark:text-black">
                     {filters.pets[key]}
                   </span>
                   <Button
@@ -403,7 +403,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     size="icon"
                     onClick={() => updatePetCount(key, 1)}
                     disabled={filters.pets[key] >= 5}
-                    className="h-10 w-10 rounded-full border-2 border-amber-300 hover:bg-gray-50"
+                    className="h-10 w-10 rounded-full border-2 border-amber-300 hover:bg-white"
                     data-testid={`button-increase-${key}`}
                   >
                     <Plus className="h-4 w-4" />
@@ -437,7 +437,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     "relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300",
                     isSelected
                       ? "border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 shadow-lg shadow-amber-500/20"
-                      : "border-gray-200 dark:border-gray-700 hover:border-amber-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      : "border-gray-200 dark:border-gray-700 hover:border-amber-300 hover:bg-white dark:hover:bg-white"
                   )}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
@@ -448,10 +448,10 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   )}
                   <div className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center mb-3",
-                    isSelected ? "bg-gradient-to-br from-amber-500 to-orange-600" : "bg-gray-100 dark:bg-gray-700"
+                    isSelected ? "bg-gradient-to-br from-amber-500 to-orange-600" : "bg-white dark:bg-white"
                   )}>
                     <Dog className={cn(
-                      isSelected ? "text-white" : "text-gray-600 dark:text-gray-300",
+                      isSelected ? "text-white" : "text-gray-600 dark:text-black",
                       size.id === 'small' && "w-5 h-5",
                       size.id === 'medium' && "w-6 h-6",
                       size.id === 'large' && "w-7 h-7",
@@ -460,7 +460,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   </div>
                   <span className={cn(
                     "font-semibold",
-                    isSelected ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"
+                    isSelected ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-black"
                   )}>
                     {isHebrew ? size.labelHe : size.labelEn}
                   </span>
@@ -499,7 +499,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     "px-4 py-2 rounded-full text-sm font-medium transition-all",
                     filters.location === city
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                      : "bg-white dark:bg-white text-gray-700 dark:text-black hover:bg-amber-100 dark:hover:bg-amber-900/30"
                   )}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -516,7 +516,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700 dark:text-black">
                 {t.step5.startDate}
               </label>
               <Popover>
@@ -545,7 +545,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
               </Popover>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium text-gray-700 dark:text-black">
                 {t.step5.endDate}
               </label>
               <Popover>
@@ -613,14 +613,14 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                       "w-12 h-12 rounded-xl flex items-center justify-center",
                       isSelected
                         ? "bg-gradient-to-br from-amber-500 to-orange-600"
-                        : "bg-gray-100 dark:bg-gray-700"
+                        : "bg-white dark:bg-white"
                     )}>
                       <Icon className={cn("w-6 h-6", isSelected ? "text-white" : "text-gray-500")} />
                     </div>
                     <div>
                       <h4 className={cn(
                         "font-semibold",
-                        isSelected ? "text-amber-700 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"
+                        isSelected ? "text-amber-700 dark:text-amber-400" : "text-gray-800 dark:text-black"
                       )}>
                         {isHebrew ? service.labelHe : service.labelEn}
                       </h4>
@@ -681,11 +681,11 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                 </h3>
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                <div className="flex justify-between text-gray-700 dark:text-black">
                   <span>{isHebrew ? 'שירות' : 'Service'}:</span>
                   <span className="font-semibold">{getServices().find(s => s.id === filters.serviceType)?.labelEn || '-'}</span>
                 </div>
-                <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                <div className="flex justify-between text-gray-700 dark:text-black">
                   <span>{isHebrew ? 'חיות מחמד' : 'Pets'}:</span>
                   <span className="font-semibold">
                     {filters.pets.dogs > 0 && `${filters.pets.dogs} ${isHebrew ? 'כלבים' : 'dogs'}`}
@@ -694,11 +694,11 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     {filters.pets.smallAnimals > 0 && ` + ${filters.pets.smallAnimals} ${isHebrew ? 'קטנות' : 'small'}`}
                   </span>
                 </div>
-                <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                <div className="flex justify-between text-gray-700 dark:text-black">
                   <span>{isHebrew ? 'מיקום' : 'Location'}:</span>
                   <span className="font-semibold">{filters.location || '-'}</span>
                 </div>
-                <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                <div className="flex justify-between text-gray-700 dark:text-black">
                   <span>{isHebrew ? 'תאריכים' : 'Dates'}:</span>
                   <span className="font-semibold">
                     {filters.startDate && format(filters.startDate, 'dd/MM')} - {filters.endDate && format(filters.endDate, 'dd/MM')}
@@ -706,7 +706,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   </span>
                 </div>
                 {filters.addOns.filter(a => a.selected).length > 0 && (
-                  <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                  <div className="flex justify-between text-gray-700 dark:text-black">
                     <span>{isHebrew ? 'תוספות' : 'Add-ons'}:</span>
                     <span className="font-semibold">
                       {filters.addOns.filter(a => a.selected).map(a => 
@@ -718,7 +718,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                 {filters.specialNotes && (
                   <div className="pt-3 border-t border-amber-200 dark:border-amber-700">
                     <span className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'הערות' : 'Notes'}:</span>
-                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-1">{filters.specialNotes}</p>
+                    <p className="text-sm text-gray-800 dark:text-black mt-1">{filters.specialNotes}</p>
                   </div>
                 )}
               </div>
@@ -758,7 +758,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border border-amber-200/50 dark:border-amber-800/30">
+      <div className="bg-white dark:bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200/50 dark:border-amber-800/30">
         <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 p-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:200%_100%] animate-[shimmer_3s_infinite]" />
           <div className="relative z-10">
@@ -812,7 +812,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
 
         <div className="p-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-black mb-2">
               {stepInfo.title}
             </h2>
             <p className="text-gray-500 dark:text-gray-400">

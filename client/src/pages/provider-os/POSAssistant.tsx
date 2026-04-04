@@ -127,7 +127,7 @@ Be helpful, concise, and practical. Answer in English unless the user writes in 
             <p className="text-xs text-gray-500">Powered by Gemini</p>
           </div>
         </div>
-        <button onClick={clearChat} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-gray-100">
+        <button onClick={clearChat} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-white">
           <RefreshCw className="w-3.5 h-3.5" /> Clear
         </button>
       </div>

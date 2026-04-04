@@ -107,12 +107,12 @@ function KpiCard({
       'rounded-xl border p-5 flex flex-col gap-1.5',
       alert
         ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20'
-        : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
+        : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-white'
     )}>
       <div className={cn('flex items-center gap-2 text-xs font-medium', color ?? 'text-gray-500')}>
         {icon}{label}
       </div>
-      <div className={cn('text-3xl font-bold tracking-tight', alert ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100')}>
+      <div className={cn('text-3xl font-bold tracking-tight', alert ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-black')}>
         {value}
       </div>
       {sub && <div className="text-xs text-gray-500">{sub}</div>}
@@ -125,9 +125,9 @@ function RateBar({ label, value, color }: { label: string; value: number; color:
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
         <span className="text-gray-600 dark:text-gray-400">{label}</span>
-        <span className="font-semibold text-gray-900 dark:text-gray-100">{value}%</span>
+        <span className="font-semibold text-gray-900 dark:text-black">{value}%</span>
       </div>
-      <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+      <div className="h-2 rounded-full bg-white dark:bg-white overflow-hidden">
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${Math.min(value, 100)}%` }} />
       </div>
     </div>
@@ -141,7 +141,7 @@ function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: str
         {icon}
       </div>
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-black">{title}</h2>
         {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -194,7 +194,7 @@ function NetworkRiskSection() {
       </div>
 
       {/* Dispute breakdown */}
-      <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+      <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-4">
         <div className="text-xs font-medium text-gray-500 mb-3">Dispute status breakdown</div>
         <div className="flex items-center gap-4 flex-wrap">
           {[
@@ -206,10 +206,10 @@ function NetworkRiskSection() {
             <div key={item.label} className="flex items-center gap-1.5 text-xs">
               <div className={cn('w-2.5 h-2.5 rounded-full', item.color)} />
               <span className="text-gray-600 dark:text-gray-400">{item.label}</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{item.value}</span>
+              <span className="font-semibold text-gray-900 dark:text-black">{item.value}</span>
             </div>
           ))}
-          <div className="ml-auto text-xs text-gray-400">Policy fires (24h): <span className="font-semibold text-gray-700 dark:text-gray-300">{d.policyFires24h}</span></div>
+          <div className="ml-auto text-xs text-gray-400">Policy fires (24h): <span className="font-semibold text-gray-700 dark:text-black">{d.policyFires24h}</span></div>
         </div>
         {/* Bar */}
         {d.disputes.total > 0 && (
@@ -217,7 +217,7 @@ function NetworkRiskSection() {
             <div className="bg-red-500 h-full" style={{ width: `${(d.disputes.open / d.disputes.total) * 100}%` }} />
             <div className="bg-orange-400 h-full" style={{ width: `${(d.disputes.inReview / d.disputes.total) * 100}%` }} />
             <div className="bg-green-500 h-full" style={{ width: `${(d.disputes.resolved / d.disputes.total) * 100}%` }} />
-            <div className="bg-gray-200 dark:bg-gray-700 h-full flex-1" />
+            <div className="bg-white dark:bg-white h-full flex-1" />
           </div>
         )}
       </div>
@@ -257,7 +257,7 @@ function AutomationSection() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Rate bars */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-5 space-y-4">
           <div className="text-xs font-medium text-gray-500">Resolution Breakdown</div>
           <RateBar label="Auto-approved" value={d.autoResolutionRate} color="bg-green-500" />
           <RateBar label="Flagged for review" value={d.flaggedRate} color="bg-orange-400" />
@@ -268,14 +268,14 @@ function AutomationSection() {
               <div className="text-xs text-gray-500">auto-approved</div>
             </div>
             <div>
-              <div className="text-xl font-bold text-gray-700 dark:text-gray-300">{d.uniqueCasesHandled}</div>
+              <div className="text-xl font-bold text-gray-700 dark:text-black">{d.uniqueCasesHandled}</div>
               <div className="text-xs text-gray-500">unique cases</div>
             </div>
           </div>
         </div>
 
         {/* Trigger breakdown */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-5">
           <div className="text-xs font-medium text-gray-500 mb-3">Fires by trigger</div>
           <div className="space-y-2">
             {d.byTrigger.length === 0 ? (
@@ -284,10 +284,10 @@ function AutomationSection() {
               <div key={t.triggerEvent} className="flex items-center justify-between">
                 <span className="text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-[60%]">{t.triggerEvent}</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-16 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div className="w-16 h-1.5 rounded-full bg-white dark:bg-white overflow-hidden">
                     <div className="bg-blue-500 h-full" style={{ width: `${Math.min((t.fires / (d.byTrigger[0]?.fires || 1)) * 100, 100)}%` }} />
                   </div>
-                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-6 text-right">{t.fires}</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-black w-6 text-right">{t.fires}</span>
                 </div>
               </div>
             ))}
@@ -295,7 +295,7 @@ function AutomationSection() {
         </div>
 
         {/* Top policies */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-5">
           <div className="text-xs font-medium text-gray-500 mb-3">Top policies by execution</div>
           <div className="space-y-2.5">
             {d.topPolicies.length === 0 ? (
@@ -304,9 +304,9 @@ function AutomationSection() {
               <div key={p.policyId} className="flex items-start gap-2">
                 <span className="text-xs text-gray-400 w-4 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{p.policyName}</div>
+                  <div className="text-xs font-medium text-gray-700 dark:text-black truncate">{p.policyName}</div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <Badge className={cn('border-0 text-xs h-4 px-1', POLICY_TYPE_COLORS[p.policyType] ?? 'bg-gray-100 text-gray-600')}>
+                    <Badge className={cn('border-0 text-xs h-4 px-1', POLICY_TYPE_COLORS[p.policyType] ?? 'bg-white text-gray-600')}>
                       {p.policyType.replace(/_/g, ' ')}
                     </Badge>
                     <span className="text-xs text-gray-400">{p.fires} fires</span>
@@ -360,20 +360,20 @@ function BreachTrendsSection() {
 
       {/* Trend summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-4">
           <div className="text-xs text-gray-500 mb-1">This period</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{d.currentPeriod}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-black">{d.currentPeriod}</div>
           <div className="text-xs text-gray-400">breaches</div>
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-4">
           <div className="text-xs text-gray-500 mb-1">Prior period</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{d.priorPeriod}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-black">{d.priorPeriod}</div>
           <div className="text-xs text-gray-400">breaches</div>
         </div>
         <div className={cn('rounded-xl border p-4',
           d.trendDirection === 'worsening'  ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20' :
           d.trendDirection === 'improving'  ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20' :
-          'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900')}>
+          'border-gray-200 bg-white dark:border-gray-800 dark:bg-white')}>
           <div className="text-xs text-gray-500 mb-1">Trend</div>
           <div className={cn('text-2xl font-bold flex items-center gap-1', trendColor)}>
             <TrendIcon className="h-5 w-5" />
@@ -381,9 +381,9 @@ function BreachTrendsSection() {
           </div>
           <div className="text-xs text-gray-400">{d.trendDirection}</div>
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-4">
           <div className="text-xs text-gray-500 mb-1">Most affected</div>
-          <div className="text-xl font-bold text-gray-900 dark:text-gray-100 capitalize">
+          <div className="text-xl font-bold text-gray-900 dark:text-black capitalize">
             {d.byCaseType[0]?.caseType ?? '—'}
           </div>
           <div className="text-xs text-gray-400">{d.byCaseType[0]?.totalBreaches ?? 0} total breaches</div>
@@ -392,11 +392,11 @@ function BreachTrendsSection() {
 
       {/* Chart */}
       {d.byDay.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-10 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-10 text-center text-sm text-gray-400">
           No breach data in the selected period. That's a good sign.
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-5">
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={d.byDay} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -426,7 +426,7 @@ function BreachTrendsSection() {
               <div key={ct.caseType} className="flex items-center gap-2 text-xs">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: CASE_TYPE_COLORS[ct.caseType] ?? '#94a3b8' }} />
                 <span className="text-gray-600 dark:text-gray-400 capitalize">{ct.caseType}</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{ct.totalBreaches}</span>
+                <span className="font-semibold text-gray-900 dark:text-black">{ct.totalBreaches}</span>
                 <span className="text-gray-400">· avg {ct.avgAgeHours}h</span>
               </div>
             ))}
@@ -465,12 +465,12 @@ function PolicyImpactSection() {
   }) => {
     const delta = after.value - before.value;
     return (
-      <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-4">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/50 p-4">
         <div className="text-xs font-medium text-gray-500 mb-3">{label}</div>
         <div className="grid grid-cols-3 gap-3 items-center">
           <div>
             <div className="text-xs text-gray-400 mb-0.5">Before</div>
-            <div className="text-xl font-bold text-gray-700 dark:text-gray-300">{before.value}</div>
+            <div className="text-xl font-bold text-gray-700 dark:text-black">{before.value}</div>
             {before.sub && <div className="text-xs text-gray-400">{before.sub}</div>}
           </div>
           <div className="flex items-center justify-center">
@@ -482,7 +482,7 @@ function PolicyImpactSection() {
           </div>
           <div>
             <div className="text-xs text-gray-400 mb-0.5">After</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{after.value}</div>
+            <div className="text-xl font-bold text-gray-900 dark:text-black">{after.value}</div>
             {after.sub && <div className="text-xs text-gray-400">{after.sub}</div>}
           </div>
         </div>
@@ -503,7 +503,7 @@ function PolicyImpactSection() {
             {allPolicies.map(p => (
               <SelectItem key={p.id} value={String(p.id)}>
                 <span className="flex items-center gap-2">
-                  <span className={cn('text-xs px-1.5 rounded', !p.isActive ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700')}>
+                  <span className={cn('text-xs px-1.5 rounded', !p.isActive ? 'bg-white text-gray-500' : 'bg-green-100 text-green-700')}>
                     {p.isActive ? 'active' : 'inactive'}
                   </span>
                   {p.name}
@@ -535,7 +535,7 @@ function PolicyImpactSection() {
             </div>
             <div className="ml-auto flex flex-wrap gap-1.5">
               {d.versions.map(v => (
-                <div key={v.versionNumber} className="text-xs bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-800 rounded px-2 py-1">
+                <div key={v.versionNumber} className="text-xs bg-white dark:bg-white border border-blue-200 dark:border-blue-800 rounded px-2 py-1">
                   <span className="font-mono">v{v.versionNumber}</span>
                   <span className="ml-1 text-gray-500">{v.changeType}</span>
                 </div>
@@ -596,13 +596,13 @@ export default function NetworkOversight() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-black flex items-center gap-3">
               <BarChart2 className="h-6 w-6 text-blue-600" />
               Executive Oversight
             </h1>
@@ -617,19 +617,19 @@ export default function NetworkOversight() {
         </div>
 
         {/* Sections */}
-        <section key={`risk-${refreshKey}`} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+        <section key={`risk-${refreshKey}`} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-6 shadow-sm">
           <NetworkRiskSection />
         </section>
 
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-6 shadow-sm">
           <AutomationSection />
         </section>
 
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-6 shadow-sm">
           <BreachTrendsSection />
         </section>
 
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white p-6 shadow-sm">
           <PolicyImpactSection />
         </section>
 

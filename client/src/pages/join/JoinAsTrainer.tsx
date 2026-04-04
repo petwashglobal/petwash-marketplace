@@ -401,7 +401,7 @@ export default function JoinAsTrainer() {
                 <p className="text-sm font-medium text-emerald-800 mb-1">💡 Certification Bonus</p>
                 <p className="text-sm text-emerald-700">Once your credentials are verified, you'll receive a gold <strong>Certified Trainer</strong> badge that increases bookings by up to 40%.</p>
               </div>
-              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+              <div className="bg-white rounded-xl p-4 space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <Checkbox checked={form.agreeToTerms} onCheckedChange={v => update("agreeToTerms", v)} className="mt-0.5" />
                   <span className="text-sm text-slate-700">I agree to the <span className="text-emerald-600 underline cursor-pointer">Academy™ Terms of Service</span> and understand the 15% platform commission.</span>

@@ -184,7 +184,7 @@ export function Kenzo3DRealistic({
             
             {/* Nose */}
             <div 
-              className="absolute bottom-10 left-1/2 -translate-x-1/2 w-5 h-4 bg-gray-900 dark:bg-gray-100 rounded-full"
+              className="absolute bottom-10 left-1/2 -translate-x-1/2 w-5 h-4 bg-gray-900 dark:bg-white rounded-full"
               style={{ transform: 'translateZ(20px)' }}
             />
             
@@ -229,7 +229,7 @@ export function Kenzo3DRealistic({
             
             {/* ⁦PetWash™⁩ Tag */}
             <div className="absolute top-5 left-1/2 -translate-x-1/2 w-6 h-6 bg-white dark:bg-black rounded-full shadow-xl flex items-center justify-center text-[10px] font-bold border-2 border-black dark:border-white">
-              <span className="text-black dark:text-white">K</span>
+              <span className="text-black dark:text-black">K</span>
             </div>
           </div>
           
@@ -246,7 +246,7 @@ export function Kenzo3DRealistic({
         {/* Status Indicator */}
         <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-center">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide uppercase bg-white dark:bg-black shadow-lg border border-gray-200 dark:border-gray-800 ${
-            isSpeaking ? 'text-black dark:text-white' : 'text-gray-600 dark:text-gray-400'
+            isSpeaking ? 'text-black dark:text-black' : 'text-gray-600 dark:text-gray-400'
           }`}>
             <div className={`w-2 h-2 rounded-full ${
               isSpeaking ? 'bg-black dark:bg-white animate-pulse' : 'bg-gray-400 dark:bg-gray-600'

@@ -42,7 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
 const statusConfig: Record<string, { color: string; bgColor: string; icon: any; label: string; labelHe: string }> = {
-  draft: { color: 'text-gray-600', bgColor: 'bg-gray-100', icon: FileText, label: 'Draft', labelHe: 'טיוטה' },
+  draft: { color: 'text-gray-600', bgColor: 'bg-white', icon: FileText, label: 'Draft', labelHe: 'טיוטה' },
   pending: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Clock, label: 'Pending', labelHe: 'ממתין' },
   under_review: { color: 'text-amber-600', bgColor: 'bg-amber-100', icon: Eye, label: 'Under Review', labelHe: 'בבדיקה' },
   documents_required: { color: 'text-orange-600', bgColor: 'bg-orange-100', icon: FileText, label: 'Docs Required', labelHe: 'נדרשים מסמכים' },
@@ -50,7 +50,7 @@ const statusConfig: Record<string, { color: string; bgColor: string; icon: any; 
   interview_scheduled: { color: 'text-purple-600', bgColor: 'bg-purple-100', icon: Calendar, label: 'Interview', labelHe: 'ראיון' },
   approved: { color: 'text-emerald-600', bgColor: 'bg-emerald-100', icon: CheckCircle2, label: 'Approved', labelHe: 'אושר' },
   rejected: { color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle, label: 'Rejected', labelHe: 'נדחה' },
-  withdrawn: { color: 'text-gray-500', bgColor: 'bg-gray-100', icon: XCircle, label: 'Withdrawn', labelHe: 'נמשך' },
+  withdrawn: { color: 'text-gray-500', bgColor: 'bg-white', icon: XCircle, label: 'Withdrawn', labelHe: 'נמשך' },
 };
 
 const roleColors: Record<string, string> = {
@@ -224,7 +224,7 @@ export default function HRAdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-6 py-4">
@@ -409,7 +409,7 @@ export default function HRAdminDashboard() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ delay: index * 0.05 }}
-                              className="border-b hover:bg-gray-50"
+                              className="border-b hover:bg-white"
                               data-testid={`row-application-${app.id}`}
                             >
                               <td className="py-4">

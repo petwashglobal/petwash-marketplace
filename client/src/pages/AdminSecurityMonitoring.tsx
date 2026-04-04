@@ -518,7 +518,7 @@ export default function AdminSecurityMonitoring() {
                       <div className="flex items-center gap-4">
                         <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20">
                           {cert.provider === 'Google' && <Chrome className="h-6 w-6 text-blue-600" />}
-                          {cert.provider === 'Apple' && <Apple className="h-6 w-6 text-slate-800 dark:text-white" />}
+                          {cert.provider === 'Apple' && <Apple className="h-6 w-6 text-slate-800 dark:text-black" />}
                           {cert.provider === 'Microsoft' && <Mail className="h-6 w-6 text-blue-500" />}
                         </div>
                         <div>

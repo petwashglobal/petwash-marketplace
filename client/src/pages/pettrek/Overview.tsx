@@ -503,7 +503,7 @@ export default function PetTrekOverview() {
               {t('pettrek.readyToBookSubtitle')}
             </p>
             <Link href="/pettrek/book">
-              <Button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-gray-50">
+              <Button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-white">
                 <Car className="h-5 w-5 mr-2 inline" />
                 {t('pettrek.bookFirstRide')}
                 <ArrowRight className="h-5 w-5 ml-2 inline" />

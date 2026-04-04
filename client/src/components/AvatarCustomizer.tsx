@@ -120,7 +120,7 @@ export function AvatarCustomizer({
   return (
     <div className="space-y-6">
       {/* Character Type Selection */}
-      <Card className="border-2 border-purple-200/50 dark:border-purple-800/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl shadow-2xl">
+      <Card className="border-2 border-purple-200/50 dark:border-purple-800/50 bg-white/80 dark:bg-white/80 backdrop-blur-xl shadow-2xl">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
@@ -149,7 +149,7 @@ export function AvatarCustomizer({
       </Card>
 
       {/* Customization Tabs */}
-      <Card className="border-2 border-purple-200/50 dark:border-purple-800/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl shadow-2xl">
+      <Card className="border-2 border-purple-200/50 dark:border-purple-800/50 bg-white/80 dark:bg-white/80 backdrop-blur-xl shadow-2xl">
         <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
           <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
             <TabsTrigger value="outfits" data-testid="tab-outfits">

@@ -46,11 +46,11 @@ const FINANCE_BADGE: Record<string, { label: string; cls: string }> = {
   debited:     { label: "Wallet charged",   cls: "bg-green-100 text-green-800 border-green-300" },
   released:    { label: "Wallet released",  cls: "bg-blue-100 text-blue-800 border-blue-300" },
   refunded:    { label: "Wallet refunded",  cls: "bg-purple-100 text-purple-800 border-purple-300" },
-  none:        { label: "No charge",        cls: "bg-gray-100 text-gray-600 border-gray-300" },
+  none:        { label: "No charge",        cls: "bg-white text-gray-600 border-gray-300" },
 };
 
 function FinanceBadge({ state }: FinanceBadgeProps) {
-  const cfg = FINANCE_BADGE[state ?? "none"] ?? { label: state ?? "—", cls: "bg-gray-100 text-gray-600 border-gray-300" };
+  const cfg = FINANCE_BADGE[state ?? "none"] ?? { label: state ?? "—", cls: "bg-white text-gray-600 border-gray-300" };
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${cfg.cls}`}>
       <Wallet className="w-3 h-3" />
@@ -109,7 +109,7 @@ export default function TrainerBookings() {
     b.bookingStatus !== "cancelled" && b.bookingStatus !== "completed";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -152,7 +152,7 @@ export default function TrainerBookings() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
+                  <TableRow className="bg-white">
                     <TableHead className="text-xs">Booking ID</TableHead>
                     <TableHead className="text-xs">Date & Time</TableHead>
                     <TableHead className="text-xs">Customer ID</TableHead>
@@ -190,7 +190,7 @@ export default function TrainerBookings() {
                           {centsToILS(Number(b.walletHoldCents ?? b.totalAmount * 100 ?? 0))}
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-xs ${STATUS_BADGE[b.bookingStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                          <Badge className={`text-xs ${STATUS_BADGE[b.bookingStatus] ?? "bg-white text-gray-600"}`}>
                             {b.bookingStatus}
                           </Badge>
                         </TableCell>
@@ -273,7 +273,7 @@ export default function TrainerBookings() {
                   ? "bg-amber-50 border-amber-200 text-amber-800"
                   : cancelModal.financeState === "debited"
                     ? "bg-blue-50 border-blue-200 text-blue-800"
-                    : "bg-gray-50 border-gray-200 text-gray-700"
+                    : "bg-white border-gray-200 text-gray-700"
               }`}>
                 {cancelModal.financeState === "hold_active" && (
                   <>Cancelling will <strong>release the wallet reservation</strong> of{" "}

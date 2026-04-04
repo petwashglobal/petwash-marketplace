@@ -120,7 +120,7 @@ export default function EGiftPolicy() {
                 <span className="text-white font-bold">1</span>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Check your email</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Check your email</h4>
                 <p className="luxury-text-small">Find your eGift card code in your inbox</p>
               </div>
             </div>
@@ -130,7 +130,7 @@ export default function EGiftPolicy() {
                 <span className="text-white font-bold">2</span>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Select your service</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Select your service</h4>
                 <p className="luxury-text-small">Choose any ⁦Pet Wash™⁩ service or product</p>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function EGiftPolicy() {
                 <span className="text-white font-bold">3</span>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Enter code at checkout</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Enter code at checkout</h4>
                 <p className="luxury-text-small">Apply your unique code to redeem the value</p>
               </div>
             </div>
@@ -150,7 +150,7 @@ export default function EGiftPolicy() {
                 <span className="text-white font-bold">4</span>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Enjoy your service</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Enjoy your service</h4>
                 <p className="luxury-text-small">Remaining balance saved for future use</p>
               </div>
             </div>
@@ -223,7 +223,7 @@ export default function EGiftPolicy() {
           <div className="grid gap-4">
             <div className="luxury-glass-panel p-4 border-l-4 border-green-500">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Pet Sitter</span>
+                <span className="font-semibold text-gray-900 dark:text-black">Pet Sitter</span>
                 <span className="luxury-badge luxury-badge-success">48 hours notice</span>
               </div>
               <p className="luxury-text-small mt-2">Full refund with 48 hours advance notice</p>
@@ -231,7 +231,7 @@ export default function EGiftPolicy() {
 
             <div className="luxury-glass-panel p-4 border-l-4 border-blue-500">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Dog Walker</span>
+                <span className="font-semibold text-gray-900 dark:text-black">Dog Walker</span>
                 <span className="luxury-badge luxury-badge-success">24 hours notice</span>
               </div>
               <p className="luxury-text-small mt-2">Full refund with 24 hours advance notice</p>
@@ -239,7 +239,7 @@ export default function EGiftPolicy() {
 
             <div className="luxury-glass-panel p-4 border-l-4 border-purple-500">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Pet Transport</span>
+                <span className="font-semibold text-gray-900 dark:text-black">Pet Transport</span>
                 <span className="luxury-badge luxury-badge-success">24 hours notice</span>
               </div>
               <p className="luxury-text-small mt-2">Full refund with 24 hours advance notice</p>
@@ -247,7 +247,7 @@ export default function EGiftPolicy() {
 
             <div className="luxury-glass-panel p-4 border-l-4 border-indigo-500">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Training</span>
+                <span className="font-semibold text-gray-900 dark:text-black">Training</span>
                 <span className="luxury-badge luxury-badge-success">48 hours notice</span>
               </div>
               <p className="luxury-text-small mt-2">Full refund with 48 hours advance notice</p>

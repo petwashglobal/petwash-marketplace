@@ -241,7 +241,7 @@ export default function MySubscriptions() {
                     <MapPin className="w-4 h-4" />
                     Delivery Address
                   </h3>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <p className="text-sm text-gray-700 dark:text-black">
                     {subscription.deliveryAddress?.address}, {subscription.deliveryAddress?.city} {subscription.deliveryAddress?.postalCode}
                   </p>
                 </div>
@@ -274,7 +274,7 @@ export default function MySubscriptions() {
                 </div>
 
                 {subscription.status === "paused" && subscription.pauseReason && (
-                  <div className="bg-white dark:bg-yellow-900/20 p-3 rounded-lg">
+                  <div className="bg-white dark:bg-white p-3 rounded-lg">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
                       <strong>Paused:</strong> {subscription.pauseReason}
                     </p>
@@ -282,7 +282,7 @@ export default function MySubscriptions() {
                 )}
 
                 {subscription.status === "cancelled" && subscription.cancelReason && (
-                  <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                  <div className="bg-red-50 dark:bg-white p-3 rounded-lg">
                     <p className="text-sm text-red-800 dark:text-red-200">
                       <strong>Cancelled:</strong> {subscription.cancelReason}
                     </p>

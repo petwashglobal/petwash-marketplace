@@ -115,14 +115,14 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 
 function FinanceStateBadge({ state }: { state: string }) {
   const map: Record<string, string> = {
-    none: "bg-gray-100 text-gray-600",
+    none: "bg-white text-gray-600",
     hold_active: "bg-yellow-100 text-yellow-800",
     debited: "bg-blue-100 text-blue-800",
     released: "bg-green-100 text-green-800",
     refunded: "bg-purple-100 text-purple-800",
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[state] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[state] ?? "bg-white text-gray-600"}`}>
       {state}
     </span>
   );
@@ -3153,7 +3153,7 @@ export default function AdminWalletDashboard() {
                             <button
                               onClick={() => navigator.clipboard.writeText(a.userId)}
                               title="Copy userId"
-                              className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-mono hover:bg-gray-200 truncate max-w-[140px]"
+                              className="px-1.5 py-0.5 rounded bg-white text-gray-600 font-mono hover:bg-white truncate max-w-[140px]"
                             >
                               uid:{a.userId.slice(0, 12)}…
                             </button>
@@ -3162,7 +3162,7 @@ export default function AdminWalletDashboard() {
                             <button
                               onClick={() => navigator.clipboard.writeText(a.bookingId)}
                               title="Copy bookingId"
-                              className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-mono hover:bg-gray-200 truncate max-w-[140px]"
+                              className="px-1.5 py-0.5 rounded bg-white text-gray-600 font-mono hover:bg-white truncate max-w-[140px]"
                             >
                               bk:{a.bookingId.slice(0, 10)}…
                             </button>
@@ -3186,7 +3186,7 @@ export default function AdminWalletDashboard() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-gray-100 flex-wrap h-auto">
+          <TabsList className="bg-white flex-wrap h-auto">
             <TabsTrigger value="proof">
               <ShieldCheck className="w-4 h-4 mr-2" />
               Proof Pass
@@ -3350,7 +3350,7 @@ export default function AdminWalletDashboard() {
                     {proofPass.steps?.map((step: any, i: number) => (
                       <div
                         key={i}
-                        className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50"
+                        className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-white"
                       >
                         {step.status === "PASS" ? (
                           <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
@@ -3414,7 +3414,7 @@ export default function AdminWalletDashboard() {
                         </h3>
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gray-50">
+                            <TableRow className="bg-white">
                               <TableHead className="text-xs">Event Type</TableHead>
                               <TableHead className="text-xs text-right">Count</TableHead>
                               <TableHead className="text-xs text-right">Total (ILS)</TableHead>
@@ -3483,7 +3483,7 @@ export default function AdminWalletDashboard() {
                 {auditData && (
                   <div className="space-y-4">
                     {/* Booking summary */}
-                    <div className="p-3 rounded-lg border border-gray-100 bg-gray-50 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-lg border border-gray-100 bg-white grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
                         <p className="text-xs text-gray-500">Booking ID</p>
                         <p className="text-sm font-mono font-medium">{auditData.booking?.bookingId ?? auditSearch}</p>
@@ -3577,7 +3577,7 @@ export default function AdminWalletDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1 text-xs border-gray-400 text-gray-700 hover:bg-gray-50 ml-auto"
+                        className="gap-1 text-xs border-gray-400 text-gray-700 hover:bg-white ml-auto"
                         onClick={() => window.open(
                           `/api/prestige-pass/admin/wallet/audit-bundle/booking/${encodeURIComponent(auditData.booking?.bookingId ?? auditSearch)}`,
                           '_blank'
@@ -3591,7 +3591,7 @@ export default function AdminWalletDashboard() {
                     {auditData.entries && auditData.entries.length > 0 && (
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-gray-50">
+                          <TableRow className="bg-white">
                             <TableHead className="text-xs">Time</TableHead>
                             <TableHead className="text-xs">Event</TableHead>
                             <TableHead className="text-xs">Bucket</TableHead>
@@ -3690,7 +3690,7 @@ export default function AdminWalletDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1 text-xs border-gray-400 text-gray-700 hover:bg-gray-50 ml-auto"
+                        className="gap-1 text-xs border-gray-400 text-gray-700 hover:bg-white ml-auto"
                         onClick={() => window.open(
                           `/api/prestige-pass/admin/wallet/audit-bundle/user/${encodeURIComponent(auditUserSearch)}`,
                           '_blank'
@@ -3701,7 +3701,7 @@ export default function AdminWalletDashboard() {
                     </div>
 
                     {/* Balance breakdown */}
-                    <div className="p-3 rounded-lg border border-gray-100 bg-gray-50">
+                    <div className="p-3 rounded-lg border border-gray-100 bg-white">
                       <p className="text-xs font-semibold text-gray-700 mb-2">Balance Breakdown</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
@@ -3731,7 +3731,7 @@ export default function AdminWalletDashboard() {
                         <p className="text-xs font-semibold text-gray-700 mb-2">Booking Finance Summary</p>
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gray-50">
+                            <TableRow className="bg-white">
                               <TableHead className="text-xs">Finance State</TableHead>
                               <TableHead className="text-xs text-right">Count</TableHead>
                               <TableHead className="text-xs text-right">Hold</TableHead>
@@ -3764,7 +3764,7 @@ export default function AdminWalletDashboard() {
                         </p>
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gray-50">
+                            <TableRow className="bg-white">
                               <TableHead className="text-xs">Time</TableHead>
                               <TableHead className="text-xs">Event</TableHead>
                               <TableHead className="text-xs">Dir</TableHead>
@@ -3827,7 +3827,7 @@ export default function AdminWalletDashboard() {
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-gray-50">
+                      <TableRow className="bg-white">
                         <TableHead className="text-xs">Time</TableHead>
                         <TableHead className="text-xs">Type</TableHead>
                         <TableHead className="text-xs">Status</TableHead>
@@ -3974,7 +3974,7 @@ export default function AdminWalletDashboard() {
 
                 {/* B6 — Filter echo strip (shown once search applied) */}
                 {ahApplied && (
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded px-3 py-2">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 bg-white border border-gray-100 rounded px-3 py-2">
                     <span><span className="font-medium text-gray-700">Range:</span> {ahFrom || "—"} → {ahTo || "—"}</span>
                     <span><span className="font-medium text-gray-700">Division:</span> {ahDivision || "all"}</span>
                     <span><span className="font-medium text-gray-700">Admin:</span> {ahAdminUid || "all"}</span>
@@ -4004,7 +4004,7 @@ export default function AdminWalletDashboard() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50">
+                        <TableRow className="bg-white">
                           <TableHead className="text-xs">Date</TableHead>
                           <TableHead className="text-xs">Admin</TableHead>
                           <TableHead className="text-xs">User</TableHead>
@@ -4036,9 +4036,9 @@ export default function AdminWalletDashboard() {
                             admin_override: "bg-amber-100 text-amber-800",
                             admin_release:  "bg-blue-100 text-blue-800",
                             admin_refund:   "bg-indigo-100 text-indigo-800",
-                            admin_adjust:   "bg-gray-100 text-gray-800",
+                            admin_adjust:   "bg-white text-gray-800",
                           };
-                          const chipClass = actionColor[row.source] ?? "bg-gray-100 text-gray-700";
+                          const chipClass = actionColor[row.source] ?? "bg-white text-gray-700";
                           const chipLabel = sourceLabel[row.source]  ?? row.source;
 
                           const divisionChip: Record<string, string> = {
@@ -4047,7 +4047,7 @@ export default function AdminWalletDashboard() {
                             academy:       "bg-purple-50 text-purple-700",
                             station_k9000: "bg-amber-50 text-amber-700",
                           };
-                          const divChip = divisionChip[row.divisionCode] ?? "bg-gray-50 text-gray-600";
+                          const divChip = divisionChip[row.divisionCode] ?? "bg-white text-gray-600";
                           return (
                             <TableRow key={`${row.txnId}-${i}`}>
                               <TableCell className="text-xs font-mono whitespace-nowrap">
@@ -4088,7 +4088,7 @@ export default function AdminWalletDashboard() {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   {row.bookingId && (
                                     <button
-                                      className="text-xs text-gray-500 hover:text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 flex items-center gap-1 whitespace-nowrap hover:bg-gray-50"
+                                      className="text-xs text-gray-500 hover:text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 flex items-center gap-1 whitespace-nowrap hover:bg-white"
                                       onClick={() => window.open(
                                         `/api/prestige-pass/admin/wallet/audit-bundle/booking/${encodeURIComponent(row.bookingId)}`,
                                         '_blank'
@@ -4099,7 +4099,7 @@ export default function AdminWalletDashboard() {
                                     </button>
                                   )}
                                   {row.reversed ? (
-                                    <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-medium" title={row.reversedByTxnId ?? ""}>בוטל</span>
+                                    <span className="text-xs bg-white text-gray-600 px-1.5 py-0.5 rounded font-medium" title={row.reversedByTxnId ?? ""}>בוטל</span>
                                   ) : (() => {
                                     const isReversible = (row.source === 'admin_credit' || row.source === 'admin_debit') && !!row.adminUid;
                                     const ageMs = Date.now() - new Date(row.createdAt).getTime();
@@ -4165,7 +4165,7 @@ export default function AdminWalletDashboard() {
                         { label: "Released", value: financeToday.totalReleasedCents, color: "text-blue-700" },
                         { label: "Refunded", value: financeToday.totalRefundedCents, color: "text-red-600" },
                       ].map(({ label, value, color }) => (
-                        <div key={label} className="p-4 rounded-lg border border-gray-100 bg-gray-50">
+                        <div key={label} className="p-4 rounded-lg border border-gray-100 bg-white">
                           <p className="text-xs text-gray-500 mb-1">{label}</p>
                           <p className={`text-xl font-bold font-mono ${color}`}>{centsToILS(Number(value ?? 0))}</p>
                         </div>
@@ -4220,7 +4220,7 @@ export default function AdminWalletDashboard() {
                         <p className="text-xs font-semibold text-gray-700 mb-2">By Division</p>
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gray-50">
+                            <TableRow className="bg-white">
                               <TableHead className="text-xs">Division</TableHead>
                               <TableHead className="text-xs text-right">Holds</TableHead>
                               <TableHead className="text-xs text-right">Debited</TableHead>
@@ -4257,7 +4257,7 @@ export default function AdminWalletDashboard() {
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                        className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-white transition-colors text-left"
                         onClick={() => {
                           setExceptionExpanded((v) => !v);
                           if (!exceptionExpanded) refetchException();
@@ -4351,7 +4351,7 @@ export default function AdminWalletDashboard() {
                                   </p>
                                   <Table>
                                     <TableHeader>
-                                      <TableRow className="bg-gray-50">
+                                      <TableRow className="bg-white">
                                         <TableHead className="text-xs">User ID</TableHead>
                                         <TableHead className="text-xs text-right">Issues</TableHead>
                                         <TableHead className="text-xs">Description</TableHead>
@@ -4446,7 +4446,7 @@ export default function AdminWalletDashboard() {
                   <>
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50">
+                        <TableRow className="bg-white">
                           <TableHead className="text-xs">Time</TableHead>
                           <TableHead className="text-xs">Event</TableHead>
                           <TableHead className="text-xs">Division</TableHead>
@@ -4498,7 +4498,7 @@ export default function AdminWalletDashboard() {
                   Wallet Ledger CSV
                 </CardTitle>
                 <p className="text-sm text-gray-500">
-                  Raw ledger entries from <code className="text-xs bg-gray-100 px-1 rounded">wallet_ledger_entries</code>.
+                  Raw ledger entries from <code className="text-xs bg-white px-1 rounded">wallet_ledger_entries</code>.
                   Up to 50,000 rows. All filters optional.
                 </p>
               </CardHeader>
@@ -4542,7 +4542,7 @@ export default function AdminWalletDashboard() {
                   <Download className="w-4 h-4" />
                   Download Ledger CSV
                 </Button>
-                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                <div className="rounded-md border border-gray-100 bg-white p-3">
                   <p className="text-xs font-medium text-gray-700 mb-1">Columns:</p>
                   <p className="text-xs text-gray-500 font-mono leading-relaxed">
                     created_at · user_id · wallet_id · division_code · source_type · event_type ·
@@ -4561,7 +4561,7 @@ export default function AdminWalletDashboard() {
                 </CardTitle>
                 <p className="text-sm text-gray-500">
                   Booking-level wallet lifecycle state. Covers walkers, sitters, and academy in one
-                  export. Includes <code className="text-xs bg-gray-100 px-1 rounded">finance_state</code>,
+                  export. Includes <code className="text-xs bg-white px-1 rounded">finance_state</code>,
                   hold / debit / refund amounts, and idempotency keys — ready for reconciliation.
                 </p>
               </CardHeader>
@@ -4627,7 +4627,7 @@ export default function AdminWalletDashboard() {
                   <FileDown className="w-4 h-4" />
                   Download Booking Finance CSV
                 </Button>
-                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                <div className="rounded-md border border-gray-100 bg-white p-3">
                   <p className="text-xs font-medium text-gray-700 mb-1">Columns:</p>
                   <p className="text-xs text-gray-500 font-mono leading-relaxed">
                     booking_id · source_type · division_code · customer_id · provider_id · status ·
@@ -4679,7 +4679,7 @@ export default function AdminWalletDashboard() {
                 </div>
 
                 {!pendingApprovalsData ? (
-                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-white animate-pulse rounded" />)}</div>
                 ) : pendingCount === 0 ? (
                   <div className="border-2 border-dashed border-gray-200 rounded-lg p-10 text-center">
                     <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-gray-200" />
@@ -5098,7 +5098,7 @@ export default function AdminWalletDashboard() {
                     onClick={() => { setPayApplied(true); setMarkPaidResult(null); setPaySelected([]); }}
                   >Apply Filters</button>
                   <button
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+                    className="px-3 py-1.5 text-sm border rounded hover:bg-white"
                     onClick={() => { setPayFilterUserId(""); setPayFilterDivision(""); setPayFilterStatus(""); setPayFilterBatch(""); setPayApplied(false); setPaySelected([]); setMarkPaidResult(null); }}
                   >Clear</button>
                 </div>
@@ -5114,7 +5114,7 @@ export default function AdminWalletDashboard() {
                       { label: "Held",        val: payLedgerData.totals.heldCents,        isMoney: true, highlight: "blue"  },
                       { label: "Paid",        val: payLedgerData.totals.paidCents,        isMoney: true, highlight: "green" },
                     ].map(({ label, val, isMoney, highlight }) => (
-                      <div key={label} className={`border rounded p-2 text-center ${highlight === 'amber' ? 'bg-amber-50 border-amber-200' : highlight === 'blue' ? 'bg-blue-50 border-blue-200' : highlight === 'green' ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50'}`}>
+                      <div key={label} className={`border rounded p-2 text-center ${highlight === 'amber' ? 'bg-amber-50 border-amber-200' : highlight === 'blue' ? 'bg-blue-50 border-blue-200' : highlight === 'green' ? 'bg-emerald-50 border-emerald-200' : 'bg-white'}`}>
                         <p className="text-[10px] text-gray-500 uppercase tracking-wide">{label}</p>
                         <p className="text-sm font-semibold text-gray-800">
                           {isMoney ? `₪${((val as number) / 100).toFixed(2)}` : val}
@@ -5163,7 +5163,7 @@ export default function AdminWalletDashboard() {
 
                 {/* Table */}
                 {payLoading ? (
-                  <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-9 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-9 bg-white animate-pulse rounded" />)}</div>
                 ) : !payLedgerData?.entries?.length ? (
                   <div className="border rounded p-10 text-center text-gray-400 text-sm">
                     {payApplied ? "No entries match these filters." : "Apply filters to load payout entries."}
@@ -5230,7 +5230,7 @@ export default function AdminWalletDashboard() {
                                 ₪{(entry.netCents / 100).toFixed(2)}
                               </TableCell>
                               <TableCell>
-                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusChip[entry.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusChip[entry.status] ?? 'bg-white text-gray-600'}`}>
                                   {entry.status}
                                 </span>
                               </TableCell>
@@ -5278,7 +5278,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {closeLoading ? (
-                  <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-white animate-pulse rounded" />)}</div>
                 ) : (
                   <>
                     {/* ── Checklist ── */}
@@ -5401,7 +5401,7 @@ export default function AdminWalletDashboard() {
                           className={`w-full py-2 px-4 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
                             allClear
                               ? "bg-blue-700 text-white hover:bg-blue-800"
-                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-white text-gray-400 cursor-not-allowed"
                           }`}
                         >
                           {closePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
@@ -5489,7 +5489,7 @@ export default function AdminWalletDashboard() {
                       </thead>
                       <tbody>
                         {(closeHistory.records as any[]).map((r: any) => (
-                          <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                          <tr key={r.id} className="border-b border-gray-50 hover:bg-white">
                             <td className="py-2 pr-3 font-mono text-gray-700">{String(r.closeDate).slice(0, 10)}</td>
                             <td className="py-2 pr-3">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
@@ -5612,12 +5612,12 @@ export default function AdminWalletDashboard() {
                       </thead>
                       <tbody>
                         {batchListData.batches.map((b: any) => (
-                          <tr key={b.batchId} className={`border-b hover:bg-gray-50 cursor-pointer ${selectedBatchId === b.batchId ? "bg-blue-50" : ""}`}>
+                          <tr key={b.batchId} className={`border-b hover:bg-white cursor-pointer ${selectedBatchId === b.batchId ? "bg-blue-50" : ""}`}>
                             <td className="py-2 pr-4 font-mono text-xs" onClick={() => setSelectedBatchId(selectedBatchId === b.batchId ? null : b.batchId)}>
                               {b.batchId}
                             </td>
                             <td className="py-2 pr-4">
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${b.status === "completed" ? "bg-emerald-100 text-emerald-700" : b.status === "exported" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${b.status === "completed" ? "bg-emerald-100 text-emerald-700" : b.status === "exported" ? "bg-blue-100 text-blue-700" : "bg-white text-gray-700"}`}>
                                 {b.status}
                               </span>
                             </td>
@@ -5662,7 +5662,7 @@ export default function AdminWalletDashboard() {
                                         className="flex-1 px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40">
                                         {requestReleasePending ? '…' : 'Confirm'}
                                       </button>
-                                      <button onClick={() => setShowReleaseConfirm(null)} className="flex-1 px-2 py-1 border rounded hover:bg-gray-100">Cancel</button>
+                                      <button onClick={() => setShowReleaseConfirm(null)} className="flex-1 px-2 py-1 border rounded hover:bg-white">Cancel</button>
                                     </div>
                                   </div>
                                 )}
@@ -5688,7 +5688,7 @@ export default function AdminWalletDashboard() {
                 </CardHeader>
                 <CardContent>
                   {pendingReleasesLoading ? (
-                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                    <div className="h-16 bg-white animate-pulse rounded"/>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-xs"><thead className="bg-amber-50">
@@ -5699,7 +5699,7 @@ export default function AdminWalletDashboard() {
                         </tr>
                       </thead><tbody>
                         {pendingReleasesData.approvals.map((a: any) => (
-                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                          <tr key={a.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{a.batchId}</td>
                             <td className="p-2 text-right font-bold text-amber-700">₪{(a.amountCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}</td>
                             <td className="p-2 font-mono text-gray-500 truncate max-w-24">{a.requestedByUid}</td>
@@ -5777,7 +5777,7 @@ export default function AdminWalletDashboard() {
                             { label: "Gross (ILS)", value: `₪${(batchDetailData.totals.grossCents / 100).toFixed(2)}` },
                             { label: "Net (ILS)", value: `₪${(batchDetailData.totals.netCents / 100).toFixed(2)}` },
                           ].map(c => (
-                            <div key={c.label} className="bg-gray-50 rounded p-3">
+                            <div key={c.label} className="bg-white rounded p-3">
                               <div className="text-xs text-gray-500 mb-1">{c.label}</div>
                               <div className="font-bold">{c.value}</div>
                             </div>
@@ -5915,7 +5915,7 @@ export default function AdminWalletDashboard() {
                     {/* Settlement progress bar */}
                     {reconData?.summary?.total > 0 && (
                       <div className="mb-3">
-                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-white rounded-full overflow-hidden">
                           <div
                             className="h-full bg-emerald-500 rounded-full transition-all"
                             style={{ width: `${Math.round((reconData.summary.settled / reconData.summary.total) * 100)}%` }}
@@ -5929,7 +5929,7 @@ export default function AdminWalletDashboard() {
                     )}
 
                     {/* Upload zone */}
-                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-white">
                       <div className="text-xs text-gray-500 mb-2">
                         Upload bank payment CSV — columns: <span className="font-mono">provider_uid</span> (required), <span className="font-mono">bank_ref</span>, <span className="font-mono">amount_ils</span>
                       </div>
@@ -5938,7 +5938,7 @@ export default function AdminWalletDashboard() {
                           type="file"
                           accept=".csv,text/csv"
                           onChange={e => setReconFile(e.target.files?.[0] ?? null)}
-                          className="text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+                          className="text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-white file:text-gray-700 hover:file:bg-gray-300"
                         />
                         <button
                           disabled={!reconFile || reconUploading}
@@ -5989,7 +5989,7 @@ export default function AdminWalletDashboard() {
                                   {p.settled ? (
                                     <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">Settled</span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">Pending</span>
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white text-gray-500">Pending</span>
                                   )}
                                 </td>
                               </tr>
@@ -6070,7 +6070,7 @@ export default function AdminWalletDashboard() {
                   Division-specific policies override the global PAYOUT_AUTO_RELEASE_LIMIT_CENTS. Unmatched batches fall back to the env var. Requesters cannot self-approve.
                 </div>
                 {showNewPolicyForm && (
-                  <div className="border rounded-lg p-3 bg-gray-50 space-y-2 text-xs">
+                  <div className="border rounded-lg p-3 bg-white space-y-2 text-xs">
                     <div className="font-semibold text-gray-700">New Release Policy</div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><label className="text-gray-500 mb-0.5 block">Min (₪)</label>
@@ -6094,23 +6094,23 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
-                {releasePoliciesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> :
+                {releasePoliciesLoading ? <div className="h-16 bg-white animate-pulse rounded"/> :
                   !releasePolicies?.policies?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No release policies — all batches use the global env var fallback</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Division</th><th className="text-left p-2">Range (₪)</th><th className="text-left p-2">Auto-Release</th><th className="text-left p-2">2nd Approval</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
                         {releasePolicies.policies.map((p: any) => (
-                          <tr key={p.id} className="border-t hover:bg-gray-50">
+                          <tr key={p.id} className="border-t hover:bg-white">
                             <td className="p-2 text-gray-700">{p.divisionCode || <span className="text-gray-400 italic">global</span>}</td>
                             <td className="p-2 font-mono text-gray-600">₪{(p.minAmountCents/100).toFixed(0)}–{p.maxAmountCents ? '₪'+(p.maxAmountCents/100).toFixed(0) : '∞'}</td>
                             <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${p.allowedAutoRelease ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.allowedAutoRelease ? 'Yes' : 'No'}</span></td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${p.requiresSecondApproval ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{p.requiresSecondApproval ? 'Required' : 'Optional'}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${p.requiresSecondApproval ? 'bg-amber-100 text-amber-700' : 'bg-white text-gray-600'}`}>{p.requiresSecondApproval ? 'Required' : 'Optional'}</span></td>
                             <td className="p-2">
                               <button onClick={() => patchReleasePolicy({ id: p.id, body: { enabled: !p.enabled } })}
-                                className={`px-1.5 py-0.5 rounded text-xs ${p.enabled ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                                className={`px-1.5 py-0.5 rounded text-xs ${p.enabled ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-white text-gray-500 hover:bg-white'}`}>
                                 {p.enabled ? 'Active' : 'Off'}
                               </button>
                             </td>
@@ -6208,7 +6208,7 @@ export default function AdminWalletDashboard() {
                     onClick={() => setDispApplied(true)}
                   >Apply Filters</button>
                   <button
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+                    className="px-3 py-1.5 text-sm border rounded hover:bg-white"
                     onClick={() => { setDispStatus(""); setDispDivision(""); setDispBooking(""); setDispAssigned(""); setDispApplied(false); }}
                   >Clear</button>
                   <button
@@ -6291,7 +6291,7 @@ export default function AdminWalletDashboard() {
                     <p className="text-sm text-gray-400">Apply filters or click Show All to load disputes</p>
                   </div>
                 ) : dispLoading ? (
-                  <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-white animate-pulse rounded" />)}</div>
                 ) : !dispData?.disputes?.length ? (
                   <div className="border rounded p-10 text-center text-sm text-gray-400">No disputes match these filters.</div>
                 ) : (
@@ -6318,14 +6318,14 @@ export default function AdminWalletDashboard() {
                             investigating: "bg-amber-100  text-amber-800",
                             escalated:     "bg-purple-100 text-purple-800",
                             resolved:      "bg-emerald-100 text-emerald-800",
-                            dismissed:     "bg-gray-100   text-gray-600",
+                            dismissed:     "bg-white   text-gray-600",
                           };
                           return (
                             <TableRow key={d.case_ref} className="cursor-pointer hover:bg-blue-50/40"
                               onClick={() => { setSelectedDispute(d); setResolveMode(false); setDrawerNote(""); }}>
                               <TableCell className="text-xs font-mono font-semibold text-rose-700">{d.case_ref}</TableCell>
                               <TableCell>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${statusColor[d.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${statusColor[d.status] ?? 'bg-white text-gray-600'}`}>
                                   {d.status}
                                 </span>
                               </TableCell>
@@ -6366,7 +6366,7 @@ export default function AdminWalletDashboard() {
               <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 flex flex-col"
                 style={{ top: '60px' }}>
                 {/* Header */}
-                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
                   <div>
                     <p className="text-xs text-gray-400 mb-0.5">Dispute Case</p>
                     <h3 className="text-base font-mono font-bold text-rose-700">{selectedDispute.case_ref}</h3>
@@ -6450,7 +6450,7 @@ export default function AdminWalletDashboard() {
                     <p className="text-xs font-semibold text-gray-700 mb-2">Timeline</p>
                     <div className="space-y-2">
                       {(Array.isArray(selectedDispute.notes) ? selectedDispute.notes : []).map((n: any, i: number) => (
-                        <div key={i} className={`text-xs rounded px-3 py-2 border ${n.text?.startsWith('[RESOLVE:') ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-100'}`}>
+                        <div key={i} className={`text-xs rounded px-3 py-2 border ${n.text?.startsWith('[RESOLVE:') ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'}`}>
                           <div className="flex items-center justify-between mb-0.5">
                             <span className="font-semibold text-gray-700">{n.authorName ?? n.authorUid?.slice(0,10)}</span>
                             <span className="text-gray-400">{new Date(n.createdAt).toLocaleString("he-IL")}</span>
@@ -6509,7 +6509,7 @@ export default function AdminWalletDashboard() {
 
                   {/* Resolve panel */}
                   {selectedDispute.status !== "resolved" && selectedDispute.status !== "dismissed" && (
-                    <div className={`border rounded p-3 space-y-2 ${resolveMode ? 'bg-emerald-50 border-emerald-300' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className={`border rounded p-3 space-y-2 ${resolveMode ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-gray-200'}`}>
                       {!resolveMode ? (
                         <button className="text-xs text-emerald-700 font-semibold hover:underline"
                           onClick={() => setResolveMode(true)}>
@@ -6654,7 +6654,7 @@ export default function AdminWalletDashboard() {
                           >
                             {applyResPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
                           </button>
-                          <button className="px-2 py-1.5 text-xs border rounded hover:bg-gray-50"
+                          <button className="px-2 py-1.5 text-xs border rounded hover:bg-white"
                             onClick={() => setApplyResMode(false)}>Cancel</button>
                         </div>
                       </div>
@@ -6699,7 +6699,7 @@ export default function AdminWalletDashboard() {
                         { label: "Breached",      value: slaReportData.breached,         color: "text-red-600" },
                         { label: "Compliance",    value: `${slaReportData.compliancePct}%`, color: slaReportData.compliancePct >= 90 ? "text-green-600" : slaReportData.compliancePct >= 70 ? "text-amber-600" : "text-red-600" },
                       ].map(m => (
-                        <div key={m.label} className="bg-gray-50 rounded p-3">
+                        <div key={m.label} className="bg-white rounded p-3">
                           <div className="text-xs text-gray-500 mb-1">{m.label}</div>
                           <div className={`text-lg font-bold ${m.color}`}>{m.value}</div>
                         </div>
@@ -6711,7 +6711,7 @@ export default function AdminWalletDashboard() {
                         <span>SLA Compliance</span>
                         <span>Avg resolution: {slaReportData.avgDurationHours}h</span>
                       </div>
-                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-white rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${slaReportData.compliancePct >= 90 ? 'bg-green-500' : slaReportData.compliancePct >= 70 ? 'bg-amber-500' : 'bg-red-500'}`}
                           style={{ width: `${slaReportData.compliancePct}%` }}
@@ -6777,7 +6777,7 @@ export default function AdminWalletDashboard() {
                     {settlData?.summary && (
                       <a
                         href={`/api/prestige-pass/admin/wallet/settlement-summary/export?${settlParams.toString()}`}
-                        className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 flex items-center gap-1"
+                        className="text-xs px-2 py-1 bg-white hover:bg-white rounded border border-gray-300 flex items-center gap-1"
                       >
                         <Download className="w-3 h-3" />
                         Export CSV
@@ -6830,7 +6830,7 @@ export default function AdminWalletDashboard() {
                     { label: 'All Time',  from: '',            to: '' },
                   ].map(({ label, from, to }) => (
                     <button key={label}
-                      className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                      className="text-xs px-2 py-1 border rounded hover:bg-white"
                       onClick={() => { setSettlFrom(from); setSettlTo(to); setSettlApplied(true); }}
                     >{label}</button>
                   ))}
@@ -6843,7 +6843,7 @@ export default function AdminWalletDashboard() {
                   </div>
                 ) : settlLoading ? (
                   <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-gray-100 animate-pulse rounded" />)}
+                    {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-white animate-pulse rounded" />)}
                   </div>
                 ) : settlData?.error ? (
                   <div className="bg-red-50 border border-red-200 rounded p-4 text-sm text-red-700">{settlData.error}</div>
@@ -6905,7 +6905,7 @@ export default function AdminWalletDashboard() {
                           red:     'bg-red-50     border-red-200     text-red-700',
                         };
                         return (
-                          <div key={label} className={`border rounded p-4 ${palette[color] ?? 'bg-gray-50'}`}>
+                          <div key={label} className={`border rounded p-4 ${palette[color] ?? 'bg-white'}`}>
                             <div className="flex items-center gap-2 mb-1 opacity-70">{icon}<span className="text-xs font-medium uppercase tracking-wide">{label}</span></div>
                             <p className="text-xl font-bold font-mono">
                               {pct !== undefined
@@ -6959,7 +6959,7 @@ export default function AdminWalletDashboard() {
                                       {row.marginPct.toFixed(1)}%
                                     </TableCell>
                                     <TableCell className="text-xs min-w-[80px]">
-                                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className="h-2 bg-white rounded-full overflow-hidden">
                                         <div
                                           className="h-full bg-indigo-400 rounded-full"
                                           style={{ width: `${barPct}%` }}
@@ -6971,7 +6971,7 @@ export default function AdminWalletDashboard() {
                                 );
                               })}
                               {/* Totals footer */}
-                              <TableRow className="bg-gray-50 font-semibold border-t-2">
+                              <TableRow className="bg-white font-semibold border-t-2">
                                 <TableCell className="text-xs">TOTAL</TableCell>
                                 <TableCell className="text-xs text-right font-mono">₪{(settlData.summary.collected / 100).toFixed(2)}</TableCell>
                                 <TableCell className="text-xs text-right font-mono text-amber-700">₪{(settlData.summary.providerPayable / 100).toFixed(2)}</TableCell>
@@ -6991,7 +6991,7 @@ export default function AdminWalletDashboard() {
                     )}
 
                     {/* Math identity check */}
-                    <div className="bg-gray-50 border border-gray-200 rounded px-4 py-3 text-xs font-mono text-gray-500 space-y-0.5">
+                    <div className="bg-white border border-gray-200 rounded px-4 py-3 text-xs font-mono text-gray-500 space-y-0.5">
                       <p className="font-semibold text-gray-700 text-[11px] mb-1">Identity Check</p>
                       <p>collected({(settlData.summary.collected/100).toFixed(2)}) − payable({(settlData.summary.providerPayable/100).toFixed(2)}) − vat({(settlData.summary.vatLiability/100).toFixed(2)}) = <span className={settlData.summary.margin >= 0 ? 'text-emerald-700' : 'text-red-600'}>{(settlData.summary.margin/100).toFixed(2)}</span></p>
                     </div>
@@ -7060,7 +7060,7 @@ export default function AdminWalletDashboard() {
 
                 {/* Role List */}
                 {rolesLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-white animate-pulse rounded" />)}</div>
                 ) : rolesData?.roles?.length === 0 ? (
                   <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                     <ShieldCheck className="w-7 h-7 mx-auto mb-2 text-gray-200" />
@@ -7080,7 +7080,7 @@ export default function AdminWalletDashboard() {
                       </thead>
                       <tbody>
                         {(rolesData?.roles ?? []).map((r: any) => (
-                          <tr key={r.userUid} className="border-b border-gray-50 hover:bg-gray-50">
+                          <tr key={r.userUid} className="border-b border-gray-50 hover:bg-white">
                             <td className="py-2 pr-3 font-mono text-gray-700">{r.userUid}</td>
                             <td className="py-2 pr-3">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
@@ -7120,7 +7120,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {roleAuditLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-7 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-7 bg-white animate-pulse rounded" />)}</div>
                 ) : (roleAuditData?.events ?? []).length === 0 ? (
                   <p className="text-xs text-gray-400 text-center py-4">No role changes recorded yet.</p>
                 ) : (
@@ -7137,7 +7137,7 @@ export default function AdminWalletDashboard() {
                       </thead>
                       <tbody>
                         {(roleAuditData?.events ?? []).map((e: any) => (
-                          <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                          <tr key={e.id} className="border-b border-gray-50 hover:bg-white">
                             <td className="py-2 pr-3 font-mono text-gray-500">{e.grantorUid ? e.grantorUid.slice(0, 12) + "…" : "—"}</td>
                             <td className="py-2 pr-3 font-mono text-gray-700">{e.targetUid ? e.targetUid.slice(0, 16) + "…" : "—"}</td>
                             <td className="py-2 pr-3">
@@ -7208,7 +7208,7 @@ export default function AdminWalletDashboard() {
                         const pct = m.changePct;
                         const isPositive = key === 'disputeCount' || key === 'disputedCents' ? pct <= 0 : pct >= 0;
                         return (
-                          <div key={key} className="bg-gray-50 rounded p-3 flex items-center justify-between">
+                          <div key={key} className="bg-white rounded p-3 flex items-center justify-between">
                             <div>
                               <div className="text-xs text-gray-500 mb-0.5">{labels[key] ?? key}</div>
                               <div className="text-sm font-bold">{fmt(m.current)}</div>
@@ -7327,7 +7327,7 @@ export default function AdminWalletDashboard() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => { setAlertDeliveryDrawer(true); refetchDeliveryLog(); }}
-                      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-white text-gray-600"
                     >📬 Delivery Log</button>
                     <button
                       onClick={async () => { await refetchDigestPreview(); toast({ title: "Digest preview loaded — check Delivery Log" }); }}
@@ -7337,7 +7337,7 @@ export default function AdminWalletDashboard() {
                       <button
                         disabled={ackAllPending}
                         onClick={() => acknowledgeAll()}
-                        className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-40"
+                        className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-white text-gray-600 disabled:opacity-40"
                       >
                         {ackAllPending ? "…" : "Acknowledge All"}
                       </button>
@@ -7357,7 +7357,7 @@ export default function AdminWalletDashboard() {
                       <div key={a.id} className={`flex items-start justify-between gap-3 rounded p-3 border text-xs ${
                         a.severity === 'critical' ? 'bg-red-50 border-red-200' :
                         a.severity === 'warning'  ? 'bg-amber-50 border-amber-200' :
-                                                    'bg-gray-50 border-gray-200'
+                                                    'bg-white border-gray-200'
                       }`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -7388,7 +7388,7 @@ export default function AdminWalletDashboard() {
                           <button
                             disabled={ackPending}
                             onClick={() => acknowledgeAlert(a.id)}
-                            className="text-[10px] px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-40"
+                            className="text-[10px] px-2 py-1 border border-gray-300 rounded hover:bg-white text-gray-500 disabled:opacity-40"
                           >Ack</button>
                         </div>
                       </div>
@@ -7410,7 +7410,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Filter bar */}
-                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                <div className="border rounded-lg p-3 bg-white space-y-2">
                   <div className="flex items-center gap-1 text-xs font-semibold text-gray-600 mb-1">
                     <Filter className="w-3 h-3" /> Filters
                   </div>
@@ -7431,7 +7431,7 @@ export default function AdminWalletDashboard() {
                         onClick={() => { setFinFiltersApplied({ actor: finActorFilter, action: finActionFilter, entityType: finEntityFilter, from: finFromFilter, to: finToFilter }); setFinPage(1); }}
                       >Apply</button>
                       <button
-                        className="flex-1 px-2 py-1 text-xs border rounded hover:bg-gray-100"
+                        className="flex-1 px-2 py-1 text-xs border rounded hover:bg-white"
                         onClick={() => { setFinActorFilter(""); setFinActionFilter(""); setFinEntityFilter(""); setFinFromFilter(""); setFinToFilter(""); setFinFiltersApplied({}); setFinPage(1); }}
                       >Clear</button>
                     </div>
@@ -7440,7 +7440,7 @@ export default function AdminWalletDashboard() {
 
                 {/* Event list */}
                 {finActivityLoading ? (
-                  <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-white animate-pulse rounded" />)}</div>
                 ) : (finActivityData?.events ?? []).length === 0 ? (
                   <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
                     <Activity className="w-8 h-8 mx-auto mb-2 text-gray-200" />
@@ -7450,7 +7450,7 @@ export default function AdminWalletDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {(finActivityData?.events ?? []).map((e: any) => (
-                      <div key={e.id} className="border rounded-lg p-3 hover:bg-gray-50">
+                      <div key={e.id} className="border rounded-lg p-3 hover:bg-white">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -7459,7 +7459,7 @@ export default function AdminWalletDashboard() {
                                 e.action?.includes('create')  ? "bg-green-100 text-green-700"   :
                                 e.action?.includes('refund')  ? "bg-blue-100 text-blue-700"     :
                                 e.action?.includes('clawback')? "bg-orange-100 text-orange-700" :
-                                                                 "bg-gray-100 text-gray-600"
+                                                                 "bg-white text-gray-600"
                               }`}>{e.action}</span>
                               <span className="text-xs text-gray-400 font-mono">{e.entityType}</span>
                               <span className="text-xs font-mono text-gray-600 truncate">{e.entityId}</span>
@@ -7473,7 +7473,7 @@ export default function AdminWalletDashboard() {
                         {e.after && (
                           <details className="mt-1">
                             <summary className="text-[10px] text-blue-600 cursor-pointer hover:underline">Details</summary>
-                            <pre className="mt-1 text-[9px] bg-gray-50 rounded p-2 overflow-x-auto text-gray-600">{JSON.stringify(e.after, null, 2)}</pre>
+                            <pre className="mt-1 text-[9px] bg-white rounded p-2 overflow-x-auto text-gray-600">{JSON.stringify(e.after, null, 2)}</pre>
                           </details>
                         )}
                       </div>
@@ -7511,7 +7511,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Filter bar */}
-                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                <div className="border rounded-lg p-3 bg-white space-y-2">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <select className="border rounded px-2 py-1 text-xs" value={reconExFilter.status}
                       onChange={e => setReconExFilter(f => ({ ...f, status: e.target.value }))}>
@@ -7545,14 +7545,14 @@ export default function AdminWalletDashboard() {
                 )}
                 {/* Table */}
                 {reconExLoading ? (
-                  <div className="space-y-2">{[...Array(4)].map((_,i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(4)].map((_,i) => <div key={i} className="h-8 bg-white animate-pulse rounded" />)}</div>
                 ) : !(reconExData?.exceptions?.length) ? (
                   <div className="text-center py-10 text-sm text-gray-400 border-2 border-dashed rounded-lg">No reconciliation exceptions.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-gray-50 text-gray-500 uppercase text-[10px]">
+                        <tr className="bg-white text-gray-500 uppercase text-[10px]">
                           <th className="px-3 py-2 text-left">ID</th>
                           <th className="px-3 py-2 text-left">Batch</th>
                           <th className="px-3 py-2 text-left">Provider</th>
@@ -7564,7 +7564,7 @@ export default function AdminWalletDashboard() {
                       </thead>
                       <tbody>
                         {reconExData.exceptions.map((ex: any) => (
-                          <tr key={ex.id} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => { setSelectedReconEx(ex); setReconExNote(ex.resolution_note ?? ""); }}>
+                          <tr key={ex.id} className="border-t hover:bg-white cursor-pointer" onClick={() => { setSelectedReconEx(ex); setReconExNote(ex.resolution_note ?? ""); }}>
                             <td className="px-3 py-2 font-mono">{ex.id}</td>
                             <td className="px-3 py-2 font-mono text-blue-700">{ex.batch_id}</td>
                             <td className="px-3 py-2">{ex.provider_uid ?? <span className="text-gray-400 italic">unknown</span>}</td>
@@ -7575,7 +7575,7 @@ export default function AdminWalletDashboard() {
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                                 ex.status === 'open' ? 'bg-orange-100 text-orange-700' :
                                 ex.status === 'matched_manually' ? 'bg-green-100 text-green-700' :
-                                ex.status === 'ignored' ? 'bg-gray-100 text-gray-500' :
+                                ex.status === 'ignored' ? 'bg-white text-gray-500' :
                                 'bg-red-100 text-red-700'
                               }`}>{ex.status}</span>
                             </td>
@@ -7583,7 +7583,7 @@ export default function AdminWalletDashboard() {
                             <td className="px-3 py-2">
                               {ex.status === 'open' && (
                                 <div className="flex gap-1">
-                                  <button className="px-1.5 py-0.5 text-[10px] border rounded hover:bg-gray-50"
+                                  <button className="px-1.5 py-0.5 text-[10px] border rounded hover:bg-white"
                                     onClick={e => { e.stopPropagation(); patchReconEx({ id: ex.id, action: 'ignore', note: 'Ignored by admin' }); }}>
                                     Ignore
                                   </button>
@@ -7624,7 +7624,7 @@ export default function AdminWalletDashboard() {
                     {/* Raw bank row */}
                     <div>
                       <div className="text-xs font-semibold text-gray-500 mb-1">Raw Bank Row</div>
-                      <pre className="bg-gray-50 border rounded p-2 text-[10px] overflow-x-auto">{JSON.stringify(selectedReconEx.raw_row, null, 2)}</pre>
+                      <pre className="bg-white border rounded p-2 text-[10px] overflow-x-auto">{JSON.stringify(selectedReconEx.raw_row, null, 2)}</pre>
                     </div>
                     {/* Note */}
                     <div>
@@ -7678,7 +7678,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {boardPackLoading ? (
-                  <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-10 bg-white animate-pulse rounded" />)}</div>
                 ) : !boardPackData?.ok ? (
                   <div className="text-sm text-gray-400 py-6 text-center">Select a month and click Load.</div>
                 ) : (
@@ -7725,7 +7725,7 @@ export default function AdminWalletDashboard() {
                         <div className="text-xs font-semibold text-gray-600 mb-2">Variance Commentary</div>
                         <div className="space-y-1.5">
                           {boardPackData.commentary.map((c: any) => (
-                            <div key={c.metric} className="border rounded p-2 bg-gray-50 text-xs">
+                            <div key={c.metric} className="border rounded p-2 bg-white text-xs">
                               <span className="font-medium text-gray-700">{c.metric}:</span> {c.comment}
                             </div>
                           ))}
@@ -7766,7 +7766,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {integrityHistoryLoading ? (
-                  <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-12 bg-white animate-pulse rounded" />)}</div>
                 ) : !(integrityHistoryData?.history?.length) ? (
                   <div className="text-sm text-gray-400 py-10 text-center border-2 border-dashed rounded-lg">
                     No integrity checks run yet. Click "Run All Checks Now" to start.
@@ -7778,7 +7778,7 @@ export default function AdminWalletDashboard() {
                         run.status === 'passed' ? 'bg-green-50 border-green-200' :
                         run.status === 'failed' ? 'bg-red-50 border-red-200' :
                         run.status === 'error'  ? 'bg-amber-50 border-amber-200' :
-                        'bg-gray-50 border-gray-200'
+                        'bg-white border-gray-200'
                       }`}>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -7832,7 +7832,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {forecastLoading ? (
-                  <div className="space-y-2">{[...Array(4)].map((_,i)=><div key={i} className="h-14 bg-gray-100 animate-pulse rounded"/>)}</div>
+                  <div className="space-y-2">{[...Array(4)].map((_,i)=><div key={i} className="h-14 bg-white animate-pulse rounded"/>)}</div>
                 ) : !forecastData?.ok ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">Select a horizon and click Load</div>
                 ) : (
@@ -7853,7 +7853,7 @@ export default function AdminWalletDashboard() {
                     <div className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><Activity className="w-3 h-3"/>Day-by-Day Breakdown ({forecastData.horizonDays}d)</div>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-xs">
-                        <thead className="bg-gray-50"><tr className="text-gray-500">
+                        <thead className="bg-white"><tr className="text-gray-500">
                           <th className="text-left p-2">Date</th>
                           <th className="text-right p-2">Payouts</th>
                           <th className="text-right p-2">Refunds</th>
@@ -7862,7 +7862,7 @@ export default function AdminWalletDashboard() {
                         </tr></thead>
                         <tbody>
                           {forecastData.byDay?.map((d: any) => (
-                            <tr key={d.date} className="border-t hover:bg-gray-50">
+                            <tr key={d.date} className="border-t hover:bg-white">
                               <td className="p-2 font-mono">{d.date}</td>
                               <td className="p-2 text-right text-orange-700">₪{(d.payoutsCents/100).toFixed(0)}</td>
                               <td className="p-2 text-right text-red-700">₪{(d.refundsCents/100).toFixed(0)}</td>
@@ -7900,7 +7900,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {accuracyLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-12 bg-gray-100 animate-pulse rounded"/>)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-12 bg-white animate-pulse rounded"/>)}</div>
                 ) : !accuracyData?.ok ? (
                   <div className="text-sm text-gray-400 py-6 text-center border-2 border-dashed rounded-lg">Click "Load Accuracy" to view forecast vs actuals</div>
                 ) : !accuracyData.summary ? (
@@ -7926,7 +7926,7 @@ export default function AdminWalletDashboard() {
                       </div>
                     )}
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500">
                           <th className="text-left p-2">Date</th><th className="text-left p-2">Horizon</th>
                           <th className="text-right p-2">Forecast Net</th><th className="text-right p-2">Actual Net</th>
@@ -7934,7 +7934,7 @@ export default function AdminWalletDashboard() {
                         </tr>
                       </thead><tbody>
                         {accuracyData.rows?.slice(0,30).map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                          <tr key={r.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono">{r.targetDate}</td>
                             <td className="p-2 text-gray-500">{r.horizonDays}d</td>
                             <td className="p-2 text-right text-blue-700">₪{(r.forecastNetCashNeedCents/100).toFixed(0)}</td>
@@ -7967,16 +7967,16 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
                   Weights adjust how much each historical signal contributes to the 30-day revenue forecast. All active weights are normalised to sum to 1 before computation. Changes take effect on the next scheduled recompute.
                 </div>
-                {forecastWeightsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> :
+                {forecastWeightsLoading ? <div className="h-16 bg-white animate-pulse rounded"/> :
                   !forecastWeights?.weights?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No forecast weight overrides — using system defaults</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Signal</th><th className="text-left p-2">Division</th><th className="text-right p-2">Weight</th><th className="text-left p-2">Last Updated</th></tr>
                       </thead><tbody>
                         {forecastWeights.weights.map((w: any) => (
-                          <tr key={w.id} className="border-t hover:bg-gray-50">
+                          <tr key={w.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{w.signalKey}</td>
                             <td className="p-2 text-gray-600">{w.divisionCode || <span className="text-gray-400 italic">all</span>}</td>
                             <td className="p-2 text-right font-semibold">{w.weight.toFixed(4)}</td>
@@ -8017,7 +8017,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* New schedule form */}
-                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                <div className="border rounded-lg p-3 bg-white space-y-2">
                   <div className="text-xs font-semibold text-gray-600">Create New Schedule</div>
                   <div className="flex flex-wrap gap-2">
                     <select value={newSchedule.cadence} onChange={e => setNewSchedule(s=>({...s, cadence: e.target.value}))}
@@ -8058,16 +8058,16 @@ export default function AdminWalletDashboard() {
 
                 {/* Schedules list */}
                 {schedulesLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-12 bg-gray-100 animate-pulse rounded"/>)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-12 bg-white animate-pulse rounded"/>)}</div>
                 ) : !schedulesData?.schedules?.length ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">No schedules configured yet</div>
                 ) : (
                   <div className="space-y-2">
                     {schedulesData.schedules.map((s: any) => (
-                      <div key={s.id} className={`border rounded-lg p-3 flex items-center justify-between gap-3 ${s.enabled ? 'bg-white' : 'bg-gray-50 opacity-70'}`}>
+                      <div key={s.id} className={`border rounded-lg p-3 flex items-center justify-between gap-3 ${s.enabled ? 'bg-white' : 'bg-white opacity-70'}`}>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.enabled ? 'bg-violet-100 text-violet-700' : 'bg-gray-200 text-gray-500'}`}>{s.cadence}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.enabled ? 'bg-violet-100 text-violet-700' : 'bg-white text-gray-500'}`}>{s.cadence}</span>
                             {s.divisionCode && <span className="text-xs text-gray-500 font-mono">{s.divisionCode}</span>}
                             {s.minBatchNetCents > 0 && <span className="text-xs text-gray-400">min ₪{(s.minBatchNetCents/100).toFixed(0)}</span>}
                             <span className="text-xs text-gray-400">{s.runCount} runs</span>
@@ -8097,20 +8097,20 @@ export default function AdminWalletDashboard() {
                     <button onClick={() => refetchScheduleRuns()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
                   </div>
                   {scheduleRunsLoading ? (
-                    <div className="h-20 bg-gray-100 animate-pulse rounded"/>
+                    <div className="h-20 bg-white animate-pulse rounded"/>
                   ) : !scheduleRunsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No runs yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Schedule</th><th className="text-left p-2">Ran</th><th className="text-left p-2">Result</th><th className="text-left p-2">Batch</th></tr>
                       </thead><tbody>
                         {scheduleRunsData.runs.slice(0,20).map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                          <tr key={r.id} className="border-t hover:bg-white">
                             <td className="p-2 text-gray-600">#{r.scheduleId} {r.cadence && <span className="text-gray-400">({r.cadence})</span>}</td>
                             <td className="p-2 text-gray-500">{new Date(r.ranAt).toLocaleString('he-IL')}</td>
                             <td className="p-2">
-                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${r.result === 'created' ? 'bg-green-100 text-green-700' : r.result === 'skipped' ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700'}`}>{r.result}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${r.result === 'created' ? 'bg-green-100 text-green-700' : r.result === 'skipped' ? 'bg-white text-gray-600' : 'bg-red-100 text-red-700'}`}>{r.result}</span>
                             </td>
                             <td className="p-2 font-mono text-gray-500">{r.batchId ?? '—'}</td>
                           </tr>
@@ -8150,7 +8150,7 @@ export default function AdminWalletDashboard() {
                 </div>
 
                 {/* Create rule */}
-                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                <div className="border rounded-lg p-3 bg-white space-y-2">
                   <div className="text-xs font-semibold text-gray-600">Add Routing Rule</div>
                   <div className="flex flex-wrap gap-2">
                     <input placeholder="Division (optional)" value={newRule.divisionCode}
@@ -8237,12 +8237,12 @@ export default function AdminWalletDashboard() {
                 </div>
 
                 {routingRulesLoading ? (
-                  <div className="h-24 bg-gray-100 animate-pulse rounded"/>
+                  <div className="h-24 bg-white animate-pulse rounded"/>
                 ) : !routingRulesData?.rules?.length ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">No routing rules yet. Add rules above to enable auto-routing.</div>
                 ) : (
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-xs"><thead className="bg-gray-50">
+                    <table className="w-full text-xs"><thead className="bg-white">
                       <tr className="text-gray-500">
                         <th className="text-left p-2">P</th><th className="text-left p-2">Division</th>
                         <th className="text-left p-2">Amount Range</th><th className="text-left p-2">Queue</th>
@@ -8250,7 +8250,7 @@ export default function AdminWalletDashboard() {
                       </tr>
                     </thead><tbody>
                       {routingRulesData.rules.map((r: any) => (
-                        <tr key={r.id} className={`border-t ${r.enabled ? 'hover:bg-gray-50' : 'opacity-50 bg-gray-50'}`}>
+                        <tr key={r.id} className={`border-t ${r.enabled ? 'hover:bg-white' : 'opacity-50 bg-white'}`}>
                           <td className="p-2 font-bold text-teal-600">{r.priority}</td>
                           <td className="p-2 font-mono text-gray-600">{r.divisionCode ?? 'All'}</td>
                           <td className="p-2">
@@ -8262,7 +8262,7 @@ export default function AdminWalletDashboard() {
                           <td className="p-2 font-mono text-gray-500 truncate max-w-24">{r.assignToUid ?? '—'}</td>
                           <td className="p-2">
                             <button onClick={() => toggleRule({ id: r.id, enabled: !r.enabled })}
-                              className={`text-xs px-1.5 py-0.5 rounded ${r.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              className={`text-xs px-1.5 py-0.5 rounded ${r.enabled ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>
                               {r.enabled ? 'Active' : 'Off'}
                             </button>
                           </td>
@@ -8282,7 +8282,7 @@ export default function AdminWalletDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {digestPrefsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> : (
+                {digestPrefsLoading ? <div className="h-16 bg-white animate-pulse rounded"/> : (
                   <div className="space-y-3 text-xs">
                     <div className="text-gray-500">Customize which events trigger finance digest emails and at what threshold.</div>
                     {[
@@ -8296,14 +8296,14 @@ export default function AdminWalletDashboard() {
                         <span className="text-gray-700">{pref.label}</span>
                         {pref.type === 'boolean' ? (
                           <button onClick={() => upsertDigestPref({ key: pref.key, value: !(digestPrefs?.prefs?.[pref.key]) })}
-                            className={`px-2 py-0.5 rounded text-xs ${digestPrefs?.prefs?.[pref.key] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            className={`px-2 py-0.5 rounded text-xs ${digestPrefs?.prefs?.[pref.key] ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>
                             {digestPrefs?.prefs?.[pref.key] ? 'On' : 'Off'}
                           </button>
                         ) : (
                           <div className="flex items-center gap-1">
                             <span className="text-gray-500 font-mono">{pref.type === 'cents' ? `₪${((digestPrefs?.prefs?.[pref.key] ?? 0)/100).toFixed(0)}` : `${digestPrefs?.prefs?.[pref.key] ?? '—'}${pref.type==='number'?'%':''}`}</span>
                             <button onClick={() => { const v = prompt(pref.label, String(digestPrefs?.prefs?.[pref.key] ?? '')); if(v!==null) upsertDigestPref({ key: pref.key, value: pref.type==='cents' ? parseFloat(v)*100 : parseFloat(v) }); }}
-                              className="text-xs px-1.5 py-0.5 border rounded hover:bg-gray-50">Edit</button>
+                              className="text-xs px-1.5 py-0.5 border rounded hover:bg-white">Edit</button>
                           </div>
                         )}
                       </div>
@@ -8333,7 +8333,7 @@ export default function AdminWalletDashboard() {
               <CardContent>
                 {controlCenterLoading ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[...Array(6)].map((_,i)=><div key={i} className="h-24 bg-gray-100 animate-pulse rounded-lg"/>)}
+                    {[...Array(6)].map((_,i)=><div key={i} className="h-24 bg-white animate-pulse rounded-lg"/>)}
                   </div>
                 ) : !controlCenterData?.ok ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">Failed to load control center</div>
@@ -8386,23 +8386,23 @@ export default function AdminWalletDashboard() {
                   </button>
                 </div>
                 {controlSubsLoading ? (
-                  <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                  <div className="h-16 bg-white animate-pulse rounded"/>
                 ) : !controlSubsData?.subscriptions?.length ? (
                   <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No subscriptions yet</div>
                 ) : (
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-xs"><thead className="bg-gray-50">
+                    <table className="w-full text-xs"><thead className="bg-white">
                       <tr className="text-gray-500">
                         <th className="text-left p-2">Signal</th><th className="text-left p-2">Channel</th><th className="text-left p-2">Status</th>
                       </tr>
                     </thead><tbody>
                       {controlSubsData.subscriptions.map((s: any) => (
-                        <tr key={s.id} className="border-t hover:bg-gray-50">
+                        <tr key={s.id} className="border-t hover:bg-white">
                           <td className="p-2 text-gray-700">{SIGNAL_LABELS[s.signalCode] ?? s.signalCode}</td>
                           <td className="p-2 text-gray-500 capitalize">{s.deliveryChannel}</td>
                           <td className="p-2">
                             <button onClick={() => toggleSub({ id: s.id, enabled: !s.enabled })}
-                              className={`text-xs px-1.5 py-0.5 rounded ${s.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              className={`text-xs px-1.5 py-0.5 rounded ${s.enabled ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>
                               {s.enabled ? 'Active' : 'Off'}
                             </button>
                           </td>
@@ -8432,7 +8432,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {exceptionSuggestionsLoading ? (
-                  <div className="h-20 bg-gray-100 animate-pulse rounded" />
+                  <div className="h-20 bg-white animate-pulse rounded" />
                 ) : !exceptionSuggestionsData?.suggestions?.length ? (
                   <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">
                     No open exception suggestions. Click "Scan &amp; Generate" to detect issues.
@@ -8459,7 +8459,7 @@ export default function AdminWalletDashboard() {
                             <CheckCircle className="w-3 h-3" /> Apply
                           </button>
                           <button onClick={() => dismissSuggestion(s.id)}
-                            className="px-2 py-1 border border-gray-200 text-gray-600 rounded hover:bg-gray-50 flex items-center gap-1">
+                            className="px-2 py-1 border border-gray-200 text-gray-600 rounded hover:bg-white flex items-center gap-1">
                             <XCircle className="w-3 h-3" /> Dismiss
                           </button>
                         </div>
@@ -8492,7 +8492,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent>
                 {execKpiLoading ? (
-                  <div className="space-y-2">{[...Array(5)].map((_,i)=><div key={i} className="h-14 bg-gray-100 animate-pulse rounded"/>)}</div>
+                  <div className="space-y-2">{[...Array(5)].map((_,i)=><div key={i} className="h-14 bg-white animate-pulse rounded"/>)}</div>
                 ) : !execKpiData?.ok ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">Select period and click Load</div>
                 ) : (() => {
@@ -8554,7 +8554,7 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {execDigestPreviewLoading ? (
-                  <div className="h-20 bg-gray-100 animate-pulse rounded"/>
+                  <div className="h-20 bg-white animate-pulse rounded"/>
                 ) : execDigestPreview?.ok && (
                   <div className="border rounded-lg p-3 bg-emerald-50 border-emerald-200 text-xs space-y-1.5">
                     <div className="font-semibold text-emerald-700">{execDigestPreview.periodLabel}</div>
@@ -8585,16 +8585,16 @@ export default function AdminWalletDashboard() {
                     <button onClick={() => refetchExecDigestLog()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
                   </div>
                   {execDigestLogLoading ? (
-                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                    <div className="h-16 bg-white animate-pulse rounded"/>
                   ) : !execDigestLog?.entries?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No digests sent yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Week</th><th className="text-left p-2">Sent To</th><th className="text-left p-2">Status</th><th className="text-left p-2">Sent At</th></tr>
                       </thead><tbody>
                         {execDigestLog.entries.slice(0,10).map((e: any) => (
-                          <tr key={e.id} className="border-t hover:bg-gray-50">
+                          <tr key={e.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{e.periodStart} → {e.periodEnd}</td>
                             <td className="p-2 text-gray-500 truncate max-w-32">{e.sentTo || '—'}</td>
                             <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${e.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{e.status}</span></td>
@@ -8616,13 +8616,13 @@ export default function AdminWalletDashboard() {
                     <Archive className="w-4 h-4 text-slate-600" /> Period Close Packs (Phase 3.6)
                   </CardTitle>
                   <button onClick={() => exportPeriodPack()} disabled={exportPeriodPackPending}
-                    className="text-xs px-3 py-1 border border-slate-400 text-slate-700 rounded hover:bg-slate-50 disabled:opacity-40 flex items-center gap-1">
+                    className="text-xs px-3 py-1 border border-slate-400 text-slate-700 rounded hover:bg-white disabled:opacity-40 flex items-center gap-1">
                     {exportPeriodPackPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3"/>} Export Latest
                   </button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-2">
+                <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded p-2">
                   Generate signed quarter/year-end close packages that bundle all finance close records into a tamper-evident SHA-256-signed artifact. Required for audit submission.
                 </div>
                 {/* Generate form */}
@@ -8638,16 +8638,16 @@ export default function AdminWalletDashboard() {
                     {generatePeriodPackPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Generate Pack'}
                   </button>
                 </div>
-                {periodPacksLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded"/> :
+                {periodPacksLoading ? <div className="h-20 bg-white animate-pulse rounded"/> :
                   !periodPacks?.packs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No close packs generated yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Period</th><th className="text-left p-2">Type</th><th className="text-left p-2">Records</th><th className="text-left p-2">Signature</th><th className="text-left p-2">Generated</th></tr>
                       </thead><tbody>
                         {periodPacks.packs.map((pk: any) => (
-                          <tr key={pk.id} className="border-t hover:bg-gray-50">
+                          <tr key={pk.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{pk.period}</td>
                             <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${pk.packType === 'year' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{pk.packType}</span></td>
                             <td className="p-2 text-gray-600">{pk.recordCount}</td>
@@ -8685,7 +8685,7 @@ export default function AdminWalletDashboard() {
                 </div>
 
                 {/* 3.5F: Execute Archive */}
-                <div className="border rounded-lg p-3 bg-slate-50 border-slate-200 space-y-2">
+                <div className="border rounded-lg p-3 bg-white border-slate-200 space-y-2">
                   <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                     <span className="flex items-center gap-1.5"><Archive className="w-3.5 h-3.5"/> Execute Archive — Phase 3.5</span>
                     <button onClick={() => setShowArchiveExecuteConfirm(!showArchiveExecuteConfirm)}
@@ -8702,7 +8702,7 @@ export default function AdminWalletDashboard() {
                           className="px-3 py-1.5 bg-red-700 text-white rounded text-xs hover:bg-red-800 disabled:opacity-40 flex items-center gap-1">
                           {executeArchivePending ? <Loader2 className="w-3 h-3 animate-spin"/> : 'Confirm Execute'}
                         </button>
-                        <button onClick={() => setShowArchiveExecuteConfirm(false)} className="px-3 py-1.5 border rounded text-xs hover:bg-gray-100">Cancel</button>
+                        <button onClick={() => setShowArchiveExecuteConfirm(false)} className="px-3 py-1.5 border rounded text-xs hover:bg-white">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -8715,19 +8715,19 @@ export default function AdminWalletDashboard() {
                     <button onClick={() => refetchArchiveArtifacts()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
                   </div>
                   {archiveArtifactsLoading ? (
-                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                    <div className="h-16 bg-white animate-pulse rounded"/>
                   ) : !archiveArtifactsData?.artifacts?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive artifacts yet — run Execute Archive to produce artifact records</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500">
                           <th className="text-left p-2">Entity</th><th className="text-left p-2">Storage Ref</th>
                           <th className="text-right p-2">Count</th><th className="text-left p-2">Created</th>
                         </tr>
                       </thead><tbody>
                         {archiveArtifactsData.artifacts.slice(0,20).map((a: any) => (
-                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                          <tr key={a.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{a.entityType}</td>
                             <td className="p-2 text-gray-500 truncate max-w-48 font-mono text-xs">{a.storageRef}</td>
                             <td className="p-2 text-right text-slate-700 font-medium">{a.archivedCount}</td>
@@ -8741,12 +8741,12 @@ export default function AdminWalletDashboard() {
 
                 {/* Policies */}
                 {archivePoliciesLoading ? (
-                  <div className="h-24 bg-gray-100 animate-pulse rounded"/>
+                  <div className="h-24 bg-white animate-pulse rounded"/>
                 ) : !archivePoliciesData?.policies?.length ? (
                   <div className="text-sm text-gray-400 py-6 text-center border-2 border-dashed rounded-lg">No policies configured</div>
                 ) : (
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-xs"><thead className="bg-gray-50">
+                    <table className="w-full text-xs"><thead className="bg-white">
                       <tr className="text-gray-500">
                         <th className="text-left p-2">Entity Type</th>
                         <th className="text-right p-2">Archive After</th>
@@ -8756,13 +8756,13 @@ export default function AdminWalletDashboard() {
                       </tr>
                     </thead><tbody>
                       {archivePoliciesData.policies.map((p: any) => (
-                        <tr key={p.id} className="border-t hover:bg-gray-50">
+                        <tr key={p.id} className="border-t hover:bg-white">
                           <td className="p-2 font-mono text-gray-700">{p.entityType}</td>
                           <td className="p-2 text-right text-amber-700">{p.archiveAfterDays}d</td>
                           <td className="p-2 text-right text-slate-700">{p.retentionDays}d</td>
                           <td className="p-2 text-gray-500 max-w-48 truncate">{p.notes}</td>
                           <td className="p-2">
-                            <span className={`px-1.5 py-0.5 rounded text-xs ${p.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${p.enabled ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>
                               {p.enabled ? 'Active' : 'Off'}
                             </span>
                           </td>
@@ -8779,16 +8779,16 @@ export default function AdminWalletDashboard() {
                     <button onClick={() => refetchArchiveRuns()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
                   </div>
                   {archiveRunsLoading ? (
-                    <div className="h-20 bg-gray-100 animate-pulse rounded"/>
+                    <div className="h-20 bg-white animate-pulse rounded"/>
                   ) : !archiveRunsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive runs yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Ran</th><th className="text-left p-2">Status</th><th className="text-right p-2">Eligible</th></tr>
                       </thead><tbody>
                         {archiveRunsData.runs.slice(0,20).map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                          <tr key={r.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-600">{r.entityType}</td>
                             <td className="p-2 text-gray-500">{new Date(r.ranAt).toLocaleString('he-IL')}</td>
                             <td className="p-2">
@@ -8818,7 +8818,7 @@ export default function AdminWalletDashboard() {
                   Request a full data retrieval from the archive for audit, dispute investigation, or compliance. Retrievals are processed asynchronously and marked ready when complete.
                 </div>
                 {/* New retrieval */}
-                <div className="border rounded-lg p-3 bg-gray-50 space-y-2 text-xs">
+                <div className="border rounded-lg p-3 bg-white space-y-2 text-xs">
                   <div className="font-semibold text-gray-700">New Retrieval Request</div>
                   <div className="grid grid-cols-2 gap-2">
                     <div><label className="text-gray-500 mb-0.5 block">Entity Type</label>
@@ -8835,19 +8835,19 @@ export default function AdminWalletDashboard() {
                     {createRetrievalPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Request Retrieval'}
                   </button>
                 </div>
-                {retrievalsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> :
+                {retrievalsLoading ? <div className="h-16 bg-white animate-pulse rounded"/> :
                   !retrievals?.retrievals?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive retrievals requested yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Status</th><th className="text-left p-2">Requested</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
                         {retrievals.retrievals.map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                          <tr key={r.id} className="border-t hover:bg-white">
                             <td className="p-2"><span className="font-mono text-gray-700">{r.entityType}</span><span className="text-gray-400"> #{r.entityId}</span></td>
                             <td className="p-2 text-gray-600">{r.reason}</td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${r.status==='ready' ? 'bg-green-100 text-green-700' : r.status==='processing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{r.status}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${r.status==='ready' ? 'bg-green-100 text-green-700' : r.status==='processing' ? 'bg-amber-100 text-amber-700' : 'bg-white text-gray-600'}`}>{r.status}</span></td>
                             <td className="p-2 text-gray-400">{new Date(r.requestedAt).toLocaleDateString('he-IL')}</td>
                             <td className="p-2">
                               {r.status !== 'ready' && (
@@ -8881,7 +8881,7 @@ export default function AdminWalletDashboard() {
                 </div>
 
                 {/* Replay type selector */}
-                <div className="border rounded-lg p-3 bg-gray-50">
+                <div className="border rounded-lg p-3 bg-white">
                   <div className="text-xs font-semibold text-gray-600 mb-2">Select Replay Type</div>
                   <div className="space-y-1.5">
                     {REPLAY_TYPES.map(rt => (
@@ -8903,7 +8903,7 @@ export default function AdminWalletDashboard() {
                       className="text-xs px-3 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-40 flex items-center gap-1">
                       {executeReplayPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} Execute (Direct)
                     </button>
-                    <button onClick={() => refetchReplayRuns()} className="text-xs px-3 py-1.5 border rounded hover:bg-gray-100 flex items-center gap-1">
+                    <button onClick={() => refetchReplayRuns()} className="text-xs px-3 py-1.5 border rounded hover:bg-white flex items-center gap-1">
                       <RefreshCcw className="w-3 h-3"/> Refresh
                     </button>
                   </div>
@@ -8928,7 +8928,7 @@ export default function AdminWalletDashboard() {
 
                 {/* Replay runs history */}
                 {replayRunsLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-16 bg-gray-100 animate-pulse rounded"/>)}</div>
+                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-16 bg-white animate-pulse rounded"/>)}</div>
                 ) : !replayRunsData?.runs?.length ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">
                     No replay runs yet. Select a type and click Dry-Run to start.
@@ -8937,7 +8937,7 @@ export default function AdminWalletDashboard() {
                   <div className="space-y-2">
                     {replayRunsData.runs.map((r: any) => (
                       <div key={r.id} className={`border rounded-lg overflow-hidden ${r.status === 'completed' ? 'border-green-200' : r.status === 'failed' ? 'border-red-200' : 'border-blue-200'}`}>
-                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
+                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-white"
                           onClick={() => setExpandedReplayRun(expandedReplayRun === r.id ? null : r.id)}>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${r.dryRun ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`}>
@@ -8953,7 +8953,7 @@ export default function AdminWalletDashboard() {
                           </div>
                         </div>
                         {expandedReplayRun === r.id && r.findingsJson?.findings && (
-                          <div className="border-t bg-gray-50 p-3">
+                          <div className="border-t bg-white p-3">
                             <div className="text-xs font-semibold text-gray-600 mb-1.5">Findings ({r.findingsJson.findings.length})</div>
                             {r.findingsJson.findings.length === 0 ? (
                               <div className="text-xs text-green-700">✓ No issues found</div>
@@ -8989,7 +8989,7 @@ export default function AdminWalletDashboard() {
                 </CardHeader>
                 <CardContent>
                   {pendingReplayApprovalsLoading ? (
-                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                    <div className="h-16 bg-white animate-pulse rounded"/>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-xs"><thead className="bg-rose-50">
@@ -9000,7 +9000,7 @@ export default function AdminWalletDashboard() {
                         </tr>
                       </thead><tbody>
                         {pendingReplayApprovalsData.approvals.map((a: any) => (
-                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                          <tr key={a.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-rose-700 text-xs">{a.replayType}</td>
                             <td className="p-2 font-mono text-gray-500 truncate max-w-24">{a.requestedByUid}</td>
                             <td className="p-2 text-gray-500 truncate max-w-32">{a.reason || '—'}</td>
@@ -9039,7 +9039,7 @@ export default function AdminWalletDashboard() {
                   </button>
                 </div>
                 {replayReportData?.ok && replayReportData.report && (
-                  <div className="border rounded-lg p-3 bg-gray-50 text-xs space-y-1.5">
+                  <div className="border rounded-lg p-3 bg-white text-xs space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-700">Run #{replayReportData.report.replayRunId}</span>
                       <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded font-medium">Signed</span>
@@ -9085,7 +9085,7 @@ export default function AdminWalletDashboard() {
                     </div>
                     {replayDiff.diffs?.length > 0 && (
                       <div className="border rounded-lg overflow-hidden bg-white">
-                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Record</th><th className="text-left p-2">Field</th><th className="text-right p-2">Run A</th><th className="text-right p-2">Run B</th></tr>
                         </thead><tbody>
                           {replayDiff.diffs.map((d: any, i: number) => (
@@ -9122,7 +9122,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
                   Advisory only — clusters group anomaly signals into probable root causes. No source anomalies are modified.
                 </div>
-                {anomalyClustersLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {anomalyClustersLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !anomalyClustersData?.clusters?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No clusters yet — click Recompute to generate initial cluster set</div>
                   ) : (
@@ -9135,7 +9135,7 @@ export default function AdminWalletDashboard() {
                               <div className="font-mono text-gray-500 mt-0.5 text-[10px]">{c.cluster_key}</div>
                               <div className="flex flex-wrap gap-1 mt-1.5">
                                 {(c.signal_codes as string[]).map((s: string) => (
-                                  <span key={s} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-mono">{s}</span>
+                                  <span key={s} className="px-1.5 py-0.5 bg-white text-gray-600 rounded text-[10px] font-mono">{s}</span>
                                 ))}
                               </div>
                               <div className="text-gray-400 mt-1">Last seen: {new Date(c.last_seen_at).toLocaleDateString('he-IL')}</div>
@@ -9164,7 +9164,7 @@ export default function AdminWalletDashboard() {
                     <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">ACTIVE</span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchKillSwitches()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchKillSwitches()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -9172,7 +9172,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
                   Disabling a switch blocks that operation system-wide immediately — no exceptions. Toggling is instant. Re-enable carefully. All changes are timestamped. Use this first in any incident.
                 </div>
-                {killSwitchesLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {killSwitchesLoading ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   killSwitches?.switches?.length ? (
                     <div className="space-y-2">
                       {killSwitches.switches.map((sw: any) => {
@@ -9210,7 +9210,7 @@ export default function AdminWalletDashboard() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <RefreshCw className="w-4 h-4 text-sky-600" /> Idempotency & Retry Safety
                 </CardTitle>
-                <button onClick={() => refetchIdempKeys()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchIdempKeys()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -9237,11 +9237,11 @@ export default function AdminWalletDashboard() {
                   <div>
                     <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Idempotency Records ({idempotencyKeys45.total})</div>
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Key</th><th className="text-left p-2">Endpoint</th><th className="text-right p-2">Recorded</th></tr>
                       </thead><tbody>
                         {idempotencyKeys45.keys.slice(0, 5).map((k: any) => (
-                          <tr key={k.key} className="border-t hover:bg-gray-50">
+                          <tr key={k.key} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-[10px] max-w-[100px] truncate">{k.key}</td>
                             <td className="p-2 text-[10px] text-gray-500 max-w-[140px] truncate">{k.endpoint}</td>
                             <td className="p-2 text-right text-[10px] text-gray-400">{new Date(k.created_at).toLocaleString('he-IL')}</td>
@@ -9265,7 +9265,7 @@ export default function AdminWalletDashboard() {
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchE2eHistory()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchE2eHistory()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> History
                 </button>
               </CardHeader>
@@ -9325,7 +9325,7 @@ export default function AdminWalletDashboard() {
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchAlertHistory()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchAlertHistory()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -9352,14 +9352,14 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
-                {alertHistoryLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {alertHistoryLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   alertTestHistory?.tests?.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Channel</th><th className="text-right p-2">Response</th><th className="text-center p-2">Status</th></tr>
                       </thead><tbody>
                         {alertTestHistory.tests.slice(0, 5).map((t: any) => (
-                          <tr key={t.id} className="border-t hover:bg-gray-50">
+                          <tr key={t.id} className="border-t hover:bg-white">
                             <td className="p-2 text-[10px]">{t.alert_type}</td>
                             <td className="p-2 text-[10px] text-gray-500">{t.channel}</td>
                             <td className="p-2 text-right text-[10px]">{t.response_time_ms}ms</td>
@@ -9386,7 +9386,7 @@ export default function AdminWalletDashboard() {
                     <span className="bg-yellow-400 text-yellow-900 text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">ACTIVE</span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchShadowLogs()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchShadowLogs()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -9410,7 +9410,7 @@ export default function AdminWalletDashboard() {
                     <span className="text-xs text-red-600 font-semibold">{shadowLogs.summary.totalMismatches} mismatch(es) recorded</span>
                   )}
                 </div>
-                {shadowLogsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {shadowLogsLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   shadowLogs?.logs?.filter((l: any) => l.mismatch_flag)?.length > 0 ? (
                     <div className="space-y-1">
                       <div className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Mismatches</div>
@@ -9440,12 +9440,12 @@ export default function AdminWalletDashboard() {
                       rolloutStatus.activePhase.phase === 'full' ? 'bg-green-100 text-green-700' :
                       rolloutStatus.activePhase.phase === 'limited' ? 'bg-blue-100 text-blue-700' :
                       rolloutStatus.activePhase.phase === 'beta' ? 'bg-violet-100 text-violet-700' :
-                      'bg-gray-100 text-gray-700'}`}>
+                      'bg-white text-gray-700'}`}>
                       {rolloutStatus.activePhase.phase.toUpperCase()} — {rolloutStatus.activePhase.traffic_percentage}%
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchRollout()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchRollout()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -9458,7 +9458,7 @@ export default function AdminWalletDashboard() {
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {rolloutStatus.warning}
                   </div>
                 )}
-                {rolloutLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {rolloutLoading ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   rolloutStatus?.phases && (
                     <div className="space-y-2">
                       {rolloutStatus.phases.map((p: any) => {
@@ -9489,7 +9489,7 @@ export default function AdminWalletDashboard() {
                   )
                 }
                 {rolloutStatus?.gateStatus === 'locked' && (
-                  <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded p-2 flex items-center gap-2">
+                  <div className="text-xs text-gray-500 bg-white border border-gray-200 rounded p-2 flex items-center gap-2">
                     <Lock className="w-3.5 h-3.5 shrink-0" /> Go-live gate locked — complete system checks before advancing beyond Internal
                   </div>
                 )}
@@ -9519,25 +9519,25 @@ export default function AdminWalletDashboard() {
                   <div>• <code>forecast_default_horizon</code> — forecast horizon in days</div>
                   <div>• <code>archive_protected_entities</code> — comma-separated entity types immune to archival</div>
                 </div>
-                {policyRulesLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded"/> :
+                {policyRulesLoading ? <div className="h-20 bg-white animate-pulse rounded"/> :
                   !policyRules?.rules?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No policy rules found</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">Value</th><th className="text-left p-2">Division</th><th className="text-left p-2">Active</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
                         {policyRules.rules.map((rule: any) => (
-                          <tr key={rule.id} className="border-t hover:bg-gray-50">
+                          <tr key={rule.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{rule.policyKey}</td>
                             <td className="p-2 font-mono text-indigo-700">{rule.value}</td>
                             <td className="p-2 text-gray-500">{rule.divisionCode || <span className="italic text-gray-400">global</span>}</td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${rule.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{rule.isActive ? 'Active' : 'Off'}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${rule.isActive ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>{rule.isActive ? 'Active' : 'Off'}</span></td>
                             <td className="p-2">
                               <button onClick={() => { const v = prompt(`New value for ${rule.policyKey}:`, rule.value); if(v!==null) upsertPolicyRule({ policyKey: rule.policyKey, value: v, divisionCode: rule.divisionCode || null, description: rule.description }) }}
                                 className="text-xs px-1.5 py-0.5 border border-indigo-300 text-indigo-700 rounded hover:bg-indigo-50 mr-1">Edit</button>
                               <button onClick={() => upsertPolicyRule({ policyKey: rule.policyKey, value: rule.value, divisionCode: rule.divisionCode || null, description: rule.description, isActive: !rule.isActive })}
-                                className={`text-xs px-1.5 py-0.5 border rounded hover:bg-gray-50 ${rule.isActive ? 'border-red-200 text-red-600' : 'border-green-200 text-green-700'}`}>
+                                className={`text-xs px-1.5 py-0.5 border rounded hover:bg-white ${rule.isActive ? 'border-red-200 text-red-600' : 'border-green-200 text-green-700'}`}>
                                 {rule.isActive ? 'Disable' : 'Enable'}
                               </button>
                             </td>
@@ -9609,19 +9609,19 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {approvalChainsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {approvalChainsLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   !approvalChains?.chains?.length ? (
                     <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No approval chains configured</div>
                   ) : (
                     <div className="space-y-3">
                       {approvalChains.chains.map((chain: any) => (
                         <div key={chain.id} className="border rounded-lg overflow-hidden">
-                          <div className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer" onClick={() => setExpandedChainId(expandedChainId === chain.id ? null : chain.id)}>
+                          <div className="flex items-center justify-between p-3 bg-white cursor-pointer" onClick={() => setExpandedChainId(expandedChainId === chain.id ? null : chain.id)}>
                             <div className="flex items-center gap-2 text-xs">
                               <span className="font-semibold text-gray-800">{chain.chain_name}</span>
                               <span className="px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">{chain.trigger_type}</span>
                               <span className="text-gray-500">₪{(chain.min_amount_cents/100).toFixed(0)}–{chain.max_amount_cents ? '₪'+(chain.max_amount_cents/100).toFixed(0) : '∞'}</span>
-                              <span className={`px-1.5 py-0.5 rounded ${chain.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{chain.is_active ? 'Active' : 'Off'}</span>
+                              <span className={`px-1.5 py-0.5 rounded ${chain.is_active ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>{chain.is_active ? 'Active' : 'Off'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <button onClick={e => { e.stopPropagation(); patchApprovalChain({ id: chain.id, body: { isActive: !chain.is_active } }); }}
@@ -9642,7 +9642,7 @@ export default function AdminWalletDashboard() {
                                       <span className="font-medium text-gray-700">{step.required_role}</span>
                                       <span className="text-gray-400">timeout {step.timeout_hours}h</span>
                                       {step.escalate_to_role && <span className="text-gray-400">→ {step.escalate_to_role}</span>}
-                                      <span className={`ml-auto px-1 py-0.5 rounded ${step.is_required ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>{step.is_required ? 'required' : 'optional'}</span>
+                                      <span className={`ml-auto px-1 py-0.5 rounded ${step.is_required ? 'bg-red-50 text-red-600' : 'bg-white text-gray-500'}`}>{step.is_required ? 'required' : 'optional'}</span>
                                       <button onClick={() => deleteChainStep(step.id)} className="text-red-400 hover:text-red-600"><XCircle className="w-3.5 h-3.5" /></button>
                                     </div>
                                   ))}
@@ -9686,7 +9686,7 @@ export default function AdminWalletDashboard() {
                     Pending Approval Requests
                     <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">{approvalRequestsData?.requests?.filter((r: any) => r.status === 'pending')?.length ?? 0}</span>
                   </div>
-                  {approvalRequestsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  {approvalRequestsLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                     !approvalRequestsData?.requests?.filter((r: any) => r.status === 'pending')?.length ? (
                       <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No pending requests</div>
                     ) : (
@@ -9715,7 +9715,7 @@ export default function AdminWalletDashboard() {
                               </div>
                               {r.execution_status && r.execution_status !== 'pending' && (
                                 <div className="flex items-center gap-1">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${r.execution_status === 'executed' ? 'bg-green-100 text-green-700' : r.execution_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${r.execution_status === 'executed' ? 'bg-green-100 text-green-700' : r.execution_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-white text-gray-500'}`}>
                                     <Zap className="w-2.5 h-2.5 inline mr-0.5" />{r.execution_status}
                                   </span>
                                   {r.execution_status === 'failed' && (
@@ -9758,7 +9758,7 @@ export default function AdminWalletDashboard() {
                     onChange={e => setOutcomeFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
                   <input type="date" value={outcomeFilter.to}
                     onChange={e => setOutcomeFilter(v => ({ ...v, to: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
-                  <button onClick={() => refetchPolicyOutcomes()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchPolicyOutcomes()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showRecomputeForm && (
                   <div className="border border-emerald-200 rounded p-3 bg-emerald-50 space-y-3">
@@ -9817,7 +9817,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {policyOutcomesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {policyOutcomesLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !policyOutcomesData?.outcomes?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No outcome scores yet — record your first baseline vs actual comparison above</div>
                   ) : (
@@ -9894,7 +9894,7 @@ export default function AdminWalletDashboard() {
                     <option value="deprecate">deprecate</option>
                   </select>
                   <input type="text" placeholder="Policy area" value={policySuggestFilter.policyArea} onChange={e => setPolicySuggestFilter(v => ({ ...v, policyArea: e.target.value }))} className="border rounded px-2 py-1 text-xs w-28" />
-                  <button onClick={() => refetchPolicySuggest()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchPolicySuggest()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showPolicySuggestForm && (
                   <div className="border border-purple-200 rounded p-3 bg-purple-50 space-y-2">
@@ -9916,7 +9916,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {policySuggestLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {policySuggestLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !policySuggestData?.suggestions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No policy learning suggestions yet — run Auto-Gen on a completed plan or add one manually</div>
                   ) : (
@@ -9924,7 +9924,7 @@ export default function AdminWalletDashboard() {
                       {policySuggestData.byStatus && (
                         <div className="flex gap-2 flex-wrap">
                           {Object.entries(policySuggestData.byStatus).map(([k, v]: any) => (
-                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{k}: {v}</span>
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-white text-gray-600 rounded">{k}: {v}</span>
                           ))}
                         </div>
                       )}
@@ -9932,15 +9932,15 @@ export default function AdminWalletDashboard() {
                         <div key={s.id} className="border rounded-lg p-3 text-xs space-y-1.5">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.suggestion_type === 'tighten' ? 'bg-red-100 text-red-700' : s.suggestion_type === 'relax' ? 'bg-green-100 text-green-700' : s.suggestion_type === 'new_rule' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{s.suggestion_type}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.suggestion_type === 'tighten' ? 'bg-red-100 text-red-700' : s.suggestion_type === 'relax' ? 'bg-green-100 text-green-700' : s.suggestion_type === 'new_rule' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600'}`}>{s.suggestion_type}</span>
                               <span className="font-semibold text-gray-800">{s.policy_area}</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${s.status === 'accepted' ? 'bg-green-100 text-green-700' : s.status === 'rejected' ? 'bg-red-100 text-red-500' : s.status === 'deferred' ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${s.status === 'accepted' ? 'bg-green-100 text-green-700' : s.status === 'rejected' ? 'bg-red-100 text-red-500' : s.status === 'deferred' ? 'bg-white text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
                               {parseFloat(s.confidence_delta) !== 0 && <span className={`text-[10px] font-mono ${parseFloat(s.confidence_delta) > 0 ? 'text-green-600' : 'text-red-500'}`}>{parseFloat(s.confidence_delta) > 0 ? '+' : ''}{s.confidence_delta} confidence</span>}
                             </div>
                             {s.status === 'pending' && (
                               <div className="flex gap-1 shrink-0">
                                 <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'accepted' })} className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700">Accept</button>
-                                <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'deferred' })} className="text-[10px] px-1.5 py-0.5 border text-gray-500 rounded hover:bg-gray-50">Defer</button>
+                                <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'deferred' })} className="text-[10px] px-1.5 py-0.5 border text-gray-500 rounded hover:bg-white">Defer</button>
                                 <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'rejected' })} className="text-[10px] px-1.5 py-0.5 border border-red-200 text-red-500 rounded hover:bg-red-50">Reject</button>
                               </div>
                             )}
@@ -9976,7 +9976,7 @@ export default function AdminWalletDashboard() {
                 <div className="flex gap-2">
                   <input type="text" placeholder="Scenario ID (optional)" value={entityScoreScenarioId}
                     onChange={e => setEntityScoreScenarioId(e.target.value)} className="border rounded px-2 py-1 text-xs w-32" />
-                  <button onClick={() => refetchEntityScores()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchEntityScores()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showAddEntityScore && (
                   <div className="border border-violet-200 rounded p-3 bg-violet-50 space-y-2">
@@ -10002,12 +10002,12 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {entityScoresLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {entityScoresLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !entityScoresData?.scores?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No entity scores yet — enter a Scenario ID and record scores above</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Rev Adj</th><th className="text-left p-2">Vol Adj</th><th className="text-left p-2">Risk Adj</th><th className="text-right p-2">Total Score</th></tr>
                       </thead><tbody>
                         {entityScoresData.scores.map((s: any, i: number) => (
@@ -10074,16 +10074,16 @@ export default function AdminWalletDashboard() {
                 {/* Simulation history */}
                 <div className="border-t pt-3">
                   <div className="text-xs font-semibold text-gray-600 mb-2">Recent Simulations</div>
-                  {simHistoryLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  {simHistoryLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                     !simHistory?.simulations?.length ? (
                       <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No past simulations</div>
                     ) : (
                       <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">From → To</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Affected</th><th className="text-left p-2">Date</th><th className="text-left p-2">Promote</th></tr>
                         </thead><tbody>
                           {simHistory.simulations.slice(0, 10).map((s: any) => (
-                            <tr key={s.id} className="border-t hover:bg-gray-50">
+                            <tr key={s.id} className="border-t hover:bg-white">
                               <td className="p-2 font-mono text-gray-700">{s.policy_key}</td>
                               <td className="p-2 text-gray-500">{s.original_value ?? '—'} → <span className="text-teal-700">{s.proposed_value}</span></td>
                               <td className="p-2"><span className={`font-mono ${s.risk_score > 60 ? 'text-red-600' : s.risk_score > 30 ? 'text-orange-500' : 'text-green-600'}`}>{s.risk_score}</span></td>
@@ -10147,7 +10147,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {forecastScenariosLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {forecastScenariosLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   !forecastScenariosData?.scenarios?.length ? (
                     <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No forecast scenarios yet</div>
                   ) : (
@@ -10207,16 +10207,16 @@ export default function AdminWalletDashboard() {
                   Promote a completed simulation directly to a live policy rule. Rollback restores the prior value exactly.
                 </div>
                 {/* Promote button appears on simulation history rows — this section shows promotion log */}
-                {policyPromotionsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {policyPromotionsLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !policyPromotionsData?.promotions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No promotions yet. Use "Promote to Policy" on a completed simulation.</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">Live Value</th><th className="text-left p-2">Rollback To</th><th className="text-left p-2">Promoted</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
                         {policyPromotionsData.promotions.map((p: any) => (
-                          <tr key={p.id} className="border-t hover:bg-gray-50">
+                          <tr key={p.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{p.policy_key}</td>
                             <td className="p-2 font-mono text-emerald-700">{(p.proposed_value_json as any)?.value ?? '—'}</td>
                             <td className="p-2 font-mono text-gray-500">{(p.rollback_value_json as any)?.value ?? 'unset'}</td>
@@ -10292,16 +10292,16 @@ export default function AdminWalletDashboard() {
                   </div>
                 )}
                 {/* Backtest history */}
-                {forecastBacktestsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {forecastBacktestsLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !forecastBacktestsData?.backtests?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No backtest history</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Scenario</th><th className="text-left p-2">Period</th><th className="text-left p-2">Score</th><th className="text-left p-2">Date</th></tr>
                       </thead><tbody>
                         {forecastBacktestsData.backtests.slice(0, 10).map((b: any) => (
-                          <tr key={b.id} className="border-t hover:bg-gray-50">
+                          <tr key={b.id} className="border-t hover:bg-white">
                             <td className="p-2 text-gray-700">{b.scenario_name ?? <span className="italic text-gray-400">baseline</span>}</td>
                             <td className="p-2 text-gray-500 font-mono">{b.period_start} → {b.period_end}</td>
                             <td className="p-2"><span className={`font-mono font-semibold ${parseFloat(b.score) >= 80 ? 'text-green-600' : parseFloat(b.score) >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{parseFloat(b.score).toFixed(1)}</span></td>
@@ -10332,9 +10332,9 @@ export default function AdminWalletDashboard() {
                       <option key={s.id} value={String(s.id)}>#{s.id} — {s.policy_key}</option>
                     ))}
                   </select>
-                  <button onClick={() => refetchPromoValidations()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Refresh</button>
+                  <button onClick={() => refetchPromoValidations()} className="text-xs px-2 py-1 border rounded hover:bg-white">Refresh</button>
                 </div>
-                {promoValidationsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {promoValidationsLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !promoValidationsData?.validations?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No validation records yet — promote a simulation to generate them</div>
                   ) : (
@@ -10383,7 +10383,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {scenarioTemplatesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {scenarioTemplatesLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !scenarioTemplatesData?.templates?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No templates yet — save a scenario configuration above</div>
                   ) : (
@@ -10449,7 +10449,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {scenarioQualityLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {scenarioQualityLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !scenarioQualityData?.scores?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No scenario quality scores yet — score a scenario above</div>
                   ) : (
@@ -10459,20 +10459,20 @@ export default function AdminWalletDashboard() {
                           <Star className="w-3 h-3 text-yellow-500" />
                           <span className="font-semibold text-yellow-700">Top scenario:</span>
                           <span className="font-mono text-gray-700">{scenarioQualityData.topScenario.scenario_name ?? `#${scenarioQualityData.topScenario.scenario_id}`}</span>
-                          <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] font-semibold ${scenarioQualityData.topScenario.quality_rank === 'gold' ? 'bg-yellow-200 text-yellow-800' : scenarioQualityData.topScenario.quality_rank === 'silver' ? 'bg-gray-200 text-gray-700' : 'bg-orange-200 text-orange-700'}`}>
+                          <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] font-semibold ${scenarioQualityData.topScenario.quality_rank === 'gold' ? 'bg-yellow-200 text-yellow-800' : scenarioQualityData.topScenario.quality_rank === 'silver' ? 'bg-white text-gray-700' : 'bg-orange-200 text-orange-700'}`}>
                             {scenarioQualityData.topScenario.quality_rank}
                           </span>
                         </div>
                       )}
                       <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Scenario</th><th className="text-right p-2">Rank</th><th className="text-right p-2">Reuse</th><th className="text-right p-2">Backtest</th><th className="text-right p-2">Entity</th></tr>
                         </thead><tbody>
                           {scenarioQualityData.scores.map((s: any) => (
-                            <tr key={s.id} className="border-t hover:bg-gray-50">
+                            <tr key={s.id} className="border-t hover:bg-white">
                               <td className="p-2 text-gray-700">{s.scenario_name ?? <span className="font-mono text-gray-500">#{s.scenario_id}</span>}</td>
                               <td className="p-2 text-right">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.quality_rank === 'gold' ? 'bg-yellow-100 text-yellow-700' : s.quality_rank === 'silver' ? 'bg-gray-100 text-gray-600' : s.quality_rank === 'bronze' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-400'}`}>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.quality_rank === 'gold' ? 'bg-yellow-100 text-yellow-700' : s.quality_rank === 'silver' ? 'bg-white text-gray-600' : s.quality_rank === 'bronze' ? 'bg-orange-100 text-orange-700' : 'bg-white text-gray-400'}`}>
                                   {s.quality_rank}
                                 </span>
                               </td>
@@ -10512,7 +10512,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
                   System analyzes SLA performance over 30 days and suggests threshold reductions where overdue rates exceed 30%. All changes require manual approval — no silent policy mutations.
                 </div>
-                {escAdjLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {escAdjLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   !escAdj?.adjustments?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No {escAdjFilter === 'all' ? '' : escAdjFilter} suggestions — click Generate to analyze current SLA data</div>
                   ) : (
@@ -10524,7 +10524,7 @@ export default function AdminWalletDashboard() {
                               <div className="text-xs font-semibold text-gray-800 truncate">{a.policy_name ?? `Policy #${a.policy_id}`}</div>
                               <div className="text-[10px] text-gray-500 mt-0.5">{a.reason}</div>
                             </div>
-                            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-semibold ${a.status === 'pending' ? 'bg-orange-100 text-orange-700' : a.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{a.status}</span>
+                            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-semibold ${a.status === 'pending' ? 'bg-orange-100 text-orange-700' : a.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>{a.status}</span>
                           </div>
                           <div className="flex items-center gap-3 text-xs">
                             <span className="text-gray-500">Threshold: <span className="font-semibold text-gray-700">{a.previous_threshold_hours}h</span> → <span className="font-bold text-orange-700">{a.suggested_threshold_hours}h</span></span>
@@ -10535,7 +10535,7 @@ export default function AdminWalletDashboard() {
                               <button onClick={() => approveEscAdj(a.id)} className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3" /> Approve
                               </button>
-                              <button onClick={() => rejectEscAdj(a.id)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 text-gray-600 flex items-center gap-1">
+                              <button onClick={() => rejectEscAdj(a.id)} className="text-xs px-2 py-1 border rounded hover:bg-white text-gray-600 flex items-center gap-1">
                                 <XCircle className="w-3 h-3" /> Reject
                               </button>
                             </div>
@@ -10561,14 +10561,14 @@ export default function AdminWalletDashboard() {
                     <Building2 className="w-4 h-4 text-gray-700" /> Board-Level Governance Report
                   </CardTitle>
                   <button onClick={() => refetchGovernanceReport()}
-                    className="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 flex items-center gap-1">
+                    className="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded hover:bg-white flex items-center gap-1">
                     <RefreshCcw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
               </CardHeader>
               <CardContent>
                 {governanceReportLoading ? (
-                  <div className="h-32 bg-gray-100 animate-pulse rounded" />
+                  <div className="h-32 bg-white animate-pulse rounded" />
                 ) : !governanceReport ? (
                   <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">Report unavailable</div>
                 ) : (
@@ -10610,11 +10610,11 @@ export default function AdminWalletDashboard() {
                       <div className="border-t pt-3">
                         <div className="text-xs font-semibold text-gray-700 mb-2">Recent Policy Simulations</div>
                         <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Policy</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Summary</th></tr>
                           </thead><tbody>
                             {governanceReport.recentSimulations.map((s: any, i: number) => (
-                              <tr key={i} className="border-t hover:bg-gray-50">
+                              <tr key={i} className="border-t hover:bg-white">
                                 <td className="p-2 font-mono text-gray-700 whitespace-nowrap">{s.policy_key}</td>
                                 <td className="p-2"><span className={`font-mono ${s.risk_score > 60 ? 'text-red-600' : s.risk_score > 30 ? 'text-orange-500' : 'text-green-600'}`}>{s.risk_score}/100</span></td>
                                 <td className="p-2 text-gray-600 truncate max-w-xs">{s.outcome_summary}</td>
@@ -10711,18 +10711,18 @@ export default function AdminWalletDashboard() {
                   </button>
                 </div>
                 {/* Action run log */}
-                {assistantActionsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {assistantActionsLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !assistantActionsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No assistant action runs yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Action</th><th className="text-left p-2">Status</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Date</th></tr>
                       </thead><tbody>
                         {assistantActionsData.runs.slice(0, 10).map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                          <tr key={r.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{r.action_name}</td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{r.status}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-white text-gray-500'}`}>{r.status}</span></td>
                             <td className="p-2 text-gray-500 truncate max-w-[180px]">{r.reason ?? '—'}</td>
                             <td className="p-2 text-gray-400">{new Date(r.executed_at).toLocaleDateString('he-IL')}</td>
                           </tr>
@@ -10786,16 +10786,16 @@ export default function AdminWalletDashboard() {
                   </div>
                 )}
                 {/* Pack log */}
-                {govPackLogLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {govPackLogLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !govPackLog?.log?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No packs sent yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Period</th><th className="text-left p-2">Signature</th><th className="text-left p-2">Sent</th></tr>
                       </thead><tbody>
                         {govPackLog.log.slice(0, 8).map((l: any) => (
-                          <tr key={l.id} className="border-t hover:bg-gray-50">
+                          <tr key={l.id} className="border-t hover:bg-white">
                             <td className="p-2 capitalize text-gray-700">{l.pack_type}</td>
                             <td className="p-2 font-mono text-gray-700">{l.period_key}</td>
                             <td className="p-2 font-mono text-gray-400 truncate max-w-[120px]" title={l.signature}>{l.signature?.slice(0, 12)}…</td>
@@ -10840,13 +10840,13 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {playbooksLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {playbooksLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !playbooksData?.playbooks?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No playbooks yet</div>
                   ) : (
                     <div className="space-y-2">
                       {playbooksData.playbooks.map((p: any) => (
-                        <div key={p.id} className="flex items-start justify-between gap-2 border rounded p-2 text-xs hover:bg-gray-50">
+                        <div key={p.id} className="flex items-start justify-between gap-2 border rounded p-2 text-xs hover:bg-white">
                           <div>
                             <div className="font-semibold text-gray-800">{p.title}</div>
                             <div className="text-gray-400 capitalize">{p.surface_key}</div>
@@ -10897,16 +10897,16 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {financeEntitiesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {financeEntitiesLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !financeEntitiesData?.entities?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No entities configured</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Code</th><th className="text-left p-2">Name</th><th className="text-left p-2">Country</th><th className="text-left p-2">Currency</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
                         {financeEntitiesData.entities.map((e: any) => (
-                          <tr key={e.entityCode} className="border-t hover:bg-gray-50">
+                          <tr key={e.entityCode} className="border-t hover:bg-white">
                             <td className="p-2 font-mono font-semibold text-blue-700">{e.entityCode}</td>
                             <td className="p-2 text-gray-700">{e.entityName}</td>
                             <td className="p-2 font-mono text-gray-500">{e.countryCode}</td>
@@ -10937,7 +10937,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
                   All assistant actions now flow through this queue. Items must be assigned → approved → executed. Nothing runs immediately.
                 </div>
-                {assistantQueueLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {assistantQueueLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !assistantQueueData?.queue?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">Queue is empty — submit an action above to enqueue it</div>
                   ) : (
@@ -10948,7 +10948,7 @@ export default function AdminWalletDashboard() {
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-mono font-semibold text-gray-800">{q.action_type}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-xs ${q.status === 'executed' ? 'bg-green-100 text-green-700' : q.status === 'approved' ? 'bg-blue-100 text-blue-700' : q.status === 'rejected' ? 'bg-red-100 text-red-700' : q.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${q.status === 'executed' ? 'bg-green-100 text-green-700' : q.status === 'approved' ? 'bg-blue-100 text-blue-700' : q.status === 'rejected' ? 'bg-red-100 text-red-700' : q.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-white text-gray-500'}`}>
                                   {q.status}
                                 </span>
                               </div>
@@ -11012,7 +11012,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {recipientGroupsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {recipientGroupsLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !recipientGroupsData?.groups?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No recipient groups yet</div>
                   ) : (
@@ -11021,7 +11021,7 @@ export default function AdminWalletDashboard() {
                         <div key={g.id} className="border rounded p-2 text-xs">
                           <div className="font-semibold text-gray-800">{g.group_name}</div>
                           <div className="text-gray-500 mt-0.5">{(g.recipients as string[]).join(', ') || 'No recipients'}</div>
-                          <div className={`mt-1 inline-block px-1.5 py-0.5 rounded ${g.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>{g.enabled ? 'Active' : 'Inactive'}</div>
+                          <div className={`mt-1 inline-block px-1.5 py-0.5 rounded ${g.enabled ? 'bg-green-100 text-green-700' : 'bg-white text-gray-400'}`}>{g.enabled ? 'Active' : 'Inactive'}</div>
                         </div>
                       ))}
                     </div>
@@ -11065,16 +11065,16 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {distRulesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {distRulesLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !distributionRulesData?.rules?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No distribution rules yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Pack</th><th className="text-left p-2">Group</th><th className="text-left p-2">Schedule</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
                         {distributionRulesData.rules.map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                          <tr key={r.id} className="border-t hover:bg-white">
                             <td className="p-2 capitalize text-gray-700">{r.pack_type}</td>
                             <td className="p-2 text-gray-700">{r.group_name}</td>
                             <td className="p-2 capitalize text-gray-500">{r.schedule}</td>
@@ -11139,16 +11139,16 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {packSubsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {packSubsLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !packSubsData?.subscriptions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No subscriptions yet — create an audience rule above</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Audience</th><th className="text-left p-2">Pack</th><th className="text-left p-2">Entity</th><th className="text-left p-2">Recipients</th><th className="text-left p-2">Options</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
                         {packSubsData.subscriptions.map((s: any) => (
-                          <tr key={s.id} className="border-t hover:bg-gray-50">
+                          <tr key={s.id} className="border-t hover:bg-white">
                             <td className="p-2 font-semibold text-gray-800">{s.audience_name}</td>
                             <td className="p-2 capitalize text-gray-700">{s.pack_type}</td>
                             <td className="p-2 font-mono text-gray-500">{s.entity_code ?? 'all'}</td>
@@ -11193,7 +11193,7 @@ export default function AdminWalletDashboard() {
                     onChange={e => setGovDeliveryFilter(v => ({ ...v, audienceName: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
                   <input type="date" value={govDeliveryFilter.from} onChange={e => setGovDeliveryFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
                   <input type="date" value={govDeliveryFilter.to}   onChange={e => setGovDeliveryFilter(v => ({ ...v, to:   e.target.value }))} className="border rounded px-2 py-1 text-xs" />
-                  <button onClick={() => refetchGovDelivery()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchGovDelivery()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showGovDeliveryForm && (
                   <div className="border border-indigo-200 rounded p-3 bg-indigo-50 space-y-2">
@@ -11225,7 +11225,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {govDeliveryLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {govDeliveryLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   govDeliveryData && (
                     <div className="space-y-3">
                       {govDeliveryData.summary && (
@@ -11250,11 +11250,11 @@ export default function AdminWalletDashboard() {
                       )}
                       {govDeliveryData.analytics?.length > 0 && (
                         <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Audience</th><th className="text-left p-2">Pack</th><th className="text-left p-2">Period</th><th className="text-right p-2">Sent</th><th className="text-right p-2">Delivered</th><th className="text-right p-2">Failed</th></tr>
                           </thead><tbody>
                             {govDeliveryData.analytics.map((a: any) => (
-                              <tr key={a.id} className={`border-t hover:bg-gray-50 ${parseInt(a.failed_count) > 0 ? 'bg-red-50' : ''}`}>
+                              <tr key={a.id} className={`border-t hover:bg-white ${parseInt(a.failed_count) > 0 ? 'bg-red-50' : ''}`}>
                                 <td className="p-2 font-semibold text-gray-800">{a.audience_name}</td>
                                 <td className="p-2 capitalize text-gray-600">{a.pack_type}</td>
                                 <td className="p-2 font-mono text-gray-500">{a.period_key}</td>
@@ -11281,7 +11281,7 @@ export default function AdminWalletDashboard() {
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <input type="month" value={reviewMonth} onChange={e => setReviewMonth(e.target.value)} className="border rounded px-2 py-1 text-xs" />
-                  <button onClick={() => refetchReviewPack()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchReviewPack()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Generate
                   </button>
                   <a href={`/api/prestige-pass/admin/wallet/operating-review-pack/export?month=${reviewMonth}`} target="_blank" rel="noreferrer"
@@ -11291,10 +11291,10 @@ export default function AdminWalletDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2">
+                <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded p-2">
                   Deterministic and reproducible — same month always produces the same pack from the same source data. Pack is signed for audit integrity.
                 </div>
-                {reviewPackLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {reviewPackLoading ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   reviewPackData?.pack ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-xs text-gray-400">
@@ -11351,7 +11351,7 @@ export default function AdminWalletDashboard() {
                     <option value="cancelled">Cancelled</option>
                   </select>
                   <input type="text" placeholder="Owner UID" value={followUpFilter.ownerUid} onChange={e => setFollowUpFilter(v => ({ ...v, ownerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
-                  <button onClick={() => refetchFollowUp()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchFollowUp()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showFollowUpForm && (
                   <div className="border border-emerald-200 rounded p-3 bg-emerald-50 space-y-2">
@@ -11374,7 +11374,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {followUpLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {followUpLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   followUpData && (
                     <div className="space-y-2">
                       {followUpData.overdue?.length > 0 && (
@@ -11386,7 +11386,7 @@ export default function AdminWalletDashboard() {
                       {followUpData.byStatus && (
                         <div className="flex gap-2 flex-wrap">
                           {Object.entries(followUpData.byStatus).map(([k, v]: any) => (
-                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{k}: {v}</span>
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-white text-gray-600 rounded">{k}: {v}</span>
                           ))}
                         </div>
                       )}
@@ -11394,19 +11394,19 @@ export default function AdminWalletDashboard() {
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No follow-up actions for this filter — create the first one above</div>
                       ) : (
                         <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Title</th><th className="text-left p-2">Owner</th><th className="text-left p-2">Due</th><th className="text-left p-2">Priority</th><th className="text-left p-2">Status</th><th className="p-2"></th></tr>
                           </thead><tbody>
                             {followUpData.actions.map((a: any) => {
                               const today = new Date().toISOString().slice(0, 10);
                               const overdue = a.status !== 'closed' && a.status !== 'cancelled' && a.due_date < today;
                               return (
-                                <tr key={a.id} className={`border-t hover:bg-gray-50 ${overdue ? 'bg-red-50' : ''}`}>
+                                <tr key={a.id} className={`border-t hover:bg-white ${overdue ? 'bg-red-50' : ''}`}>
                                   <td className="p-2 font-semibold text-gray-800 max-w-[140px] truncate" title={a.title}>{a.title}</td>
                                   <td className="p-2 font-mono text-gray-500 text-[10px] max-w-[80px] truncate">{a.owner_uid}</td>
                                   <td className={`p-2 font-mono text-[10px] ${overdue ? 'text-red-600 font-bold' : 'text-gray-600'}`}>{a.due_date}{overdue ? ' ⚠' : ''}</td>
-                                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${a.priority === 'critical' ? 'bg-red-100 text-red-700' : a.priority === 'high' ? 'bg-orange-100 text-orange-700' : a.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{a.priority}</span></td>
-                                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${a.status === 'closed' ? 'bg-green-100 text-green-700' : a.status === 'cancelled' ? 'bg-gray-100 text-gray-400' : a.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.status}</span></td>
+                                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${a.priority === 'critical' ? 'bg-red-100 text-red-700' : a.priority === 'high' ? 'bg-orange-100 text-orange-700' : a.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-white text-gray-500'}`}>{a.priority}</span></td>
+                                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${a.status === 'closed' ? 'bg-green-100 text-green-700' : a.status === 'cancelled' ? 'bg-white text-gray-400' : a.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.status}</span></td>
                                   <td className="p-2">
                                     <div className="flex gap-1">
                                       {a.status === 'open'        && <button disabled={patchFollowUpPending} onClick={() => patchFollowUp({ id: a.id, status: 'in_progress' })} className="text-[10px] px-1 py-0.5 border rounded hover:bg-blue-50 text-blue-600">→ In Progress</button>}
@@ -11436,7 +11436,7 @@ export default function AdminWalletDashboard() {
                   <button onClick={() => escalateOverdue()} disabled={escalateOverduePending} className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1">
                     {escalateOverduePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />} Escalate Overdue
                   </button>
-                  <button onClick={() => refetchFollowUps43()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchFollowUps43()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -11477,7 +11477,7 @@ export default function AdminWalletDashboard() {
                     Escalated only
                   </label>
                 </div>
-                {followUpsLoading43 ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {followUpsLoading43 ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   followUps43 && (
                     <div className="space-y-2">
                       <div className="flex gap-3 text-xs">
@@ -11489,16 +11489,16 @@ export default function AdminWalletDashboard() {
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No follow-ups match the current filter</div>
                       ) : (
                         <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Title</th><th className="text-left p-2">Owner</th><th className="text-left p-2">Due</th><th className="text-left p-2">Priority</th><th className="text-left p-2">Status</th><th className="text-right p-2">Escalation</th><th className="text-left p-2">Actions</th></tr>
                           </thead><tbody>
                             {followUps43.followUps.map((f: any) => (
-                              <tr key={f.id} className={`border-t hover:bg-gray-50 ${f.is_overdue ? 'bg-red-50/30' : ''} ${f.escalation_level > 0 ? 'bg-orange-50/20' : ''}`}>
+                              <tr key={f.id} className={`border-t hover:bg-white ${f.is_overdue ? 'bg-red-50/30' : ''} ${f.escalation_level > 0 ? 'bg-orange-50/20' : ''}`}>
                                 <td className="p-2 max-w-[160px] truncate" title={f.title}>{f.title}</td>
                                 <td className="p-2 font-mono text-[10px] text-gray-600 max-w-[80px] truncate">{f.owner_uid}</td>
                                 <td className={`p-2 text-[10px] ${f.is_overdue ? 'text-red-600 font-bold' : 'text-gray-500'}`}>{f.due_date}</td>
-                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${f.priority === 'critical' ? 'bg-red-100 text-red-700' : f.priority === 'high' ? 'bg-orange-100 text-orange-600' : f.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{f.priority}</span></td>
-                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${f.status === 'closed' ? 'bg-green-100 text-green-700' : f.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : f.status === 'cancelled' ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>{f.status}</span></td>
+                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${f.priority === 'critical' ? 'bg-red-100 text-red-700' : f.priority === 'high' ? 'bg-orange-100 text-orange-600' : f.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-white text-gray-500'}`}>{f.priority}</span></td>
+                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${f.status === 'closed' ? 'bg-green-100 text-green-700' : f.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : f.status === 'cancelled' ? 'bg-white text-gray-400' : 'bg-white text-gray-600'}`}>{f.status}</span></td>
                                 <td className="p-2 text-right">
                                   {f.escalation_level > 0 ? <span className="text-[10px] text-orange-600 font-semibold">L{f.escalation_level}</span> : <span className="text-[10px] text-gray-300">—</span>}
                                 </td>
@@ -11531,27 +11531,27 @@ export default function AdminWalletDashboard() {
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
                   </select>
-                  <button onClick={() => refetchExecutionReview()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchExecutionReview()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                   {executionReview && (
                     <button onClick={() => { const blob = new Blob([JSON.stringify(executionReview, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `execution-review-${executionReview.periodKey}.json`; a.click(); }}
-                      className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                      className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                       <Download className="w-3 h-3" /> Export JSON
                     </button>
                   )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-2">
+                <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded p-2">
                   Periodic view of whether the operating system is improving — recommendations created, accepted, completed; action SLA rate; outcome improvement rate; reviewer quality; policy learning.
                 </div>
-                {executionReviewLoading ? <div className="h-32 bg-gray-100 animate-pulse rounded" /> :
+                {executionReviewLoading ? <div className="h-32 bg-white animate-pulse rounded" /> :
                   executionReview && !executionReview.error && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span className="font-semibold text-gray-700">{executionReview.periodKey}</span>
-                        {executionReview.cached && <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">cached</span>}
+                        {executionReview.cached && <span className="px-1.5 py-0.5 bg-white rounded text-[10px]">cached</span>}
                         <span className="ml-auto">Generated: {executionReview.generatedAt ? new Date(executionReview.generatedAt).toLocaleString('he-IL') : '—'}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -11628,7 +11628,7 @@ export default function AdminWalletDashboard() {
                             {executionReview.topReviewers.map((r: any) => (
                               <div key={r.reviewer_uid} className="border rounded px-2 py-1 text-xs flex items-center gap-2">
                                 <span className="font-mono text-gray-600 text-[10px] max-w-[80px] truncate">{r.reviewer_uid}</span>
-                                <span className={`text-[10px] px-1 py-0.5 rounded ${r.quality_band === 'excellent' ? 'bg-green-100 text-green-700' : r.quality_band === 'good' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{r.quality_band}</span>
+                                <span className={`text-[10px] px-1 py-0.5 rounded ${r.quality_band === 'excellent' ? 'bg-green-100 text-green-700' : r.quality_band === 'good' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-500'}`}>{r.quality_band}</span>
                                 <span className="text-gray-400 text-[10px]">{parseFloat(r.outcome_quality_score).toFixed(1)}</span>
                               </div>
                             ))}
@@ -11645,7 +11645,7 @@ export default function AdminWalletDashboard() {
                                 <span className="text-gray-600 font-semibold">{s.policy_area}</span>
                                 <span className="text-gray-400 capitalize">{s.suggestion_type}</span>
                                 <span className={`ml-auto text-[10px] font-mono ${parseFloat(s.confidence_delta) >= 0 ? 'text-green-600' : 'text-red-500'}`}>Δ{parseFloat(s.confidence_delta).toFixed(2)}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.status === 'accepted' ? 'bg-green-100 text-green-700' : s.status === 'pending' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-500'}`}>{s.status}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.status === 'accepted' ? 'bg-green-100 text-green-700' : s.status === 'pending' ? 'bg-white text-gray-500' : 'bg-red-100 text-red-500'}`}>{s.status}</span>
                               </div>
                             ))}
                           </div>
@@ -11666,7 +11666,7 @@ export default function AdminWalletDashboard() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Send className="w-4 h-4 text-sky-600" /> Operating Review Distribution
                 </CardTitle>
-                <button onClick={() => refetchDeliveries()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchDeliveries()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -11688,17 +11688,17 @@ export default function AdminWalletDashboard() {
                     {sendReviewPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Send Report
                   </button>
                 </div>
-                {deliveriesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {deliveriesLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   reviewDeliveries?.deliveries?.length ? (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Period</th><th className="text-left p-2">Recipients</th><th className="text-center p-2">Status</th><th className="text-right p-2">Sent At</th></tr>
                       </thead><tbody>
                         {reviewDeliveries.deliveries.map((d: any) => (
-                          <tr key={d.id} className="border-t hover:bg-gray-50">
+                          <tr key={d.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-[10px] text-gray-700">{d.period_key}</td>
                             <td className="p-2 text-[10px] text-gray-500 max-w-[180px] truncate">{Array.isArray(d.recipients) ? d.recipients.join(', ') : JSON.stringify(d.recipients)}</td>
-                            <td className="p-2 text-center"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${d.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{d.status}</span></td>
+                            <td className="p-2 text-center"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${d.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'}`}>{d.status}</span></td>
                             <td className="p-2 text-right text-[10px] text-gray-400">{d.sent_at ? new Date(d.sent_at).toLocaleString('he-IL') : '—'}</td>
                           </tr>
                         ))}
@@ -11720,7 +11720,7 @@ export default function AdminWalletDashboard() {
                     <option value="weekly">Weekly (last 8 weeks)</option>
                     <option value="monthly">Monthly (last 6 months)</option>
                   </select>
-                  <button onClick={() => refetchTrends()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchTrends()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -11729,7 +11729,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
                   Trends are derived from execution records — no fabricated metrics. Direction markers: ↑ improving, ↓ degrading, → stable. Aligned with execution review data.
                 </div>
-                {trendsLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {trendsLoading ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   execTrends && !execTrends.error && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 gap-3">
@@ -11782,7 +11782,7 @@ export default function AdminWalletDashboard() {
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchPermAudit()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchPermAudit()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -11790,7 +11790,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
                   Static audit of all critical endpoint groups. Every endpoint must show a guard type. Zero unprotected endpoints is the required state before go-live.
                 </div>
-                {permAuditLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {permAuditLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   permissionAudit && (
                     <div className="space-y-2">
                       <div className="flex gap-3 text-xs">
@@ -11800,11 +11800,11 @@ export default function AdminWalletDashboard() {
                         </span>
                       </div>
                       <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Endpoint</th><th className="text-left p-2">Required Role</th><th className="text-left p-2">Guard</th><th className="text-center p-2">Status</th></tr>
                         </thead><tbody>
                           {permissionAudit.endpoints?.map((e: any) => (
-                            <tr key={e.endpoint} className={`border-t hover:bg-gray-50 ${!e.hasGuard ? 'bg-red-50/40' : ''}`}>
+                            <tr key={e.endpoint} className={`border-t hover:bg-white ${!e.hasGuard ? 'bg-red-50/40' : ''}`}>
                               <td className="p-2 font-mono text-[10px] max-w-[160px] truncate" title={e.endpoint}>{e.endpoint}</td>
                               <td className="p-2 text-[10px] text-violet-700">{e.requiredRole}</td>
                               <td className="p-2 text-[10px] text-gray-500">{e.guardType}</td>
@@ -11834,15 +11834,15 @@ export default function AdminWalletDashboard() {
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchSecAudit()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchSecAudit()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2">
+                <div className="text-xs text-slate-700 bg-white border border-slate-200 rounded p-2">
                   Static security surface audit. Pass = implemented. Review = requires manual verification before go-live. Critical = must be fixed before launch.
                 </div>
-                {secAuditLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {secAuditLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   securityAudit && (
                     <div className="space-y-2">
                       <div className="flex gap-3 text-xs flex-wrap">
@@ -11881,10 +11881,10 @@ export default function AdminWalletDashboard() {
                   )}
                 </CardTitle>
                 <div className="flex gap-2 items-center">
-                  <button onClick={() => setShowRollback(v => !v)} className={`text-xs px-2 py-1 rounded border flex items-center gap-1 ${showRollback ? 'bg-amber-50 border-amber-200 text-amber-700' : 'hover:bg-gray-50'}`}>
+                  <button onClick={() => setShowRollback(v => !v)} className={`text-xs px-2 py-1 rounded border flex items-center gap-1 ${showRollback ? 'bg-amber-50 border-amber-200 text-amber-700' : 'hover:bg-white'}`}>
                     <FileText className="w-3 h-3" /> Rollback Plan
                   </button>
-                  <button onClick={() => refetchGoLive()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchGoLive()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -11898,7 +11898,7 @@ export default function AdminWalletDashboard() {
                     ✓ All items verified — platform ready for go-live
                   </div>
                 )}
-                {goLiveLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {goLiveLoading ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   goLiveChecklist45?.items?.map((item: any) => (
                     <div key={item.id} className={`flex items-center justify-between border rounded-lg p-2.5 ${item.status === 'verified' ? 'border-green-200 bg-green-50/20' : 'border-gray-200'}`}>
                       <div className="flex items-center gap-2">
@@ -11959,13 +11959,13 @@ export default function AdminWalletDashboard() {
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchGoLiveGate()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchGoLiveGate()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Big Status Banner */}
-                {gateLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded-lg" /> :
+                {gateLoading ? <div className="h-16 bg-white animate-pulse rounded-lg" /> :
                   goLiveGate && (
                     <div className={`rounded-lg p-4 text-center border-2 ${
                       goLiveGate.status === 'approved' ? 'bg-green-100 border-green-400' :
@@ -12041,10 +12041,10 @@ export default function AdminWalletDashboard() {
                 </button>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2">
+                <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded p-2">
                   Checks all required environment variables, validates no test keys are in use, confirms admin roles exist, and verifies kill switch state. Run before every deployment.
                 </div>
-                {configAuditLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {configAuditLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   configAuditLatest?.checks_json?.length ? (
                     <div className="space-y-1.5">
                       {configAuditLatest.checks_json.map((c: any) => (
@@ -12082,7 +12082,7 @@ export default function AdminWalletDashboard() {
                     </span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchDrillHistory()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchDrillHistory()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> History
                 </button>
               </CardHeader>
@@ -12126,13 +12126,13 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
-                {drillHistoryLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {drillHistoryLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   drillHistory?.drills?.length > 0 && (
                     <div>
                       <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Drills ({drillHistory.summary.total} total · {drillHistory.summary.successRate}% success rate)</div>
                       <div className="space-y-1">
                         {drillHistory.drills.slice(0, 4).map((d: any) => (
-                          <div key={d.id} className="flex items-center justify-between border rounded p-1.5 text-xs hover:bg-gray-50">
+                          <div key={d.id} className="flex items-center justify-between border rounded p-1.5 text-xs hover:bg-white">
                             <span className="capitalize text-gray-700">{d.scenario?.replace(/_/g, ' ')}</span>
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] text-gray-400">{d.recovery_time_seconds}s</span>
@@ -12163,7 +12163,7 @@ export default function AdminWalletDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+                <div className="text-xs text-gray-600 bg-white border rounded p-2">
                   Every automated execution — approvals, promotions, assistant actions, replays — produces a run record. Failed runs are retryable.
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -12184,23 +12184,23 @@ export default function AdminWalletDashboard() {
                   </select>
                   <input type="date" value={orchFrom} onChange={e => setOrchFrom(e.target.value)} className="border rounded px-2 py-1 text-xs" />
                   <input type="date" value={orchTo} onChange={e => setOrchTo(e.target.value)} className="border rounded px-2 py-1 text-xs" />
-                  <button onClick={() => refetchOrchRuns()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchOrchRuns()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
-                {orchRunsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {orchRunsLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   !orchRunsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No orchestration runs yet</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Entity</th><th className="text-left p-2">Status</th><th className="text-left p-2">Retries</th><th className="text-left p-2">Started</th><th className="text-left p-2">Error</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
                         {orchRunsData.runs.map((r: any) => (
-                          <tr key={r.id} className="border-t hover:bg-gray-50 align-top">
+                          <tr key={r.id} className="border-t hover:bg-white align-top">
                             <td className="p-2 font-mono text-gray-700">{r.run_type}</td>
                             <td className="p-2 text-gray-500">{r.entity_type} {r.entity_id ? `#${r.entity_id}` : ''}</td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : r.status === 'retrying' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{r.status}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : r.status === 'retrying' ? 'bg-yellow-100 text-yellow-700' : 'bg-white text-gray-500'}`}>{r.status}</span></td>
                             <td className="p-2 font-mono text-center text-gray-500">{r.retry_count}</td>
                             <td className="p-2 text-gray-400">{new Date(r.started_at).toLocaleString('he-IL')}</td>
                             <td className="p-2 text-red-500 max-w-[160px] truncate" title={r.error_message ?? ''}>{r.error_message ?? '—'}</td>
@@ -12254,7 +12254,7 @@ export default function AdminWalletDashboard() {
                       <span className="text-xs text-gray-500">Filter:</span>
                       {['all', 'approval', 'audit', 'orchestration', 'assistant', 'dispute'].map(f => (
                         <button key={f} onClick={() => setTraceFilter(f)}
-                          className={`text-xs px-2 py-0.5 rounded border ${traceFilter === f ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{f}</button>
+                          className={`text-xs px-2 py-0.5 rounded border ${traceFilter === f ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-white'}`}>{f}</button>
                       ))}
                     </div>
                   )}
@@ -12274,7 +12274,7 @@ export default function AdminWalletDashboard() {
                       .map((e: any, i: number) => (
                         <div key={i} className={`border-l-4 pl-3 py-1 text-xs ${e._traceType === 'approval' ? 'border-blue-400' : e._traceType === 'audit' ? 'border-gray-400' : e._traceType === 'orchestration' ? 'border-amber-400' : e._traceType === 'assistant' ? 'border-purple-400' : 'border-red-400'}`}>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`px-1.5 py-0.5 rounded text-xs ${e._traceType === 'approval' ? 'bg-blue-100 text-blue-700' : e._traceType === 'audit' ? 'bg-gray-100 text-gray-600' : e._traceType === 'orchestration' ? 'bg-amber-100 text-amber-700' : e._traceType === 'assistant' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${e._traceType === 'approval' ? 'bg-blue-100 text-blue-700' : e._traceType === 'audit' ? 'bg-white text-gray-600' : e._traceType === 'orchestration' ? 'bg-amber-100 text-amber-700' : e._traceType === 'assistant' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700'}`}>
                               {e._traceType}
                             </span>
                             <span className="font-semibold text-gray-800">
@@ -12312,7 +12312,7 @@ export default function AdminWalletDashboard() {
                   <button onClick={() => setShowReassignForm(v => !v)} className="text-xs px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700">
                     {showReassignForm ? 'Cancel' : '+ Reassign'}
                   </button>
-                  <button onClick={() => refetchWorkload()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchWorkload()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -12321,7 +12321,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 rounded p-2">
                   Balancing is assignment guidance first — not forced reassignment. Every actual reassignment is fully audited.
                 </div>
-                {workloadLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {workloadLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   workloadData && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-2">
@@ -12348,11 +12348,11 @@ export default function AdminWalletDashboard() {
                       )}
                       {workloadData.byApprover?.length > 0 && (
                         <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Approver</th><th className="text-right p-2">Open</th><th className="text-right p-2">Avg Age</th><th className="text-right p-2">Overdue</th><th className="text-right p-2">Rebalance?</th></tr>
                           </thead><tbody>
                             {workloadData.byApprover.map((a: any) => (
-                              <tr key={a.approver_uid} className={`border-t hover:bg-gray-50 ${a.recommended_rebalance ? 'bg-amber-50' : ''}`}>
+                              <tr key={a.approver_uid} className={`border-t hover:bg-white ${a.recommended_rebalance ? 'bg-amber-50' : ''}`}>
                                 <td className="p-2 font-mono text-gray-700 text-[10px] max-w-[120px] truncate">{a.approver_uid}</td>
                                 <td className="p-2 text-right font-semibold text-gray-800">{a.open_count}</td>
                                 <td className="p-2 text-right text-gray-500">{parseFloat(a.avg_age_hours ?? '0').toFixed(1)}h</td>
@@ -12440,16 +12440,16 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {retryPoliciesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {retryPoliciesLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !retryPoliciesData?.policies?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No retry policies yet — add one to enable self-healing for safe failure classes</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Run Type</th><th className="text-left p-2">Error Pattern</th><th className="text-left p-2">Max Retries</th><th className="text-left p-2">Delay</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
                         {retryPoliciesData.policies.map((p: any) => (
-                          <tr key={p.id} className="border-t hover:bg-gray-50">
+                          <tr key={p.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">{p.run_type}</td>
                             <td className="p-2 text-gray-500 max-w-[140px] truncate" title={p.error_pattern}>{p.error_pattern}</td>
                             <td className="p-2 font-mono text-center text-gray-700">{p.max_retries}</td>
@@ -12470,11 +12470,11 @@ export default function AdminWalletDashboard() {
                   <div>
                     <div className="text-xs font-semibold text-gray-600 mb-1">Recent Auto-Retry Attempts</div>
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Run</th><th className="text-left p-2">Attempt</th><th className="text-left p-2">Status</th><th className="text-left p-2">Started</th><th className="text-left p-2">Error</th></tr>
                       </thead><tbody>
                         {retryPoliciesData.attempts.slice(0, 15).map((a: any) => (
-                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                          <tr key={a.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700">#{a.orchestration_run_id} <span className="text-gray-400 text-[10px]">{a.run_type}</span></td>
                             <td className="p-2 font-mono text-center text-gray-500">#{a.attempt_no}</td>
                             <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${a.status === 'success' ? 'bg-green-100 text-green-700' : a.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.status}</span></td>
@@ -12503,11 +12503,11 @@ export default function AdminWalletDashboard() {
                 <div className="flex gap-2 flex-wrap">
                   <input type="date" value={bottleneckFilter.from} onChange={e => setBottleneckFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
                   <input type="date" value={bottleneckFilter.to}   onChange={e => setBottleneckFilter(v => ({ ...v, to:   e.target.value }))} className="border rounded px-2 py-1 text-xs" />
-                  <button onClick={() => refetchBottlenecks()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchBottlenecks()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
-                {bottleneckLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {bottleneckLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   bottleneckData && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -12527,11 +12527,11 @@ export default function AdminWalletDashboard() {
                         <div>
                           <div className="text-xs font-semibold text-gray-600 mb-1">By Chain Type</div>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Chain Type</th><th className="text-right p-2">Total</th><th className="text-right p-2">Avg Resolution</th></tr>
                             </thead><tbody>
                               {bottleneckData.byChainType.map((c: any) => (
-                                <tr key={c.chain_type} className="border-t hover:bg-gray-50">
+                                <tr key={c.chain_type} className="border-t hover:bg-white">
                                   <td className="p-2 font-mono text-gray-700">{c.chain_type}</td>
                                   <td className="p-2 text-right text-gray-500">{c.total}</td>
                                   <td className="p-2 text-right font-mono text-amber-700">{c.avg_resolution_hours ?? '—'}h</td>
@@ -12554,7 +12554,7 @@ export default function AdminWalletDashboard() {
                                 <div className="flex items-center gap-2">
                                   <span className="text-red-600 font-semibold">{r.hours_open}h open</span>
                                   <button disabled={bottleneckTimelineLoading} onClick={() => { setBottleneckRequestId(String(r.id)); fetchBottleneckTimeline(String(r.id)); }}
-                                    className="text-xs px-2 py-0.5 border border-gray-300 rounded hover:bg-gray-50">Timeline</button>
+                                    className="text-xs px-2 py-0.5 border border-gray-300 rounded hover:bg-white">Timeline</button>
                                 </div>
                               </div>
                             ))}
@@ -12591,7 +12591,7 @@ export default function AdminWalletDashboard() {
                   <button onClick={() => setShowSnapshotForm(v => !v)} className="text-xs px-2 py-1 bg-rose-600 text-white rounded hover:bg-rose-700">
                     {showSnapshotForm ? 'Cancel' : '+ Snapshot'}
                   </button>
-                  <button onClick={() => refetchReviewerPerf()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchReviewerPerf()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -12616,18 +12616,18 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {reviewerPerfLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {reviewerPerfLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   reviewerPerfData && (
                     <div className="space-y-3">
                       {reviewerPerfData.liveWorkload?.length > 0 && (
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Live Workload — Last 30 Days</div>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-right p-2">Accepted</th><th className="text-right p-2">Rejected</th><th className="text-right p-2">Snoozed</th><th className="text-right p-2">SLA Breaches</th><th className="text-right p-2">Avg Age</th></tr>
                             </thead><tbody>
                               {reviewerPerfData.liveWorkload.map((r: any) => (
-                                <tr key={r.actor_uid} className="border-t hover:bg-gray-50">
+                                <tr key={r.actor_uid} className="border-t hover:bg-white">
                                   <td className="p-2 font-mono text-gray-700 text-[10px] max-w-[120px] truncate">{r.actor_uid}</td>
                                   <td className="p-2 text-right text-green-600">{r.accepted}</td>
                                   <td className="p-2 text-right text-red-500">{r.rejected}</td>
@@ -12644,11 +12644,11 @@ export default function AdminWalletDashboard() {
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Historical Snapshots</div>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-left p-2">Period</th><th className="text-right p-2">Reviewed</th><th className="text-right p-2">Reversal %</th><th className="text-right p-2">Overdue %</th><th className="text-right p-2">Quality Score</th></tr>
                             </thead><tbody>
                               {reviewerPerfData.snapshots.map((s: any) => (
-                                <tr key={s.id} className="border-t hover:bg-gray-50">
+                                <tr key={s.id} className="border-t hover:bg-white">
                                   <td className="p-2 font-mono text-gray-700 text-[10px] max-w-[120px] truncate">{s.reviewer_uid}</td>
                                   <td className="p-2 font-mono text-gray-500">{s.period_key}</td>
                                   <td className="p-2 text-right text-gray-600">{s.total_reviewed}</td>
@@ -12684,7 +12684,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40 flex items-center gap-1">
                     {computeQualityPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />} Compute Quality Band
                   </button>
-                  <button onClick={() => refetchReviewerAnalytics()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchReviewerAnalytics()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -12709,9 +12709,9 @@ export default function AdminWalletDashboard() {
                 {/* Drill-down section */}
                 <div className="flex gap-2">
                   <input type="text" placeholder="Drill into reviewer UID…" value={drillUid} onChange={e => setDrillUid(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1" />
-                  <button onClick={() => setDrillUid('')} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 text-gray-500">Clear</button>
+                  <button onClick={() => setDrillUid('')} className="text-xs px-2 py-1 border rounded hover:bg-white text-gray-500">Clear</button>
                 </div>
-                {drillUid && reviewerDrillLoading && <div className="h-16 bg-gray-100 animate-pulse rounded" />}
+                {drillUid && reviewerDrillLoading && <div className="h-16 bg-white animate-pulse rounded" />}
                 {drillUid && reviewerDrill && !reviewerDrill.error && (
                   <div className="border border-amber-200 rounded-lg p-3 bg-amber-50 space-y-2">
                     <div className="text-xs font-semibold text-amber-800">Reviewer: {reviewerDrill.uid}</div>
@@ -12746,13 +12746,13 @@ export default function AdminWalletDashboard() {
                     )}
                   </div>
                 )}
-                {reviewerAnalyticsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {reviewerAnalyticsLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   reviewerAnalytics && (
                     <div className="space-y-3">
                       {reviewerAnalytics.bandDistribution && Object.keys(reviewerAnalytics.bandDistribution).length > 0 && (
                         <div className="flex gap-2 flex-wrap">
                           {Object.entries(reviewerAnalytics.bandDistribution).map(([band, cnt]: any) => (
-                            <span key={band} className={`text-[10px] px-2 py-0.5 rounded capitalize ${band === 'excellent' ? 'bg-green-100 text-green-700' : band === 'good' ? 'bg-blue-100 text-blue-700' : band === 'fair' ? 'bg-amber-100 text-amber-700' : band === 'poor' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                            <span key={band} className={`text-[10px] px-2 py-0.5 rounded capitalize ${band === 'excellent' ? 'bg-green-100 text-green-700' : band === 'good' ? 'bg-blue-100 text-blue-700' : band === 'fair' ? 'bg-amber-100 text-amber-700' : band === 'poor' ? 'bg-red-100 text-red-600' : 'bg-white text-gray-500'}`}>
                               {band}: {cnt}
                             </span>
                           ))}
@@ -12762,11 +12762,11 @@ export default function AdminWalletDashboard() {
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Live Workload — 30 Days</div>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-right p-2">Total</th><th className="text-right p-2">Accept</th><th className="text-right p-2">Reject</th><th className="text-right p-2">SLA Breaches</th><th className="text-right p-2">Avg SLA h</th></tr>
                             </thead><tbody>
                               {reviewerAnalytics.liveWorkload.map((r: any) => (
-                                <tr key={r.actor_uid} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => setDrillUid(r.actor_uid)}>
+                                <tr key={r.actor_uid} className="border-t hover:bg-white cursor-pointer" onClick={() => setDrillUid(r.actor_uid)}>
                                   <td className="p-2 font-mono text-[10px] text-blue-600 underline">{r.actor_uid}</td>
                                   <td className="p-2 text-right">{r.total_actions}</td>
                                   <td className="p-2 text-right text-green-600">{r.accepted}</td>
@@ -12783,18 +12783,18 @@ export default function AdminWalletDashboard() {
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Historical Snapshots (with Quality Band)</div>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-left p-2">Period</th><th className="text-right p-2">Accept Rate</th><th className="text-right p-2">SLA Rate</th><th className="text-right p-2">Overdue %</th><th className="text-left p-2">Band</th></tr>
                             </thead><tbody>
                               {reviewerAnalytics.snapshots.map((s: any) => (
-                                <tr key={s.id} className="border-t hover:bg-gray-50">
+                                <tr key={s.id} className="border-t hover:bg-white">
                                   <td className="p-2 font-mono text-[10px] text-gray-700 max-w-[100px] truncate">{s.reviewer_uid}</td>
                                   <td className="p-2 font-mono text-gray-500">{s.period_key}</td>
                                   <td className="p-2 text-right text-gray-600">{(parseFloat(s.action_accept_rate ?? '0') * 100).toFixed(1)}%</td>
                                   <td className="p-2 text-right text-gray-600">{(parseFloat(s.action_success_rate ?? '0') * 100).toFixed(1)}%</td>
                                   <td className="p-2 text-right text-gray-600">{(parseFloat(s.followup_overdue_rate ?? '0') * 100).toFixed(1)}%</td>
                                   <td className="p-2">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${s.quality_band === 'excellent' ? 'bg-green-100 text-green-700' : s.quality_band === 'good' ? 'bg-blue-100 text-blue-700' : s.quality_band === 'fair' ? 'bg-amber-100 text-amber-700' : s.quality_band === 'poor' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}>{s.quality_band ?? 'unrated'}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${s.quality_band === 'excellent' ? 'bg-green-100 text-green-700' : s.quality_band === 'good' ? 'bg-blue-100 text-blue-700' : s.quality_band === 'fair' ? 'bg-amber-100 text-amber-700' : s.quality_band === 'poor' ? 'bg-red-100 text-red-600' : 'bg-white text-gray-400'}`}>{s.quality_band ?? 'unrated'}</span>
                                   </td>
                                 </tr>
                               ))}
@@ -12822,7 +12822,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40 flex items-center gap-1">
                     {generateWorkloadPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Analyze Load
                   </button>
-                  <button onClick={() => refetchSuggestions()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchSuggestions()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -12849,7 +12849,7 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
-                {suggestionsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {suggestionsLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   !workloadSuggestions?.suggestions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No workload suggestions — click Analyze Load to generate rebalance recommendations</div>
                   ) : (
@@ -12896,13 +12896,13 @@ export default function AdminWalletDashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">Auto-refresh 60s</span>
                   <button disabled={commandCenterLoading} onClick={() => refetchCommandCenter()}
-                    className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh now
                   </button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {commandCenterLoading ? <div className="h-32 bg-gray-100 animate-pulse rounded" /> :
+                {commandCenterLoading ? <div className="h-32 bg-white animate-pulse rounded" /> :
                   commandCenterData && (
                     <>
                       <div className="text-[10px] text-gray-400 text-right">
@@ -12912,14 +12912,14 @@ export default function AdminWalletDashboard() {
                       {/* KPI tiles */}
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {[
-                          { label: 'Critical Alerts',     value: commandCenterData.summary?.criticalAlerts,     color: commandCenterData.summary?.criticalAlerts > 0 ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'control-center' },
-                          { label: 'Pending Approvals',   value: commandCenterData.summary?.pendingApprovals,   color: commandCenterData.summary?.pendingApprovals > 5 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'approvals' },
-                          { label: 'Orch Failures (24h)', value: commandCenterData.summary?.orchestrationFailed, color: commandCenterData.summary?.orchestrationFailed > 0 ? 'text-orange-600 bg-orange-50 border-orange-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'orchestration' },
-                          { label: 'Open Disputes',       value: commandCenterData.summary?.openDisputes,       color: commandCenterData.summary?.openDisputes > 0 ? 'text-rose-600 bg-rose-50 border-rose-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'disputes' },
-                          { label: 'Anomaly Clusters',    value: commandCenterData.summary?.anomalyClusters,    color: 'text-gray-700 bg-gray-50 border-gray-200', tab: 'control-center' },
+                          { label: 'Critical Alerts',     value: commandCenterData.summary?.criticalAlerts,     color: commandCenterData.summary?.criticalAlerts > 0 ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-700 bg-white border-gray-200', tab: 'control-center' },
+                          { label: 'Pending Approvals',   value: commandCenterData.summary?.pendingApprovals,   color: commandCenterData.summary?.pendingApprovals > 5 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-gray-700 bg-white border-gray-200', tab: 'approvals' },
+                          { label: 'Orch Failures (24h)', value: commandCenterData.summary?.orchestrationFailed, color: commandCenterData.summary?.orchestrationFailed > 0 ? 'text-orange-600 bg-orange-50 border-orange-200' : 'text-gray-700 bg-white border-gray-200', tab: 'orchestration' },
+                          { label: 'Open Disputes',       value: commandCenterData.summary?.openDisputes,       color: commandCenterData.summary?.openDisputes > 0 ? 'text-rose-600 bg-rose-50 border-rose-200' : 'text-gray-700 bg-white border-gray-200', tab: 'disputes' },
+                          { label: 'Anomaly Clusters',    value: commandCenterData.summary?.anomalyClusters,    color: 'text-gray-700 bg-white border-gray-200', tab: 'control-center' },
                           { label: 'Active Scenarios',    value: commandCenterData.summary?.activeScenarios,    color: 'text-indigo-700 bg-indigo-50 border-indigo-200', tab: 'simulation' },
                           { label: 'Active Subscriptions',value: commandCenterData.summary?.activeSubscriptions, color: 'text-sky-700 bg-sky-50 border-sky-200', tab: 'governance' },
-                          { label: 'Orch Runs (24h)',     value: commandCenterData.orchestration?.total24h,     color: 'text-gray-700 bg-gray-50 border-gray-200', tab: 'orchestration' },
+                          { label: 'Orch Runs (24h)',     value: commandCenterData.orchestration?.total24h,     color: 'text-gray-700 bg-white border-gray-200', tab: 'orchestration' },
                         ].map(k => (
                           <button key={k.label} onClick={() => k.tab && setActiveTab(k.tab)}
                             className={`border rounded-lg p-3 text-center w-full transition-opacity hover:opacity-80 cursor-pointer ${k.color}`}>
@@ -12982,7 +12982,7 @@ export default function AdminWalletDashboard() {
                   <button onClick={() => setShowFeedbackForm(v => !v)} className="text-xs px-2 py-1 bg-fuchsia-600 text-white rounded hover:bg-fuchsia-700">
                     {showFeedbackForm ? 'Cancel' : '+ Submit Feedback'}
                   </button>
-                  <button onClick={() => refetchFeedbackSummary()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchFeedbackSummary()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -13014,7 +13014,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {feedbackSummaryLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {feedbackSummaryLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   feedbackSummaryData && (
                     <div className="space-y-3">
                       {feedbackSummaryData.confidenceHealth && (
@@ -13085,7 +13085,7 @@ export default function AdminWalletDashboard() {
                     onChange={e => setRecScoreFilter(v => ({ ...v, targetEntityType: e.target.value }))} className="border rounded px-2 py-1 text-xs w-28" />
                   <input type="date" value={recScoreFilter.from} onChange={e => setRecScoreFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
                   <input type="date" value={recScoreFilter.to}   onChange={e => setRecScoreFilter(v => ({ ...v, to:   e.target.value }))} className="border rounded px-2 py-1 text-xs" />
-                  <button onClick={() => refetchRecScores()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchRecScores()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showRecScoreForm && (
                   <div className="border border-blue-200 rounded p-3 bg-blue-50 space-y-2">
@@ -13117,16 +13117,16 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {recScoresLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {recScoresLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !recScoresData?.scores?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No recommendation scores yet — record the first one above</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Entity</th><th className="text-right p-2">Confidence</th><th className="text-right p-2">Impact</th><th className="text-right p-2">Urgency</th><th className="text-left p-2">Note</th></tr>
                       </thead><tbody>
                         {recScoresData.scores.map((s: any) => (
-                          <tr key={s.id} className="border-t hover:bg-gray-50">
+                          <tr key={s.id} className="border-t hover:bg-white">
                             <td className="p-2 font-mono text-gray-700 text-[10px]">{s.recommendation_type}</td>
                             <td className="p-2 text-gray-500 text-[10px]">{s.target_entity_type}/{s.target_entity_id}</td>
                             <td className="p-2 text-right font-semibold" style={{ color: parseFloat(s.confidence_score) >= 70 ? '#16a34a' : parseFloat(s.confidence_score) >= 40 ? '#d97706' : '#dc2626' }}>
@@ -13174,7 +13174,7 @@ export default function AdminWalletDashboard() {
                     <option value="dismissed">Dismissed</option>
                     <option value="completed">Completed</option>
                   </select>
-                  <button onClick={() => refetchRemediation()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchRemediation()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showGeneratePlan && (
                   <div className="border border-teal-200 rounded p-3 bg-teal-50 space-y-2">
@@ -13206,7 +13206,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {remediationLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {remediationLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   !remediationData?.plans?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No remediation plans yet — generate one above for a major issue class</div>
                   ) : (
@@ -13217,7 +13217,7 @@ export default function AdminWalletDashboard() {
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-mono font-semibold text-gray-800">{p.issue_type}</span>
-                                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]">{p.target_entity_type}/{p.target_entity_id}</span>
+                                <span className="px-1.5 py-0.5 bg-white text-gray-600 rounded text-[10px]">{p.target_entity_type}/{p.target_entity_id}</span>
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'accepted' ? 'bg-green-100 text-green-700' : p.status === 'completed' ? 'bg-blue-100 text-blue-700' : p.status === 'dismissed' ? 'bg-red-100 text-red-500' : 'bg-yellow-100 text-yellow-700'}`}>{p.status}</span>
                               </div>
                               <div className="text-[10px] text-gray-400 mt-0.5">Confidence: {parseFloat(p.confidence_score).toFixed(0)}%</div>
@@ -13277,7 +13277,7 @@ export default function AdminWalletDashboard() {
                     <option value="assign">Assign</option>
                   </select>
                   <input type="text" placeholder="Actor UID" value={recActionFilter.actorUid} onChange={e => setRecActionFilter(v => ({ ...v, actorUid: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
-                  <button onClick={() => refetchRecActions()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchRecActions()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showRecActionForm && (
                   <div className="border border-sky-200 rounded p-3 bg-sky-50 space-y-2">
@@ -13303,7 +13303,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {recActionsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {recActionsLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !recActionsData?.actions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No actions yet — accept, reject, snooze, or assign a recommendation above</div>
                   ) : (
@@ -13314,16 +13314,16 @@ export default function AdminWalletDashboard() {
                       {recActionsData.byType && (
                         <div className="flex gap-2 flex-wrap">
                           {Object.entries(recActionsData.byType).map(([k, v]: any) => (
-                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded capitalize">{k}: {v}</span>
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-white text-gray-600 rounded capitalize">{k}: {v}</span>
                           ))}
                         </div>
                       )}
                       <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Score</th><th className="text-left p-2">Action</th><th className="text-left p-2">Actor</th><th className="text-left p-2">SLA Due</th><th className="text-left p-2">SLA Met</th><th className="text-left p-2">Reason</th></tr>
                         </thead><tbody>
                           {recActionsData.actions.map((a: any) => (
-                            <tr key={a.id} className={`border-t hover:bg-gray-50 ${a.sla_met === false ? 'bg-red-50' : ''}`}>
+                            <tr key={a.id} className={`border-t hover:bg-white ${a.sla_met === false ? 'bg-red-50' : ''}`}>
                               <td className="p-2 font-mono text-gray-500 text-[10px]">#{a.recommendation_score_id}</td>
                               <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${a.action_type === 'accept' ? 'bg-green-100 text-green-700' : a.action_type === 'reject' ? 'bg-red-100 text-red-700' : a.action_type === 'snooze' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{a.action_type}</span></td>
                               <td className="p-2 font-mono text-[10px] text-gray-600 max-w-[100px] truncate">{a.actor_uid}</td>
@@ -13362,7 +13362,7 @@ export default function AdminWalletDashboard() {
                     <option value="unchanged">Unchanged</option>
                     <option value="worsened">Worsened</option>
                   </select>
-                  <button onClick={() => refetchOutcomes()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchOutcomes()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showOutcomeForm && (
                   <div className="border border-teal-200 rounded p-3 bg-teal-50 space-y-2">
@@ -13380,7 +13380,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {outcomesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {outcomesLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   outcomesData && (
                     <div className="space-y-2">
                       {outcomesData.summary && (
@@ -13402,17 +13402,17 @@ export default function AdminWalletDashboard() {
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No outcome records yet — record before/after metrics for a completed plan</div>
                       ) : (
                         <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Plan</th><th className="text-left p-2">Metric</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th><th className="text-left p-2">Unit</th><th className="text-left p-2">Status</th></tr>
                           </thead><tbody>
                             {outcomesData.outcomes.map((o: any) => (
-                              <tr key={o.id} className={`border-t hover:bg-gray-50 ${o.outcome_status === 'improved' ? 'bg-green-50/30' : o.outcome_status === 'worsened' ? 'bg-red-50/30' : ''}`}>
+                              <tr key={o.id} className={`border-t hover:bg-white ${o.outcome_status === 'improved' ? 'bg-green-50/30' : o.outcome_status === 'worsened' ? 'bg-red-50/30' : ''}`}>
                                 <td className="p-2 font-mono text-[10px] text-gray-500">#{o.remediation_plan_id}</td>
                                 <td className="p-2 font-mono text-gray-700">{o.metric_name}</td>
                                 <td className="p-2 text-right text-gray-500">{parseFloat(o.before_value).toFixed(2)}</td>
                                 <td className="p-2 text-right font-semibold text-gray-800">{parseFloat(o.after_value).toFixed(2)}</td>
                                 <td className="p-2 text-gray-400 text-[10px]">{o.unit || '—'}</td>
-                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${o.outcome_status === 'improved' ? 'bg-green-100 text-green-700' : o.outcome_status === 'worsened' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>{o.outcome_status}</span></td>
+                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${o.outcome_status === 'improved' ? 'bg-green-100 text-green-700' : o.outcome_status === 'worsened' ? 'bg-red-100 text-red-600' : 'bg-white text-gray-500'}`}>{o.outcome_status}</span></td>
                               </tr>
                             ))}
                           </tbody></table>
@@ -13462,7 +13462,7 @@ export default function AdminWalletDashboard() {
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
                   </select>
-                  <button onClick={() => refetchUnifiedRec()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                  <button onClick={() => refetchUnifiedRec()} className="text-xs px-2 py-1 border rounded hover:bg-white">Filter</button>
                 </div>
                 {showUnifiedRecForm && (
                   <div className="border border-violet-200 rounded p-3 bg-violet-50 space-y-2">
@@ -13505,7 +13505,7 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 )}
-                {unifiedRecLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {unifiedRecLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !unifiedRecData?.recommendations?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No unified recommendations yet — create one above or promote from any tab</div>
                   ) : (
@@ -13513,7 +13513,7 @@ export default function AdminWalletDashboard() {
                       {unifiedRecData.byStatus && (
                         <div className="flex gap-2 flex-wrap">
                           {Object.entries(unifiedRecData.byStatus).map(([k, v]: any) => (
-                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded capitalize">{k}: {v}</span>
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-white text-gray-600 rounded capitalize">{k}: {v}</span>
                           ))}
                         </div>
                       )}
@@ -13522,8 +13522,8 @@ export default function AdminWalletDashboard() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-semibold text-gray-800">{r.title}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.priority === 'critical' ? 'bg-red-100 text-red-700' : r.priority === 'high' ? 'bg-orange-100 text-orange-700' : r.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{r.priority}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'resolved' ? 'bg-blue-100 text-blue-700' : r.status === 'rejected' ? 'bg-red-100 text-red-500' : r.status === 'snoozed' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>{r.status}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.priority === 'critical' ? 'bg-red-100 text-red-700' : r.priority === 'high' ? 'bg-orange-100 text-orange-700' : r.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-white text-gray-500'}`}>{r.priority}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'resolved' ? 'bg-blue-100 text-blue-700' : r.status === 'rejected' ? 'bg-red-100 text-red-500' : r.status === 'snoozed' ? 'bg-amber-100 text-amber-700' : 'bg-white text-gray-500'}`}>{r.status}</span>
                               {parseFloat(r.confidence_score) > 0 && <span className="text-[10px] text-blue-600 font-mono">{parseFloat(r.confidence_score).toFixed(0)}% conf</span>}
                             </div>
                             <div className="flex gap-1 shrink-0">
@@ -13554,7 +13554,7 @@ export default function AdminWalletDashboard() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600" /> System Bottleneck Detection
                 </CardTitle>
-                <button onClick={() => refetchBottlenecks43()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchBottlenecks43()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
@@ -13562,7 +13562,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
                   Traffic-light status: 🟢 green = healthy, 🟡 amber = watch, 🔴 red = action needed. Counts reconcile to source tabs. Refresh every 60 seconds.
                 </div>
-                {bottlenecksLoading43 ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {bottlenecksLoading43 ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   bottlenecks43 && !bottlenecks43.error && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
@@ -13589,11 +13589,11 @@ export default function AdminWalletDashboard() {
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Top Blocked Owners</div>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Owner</th><th className="text-right p-2">Overdue</th><th className="text-right p-2">Max Escalation</th></tr>
                             </thead><tbody>
                               {bottlenecks43.blockedOwners.map((o: any) => (
-                                <tr key={o.ownerUid} className="border-t hover:bg-gray-50">
+                                <tr key={o.ownerUid} className="border-t hover:bg-white">
                                   <td className="p-2 font-mono text-[10px] text-gray-700 max-w-[160px] truncate">{o.ownerUid}</td>
                                   <td className="p-2 text-right text-red-600 font-semibold">{o.overdueCount}</td>
                                   <td className="p-2 text-right text-orange-600">L{o.maxEscalation}</td>
@@ -13633,7 +13633,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
                     {recomputePriorityPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />} Compute Priority
                   </button>
-                  <button onClick={() => refetchPrioritized()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchPrioritized()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -13659,7 +13659,7 @@ export default function AdminWalletDashboard() {
                     <option value="policies">Policies</option>
                   </select>
                 </div>
-                {prioritizedLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {prioritizedLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !prioritizedRecs?.recommendations?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No recommendations with priority scores yet — create a Unified Rec above, then compute its priority score</div>
                   ) : (
@@ -13686,11 +13686,11 @@ export default function AdminWalletDashboard() {
                         </div>
                       )}
                       <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">#</th><th className="text-left p-2">Title</th><th className="text-right p-2">Priority Score</th><th className="text-right p-2">Urgency</th><th className="text-right p-2">Value</th><th className="text-right p-2">Bottleneck</th><th className="text-left p-2">Why?</th></tr>
                         </thead><tbody>
                           {prioritizedRecs.recommendations.map((r: any, idx: number) => (
-                            <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <tr key={r.id} className="border-t hover:bg-white">
                               <td className="p-2 text-[10px] font-mono text-gray-400">{idx + 1}</td>
                               <td className="p-2 max-w-[140px] truncate" title={r.title}>{r.title}</td>
                               <td className="p-2 text-right">
@@ -13726,7 +13726,7 @@ export default function AdminWalletDashboard() {
                 </CardTitle>
                 <div className="flex gap-2 items-center">
                   <input type="number" placeholder="Rec ID" value={timelineRecId} onChange={e => setTimelineRecId(e.target.value)} className="border rounded px-2 py-1 text-xs w-24" />
-                  <button onClick={() => refetchTimeline()} disabled={!timelineRecId} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1 disabled:opacity-40">
+                  <button onClick={() => refetchTimeline()} disabled={!timelineRecId} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1 disabled:opacity-40">
                     <RefreshCw className="w-3 h-3" /> Load
                   </button>
                   <button onClick={() => setTimelineRecId('')} className="text-xs px-1 py-1 text-gray-400 hover:text-gray-600">✕</button>
@@ -13736,7 +13736,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 rounded p-2">
                   Enter a Unified Recommendation ID to trace its full lifecycle: creation → priority → actions → plans → outcomes → policy suggestions → follow-ups. One recommendation, one traceable story.
                 </div>
-                {timelineLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                {timelineLoading ? <div className="h-24 bg-white animate-pulse rounded" /> :
                   !timelineRecId ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">Enter a Recommendation ID above to load the timeline</div>
                   ) : executionTimeline && !executionTimeline.error && (
@@ -13774,13 +13774,13 @@ export default function AdminWalletDashboard() {
                               plan_created:            'bg-purple-100 text-purple-700',
                               policy_suggestion:       'bg-fuchsia-100 text-fuchsia-700',
                             };
-                            const color = typeColor[e.type] ?? (e.type.startsWith('action_') ? 'bg-sky-100 text-sky-700' : e.type.startsWith('outcome_') ? 'bg-teal-100 text-teal-700' : e.type.startsWith('followup_') ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600');
+                            const color = typeColor[e.type] ?? (e.type.startsWith('action_') ? 'bg-sky-100 text-sky-700' : e.type.startsWith('outcome_') ? 'bg-teal-100 text-teal-700' : e.type.startsWith('followup_') ? 'bg-orange-100 text-orange-700' : 'bg-white text-gray-600');
                             return (
                               <div key={i} className="flex gap-2 items-start text-xs">
                                 <div className="w-20 shrink-0 text-[10px] text-gray-400 pt-0.5">{new Date(e.ts).toLocaleString('he-IL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                                 <div className="w-1 shrink-0 flex flex-col items-center">
                                   <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5" />
-                                  {i < executionTimeline.timeline.length - 1 && <div className="flex-1 w-px bg-gray-200 mt-0.5" style={{ minHeight: '12px' }} />}
+                                  {i < executionTimeline.timeline.length - 1 && <div className="flex-1 w-px bg-white mt-0.5" style={{ minHeight: '12px' }} />}
                                 </div>
                                 <div className="flex-1 border rounded p-1.5 bg-white">
                                   <span className={`text-[10px] px-1.5 py-0.5 rounded mr-1.5 ${color}`}>{e.type.replace(/_/g, ' ')}</span>
@@ -13823,7 +13823,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
                     {triggerAlertsPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Check System
                   </button>
-                  <button onClick={() => refetchGovAlerts()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchGovAlerts()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -13832,7 +13832,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
                   Alerts fire when effectiveness drops below 40%, SLA breaches exceed 40%, or reviewer quality degrades. All alerts are deduplicated (once per 24h) and fully traceable. Click Check System to run manually.
                 </div>
-                {govAlertsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {govAlertsLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   !govAlerts?.alerts?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No alerts — system is operating within thresholds</div>
                   ) : (
@@ -13843,7 +13843,7 @@ export default function AdminWalletDashboard() {
                             <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${a.severity === 'critical' ? 'bg-red-100 text-red-700' : a.severity === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{a.severity}</span>
                             <span className="text-xs text-gray-700 flex-1">{a.message}</span>
                             {!a.acknowledged && (
-                              <button onClick={() => ackAlert(a.id)} className="shrink-0 text-[10px] px-2 py-0.5 border rounded hover:bg-gray-50 text-gray-500 flex items-center gap-1">
+                              <button onClick={() => ackAlert(a.id)} className="shrink-0 text-[10px] px-2 py-0.5 border rounded hover:bg-white text-gray-500 flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3" /> Ack
                               </button>
                             )}
@@ -13872,7 +13872,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
                     {feedbackLoopPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Run Feedback Loop
                   </button>
-                  <button onClick={() => refetchPriorityAdj()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchPriorityAdj()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -13881,16 +13881,16 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
                   Scans outcomes from the last 24h with effectiveness scores set. Improved outcomes raise priority weights; worsened outcomes reduce them. Adjustments are bounded ±20% and never overwrite original scores. Every change links to its source outcome.
                 </div>
-                {priorityAdjLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {priorityAdjLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   !priorityAdjustments?.adjustments?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No adjustments yet — run feedback loop after outcomes have effectiveness scores recorded</div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Recommendation</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th><th className="text-right p-2">Delta</th><th className="text-left p-2">Reason</th></tr>
                       </thead><tbody>
                         {priorityAdjustments.adjustments.map((a: any) => (
-                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                          <tr key={a.id} className="border-t hover:bg-white">
                             <td className="p-2 max-w-[120px] truncate" title={a.recommendation_title}>{a.recommendation_title ?? `#${a.recommendation_id}`}</td>
                             <td className="p-2 text-right font-mono text-gray-500">{parseFloat(a.previous_score).toFixed(1)}</td>
                             <td className="p-2 text-right font-mono font-bold text-gray-800">{parseFloat(a.adjusted_score).toFixed(1)}</td>
@@ -13917,7 +13917,7 @@ export default function AdminWalletDashboard() {
                 </CardTitle>
                 <div className="flex gap-2 items-center">
                   <input type="text" placeholder="Group / tag" value={seqGroup} onChange={e => setSeqGroup(e.target.value)} className="border rounded px-2 py-1 text-xs w-28" />
-                  <button onClick={() => refetchActionSeqs()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchActionSeqs()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Load
                   </button>
                 </div>
@@ -13927,7 +13927,7 @@ export default function AdminWalletDashboard() {
                   Simulates the optimal action order for a set of recommendation actions. Confidence is derived from historical outcome rates for those action types. Impact estimates are additive across steps.
                 </div>
                 {/* Simulate form */}
-                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                <div className="border rounded-lg p-3 bg-white space-y-2">
                   <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Simulate New Sequence</div>
                   <div className="flex flex-wrap gap-2">
                     <input type="text" placeholder="Recommendation group" value={seqGroup} onChange={e => setSeqGroup(e.target.value)} className="border rounded px-2 py-1 text-xs w-36 bg-white" />
@@ -13958,12 +13958,12 @@ export default function AdminWalletDashboard() {
                   )}
                 </div>
                 {/* Saved sequences */}
-                {actionSeqsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                {actionSeqsLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   actionSeqs?.sequences?.length > 0 && (
                     <div className="space-y-2">
                       <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Saved Sequences</div>
                       {actionSeqs.sequences.map((s: any) => (
-                        <div key={s.id} className="border rounded-lg p-2.5 space-y-1 hover:bg-gray-50">
+                        <div key={s.id} className="border rounded-lg p-2.5 space-y-1 hover:bg-white">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-medium text-gray-700">{s.recommendation_group}</span>
                             <div className="flex gap-3 text-[10px] text-gray-500">
@@ -14004,7 +14004,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1">
                     {runMoneyChecksPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Run Checks
                   </button>
-                  <button onClick={() => refetchMoneyChecks()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchMoneyChecks()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -14016,7 +14016,7 @@ export default function AdminWalletDashboard() {
                 {moneyCheckResults?.summary?.lastRun && (
                   <div className="text-[10px] text-gray-400">Last run: {new Date(moneyCheckResults.summary.lastRun).toLocaleString('he-IL')}</div>
                 )}
-                {moneyCheckLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {moneyCheckLoading ? <div className="h-20 bg-white animate-pulse rounded" /> :
                   moneyCheckResults?.checks?.length > 0 ? (
                     <div className="space-y-1.5">
                       {moneyCheckResults.checks.map((c: any, i: number) => (
@@ -14062,7 +14062,7 @@ export default function AdminWalletDashboard() {
                 <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
                   Detects state drift across 4 cross-table relationship pairs: booking↔wallet holds, dispute↔refund linkage, settled entries↔transactions, and recon↔batch linkage.
                 </div>
-                {consistencyCheckPending ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                {consistencyCheckPending ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   consistencyCheck ? (
                     consistencyCheck.summary?.allClear ? (
                       <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded p-3 text-center font-semibold">
@@ -14113,23 +14113,23 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
                     {detectionPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Scan Now
                   </button>
-                  <button onClick={() => refetchAnomalies()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                  <button onClick={() => refetchAnomalies()} className="text-xs px-2 py-1 border rounded hover:bg-white">
                     <RefreshCw className="w-3 h-3" />
                   </button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="text-xs text-gray-500 bg-gray-50 border rounded p-2">
+                <div className="text-xs text-gray-500 bg-white border rounded p-2">
                   Scans every 5 min. Detects: refund spikes, payout imbalances, reconciliation drift, dispute surges, alert silence. Thresholds are deviation from 7-day baseline.
                 </div>
                 {anomalyLoading ? (
-                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-white animate-pulse rounded" />)}</div>
                 ) : anomalyFeed?.anomalies?.length > 0 ? (
                   <div className="space-y-2">
                     {anomalyFeed.anomalies.map((a: any) => {
                       const sev = a.severity;
                       const sevColor = sev === 'critical' ? 'border-red-400 bg-red-50/30' : sev === 'high' ? 'border-orange-300 bg-orange-50/20' : sev === 'medium' ? 'border-amber-200 bg-amber-50/10' : 'border-gray-200';
-                      const sevBadge = sev === 'critical' ? 'bg-red-600 text-white' : sev === 'high' ? 'bg-orange-500 text-white' : sev === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600';
+                      const sevBadge = sev === 'critical' ? 'bg-red-600 text-white' : sev === 'high' ? 'bg-orange-500 text-white' : sev === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-white text-gray-600';
                       return (
                         <div key={a.id} className={`border rounded-lg p-2.5 ${sevColor}`}>
                           <div className="flex items-start justify-between gap-2">
@@ -14207,13 +14207,13 @@ export default function AdminWalletDashboard() {
                     <option value="acknowledged">Acknowledged</option>
                     <option value="resolved">Resolved</option>
                   </select>
-                  <button onClick={() => refetchPriority()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchPriority()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-gray-500 bg-gray-50 border rounded p-2">
+                <div className="text-xs text-gray-500 bg-white border rounded p-2">
                   Score = severity (40%) + financial impact (30%) + affected entities (20%) + trend acceleration (10%). Additive only — anomaly events are never modified.
                 </div>
 
@@ -14248,14 +14248,14 @@ export default function AdminWalletDashboard() {
 
                 {/* Full sorted list */}
                 {priorityLoading ? (
-                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-10 bg-white animate-pulse rounded" />)}</div>
                 ) : priorityFeed?.prioritized?.length > 0 ? (
                   <div className="space-y-1">
                     <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">All Alerts — Ranked by Priority</div>
                     {priorityFeed.prioritized.map((a: any) => {
-                      const scoreColor = a.priorityScore >= 70 ? 'text-red-600 bg-red-50' : a.priorityScore >= 50 ? 'text-orange-600 bg-orange-50' : 'text-gray-600 bg-gray-50';
+                      const scoreColor = a.priorityScore >= 70 ? 'text-red-600 bg-red-50' : a.priorityScore >= 50 ? 'text-orange-600 bg-orange-50' : 'text-gray-600 bg-white';
                       return (
-                        <div key={a.id} className="flex items-center gap-2 border rounded p-2 hover:bg-gray-50 text-xs">
+                        <div key={a.id} className="flex items-center gap-2 border rounded p-2 hover:bg-white text-xs">
                           <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">#{a.rank}</span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${scoreColor}`}>{a.priorityScore}</span>
                           <span className={`text-[9px] px-1 py-0.5 rounded font-bold shrink-0 ${a.severity === 'critical' ? 'bg-red-600 text-white' : a.severity === 'high' ? 'bg-orange-500 text-white' : 'bg-amber-100 text-amber-800'}`}>
@@ -14264,7 +14264,7 @@ export default function AdminWalletDashboard() {
                           <span className="flex-1 capitalize text-gray-700 truncate">{a.anomaly_type?.replace(/_/g, ' ')}</span>
                           <div className="flex flex-wrap gap-0.5 shrink-0 max-w-[180px]">
                             {a.reasonChips?.map((chip: string, i: number) => (
-                              <span key={i} className="text-[8px] px-1 py-0.5 bg-gray-100 text-gray-600 rounded">{chip}</span>
+                              <span key={i} className="text-[8px] px-1 py-0.5 bg-white text-gray-600 rounded">{chip}</span>
                             ))}
                           </div>
                         </div>
@@ -14302,17 +14302,17 @@ export default function AdminWalletDashboard() {
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">✓ No triggers active</span>
                   )}
                 </CardTitle>
-                <button onClick={() => refetchTriggers()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={() => refetchTriggers()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> Refresh
                 </button>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs text-gray-500 bg-gray-50 border rounded p-2">
+                <div className="text-xs text-gray-500 bg-white border rounded p-2">
                   Trigger rules match open anomalies against a minimum priority score. When a rule fires, the associated kill switch is suggested for immediate action. Dismissed triggers suppress for 60 min. Kill switches are never auto-executed — operator approval always required.
                 </div>
 
                 {triggerLoading ? (
-                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-14 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-14 bg-white animate-pulse rounded" />)}</div>
                 ) : triggerEval?.suggestions?.length > 0 ? (
                   <div className="space-y-2">
                     {triggerEval.suggestions.map((s: any) => (
@@ -14334,7 +14334,7 @@ export default function AdminWalletDashboard() {
                             </div>
                             {/* Kill switch target */}
                             <div className="text-xs text-gray-600 mb-1">
-                              Kill switch: <code className="bg-gray-100 px-1 rounded font-mono text-xs">{s.killSwitchKey}</code>
+                              Kill switch: <code className="bg-white px-1 rounded font-mono text-xs">{s.killSwitchKey}</code>
                               {s.ksCurrentlyEnabled === false
                                 ? <span className="ml-1 text-[9px] text-green-600 font-semibold">— currently DISABLED ✓</span>
                                 : <span className="ml-1 text-[9px] text-orange-600 font-semibold">— currently ENABLED</span>
@@ -14345,7 +14345,7 @@ export default function AdminWalletDashboard() {
                             {s.reasonChips?.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1.5">
                                 {s.reasonChips.map((chip: string, i: number) => (
-                                  <span key={i} className="text-[8px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{chip}</span>
+                                  <span key={i} className="text-[8px] px-1.5 py-0.5 bg-white text-gray-600 rounded">{chip}</span>
                                 ))}
                               </div>
                             )}
@@ -14362,7 +14362,7 @@ export default function AdminWalletDashboard() {
                               <button
                                 disabled={dismissingTrigger}
                                 onClick={() => dismissKillTrigger({ ruleId: s.ruleId, anomalyEventId: s.anomalyEventId, killSwitchKey: s.killSwitchKey })}
-                                className="text-[10px] px-2 py-1 border border-gray-300 hover:bg-gray-50 text-gray-600 rounded disabled:opacity-50">
+                                className="text-[10px] px-2 py-1 border border-gray-300 hover:bg-white text-gray-600 rounded disabled:opacity-50">
                                 Dismiss
                               </button>
                             </div>
@@ -14403,10 +14403,10 @@ export default function AdminWalletDashboard() {
                     <Zap className="w-2.5 h-2.5" />{autoBuildPending ? 'Building…' : 'Auto-Build'}
                   </button>
                   <button onClick={() => setShowNewIncidentForm(v => !v)}
-                    className="text-[10px] px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    className="text-[10px] px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <Plus className="w-2.5 h-2.5" /> New
                   </button>
-                  <button onClick={() => refetchIncidents()} className="text-[10px] px-2 py-1 border rounded hover:bg-gray-50">
+                  <button onClick={() => refetchIncidents()} className="text-[10px] px-2 py-1 border rounded hover:bg-white">
                     <RefreshCw className="w-3 h-3" />
                   </button>
                 </div>
@@ -14417,7 +14417,7 @@ export default function AdminWalletDashboard() {
                 <div className="flex gap-1">
                   {['open','investigating','resolved'].map(s => (
                     <button key={s} onClick={() => { setIncidentStatusFilter(s); setSelectedIncidentId(null); }}
-                      className={`text-[10px] px-2 py-1 rounded capitalize font-medium ${incidentStatusFilter === s ? 'bg-blue-600 text-white' : 'border hover:bg-gray-50 text-gray-600'}`}>
+                      className={`text-[10px] px-2 py-1 rounded capitalize font-medium ${incidentStatusFilter === s ? 'bg-blue-600 text-white' : 'border hover:bg-white text-gray-600'}`}>
                       {s}
                     </button>
                   ))}
@@ -14436,26 +14436,26 @@ export default function AdminWalletDashboard() {
                         className="text-[10px] px-3 py-1 bg-blue-600 text-white rounded font-semibold disabled:opacity-50">
                         {creatingIncident ? 'Creating…' : 'Create'}
                       </button>
-                      <button onClick={() => setShowNewIncidentForm(false)} className="text-[10px] px-2 py-1 border rounded text-gray-500 hover:bg-gray-50">Cancel</button>
+                      <button onClick={() => setShowNewIncidentForm(false)} className="text-[10px] px-2 py-1 border rounded text-gray-500 hover:bg-white">Cancel</button>
                     </div>
                   </div>
                 )}
 
                 {/* Incident list */}
                 {incidentsLoading ? (
-                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-white animate-pulse rounded" />)}</div>
                 ) : incidentsList?.incidents?.length ? (
                   <div className="space-y-1">
                     {incidentsList.incidents.map((inc: any) => (
                       <div key={inc.id}
                         onClick={() => { const next = selectedIncidentId === inc.id ? null : inc.id; setSelectedIncidentId(next); if (next) { fetchRemediation(next); } }}
-                        className={`cursor-pointer rounded-lg border p-2.5 transition-colors ${selectedIncidentId === inc.id ? 'border-blue-500 bg-blue-50/40' : 'hover:bg-gray-50 border-gray-200'}`}>
+                        className={`cursor-pointer rounded-lg border p-2.5 transition-colors ${selectedIncidentId === inc.id ? 'border-blue-500 bg-blue-50/40' : 'hover:bg-white border-gray-200'}`}>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className={`shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${
                               inc.severity === 'critical' ? 'bg-red-600 text-white' :
                               inc.severity === 'high'     ? 'bg-orange-500 text-white' :
-                              inc.severity === 'medium'   ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                              inc.severity === 'medium'   ? 'bg-amber-100 text-amber-800' : 'bg-white text-gray-600'}`}>
                               {inc.severity}
                             </span>
                             <span className="text-xs font-medium text-gray-800 truncate">{inc.title}</span>
@@ -14479,7 +14479,7 @@ export default function AdminWalletDashboard() {
                         {selectedIncidentId === inc.id && (
                           <div className="mt-3 border-t pt-3 space-y-3" onClick={e => e.stopPropagation()}>
                             {selectedTimelineLoading ? (
-                              <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                              <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-8 bg-white animate-pulse rounded" />)}</div>
                             ) : selectedTimeline?.timeline?.length ? (
                               <div className="relative">
                                 <div className="absolute left-2 top-0 bottom-0 w-px bg-blue-100" />
@@ -14590,7 +14590,7 @@ export default function AdminWalletDashboard() {
                                     <div className="flex items-center gap-2">
                                       <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${
                                         rca.confidence_overall === 'high'   ? 'bg-red-600 text-white' :
-                                        rca.confidence_overall === 'medium' ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                        rca.confidence_overall === 'medium' ? 'bg-amber-500 text-white' : 'bg-white text-gray-700'}`}>
                                         {rca.confidence_overall} confidence
                                       </span>
                                       <span className="text-[9px] text-gray-400">{rca.anomaly_type?.replace(/_/g, ' ')} · {new Date(rca.generated_at).toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
@@ -14600,7 +14600,7 @@ export default function AdminWalletDashboard() {
                                     {hyps.map((h: any, i: number) => (
                                       <div key={i} className={`rounded border p-2 text-xs ${
                                         h.confidence === 'high'   ? 'border-red-300 bg-red-50/40' :
-                                        h.confidence === 'medium' ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200 bg-gray-50/50'}`}>
+                                        h.confidence === 'medium' ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200 bg-white/50'}`}>
                                         <div className="flex items-start gap-1.5">
                                           <span className={`shrink-0 mt-0.5 text-[8px] font-black px-1 py-0.5 rounded ${
                                             h.confidence === 'high' ? 'bg-red-600 text-white' :
@@ -14700,7 +14700,7 @@ export default function AdminWalletDashboard() {
                                       shadow_mode_enable: 'bg-purple-100 text-purple-700',
                                       reconciliation_run: 'bg-blue-100 text-blue-700',
                                       alert_test:         'bg-amber-100 text-amber-700',
-                                      manual_review:      'bg-gray-100 text-gray-700',
+                                      manual_review:      'bg-white text-gray-700',
                                       assign_review:      'bg-teal-100 text-teal-700',
                                     };
                                     const actionTypeLabel: Record<string, string> = {
@@ -14714,7 +14714,7 @@ export default function AdminWalletDashboard() {
                                     return (
                                       <div key={s.id} className={`rounded border p-2 text-xs transition-opacity ${
                                         isApplied ? 'border-green-300 bg-green-50/30' :
-                                        s.status === 'dismissed' ? 'border-gray-200 bg-gray-50/30 opacity-60' :
+                                        s.status === 'dismissed' ? 'border-gray-200 bg-white/30 opacity-60' :
                                         'border-orange-200 bg-orange-50/20'}`}>
                                         <div className="flex items-start gap-1.5">
                                           {/* Rank */}
@@ -14725,7 +14725,7 @@ export default function AdminWalletDashboard() {
                                           </span>
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${actionTypeColor[s.action_type] ?? 'bg-gray-100 text-gray-700'}`}>
+                                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${actionTypeColor[s.action_type] ?? 'bg-white text-gray-700'}`}>
                                                 {actionTypeLabel[s.action_type] ?? s.action_type}
                                               </span>
                                               <span className="text-[10px] font-bold text-gray-800">{s.action_label}</span>
@@ -14758,7 +14758,7 @@ export default function AdminWalletDashboard() {
                                                 <button
                                                   disabled={!!remActing[s.id]}
                                                   onClick={(e) => { e.stopPropagation(); dismissRemediation(inc.id, s.id); }}
-                                                  className="text-[9px] px-2 py-0.5 border border-gray-300 hover:bg-gray-50 text-gray-600 rounded font-medium disabled:opacity-50">
+                                                  className="text-[9px] px-2 py-0.5 border border-gray-300 hover:bg-white text-gray-600 rounded font-medium disabled:opacity-50">
                                                   Dismiss
                                                 </button>
                                               </div>
@@ -14781,7 +14781,7 @@ export default function AdminWalletDashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-400 bg-gray-50 border rounded p-4 text-center">
+                  <div className="text-xs text-gray-400 bg-white border rounded p-4 text-center">
                     No {incidentStatusFilter} incidents — use Auto-Build to generate from high-priority anomalies
                   </div>
                 )}
@@ -14821,7 +14821,7 @@ export default function AdminWalletDashboard() {
                             ? shReadiness.readinessLabel === 'READY' ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 hover:bg-emerald-200'
                               : shReadiness.readinessLabel === 'CALIBRATING' ? 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200'
                               : 'bg-red-100 text-red-700 border border-red-300 hover:bg-red-200'
-                            : 'border border-gray-200 bg-white hover:bg-gray-50 text-gray-600'
+                            : 'border border-gray-200 bg-white hover:bg-white text-gray-600'
                         }`}>
                         {shReadinessLoading ? '…' : shReadiness ? `${shReadiness.compositeScore}/100 ${shReadiness.readinessLabel}` : '🎯 Readiness'}
                       </button>
@@ -14854,7 +14854,7 @@ export default function AdminWalletDashboard() {
                                 className={`text-[8px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
                                   m.mode === mode
                                     ? 'bg-gray-800 text-white'
-                                    : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                                    : 'border border-gray-200 bg-white text-gray-500 hover:bg-white'
                                 } disabled:opacity-50`}>
                                 {modeLabel[mode]}
                               </button>
@@ -14919,7 +14919,7 @@ export default function AdminWalletDashboard() {
                                       </span>
                                     </div>
                                   </div>
-                                  <div className="h-1.5 bg-gray-100 rounded overflow-hidden">
+                                  <div className="h-1.5 bg-white rounded overflow-hidden">
                                     <div
                                       style={{ width: `${c.score}%` }}
                                       className={`h-full rounded ${c.score >= 70 ? 'bg-emerald-400' : c.score >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
@@ -14949,7 +14949,7 @@ export default function AdminWalletDashboard() {
                                     className={`text-[7px] px-1.5 py-0.5 rounded font-bold ${
                                       dom.current_autonomy_cap === lvl
                                         ? lvl === 4 ? 'bg-emerald-500 text-white' : lvl === 3 ? 'bg-blue-500 text-white' : lvl === 2 ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
-                                        : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
+                                        : 'bg-white border border-gray-200 text-gray-400 hover:bg-white'
                                     } disabled:opacity-50`}>
                                     L{lvl}
                                   </button>
@@ -15024,15 +15024,15 @@ export default function AdminWalletDashboard() {
                       {/* ── 4.9 control row of buttons ── */}
                       <div className="flex items-center gap-1 pb-1">
                         <button onClick={() => domainsExpanded ? setDomainsExpanded(false) : loadDomains()} disabled={domainsLoading}
-                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${domainsExpanded ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${domainsExpanded ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-white'}`}>
                           {domainsLoading ? '…' : '🏛 Domains'}
                         </button>
                         <button onClick={() => guardrailsExpanded ? setGuardrailsExpanded(false) : loadGuardrails()} disabled={guardrailsLoading}
-                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${guardrailsExpanded ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${guardrailsExpanded ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-white'}`}>
                           {guardrailsLoading ? '…' : '🛡 Guardrails'}
                         </button>
                         <button onClick={() => decisionLogExpanded ? setDecisionLogExpanded(false) : loadDecisionLog()} disabled={decisionLogLoading}
-                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${decisionLogExpanded ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${decisionLogExpanded ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-white'}`}>
                           {decisionLogLoading ? '…' : '📓 Decision Log'}
                         </button>
                       </div>
@@ -15046,7 +15046,7 @@ export default function AdminWalletDashboard() {
                           const history = shHistory[rule.id] ?? [];
                           return (
                             <div key={rule.id}
-                              className={`rounded border text-[9px] ${rule.enabled ? 'bg-white border-emerald-200' : 'bg-gray-50 border-gray-200 opacity-70'} ${isTuning ? 'ring-1 ring-emerald-400' : ''}`}>
+                              className={`rounded border text-[9px] ${rule.enabled ? 'bg-white border-emerald-200' : 'bg-white border-gray-200 opacity-70'} ${isTuning ? 'ring-1 ring-emerald-400' : ''}`}>
                               {/* ── Rule summary row ── */}
                               <div className="flex items-start gap-2 p-1.5">
                                 {/* Enable toggle */}
@@ -15061,13 +15061,13 @@ export default function AdminWalletDashboard() {
                                   <div className="flex items-center gap-1 flex-wrap">
                                     <span className="font-semibold text-gray-800 leading-snug">{rule.name}</span>
                                     <span className={`text-[7px] px-1 py-0 rounded font-bold ${
-                                      rule.anomaly_type === 'any' ? 'bg-gray-200 text-gray-600' :
+                                      rule.anomaly_type === 'any' ? 'bg-white text-gray-600' :
                                       rule.anomaly_type === 'refund_spike' ? 'bg-red-100 text-red-700' :
                                       rule.anomaly_type === 'payout_imbalance' ? 'bg-orange-100 text-orange-700' :
                                       rule.anomaly_type === 'reconciliation_mismatch_rate' ? 'bg-yellow-100 text-yellow-700' :
                                       rule.anomaly_type === 'dispute_surge' ? 'bg-purple-100 text-purple-700' :
                                       rule.anomaly_type === 'alert_silence' ? 'bg-blue-100 text-blue-700' :
-                                      'bg-gray-100 text-gray-600'
+                                      'bg-white text-gray-600'
                                     }`}>{rule.anomaly_type}</span>
                                     <span className="text-[7px] px-1 py-0 bg-indigo-100 text-indigo-700 rounded font-bold">{rule.action_type}</span>
                                     {shFpRates[rule.id] && (() => {
@@ -15126,7 +15126,7 @@ export default function AdminWalletDashboard() {
                                                   ? m === 'auto' ? 'bg-emerald-500 text-white'
                                                     : m === 'notify' ? 'bg-amber-500 text-white'
                                                     : 'bg-blue-500 text-white'
-                                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                                  : 'bg-white text-gray-500 hover:bg-white'
                                               }`}>
                                               {m === 'auto' ? '⚡ Auto' : m === 'notify' ? '🔔 Notify' : '⏳ Manual'}
                                             </button>
@@ -15154,7 +15154,7 @@ export default function AdminWalletDashboard() {
                                               </button>
                                               <button
                                                 onClick={() => { setShModePending(null); setShModeReason(''); }}
-                                                className="text-[8px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">
+                                                className="text-[8px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-white">
                                                 Cancel
                                               </button>
                                             </div>
@@ -15215,7 +15215,7 @@ export default function AdminWalletDashboard() {
                                         </button>
                                       )}
                                       <button onClick={() => shAutonomyHistoryExpanded[rule.id] ? setShAutonomyHistoryExpanded(p => ({ ...p, [rule.id]: false })) : loadAutonomyHistory(rule.id)}
-                                        className={`text-[7px] px-1.5 py-0.5 rounded border font-medium ${shAutonomyHistoryExpanded[rule.id] ? 'bg-gray-100 border-gray-300 text-gray-700' : 'border-gray-200 bg-white text-gray-400 hover:text-gray-600'}`}>
+                                        className={`text-[7px] px-1.5 py-0.5 rounded border font-medium ${shAutonomyHistoryExpanded[rule.id] ? 'bg-white border-gray-300 text-gray-700' : 'border-gray-200 bg-white text-gray-400 hover:text-gray-600'}`}>
                                         {shAutonomyHistoryExpanded[rule.id] ? 'History ▲' : '📈 History'}
                                       </button>
                                     </>
@@ -15341,7 +15341,7 @@ export default function AdminWalletDashboard() {
                                     </button>
                                     <button
                                       onClick={closeTuning}
-                                      className="text-[9px] px-2 py-0.5 border border-gray-200 hover:bg-gray-50 text-gray-500 rounded">
+                                      className="text-[9px] px-2 py-0.5 border border-gray-200 hover:bg-white text-gray-500 rounded">
                                       Cancel
                                     </button>
                                     <span className="text-[8px] text-gray-400 ml-1">Every change is audited — reason required</span>
@@ -15377,7 +15377,7 @@ export default function AdminWalletDashboard() {
                               {shAutonomyHistoryExpanded[rule.id] && shAutonomyHistory[rule.id] && (() => {
                                 const h = shAutonomyHistory[rule.id];
                                 return (
-                                  <div className="border border-gray-200 rounded bg-gray-50 p-2 mt-1 space-y-1.5">
+                                  <div className="border border-gray-200 rounded bg-white p-2 mt-1 space-y-1.5">
                                     <div className="text-[9px] font-bold text-gray-700">📈 Autonomy History — {h.rule?.name}</div>
                                     <div className="text-[8px] text-gray-500 mb-1">Current level: <span className="font-bold text-gray-800">L{h.rule?.autonomy_level ?? '?'}</span></div>
                                     {h.promotions?.length === 0 && h.demotions?.length === 0 && (
@@ -15456,7 +15456,7 @@ export default function AdminWalletDashboard() {
                                           )}
                                         </div>
                                       ) : (
-                                        <div className="h-2 bg-gray-100 rounded" />
+                                        <div className="h-2 bg-white rounded" />
                                       )}
                                       <div className="flex gap-2 mt-0.5 flex-wrap">
                                         {es.executed > 0 && <span className="text-[7px] text-emerald-600">⚡ {es.executed} exec</span>}
@@ -15549,7 +15549,7 @@ export default function AdminWalletDashboard() {
                                   isFailed ? 'bg-red-50 border-red-100' :
                                   isNotifyOnly ? 'bg-blue-50 border-blue-100' :
                                   isPendingManual ? 'bg-violet-50 border-violet-200' :
-                                  'bg-gray-50 border-gray-100'
+                                  'bg-white border-gray-100'
                                 }`}>
                                   <div className="flex items-start gap-1.5 p-1">
                                     <span className={`shrink-0 font-bold mt-0.5 ${
@@ -15642,7 +15642,7 @@ export default function AdminWalletDashboard() {
                                         </button>
                                         <button
                                           onClick={() => { setShFpReviewing(null); setShFpReason(''); }}
-                                          className="text-[8px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">
+                                          className="text-[8px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-white">
                                           Cancel
                                         </button>
                                         <span className="text-[7px] text-gray-400 ml-auto">{shFpReason.length} chars</span>
@@ -15698,14 +15698,14 @@ export default function AdminWalletDashboard() {
               )}
               {/* Delivery log table */}
               {deliveryLogLoading ? (
-                <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-8 bg-white animate-pulse rounded" />)}</div>
               ) : !(deliveryLogData?.deliveries?.length) ? (
                 <div className="text-xs text-gray-400 text-center py-8 border-2 border-dashed rounded-lg">No delivery records yet.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead>
-                      <tr className="bg-gray-50 text-gray-500 uppercase text-[10px]">
+                      <tr className="bg-white text-gray-500 uppercase text-[10px]">
                         <th className="px-2 py-2 text-left">Alert ID</th>
                         <th className="px-2 py-2 text-left">Type</th>
                         <th className="px-2 py-2 text-left">Severity</th>
@@ -15716,12 +15716,12 @@ export default function AdminWalletDashboard() {
                     </thead>
                     <tbody>
                       {deliveryLogData.deliveries.map((d: any) => (
-                        <tr key={d.id} className="border-t hover:bg-gray-50">
+                        <tr key={d.id} className="border-t hover:bg-white">
                           <td className="px-2 py-1.5 font-mono">{d.alert_id ?? "—"}</td>
                           <td className="px-2 py-1.5">{d.alert_type ?? "—"}</td>
                           <td className="px-2 py-1.5">
                             {d.severity && (
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.severity === 'critical' ? 'bg-red-100 text-red-700' : d.severity === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.severity === 'critical' ? 'bg-red-100 text-red-700' : d.severity === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-white text-gray-600'}`}>
                                 {d.severity.toUpperCase()}
                               </span>
                             )}
@@ -16084,7 +16084,7 @@ export default function AdminWalletDashboard() {
                   </div>
                   <div className="flex justify-end gap-2">
                     <button
-                      className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+                      className="px-4 py-2 text-sm border rounded hover:bg-white"
                       onClick={() => { setReverseModal(null); setReverseReason(""); setReverseResult(null); }}
                       disabled={reversePending}
                     >
@@ -16103,7 +16103,7 @@ export default function AdminWalletDashboard() {
               {reverseResult?.ok && (
                 <div className="flex justify-end">
                   <button
-                    className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+                    className="px-4 py-2 text-sm border rounded hover:bg-white"
                     onClick={() => { setReverseModal(null); setReverseResult(null); setReverseReason(""); }}
                   >
                     סגור

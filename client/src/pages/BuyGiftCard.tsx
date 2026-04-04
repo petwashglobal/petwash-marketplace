@@ -441,7 +441,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
           </form>
 
           {/* Legal Notice */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
+          <div className="mt-8 p-4 bg-white rounded-lg text-sm text-gray-600">
             <p className="font-semibold mb-2">
               {t('giftCards.terms', language)}
             </p>

@@ -148,7 +148,7 @@ export function ReviewSubmitDialog({
 
         <div className="space-y-6 py-4">
           {/* Overall Rating - Required */}
-          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+          <div className="p-4 bg-purple-50 dark:bg-white rounded-lg">
             <StarRating
               category="overall"
               label="Overall Rating *"

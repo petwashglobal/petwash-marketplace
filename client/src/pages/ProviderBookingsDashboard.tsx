@@ -72,7 +72,7 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; labelHe: string; col
   in_progress: { label: 'In Progress', labelHe: 'בביצוע', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
   completed: { label: 'Completed', labelHe: 'הושלם', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
   reviewed: { label: 'Reviewed', labelHe: 'נבדק', color: 'text-teal-700', bgColor: 'bg-teal-100' },
-  cancelled: { label: 'Cancelled', labelHe: 'בוטל', color: 'text-gray-700', bgColor: 'bg-gray-100' },
+  cancelled: { label: 'Cancelled', labelHe: 'בוטל', color: 'text-gray-700', bgColor: 'bg-white' },
   disputed: { label: 'Disputed', labelHe: 'במחלוקת', color: 'text-rose-700', bgColor: 'bg-rose-100' },
 };
 
@@ -277,9 +277,9 @@ function LoadingSkeleton() {
       {[1, 2, 3].map((i) => (
         <Card key={i} className="animate-pulse">
           <CardContent className="p-6">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-4 bg-white rounded w-1/3 mb-4"></div>
+            <div className="h-3 bg-white rounded w-1/2 mb-2"></div>
+            <div className="h-3 bg-white rounded w-1/4"></div>
           </CardContent>
         </Card>
       ))}
@@ -297,7 +297,7 @@ function EmptyState({ type, isHebrew }: { type: string; isHebrew: boolean }) {
 
   return (
     <div className="text-center py-12">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white flex items-center justify-center">
         <Dog className="w-8 h-8 text-gray-400" />
       </div>
       <p className="text-gray-500">
@@ -393,7 +393,7 @@ function PendingBookingCard({
         </div>
 
         {booking.ownerMessage && (
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="bg-white rounded-lg p-3 mb-4">
             <div className="flex items-start gap-2">
               <MessageSquare className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-gray-600">{booking.ownerMessage}</p>

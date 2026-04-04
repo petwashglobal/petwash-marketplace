@@ -264,7 +264,7 @@ export function ReceiptCameraUpload({ onDataExtracted, language = 'en' }: Receip
             <p className="font-bold text-yellow-800 dark:text-yellow-200">
               {isHebrew ? '⚠️ שגיאה בסריקה' : '⚠️ Scanning Error'}
             </p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{error}</p>
+            <p className="text-sm text-gray-700 dark:text-black mt-1">{error}</p>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
               {isHebrew 
                 ? 'אנא ודא שהקבלה ברורה ומוארת היטב, ונסה שוב.'
@@ -276,7 +276,7 @@ export function ReceiptCameraUpload({ onDataExtracted, language = 'en' }: Receip
 
       {/* Info */}
       {!preview && !error && (
-        <div className="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+        <div className="text-center p-4 bg-white dark:bg-white rounded-lg border border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {isHebrew 
               ? '💡 צלם את הקבלה כדי למלא אוטומטית את הטופס'

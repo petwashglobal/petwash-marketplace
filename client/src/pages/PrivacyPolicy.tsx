@@ -121,7 +121,7 @@ export default function PrivacyPolicy() {
                 <div className="overflow-x-auto">
                   <table className="text-sm w-full border-collapse mt-2">
                     <thead>
-                      <tr className="bg-gray-50">
+                      <tr className="bg-white">
                         <th className="border border-gray-200 px-3 py-2 text-right">ספק</th>
                         <th className="border border-gray-200 px-3 py-2 text-right">מטרה</th>
                         <th className="border border-gray-200 px-3 py-2 text-right">מדינה</th>

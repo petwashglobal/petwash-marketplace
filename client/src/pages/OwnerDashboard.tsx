@@ -64,8 +64,8 @@ export default function OwnerDashboard() {
             <div className="flex items-center luxury-gap-sm">
               <LanguageSwitcher compact={true} showFlag={true} />
               
-              <Button className="relative p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all" data-testid="button-notifications">
-                <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <Button className="relative p-3 hover:bg-white dark:hover:bg-white rounded-xl transition-all" data-testid="button-notifications">
+                <Bell className="h-5 w-5 text-gray-700 dark:text-black" />
                 <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full"></span>
               </Button>
               
@@ -74,7 +74,7 @@ export default function OwnerDashboard() {
                   {user?.email?.charAt(0).toUpperCase()}
                 </div>
                 <div className="text-sm">
-                  <p className="font-semibold text-gray-900 dark:text-white">{user?.displayName || user?.email}</p>
+                  <p className="font-semibold text-gray-900 dark:text-black">{user?.displayName || user?.email}</p>
                   <p className="luxury-text-small">{isHebrew ? 'בעל חיית מחמד' : 'Pet Owner'}</p>
                 </div>
               </div>
@@ -211,7 +211,7 @@ export default function OwnerDashboard() {
               <span>{isHebrew ? `עד ${mockLoyaltyData.nextTier}` : `To ${mockLoyaltyData.nextTier}`}</span>
               <span>{mockLoyaltyData.pointsToNext} {isHebrew ? 'נקודות נותרו' : 'points to go'}</span>
             </div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-3 bg-white dark:bg-white rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-[#000000] to-[#333333] rounded-full transition-all duration-500"
                 style={{ width: `${(mockLoyaltyData.points / (mockLoyaltyData.points + mockLoyaltyData.pointsToNext)) * 100}%` }}
@@ -551,7 +551,7 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
       <div className="flex flex-col items-center text-center mb-4">
         <div className="relative mb-4">
           <div className="h-24 w-24 rounded-full luxury-gradient-gold p-1 luxury-shadow-md">
-            <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+            <div className="h-full w-full rounded-full bg-white dark:bg-white flex items-center justify-center">
               <PawPrint className="h-12 w-12 text-[#333333] dark:text-[#FFFFFF]" />
             </div>
           </div>
@@ -573,7 +573,7 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
 function MessagePreview({ message, isHebrew }: any) {
   return (
     <div 
-      className={`flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl cursor-pointer transition-all ${!message.isRead ? 'bg-white dark:bg-amber-900/20' : ''}`}
+      className={`flex items-center gap-4 p-4 hover:bg-white dark:hover:bg-white rounded-xl cursor-pointer transition-all ${!message.isRead ? 'bg-white dark:bg-amber-900/20' : ''}`}
       data-testid={`message-${message.id}`}
     >
       <div className="h-12 w-12 rounded-full luxury-gradient-gold flex items-center justify-center text-white font-bold luxury-shadow-md">

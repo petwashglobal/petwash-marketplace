@@ -120,7 +120,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending:    "bg-yellow-100 text-yellow-700",
   sent:       "bg-blue-100 text-blue-700",
   converted:  "bg-emerald-100 text-emerald-700",
-  suppressed: "bg-gray-100 text-gray-500",
+  suppressed: "bg-white text-gray-500",
 };
 
 // ── Tab navigation ───────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ function RulesTab() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-bold text-gray-800">{rule.ruleKey}</span>
-                  <Badge className={`text-[10px] px-2 py-0.5 ${rule.enabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                  <Badge className={`text-[10px] px-2 py-0.5 ${rule.enabled ? "bg-emerald-100 text-emerald-700" : "bg-white text-gray-500"}`}>
                     {rule.enabled ? "פעיל" : "כבוי"}
                   </Badge>
                   <Badge className="text-[10px] px-2 py-0.5 bg-[#C5A55A]/10 text-[#7A5C1E]">
@@ -227,7 +227,7 @@ function RulesTab() {
                   ? <Badge className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 border-0 gap-0.5">
                       <ShieldCheck className="w-2.5 h-2.5" /> מחומש
                     </Badge>
-                  : <Badge className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-400 border-0 gap-0.5">
+                  : <Badge className="text-[9px] px-1.5 py-0.5 bg-white text-gray-400 border-0 gap-0.5">
                       <ShieldOff className="w-2.5 h-2.5" /> לא מחומש
                     </Badge>
                 }
@@ -583,7 +583,7 @@ function ConfidenceBar({ value }: { value: number }) {
   const reached = capped >= WINNER_CONFIDENCE;
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-white overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${reached ? 'bg-emerald-500' : 'bg-blue-400'}`}
           style={{ width: `${capped}%` }}
@@ -714,14 +714,14 @@ function ExperimentDecisionsPanel() {
                       מנצח זוהה — ממתין לקידום
                     </Badge>
                   ) : (
-                    <Badge className="bg-gray-50 text-gray-400 border-0 text-[10px]">בתהליך</Badge>
+                    <Badge className="bg-white text-gray-400 border-0 text-[10px]">בתהליך</Badge>
                   )}
                 </div>
               </div>
 
               {/* Phase 6.14: Auto-promote eligibility progress (only shown when winner exists + not yet promoted) */}
               {decision?.winnerVariant && !isPromoted && (
-                <div className="mb-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+                <div className="mb-3 p-2.5 bg-white rounded-lg border border-gray-100 space-y-2">
                   <p className="text-[10px] font-semibold text-gray-500 mb-1">קריטריוני קידום אוטומטי</p>
 
                   {/* Confidence bar: need 97% */}
@@ -732,7 +732,7 @@ function ExperimentDecisionsPanel() {
                         {confidencePct !== null ? `${confidencePct.toFixed(1)}%` : '—'} / 97%
                       </span>
                     </div>
-                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-white rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${(confidencePct ?? 0) >= 97 ? 'bg-emerald-500' : 'bg-amber-400'}`}
                         style={{ width: `${Math.min(((confidencePct ?? 0) / 97) * 100, 100)}%` }}
@@ -748,7 +748,7 @@ function ExperimentDecisionsPanel() {
                         {runtimeDays !== null ? `${runtimeDays} ימים` : '—'} / 14 ימים
                       </span>
                     </div>
-                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-white rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${(runtimeDays ?? 0) >= 14 ? 'bg-emerald-500' : 'bg-blue-400'}`}
                         style={{ width: `${Math.min(((runtimeDays ?? 0) / 14) * 100, 100)}%` }}
@@ -1088,7 +1088,7 @@ function WinbackTab() {
                       <span className="font-bold text-gray-700 capitalize">{ch === 'whatsapp' ? 'WhatsApp' : 'SMS'}</span>
                       <span className="text-[10px] text-gray-400">תקרה: {cap}/יום</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-white overflow-hidden">
                       <div
                         className={`h-full rounded-full ${(stat?.today_sent ?? 0) >= cap ? 'bg-red-400' : 'bg-blue-400'}`}
                         style={{ width: `${Math.min(((stat?.today_sent ?? 0) / cap) * 100, 100)}%` }}
@@ -1216,7 +1216,7 @@ function WinbackTab() {
                   </tr>
                 ))}
                 {/* Totals row */}
-                <tr className="bg-gray-50 border-t border-gray-200 font-bold text-gray-700">
+                <tr className="bg-white border-t border-gray-200 font-bold text-gray-700">
                   <td className="py-2 pr-2 text-xs">סה״כ</td>
                   <td className="py-2 text-center text-xs font-mono">
                     {rows.reduce((s, r) => s + r.conversions, 0) || '—'}
@@ -1251,7 +1251,7 @@ function WinbackTab() {
         <div className="space-y-2">
           {recent.map(entry => (
             <div key={entry.id} className="flex items-start gap-3 py-1.5 border-b border-gray-50 last:border-0">
-              <Badge className={`text-[10px] px-2 py-0.5 shrink-0 ${STATUS_COLOR[entry.status] ?? "bg-gray-100 text-gray-500"}`}>
+              <Badge className={`text-[10px] px-2 py-0.5 shrink-0 ${STATUS_COLOR[entry.status] ?? "bg-white text-gray-500"}`}>
                 {entry.status}
               </Badge>
               <div className="flex-1 min-w-0">
@@ -1473,7 +1473,7 @@ function OpsTab() {
               className={`text-right rounded-lg border px-3 py-2 text-[11px] transition-colors ${
                 activeScenario === s.id
                   ? 'bg-[#C5A55A]/10 border-[#C5A55A] text-[#C5A55A]'
-                  : 'bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100'
+                  : 'bg-white border-gray-100 text-gray-600 hover:bg-white'
               }`}
             >
               {proofMut.isPending && activeScenario === s.id
@@ -1486,7 +1486,7 @@ function OpsTab() {
           ))}
         </div>
         {proofResult && (
-          <div className="mt-2 rounded-lg bg-gray-50 border border-gray-100 p-3">
+          <div className="mt-2 rounded-lg bg-white border border-gray-100 p-3">
             <p className="text-[10px] font-semibold text-gray-500 mb-1.5">
               תוצאת בדיקה: {activeScenario} · {new Date(proofResult.proofAt).toLocaleTimeString('he-IL')}
             </p>
@@ -1636,7 +1636,7 @@ export default function AdminLoyaltyRules() {
   const [tab, setTab] = useState<Tab>("rules");
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-2xl mx-auto" dir="rtl">
+    <div className="min-h-screen bg-white flex flex-col max-w-2xl mx-auto" dir="rtl">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 px-4 py-4">

@@ -106,7 +106,7 @@ function CompletenessBar({ score, breakdown }: { score: number; breakdown: Recor
         <p className="text-sm font-semibold text-gray-900">Profile Completeness</p>
         <span className={`text-sm font-bold ${score >= 80 ? 'text-green-600' : score >= 50 ? 'text-amber-600' : 'text-red-500'}`}>{score}%</span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
+      <div className="w-full bg-white rounded-full h-2 mb-3">
         <div className={`h-2 rounded-full transition-all duration-500 ${color}`} style={{ width: `${score}%` }} />
       </div>
       {incomplete.length > 0 && (
@@ -269,7 +269,7 @@ export default function POSProfile() {
             <span className="text-xs text-gray-400">{profile?.completedBookingsCount ?? 0} jobs</span>
           </div>
         </div>
-        <button onClick={() => setActiveTab('basic')} className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors">
+        <button onClick={() => setActiveTab('basic')} className="p-1.5 hover:bg-white rounded-xl transition-colors">
           <Edit3 className="w-4 h-4 text-gray-500" />
         </button>
       </div>
@@ -280,7 +280,7 @@ export default function POSProfile() {
       )}
 
       {/* Tabs */}
-      <div className="grid grid-cols-5 bg-gray-100 rounded-xl p-1 gap-0.5">
+      <div className="grid grid-cols-5 bg-white rounded-xl p-1 gap-0.5">
         {[
           { id: 'basic',        label: 'Basic' },
           { id: 'services',     label: 'Services' },
@@ -307,7 +307,7 @@ export default function POSProfile() {
               {AVAILABILITY_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setAvailabilityState(opt.value)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-start ${
-                    availabilityState === opt.value ? 'border-amber-300 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'
+                    availabilityState === opt.value ? 'border-amber-300 bg-amber-50' : 'border-gray-200 hover:bg-white'
                   }`}>
                   <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dot}`} />
                   <span className={`text-xs font-medium ${availabilityState === opt.value ? opt.color : 'text-gray-600'}`}>{opt.label}</span>
@@ -333,7 +333,7 @@ export default function POSProfile() {
               {LANGUAGES.map(lang => (
                 <button key={lang} onClick={() => toggleLanguage(lang)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    languages.includes(lang) ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    languages.includes(lang) ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-white'
                   }`}>
                   {lang}
                 </button>
@@ -350,7 +350,7 @@ export default function POSProfile() {
               {SERVICE_AREAS.map(area => (
                 <button key={area} onClick={() => toggleArea(area)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    serviceAreas.includes(area) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    serviceAreas.includes(area) ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-white'
                   }`}>
                   {area}
                 </button>
@@ -397,7 +397,7 @@ export default function POSProfile() {
                   className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${
                     acceptedPets.includes(value)
                       ? 'border-amber-300 bg-amber-50 text-amber-800'
-                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      : 'border-gray-200 text-gray-600 hover:bg-white'
                   }`}>
                   <Icon className="w-4 h-4" />
                   <span className="text-sm font-medium">{label}</span>
@@ -435,11 +435,11 @@ export default function POSProfile() {
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => setHasFencedYard(true)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasFencedYard === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasFencedYard === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-600 hover:bg-white'}`}>
                     Yes
                   </button>
                   <button onClick={() => setHasFencedYard(false)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasFencedYard === false ? 'bg-gray-500 text-white border-gray-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasFencedYard === false ? 'bg-gray-500 text-white border-gray-500' : 'border-gray-200 text-gray-600 hover:bg-white'}`}>
                     No
                   </button>
                 </div>
@@ -457,11 +457,11 @@ export default function POSProfile() {
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => setHasNoPetsAtHome(true)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasNoPetsAtHome === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasNoPetsAtHome === true ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-600 hover:bg-white'}`}>
                     Yes
                   </button>
                   <button onClick={() => setHasNoPetsAtHome(false)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasNoPetsAtHome === false ? 'bg-gray-500 text-white border-gray-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${hasNoPetsAtHome === false ? 'bg-gray-500 text-white border-gray-500' : 'border-gray-200 text-gray-600 hover:bg-white'}`}>
                     No
                   </button>
                 </div>
@@ -515,7 +515,7 @@ export default function POSProfile() {
                 ].map(opt => (
                   <button key={opt.value} onClick={() => setAvailabilityState(opt.value)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-start transition-all ${
-                      availabilityState === opt.value ? 'border-amber-300 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'
+                      availabilityState === opt.value ? 'border-amber-300 bg-amber-50' : 'border-gray-200 hover:bg-white'
                     }`}>
                     <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dot}`} />
                     <span className="text-xs font-medium text-gray-700">{opt.label}</span>
@@ -534,7 +534,7 @@ export default function POSProfile() {
                 {DAYS.map(({ key, short }) => {
                   const d = workingHours[key] ?? { active: false };
                   return (
-                    <div key={key} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${d.active ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50'}`}>
+                    <div key={key} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${d.active ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-white'}`}>
                       <span className="text-xs font-semibold text-gray-600 w-8 shrink-0">{short}</span>
                       <button onClick={() => updateDayHours(key, 'active', !d.active)}
                         className={`w-8 h-5 rounded-full transition-colors shrink-0 ${d.active ? 'bg-blue-500' : 'bg-gray-300'}`}>
@@ -565,12 +565,12 @@ export default function POSProfile() {
               {/* Month nav */}
               <div className="flex items-center justify-between mb-3">
                 <button onClick={() => { const d = new Date(calendarYear, calendarMonth - 1, 1); setCalendarMonth(d.getMonth()); setCalendarYear(d.getFullYear()); }}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                  className="p-1.5 hover:bg-white rounded-lg transition-colors">
                   <ChevronLeft className="w-4 h-4 text-gray-500" />
                 </button>
                 <p className="text-xs font-semibold text-gray-700">{monthLabel}</p>
                 <button onClick={() => { const d = new Date(calendarYear, calendarMonth + 1, 1); setCalendarMonth(d.getMonth()); setCalendarYear(d.getFullYear()); }}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                  className="p-1.5 hover:bg-white rounded-lg transition-colors">
                   <ChevronRightIcon className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -650,7 +650,7 @@ export default function POSProfile() {
                   <p className="text-[10px] text-gray-400 mt-0.5">out of 100</p>
                 </div>
               ) : (
-                <div className="ms-auto px-2.5 py-1 bg-gray-100 rounded-full text-[10px] text-gray-500 font-medium">
+                <div className="ms-auto px-2.5 py-1 bg-white rounded-full text-[10px] text-gray-500 font-medium">
                   Not enough data yet
                 </div>
               )}
@@ -659,7 +659,7 @@ export default function POSProfile() {
             {/* Metric chips */}
             <div className="grid grid-cols-2 gap-2">
               {/* Acceptance rate */}
-              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.acceptanceRatePct != null ? 'bg-blue-50 border border-blue-100' : 'bg-gray-50 border border-gray-100'}`}>
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.acceptanceRatePct != null ? 'bg-blue-50 border border-blue-100' : 'bg-white border border-gray-100'}`}>
                 <UserCheck className={`w-4 h-4 shrink-0 ${trustStats?.acceptanceRatePct != null ? 'text-blue-500' : 'text-gray-300'}`} />
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Acceptance rate</p>
@@ -670,7 +670,7 @@ export default function POSProfile() {
               </div>
 
               {/* Completion rate */}
-              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.completionRatePct != null ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'}`}>
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.completionRatePct != null ? 'bg-green-50 border border-green-100' : 'bg-white border border-gray-100'}`}>
                 <CheckSquare className={`w-4 h-4 shrink-0 ${trustStats?.completionRatePct != null ? 'text-green-500' : 'text-gray-300'}`} />
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Completion rate</p>
@@ -681,7 +681,7 @@ export default function POSProfile() {
               </div>
 
               {/* Response rate */}
-              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.responseRatePct != null ? 'bg-purple-50 border border-purple-100' : 'bg-gray-50 border border-gray-100'}`}>
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.responseRatePct != null ? 'bg-purple-50 border border-purple-100' : 'bg-white border border-gray-100'}`}>
                 <Clock className={`w-4 h-4 shrink-0 ${trustStats?.responseRatePct != null ? 'text-purple-500' : 'text-gray-300'}`} />
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Response rate</p>
@@ -697,7 +697,7 @@ export default function POSProfile() {
                   ? trustStats.cancellationRatePct > 10 ? 'bg-red-50 border border-red-100'
                   : trustStats.cancellationRatePct > 5 ? 'bg-amber-50 border border-amber-100'
                   : 'bg-green-50 border border-green-100'
-                  : 'bg-gray-50 border border-gray-100'
+                  : 'bg-white border border-gray-100'
               }`}>
                 <AlertTriangle className={`w-4 h-4 shrink-0 ${
                   trustStats?.cancellationRatePct != null
@@ -751,7 +751,7 @@ export default function POSProfile() {
 
           {/* Background check — real status from API */}
           <div className={`bg-white border rounded-xl p-4 flex items-center gap-3 ${profile?.backgroundCheckStatus === 'approved' ? 'border-green-200' : 'border-gray-200'}`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${profile?.backgroundCheckStatus === 'approved' ? 'bg-green-50' : 'bg-gray-50'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${profile?.backgroundCheckStatus === 'approved' ? 'bg-green-50' : 'bg-white'}`}>
               <Shield className={`w-5 h-5 ${profile?.backgroundCheckStatus === 'approved' ? 'text-green-600' : 'text-gray-400'}`} />
             </div>
             <div className="flex-1 min-w-0">
@@ -761,7 +761,7 @@ export default function POSProfile() {
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
               profile?.backgroundCheckStatus === 'approved' ? 'bg-green-100 text-green-700' :
               profile?.backgroundCheckStatus === 'pending' ? 'bg-amber-100 text-amber-700' :
-              'bg-gray-100 text-gray-500'
+              'bg-white text-gray-500'
             }`}>
               {bgCheckInfo?.label ?? 'Not Started'}
             </span>
@@ -769,7 +769,7 @@ export default function POSProfile() {
 
           {/* Premium provider badge — based on real job count */}
           <div className={`bg-white border rounded-xl p-4 flex items-center gap-3 ${(profile?.completedBookingsCount ?? 0) >= 100 ? 'border-amber-200' : 'border-gray-200'}`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${(profile?.completedBookingsCount ?? 0) >= 100 ? 'bg-amber-50' : 'bg-gray-50'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${(profile?.completedBookingsCount ?? 0) >= 100 ? 'bg-amber-50' : 'bg-white'}`}>
               <Award className={`w-5 h-5 ${(profile?.completedBookingsCount ?? 0) >= 100 ? 'text-amber-600' : 'text-gray-400'}`} />
             </div>
             <div className="flex-1 min-w-0">
@@ -781,7 +781,7 @@ export default function POSProfile() {
               </p>
             </div>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-              (profile?.completedBookingsCount ?? 0) >= 100 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+              (profile?.completedBookingsCount ?? 0) >= 100 ? 'bg-amber-100 text-amber-700' : 'bg-white text-gray-500'
             }`}>
               {(profile?.completedBookingsCount ?? 0) >= 100 ? 'Earned' : 'Locked'}
             </span>
@@ -789,7 +789,7 @@ export default function POSProfile() {
 
           {/* Top Rated — based on real rating */}
           <div className={`bg-white border rounded-xl p-4 flex items-center gap-3 ${(profile?.ratingAvg ?? 0) >= 4.8 && (profile?.ratingCount ?? 0) >= 10 ? 'border-yellow-200' : 'border-gray-200'}`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${(profile?.ratingAvg ?? 0) >= 4.8 ? 'bg-yellow-50' : 'bg-gray-50'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${(profile?.ratingAvg ?? 0) >= 4.8 ? 'bg-yellow-50' : 'bg-white'}`}>
               <Star className={`w-5 h-5 ${(profile?.ratingAvg ?? 0) >= 4.8 && (profile?.ratingCount ?? 0) >= 10 ? 'text-yellow-500 fill-yellow-400' : 'text-gray-400'}`} />
             </div>
             <div className="flex-1 min-w-0">
@@ -797,7 +797,7 @@ export default function POSProfile() {
               <p className="text-xs text-gray-500">Requires 4.8+ rating with 10+ reviews</p>
             </div>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-              (profile?.ratingAvg ?? 0) >= 4.8 && (profile?.ratingCount ?? 0) >= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
+              (profile?.ratingAvg ?? 0) >= 4.8 && (profile?.ratingCount ?? 0) >= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-white text-gray-500'
             }`}>
               {(profile?.ratingAvg ?? 0) >= 4.8 && (profile?.ratingCount ?? 0) >= 10 ? 'Earned' : 'Locked'}
             </span>
@@ -849,7 +849,7 @@ export default function POSProfile() {
                             <div key={star} className="flex items-center gap-2">
                               <span className="text-[10px] text-gray-500 w-4 text-right">{star}</span>
                               <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400 shrink-0" />
-                              <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                              <div className="flex-1 bg-white rounded-full h-1.5">
                                 <div className="h-1.5 bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                               </div>
                               <span className="text-[10px] text-gray-400 w-4">{ct}</span>

@@ -123,7 +123,7 @@ export default function AccountingDashboard() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-black flex items-center gap-3">
               <Calculator className="h-8 w-8 text-pink-500" />
               {isHebrew ? 'הנהלת חשבונות ותאימות' : 'Accounting & Compliance'}
             </h1>
@@ -418,7 +418,7 @@ export default function AccountingDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>
@@ -429,7 +429,7 @@ export default function AccountingDashboard() {
                         <span className="text-sm text-green-600 font-medium">{isHebrew ? 'תואם' : 'Compliant'}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>
@@ -440,7 +440,7 @@ export default function AccountingDashboard() {
                         <span className="text-sm text-green-600 font-medium">{isHebrew ? 'תואם' : 'Compliant'}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>
@@ -451,7 +451,7 @@ export default function AccountingDashboard() {
                         <span className="text-sm text-green-600 font-medium">{isHebrew ? 'תואם' : 'Compliant'}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>
@@ -462,7 +462,7 @@ export default function AccountingDashboard() {
                         <span className="text-sm text-green-600 font-medium">{isHebrew ? 'תואם' : 'Compliant'}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>

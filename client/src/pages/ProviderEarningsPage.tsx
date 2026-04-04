@@ -147,20 +147,20 @@ export default function ProviderEarningsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-white">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      <div className="bg-white dark:bg-white border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate("/provider/dashboard")}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-full hover:bg-white dark:hover:bg-white transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-black" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-black flex items-center gap-2">
               <Wallet className="w-5 h-5" />
               My Earnings
             </h1>
@@ -184,9 +184,9 @@ export default function ProviderEarningsPage() {
               <p className="text-3xl font-bold mt-1">{formatILS(earnings.totalEarnings)}</p>
               <p className="text-xs opacity-70 mt-1">{earnings.completedCount} completed bookings</p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <div className="bg-white dark:bg-white rounded-xl p-4 shadow-sm">
               <p className="text-xs text-gray-500">This Month</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-xl font-bold text-gray-900 dark:text-black mt-1">
                 {formatILS(earnings.thisMonthEarnings)}
               </p>
               {earnings.lastMonthEarnings > 0 && (
@@ -195,7 +195,7 @@ export default function ProviderEarningsPage() {
                 </p>
               )}
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <div className="bg-white dark:bg-white rounded-xl p-4 shadow-sm">
               <p className="text-xs text-gray-500">Pending Payout</p>
               <p className="text-xl font-bold text-yellow-600 mt-1">
                 {formatILS(earnings.pendingPayouts)}
@@ -216,7 +216,7 @@ export default function ProviderEarningsPage() {
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeFilter === tab.id
                   ? "bg-blue-600 text-white"
-                  : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50"
+                  : "bg-white dark:bg-white text-gray-600 dark:text-black border border-gray-200 dark:border-gray-700 hover:bg-white"
               }`}
               onClick={() => setActiveFilter(tab.id)}
             >
@@ -233,7 +233,7 @@ export default function ProviderEarningsPage() {
             ))}
           </div>
         ) : filteredPayouts.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-10 text-center">
+          <div className="bg-white dark:bg-white rounded-xl p-10 text-center">
             <Wallet className="w-10 h-10 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-500">No bookings in this category</p>
           </div>
@@ -242,11 +242,11 @@ export default function ProviderEarningsPage() {
             {filteredPayouts.map((p, idx) => (
               <div
                 key={`${p.bookingNumber}-${idx}`}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    <p className="font-semibold text-gray-900 dark:text-black text-sm">
                       {p.serviceType || "Booking"}
                     </p>
                     <p className="text-xs text-gray-400">#{p.bookingNumber}</p>
@@ -258,8 +258,8 @@ export default function ProviderEarningsPage() {
                 </div>
 
                 {/* Fee breakdown */}
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 text-xs space-y-1 mb-3">
-                  <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                <div className="bg-white dark:bg-white rounded-lg px-3 py-2 text-xs space-y-1 mb-3">
+                  <div className="flex justify-between text-gray-600 dark:text-black">
                     <span>Gross (customer paid)</span>
                     <span className="font-medium">{formatILS(p.gross)}</span>
                   </div>
@@ -267,7 +267,7 @@ export default function ProviderEarningsPage() {
                     <span>Platform fee</span>
                     <span>− {formatILS(p.platformFee)}</span>
                   </div>
-                  <div className="border-t border-gray-200 dark:border-gray-600 pt-1 flex justify-between font-semibold text-gray-900 dark:text-white">
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-1 flex justify-between font-semibold text-gray-900 dark:text-black">
                     <span>You receive</span>
                     <span className="text-emerald-600">{formatILS(p.amount)}</span>
                   </div>

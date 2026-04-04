@@ -340,7 +340,7 @@ export default function SitterDetail() {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                       <Users className="w-8 h-8 text-purple-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-2">
                       {isHebrew ? 'התחבר כדי להזמין' : 'Sign In to Book'}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -366,7 +366,7 @@ export default function SitterDetail() {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                       <Dog className="w-8 h-8 text-purple-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-2">
                       {isHebrew ? 'הוסף את חיית המחמד שלך' : 'Add Your Pet First'}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -417,7 +417,7 @@ export default function SitterDetail() {
                             </div>
                           )}
                           <div>
-                            <h4 className="font-bold text-gray-900 dark:text-white">{pet.name}</h4>
+                            <h4 className="font-bold text-gray-900 dark:text-black">{pet.name}</h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400">{pet.breed}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-500">{pet.weight}</p>
                           </div>

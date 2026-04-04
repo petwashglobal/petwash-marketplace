@@ -329,10 +329,10 @@ export default function StandaloneDivisions() {
           {/* <div className="mt-12 text-center">
             <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
               <CardContent className="pt-8 pb-8">
-                <h3 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
+                <h3 className="text-2xl font-bold mb-4 text-gray-800 dark:text-black">
                   {t('standaloneDivisions.tryFreeDivision', language)}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                <p className="text-gray-600 dark:text-black mb-6">
                   {t('standaloneDivisions.freeDivisionDesc', language)}
                 </p>
                 <Link href="/plush-lab">

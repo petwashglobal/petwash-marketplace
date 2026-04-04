@@ -275,7 +275,7 @@ export default function EmployeeExpenses() {
                             type="number"
                             step="0.01"
                             placeholder="Auto-calculated"
-                            className="luxury-glass-minimal h-14 bg-gray-50"
+                            className="luxury-glass-minimal h-14 bg-white"
                             readOnly
                           />
                         </FormControl>
@@ -429,21 +429,21 @@ const getStatusBadge = (status: string) => {
   switch (status) {
     case "pending":
       return (
-        <Badge variant="outline" className="bg-white dark:bg-black text-black dark:text-white border-2">
+        <Badge variant="outline" className="bg-white dark:bg-black text-black dark:text-black border-2">
           <Clock className="h-3 w-3 mr-1" />
           Pending
         </Badge>
       );
     case "approved":
       return (
-        <Badge variant="outline" className="bg-white dark:bg-black text-black dark:text-white border-2">
+        <Badge variant="outline" className="bg-white dark:bg-black text-black dark:text-black border-2">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           Approved
         </Badge>
       );
     case "rejected":
       return (
-        <Badge variant="outline" className="bg-white dark:bg-black text-black dark:text-white border-2">
+        <Badge variant="outline" className="bg-white dark:bg-black text-black dark:text-black border-2">
           <XCircle className="h-3 w-3 mr-1" />
           Rejected
         </Badge>

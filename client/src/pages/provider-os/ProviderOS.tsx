@@ -79,11 +79,11 @@ export default function ProviderOS() {
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Provider';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Top header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 h-14 flex items-center px-4 gap-3">
         <button
-          className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+          className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-white transition-colors"
           onClick={() => setSidebarOpen(true)}
         >
           <Menu className="w-5 h-5" />
@@ -107,7 +107,7 @@ export default function ProviderOS() {
                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
                     activePlatform === p.id
                       ? 'bg-amber-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white text-gray-600 hover:bg-white'
                   }`}
                 >
                   <Icon className="w-3 h-3" />
@@ -122,7 +122,7 @@ export default function ProviderOS() {
           <button
             onClick={() => setIsAvailable(!isAvailable)}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-              isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              isAvailable ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'
             }`}
           >
             <Power className="w-3 h-3" />
@@ -131,7 +131,7 @@ export default function ProviderOS() {
 
           <button
             onClick={() => navigate('notifications')}
-            className="relative p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors"
+            className="relative p-1.5 text-gray-500 hover:bg-white rounded-md transition-colors"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
@@ -165,7 +165,7 @@ export default function ProviderOS() {
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5 ${
                     isActive
                       ? 'bg-amber-50 text-amber-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      : 'text-gray-600 hover:bg-white hover:text-gray-900'
                   }`}
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-600' : ''}`} />
@@ -199,7 +199,7 @@ export default function ProviderOS() {
                   <p className="text-xs text-gray-500">Provider OS</p>
                   <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
                 </div>
-                <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-md hover:bg-gray-100">
+                <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-md hover:bg-white">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
@@ -212,7 +212,7 @@ export default function ProviderOS() {
                       key={item.id}
                       onClick={() => navigate(item.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mb-0.5 ${
-                        isActive ? 'bg-amber-50 text-amber-700' : 'text-gray-700 hover:bg-gray-50'
+                        isActive ? 'bg-amber-50 text-amber-700' : 'text-gray-700 hover:bg-white'
                       }`}
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-600' : ''}`} />
@@ -303,7 +303,7 @@ export default function ProviderOS() {
                       key={item.id}
                       onClick={() => navigate(item.id)}
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors touch-manipulation ${
-                        isActive ? 'bg-amber-50' : 'hover:bg-gray-50'
+                        isActive ? 'bg-amber-50' : 'hover:bg-white'
                       }`}
                     >
                       <Icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-600'}`} />

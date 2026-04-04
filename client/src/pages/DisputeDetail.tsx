@@ -75,7 +75,7 @@ const DISPUTE_STATUS_CONFIG: Record<
   open:       { labelEn: 'Open',       labelHe: 'פתוח',       className: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
   in_review:  { labelEn: 'In Review',  labelHe: 'בבדיקה',     className: 'bg-blue-100 text-blue-700 border-blue-300' },
   resolved:   { labelEn: 'Resolved',   labelHe: 'נפתר',       className: 'bg-green-100 text-green-700 border-green-300' },
-  dismissed:  { labelEn: 'Dismissed',  labelHe: 'נדחה',       className: 'bg-gray-100 text-gray-500 border-gray-300' },
+  dismissed:  { labelEn: 'Dismissed',  labelHe: 'נדחה',       className: 'bg-white text-gray-500 border-gray-300' },
   escalated:  { labelEn: 'Escalated',  labelHe: 'הועלה לדרגה', className: 'bg-red-100 text-red-700 border-red-300' },
 };
 
@@ -98,7 +98,7 @@ export default function DisputeDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-xl mx-auto space-y-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-40 rounded-xl" />
@@ -111,13 +111,13 @@ export default function DisputeDetail() {
   if (isError || !data) {
     return (
       <div
-        className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4"
+        className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
         dir={isHebrew ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
             <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-300 font-medium">
+            <p className="text-gray-600 dark:text-black font-medium">
               {isHebrew
                 ? 'התלונה לא נמצאה או שאין לך הרשאה לצפות בה.'
                 : 'Dispute not found or access denied.'}
@@ -140,14 +140,14 @@ export default function DisputeDetail() {
   const statusCfg = DISPUTE_STATUS_CONFIG[data.status] ?? {
     labelEn: data.status,
     labelHe: data.status,
-    className: 'bg-gray-100 text-gray-600 border-gray-300',
+    className: 'bg-white text-gray-600 border-gray-300',
   };
 
   const locale = isHebrew ? 'he-IL' : 'en-IL';
 
   return (
     <div
-      className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6"
+      className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-6"
       dir={isHebrew ? 'rtl' : 'ltr'}
     >
       <div className="max-w-xl mx-auto">
@@ -168,7 +168,7 @@ export default function DisputeDetail() {
           <div>
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
-              <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+              <h1 className="text-xl font-bold text-gray-800 dark:text-black">
                 {data.caseRef}
               </h1>
             </div>
@@ -184,7 +184,7 @@ export default function DisputeDetail() {
         </div>
 
         {/* ── Dispute summary ─────────────────────────────────────────────── */}
-        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900 mb-4">
+        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white mb-4">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-red-500" />
@@ -220,7 +220,7 @@ export default function DisputeDetail() {
                 </p>
                 <div className="space-y-1">
                   {data.notes.map((n, i) => (
-                    <div key={i} className="text-sm text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
+                    <div key={i} className="text-sm text-gray-700 dark:text-black bg-white dark:bg-white rounded-lg px-3 py-2">
                       {n.authorName && (
                         <span className="font-medium me-1">{n.authorName}:</span>
                       )}
@@ -234,7 +234,7 @@ export default function DisputeDetail() {
         </Card>
 
         {/* ── Booking info ─────────────────────────────────────────────────── */}
-        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900 mb-4">
+        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white mb-4">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-blue-500" />
@@ -305,7 +305,7 @@ function Row({
       <span className="shrink-0 mt-0.5">{icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm text-gray-800 dark:text-gray-100 font-medium capitalize">{value}</p>
+        <p className="text-sm text-gray-800 dark:text-black font-medium capitalize">{value}</p>
       </div>
     </div>
   );

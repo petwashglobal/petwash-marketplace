@@ -119,20 +119,20 @@ export default function ProviderFeedbackDashboard() {
                     : "—"
                 }
                 label={isHebrew ? "דירוג ממוצע" : "Avg Rating"}
-                color="bg-yellow-50 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200"
+                color="bg-yellow-50 text-yellow-800 dark:bg-white dark:text-yellow-200"
               />
               <BigStat
                 value={data?.stats?.reviewCount ?? 0}
                 label={isHebrew ? "ביקורות" : "Reviews"}
-                color="bg-purple-50 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200"
+                color="bg-purple-50 text-purple-800 dark:bg-white dark:text-purple-200"
               />
               <BigStat
                 value={data?.stats?.flaggedCount ?? 0}
                 label={isHebrew ? "דיווחים" : "Flagged"}
                 color={
                   (data?.stats?.flaggedCount ?? 0) > 0
-                    ? "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200"
-                    : "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                    ? "bg-red-50 text-red-800 dark:bg-white dark:text-red-200"
+                    : "bg-green-50 text-green-800 dark:bg-white dark:text-green-200"
                 }
               />
             </div>
@@ -204,7 +204,7 @@ export default function ProviderFeedbackDashboard() {
                             )}
                           </div>
                           {review.text && (
-                            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                            <p className="text-sm text-gray-700 dark:text-black mt-1">
                               "{review.text}"
                             </p>
                           )}

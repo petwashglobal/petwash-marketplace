@@ -202,7 +202,7 @@ export default function EnterpriseFeaturesShowcase() {
                       <div key={source.name} className={`luxury-glass-panel luxury-hover-lift p-4 luxury-animate-fade-in luxury-delay-${index + 1}`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-gray-100">{source.name}</h4>
+                            <h4 className="font-semibold text-gray-900 dark:text-black">{source.name}</h4>
                             <p className="luxury-text-small mt-1">{source.capacity}</p>
                           </div>
                           <Badge variant={source.color as any}>{source.status}</Badge>

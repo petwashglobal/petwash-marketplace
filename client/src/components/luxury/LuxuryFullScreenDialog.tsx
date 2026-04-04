@@ -99,7 +99,7 @@ export function LuxuryFullScreenDialog({
                       "flex items-center justify-center",
                       "rounded-full",
                       "text-gray-600 hover:text-gray-900",
-                      "hover:bg-gray-100",
+                      "hover:bg-white",
                       "transition-all duration-200",
                       "focus:outline-none focus:ring-2 focus:ring-gray-300",
                       isRTL ? "left-6" : "right-6"

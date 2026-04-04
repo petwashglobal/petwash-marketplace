@@ -153,7 +153,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
           )}
 
           {!isLoading && !error && slotsForSelectedDate.length === 0 && (
-            <Card className="border-yellow-200 bg-white dark:bg-yellow-900/20">
+            <Card className="border-yellow-200 bg-white dark:bg-white">
               <CardContent className="p-4 space-y-3">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   No available slots for this date. Please select another day or send a custom request.
@@ -205,7 +205,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
       )}
 
       {selectedSlot && (
-        <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+        <Card className="border-green-200 bg-green-50 dark:bg-white">
           <CardContent className="p-4">
             <p className="text-sm text-green-800 dark:text-green-200">
               ✓ Selected: {new Date(selectedSlot.start).toLocaleDateString()} at {new Date(selectedSlot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

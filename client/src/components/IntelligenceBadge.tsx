@@ -18,7 +18,7 @@ interface IntelligenceBadgeProps {
 function trustColor(score: number) {
   if (score >= 75) return { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-600' };
   if (score >= 50) return { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', icon: 'text-amber-600' };
-  return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', icon: 'text-red-600' };
+  return { bg: 'bg-red-100 dark:bg-white', text: 'text-red-700 dark:text-red-300', icon: 'text-red-600' };
 }
 
 function TrustIcon({ score, className }: { score: number; className?: string }) {
@@ -68,7 +68,7 @@ export function IntelligenceBadge({
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                  'inline-flex items-center gap-1 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-white dark:text-blue-300',
                   isSmall ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-1',
                 )}
               >
@@ -136,7 +136,7 @@ export function IntelligencePanel({
                 <div
                   className={cn(
                     'h-2 rounded-full w-full transition-all',
-                    val.step <= currentStep ? 'bg-[#C6A664]' : 'bg-gray-200 dark:bg-gray-700',
+                    val.step <= currentStep ? 'bg-[#C6A664]' : 'bg-white dark:bg-white',
                   )}
                 />
                 {val.step === currentStep && (
@@ -180,7 +180,7 @@ function ScoreCard({
   const dash = (pct / 100) * circ;
 
   return (
-    <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40">
+    <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white dark:bg-white/40">
       <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
         <circle cx="24" cy="24" r={r} fill="none" strokeWidth="4" className={trackMap[color]} />
         <circle

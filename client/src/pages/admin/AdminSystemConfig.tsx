@@ -263,11 +263,11 @@ export default function AdminSystemConfig() {
               return (
                 <div
                   key={key}
-                  className={`flex items-start gap-4 p-4 bg-white hover:bg-gray-50 transition-colors ${
+                  className={`flex items-start gap-4 p-4 bg-white hover:bg-white transition-colors ${
                     isRisky ? 'border-l-4 border-l-amber-400' : ''
                   }`}
                 >
-                  <div className={`mt-0.5 p-2 rounded-lg ${isOn ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`mt-0.5 p-2 rounded-lg ${isOn ? 'bg-amber-100 text-amber-700' : 'bg-white text-gray-400'}`}>
                     {isOn ? <Icon className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -286,7 +286,7 @@ export default function AdminSystemConfig() {
                     onClick={() => toggleBool(key)}
                     disabled={patchMutation.isPending}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 mt-0.5 ${
-                      isOn ? 'bg-amber-500' : 'bg-gray-200'
+                      isOn ? 'bg-amber-500' : 'bg-white'
                     } ${patchMutation.isPending ? 'opacity-50' : ''}`}
                     role="switch"
                     aria-checked={isOn}
@@ -368,13 +368,13 @@ export default function AdminSystemConfig() {
         </button>
         {showAudit && meta.auditLog.length > 0 && (
           <div className="rounded-xl border border-gray-100 overflow-hidden text-xs font-mono">
-            <div className="grid grid-cols-4 gap-4 bg-gray-50 px-4 py-2 font-semibold text-gray-500 text-[11px] uppercase tracking-wider">
+            <div className="grid grid-cols-4 gap-4 bg-white px-4 py-2 font-semibold text-gray-500 text-[11px] uppercase tracking-wider">
               <span>Key</span><span>From</span><span>To</span><span>By / When</span>
             </div>
             {meta.auditLog.slice().reverse().map((entry, i) => (
               <div
                 key={i}
-                className="grid grid-cols-4 gap-4 px-4 py-2 border-t border-gray-100 text-gray-600 hover:bg-gray-50"
+                className="grid grid-cols-4 gap-4 px-4 py-2 border-t border-gray-100 text-gray-600 hover:bg-white"
               >
                 <span className="truncate">{entry.key}</span>
                 <span className="text-red-500">{String(entry.from)}</span>

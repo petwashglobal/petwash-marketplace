@@ -133,13 +133,13 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 <div
                   key={svc.key}
                   onClick={() => setSelectedService(svc.key)}
-                  className={`cursor-pointer luxury-glass-card p-4 transition-all luxury-hover-lift ${selectedService === svc.key ? 'ring-2 ring-purple-500 bg-purple-50/50 dark:bg-purple-900/20' : ''}`}
+                  className={`cursor-pointer luxury-glass-card p-4 transition-all luxury-hover-lift ${selectedService === svc.key ? 'ring-2 ring-purple-500 bg-purple-50/50 dark:bg-white' : ''}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2.5">
                       <span className="text-2xl">{svc.emoji}</span>
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{isHebrew ? svc.he : svc.en}</p>
+                        <p className="font-semibold text-gray-900 dark:text-black text-sm">{isHebrew ? svc.he : svc.en}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{svc.desc}</p>
                       </div>
                     </div>
@@ -159,10 +159,10 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
           <div className="space-y-6">
             <h2 className="luxury-heading-md">{isHebrew ? 'בחר תאריך ושעה' : 'Pick Date & Time'}</h2>
             {selectedSvc && (
-              <div className="luxury-glass-card p-4 flex items-center gap-3 bg-purple-50/50 dark:bg-purple-900/10">
+              <div className="luxury-glass-card p-4 flex items-center gap-3 bg-purple-50/50 dark:bg-white">
                 <span className="text-2xl">{selectedSvc.emoji}</span>
                 <div>
-                  <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
+                  <p className="font-semibold text-sm text-gray-900 dark:text-black">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
                   <p className="text-xs text-gray-500">{selectedSvc.duration} · ₪{selectedSvc.price}</p>
                 </div>
               </div>
@@ -178,7 +178,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                   <button
                     key={slot}
                     onClick={() => setSelectedTime(slot)}
-                    className={`py-2.5 rounded-xl text-sm font-medium transition-all ${selectedTime === slot ? 'bg-purple-600 text-white shadow-md' : 'luxury-glass-card hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300'}`}
+                    className={`py-2.5 rounded-xl text-sm font-medium transition-all ${selectedTime === slot ? 'bg-purple-600 text-white shadow-md' : 'luxury-glass-card hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-black'}`}
                   >
                     {slot}
                   </button>
@@ -202,7 +202,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 {pets.slice(0,3).map((pet: any) => (
                   <button key={pet.id} onClick={() => { setPetName(pet.name || ''); setPetBreed(pet.breed || ''); }} className="w-full luxury-glass-card p-3 flex items-center gap-3 text-left hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-colors">
                     <span className="text-xl">🐾</span>
-                    <div><p className="font-medium text-sm text-gray-900 dark:text-gray-100">{pet.name}</p><p className="text-xs text-gray-500">{pet.breed}</p></div>
+                    <div><p className="font-medium text-sm text-gray-900 dark:text-black">{pet.name}</p><p className="text-xs text-gray-500">{pet.breed}</p></div>
                   </button>
                 ))}
               </div>
@@ -248,7 +248,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
               <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-700">
                 <span className="text-3xl">{selectedSvc.emoji}</span>
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-gray-100">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
+                  <p className="font-bold text-gray-900 dark:text-black">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
                   <p className="text-sm text-gray-500">{selectedSvc.duration}</p>
                 </div>
               </div>
@@ -260,12 +260,12 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 { icon: MapPin, label: 'Address', value: address || 'Not specified' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-white flex items-center justify-center flex-shrink-0">
                     <Icon className="w-4 h-4 text-purple-600" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">{label}</p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{value}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-black">{value}</p>
                   </div>
                 </div>
               ))}

@@ -58,7 +58,7 @@ function PayoutRow({ p }: { p: any }) {
         </span>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-gray-50 rounded-lg p-2 text-xs">
+        <div className="bg-white rounded-lg p-2 text-xs">
           <p className="text-gray-500">Gross</p>
           <p className="font-semibold text-gray-900">{FMT_ILS(p.gross ?? p.amount ?? 0)}</p>
         </div>
@@ -142,7 +142,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
           <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
             <TrendingUp className="w-4 h-4 text-blue-600" />
           </div>
-          {earningsLoading ? <div className="h-7 bg-gray-100 rounded animate-pulse mb-1" /> : (
+          {earningsLoading ? <div className="h-7 bg-white rounded animate-pulse mb-1" /> : (
             <p className="text-xl font-bold text-gray-900">{thisWeek !== null ? FMT_ILS(thisWeek) : '—'}</p>
           )}
           <p className="text-xs text-gray-500">This week</p>
@@ -153,7 +153,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
           <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center mb-2">
             <BadgeCheck className="w-4 h-4 text-green-600" />
           </div>
-          {earningsLoading ? <div className="h-7 bg-gray-100 rounded animate-pulse mb-1" /> : (
+          {earningsLoading ? <div className="h-7 bg-white rounded animate-pulse mb-1" /> : (
             <p className="text-xl font-bold text-gray-900">{thisMonth !== null ? FMT_ILS(thisMonth) : '—'}</p>
           )}
           <p className="text-xs text-gray-500">This month</p>
@@ -164,7 +164,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
           <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center mb-2">
             <Clock className="w-4 h-4 text-amber-600" />
           </div>
-          {earningsLoading ? <div className="h-7 bg-gray-100 rounded animate-pulse mb-1" /> : (
+          {earningsLoading ? <div className="h-7 bg-white rounded animate-pulse mb-1" /> : (
             <p className="text-xl font-bold text-gray-900">{pending !== null ? FMT_ILS(pending) : '—'}</p>
           )}
           <p className="text-xs text-gray-500">Pending (48h hold)</p>
@@ -172,10 +172,10 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
         {/* Last month */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center mb-2">
+          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center mb-2">
             <TrendingDown className="w-4 h-4 text-gray-500" />
           </div>
-          {earningsLoading ? <div className="h-7 bg-gray-100 rounded animate-pulse mb-1" /> : (
+          {earningsLoading ? <div className="h-7 bg-white rounded animate-pulse mb-1" /> : (
             <p className="text-xl font-bold text-gray-900">{lastMonth !== null ? FMT_ILS(lastMonth) : '—'}</p>
           )}
           <p className="text-xs text-gray-500">Last month</p>
@@ -183,7 +183,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
-      <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+      <div className="flex bg-white rounded-xl p-1 gap-1">
         {[
           { id: 'overview',      label: 'Overview' },
           { id: 'transactions',  label: 'Earnings' },
@@ -245,7 +245,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
                   { label: 'Pending payout', value: pending !== null ? FMT_ILS(pending) : '—' },
                   { label: 'Total paid out', value: paid !== null ? FMT_ILS(paid) : '—' },
                 ].map(stat => (
-                  <div key={stat.label} className="bg-gray-50 rounded-xl p-3">
+                  <div key={stat.label} className="bg-white rounded-xl p-3">
                     <p className="text-[10px] text-gray-500 uppercase tracking-wide">{stat.label}</p>
                     <p className="text-base font-bold text-gray-900 mt-0.5">{stat.value}</p>
                   </div>
@@ -265,7 +265,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
       {activeTab === 'transactions' && (
         <div className="space-y-2">
           {earningsLoading ? (
-            [...Array(3)].map((_, i) => <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />)
+            [...Array(3)].map((_, i) => <div key={i} className="h-28 bg-white rounded-xl animate-pulse" />)
           ) : !hasAnyEarnings ? (
             <EmptyEarnings />
           ) : recentPayouts.length === 0 ? (
@@ -285,7 +285,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
       {activeTab === 'payout' && (
         <div className="space-y-4">
           {!hasAnyEarnings && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
               <Wallet className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-500 font-medium">No balance to withdraw yet</p>
               <p className="text-xs text-gray-400 mt-1">Complete your first job to earn your first payout</p>
@@ -322,7 +322,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
                 placeholder="Amount ₪"
                 className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
               <button onClick={() => setPayoutAmount(String(paid ?? 0))}
-                className="px-3 py-2.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-xl hover:bg-gray-200 transition-colors">
+                className="px-3 py-2.5 bg-white text-gray-700 text-xs font-medium rounded-xl hover:bg-white transition-colors">
                 Max
               </button>
             </div>
@@ -344,7 +344,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
               {MONTHS.map((m, i) => (
                 <button key={m} onClick={() => setSelectedMonth(i)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                    selectedMonth === i ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    selectedMonth === i ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-white'
                   }`}>
                   {m}
                 </button>
@@ -352,7 +352,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
             </div>
 
             {!hasAnyEarnings ? (
-              <div className="bg-gray-50 rounded-xl p-5 text-center">
+              <div className="bg-white rounded-xl p-5 text-center">
                 <p className="text-xs text-gray-400">No data for {MONTHS[selectedMonth]} yet</p>
               </div>
             ) : (
@@ -363,7 +363,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
                   { label: 'Pending payout', value: pending !== null ? FMT_ILS(pending) : '—' },
                   { label: 'Paid out',      value: paid !== null ? FMT_ILS(paid) : '—' },
                 ].map(stat => (
-                  <div key={stat.label} className="bg-gray-50 rounded-xl p-3">
+                  <div key={stat.label} className="bg-white rounded-xl p-3">
                     <p className="text-[10px] text-gray-500 uppercase tracking-wide">{stat.label}</p>
                     <p className="text-base font-bold text-gray-900 mt-0.5">{stat.value}</p>
                   </div>
@@ -373,11 +373,11 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
             <div className="flex gap-2">
               <button onClick={() => toast({ title: 'Report exported', description: `${MONTHS[selectedMonth]} CSV ready` })}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-white transition-colors">
                 <Download className="w-3.5 h-3.5" /> CSV
               </button>
               <button onClick={() => toast({ title: 'Report exported', description: `${MONTHS[selectedMonth]} Excel ready` })}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-white transition-colors">
                 <Download className="w-3.5 h-3.5" /> Excel
               </button>
             </div>

@@ -111,7 +111,7 @@ function BlockUserSheet({
     <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
       <div className="w-full bg-white rounded-t-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}
         style={{ boxShadow: "0 -4px 32px rgba(0,0,0,0.12)" }}>
-        <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+        <div className="w-10 h-1 rounded-full bg-white mx-auto mb-5" />
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
             <Ban className="w-5 h-5 text-red-500" />
@@ -131,7 +131,7 @@ function BlockUserSheet({
         >
           {isPending ? "Blocking…" : "Yes, block this user"}
         </button>
-        <button onClick={onClose} className="w-full py-3 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+        <button onClick={onClose} className="w-full py-3 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-white transition-colors">
           Cancel
         </button>
       </div>
@@ -392,7 +392,7 @@ function WaveformPlayer({ audioUrl, transcript, isMe }: { audioUrl: string; tran
                   style={{ height: `${h}%`, minHeight: 3 }}
                   className={`flex-1 rounded-full transition-colors ${active
                     ? (isMe ? "bg-white" : "bg-blue-500")
-                    : (isMe ? "bg-white/35" : "bg-gray-200")
+                    : (isMe ? "bg-white/35" : "bg-white")
                   }`}
                 />
               );
@@ -878,7 +878,7 @@ export default function BookingChat() {
   if (openMutation.isError) {
     return (
       <div className="flex flex-col items-center justify-center bg-white p-8 text-center" style={{ height: "100dvh" }}>
-        <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mb-5">
+        <div className="w-16 h-16 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-5">
           <Lock className="w-7 h-7 text-gray-300" />
         </div>
         <h2 className="text-lg font-bold text-gray-800 mb-2">Chat not available</h2>
@@ -952,12 +952,12 @@ export default function BookingChat() {
         <div className="shrink-0 px-4 pt-4 pb-3 border-b border-gray-100 flex items-center gap-3 bg-white sticky top-0 z-10"
           style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.04)" }}>
           <button onClick={() => setLocation(-1)}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors shrink-0">
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-white transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shrink-0">
             <span className="text-sm font-bold text-gray-400">{otherPartyLabel.charAt(0)}</span>
           </div>
 
@@ -990,7 +990,7 @@ export default function BookingChat() {
             {/* ── Overflow menu (§8: Header must include overflow menu for report/help) ── */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors">
+                <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-white transition-colors">
                   <MoreVertical className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
@@ -1042,7 +1042,7 @@ export default function BookingChat() {
         )}
 
         {/* ── Safety notice ────────────────────────────────────────────────── */}
-        <div className="shrink-0 px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+        <div className="shrink-0 px-4 py-2 bg-white border-b border-gray-100 flex items-center gap-2">
           <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
           <span className="text-[11px] text-gray-400">Keep conversations on-platform for your safety.</span>
         </div>
@@ -1241,7 +1241,7 @@ export default function BookingChat() {
                         {["❤️", "🐾", "👍", "⭐", "✅", "🎉"].map(r => (
                           <button key={r}
                             onClick={() => { reactMutation.mutate({ messageId: msg.messageId, reaction: r }); setReactionPickerMsgId(null); }}
-                            className="text-xl hover:scale-125 transition-transform active:scale-110 p-0.5 rounded-full hover:bg-gray-50">
+                            className="text-xl hover:scale-125 transition-transform active:scale-110 p-0.5 rounded-full hover:bg-white">
                             {r}
                           </button>
                         ))}
@@ -1507,7 +1507,7 @@ export default function BookingChat() {
                     onChange={e => handleInputChange(e.target.value)}
                     placeholder="Type a message…"
                     rows={1}
-                    className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-300 focus:bg-white transition-colors"
+                    className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-300 focus:bg-white transition-colors"
                     style={{ minHeight: 44, maxHeight: 120 }}
                     onKeyDown={e => {
                       if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 768) {
@@ -1539,7 +1539,7 @@ export default function BookingChat() {
 
         {/* ── Read-only placeholder ────────────────────────────────────────── */}
         {isReadOnly && (
-          <div className="shrink-0 border-t border-gray-100 bg-gray-50 px-4 py-3">
+          <div className="shrink-0 border-t border-gray-100 bg-white px-4 py-3">
             <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
               <Lock className="w-4 h-4" /> Conversation closed — read only
             </div>
@@ -1582,7 +1582,7 @@ export default function BookingChat() {
             {/* Actions */}
             <div className="flex gap-2 px-4 pb-4">
               <button onClick={() => { setPendingPhoto(null); setPhotoCaption(""); }}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors">
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-white transition-colors">
                 Discard
               </button>
               <button onClick={sendPendingPhoto} disabled={sendMutation.isPending}
@@ -1640,7 +1640,7 @@ export default function BookingChat() {
           </div>
           <DialogFooter className="gap-2">
             <button onClick={() => { setReportingMsg(null); setReportReason(""); }}
-              className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+              className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-white transition-colors">
               Cancel
             </button>
             <button

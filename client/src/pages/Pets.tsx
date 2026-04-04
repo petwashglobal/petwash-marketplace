@@ -277,7 +277,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                       target="_blank"
                       rel="noopener noreferrer"
                       title={isHe ? 'Google Calendar' : 'Google Calendar'}
-                      className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-violet-600"
+                      className="p-1 rounded hover:bg-white text-slate-500 hover:text-violet-600"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
@@ -285,7 +285,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                       href={icsUrl}
                       download={`${petName}-health.ics`}
                       title={isHe ? 'הורד לאייפון (.ics)' : 'Download for iPhone (.ics)'}
-                      className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-blue-600"
+                      className="p-1 rounded hover:bg-white text-slate-500 hover:text-blue-600"
                     >
                       <Download className="w-3.5 h-3.5" />
                     </a>
@@ -619,14 +619,14 @@ export default function Pets() {
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-gray-500" />
-                        <span className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-700 dark:text-black">
                           {t('pets.age', language)} {getAge(pet.birthdate)}
                         </span>
                       </div>
                       {pet.weight && (
                         <div className="flex items-center gap-2 text-sm">
                           <Heart className="h-4 w-4 text-gray-500" />
-                          <span className="text-gray-700 dark:text-gray-300">
+                          <span className="text-gray-700 dark:text-black">
                             {t('pets.weightLabel', language)} {pet.weight} kg
                           </span>
                         </div>
@@ -634,7 +634,7 @@ export default function Pets() {
                       {pet.nextVaccineDate && (
                         <div className="flex items-center gap-2 text-sm">
                           <Syringe className="h-4 w-4 text-gray-500" />
-                          <span className="text-gray-700 dark:text-gray-300">
+                          <span className="text-gray-700 dark:text-black">
                             {t('pets.nextVaccineLabel', language)}
                             {' '}
                             {format(new Date(pet.nextVaccineDate), 'PP', {
@@ -646,7 +646,7 @@ export default function Pets() {
                       {pet.allergies && (
                         <div className="flex items-start gap-2 text-sm">
                           <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                          <span className="text-gray-700 dark:text-gray-300">
+                          <span className="text-gray-700 dark:text-black">
                             {t('pets.allergiesLabel', language)} {pet.allergies}
                           </span>
                         </div>

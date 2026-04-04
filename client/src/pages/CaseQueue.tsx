@@ -186,7 +186,7 @@ function SeverityBadge({ s }: { s: Severity }) {
     critical: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
     high:     'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
     medium:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
-    low:      'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    low:      'bg-white text-gray-600 dark:bg-white dark:text-gray-400',
   };
   const icons = {
     critical: <ShieldAlert className="h-3 w-3 mr-1" />,
@@ -215,7 +215,7 @@ function SlaCell({ ageHours, slaBudgetHours, slaStatus }: {
                                'text-emerald-600 dark:text-emerald-400';
   return (
     <div className="space-y-1 min-w-[80px]">
-      <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-white dark:bg-white rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full', barColor)} style={{ width: `${pct}%` }} />
       </div>
       <p className={cn('text-xs font-medium', textColor)}>
@@ -249,7 +249,7 @@ function SummaryCard({ label, total, breached, icon }: {
       <CardContent className="p-4 flex items-start justify-between">
         <div>
           <p className="text-xs text-gray-500 mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{total}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-black">{total}</p>
           {breached > 0 && (
             <p className="text-xs text-red-600 font-medium mt-0.5 flex items-center gap-1">
               <ShieldAlert className="h-3 w-3" />{breached} SLA breached
@@ -317,7 +317,7 @@ function NotesPanel({ caseType, caseRefId, currentUid }: {
   const notes = notesQ.data?.notes ?? [];
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3 space-y-3">
+    <div className="bg-white dark:bg-white border-t border-gray-200 dark:border-gray-700 px-4 py-3 space-y-3">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Internal Notes</p>
 
       {notesQ.isLoading ? (
@@ -330,15 +330,15 @@ function NotesPanel({ caseType, caseRefId, currentUid }: {
       ) : (
         <div className="space-y-2 max-h-40 overflow-y-auto">
           {notes.map(n => (
-            <div key={n.id} className="bg-white dark:bg-gray-800 rounded-md px-3 py-2 shadow-sm">
+            <div key={n.id} className="bg-white dark:bg-white rounded-md px-3 py-2 shadow-sm">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-xs font-mono font-medium text-gray-500">{shortUid(n.authorUid)}</span>
                 {n.authorRole && (
-                  <Badge className="bg-gray-100 text-gray-500 border-0 text-[10px] py-0 px-1.5">{n.authorRole}</Badge>
+                  <Badge className="bg-white text-gray-500 border-0 text-[10px] py-0 px-1.5">{n.authorRole}</Badge>
                 )}
                 <span className="text-[10px] text-gray-400 ml-auto">{dtShort(n.createdAt)}</span>
               </div>
-              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{n.noteText}</p>
+              <p className="text-sm text-gray-700 dark:text-black whitespace-pre-wrap">{n.noteText}</p>
             </div>
           ))}
         </div>
@@ -398,8 +398,8 @@ function BulkActionBar({ selected, casesByKey, onClear, onSuccess, currentUid, a
   if (count === 0) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
-      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 mr-1">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-white border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+      <span className="text-sm font-semibold text-gray-700 dark:text-black mr-1">
         {count} selected
       </span>
 
@@ -419,7 +419,7 @@ function BulkActionBar({ selected, casesByKey, onClear, onSuccess, currentUid, a
       <Button
         size="sm"
         variant="outline"
-        className="gap-1.5 text-gray-600 hover:bg-gray-50"
+        className="gap-1.5 text-gray-600 hover:bg-white"
         disabled={bulkMutation.isPending}
         onClick={() => bulkMutation.mutate('unassign')}
       >
@@ -441,7 +441,7 @@ function BulkActionBar({ selected, casesByKey, onClear, onSuccess, currentUid, a
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 text-gray-500 hover:bg-gray-50"
+            className="gap-1.5 text-gray-500 hover:bg-white"
             disabled={bulkMutation.isPending}
             onClick={() => bulkMutation.mutate('close_cases')}
           >
@@ -548,7 +548,7 @@ function CaseTypeBadge({ type }: { type: string }) {
     dispute:  'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
     mismatch: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
     refund:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
-  }[type] ?? 'bg-gray-100 text-gray-600';
+  }[type] ?? 'bg-white text-gray-600';
   return <Badge className={cn('border-0 text-xs capitalize', styles)}>{type}</Badge>;
 }
 
@@ -602,7 +602,7 @@ function ReopenButton({ bookingId, onDone }: { bookingId: string; onDone: () => 
         </SelectContent>
       </Select>
       <input
-        className="border rounded px-2 py-0.5 text-xs w-28 dark:bg-gray-800"
+        className="border rounded px-2 py-0.5 text-xs w-28 dark:bg-white"
         placeholder="Note (optional)"
         value={note}
         onChange={e => setNote(e.target.value)}
@@ -675,7 +675,7 @@ function ClosureRequestButton({ bookingId, onDone }: { bookingId: string; onDone
         </SelectContent>
       </Select>
       <input
-        className="border rounded px-2 py-0.5 text-xs w-28 dark:bg-gray-800"
+        className="border rounded px-2 py-0.5 text-xs w-28 dark:bg-white"
         placeholder="Note (optional)"
         value={note}
         onChange={e => setNote(e.target.value)}
@@ -1121,13 +1121,13 @@ export default function CaseQueue() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
+    <div className="min-h-screen bg-white dark:bg-gray-950 pb-24">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-black flex items-center gap-2">
               <Filter className="h-5 w-5 text-gray-400" />
               Exception Queue
             </h1>
@@ -1137,7 +1137,7 @@ export default function CaseQueue() {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {/* All / My cases / My team toggle */}
-            <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+            <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-white">
               {([
                 { value: 'all',     label: 'All cases',   icon: <Users className="h-3.5 w-3.5" /> },
                 { value: 'mine',    label: 'My cases',    icon: <User className="h-3.5 w-3.5" /> },
@@ -1149,11 +1149,11 @@ export default function CaseQueue() {
                     'flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors',
                     caseFilter === opt.value
                       ? opt.value === 'all'
-                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium'
                         : opt.value === 'mine'
                           ? 'bg-blue-600 text-white font-medium'
                           : 'bg-purple-600 text-white font-medium'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-white'
                   )}
                   onClick={() => setCaseFilter(opt.value)}
                 >
@@ -1187,7 +1187,7 @@ export default function CaseQueue() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <TabsList className="bg-white dark:bg-white border border-gray-200 dark:border-gray-700">
             {(['disputes','mismatches','refunds'] as const).map(tab => {
               const s = summary?.[tab];
               return (
@@ -1196,7 +1196,7 @@ export default function CaseQueue() {
                   {s && s.total > 0 && (
                     <span className={cn(
                       'ml-1.5 text-xs rounded-full px-1.5 py-0.5 font-medium',
-                      s.breached > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                      s.breached > 0 ? 'bg-red-100 text-red-700' : 'bg-white text-gray-600'
                     )}>
                       {s.total}
                     </span>
@@ -1221,7 +1221,7 @@ export default function CaseQueue() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableRow className="bg-white dark:bg-white/50">
                       <TableHead className="w-10 pl-3">
                         <Checkbox
                           checked={filteredDisputes.length > 0 && filteredDisputes.every(c => selected.has(c.caseId))}
@@ -1292,7 +1292,7 @@ export default function CaseQueue() {
                             'border-0 text-xs capitalize',
                             c.status === 'open'         ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
                             c.status === 'under_review' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
-                            'bg-gray-100 text-gray-600'
+                            'bg-white text-gray-600'
                           )}>
                             {c.status.replace(/_/g, ' ')}
                           </Badge>
@@ -1326,7 +1326,7 @@ export default function CaseQueue() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableRow className="bg-white dark:bg-white/50">
                       <TableHead className="w-10 pl-3">
                         <Checkbox
                           checked={filteredMismatches.length > 0 && filteredMismatches.every(c => selected.has(c.caseId))}
@@ -1415,7 +1415,7 @@ export default function CaseQueue() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableRow className="bg-white dark:bg-white/50">
                       <TableHead className="w-10 pl-3">
                         <Checkbox
                           checked={filteredRefunds.length > 0 && filteredRefunds.every(c => selected.has(c.caseId))}
@@ -1488,7 +1488,7 @@ export default function CaseQueue() {
                             'border-0 text-xs capitalize',
                             c.refundStatus === 'pending'    ? 'bg-yellow-100 text-yellow-700' :
                             c.refundStatus === 'processing' ? 'bg-orange-100 text-orange-700' :
-                            'bg-gray-100 text-gray-600'
+                            'bg-white text-gray-600'
                           )}>
                             {c.refundStatus}
                           </Badge>

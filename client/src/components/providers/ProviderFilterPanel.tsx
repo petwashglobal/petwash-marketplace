@@ -301,7 +301,7 @@ export function ProviderFilterPanel({ filters, onChange, onApply, onReset }: Pro
           {isHebrew ? "אפס" : "Reset"}
         </Button>
         <Button
-          className="flex-1 bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+          className="flex-1 bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-white"
           onClick={onApply}
         >
           <Search className="h-4 w-4 mr-2" />

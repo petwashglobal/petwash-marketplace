@@ -208,7 +208,7 @@ export function BookingPaymentModal({
 
             <div className="space-y-6">
               {/* Booking Summary */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+              <div className="bg-white rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">{isHebrew ? 'שירות' : 'Service'}</span>
                   <span className="font-medium">{booking.serviceType}</span>

@@ -88,7 +88,7 @@ interface ReserveSummary {
 // ---------------------------------------------------------------------------
 
 const ROLE_COLOR: Record<string, string> = {
-  agent: 'bg-gray-100 text-gray-700',
+  agent: 'bg-white text-gray-700',
   manager: 'bg-blue-100 text-blue-700',
   franchise_owner: 'bg-purple-100 text-purple-700',
   admin: 'bg-orange-100 text-orange-700',
@@ -116,7 +116,7 @@ function ils(cents: number | null | undefined) {
 
 function RoleChip({ role }: { role: string }) {
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_COLOR[role] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_COLOR[role] ?? 'bg-white text-gray-600'}`}>
       {role}
     </span>
   );
@@ -158,7 +158,7 @@ function ActionDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-2">
+          <div className="bg-white rounded-lg p-3 text-sm space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Type</span>
               <span className="font-medium">{CASE_LABEL[item.caseType] ?? item.caseType}</span>
@@ -572,7 +572,7 @@ export default function FinancialApprovals() {
   const allLog = logData?.log ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}

@@ -138,7 +138,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[status] ?? 'bg-white text-gray-600 border-gray-200'}`}>
       {status}
     </span>
   );
@@ -149,7 +149,7 @@ function ReconHealthBar({ pct }: { pct: number | null }) {
   const color = pct >= 90 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-3">
-      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
       <span className={`text-sm font-bold ${pct >= 90 ? 'text-emerald-700' : pct >= 70 ? 'text-amber-700' : 'text-red-700'}`}>
@@ -200,9 +200,9 @@ function ImportBankModal({ open, onClose }: { open: boolean; onClose: () => void
         </DialogHeader>
         <div className="space-y-3 py-2">
           <p className="text-sm text-muted-foreground">
-            One transaction per line: <code className="bg-gray-100 px-1 rounded text-xs">direction,amount_cents,reference,description</code>
+            One transaction per line: <code className="bg-white px-1 rounded text-xs">direction,amount_cents,reference,description</code>
           </p>
-          <p className="text-xs text-muted-foreground">Example: <code className="bg-gray-100 px-1 rounded">outgoing,150000,BATCH-123,Payout to providers</code></p>
+          <p className="text-xs text-muted-foreground">Example: <code className="bg-white px-1 rounded">outgoing,150000,BATCH-123,Payout to providers</code></p>
           <textarea
             className="w-full h-36 font-mono text-xs border rounded p-2 resize-none"
             value={raw}
@@ -255,7 +255,7 @@ function TraceDialog({ open, settlementId, onClose }: { open: boolean; settlemen
             </div>
             {steps.map((step, i) => (
               <div key={step.label} className="flex items-start gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold ${step.done ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold ${step.done ? 'bg-emerald-500 text-white' : 'bg-white text-gray-500'}`}>
                   {step.done ? '✓' : i + 1}
                 </div>
                 <div className="flex-1">
@@ -342,7 +342,7 @@ export default function Treasury() {
   const failures = failureData?.failures ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -407,11 +407,11 @@ export default function Treasury() {
         <Tabs defaultValue="batches">
           <TabsList className="grid grid-cols-5 w-full max-w-3xl">
             <TabsTrigger value="batches">
-              Batches {batches.length > 0 && <span className="ml-1 text-xs bg-gray-200 rounded-full px-1.5">{batches.length}</span>}
+              Batches {batches.length > 0 && <span className="ml-1 text-xs bg-white rounded-full px-1.5">{batches.length}</span>}
             </TabsTrigger>
             <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
             <TabsTrigger value="bank">
-              Bank Feed {bankTxs.length > 0 && <span className="ml-1 text-xs bg-gray-200 rounded-full px-1.5">{bankTxs.length}</span>}
+              Bank Feed {bankTxs.length > 0 && <span className="ml-1 text-xs bg-white rounded-full px-1.5">{bankTxs.length}</span>}
             </TabsTrigger>
             <TabsTrigger value="failures">
               Failures {failures.length > 0 && <span className="ml-1 bg-red-100 text-red-700 text-xs rounded-full px-1.5">{failures.length}</span>}

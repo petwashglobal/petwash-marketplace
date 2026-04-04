@@ -426,7 +426,7 @@ export default function BrowseSitters() {
                     className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
                       sortBy === option.id
                         ? 'bg-fuchsia-50 text-fuchsia-700 font-medium'
-                        : 'hover:bg-gray-50 text-gray-700'
+                        : 'hover:bg-white text-gray-700'
                     }`}
                   >
                     {option.label}
@@ -500,7 +500,7 @@ export default function BrowseSitters() {
                     className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
                       minRating === option.value
                         ? 'bg-fuchsia-50 text-fuchsia-700 font-medium'
-                        : 'hover:bg-gray-50 text-gray-700'
+                        : 'hover:bg-white text-gray-700'
                     }`}
                   >
                     {option.label}
@@ -678,7 +678,7 @@ export default function BrowseSitters() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="rounded-full px-8 border-gray-300 hover:bg-gray-50"
+                className="rounded-full px-8 border-gray-300 hover:bg-white"
                 data-testid="button-load-more"
               >
                 {isHebrew ? 'טען עוד שמרטפים' : 'Load More Sitters'}

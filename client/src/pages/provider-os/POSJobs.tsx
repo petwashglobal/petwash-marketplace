@@ -193,7 +193,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
             return (
               <button key={s.id} onClick={() => { setStatusFilter(s.id); setPage(1); }}
                 className={`relative px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  statusFilter === s.id ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  statusFilter === s.id ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-white'
                 }`}>
                 {isNew && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white animate-pulse" />}
                 {s.label}
@@ -221,8 +221,8 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
-              <div className="h-3 bg-gray-100 rounded w-3/4" />
+              <div className="h-4 bg-white rounded w-1/2 mb-2" />
+              <div className="h-3 bg-white rounded w-3/4" />
             </div>
           ))}
         </div>
@@ -252,12 +252,12 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pt-2">
           <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-            className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors">
+            className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-white transition-colors">
             Previous
           </button>
           <span className="text-xs text-gray-500">{page} / {totalPages}</span>
           <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-            className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors">
+            className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-white transition-colors">
             Next
           </button>
         </div>
@@ -273,7 +273,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
               {DECLINE_REASONS.map(r => (
                 <button key={r} onClick={() => setDeclineReason(r)}
                   className={`w-full text-start px-3 py-2.5 rounded-lg text-sm border transition-colors ${
-                    declineReason === r ? 'border-red-300 bg-red-50 text-red-800' : 'border-gray-200 hover:bg-gray-50'
+                    declineReason === r ? 'border-red-300 bg-red-50 text-red-800' : 'border-gray-200 hover:bg-white'
                   }`}>
                   {r}
                 </button>
@@ -281,7 +281,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
             </div>
             <div className="flex gap-3">
               <button onClick={() => setDeclineJobId(null)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition-colors">
                 Back
               </button>
               <button
@@ -305,7 +305,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
               {CANCEL_REASONS.map(r => (
                 <button key={r} onClick={() => setCancelReason(r)}
                   className={`w-full text-start px-3 py-2.5 rounded-lg text-sm border transition-colors ${
-                    cancelReason === r ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-gray-200 hover:bg-gray-50'
+                    cancelReason === r ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-gray-200 hover:bg-white'
                   }`}>
                   {r}
                 </button>
@@ -313,7 +313,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
             </div>
             <div className="flex gap-3">
               <button onClick={() => setCancelJobId(null)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition-colors">
                 Back
               </button>
               <button
@@ -339,7 +339,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
               <p className="text-xs text-gray-500">Confirm payment — a tax invoice will be sent to the client automatically.</p>
             </div>
             <div className="p-5 space-y-4">
-              <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+              <div className="bg-white rounded-xl p-3 space-y-1">
                 <p className="text-xs text-gray-500">Client</p>
                 <p className="text-sm font-medium text-gray-900">{finishModal.booking.clientName || 'Customer'}</p>
                 {finishModal.booking.petName && <p className="text-xs text-gray-500">🐾 {finishModal.booking.petName}</p>}
@@ -371,7 +371,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
                       <button key={pm.id} type="button"
                         onClick={() => setFinishModal(m => m ? { ...m, paymentMethod: pm.id } : null)}
                         className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
-                          selected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                          selected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-white'
                         }`}>
                         <Icon className="w-4 h-4" />
                         <span>{pm.label}</span>
@@ -383,7 +383,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
             </div>
             <div className="px-5 pb-5 flex gap-3">
               <button onClick={() => setFinishModal(null)} disabled={finishMutation.isPending}
-                className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition-colors">
                 Cancel
               </button>
               <button onClick={() => finishMutation.mutate(finishModal!)}
@@ -427,12 +427,12 @@ function JobCard({
   // V2: pending/accepted = new requests awaiting provider decision
   if (['new_request', 'pending', 'accepted'].includes(booking.status)) {
     actions.push({ label: 'Accept', action: 'accept',   icon: CheckCircle2, className: 'bg-green-600 text-white hover:bg-green-700' });
-    actions.push({ label: 'Decline', action: '_decline', icon: XCircle,      className: 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-700' });
+    actions.push({ label: 'Decline', action: '_decline', icon: XCircle,      className: 'bg-white text-gray-700 hover:bg-red-50 hover:text-red-700' });
   }
   // V2: confirmed = ready to start
   if (['confirmed', 'provider_confirmed'].includes(booking.status)) {
     actions.push({ label: 'Start',  action: 'start',   icon: Play,    className: 'bg-purple-600 text-white hover:bg-purple-700' });
-    actions.push({ label: 'Cancel', action: '_cancel', icon: XCircle, className: 'bg-gray-100 text-red-600 hover:bg-red-50' });
+    actions.push({ label: 'Cancel', action: '_cancel', icon: XCircle, className: 'bg-white text-red-600 hover:bg-red-50' });
   }
   if (booking.status === 'in_progress') {
     actions.push({ label: 'Finish', action: '_finish', icon: Square,        className: 'bg-blue-600 text-white hover:bg-blue-700' });
@@ -574,7 +574,7 @@ function JobCard({
 
       {/* Action buttons */}
       {actions.length > 0 && (
-        <div className="border-t border-gray-100 px-4 py-3 flex gap-2 bg-gray-50">
+        <div className="border-t border-gray-100 px-4 py-3 flex gap-2 bg-white">
           {actions.map(a => {
             const Icon = a.icon;
             return (
@@ -594,7 +594,7 @@ function JobCard({
           <button
             onClick={() => setExpanded(e => !e)}
             title="View details"
-            className="py-2 px-3 bg-white border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+            className="py-2 px-3 bg-white border border-gray-200 rounded-lg text-gray-500 hover:bg-white transition-colors">
             <MessageSquare className="w-3.5 h-3.5" />
           </button>
         </div>

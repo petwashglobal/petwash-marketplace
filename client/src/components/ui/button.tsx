@@ -14,7 +14,7 @@ const buttonVariants = cva(
         destructive:
           "bg-gradient-to-r from-destructive to-destructive/90 text-destructive-foreground hover:from-destructive/95 hover:to-destructive/85 active:from-destructive active:to-destructive/95 shadow-lg shadow-destructive/20",
         outline:
-          "border-2 border-neutral-200/70 dark:border-neutral-700/70 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-xl hover:bg-white dark:hover:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-600 active:bg-neutral-50 dark:active:bg-neutral-800 shadow-md hover:shadow-lg text-neutral-900 dark:text-neutral-100",
+          "border-2 border-neutral-200/70 dark:border-neutral-700/70 bg-white/60 dark:bg-white/60 backdrop-blur-xl hover:bg-white dark:hover:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-600 active:bg-white dark:active:bg-neutral-800 shadow-md hover:shadow-lg text-neutral-900 dark:text-neutral-100",
         secondary:
           "bg-gradient-to-r from-neutral-100 to-neutral-50 dark:from-neutral-800 dark:to-neutral-900 text-neutral-900 dark:text-neutral-100 hover:from-neutral-200 hover:to-neutral-100 dark:hover:from-neutral-700 dark:hover:to-neutral-800 active:from-neutral-300 active:to-neutral-200 dark:active:from-neutral-600 dark:active:to-neutral-700 shadow-md",
         ghost: "hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:text-neutral-900 dark:hover:text-neutral-100 active:bg-neutral-200/80 dark:active:bg-neutral-700/80 backdrop-blur-sm",

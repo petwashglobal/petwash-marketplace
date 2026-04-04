@@ -193,17 +193,17 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
   const isRTL = language === 'he' || language === 'ar';
 
   return (
-    <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-white dark:bg-white z-50 overflow-y-auto">
       <div 
         className="min-h-screen pb-20"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {/* iOS-Style Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="sticky top-0 z-10 bg-white dark:bg-white border-b border-gray-200 dark:border-gray-700">
           <div className="max-w-2xl mx-auto px-4 py-4">
             <div className="flex items-center gap-3 mb-2">
-              <FaChrome className="w-8 h-8 text-gray-700 dark:text-gray-300" />
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <FaChrome className="w-8 h-8 text-gray-700 dark:text-black" />
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-black">
                 ⁦Pet Wash™⁩
               </h1>
             </div>
@@ -215,7 +215,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
 
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
           {/* Permissions List - iOS Style */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-white rounded-2xl overflow-hidden shadow-sm">
             {t.permissions.map((permission, index) => (
               <div 
                 key={index}
@@ -231,7 +231,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
 
                 {/* Text */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-base font-normal text-gray-900 dark:text-white">
+                  <div className="text-base font-normal text-gray-900 dark:text-black">
                     {permission.name}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -271,9 +271,9 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           </div>
 
           {/* Default Browser */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-base text-gray-900 dark:text-white">
+              <span className="text-base text-gray-900 dark:text-black">
                 {t.defaultBrowser}
               </span>
               <div className="flex items-center gap-2">
@@ -288,10 +288,10 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           </div>
 
           {/* Cross-Website Tracking */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-base text-gray-900 dark:text-white">
+                <span className="text-base text-gray-900 dark:text-black">
                   {t.crossWebsite}
                 </span>
                 <div className="relative w-12 h-7 rounded-full bg-gray-300 dark:bg-gray-600">
@@ -305,7 +305,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           </div>
 
           {/* Low Power Note */}
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl px-4 py-3">
+          <div className="bg-white dark:bg-white/50 rounded-xl px-4 py-3">
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
               {t.lowPowerNote}
             </p>

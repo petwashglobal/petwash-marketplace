@@ -161,11 +161,11 @@ export default function GlobalCommunityHub() {
                 {t('communityHub.title')}
               </h1>
               
-              <p className="text-2xl md:text-3xl text-gray-700 dark:text-gray-200 font-medium mb-4">
+              <p className="text-2xl md:text-3xl text-gray-700 dark:text-black font-medium mb-4">
                 {t('communityHub.subtitle')}
               </p>
               
-              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-10">
+              <p className="text-lg md:text-xl text-gray-600 dark:text-black max-w-3xl mx-auto mb-10">
                 {t('communityHub.heroDescription')}
               </p>
 
@@ -213,7 +213,7 @@ export default function GlobalCommunityHub() {
               transition={{ duration: 0.6 }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-black mb-4">
                 {t('communityHub.heroSubtitle')}
               </h2>
             </motion.div>
@@ -242,7 +242,7 @@ export default function GlobalCommunityHub() {
                         
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-black">
                               {t(program.titleKey)}
                             </h3>
                             <Badge className={`text-lg px-4 py-1 bg-gradient-to-r ${program.color} text-white border-0`}>
@@ -250,7 +250,7 @@ export default function GlobalCommunityHub() {
                             </Badge>
                           </div>
                           
-                          <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
+                          <p className="text-gray-600 dark:text-black text-lg leading-relaxed">
                             {t(program.descriptionKey)}
                           </p>
                           
@@ -288,18 +288,18 @@ export default function GlobalCommunityHub() {
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 p-3 flex items-center justify-center">
                       <Calendar className="w-8 h-8 text-white" />
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-black">
                       {t('communityHub.eventsTitle')}
                     </h3>
                   </div>
                   
-                  <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed mb-6">
+                  <p className="text-gray-600 dark:text-black text-lg leading-relaxed mb-6">
                     {t('communityHub.eventsDescription')}
                   </p>
 
                   <div className="space-y-3">
                     {['Adoption Events', 'Fundraising Campaigns', 'Community Workshops'].map((event, i) => (
-                      <div key={i} className="flex items-center gap-3 text-gray-700 dark:text-gray-200">
+                      <div key={i} className="flex items-center gap-3 text-gray-700 dark:text-black">
                         <Check className="w-5 h-5 text-green-600" />
                         <span className="text-lg">{event}</span>
                       </div>
@@ -320,12 +320,12 @@ export default function GlobalCommunityHub() {
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 p-3 flex items-center justify-center">
                       <Crown className="w-8 h-8 text-white" />
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-black">
                       {t('communityHub.vipTitle')}
                     </h3>
                   </div>
                   
-                  <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed mb-6">
+                  <p className="text-gray-600 dark:text-black text-lg leading-relaxed mb-6">
                     {t('communityHub.vipDescription')}
                   </p>
 
@@ -337,7 +337,7 @@ export default function GlobalCommunityHub() {
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-3">
                         <Star className="w-5 h-5 text-yellow-500" />
-                        <span className="text-lg text-gray-700 dark:text-gray-200">
+                        <span className="text-lg text-gray-700 dark:text-black">
                           <strong className="font-semibold">{item.tier}:</strong> {item.benefit}
                         </span>
                       </div>
@@ -409,11 +409,11 @@ export default function GlobalCommunityHub() {
         <section className="py-20 px-4 luxury-bg-mesh">
           <div className="max-w-4xl mx-auto">
             <GlassmorphismCard gradient="purple" className="p-12 text-center luxury-glass-card luxury-shadow-xl">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-black mb-6">
                 {t('communityHub.contactTitle')}
               </h2>
               
-              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+              <p className="text-xl text-gray-600 dark:text-black mb-8 leading-relaxed">
                 {t('communityHub.contactDescription')}
               </p>
 

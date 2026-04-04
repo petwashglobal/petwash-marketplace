@@ -110,7 +110,7 @@ export default function BookingUnified() {
         <div className="luxury-grid-3 gap-8">
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center opacity-0 luxury-animate-fade-in luxury-delay-8">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
-              <Clock className="w-8 h-8 text-[#0a2540] dark:text-white" />
+              <Clock className="w-8 h-8 text-[#0a2540] dark:text-black" />
             </div>
             <h3 className="luxury-heading-sm mb-3">Instant Confirmation</h3>
             <p className="luxury-text-small">
@@ -120,7 +120,7 @@ export default function BookingUnified() {
 
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center opacity-0 luxury-animate-fade-in luxury-delay-9">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
-              <CreditCard className="w-8 h-8 text-[#0a2540] dark:text-white" />
+              <CreditCard className="w-8 h-8 text-[#0a2540] dark:text-black" />
             </div>
             <h3 className="luxury-heading-sm mb-3">Secure Payments</h3>
             <p className="luxury-text-small">
@@ -130,7 +130,7 @@ export default function BookingUnified() {
 
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center opacity-0 luxury-animate-fade-in luxury-delay-10">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
-              <Calendar className="w-8 h-8 text-[#0a2540] dark:text-white" />
+              <Calendar className="w-8 h-8 text-[#0a2540] dark:text-black" />
             </div>
             <h3 className="luxury-heading-sm mb-3">Flexible Scheduling</h3>
             <p className="luxury-text-small">

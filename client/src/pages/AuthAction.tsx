@@ -164,7 +164,7 @@ export default function AuthAction() {
           )}
 
           {success && (
-            <Alert className="bg-green-50 border-green-500 dark:bg-green-900/20">
+            <Alert className="bg-green-50 border-green-500 dark:bg-white">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800 dark:text-green-200">
                 {success}
@@ -175,7 +175,7 @@ export default function AuthAction() {
           {showPasswordForm && !loading && !success && (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {email && (
-                <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-white p-3 rounded-lg">
                   Resetting password for: <strong>{email}</strong>
                 </div>
               )}

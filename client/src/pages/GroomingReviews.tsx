@@ -35,7 +35,7 @@ function RatingBar({ label, value, maxValue }: { label: string; value: number; m
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-gray-600 dark:text-gray-400 w-28 rtl:text-right">{label}</span>
-      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-white dark:bg-white rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-500"
           style={{ width: `${percentage}%` }}
@@ -52,7 +52,7 @@ function DistributionBar({ stars, count, total }: { stars: number; count: number
     <div className="flex items-center gap-2">
       <span className="text-sm w-4 text-right">{stars}</span>
       <Star size={12} className="fill-amber-400 text-amber-400" />
-      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-white dark:bg-white rounded-full overflow-hidden">
         <div
           className="h-full bg-amber-400 rounded-full transition-all duration-300"
           style={{ width: `${percentage}%` }}
@@ -74,12 +74,12 @@ function ReviewCard({ review, t, language }: { review: any; t: (key: string) => 
   const petIcon = review.petType === "cat" ? "🐱" : review.petType === "dog" ? "🐕" : "🐾";
 
   return (
-    <Card className="border-amber-100/50 dark:border-amber-900/20 bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
+    <Card className="border-amber-100/50 dark:border-amber-900/20 bg-white/60 dark:bg-white/60 backdrop-blur-sm">
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
+              <span className="font-semibold text-gray-900 dark:text-black">
                 {review.customerName || t("groomingFeedback.anonymous")}
               </span>
               {review.petName && (
@@ -94,7 +94,7 @@ function ReviewCard({ review, t, language }: { review: any; t: (key: string) => 
         </div>
 
         {review.comment && (
-          <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3">
+          <p className="text-gray-700 dark:text-black text-sm leading-relaxed mb-3">
             {review.comment}
           </p>
         )}
@@ -212,7 +212,7 @@ export default function GroomingReviews() {
               {topRated.stations.map((station: any, idx: number) => (
                 <Card
                   key={station.stationId}
-                  className="cursor-pointer hover:shadow-md transition-shadow border-amber-100/50 dark:border-amber-900/20 bg-white/60 dark:bg-gray-900/60"
+                  className="cursor-pointer hover:shadow-md transition-shadow border-amber-100/50 dark:border-amber-900/20 bg-white/60 dark:bg-white/60"
                   onClick={() => { setSelectedStation(station.stationId.toString()); setPage(1); }}
                 >
                   <CardContent className="p-4">
@@ -239,7 +239,7 @@ export default function GroomingReviews() {
         )}
 
         {!selectedStation && (!topRated?.stations || topRated.stations.length === 0) && (
-          <Card className="border-amber-200/50 dark:border-amber-800/30 bg-white/60 dark:bg-gray-900/60">
+          <Card className="border-amber-200/50 dark:border-amber-800/30 bg-white/60 dark:bg-white/60">
             <CardContent className="p-12 text-center">
               <Sparkles className="w-12 h-12 text-amber-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">{t("groomingFeedback.noReviewsYet")}</h3>
@@ -263,7 +263,7 @@ export default function GroomingReviews() {
 
         {selectedStation && stationReviews && (
           <>
-            <Card className="mb-6 border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+            <Card className="mb-6 border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-white/80 backdrop-blur-sm">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row gap-8">
                   <div className="text-center md:text-left rtl:md:text-right flex-shrink-0">
@@ -312,7 +312,7 @@ export default function GroomingReviews() {
                   <ReviewCard key={review.id} review={review} t={t} language={language} />
                 ))
               ) : (
-                <Card className="border-amber-200/50 dark:border-amber-800/30 bg-white/60 dark:bg-gray-900/60">
+                <Card className="border-amber-200/50 dark:border-amber-800/30 bg-white/60 dark:bg-white/60">
                   <CardContent className="p-8 text-center">
                     <MessageSquare className="w-10 h-10 text-amber-300 mx-auto mb-3" />
                     <p className="text-gray-500">{t("groomingFeedback.noReviewsForStation")}</p>

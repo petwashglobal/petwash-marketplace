@@ -126,7 +126,7 @@ export default function QrActivatePage() {
                 onChange={e => setRawQr(e.target.value)}
                 placeholder={isRtl ? '{ "machineId": "K9000-IL-001", ... }' : '{ "machineId": "K9000-IL-001", ... }'}
                 rows={5}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/40 text-gray-800 bg-gray-50"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/40 text-gray-800 bg-white"
               />
             </div>
 

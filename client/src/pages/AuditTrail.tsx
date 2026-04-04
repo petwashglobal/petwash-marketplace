@@ -103,7 +103,7 @@ export default function AuditTrail() {
                     <span className="font-semibold">ID:</span> {record.entityId}
                   </div>
                 </div>
-                <div className="luxury-text-small font-mono bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg">
+                <div className="luxury-text-small font-mono bg-purple-50 dark:bg-white p-3 rounded-lg">
                   Hash: {record.currentHash?.substring(0, 32)}...
                 </div>
               </div>

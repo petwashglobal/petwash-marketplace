@@ -148,7 +148,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
           {/* MOBILE-OPTIMIZED Close Button - EXTRA LARGE tap target */}
           <button
             onClick={handleClose}
-            className={`fixed sm:absolute top-4 z-50 rounded-full bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.3)] p-4 sm:p-3 md:p-4 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 active:scale-90 border-2 border-gray-400 min-w-[56px] min-h-[56px] flex items-center justify-center ${
+            className={`fixed sm:absolute top-4 z-50 rounded-full bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.3)] p-4 sm:p-3 md:p-4 hover:bg-white active:bg-white transition-all duration-200 active:scale-90 border-2 border-gray-400 min-w-[56px] min-h-[56px] flex items-center justify-center ${
               isHebrew ? 'left-4 sm:left-3 md:left-4' : 'right-4 sm:right-3 md:right-4'
             }`}
             aria-label={isHebrew ? 'סגור' : 'Close'}

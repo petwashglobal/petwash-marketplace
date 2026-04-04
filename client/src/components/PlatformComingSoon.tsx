@@ -28,7 +28,7 @@ export function PlatformComingSoon({
         </div>
 
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-black">
             {isHebrew ? (platformNameHe || platformName) : platformName}
           </h1>
           <div className={`inline-block px-4 py-1.5 rounded-full bg-gradient-to-r ${accentColor} text-white text-sm font-semibold tracking-wide uppercase`}>
@@ -36,7 +36,7 @@ export function PlatformComingSoon({
           </div>
         </div>
 
-        <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-md mx-auto">
+        <p className="text-lg text-gray-600 dark:text-black leading-relaxed max-w-md mx-auto">
           {isHebrew
             ? `אנחנו עובדים קשה כדי להביא לכם את ${platformNameHe || platformName}. חווית שירות מובחרת מחכה לכם!`
             : `We're working hard to bring you ${platformName}. A premium service experience awaits!`

@@ -420,12 +420,12 @@ export default function Academy() {
               <div className="grid md:grid-cols-3 gap-6">
                 {/* City Filter */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-black mb-3">
                     <MapPin className="inline h-4 w-4 mr-2" />
                     {t('City')}
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white text-gray-900 dark:text-black"
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
                     data-testid="select-city"
@@ -441,7 +441,7 @@ export default function Academy() {
 
                 {/* Price Range */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-black mb-3">
                     <DollarSign className="inline h-4 w-4 mr-2" />
                     {t('Hourly Rate (₪)')}: ₪{priceRange[0]} - ₪{priceRange[1]}
                   </label>
@@ -458,12 +458,12 @@ export default function Academy() {
 
                 {/* Minimum Rating */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-black mb-3">
                     <Star className="inline h-4 w-4 mr-2" />
                     {t('Minimum Rating')}
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white text-gray-900 dark:text-black"
                     value={minRating}
                     onChange={(e) => setMinRating(parseFloat(e.target.value))}
                     data-testid="select-min-rating"
@@ -478,7 +478,7 @@ export default function Academy() {
 
               {/* Specialty Filters */}
               <div className="mt-6">
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-black mb-3">
                   <BookOpen className="inline h-4 w-4 mr-2" />
                   {t('Specialties')}
                 </label>
@@ -611,7 +611,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
       <div className="p-6 pt-4">
         {/* Name & Location */}
         <div className="mb-3">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-1">
             {trainer.fullName}
           </h3>
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -624,7 +624,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-            <span className="font-semibold text-gray-900 dark:text-white">
+            <span className="font-semibold text-gray-900 dark:text-black">
               {trainer.averageRating}
             </span>
             <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -638,7 +638,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
         </div>
 
         {/* Bio */}
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+        <p className="text-sm text-gray-600 dark:text-black mb-4 line-clamp-3">
           {trainer.bio}
         </p>
 

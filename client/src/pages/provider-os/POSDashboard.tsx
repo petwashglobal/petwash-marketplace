@@ -182,7 +182,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       )}
 
       {/* ── Availability status ───────────────────────────────────── */}
-      <div className={`rounded-xl p-4 flex items-center justify-between ${available ? 'bg-green-50 border border-green-200' : 'bg-gray-100 border border-gray-200'}`}>
+      <div className={`rounded-xl p-4 flex items-center justify-between ${available ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-200'}`}>
         <div>
           <p className={`text-sm font-semibold ${available ? 'text-green-800' : 'text-gray-700'}`}>
             {available ? 'You are available for new jobs' : 'You are currently offline'}
@@ -258,7 +258,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
               <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-amber-500 transition-colors" />
             </div>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+          <div className="w-full bg-white rounded-full h-1.5 mb-2">
             <div className={`h-1.5 rounded-full transition-all duration-500 ${
               profileData.completeness.score >= 80 ? 'bg-green-500' :
               profileData.completeness.score >= 50 ? 'bg-amber-500' : 'bg-red-400'
@@ -349,7 +349,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
           <div className="space-y-2">
             {upcomingJobs.filter((b: any) => !isToday(b.startTime)).slice(0, 5).map((b: any) => (
               <div key={b.id} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0">
                   <CalendarDays className="w-4 h-4 text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -370,7 +370,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {/* ── Empty state — nothing happening ──────────────────────── */}
       {!bookingsLoading && !hasAnyActivity && (
         <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
-          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Package className="w-7 h-7 text-gray-300" />
           </div>
           <p className="text-sm font-semibold text-gray-600">No active jobs right now</p>
@@ -449,10 +449,10 @@ function JobRequestCard({ booking, onAction, isPending }: {
           <CheckCircle2 className="w-3.5 h-3.5" /> Accept
         </button>
         <button onClick={() => onAction(booking.id, 'decline')} disabled={isPending}
-          className="flex-1 py-2 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5">
+          className="flex-1 py-2 bg-white text-gray-700 text-xs font-medium rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-1.5">
           <XCircle className="w-3.5 h-3.5" /> Decline
         </button>
-        <button className="py-2 px-3 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition-colors">
+        <button className="py-2 px-3 bg-white text-gray-600 text-xs rounded-lg hover:bg-white transition-colors">
           <MessageSquare className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -463,7 +463,7 @@ function JobRequestCard({ booking, onAction, isPending }: {
 function JobMiniCard({ booking, isActive }: { booking: any; isActive?: boolean }) {
   return (
     <div className={`bg-white border rounded-xl p-3 flex items-center gap-3 ${isActive ? 'border-purple-200 bg-purple-50' : 'border-gray-200'}`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-purple-100' : 'bg-gray-100'}`}>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-purple-100' : 'bg-white'}`}>
         {isActive ? <Play className="w-4 h-4 text-purple-600" /> : <CalendarDays className="w-4 h-4 text-gray-500" />}
       </div>
       <div className="flex-1 min-w-0">

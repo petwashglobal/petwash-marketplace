@@ -108,7 +108,7 @@ export function HowItWorks({ variant = "horizontal", showCTA = true, className }
   }
 
   return (
-    <div className={cn("py-20 bg-gray-50", className)}>
+    <div className={cn("py-20 bg-white", className)}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
           <h2 

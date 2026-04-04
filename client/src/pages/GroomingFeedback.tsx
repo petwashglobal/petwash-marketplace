@@ -156,7 +156,7 @@ export default function GroomingFeedback() {
             <Button
               onClick={() => { setSubmitted(false); form.reset(); }}
               variant="outline"
-              className="border-amber-300 hover:bg-gray-50 dark:border-amber-700 dark:hover:bg-amber-900/20"
+              className="border-amber-300 hover:bg-white dark:border-amber-700 dark:hover:bg-amber-900/20"
             >
               {t("groomingFeedback.submitAnother")}
             </Button>
@@ -197,7 +197,7 @@ export default function GroomingFeedback() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Card className="border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+            <Card className="border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Dog className="w-5 h-5 text-amber-600" />
@@ -298,7 +298,7 @@ export default function GroomingFeedback() {
               </CardContent>
             </Card>
 
-            <Card className="border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+            <Card className="border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Star className="w-5 h-5 text-amber-600" />
@@ -373,7 +373,7 @@ export default function GroomingFeedback() {
               </CardContent>
             </Card>
 
-            <Card className="border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+            <Card className="border-amber-200/50 dark:border-amber-800/30 shadow-lg bg-white/80 dark:bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <ThumbsUp className="w-5 h-5 text-amber-600" />

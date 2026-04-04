@@ -45,7 +45,7 @@ export function GiftCards({ language }: GiftCardsProps) {
     <section 
       id="gift-cards"
       className="py-4 sm:py-6 lg:py-8 relative overflow-hidden"
-      style={{ background: '#FAFAF8' }}
+      style={{ background: '#ffffff' }}
     >
       <div className="absolute inset-0 opacity-[0.015]" style={{
         backgroundImage: `radial-gradient(circle at 1px 1px, #000 1px, transparent 0)`,

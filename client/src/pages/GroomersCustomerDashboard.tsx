@@ -58,11 +58,11 @@ const SERVICE_LABELS: Record<string, { en: string; he: string; emoji: string }> 
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Awaiting Groomer', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  accepted: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-  confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  accepted: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-300' },
+  confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-300' },
   in_progress: { label: '✂️ Grooming Now', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
-  completed: { label: 'Done', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  completed: { label: 'Done', color: 'bg-white text-gray-700 dark:bg-white/40 dark:text-black' },
+  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300' },
 };
 
 function fmt(cents: number) { return `₪${(cents / 100).toFixed(0)}`; }
@@ -178,7 +178,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-600 flex items-center justify-center text-xl">{svc.emoji}</div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{isHebrew ? svc.he : svc.en}</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-black">{isHebrew ? svc.he : svc.en}</h3>
               <p className="text-sm text-gray-500 flex items-center gap-1"><PawPrint className="w-3.5 h-3.5" />{petName}</p>
             </div>
           </div>
@@ -195,7 +195,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
           </div>
           <div className="flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-green-500" />
-            <span className="font-semibold text-gray-800 dark:text-gray-200">{fmt(booking.totalCents)}</span>
+            <span className="font-semibold text-gray-800 dark:text-black">{fmt(booking.totalCents)}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             Ref: #{booking.requestId?.slice(-6)}
@@ -207,7 +207,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
             <p className="text-xs text-gray-500 mb-2 flex items-center gap-1"><Camera className="w-3.5 h-3.5" />Grooming updates</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {booking.photoUpdates.map((photo, i) => (
-                <div key={i} className="flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 text-xs text-gray-600 dark:text-gray-400 min-w-[120px]">
+                <div key={i} className="flex-shrink-0 bg-white dark:bg-white rounded-lg p-3 text-xs text-gray-600 dark:text-gray-400 min-w-[120px]">
                   <Camera className="w-4 h-4 mb-1 text-pink-400" />
                   <p>{photo.caption || 'Photo update'}</p>
                   <p className="text-gray-400 mt-1">{format(new Date(photo.timestamp), 'h:mm a')}</p>
@@ -246,7 +246,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
 
         {ratingBookingId === booking.requestId && (
           <div className="mt-4 border-t pt-4 border-gray-100 dark:border-gray-700 space-y-3">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Rate your groomer</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-black">Rate your groomer</p>
             <div className="flex gap-1">
               {[1,2,3,4,5].map(s => (
                 <Star
@@ -325,7 +325,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
           <div className="luxury-glass-card luxury-shadow-md p-5 mb-6 luxury-animate-fade-in">
             <div className="flex items-center gap-2 mb-4">
               <Shield className="w-4 h-4 text-[#C6A664]" />
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-black">
                 {isHebrew ? 'הפרופיל שלי' : 'My Trust Profile'}
               </h3>
             </div>

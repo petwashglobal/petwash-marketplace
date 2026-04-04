@@ -75,31 +75,31 @@ function nextWeekendEnd() {
 
 function CardSkeleton() {
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 animate-pulse">
+    <div className="bg-white dark:bg-white rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 animate-pulse">
       <div className="flex flex-col sm:flex-row">
         {/* Image placeholder */}
-        <div className="h-52 sm:h-auto sm:w-52 sm:shrink-0 bg-zinc-100 dark:bg-zinc-800" />
+        <div className="h-52 sm:h-auto sm:w-52 sm:shrink-0 bg-white dark:bg-white" />
         {/* Body placeholder */}
         <div className="flex-1 p-5 space-y-3">
           <div className="flex justify-between gap-3">
             <div className="space-y-2 flex-1">
-              <div className="h-5 bg-zinc-100 dark:bg-zinc-800 rounded-md w-3/5" />
-              <div className="h-3.5 bg-zinc-100 dark:bg-zinc-800 rounded-md w-2/5" />
+              <div className="h-5 bg-white dark:bg-white rounded-md w-3/5" />
+              <div className="h-3.5 bg-white dark:bg-white rounded-md w-2/5" />
             </div>
-            <div className="h-7 bg-zinc-100 dark:bg-zinc-800 rounded-md w-16 shrink-0" />
+            <div className="h-7 bg-white dark:bg-white rounded-md w-16 shrink-0" />
           </div>
           <div className="flex gap-3">
-            <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded-md w-16" />
-            <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded-md w-24" />
+            <div className="h-4 bg-white dark:bg-white rounded-md w-16" />
+            <div className="h-4 bg-white dark:bg-white rounded-md w-24" />
           </div>
-          <div className="h-3.5 bg-zinc-100 dark:bg-zinc-800 rounded-md w-full" />
-          <div className="h-3.5 bg-zinc-100 dark:bg-zinc-800 rounded-md w-4/5" />
+          <div className="h-3.5 bg-white dark:bg-white rounded-md w-full" />
+          <div className="h-3.5 bg-white dark:bg-white rounded-md w-4/5" />
           <div className="flex gap-2 mt-2">
-            <div className="h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full w-20" />
-            <div className="h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full w-16" />
+            <div className="h-6 bg-white dark:bg-white rounded-full w-20" />
+            <div className="h-6 bg-white dark:bg-white rounded-full w-16" />
           </div>
           <div className="flex gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800 mt-auto">
-            <div className="h-8 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex-1" />
+            <div className="h-8 bg-white dark:bg-white rounded-lg flex-1" />
             <div className="h-8 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex-1" />
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function ProviderSearchPage() {
     chips.push({ label: isHebrew ? `${filters.radiusKm} ק"מ` : `${filters.radiusKm} km`, onRemove: () => runSearch({ ...filters, radiusKm: 15, page: 1 }) });
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
 
       {/* Sticky search hero */}
       <ProviderSearchHero
@@ -188,7 +188,7 @@ export default function ProviderSearchPage() {
       />
 
       {/* ── Smart chips strip ──────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
+      <div className="bg-white dark:bg-white border-b border-zinc-100 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto px-4 py-2.5">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
 
@@ -277,7 +277,7 @@ export default function ProviderSearchPage() {
             <Badge
               key={chip.label}
               variant="outline"
-              className="flex items-center gap-1 pr-1 bg-white dark:bg-zinc-900"
+              className="flex items-center gap-1 pr-1 bg-white dark:bg-white"
             >
               {chip.label}
               <button
@@ -298,7 +298,7 @@ export default function ProviderSearchPage() {
       )}
 
       {/* ── Mobile toolbar ─────────────────────────────────────────────────── */}
-      <div className="lg:hidden sticky top-[60px] z-20 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-4 py-2 flex items-center gap-3">
+      <div className="lg:hidden sticky top-[60px] z-20 bg-white dark:bg-white border-b border-zinc-100 dark:border-zinc-800 px-4 py-2 flex items-center gap-3">
         <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="relative">
@@ -374,7 +374,7 @@ export default function ProviderSearchPage() {
 
           {/* Desktop sidebar */}
           <aside className="hidden lg:block w-72 shrink-0">
-            <div className="sticky top-24 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-5 shadow-sm">
+            <div className="sticky top-24 bg-white dark:bg-white rounded-2xl border border-zinc-100 dark:border-zinc-800 p-5 shadow-sm">
               <h2 className="text-base font-semibold mb-5 flex items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4" />
                 {isHebrew ? "פילטרים" : "Filters"}
@@ -401,7 +401,7 @@ export default function ProviderSearchPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="text-sm text-zinc-500">
                   {loading ? (
-                    <div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse" />
+                    <div className="h-4 w-32 bg-white dark:bg-white rounded animate-pulse" />
                   ) : (
                     <>
                       <span className="font-semibold text-zinc-800 dark:text-zinc-200">
@@ -458,7 +458,7 @@ export default function ProviderSearchPage() {
 
             {/* Error */}
             {!loading && error && (
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 text-center border border-zinc-100 dark:border-zinc-800">
+              <div className="bg-white dark:bg-white rounded-2xl p-8 text-center border border-zinc-100 dark:border-zinc-800">
                 <p className="text-red-500 mb-4">{error}</p>
                 <Button
                   variant="outline"
@@ -472,8 +472,8 @@ export default function ProviderSearchPage() {
 
             {/* Empty state */}
             {!loading && !error && data && results.length === 0 && (
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-10 text-center border border-zinc-100 dark:border-zinc-800">
-                <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+              <div className="bg-white dark:bg-white rounded-2xl p-10 text-center border border-zinc-100 dark:border-zinc-800">
+                <div className="w-14 h-14 rounded-full bg-white dark:bg-white flex items-center justify-center mx-auto mb-4">
                   <Search className="h-6 w-6 text-zinc-400" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">
@@ -555,8 +555,8 @@ export default function ProviderSearchPage() {
 
             {/* First-load prompt */}
             {!loading && !data && !error && (
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-10 text-center border border-zinc-100 dark:border-zinc-800">
-                <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+              <div className="bg-white dark:bg-white rounded-2xl p-10 text-center border border-zinc-100 dark:border-zinc-800">
+                <div className="w-14 h-14 rounded-full bg-white dark:bg-white flex items-center justify-center mx-auto mb-4">
                   <Search className="h-6 w-6 text-zinc-400" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">
@@ -595,7 +595,7 @@ function SmartChip({
         border transition-all duration-150 shrink-0
         ${active
           ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white"
-          : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-500"
+          : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400 dark:bg-white dark:text-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-500"
         }
       `}
     >

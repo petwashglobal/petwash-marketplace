@@ -135,7 +135,7 @@ export function OtpCodeInput({
   return (
     <div className="flex flex-col items-center gap-4 py-4">
       {title && (
-        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white text-center">
+        <h2 className="text-xl font-semibold text-neutral-900 dark:text-black text-center">
           {title}
         </h2>
       )}
@@ -164,10 +164,10 @@ export function OtpCodeInput({
             disabled={loading}
             aria-label={`Digit ${i + 1} of ${length}`}
             className={cn(
-              'w-11 h-14 text-center text-2xl font-bold rounded-lg border-2 transition-all duration-150 bg-white dark:bg-neutral-900',
+              'w-11 h-14 text-center text-2xl font-bold rounded-lg border-2 transition-all duration-150 bg-white dark:bg-white',
               'focus:outline-none focus:ring-0',
               digits[i]
-                ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-white'
+                ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-black'
                 : 'border-neutral-300 text-neutral-400 dark:border-neutral-600',
               error ? 'border-red-400 dark:border-red-500 animate-shake' : 'focus:border-neutral-900 dark:focus:border-white',
               loading ? 'opacity-50 cursor-not-allowed' : 'cursor-text'

@@ -351,7 +351,7 @@ export default function AdminKYC() {
                 {/* User Avatar */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
-                    <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-white dark:bg-white flex items-center justify-center">
                       <span className="luxury-heading-md luxury-text-gradient">
                         {submission.firstName[0]}{submission.lastName[0]}
                       </span>

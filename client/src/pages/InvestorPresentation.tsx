@@ -596,7 +596,7 @@ export default function InvestorPresentation() {
           <div className="flex gap-6 justify-center flex-wrap">
             <Button 
               size="lg" 
-              className="bg-white text-purple-600 hover:bg-gray-100 text-xl px-12 py-6"
+              className="bg-white text-purple-600 hover:bg-white text-xl px-12 py-6"
               onClick={() => window.location.href = 'mailto:Nir.H@PetWash.co.il?subject=Investment Inquiry'}
             >
               📧 Contact for Investment

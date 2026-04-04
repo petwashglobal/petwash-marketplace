@@ -361,7 +361,7 @@ export default function BrowseWalkers() {
                     className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
                       sortBy === option.id
                         ? 'bg-emerald-50 text-emerald-700 font-medium'
-                        : 'hover:bg-gray-50 text-gray-700'
+                        : 'hover:bg-white text-gray-700'
                     }`}
                   >
                     {option.label}
@@ -435,7 +435,7 @@ export default function BrowseWalkers() {
                     className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
                       minRating === option.value
                         ? 'bg-emerald-50 text-emerald-700 font-medium'
-                        : 'hover:bg-gray-50 text-gray-700'
+                        : 'hover:bg-white text-gray-700'
                     }`}
                   >
                     {option.label}
@@ -528,7 +528,7 @@ export default function BrowseWalkers() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="rounded-full px-8 border-gray-300 hover:bg-gray-50"
+                className="rounded-full px-8 border-gray-300 hover:bg-white"
                 data-testid="button-load-more"
               >
                 {isHebrew ? 'טען עוד מטיילים' : 'Load More Walkers'}

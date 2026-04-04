@@ -124,9 +124,9 @@ function StatusBadge({ status }: { status: string }) {
 function LoyaltyBadge({ tier }: { tier: string }) {
   const colors: Record<string, string> = {
     bronze: "bg-orange-100 text-orange-800 border-orange-200",
-    silver: "bg-gray-100 text-gray-700 border-gray-200",
+    silver: "bg-white text-gray-700 border-gray-200",
     gold: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    platinum: "bg-slate-100 text-slate-800 border-slate-200",
+    platinum: "bg-white text-slate-800 border-slate-200",
     diamond: "bg-cyan-100 text-cyan-800 border-cyan-200",
     elite: "bg-purple-100 text-purple-800 border-purple-200",
     royal: "bg-indigo-100 text-indigo-800 border-indigo-200",
@@ -244,14 +244,14 @@ export default function AdminBackendPanel() {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                     activeTab === tab.id
                       ? "bg-[#c6a664] text-white shadow-md"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                      : "bg-white text-gray-600 hover:bg-white"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
                   {tab.count !== undefined && (
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      activeTab === tab.id ? "bg-white/20 text-white" : "bg-gray-200 text-gray-600"
+                      activeTab === tab.id ? "bg-white/20 text-white" : "bg-white text-gray-600"
                     }`}>
                       {tab.count}
                     </span>
@@ -389,7 +389,7 @@ export default function AdminBackendPanel() {
                   placeholder="Search by name, email, phone..."
                   value={memberSearch}
                   onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
-                  className="pl-10 bg-gray-50 border-gray-200"
+                  className="pl-10 bg-white border-gray-200"
                 />
               </div>
             </div>
@@ -449,11 +449,11 @@ export default function AdminBackendPanel() {
                   placeholder="Search providers..."
                   value={providerSearch}
                   onChange={(e) => { setProviderSearch(e.target.value); setProviderPage(1); }}
-                  className="pl-10 bg-gray-50 border-gray-200"
+                  className="pl-10 bg-white border-gray-200"
                 />
               </div>
               <Select value={providerStatus} onValueChange={(v) => { setProviderStatus(v === "all" ? "" : v); setProviderPage(1); }}>
-                <SelectTrigger className="w-32 bg-gray-50">
+                <SelectTrigger className="w-32 bg-white">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -491,7 +491,7 @@ export default function AdminBackendPanel() {
                         {p.service_types && p.service_types.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {p.service_types.map((s, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600">{s}</span>
+                              <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600">{s}</span>
                             ))}
                           </div>
                         )}
@@ -530,11 +530,11 @@ export default function AdminBackendPanel() {
                   placeholder="Search staff..."
                   value={staffSearch}
                   onChange={(e) => { setStaffSearch(e.target.value); setStaffPage(1); }}
-                  className="pl-10 bg-gray-50 border-gray-200"
+                  className="pl-10 bg-white border-gray-200"
                 />
               </div>
               <Select value={staffStatus} onValueChange={(v) => { setStaffStatus(v === "all" ? "" : v); setStaffPage(1); }}>
-                <SelectTrigger className="w-32 bg-gray-50">
+                <SelectTrigger className="w-32 bg-white">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>

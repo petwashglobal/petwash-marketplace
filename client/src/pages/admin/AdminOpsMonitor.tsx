@@ -63,7 +63,7 @@ function HealthSection({ headers }: { headers: Record<string, string> }) {
         ) : (
           <>
             {/* Dead-letter trend */}
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="rounded-lg border border-slate-100 bg-white p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Dead-Letter Trend</span>
                 {dl && <StatusBadge status={dl.status} />}
@@ -78,7 +78,7 @@ function HealthSection({ headers }: { headers: Record<string, string> }) {
             </div>
 
             {/* SMS segment risk */}
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="rounded-lg border border-slate-100 bg-white p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">SMS Segment Risk</span>
                 {sms && <StatusBadge status={sms.status} />}
@@ -110,7 +110,7 @@ function HealthSection({ headers }: { headers: Record<string, string> }) {
             </div>
 
             {/* Provider rejection docs */}
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="rounded-lg border border-slate-100 bg-white p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">PW-REJ Documents (24 h)</span>
                 {rej && <span className="text-sm font-bold text-slate-900">{rej.count}</span>}
@@ -136,7 +136,7 @@ function HealthSection({ headers }: { headers: Record<string, string> }) {
                       <tr><td colSpan={4} className="text-slate-400 py-3 text-center">No events in last 24 h</td></tr>
                     )}
                     {byEvent.map((row: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                      <tr key={i} className="border-b border-slate-50 hover:bg-white">
                         <td className="py-1.5 font-mono">{row.event_type}</td>
                         <td className="py-1.5 text-right">{row.total_sent_last_24h}</td>
                         <td className="py-1.5 text-right text-green-700">{row.sent}</td>
@@ -321,7 +321,7 @@ function DocumentsByPrefixSection({ headers }: { headers: Record<string, string>
                 className={`rounded-lg border p-2.5 text-left transition-all ${
                   isSelected
                     ? 'border-indigo-400 bg-indigo-50'
-                    : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50'
+                    : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-white'
                 }`}
               >
                 <div className="font-mono text-xs font-bold text-slate-800">{pfx}</div>
@@ -356,7 +356,7 @@ function DocumentsByPrefixSection({ headers }: { headers: Record<string, string>
                     <tr><td colSpan={4} className="text-slate-400 py-4 text-center">No documents found</td></tr>
                   )}
                   {recentDocs.map((doc: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                    <tr key={i} className="border-b border-slate-50 hover:bg-white">
                       <td className="py-1.5 pr-3 font-mono font-semibold text-indigo-700">{doc.document_reference}</td>
                       <td className="py-1.5 pr-3 font-mono text-slate-600 max-w-[120px] truncate">{doc.user_id ?? '—'}</td>
                       <td className="py-1.5 pr-3 font-mono text-slate-600">{doc.booking_id ?? '—'}</td>
@@ -418,7 +418,7 @@ function EventMatrixSection({ headers }: { headers: Record<string, string> }) {
               </thead>
               <tbody>
                 {data.events.map((e: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                  <tr key={i} className="border-b border-slate-50 hover:bg-white">
                     <td className="py-1.5 pr-3 font-mono font-semibold text-slate-800">{e.event}</td>
                     <td className="py-1.5 pr-3 text-slate-600">{e.documentType}</td>
                     <td className="py-1.5 pr-3 font-mono font-bold text-indigo-700">{e.documentPrefix}</td>
@@ -446,7 +446,7 @@ export default function AdminOpsMonitor() {
   const headers = useAdminHeaders();
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+    <div className="min-h-screen bg-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">

@@ -76,7 +76,7 @@ function MarketplaceFlowDiagram() {
       {/* Flow diagram */}
       <div className="flex flex-col items-center gap-0 md:hidden">
         <FlowStep icon={CreditCard} title="תשלום לקוח" subtitle="מחיר בסיס + עמלה + מע״מ" color="bg-blue-50 border-blue-300 text-blue-900" badge="Step 1" />
-        <FlowStep icon={Landmark} title="Nayax / מעבד" subtitle="עמלת עיבוד מנוכה" color="bg-gray-50 border-gray-300 text-gray-800" badge="Step 2" />
+        <FlowStep icon={Landmark} title="Nayax / מעבד" subtitle="עמלת עיבוד מנוכה" color="bg-white border-gray-300 text-gray-800" badge="Step 2" />
         <FlowStep icon={Receipt} title="מע״מ 18%" subtitle="על עמלת הפלטפורמה בלבד" color="bg-amber-50 border-amber-300 text-amber-900" badge="Step 3" />
         <FlowStep icon={Building2} title="עמלת פלטפורמה" subtitle="15% עמלת PetWash™" color="bg-purple-50 border-purple-300 text-purple-900" badge="Step 4" />
         <FlowStep icon={ShieldCheck} title="נאמנות (Escrow)" subtitle="מוחזק 72 שעות" color="bg-indigo-50 border-indigo-300 text-indigo-900" badge="Step 5" />
@@ -87,7 +87,7 @@ function MarketplaceFlowDiagram() {
       <div className="hidden md:flex items-center gap-2 overflow-x-auto pb-2">
         {[
           { icon: CreditCard, title: 'תשלום לקוח', sub: 'בסיס + עמלה + מע״מ', color: 'bg-blue-50 border-blue-300 text-blue-900', badge: '1' },
-          { icon: Landmark, title: 'Nayax', sub: 'עמלת עיבוד', color: 'bg-gray-50 border-gray-300 text-gray-800', badge: '2' },
+          { icon: Landmark, title: 'Nayax', sub: 'עמלת עיבוד', color: 'bg-white border-gray-300 text-gray-800', badge: '2' },
           { icon: Receipt, title: 'מע״מ 18%', sub: 'על עמלה בלבד', color: 'bg-amber-50 border-amber-300 text-amber-900', badge: '3' },
           { icon: Building2, title: 'עמלת פלטפורמה', sub: '15% PetWash™', color: 'bg-purple-50 border-purple-300 text-purple-900', badge: '4' },
           { icon: ShieldCheck, title: 'נאמנות 72ש׳', sub: 'מוחזק בבטחה', color: 'bg-indigo-50 border-indigo-300 text-indigo-900', badge: '5' },
@@ -194,7 +194,7 @@ function DirectSaleFlowDiagram() {
       <div className="hidden md:flex items-center gap-2 overflow-x-auto pb-2">
         {[
           { icon: CreditCard, title: 'תשלום לקוח', sub: 'מחיר מוצר כולל מע״מ', color: 'bg-emerald-50 border-emerald-300 text-emerald-900', badge: '1' },
-          { icon: Landmark, title: 'Nayax', sub: 'עמלת עיבוד', color: 'bg-gray-50 border-gray-300 text-gray-800', badge: '2' },
+          { icon: Landmark, title: 'Nayax', sub: 'עמלת עיבוד', color: 'bg-white border-gray-300 text-gray-800', badge: '2' },
           { icon: Receipt, title: 'מע״מ 18%', sub: 'על כל המכירה', color: 'bg-amber-50 border-amber-300 text-amber-900', badge: '3' },
           { icon: Building2, title: 'הכנסת PetWash™', sub: 'מחיר נטו', color: 'bg-emerald-50 border-emerald-400 text-emerald-900', badge: '4' },
         ].map((step, i, arr) => (
@@ -213,7 +213,7 @@ function DirectSaleFlowDiagram() {
       {/* Mobile */}
       <div className="flex flex-col items-center gap-0 md:hidden">
         <FlowStep icon={CreditCard} title="תשלום לקוח" subtitle="מחיר מוצר כולל מע״מ" color="bg-emerald-50 border-emerald-300 text-emerald-900" badge="Step 1" />
-        <FlowStep icon={Landmark} title="Nayax" subtitle="עמלת עיבוד מנוכה" color="bg-gray-50 border-gray-300 text-gray-800" badge="Step 2" />
+        <FlowStep icon={Landmark} title="Nayax" subtitle="עמלת עיבוד מנוכה" color="bg-white border-gray-300 text-gray-800" badge="Step 2" />
         <FlowStep icon={Receipt} title="מע״מ 18%" subtitle="על כל המכירה" color="bg-amber-50 border-amber-300 text-amber-900" badge="Step 3" />
         <FlowStep icon={Building2} title="הכנסת PetWash™" subtitle="מחיר נטו" color="bg-emerald-50 border-emerald-400 text-emerald-900" badge="Step 4" last />
       </div>
@@ -530,7 +530,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                       ))}
                     </div>
                     <div className="flex items-center gap-2 mt-4 mb-3">
-                      <Badge className="bg-gray-100 text-gray-700">משותף — שני הזרמים</Badge>
+                      <Badge className="bg-white text-gray-700">משותף — שני הזרמים</Badge>
                     </div>
                     <div className="space-y-2">
                       {[
@@ -540,7 +540,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                         { type: 'adjustment', desc: 'תיקון ידני', note: 'admin only' },
                         { type: 'chargeback', desc: 'חיוב חוזר / ערעור', note: 'רשת כרטיסי אשראי' },
                       ].map(item => (
-                        <div key={item.type} className="flex items-start gap-2 p-2.5 bg-gray-50 rounded-lg">
+                        <div key={item.type} className="flex items-start gap-2 p-2.5 bg-white rounded-lg">
                           <code className="text-xs font-mono text-gray-600 min-w-40">{item.type}</code>
                           <div>
                             <p className="text-xs font-medium">{item.desc}</p>
@@ -603,13 +603,13 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                   <div className="space-y-2">
                     <p className="font-medium text-xs text-gray-500 uppercase">Flow A — מרקטפלייס</p>
                     <p className="text-gray-700">מע״מ מחושב על <strong>עמלת הפלטפורמה בלבד</strong> (15%).</p>
-                    <code className="block text-xs bg-gray-50 p-2 rounded">מע״מ = עמלה × 18%</code>
+                    <code className="block text-xs bg-white p-2 rounded">מע״מ = עמלה × 18%</code>
                     <p className="text-xs text-gray-500">דוגמה: עמלה ₪15 → מע״מ ₪2.70</p>
                   </div>
                   <div className="space-y-2">
                     <p className="font-medium text-xs text-gray-500 uppercase">Flow B — מכירה ישירה</p>
                     <p className="text-gray-700">מע״מ מחושב על <strong>כל מחיר המכירה</strong>.</p>
-                    <code className="block text-xs bg-gray-50 p-2 rounded">מע״מ = (מחיר ÷ 1.18) × 18%</code>
+                    <code className="block text-xs bg-white p-2 rounded">מע״מ = (מחיר ÷ 1.18) × 18%</code>
                     <p className="text-xs text-gray-500">דוגמה: גיפט קארד ₪118 → מע״מ ₪18</p>
                   </div>
                 </CardContent>
@@ -630,9 +630,9 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-gray-500 uppercase">מס חברות PetWash™</p>
-                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center justify-between p-2 bg-white rounded">
                       <span className="text-sm">מס חברות (Israel 2026)</span>
-                      <Badge className="bg-gray-200 text-gray-700">23%</Badge>
+                      <Badge className="bg-white text-gray-700">23%</Badge>
                     </div>
                     <p className="text-xs text-gray-500">PetWash™ משלמת 23% מס חברות על הרווחים הנקיים.</p>
                   </div>

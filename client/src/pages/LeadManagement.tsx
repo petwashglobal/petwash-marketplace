@@ -208,7 +208,7 @@ const getStatusColor = (status: string) => {
     case 'nurturing': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
     case 'converted': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
     case 'lost': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    default: return 'bg-white text-gray-800 dark:bg-white dark:text-black';
   }
 };
 
@@ -950,10 +950,10 @@ export default function LeadManagement() {
                 {leads.length === 0 ? (
                   <div className="text-center py-12" data-testid="no-leads-message">
                     <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
                       {t('leads.list.noLeads')}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">
+                    <p className="text-gray-600 dark:text-black mb-4">
                       {t('leads.list.createFirst')}
                     </p>
                     <Button 
@@ -988,7 +988,7 @@ export default function LeadManagement() {
                         {leads.map((lead) => (
                           <TableRow 
                             key={lead.id} 
-                            className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                            className="cursor-pointer hover:bg-white dark:hover:bg-white"
                             onClick={() => handleLeadSelect(lead)}
                             data-testid={`lead-row-${lead.id}`}
                           >
@@ -1015,7 +1015,7 @@ export default function LeadManagement() {
                                 <span className={`font-medium ${getScoreColor(getLeadScore(lead))}`}>
                                   {getLeadScore(lead)}
                                 </span>
-                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div className="w-16 bg-white rounded-full h-2">
                                   <div 
                                     className="bg-blue-600 h-2 rounded-full" 
                                     style={{ width: `${getLeadScore(lead)}%` }}
@@ -1062,10 +1062,10 @@ export default function LeadManagement() {
               <CardContent>
                 <div className="text-center py-12">
                   <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
                     Pipeline Visualization
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
+                  <p className="text-gray-600 dark:text-black">
                     Interactive pipeline with drag-and-drop functionality coming soon
                   </p>
                 </div>
@@ -1485,7 +1485,7 @@ export default function LeadManagement() {
                           <span className={`font-medium ${getScoreColor(getLeadScore(selectedLead))}`}>
                             {getLeadScore(selectedLead)}
                           </span>
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
+                          <div className="w-16 bg-white rounded-full h-2">
                             <div 
                               className="bg-blue-600 h-2 rounded-full" 
                               style={{ width: `${getLeadScore(selectedLead)}%` }}
@@ -1510,7 +1510,7 @@ export default function LeadManagement() {
                     {selectedLead.notes && (
                       <div className="mt-4 space-y-1">
                         <p className="text-sm font-medium text-gray-500">{t('leads.form.notes')}</p>
-                        <p className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                        <p className="text-sm bg-white dark:bg-white p-3 rounded-lg">
                           {selectedLead.notes}
                         </p>
                       </div>

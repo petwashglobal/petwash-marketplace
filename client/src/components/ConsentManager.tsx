@@ -179,7 +179,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
             {showDetails && (
               <div className="space-y-4 mb-6">
                 {/* Necessary Cookies */}
-                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-3 p-4 bg-white rounded-lg">
                   <Cookie className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
@@ -196,7 +196,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                 </div>
 
                 {/* Functional Cookies */}
-                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-3 p-4 bg-white rounded-lg">
                   <Settings className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
@@ -213,7 +213,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                 </div>
 
                 {/* Analytics Cookies */}
-                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-3 p-4 bg-white rounded-lg">
                   <BarChart3 className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
@@ -230,7 +230,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                 </div>
 
                 {/* Marketing Cookies */}
-                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-3 p-4 bg-white rounded-lg">
                   <Target className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
@@ -310,7 +310,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                   <Button
                     onClick={() => setShowDetails(true)}
                     variant="outline"
-                    className="flex-1 border-black text-black hover:bg-black/10 dark:border-white dark:text-white dark:hover:bg-white/10"
+                    className="flex-1 border-black text-black hover:bg-black/10 dark:border-white dark:text-black dark:hover:bg-white/10"
                   >
                     {t.customize}
                   </Button>
@@ -346,7 +346,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
                 <a 
                   href="/privacy-policy" 
-                  className="text-xs text-black dark:text-white hover:underline inline-flex items-center gap-1"
+                  className="text-xs text-black dark:text-black hover:underline inline-flex items-center gap-1"
                 >
                   {t.privacyPolicy} →
                 </a>

@@ -88,7 +88,7 @@ const LEVEL_CONFIG = {
 };
 
 const STATUS_CONFIG = {
-  PENDING_SIGNUP: { label: "ממתין להרשמה", color: "bg-gray-100 text-gray-600", icon: Clock },
+  PENDING_SIGNUP: { label: "ממתין להרשמה", color: "bg-white text-gray-600", icon: Clock },
   SIGNED_UP: { label: "נרשם", color: "bg-blue-100 text-blue-600", icon: Users },
   WAITING_FIRST_PAYMENT: { label: "ממתין לתשלום", color: "bg-yellow-100 text-yellow-700", icon: Clock },
   COMPLETED: { label: "הושלם!", color: "bg-green-100 text-green-700", icon: Check },
@@ -201,7 +201,7 @@ export default function ReferralPage() {
               <Button 
                 onClick={copyLink}
                 variant="secondary"
-                className="bg-white text-emerald-600 hover:bg-gray-100"
+                className="bg-white text-emerald-600 hover:bg-white"
                 data-testid="btn-copy-link"
               >
                 {copied ? <Check className="w-4 h-4 ml-2" /> : <Copy className="w-4 h-4 ml-2" />}

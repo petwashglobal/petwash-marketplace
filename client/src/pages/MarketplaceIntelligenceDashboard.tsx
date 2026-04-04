@@ -44,7 +44,7 @@ import { apiRequest } from '@/lib/queryClient';
 const TIER_CONFIG = {
   prestige: { label: 'Prestige', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300' },
   gold:     { label: 'Gold',     icon: Award,  color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-  silver:   { label: 'Silver',   icon: Shield, color: 'bg-gray-100 text-gray-600 border-gray-300' },
+  silver:   { label: 'Silver',   icon: Shield, color: 'bg-white text-gray-600 border-gray-300' },
   bronze:   { label: 'Bronze',   icon: Zap,    color: 'bg-orange-100 text-orange-700 border-orange-300' },
   at_risk:  { label: 'At Risk',  icon: AlertTriangle, color: 'bg-red-100 text-red-700 border-red-300' },
   new:      { label: 'New',      icon: TrendingUp,    color: 'bg-blue-100 text-blue-700 border-blue-300' },
@@ -199,7 +199,7 @@ export default function MarketplaceIntelligenceDashboard() {
 
   return (
     <div
-      className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8"
+      className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8"
       dir={isHebrew ? 'rtl' : 'ltr'}
     >
       {/* Header */}
@@ -230,7 +230,7 @@ export default function MarketplaceIntelligenceDashboard() {
         {/* Summary chips */}
         {data && (
           <div className="flex flex-wrap gap-3 mt-4">
-            <div className="bg-white dark:bg-gray-900 border rounded-lg px-4 py-2 text-sm">
+            <div className="bg-white dark:bg-white border rounded-lg px-4 py-2 text-sm">
               <span className="text-gray-500">{isHebrew ? 'סך ספקים' : 'Total'}</span>
               <span className="ml-2 font-bold">{data.total}</span>
             </div>
@@ -338,13 +338,13 @@ export default function MarketplaceIntelligenceDashboard() {
                           <div className="text-xs text-gray-400">{isHebrew ? 'דירוג' : 'Rank'}</div>
                         </div>
                         <div className="text-center">
-                          <div className={`text-sm font-semibold ${(provider.trustScore ?? 100) <= 40 ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}`}>
+                          <div className={`text-sm font-semibold ${(provider.trustScore ?? 100) <= 40 ? 'text-red-600' : 'text-gray-700 dark:text-black'}`}>
                             {provider.trustScore ?? '—'}
                           </div>
                           <div className="text-xs text-gray-400">{isHebrew ? 'אמון' : 'Trust'}</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          <div className="text-sm font-semibold text-gray-700 dark:text-black">
                             {provider.ratingAvg ? parseFloat(provider.ratingAvg).toFixed(1) : '—'} ⭐
                           </div>
                           <div className="text-xs text-gray-400">
@@ -392,7 +392,7 @@ export default function MarketplaceIntelligenceDashboard() {
                         {/* Flag / Unflag */}
                         <Button
                           size="sm" variant="outline"
-                          className={`h-8 px-2.5 text-xs ${isFlagged ? 'text-orange-600 border-orange-300 bg-orange-50 hover:bg-orange-100' : 'text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                          className={`h-8 px-2.5 text-xs ${isFlagged ? 'text-orange-600 border-orange-300 bg-orange-50 hover:bg-orange-100' : 'text-gray-500 border-gray-200 hover:bg-white'}`}
                           disabled={overrideMutation.isPending}
                           onClick={() => overrideMutation.mutate({ userId: provider.userId, action: isFlagged ? 'unflag' : 'flag' })}
                           title={isFlagged ? (isHebrew ? 'הסר דגל' : 'Unflag') : (isHebrew ? 'סמן לבדיקה' : 'Flag for review')}
@@ -450,7 +450,7 @@ export default function MarketplaceIntelligenceDashboard() {
                         ) : (
                           <div className="space-y-1.5">
                             {auditData.entries.map((entry) => (
-                              <div key={entry.id} className="flex items-start gap-3 text-xs bg-gray-50 rounded-lg px-3 py-2">
+                              <div key={entry.id} className="flex items-start gap-3 text-xs bg-white rounded-lg px-3 py-2">
                                 <span className={`font-semibold capitalize shrink-0 ${
                                   entry.action === 'boost' ? 'text-blue-600'
                                   : entry.action === 'suppress' ? 'text-orange-600'

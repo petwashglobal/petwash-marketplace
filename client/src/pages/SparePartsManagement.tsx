@@ -147,7 +147,7 @@ export default function SparePartsManagement() {
         );
       case 'discontinued':
         return (
-          <Badge className="bg-gray-100 text-gray-700 border-gray-300">
+          <Badge className="bg-white text-gray-700 border-gray-300">
             {isHebrew ? 'מופסק' : 'Discontinued'}
           </Badge>
         );
@@ -402,7 +402,7 @@ export default function SparePartsManagement() {
                             <Wrench className="w-5 h-5 text-orange-600" />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-gray-900 dark:text-white">{part.name}</h3>
+                                <h3 className="font-semibold text-gray-900 dark:text-black">{part.name}</h3>
                                 <Badge variant="outline">{part.partNumber}</Badge>
                                 {getStatusBadge(part.status)}
                               </div>
@@ -420,7 +420,7 @@ export default function SparePartsManagement() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                            <div className="text-2xl font-bold text-gray-900 dark:text-black mb-1">
                               {part.stockLevel}
                             </div>
                             <p className="text-xs text-gray-500">
@@ -488,7 +488,7 @@ export default function SparePartsManagement() {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-black">
                               {order.orderNumber}
                             </h3>
                             {getOrderStatusBadge(order.status)}

@@ -306,7 +306,7 @@ export default function ProviderDashboard() {
                         {isHebrew ? 'מחובר' : 'Online'}
                       </span>
                     ) : (
-                      <span className="luxury-badge bg-gray-100 text-gray-600 border-gray-200">
+                      <span className="luxury-badge bg-white text-gray-600 border-gray-200">
                         {isHebrew ? 'לא מחובר' : 'Offline'}
                       </span>
                     )}

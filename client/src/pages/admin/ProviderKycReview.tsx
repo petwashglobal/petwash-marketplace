@@ -285,8 +285,8 @@ export default function ProviderKycReview() {
   const PRIORITY_STYLE: Record<string, string> = {
     urgent: 'bg-red-600 text-white',
     high:   'bg-orange-500 text-white',
-    normal: 'bg-slate-100 text-slate-600',
-    low:    'bg-slate-100 text-slate-400',
+    normal: 'bg-white text-slate-600',
+    low:    'bg-white text-slate-400',
   };
   const faceScore = parseFloat(app.biometricMatchScore || '0');
   const livenessScore = parseFloat(app.kycLivenessScore || '0');
@@ -434,7 +434,7 @@ export default function ProviderKycReview() {
           <TabsTrigger value="audit" className="flex items-center gap-1.5">
             <History className="h-4 w-4" /> Audit Trail
             {auditEvents.length > 0 && (
-              <span className="ml-1 bg-slate-100 text-slate-600 rounded-full text-xs px-1.5">{auditEvents.length}</span>
+              <span className="ml-1 bg-white text-slate-600 rounded-full text-xs px-1.5">{auditEvents.length}</span>
             )}
           </TabsTrigger>
         </TabsList>
@@ -462,7 +462,7 @@ export default function ProviderKycReview() {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-40 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-muted-foreground">
+                    <div className="w-full h-40 bg-white rounded-lg flex items-center justify-center text-sm text-muted-foreground">
                       <Eye className="h-5 w-5 mr-2" /> Not available
                     </div>
                   )}
@@ -487,7 +487,7 @@ export default function ProviderKycReview() {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-40 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-muted-foreground">
+                    <div className="w-full h-40 bg-white rounded-lg flex items-center justify-center text-sm text-muted-foreground">
                       <Eye className="h-5 w-5 mr-2" /> Not available
                     </div>
                   )}
@@ -535,19 +535,19 @@ export default function ProviderKycReview() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="p-3 bg-slate-50 rounded-lg">
+                    <div className="p-3 bg-white rounded-lg">
                       <div className={`text-2xl font-bold ${faceScore >= 78 ? 'text-green-600' : faceScore >= 55 ? 'text-amber-600' : 'text-red-600'}`}>
                         {faceScore.toFixed(0)}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">Face Match / 100</div>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg">
+                    <div className="p-3 bg-white rounded-lg">
                       <div className={`text-2xl font-bold ${livenessScore >= 70 ? 'text-green-600' : livenessScore >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
                         {livenessScore.toFixed(0)}%
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">Liveness</div>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg">
+                    <div className="p-3 bg-white rounded-lg">
                       <div className={`text-2xl font-bold ${ocrConfidence >= 70 ? 'text-green-600' : ocrConfidence >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
                         {ocrConfidence.toFixed(0)}%
                       </div>
@@ -579,7 +579,7 @@ export default function ProviderKycReview() {
                       { label: 'ID number detected', value: kycDetail?.ocr?.idNumberDetected },
                       { label: 'Country detected', value: kycDetail?.ocr?.issuingCountryDetected },
                     ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between bg-slate-50 rounded px-3 py-2">
+                      <div key={label} className="flex items-center justify-between bg-white rounded px-3 py-2">
                         <span className="text-muted-foreground">{label}</span>
                         {typeof value === 'boolean' ? (
                           value ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-400" />
@@ -641,7 +641,7 @@ export default function ProviderKycReview() {
                     <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Engine Decision</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-slate-700 font-mono bg-slate-50 p-3 rounded">{app.biometricFailureReason}</p>
+                    <p className="text-sm text-slate-700 font-mono bg-white p-3 rounded">{app.biometricFailureReason}</p>
                   </CardContent>
                 </Card>
               )}
@@ -853,7 +853,7 @@ export default function ProviderKycReview() {
                   return (
                     <div key={msg.id}
                       className={`rounded-lg p-4 text-sm border ${isInternal
-                        ? 'bg-slate-50 border-slate-200'
+                        ? 'bg-white border-slate-200'
                         : msg.direction === 'outbound'
                           ? 'bg-blue-50 border-blue-200'
                           : 'bg-green-50 border-green-200'}`}
@@ -920,7 +920,7 @@ export default function ProviderKycReview() {
                           <summary className="text-xs text-muted-foreground cursor-pointer hover:text-slate-600">
                             View payload
                           </summary>
-                          <pre className="mt-1 text-xs bg-slate-50 p-2 rounded overflow-auto max-h-32 text-slate-600">
+                          <pre className="mt-1 text-xs bg-white p-2 rounded overflow-auto max-h-32 text-slate-600">
                             {JSON.stringify(event.payload, null, 2)}
                           </pre>
                         </details>

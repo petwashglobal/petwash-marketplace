@@ -136,7 +136,7 @@ export function PersonalizedGreeting() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white leading-relaxed"
+                    className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-black leading-relaxed"
                     data-testid="greeting-text"
                   >
                     {data.greeting}

@@ -182,7 +182,7 @@ export default function DaycareCalculator() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ border: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}
+                style={{ border: '1px solid #f0f0f0', backgroundColor: '#ffffff' }}
               >
                 <span className="text-[18px]">{pet.type === 'dog' ? '🐕' : '🐈'}</span>
                 <div className="flex-1 grid grid-cols-2 gap-2">

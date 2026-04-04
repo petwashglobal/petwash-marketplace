@@ -191,7 +191,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
               <div className="flex gap-2">
                 <button
                   onClick={handleRejectAll}
-                  className="flex-1 bg-white hover:bg-gray-100 text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                     fontWeight: 400,
@@ -203,7 +203,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
                 
                 <button
                   onClick={handleManagePreferences}
-                  className="flex-1 bg-white hover:bg-gray-100 text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                     fontWeight: 400,

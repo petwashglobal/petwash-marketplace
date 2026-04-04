@@ -208,7 +208,7 @@ export default function NayaxMonitoring() {
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="mb-6 p-4 bg-white rounded-lg border border-slate-200">
             <div className="flex items-center space-x-2 mb-4">
               <Filter className="w-4 h-4 text-slate-600" />
               <h3 className="text-sm font-semibold text-slate-700">Filters</h3>
@@ -323,7 +323,7 @@ export default function NayaxMonitoring() {
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-slate-50">
+                  <TableRow className="bg-white">
                     <TableHead>Timestamp</TableHead>
                     <TableHead>Station</TableHead>
                     <TableHead>User</TableHead>
@@ -337,12 +337,12 @@ export default function NayaxMonitoring() {
                 </TableHeader>
                 <TableBody>
                   {transactions.map((transaction) => (
-                    <TableRow key={transaction.id} className="hover:bg-slate-50">
+                    <TableRow key={transaction.id} className="hover:bg-white">
                       <TableCell className="font-mono text-xs">
                         {format(new Date(transaction.createdAt), 'MMM dd, HH:mm:ss')}
                       </TableCell>
                       <TableCell>
-                        <code className="text-xs bg-slate-100 px-2 py-1 rounded">
+                        <code className="text-xs bg-white px-2 py-1 rounded">
                           {transaction.stationId || '-'}
                         </code>
                       </TableCell>
@@ -406,7 +406,7 @@ export default function NayaxMonitoring() {
               <div className="space-y-4">
                 <div>
                   <Label className="text-xs text-slate-500">Transaction ID</Label>
-                  <p className="font-mono text-sm mt-1 bg-slate-100 p-2 rounded">{selectedTransaction.id}</p>
+                  <p className="font-mono text-sm mt-1 bg-white p-2 rounded">{selectedTransaction.id}</p>
                 </div>
 
                 {selectedTransaction.uid && (
@@ -466,7 +466,7 @@ export default function NayaxMonitoring() {
                 {selectedTransaction.rawPayload && (
                   <div>
                     <Label className="text-xs text-slate-500">Raw Payload (Sanitized)</Label>
-                    <pre className="text-xs mt-1 bg-slate-100 p-3 rounded overflow-x-auto">
+                    <pre className="text-xs mt-1 bg-white p-3 rounded overflow-x-auto">
                       {JSON.stringify(selectedTransaction.rawPayload, null, 2)}
                     </pre>
                   </div>

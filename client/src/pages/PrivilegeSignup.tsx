@@ -442,7 +442,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.06 }}
-                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors cursor-default group"
+                  className="flex items-center justify-between p-4 bg-white hover:bg-white transition-colors cursor-default group"
                   style={{ borderRadius: '2px' }}
                 >
                   <div className="flex items-center gap-4">
@@ -520,7 +520,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                       className="flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400" style={{ borderRadius: '2px' }}>{item.icon}</div>
+                        <div className="w-8 h-8 flex items-center justify-center bg-white text-gray-400" style={{ borderRadius: '2px' }}>{item.icon}</div>
                         <div>
                           <p className="text-sm text-gray-700">{item.text}</p>
                           <p className="text-[11px] text-gray-400">{item.time}</p>
@@ -589,7 +589,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.06 }}
-                  className="bg-gray-50 p-5 text-center hover:bg-gray-100 transition-colors"
+                  className="bg-white p-5 text-center hover:bg-white transition-colors"
                   style={{ borderRadius: '2px' }}
                 >
                   <div className="mb-3" style={{ color: gold }}>{p.icon}</div>
@@ -639,12 +639,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   className="bg-white p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow"
                   style={{ borderRadius: '2px' }}
                 >
-                  <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 bg-gray-50" style={{ borderRadius: '2px', color: gold }}>
+                  <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 bg-white" style={{ borderRadius: '2px', color: gold }}>
                     {item.icon}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-gray-600 leading-relaxed">{item.text}</p>
-                    <span className="inline-block mt-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 text-gray-500 bg-gray-50" style={{ borderRadius: '2px' }}>
+                    <span className="inline-block mt-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 text-gray-500 bg-white" style={{ borderRadius: '2px' }}>
                       {item.tag}
                     </span>
                   </div>
@@ -674,7 +674,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     whileTap={{ scale: 0.97 }}
                     onClick={handleGoogleSignIn}
                     disabled={googleLoading}
-                    className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 font-semibold text-gray-700 shadow-sm"
+                    className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-white transition-all duration-200 font-semibold text-gray-700 shadow-sm"
                     style={{ borderRadius: '2px' }}
                   >
                     {googleLoading
@@ -684,9 +684,9 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   </motion.button>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-100" />
+                    <div className="flex-1 h-px bg-white" />
                     <span className="text-xs text-gray-400">{language === 'he' ? 'או' : 'or'}</span>
-                    <div className="flex-1 h-px bg-gray-100" />
+                    <div className="flex-1 h-px bg-white" />
                   </div>
 
                   <motion.button
@@ -739,16 +739,16 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-gray-600 font-medium">{t('privilege.firstName', language)} <span className="text-red-500">*</span></Label>
-                            <Input id="privilege-firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
+                            <Input id="privilege-firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="bg-white border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                           </div>
                           <div>
                             <Label className="text-gray-600 font-medium">{t('privilege.lastName', language)} <span className="text-red-500">*</span></Label>
-                            <Input id="privilege-lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
+                            <Input id="privilege-lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="bg-white border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                           </div>
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.email', language)} <span className="text-red-500">*</span></Label>
-                          <Input id="privilege-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
+                          <Input id="privilege-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="bg-white border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.phone', language)} <span className="text-red-500">*</span></Label>
@@ -760,7 +760,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.gender', language)} <span className="text-red-500">*</span></Label>
                           <Select value={gender} onValueChange={setGender}>
-                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="male">{t('privilege.genderMale', language)}</SelectItem>
                               <SelectItem value="female">{t('privilege.genderFemale', language)}</SelectItem>
@@ -775,13 +775,13 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.country', language)}</Label>
                           <Select value={country} onValueChange={setCountry}>
-                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent className="max-h-[200px]">{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.city', language)}</Label>
-                          <Input id="privilege-city" value={city} onChange={(e) => setCity(e.target.value)} className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
+                          <Input id="privilege-city" value={city} onChange={(e) => setCity(e.target.value)} className="bg-white border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                         </div>
                         <div>
                           <GooglePlacesAutocomplete value={address} onChange={(val) => setAddress(val)} label={`${t('privilege.address', language)} (${t('privilege.optional', language)})`} placeholder={t('privilege.address', language)} />
@@ -791,7 +791,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     {currentStep === 3 && (
                       <div className="space-y-4">
                         {pets.map((pet, index) => (
-                          <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 space-y-3 relative bg-gray-50" style={{ borderRadius: '2px' }}>
+                          <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 space-y-3 relative bg-white" style={{ borderRadius: '2px' }}>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-600">{t('privilege.sectionPets', language)} #{index + 1}</span>
                               {pets.length > 1 && (
@@ -833,7 +833,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     )}
                     {currentStep === 4 && (
                       <div className="space-y-4">
-                        <div className="p-4 text-center space-y-2 bg-gray-50" style={{ borderRadius: '2px' }}>
+                        <div className="p-4 text-center space-y-2 bg-white" style={{ borderRadius: '2px' }}>
                           <Shield className="w-8 h-8 mx-auto" style={{ color: gold }} />
                           <h3 className="font-semibold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{t('privilege.idVerification', language)}</h3>
                           <p className="text-sm text-gray-500">{t('privilege.idDescription', language)}</p>
@@ -841,7 +841,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.idType', language)}</Label>
                           <Select value={docType} onValueChange={setDocType}>
-                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="driving_license">{t('privilege.idDriverLicense', language)}</SelectItem>
                               <SelectItem value="national_id">{t('privilege.idNationalId', language)}</SelectItem>
@@ -851,12 +851,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.idNumber', language)}</Label>
-                          <Input id="privilege-docNumber" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
+                          <Input id="privilege-docNumber" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.idUpload', language)}</Label>
                           <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleFileChange} className="hidden" />
-                          <div className="mt-1 border-2 border-dashed p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors" style={{ borderRadius: '2px', borderColor: docFile ? gold : '#e5e7eb' }} onClick={() => fileInputRef.current?.click()}>
+                          <div className="mt-1 border-2 border-dashed p-6 text-center cursor-pointer hover:bg-white transition-colors" style={{ borderRadius: '2px', borderColor: docFile ? gold : '#e5e7eb' }} onClick={() => fileInputRef.current?.click()}>
                             {docFile ? (
                               <div className="flex items-center justify-center gap-2 text-sm">
                                 <FileCheck className="w-5 h-5" style={{ color: gold }} />
@@ -878,7 +878,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.referralSource', language)}</Label>
                           <Select value={referralSource} onValueChange={setReferralSource}>
-                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="friend">{t('privilege.referralFriend', language)}</SelectItem>
                               <SelectItem value="social">{t('privilege.referralSocial', language)}</SelectItem>
@@ -891,7 +891,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.referralCode', language)}</Label>
-                          <Input id="privilege-referralCode" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} className="bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
+                          <Input id="privilege-referralCode" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} className="bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                         </div>
                         <div className="space-y-3 pt-4 border-t border-gray-100">
                           <div className="flex items-start gap-2">
@@ -914,7 +914,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   {currentStep > 1 ? (
-                    <Button type="button" variant="outline" onClick={prevStep} className="flex items-center gap-2 text-gray-500 border-gray-200 bg-white hover:bg-gray-50" style={{ borderRadius: '2px' }}>
+                    <Button type="button" variant="outline" onClick={prevStep} className="flex items-center gap-2 text-gray-500 border-gray-200 bg-white hover:bg-white" style={{ borderRadius: '2px' }}>
                       {isRTL ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}{t('privilege.back', language)}
                     </Button>
                   ) : <div />}

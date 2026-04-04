@@ -190,7 +190,7 @@ export default function CookiesPolicy() {
                 <div className="luxury-glass-minimal p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Firebase</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Firebase</h4>
                       <p className="luxury-text-small">Authentication and analytics</p>
                     </div>
                     <span className="luxury-badge luxury-badge-success">Active</span>
@@ -201,7 +201,7 @@ export default function CookiesPolicy() {
                 <div className="luxury-glass-minimal p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Google Analytics</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Google Analytics</h4>
                       <p className="luxury-text-small">Usage analytics and insights</p>
                     </div>
                     <span className="luxury-badge">Optional</span>
@@ -212,7 +212,7 @@ export default function CookiesPolicy() {
                 <div className="luxury-glass-minimal p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Nayax</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Nayax</h4>
                       <p className="luxury-text-small">Payment processing</p>
                     </div>
                     <span className="luxury-badge luxury-badge-success">Active</span>
@@ -223,7 +223,7 @@ export default function CookiesPolicy() {
                 <div className="luxury-glass-minimal p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Google Maps</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-black mb-1">Google Maps</h4>
                       <p className="luxury-text-small">Location services and mapping</p>
                     </div>
                     <span className="luxury-badge luxury-badge-success">Active</span>
@@ -234,7 +234,7 @@ export default function CookiesPolicy() {
                 <div className="luxury-glass-minimal p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">SendGrid</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-black mb-1">SendGrid</h4>
                       <p className="luxury-text-small">Email delivery service</p>
                     </div>
                     <span className="luxury-badge luxury-badge-success">Active</span>

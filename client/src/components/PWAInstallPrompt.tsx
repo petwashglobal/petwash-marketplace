@@ -199,7 +199,7 @@ export default function PWAInstallPrompt() {
         <div
           key={i}
           className={`h-1.5 rounded-full transition-all duration-500 ${
-            step === i ? 'w-6 bg-blue-600' : 'w-1.5 bg-gray-200'
+            step === i ? 'w-6 bg-blue-600' : 'w-1.5 bg-white'
           }`}
         />
       ))}
@@ -215,10 +215,10 @@ export default function PWAInstallPrompt() {
 
       <div className="space-y-3">
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 0 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-gray-50'
+          step === 0 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 0 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-gray-200'
+            step === 0 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 0 ? 'text-white' : 'text-gray-500'}`}>1</span>
           </div>
@@ -242,10 +242,10 @@ export default function PWAInstallPrompt() {
         </div>
 
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 1 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-gray-50'
+          step === 1 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 1 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-gray-200'
+            step === 1 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 1 ? 'text-white' : 'text-gray-500'}`}>2</span>
           </div>
@@ -333,7 +333,7 @@ export default function PWAInstallPrompt() {
       <div className="flex gap-3">
         <Button
           onClick={handleDismiss}
-          className="flex-1 py-3.5 text-sm text-gray-600 font-semibold rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 transition-all"
+          className="flex-1 py-3.5 text-sm text-gray-600 font-semibold rounded-2xl border-2 border-gray-200 bg-white hover:bg-white transition-all"
         >
           {isHebrew ? 'לא עכשיו' : 'Not Now'}
         </Button>
@@ -357,10 +357,10 @@ export default function PWAInstallPrompt() {
 
       <div className="space-y-3">
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 0 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-gray-50'
+          step === 0 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 0 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-gray-200'
+            step === 0 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 0 ? 'text-white' : 'text-gray-500'}`}>1</span>
           </div>
@@ -369,7 +369,7 @@ export default function PWAInstallPrompt() {
               <span className="text-sm font-semibold text-gray-900">
                 {isHebrew ? 'לחצו על' : 'Tap the'}
               </span>
-              <div className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">
+              <div className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-0.5 rounded-md">
                 <span className="text-base font-bold">⋮</span>
                 <span className="text-xs font-bold">{isHebrew ? 'תפריט' : 'Menu'}</span>
               </div>
@@ -381,10 +381,10 @@ export default function PWAInstallPrompt() {
         </div>
 
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 1 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-gray-50'
+          step === 1 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 1 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-gray-200'
+            step === 1 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 1 ? 'text-white' : 'text-gray-500'}`}>2</span>
           </div>

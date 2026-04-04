@@ -49,7 +49,7 @@ export default function POSSettings() {
   return (
     <div className="space-y-5">
       {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-xl p-1 gap-0.5 overflow-x-auto">
+      <div className="flex bg-white rounded-xl p-1 gap-0.5 overflow-x-auto">
         {[
           { id: 'operational', label: 'Operations', icon: Settings },
           { id: 'notifications', label: 'Alerts', icon: Bell },
@@ -183,7 +183,7 @@ export default function POSSettings() {
             onChange={setHidePhone}
             icon={Phone}
             iconColor="text-gray-600"
-            iconBg="bg-gray-100"
+            iconBg="bg-white"
           />
           <ToggleCard
             label="Platform messaging only"

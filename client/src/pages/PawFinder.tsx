@@ -59,10 +59,10 @@ interface PawFinderProps {
 const STATUS_COLORS: Record<string, string> = {
   published:      'bg-emerald-50 text-emerald-700 border-emerald-200',
   matched:        'bg-sky-50 text-sky-700 border-sky-200',
-  resolved:       'bg-slate-50 text-slate-500 border-slate-200',
+  resolved:       'bg-white text-slate-500 border-slate-200',
   pending_review: 'bg-amber-50 text-amber-700 border-amber-200',
   rejected:       'bg-rose-50 text-rose-700 border-rose-200',
-  draft:          'bg-slate-50 text-slate-500 border-slate-200',
+  draft:          'bg-white text-slate-500 border-slate-200',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -171,11 +171,11 @@ function PawFinderMap({ posts, onSelect }: { posts: PawPost[]; onSelect: (id: nu
   }, [posts, onSelect]);
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100">
+    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-white">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
       <div ref={mapRef} className="w-full h-full" />
       {posts.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm bg-slate-50">
+        <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm bg-white">
           <MapPin className="w-4 h-4 mr-1" /> אין פוסטים על המפה
         </div>
       )}
@@ -223,7 +223,7 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
                 {isLost ? '🔴 אבוד' : '🟢 נמצא'}
               </span>
               {post.status !== 'published' && (
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[post.status] || 'bg-slate-50 text-slate-500'}`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[post.status] || 'bg-white text-slate-500'}`}>
                   {STATUS_LABELS[post.status] || post.status}
                 </span>
               )}
@@ -602,7 +602,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
               onClick={requestLocation}
               disabled={locLoading}
               title="זיהוי מיקום GPS"
-              className="flex-shrink-0 flex items-center justify-center w-11 rounded-2xl border border-slate-200 hover:bg-slate-50 transition-colors"
+              className="flex-shrink-0 flex items-center justify-center w-11 rounded-2xl border border-slate-200 hover:bg-white transition-colors"
             >
               {locLoading ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <MapPin className="w-4 h-4 text-slate-500" />}
             </button>
@@ -653,7 +653,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
                   fileInputRef.current.click();
                 }
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm text-slate-600 hover:border-slate-400 hover:bg-white transition-colors"
             >
               <Upload className="w-4 h-4" /> בחר מהגלריה
             </button>
@@ -665,7 +665,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
                   fileInputRef.current.click();
                 }
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm text-slate-600 hover:border-slate-400 hover:bg-white transition-colors"
             >
               <Camera className="w-4 h-4" /> צלם עכשיו
             </button>
@@ -673,7 +673,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
 
           {/* Upload status */}
           {uploadProgress === 'uploading' && (
-            <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-slate-500 bg-white rounded-xl px-3 py-2">
               <Loader2 className="w-4 h-4 animate-spin" /> מעלה תמונה...
             </div>
           )}
@@ -741,7 +741,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       {/* ── Point-of-collection consent disclosure (Israeli Privacy Law §11) ── */}
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1.5" dir="rtl">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600 space-y-1.5" dir="rtl">
         <p className="font-semibold text-slate-700 text-sm">הודעת עיבוד מידע — Paw Finder™</p>
         <ul className="space-y-1 list-disc list-inside">
           <li><strong>תמונות:</strong> הקובץ שהעלת מועבר לשרתי PetWash, נדחס אוטומטית ונבדק ע"י AI לאיתור תוכן פוגעני לפני פרסום. לא מועבר לגורמים חיצוניים.</li>
@@ -942,7 +942,7 @@ function ContactsTab({ user }: { user: any }) {
       {isLoading ? (
         <div className="text-center py-6 text-slate-400"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-400 text-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-400 text-sm">
           <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-40" />
           אין בקשות קשר
         </div>
@@ -976,14 +976,14 @@ function ContactsTab({ user }: { user: any }) {
                   <button
                     onClick={() => declineMut.mutate(cr.id)}
                     disabled={declineMut.isPending}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-600 hover:bg-white"
                   >
                     דחה
                   </button>
                 </div>
               )}
               {cr.status !== 'pending' && (
-                <span className={`text-xs px-2 py-1 rounded-lg ${cr.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`text-xs px-2 py-1 rounded-lg ${cr.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-slate-500'}`}>
                   {cr.status === 'accepted' ? 'התקבל' : 'נדחה'}
                 </span>
               )}
@@ -1051,7 +1051,7 @@ export default function PawFinder({ language }: PawFinderProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50" dir={isHe ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-white" dir={isHe ? 'rtl' : 'ltr'}>
       {contactPost && <ContactModal post={contactPost} onClose={() => setContactPost(null)} />}
 
       {/* Hero */}
@@ -1072,11 +1072,11 @@ export default function PawFinder({ language }: PawFinderProps) {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-2 rounded-full">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white px-3 py-2 rounded-full">
                 <Heart className="w-3.5 h-3.5 text-rose-500" />
                 <span>{posts.filter(p => p.post_type === 'lost').length} אבודים</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-2 rounded-full">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white px-3 py-2 rounded-full">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 <span>{posts.filter(p => p.post_type === 'found').length} נמצאו</span>
               </div>
@@ -1117,7 +1117,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                     key={t}
                     onClick={() => setFilterType(t)}
                     className={`px-4 py-2 text-sm font-medium transition-colors ${
-                      filterType === t ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
+                      filterType === t ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-white'
                     }`}
                   >
                     {t === 'all' ? 'הכל' : t === 'lost' ? '🔴 אבודים' : '🟢 נמצאו'}
@@ -1165,7 +1165,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-sm font-medium transition-colors ${
                   filterReward
                     ? 'bg-amber-50 border-amber-300 text-amber-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-white'
                 }`}
               >
                 <Gift className="w-3.5 h-3.5" /> עם גמול
@@ -1177,7 +1177,7 @@ export default function PawFinder({ language }: PawFinderProps) {
             {/* Map + List */}
             <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
               {/* Map */}
-              <div className="h-[520px] rounded-3xl overflow-hidden border border-slate-200 bg-slate-100">
+              <div className="h-[520px] rounded-3xl overflow-hidden border border-slate-200 bg-white">
                 <PawFinderMap posts={posts} onSelect={handleMapSelect} />
               </div>
 
@@ -1251,7 +1251,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                     </button>
                   )}
                   {!user && (
-                    <div className="text-sm text-slate-500 flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-200">
+                    <div className="text-sm text-slate-500 flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-slate-200">
                       <AlertCircle className="w-4 h-4" /> עליך להתחבר כדי ליצור קשר
                     </div>
                   )}

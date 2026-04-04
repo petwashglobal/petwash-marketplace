@@ -51,7 +51,7 @@ export default function PerformanceMonitoring() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-black">
               Performance Monitoring
             </h1>
             <Badge variant={isHealthy ? "default" : "destructive"} className="text-sm">
@@ -107,7 +107,7 @@ export default function PerformanceMonitoring() {
 
               {/* Query Performance */}
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-center p-4 bg-blue-50 dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {database.avgQueryTime}ms
                   </div>
@@ -123,7 +123,7 @@ export default function PerformanceMonitoring() {
                   <div className="text-xs text-gray-600 dark:text-gray-400">Slow Queries</div>
                   <div className="text-xs text-gray-500 mt-1">&gt;500ms</div>
                 </div>
-                <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="text-center p-4 bg-green-50 dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {database.cacheHitRate}%
                   </div>
@@ -185,7 +185,7 @@ export default function PerformanceMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="text-center p-4 bg-purple-50 dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {api.requestsPerSecond}
                   </div>
@@ -195,7 +195,7 @@ export default function PerformanceMonitoring() {
                     <span className="text-xs text-gray-500">Live</span>
                   </div>
                 </div>
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-center p-4 bg-blue-50 dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {api.avgResponseTime}ms
                   </div>
@@ -218,7 +218,7 @@ export default function PerformanceMonitoring() {
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="mt-6 p-4 bg-white dark:bg-white rounded-lg">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Active Requests</span>
                   <span className="text-lg font-bold text-purple-600">{api.activeRequests}</span>

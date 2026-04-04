@@ -395,7 +395,7 @@ export function BookingRequestModal({
               {step === 'review' && (
                 <>
                   {/* Booking Summary */}
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <div className="bg-white rounded-xl p-4 space-y-3">
                     <h4 className="font-semibold text-gray-900">
                       {isHebrew ? 'סיכום הזמנה' : 'Booking Summary'}
                     </h4>

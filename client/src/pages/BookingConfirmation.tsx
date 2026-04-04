@@ -290,7 +290,7 @@ function toGCalDate(d: Date) {
 /* ── Detail chip ──────────────────────────────────────────────────────── */
 function DetailChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-2xl bg-gray-50 border border-gray-100">
+    <div className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-2xl bg-white border border-gray-100">
       <div className="text-gray-400">{icon}</div>
       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium leading-none">{label}</p>
       <p className="text-sm font-bold text-gray-900 text-center leading-tight">{value}</p>
@@ -311,9 +311,9 @@ function QuickAction({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-40"
+      className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl border border-gray-200 bg-white hover:bg-white active:scale-95 transition-all disabled:opacity-40"
     >
-      <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+      <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-gray-600">
         {icon}
       </div>
       <span className="text-[11px] font-medium text-gray-600">{label}</span>
@@ -407,7 +407,7 @@ function StatusAlertPanel({ booking, t, navigate }: { booking: any; t: typeof la
       </Card>
       <div className="rounded-2xl p-4 flex items-center justify-between gap-4" style={{ background: '#ffffff', border: '1.5px solid rgba(0,0,0,0.08)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0"><Search className="w-4 h-4 text-gray-500" /></div>
+          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0"><Search className="w-4 h-4 text-gray-500" /></div>
           <div>
             <p className="font-semibold text-sm text-gray-800">{t.findAnotherProvider}</p>
             <p className="text-xs text-gray-500">{t.findAnotherSub}</p>
@@ -643,7 +643,7 @@ export default function BookingConfirmation() {
               <p className="text-gray-700 text-sm leading-relaxed mb-3">
                 <strong>{t.thankYou}</strong>
               </p>
-              <div className="flex items-center justify-between text-xs text-gray-400 font-mono bg-gray-50 rounded-xl px-4 py-2.5">
+              <div className="flex items-center justify-between text-xs text-gray-400 font-mono bg-white rounded-xl px-4 py-2.5">
                 <span>{t.bookingId}</span>
                 <span className="font-semibold text-gray-600">{booking.requestId}</span>
               </div>
@@ -745,7 +745,7 @@ export default function BookingConfirmation() {
           {showRebook && (
             <>
               <RebookPanel booking={booking} t={t} navigate={navigate} />
-              <div className="mb-4 rounded-2xl p-4" style={{ background: '#fafafa', border: '1px solid #f0f0f0' }}>
+              <div className="mb-4 rounded-2xl p-4" style={{ background: '#ffffff', border: '1px solid #eeeeee' }}>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
                   {isRTL ? 'מה הלאה?' : "What's Next?"}
                 </p>
@@ -818,7 +818,7 @@ export default function BookingConfirmation() {
                     : booking.status === 'confirmed'           ? 'bg-green-100 text-green-700'
                     : booking.status === 'declined'            ? 'bg-red-100 text-red-700'
                     : booking.status === 'cancelled'           ? 'bg-orange-100 text-orange-700'
-                    : 'bg-gray-100 text-gray-700'
+                    : 'bg-white text-gray-700'
                   }`}>
                     {confirmed ? t.confirmed : booking.status}
                   </span>
@@ -855,7 +855,7 @@ export default function BookingConfirmation() {
                         <button
                           key={star}
                           onClick={() => setRating(star)}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${star <= rating ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400'}`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${star <= rating ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400'}`}
                         >
                           <Star className="w-5 h-5" fill={star <= rating ? 'currentColor' : 'none'} />
                         </button>

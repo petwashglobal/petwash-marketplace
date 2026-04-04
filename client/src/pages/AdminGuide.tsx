@@ -93,13 +93,13 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
                     prose-h4:text-xl prose-h4:mb-2 prose-h4:mt-4
                     prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
                     prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                    prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-blue-600
+                    prose-code:bg-white prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-blue-600
                     prose-pre:bg-gray-900 prose-pre:text-gray-100
                     prose-ul:list-disc prose-ul:list-inside prose-ul:space-y-1 prose-ul:mb-4
                     prose-ol:list-decimal prose-ol:list-inside prose-ol:space-y-1 prose-ol:mb-4
                     prose-li:ml-4
                     prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300 prose-table:mb-6
-                    prose-th:border prose-th:border-gray-300 prose-th:bg-gray-100 prose-th:px-4 prose-th:py-2 prose-th:font-bold
+                    prose-th:border prose-th:border-gray-300 prose-th:bg-white prose-th:px-4 prose-th:py-2 prose-th:font-bold
                     prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-2
                     prose-strong:font-bold prose-strong:text-gray-900
                     prose-blockquote:border-l-4 prose-blockquote:border-blue-600 prose-blockquote:pl-4 prose-blockquote:italic
@@ -153,7 +153,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
 
           <Card className="mt-6 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
             <CardContent className="p-6">
-              <p className="text-sm text-gray-700 dark:text-gray-300 text-center">
+              <p className="text-sm text-gray-700 dark:text-black text-center">
                 {t('admin.guide.needHelp')}{' '}
                 <a href="mailto:Support@PetWash.co.il" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
                   Support@PetWash.co.il

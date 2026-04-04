@@ -426,7 +426,7 @@ export default function WalkerDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-white/20">
+                    <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-white/50 rounded-lg border border-white/20">
                       <div className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-blue-500" />
                         <span className="text-sm font-medium">
@@ -445,7 +445,7 @@ export default function WalkerDashboard() {
                     </div>
 
                     {request.specialInstructions && (
-                      <div className="bg-white dark:bg-yellow-900/20 p-3 rounded-lg">
+                      <div className="bg-white dark:bg-white p-3 rounded-lg">
                         <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
                           {isHebrew ? '📝 הוראות מיוחדות:' : '📝 Special Instructions:'}
                         </p>
@@ -454,7 +454,7 @@ export default function WalkerDashboard() {
                     )}
 
                     {request.petNotes && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      <div className="bg-blue-50 dark:bg-white p-3 rounded-lg">
                         <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
                           {isHebrew ? '🐾 הערות על חיית המחמד:' : '🐾 Pet Notes:'}
                         </p>
@@ -683,7 +683,7 @@ export default function WalkerDashboard() {
                     <p className="luxury-text-small mb-6">{isHebrew ? 'ניתוח מפורט של ההכנסות שלך' : 'Detailed analysis of your income'}</p>
                     
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-white rounded-lg">
                         <div>
                           <p className="font-semibold text-green-900 dark:text-green-200">{isHebrew ? '💰 שכר בסיס' : '💰 Base Pay'}</p>
                           <p className="luxury-text-small">{isHebrew ? 'תשלום עבור טיולים' : 'Payment for walks'}</p>
@@ -691,7 +691,7 @@ export default function WalkerDashboard() {
                         <span className="luxury-heading-md text-green-700 dark:text-green-400">{formatCurrency(earnings.basePay)}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-yellow-900/20 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                         <div>
                           <p className="font-semibold text-yellow-900 dark:text-yellow-200">{isHebrew ? '🎁 טיפים' : '🎁 Tips'}</p>
                           <p className="luxury-text-small">{isHebrew ? 'טיפים מלקוחות' : 'Tips from customers'}</p>
@@ -699,7 +699,7 @@ export default function WalkerDashboard() {
                         <span className="luxury-heading-md text-yellow-700 dark:text-yellow-400">{formatCurrency(earnings.tips)}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-white rounded-lg">
                         <div>
                           <p className="font-semibold text-blue-900 dark:text-blue-200">{isHebrew ? '⭐ בונוסים' : '⭐ Bonuses'}</p>
                           <p className="luxury-text-small">{isHebrew ? 'בונוסי ביצועים' : 'Performance bonuses'}</p>
@@ -707,7 +707,7 @@ export default function WalkerDashboard() {
                         <span className="luxury-heading-md text-blue-700 dark:text-blue-400">{formatCurrency(earnings.bonuses)}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-white rounded-lg">
                         <div>
                           <p className="font-semibold text-red-900 dark:text-red-200">{isHebrew ? '📉 עמלת פלטפורמה' : '📉 Platform Fees'}</p>
                           <p className="luxury-text-small">{isHebrew ? '24% עמלה' : '24% commission'}</p>
@@ -902,7 +902,7 @@ export default function WalkerDashboard() {
                                     {achievement.progress} / {achievement.maxProgress}
                                   </span>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                <div className="w-full bg-white dark:bg-white rounded-full h-2.5">
                                   <div
                                     className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all"
                                     style={{ width: `${(achievement.progress / achievement.maxProgress) * 100}%` }}

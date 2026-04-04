@@ -310,7 +310,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                           setShowVideoPlayer(true);
                           setCompletedSteps(prev => Math.max(prev, 2));
                         }}
-                        className="group relative overflow-hidden rounded-2xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/30 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 p-6"
+                        className="group relative overflow-hidden rounded-2xl bg-white/60 dark:bg-white/60 backdrop-blur-xl border border-white/30 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 p-6"
                       >
                         <div className="aspect-video bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center mb-4 relative overflow-hidden">
                           <div className="absolute inset-0 flex items-center justify-center text-6xl">
@@ -377,22 +377,22 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     >
                       {t('franchise.virtualTour', language)}
                     </h3>
-                    <p className="text-gray-700 dark:text-gray-300 text-lg mb-8">
+                    <p className="text-gray-700 dark:text-black text-lg mb-8">
                       {t('franchise.vrTourDesc', language)}
                     </p>
                     <div className="grid md:grid-cols-2 gap-6 mb-8">
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30">
+                      <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30">
                         <Eye className="w-12 h-12 text-emerald-600 mb-3 mx-auto" />
-                        <div className="font-bold text-gray-900 dark:text-white mb-2">
+                        <div className="font-bold text-gray-900 dark:text-black mb-2">
                           {t('franchise.walkthrough360', language)}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {t('franchise.viewEveryAngle', language)}
                         </p>
                       </div>
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30">
+                      <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30">
                         <Lightbulb className="w-12 h-12 text-emerald-600 mb-3 mx-auto" />
-                        <div className="font-bold text-gray-900 dark:text-white mb-2">
+                        <div className="font-bold text-gray-900 dark:text-black mb-2">
                           {t('franchise.interactiveDemo', language)}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -468,19 +468,19 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         </div>
                       </div>
                     </div>
-                    <p className="text-gray-700 dark:text-gray-300 mb-6">
+                    <p className="text-gray-700 dark:text-black mb-6">
                       {t('franchise.aiPrediction', language)}
                     </p>
                     <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-xl p-4 border border-white/30">
+                      <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-xl p-4 border border-white/30">
                         <div className="text-2xl font-bold text-emerald-600">A+</div>
                         <div className="text-gray-600 dark:text-gray-400">{t('franchise.demographics', language)}</div>
                       </div>
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-xl p-4 border border-white/30">
+                      <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-xl p-4 border border-white/30">
                         <div className="text-2xl font-bold text-blue-600">A</div>
                         <div className="text-gray-600 dark:text-gray-400">{t('franchise.competition', language)}</div>
                       </div>
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-xl p-4 border border-white/30">
+                      <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-xl p-4 border border-white/30">
                         <div className="text-2xl font-bold text-purple-600">A+</div>
                         <div className="text-gray-600 dark:text-gray-400">{t('franchise.demand', language)}</div>
                       </div>
@@ -510,7 +510,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                   </h3>
                   
                   <div className="text-center max-w-2xl mx-auto space-y-6">
-                    <p className="text-lg text-gray-700 dark:text-gray-300">
+                    <p className="text-lg text-gray-700 dark:text-black">
                       {language === 'he' ? 'צור קשר לקבלת פרטי השקעה מלאים והצעת מחיר מותאמת אישית.' : 'Contact us for complete investment details and a personalized quote.'}
                     </p>
                     <Button 
@@ -543,18 +543,18 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     >
                       {t('franchise.enriquePlatform', language)}
                     </h3>
-                    <p className="text-xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto">
+                    <p className="text-xl text-gray-700 dark:text-black max-w-4xl mx-auto">
                       {t('franchise.jvPartnership', language)}
                     </p>
                   </div>
 
                   {/* Key Benefits Grid */}
                   <div className="grid md:grid-cols-3 gap-6 mb-12">
-                    <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-xl transition-all">
+                    <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-xl transition-all">
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center text-white mb-4 shadow-lg">
                         <Wrench className="w-8 h-8" />
                       </div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-black mb-2">
                         {t('franchise.customSolutions', language)}
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -562,11 +562,11 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                       </p>
                     </div>
 
-                    <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-xl transition-all">
+                    <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-xl transition-all">
                       <div className="w-14 h-14 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center text-white mb-4 shadow-lg">
                         <Lightbulb className="w-8 h-8" />
                       </div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-black mb-2">
                         {t('franchise.expertRD', language)}
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -574,11 +574,11 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                       </p>
                     </div>
 
-                    <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-xl transition-all">
+                    <div className="bg-white/60 dark:bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-xl transition-all">
                       <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white mb-4 shadow-lg">
                         <Rocket className="w-8 h-8" />
                       </div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-black mb-2">
                         {t('franchise.fastDelivery', language)}
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -602,7 +602,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     
                     <div className="grid md:grid-cols-2 gap-6">
                       {/* Twin Model */}
-                      <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-6 border border-white/20">
+                      <div className="bg-white/50 dark:bg-white/50 backdrop-blur-xl rounded-xl p-6 border border-white/20">
                         <div className="text-center mb-4">
                           <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 text-sm px-4 py-2">
                             K9000 2.0 Twin
@@ -611,29 +611,29 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         <div className="space-y-3 text-sm">
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Dimensions:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">3700×1850×680mm</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">3700×1850×680mm</span>
                           </div>
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Weight:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">350kg</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">350kg</span>
                           </div>
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Power:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">240V / 25A</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">240V / 25A</span>
                           </div>
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Water Usage:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">16-20 L/min</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">16-20 L/min</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">Noise Level:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">66 dBA @ 4m</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">66 dBA @ 4m</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Standard Model */}
-                      <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-6 border border-white/20">
+                      <div className="bg-white/50 dark:bg-white/50 backdrop-blur-xl rounded-xl p-6 border border-white/20">
                         <div className="text-center mb-4">
                           <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 text-sm px-4 py-2">
                             K9000 2.0 Standard
@@ -642,19 +642,19 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         <div className="space-y-3 text-sm">
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Dimensions:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">2150×1850×600mm</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">2150×1850×600mm</span>
                           </div>
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Weight:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">285kg</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">285kg</span>
                           </div>
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Power:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">208-240V / 16A</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">208-240V / 16A</span>
                           </div>
                           <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
                             <span className="text-gray-600 dark:text-gray-400">Water Usage:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">10 L/min (2.64 GPM)</span>
+                            <span className="font-semibold text-gray-900 dark:text-black">10 L/min (2.64 GPM)</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">CSA Approved:</span>
@@ -683,7 +683,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-xl">
                           {step.num}
                         </div>
-                        <h5 className="font-bold text-gray-900 dark:text-white mb-1">{step.title}</h5>
+                        <h5 className="font-bold text-gray-900 dark:text-black mb-1">{step.title}</h5>
                         <p className="text-xs text-gray-600 dark:text-gray-400">{step.desc}</p>
                       </div>
                     ))}
@@ -691,7 +691,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
 
                   {/* CTA */}
                   <div className="text-center">
-                    <p className="text-lg text-gray-700 dark:text-gray-300 mb-6 font-semibold">
+                    <p className="text-lg text-gray-700 dark:text-black mb-6 font-semibold">
                       {t('franchise.ensureAccuracy', language)}
                     </p>
                     <Button className="group relative px-12 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105">

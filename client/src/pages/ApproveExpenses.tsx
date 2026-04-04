@@ -206,7 +206,7 @@ export default function ApproveExpenses() {
                       </h3>
                       <p className="luxury-text-small">{expense.employeeEmail}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge className="bg-gray-200 dark:bg-gray-800 text-black dark:text-white">
+                        <Badge className="bg-white dark:bg-white text-black dark:text-black">
                           {categoryLabels[expense.category] || expense.category}
                         </Badge>
                         {expense.policyStatus === 'violation' && (

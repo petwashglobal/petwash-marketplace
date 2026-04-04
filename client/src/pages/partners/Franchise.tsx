@@ -159,21 +159,21 @@ export default function FranchisePartners() {
         {showForm && !submitted && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
             <div 
-              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-lg bg-white dark:bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <Button 
                 onClick={() => setShowForm(false)} 
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white dark:bg-white flex items-center justify-center hover:bg-white dark:hover:bg-white transition-colors"
               >
-                <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <X className="w-4 h-4 text-gray-600 dark:text-black" />
               </Button>
               
               <div className="text-center mb-6">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-3">
                   <Send className="w-7 h-7 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-black">
                   {isHe ? 'בקשת מידע על זכיינות' : 'Franchise Information Request'}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -183,7 +183,7 @@ export default function FranchisePartners() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Label className="text-gray-700 dark:text-black flex items-center gap-2">
                     <User className="w-4 h-4" />
                     {isHe ? 'שם מלא' : 'Full Name'} *
                   </Label>
@@ -198,7 +198,7 @@ export default function FranchisePartners() {
                 </div>
 
                 <div>
-                  <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Label className="text-gray-700 dark:text-black flex items-center gap-2">
                     <Mail className="w-4 h-4" />
                     {isHe ? 'אימייל' : 'Email'} *
                   </Label>
@@ -214,7 +214,7 @@ export default function FranchisePartners() {
                 </div>
 
                 <div>
-                  <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Label className="text-gray-700 dark:text-black flex items-center gap-2">
                     <Phone className="w-4 h-4" />
                     {isHe ? 'טלפון' : 'Phone'} *
                   </Label>
@@ -228,7 +228,7 @@ export default function FranchisePartners() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Label className="text-gray-700 dark:text-black flex items-center gap-2">
                       <Globe className="w-4 h-4" />
                       {isHe ? 'מדינה' : 'Country'}
                     </Label>
@@ -241,7 +241,7 @@ export default function FranchisePartners() {
                     />
                   </div>
                   <div>
-                    <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Label className="text-gray-700 dark:text-black flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       {isHe ? 'עיר' : 'City'}
                     </Label>
@@ -256,7 +256,7 @@ export default function FranchisePartners() {
                 </div>
 
                 <div>
-                  <Label className="text-gray-700 dark:text-gray-300">
+                  <Label className="text-gray-700 dark:text-black">
                     {isHe ? 'הודעה נוספת' : 'Additional Message'}
                   </Label>
                   <Textarea
@@ -291,13 +291,13 @@ export default function FranchisePartners() {
         {submitted && showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setShowForm(false); setSubmitted(false); }}>
             <div 
-              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 text-center"
+              className="relative w-full max-w-md bg-white dark:bg-white rounded-3xl shadow-2xl p-8 text-center"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-black mb-2">
                 {isHe ? 'הבקשה נשלחה!' : 'Request Submitted!'}
               </h2>
               <p className="text-gray-500 dark:text-gray-400 mb-6">

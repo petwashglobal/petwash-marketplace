@@ -102,32 +102,32 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
 
           {/* Platform Badges */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               <PawPrint className="w-4 h-4 mr-2" />
               ⁦K9000™⁩ Wash
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               <Users className="w-4 h-4 mr-2" />
               ⁦Sitter Suite™⁩
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               ⁦Walk My Pet™⁩
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               ⁦PetTrek™⁩
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               <Star className="w-4 h-4 mr-2" />
               Academy™
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               Plush Lab™
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               <Globe className="w-4 h-4 mr-2" />
               Club™
             </Badge>
-            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-2">
+            <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               Main Wash
             </Badge>
           </div>

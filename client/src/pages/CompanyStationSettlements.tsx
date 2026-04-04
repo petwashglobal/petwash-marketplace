@@ -39,7 +39,7 @@ export default function CompanyStationSettlements() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
 
         {/* Back navigation */}
@@ -54,11 +54,11 @@ export default function CompanyStationSettlements() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center flex-shrink-0">
+            <div className="h-10 w-10 rounded-lg bg-white dark:bg-white flex items-center justify-center flex-shrink-0">
               <Factory className="h-5 w-5 text-slate-600 dark:text-slate-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-black">
                 {isLoading ? '...' : data?.stationName ?? `Station ${stationId}`}
               </h1>
               {data?.stationCode && (

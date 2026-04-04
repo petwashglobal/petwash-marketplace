@@ -18,7 +18,7 @@ export default function BookingSearchPage() {
           } 
         />
       </Helmet>
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pt-20 pb-12">
+      <div className="min-h-screen bg-white dark:bg-zinc-950 pt-20 pb-12">
         <BookingSearch />
       </div>
     </>

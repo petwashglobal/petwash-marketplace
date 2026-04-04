@@ -77,8 +77,8 @@ function ArchivedConversation({ conv, uid }: { conv: BookingConversation; uid: s
 
   return (
     <Link href={`/booking-chat/${conv.bookingId}`}>
-      <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50/70 active:bg-gray-100/60 opacity-70">
-        <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+      <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 cursor-pointer transition-colors hover:bg-white/70 active:bg-white/60 opacity-70">
+        <div className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0">
           <Archive size={20} className="text-gray-300" />
         </div>
         <div className="flex-1 min-w-0">
@@ -115,7 +115,7 @@ function ActiveConversation({ conv, uid }: { conv: BookingConversation; uid: str
 
   return (
     <Link href={`/booking-chat/${conv.bookingId}`}>
-      <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50/70 active:bg-gray-100/60" style={{ position: "relative" }}>
+      <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 cursor-pointer transition-colors hover:bg-white/70 active:bg-white/60" style={{ position: "relative" }}>
         {/* Unread left accent bar */}
         {unreadCount > 0 && (
           <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full"
@@ -203,7 +203,7 @@ export default function BookingChatInbox() {
               Active
               {activeConversations.length > 0 && (
                 <span className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === "active" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"
+                  activeTab === "active" ? "bg-blue-100 text-blue-600" : "bg-white text-gray-400"
                 }`}>
                   {activeConversations.length}
                 </span>
@@ -221,7 +221,7 @@ export default function BookingChatInbox() {
               Archived
               {archivedConversations.length > 0 && (
                 <span className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === "archived" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"
+                  activeTab === "archived" ? "bg-blue-100 text-blue-600" : "bg-white text-gray-400"
                 }`}>
                   {archivedConversations.length}
                 </span>
@@ -242,7 +242,7 @@ export default function BookingChatInbox() {
             {activeConversations.length === 0 ? (
               /* §15 #7: EmptyInboxState */
               <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
-                <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-5 border border-gray-100">
+                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-5 border border-gray-100">
                   <MessageSquare className="w-9 h-9 text-gray-200" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-800 mb-1.5">No active conversations</h2>
@@ -268,7 +268,7 @@ export default function BookingChatInbox() {
           <>
             {archivedConversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
-                <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-5 border border-gray-100">
+                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-5 border border-gray-100">
                   <Archive className="w-9 h-9 text-gray-200" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-800 mb-1.5">No archived conversations</h2>

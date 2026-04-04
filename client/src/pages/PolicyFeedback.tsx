@@ -106,7 +106,7 @@ interface PolicyFeedbackReport {
 const CONFIDENCE_CFG: Record<ConfidenceLevel, { label: string; color: string; icon: React.ReactNode }> = {
   confident:        { label: 'Confident',    color: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" /> },
   directional:      { label: 'Directional',  color: 'text-amber-700 bg-amber-50 border-amber-200',       icon: <Activity className="w-3 h-3" /> },
-  insufficient_data:{ label: 'Accumulating', color: 'text-gray-600 bg-gray-50 border-gray-200',          icon: <RefreshCw className="w-3 h-3" /> },
+  insufficient_data:{ label: 'Accumulating', color: 'text-gray-600 bg-white border-gray-200',          icon: <RefreshCw className="w-3 h-3" /> },
 };
 
 const PRIORITY_CFG: Record<string, { color: string; icon: React.ReactNode }> = {
@@ -128,7 +128,7 @@ const AREA_LABELS: Record<string, string> = {
 const ACTION_CFG: Record<PolicyAction, { label: string; color: string }> = {
   tighten:  { label: 'Tighten',  color: 'text-red-700 bg-red-50 border-red-200' },
   relax:    { label: 'Relax',    color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  retire:   { label: 'Retire',   color: 'text-gray-700 bg-gray-100 border-gray-300' },
+  retire:   { label: 'Retire',   color: 'text-gray-700 bg-white border-gray-300' },
   retain:   { label: 'Retain',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   review:   { label: 'Review',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
   monitor:  { label: 'Monitor',  color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
@@ -136,7 +136,7 @@ const ACTION_CFG: Record<PolicyAction, { label: string; color: string }> = {
 };
 
 const READINESS_CFG: Record<DataMaturity['measurementReadiness'], { label: string; color: string; bar: string }> = {
-  accumulating: { label: 'Accumulating data',      color: 'border-gray-300 bg-gray-50',    bar: 'bg-gray-400' },
+  accumulating: { label: 'Accumulating data',      color: 'border-gray-300 bg-white',    bar: 'bg-gray-400' },
   directional:  { label: 'Directional analysis',   color: 'border-amber-300 bg-amber-50',  bar: 'bg-amber-500' },
   sufficient:   { label: 'Sufficient for analysis', color: 'border-emerald-300 bg-emerald-50', bar: 'bg-emerald-500' },
 };
@@ -179,7 +179,7 @@ function RateBar({ value, max = 100, color = 'bg-blue-500', label }: { value: nu
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-[50px]">
+      <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden min-w-[50px]">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs font-mono w-10">{label ?? `${Math.round(value)}%`}</span>
@@ -208,7 +208,7 @@ function DataMaturityBanner({ maturity }: { maturity: DataMaturity }) {
           </div>
           <div className="sm:w-56 shrink-0">
             <div className="text-xs text-muted-foreground mb-1">Progress to confident analysis (10 resolved+baseline)</div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 bg-white rounded-full overflow-hidden">
               <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${pct}%` }} />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
@@ -403,7 +403,7 @@ function ChronicEntities({ entities }: { entities: ChronicEntity[] }) {
   const RISK_CFG = {
     high:   { color: 'border-red-200 bg-red-50',    badge: 'text-red-700 bg-red-100 border-red-200', icon: <AlertCircle className="w-4 h-4 text-red-600" /> },
     medium: { color: 'border-amber-200 bg-amber-50', badge: 'text-amber-700 bg-amber-100 border-amber-200', icon: <AlertTriangle className="w-4 h-4 text-amber-600" /> },
-    low:    { color: 'border-gray-200 bg-white',     badge: 'text-gray-700 bg-gray-100 border-gray-200', icon: <Info className="w-4 h-4 text-gray-500" /> },
+    low:    { color: 'border-gray-200 bg-white',     badge: 'text-gray-700 bg-white border-gray-200', icon: <Info className="w-4 h-4 text-gray-500" /> },
   };
 
   return (
@@ -496,7 +496,7 @@ export default function PolicyFeedback() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -531,7 +531,7 @@ export default function PolicyFeedback() {
 
         {isLoading ? (
           <div className="space-y-4">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />)}
+            {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-white rounded-xl animate-pulse" />)}
           </div>
         ) : data ? (
           <>

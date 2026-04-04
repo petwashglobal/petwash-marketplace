@@ -165,7 +165,7 @@ export function DataProcessingConsent({
           {/* Data We Collect */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-black dark:text-white" />
+              <FileText className="w-5 h-5 text-black dark:text-black" />
               {t.dataWeCollect}
             </h3>
             <ul className="space-y-2">
@@ -259,10 +259,10 @@ export function DataProcessingConsent({
 
           {/* Links */}
           <div className="flex flex-col sm:flex-row gap-3 text-sm">
-            <a href="/privacy-policy" target="_blank" className="text-black dark:text-white hover:underline">
+            <a href="/privacy-policy" target="_blank" className="text-black dark:text-black hover:underline">
               {t.viewPrivacy} →
             </a>
-            <a href="/terms" target="_blank" className="text-black dark:text-white hover:underline">
+            <a href="/terms" target="_blank" className="text-black dark:text-black hover:underline">
               {t.viewTerms} →
             </a>
             <a href="/account-settings#data-rights" className="text-blue-600 hover:underline">
@@ -272,7 +272,7 @@ export function DataProcessingConsent({
         </div>
 
         {/* Actions */}
-        <div className="border-t p-6 flex flex-col-reverse sm:flex-row gap-3 justify-end bg-gray-50 sticky bottom-0">
+        <div className="border-t p-6 flex flex-col-reverse sm:flex-row gap-3 justify-end bg-white sticky bottom-0">
           <Button
             onClick={onDecline}
             variant="outline"

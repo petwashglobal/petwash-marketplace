@@ -679,7 +679,7 @@ export default function AdminStations() {
                           </div>
                           <span className="luxury-text-body font-bold luxury-text-gradient">{count}</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-white rounded-full h-2">
                           <div
                             className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-500"
                             style={{

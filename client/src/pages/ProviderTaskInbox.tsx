@@ -206,21 +206,21 @@ export default function ProviderTaskInbox() {
   const isLoading = pendingLoading || upcomingLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-white">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      <div className="bg-white dark:bg-white border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate("/provider/dashboard")}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-full hover:bg-white dark:hover:bg-white transition-colors"
               aria-label="Back to dashboard"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-black" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-black flex items-center gap-2">
                 <Inbox className="w-5 h-5" />
                 Task Inbox
               </h1>
@@ -267,7 +267,7 @@ export default function ProviderTaskInbox() {
           )}
 
           {!pendingLoading && pending.length === 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 text-center border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-white rounded-xl p-6 text-center border border-gray-100 dark:border-gray-700">
               <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
               <p className="text-sm text-gray-500">No pending decisions — you're all caught up</p>
             </div>
@@ -277,17 +277,17 @@ export default function ProviderTaskInbox() {
             {pending.map((b) => (
               <div
                 key={b.id}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-orange-400"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-orange-400"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    <p className="font-semibold text-gray-900 dark:text-black text-sm">
                       {b.serviceType || "Service Request"}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">#{b.bookingNumber}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-gray-900 dark:text-white">
+                    <p className="font-bold text-gray-900 dark:text-black">
                       {formatILS(b.providerPayout)}
                     </p>
                     <p className="text-xs text-gray-400">you receive</p>
@@ -308,7 +308,7 @@ export default function ProviderTaskInbox() {
                 </div>
 
                 {b.ownerMessage && (
-                  <p className="text-xs text-gray-500 italic mb-3 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-500 italic mb-3 bg-white dark:bg-white rounded-lg px-3 py-2">
                     "{b.ownerMessage}"
                   </p>
                 )}
@@ -366,7 +366,7 @@ export default function ProviderTaskInbox() {
           )}
 
           {!upcomingLoading && upcoming.length === 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 text-center border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-white rounded-xl p-6 text-center border border-gray-100 dark:border-gray-700">
               <Calendar className="w-8 h-8 text-blue-200 mx-auto mb-2" />
               <p className="text-sm text-gray-500">No upcoming jobs in the next 24 hours</p>
             </div>
@@ -376,11 +376,11 @@ export default function ProviderTaskInbox() {
             {upcoming.map((b) => (
               <div
                 key={b.id}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-blue-400"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-blue-400"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    <p className="font-semibold text-gray-900 dark:text-black text-sm">
                       {b.serviceType || "Booking"}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">#{b.bookingNumber}</p>
@@ -389,7 +389,7 @@ export default function ProviderTaskInbox() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-900 dark:text-white">
+                    <p className="font-bold text-gray-900 dark:text-black">
                       {formatILS(b.providerPayout)}
                     </p>
                     <PayoutBadge status={b.payoutStatus} />
@@ -423,7 +423,7 @@ export default function ProviderTaskInbox() {
           )}
 
           {!mktLoading && mktBookings.length === 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-5 text-center border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-white rounded-xl p-5 text-center border border-gray-100 dark:border-gray-700">
               <Package className="w-8 h-8 text-purple-200 mx-auto mb-2" />
               <p className="text-sm text-gray-500">No marketplace bookings yet</p>
             </div>
@@ -433,11 +433,11 @@ export default function ProviderTaskInbox() {
             {mktBookings.map((b) => (
               <div
                 key={b.id}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-purple-400"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-purple-400"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    <p className="font-semibold text-gray-900 dark:text-black text-sm">
                       {b.serviceType || "Marketplace Service"}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">#{b.bookingNumber}</p>
@@ -446,7 +446,7 @@ export default function ProviderTaskInbox() {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-gray-900 dark:text-white">
+                    <p className="font-bold text-gray-900 dark:text-black">
                       {formatILS(b.providerPayout)}
                     </p>
                     <PayoutBadge status={b.payoutStatus} />
@@ -458,7 +458,7 @@ export default function ProviderTaskInbox() {
                     {b.addons.map((addon) => (
                       <span
                         key={addon.code}
-                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700"
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-white dark:text-purple-300 dark:border-purple-700"
                       >
                         {addon.labelEn}
                         <span className="text-purple-400">

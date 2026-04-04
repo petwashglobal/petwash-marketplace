@@ -20,7 +20,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         className={cn(
           "flex min-h-[140px] w-full rounded-2xl",
           "border-2 border-neutral-200/50 dark:border-neutral-700/50",
-          "bg-white dark:bg-neutral-900",
+          "bg-white dark:bg-white",
           "px-5 py-4",
           "text-[16px] font-normal leading-relaxed tracking-wide",
           "text-neutral-900 dark:text-neutral-100",
@@ -34,7 +34,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           "hover:border-neutral-300/70 dark:hover:border-neutral-600/70",
           "hover:shadow-md hover:shadow-neutral-200/20 dark:hover:shadow-neutral-800/20",
           "disabled:cursor-not-allowed disabled:opacity-40",
-          "disabled:bg-neutral-50/50 dark:disabled:bg-neutral-900/30",
+          "disabled:bg-white/50 dark:disabled:bg-neutral-900/30",
           "disabled:border-neutral-200/30 dark:disabled:border-neutral-800/30",
           "touch-manipulation",
           "rtl:text-right ltr:text-left",

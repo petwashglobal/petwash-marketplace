@@ -146,7 +146,7 @@ export default function BayTimeline() {
                           {config.label}
                         </span>
                         {item.severity && (
-                          <Badge className={cn("text-xs", SEVERITY_COLOR[item.severity] ?? "bg-gray-100")}>
+                          <Badge className={cn("text-xs", SEVERITY_COLOR[item.severity] ?? "bg-white")}>
                             {item.severity}
                           </Badge>
                         )}

@@ -475,7 +475,7 @@ export default function PetTrekProviderDashboard() {
                       {job.trip.specialInstructions && (
                         <>
                           <Separator />
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                          <div className="bg-blue-50 dark:bg-white p-3 rounded-lg">
                             <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">Special Instructions</p>
                             <p className="text-sm text-blue-700 dark:text-blue-300">{job.trip.specialInstructions}</p>
                           </div>

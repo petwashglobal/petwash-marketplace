@@ -76,14 +76,14 @@ function SkeletonCard() {
   return (
     <div className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-full bg-gray-100 animate-pulse flex-shrink-0" />
+        <div className="w-11 h-11 rounded-full bg-white animate-pulse flex-shrink-0" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 bg-gray-100 rounded-full animate-pulse w-32" />
-          <div className="h-3 bg-gray-100 rounded-full animate-pulse w-20" />
+          <div className="h-4 bg-white rounded-full animate-pulse w-32" />
+          <div className="h-3 bg-white rounded-full animate-pulse w-20" />
         </div>
         <div className="flex gap-2">
-          <div className="h-7 w-20 bg-gray-100 rounded-full animate-pulse" />
-          <div className="h-7 w-16 bg-gray-100 rounded-full animate-pulse" />
+          <div className="h-7 w-20 bg-white rounded-full animate-pulse" />
+          <div className="h-7 w-16 bg-white rounded-full animate-pulse" />
         </div>
       </div>
     </div>
@@ -117,7 +117,7 @@ function ShortlistedCard({
   return (
     <Link href={profileUrl}>
       <div
-        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-gray-50 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-white cursor-pointer shadow-sm hover:shadow-md transition-shadow"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         <div className="flex items-center gap-3">
@@ -136,7 +136,7 @@ function ShortlistedCard({
             {/* View profile */}
             <button
               onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(profileUrl); }}
-              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors hover:bg-gray-50"
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors hover:bg-white"
               style={{ borderColor: '#E5E7EB', color: '#6B7280' }}
             >
               <User size={10} />
@@ -202,14 +202,14 @@ function PreviouslyBookedCard({ booking, isRTL }: { booking: Booking; isRTL: boo
   return (
     <Link href={`/booking/${booking.requestId}`}>
       <div
-        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-gray-50 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-white cursor-pointer shadow-sm hover:shadow-md transition-shadow"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         <div className="flex items-center gap-3">
           {booking.providerName ? (
             <ProviderAvatar name={booking.providerName} />
           ) : (
-            <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">
+            <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-2xl flex-shrink-0">
               {svc.emoji}
             </div>
           )}
@@ -385,7 +385,7 @@ export default function CustomerFavourites() {
           bookingsLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />
+                <div key={i} className="h-24 bg-white rounded-2xl animate-pulse" />
               ))}
             </div>
           ) : previouslyBooked.length === 0 ? (

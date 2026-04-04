@@ -168,14 +168,14 @@ export function ReviewDisplay({ contractorId, contractorName }: ReviewDisplayPro
 
             {/* Review Text */}
             {review.reviewText && (
-              <p className="text-gray-700 dark:text-gray-300 mb-4">{review.reviewText}</p>
+              <p className="text-gray-700 dark:text-black mb-4">{review.reviewText}</p>
             )}
 
             {/* Contractor Response */}
             {review.subjectResponse && (
-              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-l-4 border-purple-500">
+              <div className="mt-4 p-4 bg-white dark:bg-white/50 rounded-lg border-l-4 border-purple-500">
                 <p className="text-sm font-semibold mb-1">Response from {contractorName}</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">{review.subjectResponse}</p>
+                <p className="text-sm text-gray-700 dark:text-black">{review.subjectResponse}</p>
                 {review.subjectResponseAt && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                     {format(new Date(review.subjectResponseAt), 'MMMM d, yyyy')}

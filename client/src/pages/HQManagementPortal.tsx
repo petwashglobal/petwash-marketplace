@@ -132,7 +132,7 @@ function KpiCard({ label, value, sub, trend, icon: Icon, color, urgent }: {
             <p className={`text-2xl font-bold mt-1 ${urgent ? "text-red-700" : "text-slate-900"}`}>{value}</p>
             {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
           </div>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${urgent ? "bg-red-100" : "bg-slate-100"}`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${urgent ? "bg-red-100" : "bg-white"}`}>
             <Icon className={`w-5 h-5 ${color}`} />
           </div>
         </div>
@@ -158,7 +158,7 @@ function ModulePanel({ moduleId, links }: { moduleId: string; links: typeof MODU
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
           <mod.icon className={`w-5 h-5 ${mod.color}`} />
         </div>
         <div>
@@ -173,7 +173,7 @@ function ModulePanel({ moduleId, links }: { moduleId: string; links: typeof MODU
             <Card className="border border-slate-200 bg-white hover:border-slate-400 hover:shadow-md transition-all cursor-pointer group">
               <CardContent className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center">
                     <link.icon className={`w-4 h-4 ${mod.color}`} />
                   </div>
                   <span className="font-medium text-slate-800 group-hover:text-slate-900">{link.label}</span>
@@ -185,7 +185,7 @@ function ModulePanel({ moduleId, links }: { moduleId: string; links: typeof MODU
         ))}
       </div>
 
-      <Card className="border border-dashed border-slate-300 bg-slate-50">
+      <Card className="border border-dashed border-slate-300 bg-white">
         <CardContent className="p-5 text-center">
           <p className="text-sm text-slate-500">Full {mod.label} management coming in HQ v2.0</p>
           <p className="text-xs text-slate-400 mt-1">Providers Management, analytics, bulk actions</p>
@@ -230,7 +230,7 @@ function OverviewModule({ metrics }: { metrics?: AdminMetrics }) {
               onClick={() => window.location.hash = mod.id}
             >
               <CardContent className="p-4 text-center">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-2">
+                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center mx-auto mb-2">
                   <mod.icon className={`w-5 h-5 ${mod.color}`} />
                 </div>
                 <p className="text-xs font-medium text-slate-700">{mod.label}</p>
@@ -250,7 +250,7 @@ function OverviewModule({ metrics }: { metrics?: AdminMetrics }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-32 flex items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200">
+            <div className="h-32 flex items-center justify-center bg-white rounded-lg border border-dashed border-slate-200">
               <Link href="/admin/dashboard">
                 <Button variant="outline" size="sm" className="text-xs">
                   <BarChart3 className="w-3 h-3 mr-2" />
@@ -324,7 +324,7 @@ export default function HQManagementPortal() {
   const currentModule = MODULES.find(m => m.id === activeModule) || MODULES[0];
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-white overflow-hidden">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? "w-64" : "w-16"} bg-white border-r border-slate-200 flex flex-col transition-all duration-200 flex-shrink-0`}>
         {/* Logo */}
@@ -349,7 +349,7 @@ export default function HQManagementPortal() {
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                 activeModule === mod.id
                   ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  : "text-slate-600 hover:bg-white hover:text-slate-900"
               }`}
             >
               <mod.icon className={`w-4 h-4 flex-shrink-0 ${activeModule === mod.id ? "text-white" : mod.color}`} />
@@ -374,7 +374,7 @@ export default function HQManagementPortal() {
             </div>
             <button
               onClick={handleLogout}
-              className="mt-3 w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+              className="mt-3 w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-white rounded-lg transition-colors"
             >
               <LogOut className="w-3 h-3" />
               Exit HQ

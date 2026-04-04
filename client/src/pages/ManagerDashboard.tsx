@@ -112,7 +112,7 @@ function ageLabel(h: number): string {
 }
 
 function BreachBadge({ rate }: { rate: number }) {
-  const c = rate >= 50 ? 'bg-red-100 text-red-700' : rate >= 20 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600';
+  const c = rate >= 50 ? 'bg-red-100 text-red-700' : rate >= 20 ? 'bg-orange-100 text-orange-700' : 'bg-white text-gray-600';
   return <Badge className={cn('border-0 text-xs', c)}>{rate.toFixed(1)}%</Badge>;
 }
 
@@ -128,7 +128,7 @@ function HidUid({ uid }: { uid: string }) {
 function SectionHeader({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="mb-4">
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-black">{title}</h3>
       <p className="text-xs text-gray-500">{sub}</p>
     </div>
   );
@@ -201,7 +201,7 @@ function ApprovalsTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-black">
             Pending Closure Approvals
             {items.length > 0 && (
               <Badge className="ml-2 border-0 bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-xs">
@@ -228,7 +228,7 @@ function ApprovalsTab() {
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-900">
+              <TableRow className="bg-white dark:bg-white">
                 <TableHead className="text-xs">Booking</TableHead>
                 <TableHead className="text-xs">Station</TableHead>
                 <TableHead className="text-xs">Handler</TableHead>
@@ -301,14 +301,14 @@ function SlaBreachesTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">SLA Breach Control View</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-black">SLA Breach Control View</h3>
           <p className="text-xs text-gray-500">Where SLA is breaking — grouped by handler, team, or station.</p>
         </div>
         <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden text-xs">
           {(['user', 'team', 'station'] as const).map(v => (
             <button key={v}
               className={cn('px-3 py-1.5 capitalize transition-colors',
-                view === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                view === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-white'
               )}
               onClick={() => setView(v)}
             >
@@ -322,7 +322,7 @@ function SlaBreachesTab() {
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-900">
+              <TableRow className="bg-white dark:bg-white">
                 <TableHead className="text-xs">{cols.label}</TableHead>
                 <TableHead className="text-xs text-right">Total Cases</TableHead>
                 <TableHead className="text-xs text-right">Breached</TableHead>
@@ -373,7 +373,7 @@ function WorkloadTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workload Heatmap</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-black">Workload Heatmap</h3>
           <p className="text-xs text-gray-500">
             Active case distribution — <span className="text-green-600 font-medium">green ≤4</span>,{' '}
             <span className="text-amber-600 font-medium">yellow 5–9</span>,{' '}
@@ -384,7 +384,7 @@ function WorkloadTab() {
           {(['user', 'team'] as const).map(v => (
             <button key={v}
               className={cn('px-3 py-1.5 transition-colors',
-                view === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                view === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-white'
               )}
               onClick={() => setView(v)}
             >
@@ -398,7 +398,7 @@ function WorkloadTab() {
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-900">
+              <TableRow className="bg-white dark:bg-white">
                 <TableHead className="text-xs">{view === 'user' ? 'Handler' : 'Team'}</TableHead>
                 <TableHead className="text-xs text-right">Active Cases</TableHead>
                 <TableHead className="text-xs text-right">Avg Age</TableHead>
@@ -471,7 +471,7 @@ function ResolutionTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Resolution Code Analytics</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-black">Resolution Code Analytics</h3>
           <p className="text-xs text-gray-500">
             Reveals root causes.{' '}
             <span className="text-amber-600 font-medium">goodwill_refund</span> = service issue.{' '}
@@ -482,7 +482,7 @@ function ResolutionTab() {
           {(['overall', 'team', 'station', 'franchise'] as const).map(v => (
             <button key={v}
               className={cn('px-3 py-1.5 capitalize transition-colors',
-                groupBy === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                groupBy === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-white'
               )}
               onClick={() => setGroupBy(v)}
             >
@@ -496,7 +496,7 @@ function ResolutionTab() {
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-900">
+              <TableRow className="bg-white dark:bg-white">
                 {groupBy !== 'overall' && <TableHead className="text-xs capitalize">{groupBy}</TableHead>}
                 <TableHead className="text-xs">Resolution Code</TableHead>
                 <TableHead className="text-xs text-right">Count</TableHead>
@@ -516,7 +516,7 @@ function ResolutionTab() {
                     <Badge className={cn('border-0 text-xs',
                       r.code === 'operator_error'  ? 'bg-red-100 text-red-700'    :
                       r.code === 'goodwill_refund' ? 'bg-amber-100 text-amber-700':
-                      'bg-gray-100 text-gray-600'
+                      'bg-white text-gray-600'
                     )}>
                       {r.label || r.code}
                     </Badge>
@@ -568,7 +568,7 @@ function ReopenTab() {
           <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-900">
+                <TableRow className="bg-white dark:bg-white">
                   <TableHead className="text-xs">Handler</TableHead>
                   <TableHead className="text-xs text-right">Cases Closed</TableHead>
                   <TableHead className="text-xs text-right">Reopened</TableHead>
@@ -607,7 +607,7 @@ function ReopenTab() {
           <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-900">
+                <TableRow className="bg-white dark:bg-white">
                   <TableHead className="text-xs">Reopen Code</TableHead>
                   <TableHead className="text-xs text-right">Times Used</TableHead>
                 </TableRow>
@@ -656,7 +656,7 @@ function PerformanceTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Performance Comparison</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-black">Performance Comparison</h3>
           <p className="text-xs text-gray-500">
             Side-by-side: avg resolution time, breach rate, and reopen rate. Sorted by breach rate.
           </p>
@@ -665,7 +665,7 @@ function PerformanceTab() {
           {(['station', 'franchise', 'team'] as const).map(v => (
             <button key={v}
               className={cn('px-3 py-1.5 capitalize transition-colors',
-                view === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                view === v ? 'bg-gray-900 text-white font-medium' : 'text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-white'
               )}
               onClick={() => setView(v)}
             >
@@ -679,7 +679,7 @@ function PerformanceTab() {
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-900">
+              <TableRow className="bg-white dark:bg-white">
                 <TableHead className="text-xs capitalize">{view}</TableHead>
                 <TableHead className="text-xs text-right">Total Cases</TableHead>
                 <TableHead className="text-xs text-right">Closed</TableHead>
@@ -729,12 +729,12 @@ export default function ManagerDashboard() {
   const pendingCount = approvalsQ.data?.total ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-black flex items-center gap-3">
             <ClipboardList className="h-6 w-6 text-blue-600" />
             Manager Dashboard
           </h1>
@@ -745,7 +745,7 @@ export default function ManagerDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="approvals">
-          <TabsList className="mb-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 h-auto p-1 flex-wrap gap-1">
+          <TabsList className="mb-6 bg-white dark:bg-white border border-gray-200 dark:border-gray-800 h-auto p-1 flex-wrap gap-1">
             <TabsTrigger value="approvals" className="flex items-center gap-1.5 text-xs">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Approvals
@@ -772,7 +772,7 @@ export default function ManagerDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+          <div className="bg-white dark:bg-white rounded-xl border border-gray-200 dark:border-gray-800 p-6">
             <TabsContent value="approvals"  className="mt-0"><ApprovalsTab /></TabsContent>
             <TabsContent value="sla"        className="mt-0"><SlaBreachesTab /></TabsContent>
             <TabsContent value="workload"   className="mt-0"><WorkloadTab /></TabsContent>

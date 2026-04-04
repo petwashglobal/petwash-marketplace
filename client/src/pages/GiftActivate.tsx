@@ -228,7 +228,7 @@ export default function GiftActivate() {
               <p className="text-xs text-gray-400 mb-4">
                 {isHe ? `קוד: ...${gift.codeLast4}` : `Code: ...${gift.codeLast4}`}
               </p>
-              <div className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-3">
+              <div className="text-xs text-gray-500 space-y-1 bg-white rounded-lg p-3">
                 <p>{isHe ? '✓ שמפו אורגני 100%' : '✓ 100% organic shampoo'}</p>
                 <p>{isHe ? '✓ שטיפה K9000 / שירותי ספקים' : '✓ K9000 wash / provider services'}</p>
                 <p>{isHe ? '✓ ניתן לשימוש בכל השירותים' : '✓ Valid for all services'}</p>

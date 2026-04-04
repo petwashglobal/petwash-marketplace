@@ -242,7 +242,7 @@ export default function SitterSuiteOverview() {
               ].map((item, i) => (
                 <div 
                   key={i} 
-                  className="bg-gray-50 rounded-2xl border border-gray-200 p-6 hover:bg-gray-100 transition-all duration-300"
+                  className="bg-white rounded-2xl border border-gray-200 p-6 hover:bg-white transition-all duration-300"
                   data-testid={`value-prop-card-${i}`}
                 >
                   <div className={`w-14 h-14 mb-4 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center shadow-lg`}>

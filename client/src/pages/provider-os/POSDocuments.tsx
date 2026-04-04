@@ -144,7 +144,7 @@ export default function POSDocuments() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+      <div className="flex bg-white rounded-xl p-1 gap-1">
         {[
           { id: 'accept', label: 'Click-to-Accept' },
           { id: 'esign', label: 'E-Signature' },
@@ -210,7 +210,7 @@ export default function POSDocuments() {
             return (
               <div key={doc.id} className={`bg-white border rounded-xl overflow-hidden transition-colors ${status === 'signed' ? 'border-green-200' : doc.critical ? 'border-amber-200' : 'border-gray-200'}`}>
                 <button
-                  className="w-full flex items-start gap-3 p-4 text-start hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-start gap-3 p-4 text-start hover:bg-white transition-colors"
                   onClick={() => setExpandedEsign(isExpanded ? null : doc.id)}
                 >
                   <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center shrink-0">
@@ -243,7 +243,7 @@ export default function POSDocuments() {
                         <button className="flex-1 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-medium border border-green-200 flex items-center justify-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Signed — {new Date().toLocaleDateString()}
                         </button>
-                        <button className="py-2 px-3 bg-gray-100 text-gray-600 rounded-xl text-xs hover:bg-gray-200 transition-colors">
+                        <button className="py-2 px-3 bg-white text-gray-600 rounded-xl text-xs hover:bg-white transition-colors">
                           <ExternalLink className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -268,7 +268,7 @@ export default function POSDocuments() {
             const badge = status ? STATUS_BADGE[status] : null;
             return (
               <div key={doc.id} className={`bg-white border rounded-xl p-4 flex items-center gap-3 ${status === 'uploaded' ? 'border-green-200' : 'border-gray-200'}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${status === 'uploaded' ? 'bg-green-50' : 'bg-gray-50'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${status === 'uploaded' ? 'bg-green-50' : 'bg-white'}`}>
                   <FileText className={`w-5 h-5 ${status === 'uploaded' ? 'text-green-600' : 'text-gray-400'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -289,7 +289,7 @@ export default function POSDocuments() {
                   disabled={uploading && uploadingDoc === doc.id}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors shrink-0 ${
                     uploading && uploadingDoc === doc.id
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      ? 'bg-white text-gray-400 cursor-not-allowed'
                       : status === 'uploaded'
                         ? 'bg-green-50 text-green-700 border border-green-200'
                         : 'bg-amber-500 text-white hover:bg-amber-600'
@@ -324,12 +324,12 @@ export default function POSDocuments() {
                 <h3 className="text-base font-semibold text-gray-900">Sign Document</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{ESIGN_DOCS.find(d => d.id === signingDoc)?.label}</p>
               </div>
-              <button onClick={() => setSigningDoc(null)} className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors">
+              <button onClick={() => setSigningDoc(null)} className="p-1.5 hover:bg-white rounded-xl transition-colors">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             <div className="p-5">
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center mb-4">
+              <div className="bg-white border border-gray-200 rounded-xl p-8 text-center mb-4">
                 <PenLine className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-600 mb-1">DocuSign integration</p>
                 <p className="text-xs text-gray-400">In production, the document will open in an embedded signing panel powered by DocuSign or Dropbox Sign. No page redirect required.</p>
@@ -339,7 +339,7 @@ export default function POSDocuments() {
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setSigningDoc(null)}
-                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-white transition-colors">
                   Cancel
                 </button>
                 <button onClick={() => simulateSign(signingDoc!)}

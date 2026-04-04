@@ -166,7 +166,7 @@ function StatusChip({ status, isHebrew }: { status: string; isHebrew: boolean })
   const cfg = STATUS_CONFIG[status] ?? {
     labelEn: status,
     labelHe: status,
-    color: 'bg-gray-100 text-gray-700 border-gray-300',
+    color: 'bg-white text-gray-700 border-gray-300',
   };
   return (
     <span
@@ -250,7 +250,7 @@ export default function StationDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-3xl mx-auto space-y-4">
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -267,13 +267,13 @@ export default function StationDashboard() {
   if (myStationsLoaded && !isStationAccessible) {
     return (
       <div
-        className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4"
+        className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
         dir={isHebrew ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
             <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-300 font-medium">
+            <p className="text-gray-600 dark:text-black font-medium">
               {isHebrew
                 ? 'אין לך הרשאה לצפות בעמדה זו.'
                 : 'You do not have access to this station.'}
@@ -287,13 +287,13 @@ export default function StationDashboard() {
   if (isError || !data) {
     return (
       <div
-        className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4"
+        className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
         dir={isHebrew ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
             <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-300 font-medium">
+            <p className="text-gray-600 dark:text-black font-medium">
               {isHebrew
                 ? 'אין גישה לעמדה זו, או שהיא אינה קיימת.'
                 : 'Access denied or station not found.'}
@@ -313,7 +313,7 @@ export default function StationDashboard() {
 
   return (
     <div
-      className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6"
+      className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-6"
       dir={isHebrew ? 'rtl' : 'ltr'}
     >
       <div className="max-w-3xl mx-auto">
@@ -386,14 +386,14 @@ export default function StationDashboard() {
         {/* ── Today at a Glance ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           {/* Bookings today */}
-          <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900">
+          <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white">
             <CardContent className="pt-4 pb-4 px-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">
                     {isHebrew ? 'הזמנות היום' : 'Bookings Today'}
                   </p>
-                  <p className="text-3xl font-black text-gray-800 dark:text-gray-100 leading-none">
+                  <p className="text-3xl font-black text-gray-800 dark:text-black leading-none">
                     {glance.bookingsToday}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
@@ -406,7 +406,7 @@ export default function StationDashboard() {
           </Card>
 
           {/* Earnings today */}
-          <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900">
+          <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white">
             <CardContent className="pt-4 pb-4 px-4">
               <div className="flex items-start justify-between">
                 <div>
@@ -430,7 +430,7 @@ export default function StationDashboard() {
             className={`rounded-xl border-0 shadow-sm col-span-2 sm:col-span-1 ${
               glance.openDisputeCount > 0
                 ? 'bg-red-50 dark:bg-red-950/20'
-                : 'bg-white dark:bg-gray-900'
+                : 'bg-white dark:bg-white'
             }`}
           >
             <CardContent className="pt-4 pb-4 px-4">
@@ -443,7 +443,7 @@ export default function StationDashboard() {
                     className={`text-3xl font-black leading-none ${
                       glance.openDisputeCount > 0
                         ? 'text-red-600 dark:text-red-400'
-                        : 'text-gray-800 dark:text-gray-100'
+                        : 'text-gray-800 dark:text-black'
                     }`}
                   >
                     {glance.openDisputeCount}
@@ -463,10 +463,10 @@ export default function StationDashboard() {
         </div>
 
         {/* ── Capacity Progress Bar ─────────────────────────────────────────── */}
-        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900 mb-4">
+        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white mb-4">
           <CardContent className="pt-4 pb-4 px-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-gray-700 dark:text-black">
                 {isHebrew ? 'ניצולת יומית' : 'Daily Capacity'}
               </span>
               <span className="text-sm text-gray-500">
@@ -478,7 +478,7 @@ export default function StationDashboard() {
                 )}
               </span>
             </div>
-            <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-3 bg-white dark:bg-white rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${capacityColor}`}
                 style={{ width: `${Math.min(100, capacityPct).toFixed(1)}%` }}
@@ -497,7 +497,7 @@ export default function StationDashboard() {
         </Card>
 
         {/* ── Today's Bookings ──────────────────────────────────────────────── */}
-        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900 mb-4">
+        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white mb-4">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-500" />
@@ -523,7 +523,7 @@ export default function StationDashboard() {
 
                     {/* Service + customer */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate capitalize">
+                      <p className="text-sm font-medium text-gray-800 dark:text-black truncate capitalize">
                         {b.serviceType
                           ? b.serviceType.replace(/-/g, ' ')
                           : isHebrew
@@ -541,7 +541,7 @@ export default function StationDashboard() {
                     </div>
 
                     {/* Price */}
-                    <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 shrink-0">
+                    <div className="text-sm font-semibold text-gray-700 dark:text-black shrink-0">
                       {b.totalILS > 0 ? `₪${b.totalILS.toFixed(0)}` : '—'}
                     </div>
 
@@ -555,7 +555,7 @@ export default function StationDashboard() {
         </Card>
 
         {/* ── Settlement Summary (this month) ───────────────────────────────── */}
-        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-gray-900 mb-4">
+        <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white mb-4">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Receipt className="w-4 h-4 text-purple-500" />
@@ -569,9 +569,9 @@ export default function StationDashboard() {
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 text-center">
+                <div className="bg-white dark:bg-white/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-400 mb-1">{isHebrew ? 'סה"כ הכנסות' : 'Total Revenue'}</p>
-                  <p className="text-base font-bold text-gray-800 dark:text-gray-100">
+                  <p className="text-base font-bold text-gray-800 dark:text-black">
                     {centsToILS(sm.totalRevenueCents)}
                   </p>
                 </div>
@@ -621,10 +621,10 @@ export default function StationDashboard() {
                   <Link
                     key={d.id}
                     href={`/disputes/${d.id}`}
-                    className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-lg px-3 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                    className="flex items-center gap-3 bg-white dark:bg-white rounded-lg px-3 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      <p className="text-sm font-medium text-gray-800 dark:text-black">
                         {d.caseRef}
                       </p>
                       <p className="text-xs text-gray-400">

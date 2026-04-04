@@ -37,7 +37,7 @@ export default function StationMembershipGuard({ children }: Props) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-3xl mx-auto space-y-4">
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -54,13 +54,13 @@ export default function StationMembershipGuard({ children }: Props) {
   if (isError || !data || !hasAccess) {
     return (
       <div
-        className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4"
+        className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
         dir={isHebrew ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
             <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-300 font-medium">
+            <p className="text-gray-600 dark:text-black font-medium">
               {isHebrew
                 ? 'אין לך הרשאה לצפות בעמדה זו.'
                 : 'You do not have access to this station.'}

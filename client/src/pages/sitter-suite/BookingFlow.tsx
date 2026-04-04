@@ -392,7 +392,7 @@ export default function SitterBookingFlow() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                     isActive ? 'bg-emerald-500 text-white shadow-lg' :
                     isDone ? 'bg-emerald-100 text-emerald-700' :
-                    'bg-slate-100 text-slate-400'
+                    'bg-white text-slate-400'
                   }`}>
                     {isDone ? <Check className="h-4 w-4" /> : num}
                   </div>
@@ -469,7 +469,7 @@ export default function SitterBookingFlow() {
                         className={`rounded-full px-5 py-3 min-h-[44px] text-sm font-medium transition-all touch-manipulation ${
                           active
                             ? "bg-emerald-500 text-white shadow-md"
-                            : "bg-slate-50 text-slate-700 border border-slate-200 hover:border-emerald-300"
+                            : "bg-white text-slate-700 border border-slate-200 hover:border-emerald-300"
                         }`}
                         data-testid={`button-pet-${pet.id}`}
                       >
@@ -497,7 +497,7 @@ export default function SitterBookingFlow() {
                   disabled={{ before: new Date() }}
                   numberOfMonths={1}
                   defaultMonth={new Date()}
-                  className="rounded-xl border border-slate-100 bg-slate-50"
+                  className="rounded-xl border border-slate-100 bg-white"
                 />
               </div>
 
@@ -745,7 +745,7 @@ export default function SitterBookingFlow() {
               </div>
               
               {PAYMENTS_CONFIG.enableCreditCard && !PAYMENTS_CONFIG.enableNayax && (
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+                <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 mb-4">
                   <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
                     <CreditCard className="h-5 w-5 text-emerald-600" />
                   </div>
@@ -808,7 +808,7 @@ export default function SitterBookingFlow() {
 
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm max-w-sm mx-auto">
               <div className="flex items-center gap-4 text-right" dir="rtl">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-slate-400">
                   <Clock className="h-6 w-6" />
                 </div>
                 <div>
@@ -841,7 +841,7 @@ export default function SitterBookingFlow() {
               השמרטף/ית יקבל/תקבל את פרטי ההזמנה.
             </p>
             {/* Booking reference card */}
-            <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-slate-200 bg-slate-50 mb-6 mx-auto">
+            <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-slate-200 bg-white mb-6 mx-auto">
               <p className="text-xs text-slate-400 tracking-widest uppercase">מספר הזמנה</p>
               <p className="text-lg font-mono font-semibold text-slate-800 tracking-wider">
                 #{bookingId || "—"}

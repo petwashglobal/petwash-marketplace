@@ -106,21 +106,21 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-white">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      <div className="bg-white dark:bg-white border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-full hover:bg-white dark:hover:bg-white transition-colors"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-black" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-black">Notifications</h1>
               {unreadCount > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {unreadCount} unread
@@ -148,7 +148,7 @@ export default function NotificationsPage() {
         {isLoading && (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-4 flex gap-3 shadow-sm">
+              <div key={i} className="bg-white dark:bg-white rounded-xl p-4 flex gap-3 shadow-sm">
                 <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -163,10 +163,10 @@ export default function NotificationsPage() {
         {/* Empty state */}
         {!isLoading && notifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-white dark:bg-white rounded-full flex items-center justify-center mb-4">
               <BellOff className="w-8 h-8 text-gray-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-black mb-1">
               You're all caught up
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -186,7 +186,7 @@ export default function NotificationsPage() {
                 <div
                   key={n.id}
                   className={`
-                    relative bg-white dark:bg-gray-800 rounded-xl px-4 py-3 shadow-sm flex gap-3 cursor-pointer
+                    relative bg-white dark:bg-white rounded-xl px-4 py-3 shadow-sm flex gap-3 cursor-pointer
                     transition-all hover:shadow-md
                     ${!n.isRead ? "border-l-4 border-blue-500" : "border-l-4 border-transparent"}
                   `}
@@ -198,7 +198,7 @@ export default function NotificationsPage() {
                   {/* Icon */}
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                    ${!n.isRead ? "bg-blue-50 dark:bg-blue-900/30" : "bg-gray-100 dark:bg-gray-700"}
+                    ${!n.isRead ? "bg-blue-50 dark:bg-white" : "bg-white dark:bg-white"}
                   `}>
                     {getNotificationIcon(n.eventType)}
                   </div>
@@ -206,7 +206,7 @@ export default function NotificationsPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm leading-snug ${!n.isRead ? "font-semibold text-gray-900 dark:text-white" : "font-medium text-gray-700 dark:text-gray-300"}`}>
+                      <p className={`text-sm leading-snug ${!n.isRead ? "font-semibold text-gray-900 dark:text-black" : "font-medium text-gray-700 dark:text-black"}`}>
                         {n.title || n.templateKey}
                       </p>
                       <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">

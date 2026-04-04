@@ -176,14 +176,14 @@ export default function TrainerProfile() {
                   </div>
 
                   <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-black mb-2">
                       {trainer.fullName}
                     </h1>
                     
                     <div className="flex items-center gap-4 mb-4">
                       <div className="flex items-center gap-2">
                         <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                        <span className="font-semibold text-gray-900 dark:text-white">
+                        <span className="font-semibold text-gray-900 dark:text-black">
                           {trainer.averageRating}
                         </span>
                         <span className="text-gray-600 dark:text-gray-400">
@@ -201,7 +201,7 @@ export default function TrainerProfile() {
 
                     <div className="flex flex-wrap gap-2">
                       {trainer.certifications?.map((cert) => (
-                        <Badge key={cert} variant="secondary" className="bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100">
+                        <Badge key={cert} variant="secondary" className="bg-purple-100 text-purple-900 dark:bg-white dark:text-purple-100">
                           <Award className="h-3 w-3 mr-1" />
                           {cert}
                         </Badge>
@@ -212,19 +212,19 @@ export default function TrainerProfile() {
 
                 {/* Bio */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-3">
                     {t('About Me')}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  <p className="text-gray-600 dark:text-black leading-relaxed">
                     {trainer.bio}
                   </p>
                 </div>
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                  <div className="text-center p-4 rounded-lg bg-purple-50 dark:bg-white">
                     <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-black">
                       {trainer.experienceYears}+
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -232,9 +232,9 @@ export default function TrainerProfile() {
                     </div>
                   </div>
 
-                  <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-white">
                     <Users className="h-6 w-6 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-black">
                       {trainer.totalSessions}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -242,9 +242,9 @@ export default function TrainerProfile() {
                     </div>
                   </div>
 
-                  <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-white">
                     <Target className="h-6 w-6 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-black">
                       {parseFloat(trainer.averageRating).toFixed(1)}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -265,24 +265,24 @@ export default function TrainerProfile() {
 
                   <TabsContent value="specialties" className="mt-6">
                     <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-gray-900 dark:text-black">
                         {t('Training Specialties')}
                       </h4>
                       <div className="grid grid-cols-2 gap-3">
                         {trainer.specialties?.map((specialty) => (
                           <div
                             key={specialty}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20"
+                            className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 dark:bg-white"
                           >
                             <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                            <span className="text-gray-900 dark:text-white">{specialty}</span>
+                            <span className="text-gray-900 dark:text-black">{specialty}</span>
                           </div>
                         ))}
                       </div>
 
                       <Separator className="my-6" />
 
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-gray-900 dark:text-black">
                         {t('Service Types')}
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -303,9 +303,9 @@ export default function TrainerProfile() {
                         </p>
                       ) : (
                         reviews.map((review) => (
-                          <div key={review.id} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <div key={review.id} className="p-4 rounded-lg bg-white dark:bg-white">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="font-semibold text-gray-900 dark:text-white">
+                              <span className="font-semibold text-gray-900 dark:text-black">
                                 {review.authorName}
                               </span>
                               <div className="flex items-center gap-1">
@@ -321,7 +321,7 @@ export default function TrainerProfile() {
                                 ))}
                               </div>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-300">{review.comment}</p>
+                            <p className="text-gray-600 dark:text-black">{review.comment}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
                               {new Date(review.createdAt).toLocaleDateString()}
                             </p>
@@ -333,7 +333,7 @@ export default function TrainerProfile() {
 
                   <TabsContent value="availability" className="mt-6">
                     <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-gray-900 dark:text-black">
                         {t('Available Days')}
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -354,7 +354,7 @@ export default function TrainerProfile() {
 
                       <Separator className="my-6" />
 
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-gray-900 dark:text-black">
                         {t('Languages')}
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -376,7 +376,7 @@ export default function TrainerProfile() {
                 {/* Pricing Card */}
                 <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-fade-in luxury-delay-3">
                   <div className="text-center mb-6">
-                    <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    <div className="text-4xl font-bold text-gray-900 dark:text-black mb-2">
                       ₪{parseFloat(trainer.hourlyRate).toFixed(0)}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -443,7 +443,7 @@ export default function TrainerProfile() {
                           <span>₪{(parseFloat(trainer.hourlyRate) * parseFloat(trainer.commissionRate) / 100 * 0.18).toFixed(2)}</span>
                         </div>
                         <Separator />
-                        <div className="flex justify-between font-semibold text-gray-900 dark:text-white">
+                        <div className="flex justify-between font-semibold text-gray-900 dark:text-black">
                           <span>{t('Total per Hour')}</span>
                           <span>
                             ₪{(
@@ -456,7 +456,7 @@ export default function TrainerProfile() {
                       </div>
 
                       {/* Info Notes */}
-                      <div className="mt-6 p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 space-y-2 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="mt-6 p-4 rounded-lg bg-purple-50 dark:bg-white space-y-2 text-xs text-gray-600 dark:text-gray-400">
                         <div className="flex items-start gap-2">
                           <Shield className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5" />
                           <span>{t('72-hour payment hold with automatic release')}</span>
@@ -472,7 +472,7 @@ export default function TrainerProfile() {
                       </div>
                     </>
                   ) : (
-                    <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-center p-6 bg-white dark:bg-white rounded-lg">
                       <Clock className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                       <p className="text-gray-600 dark:text-gray-400">
                         {t('This trainer is not currently accepting bookings')}
@@ -483,25 +483,25 @@ export default function TrainerProfile() {
 
                 {/* Trust & Safety */}
                 <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
+                  <h4 className="font-semibold text-gray-900 dark:text-black mb-4">
                     {t('Trust & Safety')}
                   </h4>
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className="text-gray-600 dark:text-black">
                         {t('Background Verified')}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className="text-gray-600 dark:text-black">
                         {t('Professional Certifications')}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className="text-gray-600 dark:text-black">
                         {t('Secure Payment Processing')}
                       </span>
                     </div>

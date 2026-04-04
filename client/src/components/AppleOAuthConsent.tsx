@@ -141,7 +141,7 @@ export function AppleOAuthConsent({
           </div>
 
           {/* Apple Privacy Protection */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+          <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">{t.privacy}</h3>
             <p className="text-sm text-gray-700">{t.privacyDesc}</p>
           </div>

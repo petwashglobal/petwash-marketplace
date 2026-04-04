@@ -103,7 +103,7 @@ export default function SitterDashboard() {
               <LanguageSwitcher compact={true} showFlag={true} />
               
               <Button className="relative p-3 luxury-glass-minimal luxury-hover-lift rounded-xl transition-all">
-                <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                <Bell className="h-5 w-5 text-gray-700 dark:text-black" />
                 {unreadCount > 0 && (
                   <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full"></span>
                 )}
@@ -114,7 +114,7 @@ export default function SitterDashboard() {
                   {user?.email?.charAt(0).toUpperCase()}
                 </div>
                 <div className="text-sm">
-                  <p className="font-semibold text-gray-900 dark:text-white">{profile?.fullName || user?.email}</p>
+                  <p className="font-semibold text-gray-900 dark:text-black">{profile?.fullName || user?.email}</p>
                   <div className="flex items-center gap-1">
                     {profile?.biometricMatchStatus === 'matched' && (
                       <Shield className="h-3 w-3 text-green-600" />
@@ -224,7 +224,7 @@ export default function SitterDashboard() {
               </h2>
               <div className="flex items-center gap-3">
                 <Select value={bookingFilter} onValueChange={setBookingFilter}>
-                  <SelectTrigger className="px-4 py-2 luxury-glass-minimal border border-purple-200 dark:border-purple-800 rounded-xl luxury-hover-lift transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-700 dark:text-gray-300">
+                  <SelectTrigger className="px-4 py-2 luxury-glass-minimal border border-purple-200 dark:border-purple-800 rounded-xl luxury-hover-lift transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-700 dark:text-black">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -362,7 +362,7 @@ export default function SitterDashboard() {
                         className="h-full w-full rounded-full object-cover"
                       />
                     ) : (
-                      <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                      <div className="h-full w-full rounded-full bg-white dark:bg-white flex items-center justify-center">
                         <span className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent">
                           {profile?.fullName?.charAt(0) || 'S'}
                         </span>
@@ -483,7 +483,7 @@ function SitterBookingCard({ booking, isHebrew }: any) {
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full blur-sm opacity-75"></div>
             <div className="relative h-14 w-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
-              <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+              <div className="h-full w-full rounded-full bg-white dark:bg-white flex items-center justify-center">
                 <PawPrint className="h-6 w-6 text-purple-600" />
               </div>
             </div>
@@ -543,11 +543,11 @@ function SitterBookingCard({ booking, isHebrew }: any) {
 // Message Preview Component
 function MessagePreview({ message, isHebrew }: any) {
   return (
-    <div className={`flex items-center gap-4 p-4 luxury-glass-minimal luxury-hover-lift rounded-xl cursor-pointer transition-all mb-2 ${!message.isRead ? 'bg-purple-50 dark:bg-purple-900/20' : ''}`}>
+    <div className={`flex items-center gap-4 p-4 luxury-glass-minimal luxury-hover-lift rounded-xl cursor-pointer transition-all mb-2 ${!message.isRead ? 'bg-purple-50 dark:bg-white' : ''}`}>
       <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full blur-sm opacity-60"></div>
         <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 p-0.5">
-          <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+          <div className="h-full w-full rounded-full bg-white dark:bg-white flex items-center justify-center">
             <span className="text-lg font-bold bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {message.senderName?.charAt(0) || 'O'}
             </span>

@@ -33,7 +33,7 @@ import {
 const TIER_CONFIG = {
   prestige: { label: 'Prestige', labelHe: 'פרסטיז', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300', barColor: 'bg-purple-500' },
   gold:     { label: 'Gold',     labelHe: 'זהב',    icon: Award,  color: 'bg-yellow-100 text-yellow-700 border-yellow-300', barColor: 'bg-yellow-500' },
-  silver:   { label: 'Silver',   labelHe: 'כסף',   icon: Shield, color: 'bg-gray-100 text-gray-600 border-gray-300',       barColor: 'bg-gray-400' },
+  silver:   { label: 'Silver',   labelHe: 'כסף',   icon: Shield, color: 'bg-white text-gray-600 border-gray-300',       barColor: 'bg-gray-400' },
   bronze:   { label: 'Bronze',   labelHe: 'ארד',   icon: Zap,    color: 'bg-orange-100 text-orange-700 border-orange-300', barColor: 'bg-orange-500' },
   at_risk:  { label: 'At Risk',  labelHe: 'בסיכון',icon: AlertTriangle, color: 'bg-red-100 text-red-700 border-red-300',   barColor: 'bg-red-500' },
   new:      { label: 'New',      labelHe: 'חדש',   icon: TrendingUp,    color: 'bg-blue-100 text-blue-700 border-blue-300', barColor: 'bg-blue-500' },
@@ -114,7 +114,7 @@ function FactorCard({
               ? 'bg-green-100 text-green-700'
               : typeof impact === 'number' && impact < 0
               ? 'bg-red-100 text-red-700'
-              : 'bg-gray-100 text-gray-600'
+              : 'bg-white text-gray-600'
           }`}>
             {typeof impact === 'number' ? (impact > 0 ? `+${impact}` : impact) : impact}
           </span>
@@ -139,7 +139,7 @@ export default function ProviderRankingPanel() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-2xl mx-auto space-y-4">
           <Skeleton className="h-32 w-full rounded-2xl" />
           <Skeleton className="h-48 w-full rounded-2xl" />
@@ -151,7 +151,7 @@ export default function ProviderRankingPanel() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8 flex items-center justify-center" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-8 flex items-center justify-center" dir={isHebrew ? 'rtl' : 'ltr'}>
         <Card className="max-w-sm w-full">
           <CardContent className="pt-8 pb-8 text-center">
             <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
@@ -169,12 +169,12 @@ export default function ProviderRankingPanel() {
   const score = data.rankingScore;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8" dir={isHebrew ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8" dir={isHebrew ? 'rtl' : 'ltr'}>
       <div className="max-w-2xl mx-auto space-y-5">
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-black">
             {isHebrew ? 'הדירוג שלי' : 'My Marketplace Ranking'}
           </h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -207,7 +207,7 @@ export default function ProviderRankingPanel() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-5xl font-black text-gray-800 dark:text-white leading-none">
+                <div className="text-5xl font-black text-gray-800 dark:text-black leading-none">
                   {score ?? '—'}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">{isHebrew ? 'מתוך 100' : '/ 100'}</div>
@@ -217,7 +217,7 @@ export default function ProviderRankingPanel() {
             {/* Score bar */}
             {score !== null && (
               <div className="mt-4">
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-white rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${tierCfg.barColor}`}
                     style={{ width: `${score}%` }}

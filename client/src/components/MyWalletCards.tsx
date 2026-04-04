@@ -137,7 +137,7 @@ export default function MyWalletCards() {
     return (
       <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-900 border-amber-200 dark:border-amber-800">
         <CardContent className="pt-6 text-center">
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-gray-600 dark:text-black">
             {isHebrew 
               ? '📱 Apple Wallet זמין רק במכשירי iPhone ו-iPad'
               : '📱 Apple Wallet is only available on iPhone and iPad'}
@@ -195,7 +195,7 @@ export default function MyWalletCards() {
             </div>
           </div>
 
-          <div className="w-full bg-gray-100 dark:bg-gray-800 text-gray-500 h-12 text-lg font-medium rounded-md flex items-center justify-center">
+          <div className="w-full bg-white dark:bg-white text-gray-500 h-12 text-lg font-medium rounded-md flex items-center justify-center">
             {isHebrew ? '🚀 בקרוב...' : '🚀 Coming Soon...'}
           </div>
         </CardContent>
@@ -269,7 +269,7 @@ export default function MyWalletCards() {
             </div>
           </div>
 
-          <div className="w-full bg-gray-100 dark:bg-gray-800 text-gray-500 h-12 text-lg font-medium rounded-md flex items-center justify-center">
+          <div className="w-full bg-white dark:bg-white text-gray-500 h-12 text-lg font-medium rounded-md flex items-center justify-center">
             {isHebrew ? '🚀 בקרוב...' : '🚀 Coming Soon...'}
           </div>
         </CardContent>

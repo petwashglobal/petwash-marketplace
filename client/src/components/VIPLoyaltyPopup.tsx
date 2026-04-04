@@ -222,7 +222,7 @@ export function VIPLoyaltyPopup({ isOpen, onClose }: VIPLoyaltyPopupProps) {
                         {platform.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="px-2 py-1 text-[10px] font-medium text-gray-600 bg-gray-100 rounded-full"
+                            className="px-2 py-1 text-[10px] font-medium text-gray-600 bg-white rounded-full"
                           >
                             {tag}
                           </span>

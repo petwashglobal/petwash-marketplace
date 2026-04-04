@@ -197,7 +197,7 @@ export default function PetWashCircle() {
                   <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
                 </div>
 
-                <Separator className="bg-gray-200 mb-4" />
+                <Separator className="bg-white mb-4" />
 
                 {/* Post Actions */}
                 <div className="flex items-center gap-6">

@@ -45,7 +45,7 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
       <Card className="max-w-md w-full mx-auto bg-white">
         <CardHeader className="text-center pb-2">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">

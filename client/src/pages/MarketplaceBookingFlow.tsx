@@ -415,7 +415,7 @@ export default function MarketplaceBookingFlow() {
                 {isHebrew ? `הזמנה עם ${provider.firstName} ${provider.lastName}` : `Booking with ${provider.firstName} ${provider.lastName}`}
               </p>
               {provider.rating != null && Number(provider.rating) > 0 && (
-                <span className="inline-flex items-center gap-1 bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200 rounded-full px-2.5 py-0.5 text-sm font-medium">
+                <span className="inline-flex items-center gap-1 bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-white dark:border-yellow-700 dark:text-yellow-200 rounded-full px-2.5 py-0.5 text-sm font-medium">
                   ⭐ {Number(provider.rating).toFixed(1)}
                 </span>
               )}
@@ -434,7 +434,7 @@ export default function MarketplaceBookingFlow() {
                           ? 'border-transparent bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 text-white shadow-purple-400/50 scale-110'
                           : step.completed
                           ? 'border-transparent bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-400/50'
-                          : 'border-gray-300 dark:border-gray-700 text-gray-400 bg-white dark:bg-gray-900'
+                          : 'border-gray-300 dark:border-gray-700 text-gray-400 bg-white dark:bg-white'
                       }`}
                       data-testid={`step-${step.id}`}
                     >
@@ -443,12 +443,12 @@ export default function MarketplaceBookingFlow() {
                     {index < steps.length - 1 && (
                       <div
                         className={`flex-1 h-1 mx-2 transition-all rounded-full ${
-                          step.completed ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-400/30' : 'bg-gray-200 dark:bg-gray-700'
+                          step.completed ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-400/30' : 'bg-white dark:bg-white'
                         }`}
                       />
                     )}
                   </div>
-                  <p className="text-xs mt-3 text-center font-semibold text-gray-700 dark:text-gray-300">
+                  <p className="text-xs mt-3 text-center font-semibold text-gray-700 dark:text-black">
                     {isHebrew ? step.titleHe : step.title}
                   </p>
                 </div>
@@ -470,7 +470,7 @@ export default function MarketplaceBookingFlow() {
                     <Card 
                       className={`cursor-pointer hover:shadow-lg transition-all ${
                         selectedService === 'standard' 
-                          ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20 border-2' 
+                          ? 'border-purple-600 bg-purple-50 dark:bg-white border-2' 
                           : 'border-gray-200 dark:border-gray-700'
                       }`}
                       onClick={() => setSelectedService('standard')}
@@ -523,7 +523,7 @@ export default function MarketplaceBookingFlow() {
                   />
 
                   {customDateMode && (
-                    <div className="mt-4 p-4 border border-purple-200 rounded-lg bg-purple-50 dark:bg-purple-900/20 space-y-3">
+                    <div className="mt-4 p-4 border border-purple-200 rounded-lg bg-purple-50 dark:bg-white space-y-3">
                       <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
                         {isHebrew ? 'בקשת תאריך מותאם' : 'Custom Date Request'}
                       </p>
@@ -578,7 +578,7 @@ export default function MarketplaceBookingFlow() {
                           key={pet.id}
                           className={`cursor-pointer transition-all ${
                             selectedPetId === pet.id
-                              ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                              ? 'border-purple-600 bg-purple-50 dark:bg-white'
                               : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
                           }`}
                           onClick={() => setSelectedPetId(pet.id)}
@@ -593,7 +593,7 @@ export default function MarketplaceBookingFlow() {
                                   className="w-16 h-16 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-white flex items-center justify-center">
                                   <Dog className="w-8 h-8 text-purple-600" />
                                 </div>
                               )}
@@ -609,7 +609,7 @@ export default function MarketplaceBookingFlow() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+                    <div className="text-center py-8 bg-white dark:bg-white/50 rounded-lg border border-gray-200 dark:border-gray-800">
                       <Dog className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
                       <p className="text-gray-600 dark:text-gray-400 font-medium mb-4">
                         {isHebrew ? 'אין חיות מחמד רשומות' : 'No pets registered'}
@@ -639,13 +639,13 @@ export default function MarketplaceBookingFlow() {
                             onClick={() => toggleAddon(addon.code)}
                             className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
                               active
-                                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                ? 'border-purple-500 bg-purple-50 dark:bg-white'
                                 : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
                             }`}
                           >
                             <span className="text-xl">{addon.emoji}</span>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                              <p className="text-sm font-semibold text-gray-800 dark:text-black truncate">
                                 {isHebrew ? addon.labelHe : addon.labelEn}
                               </p>
                               <p className="text-xs text-gray-500">
@@ -727,7 +727,7 @@ export default function MarketplaceBookingFlow() {
 
                   {/* Booking Summary */}
                   <div className="space-y-4 mb-6">
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <div className="flex items-center gap-3 p-4 bg-white dark:bg-white/50 rounded-lg">
                       <MapPin className="w-5 h-5 text-purple-600" />
                       <div>
                         <p className="font-semibold">{provider.firstName} {provider.lastName}</p>
@@ -735,7 +735,7 @@ export default function MarketplaceBookingFlow() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <div className="flex items-center gap-3 p-4 bg-white dark:bg-white/50 rounded-lg">
                       <CalendarIcon className="w-5 h-5 text-purple-600" />
                       <div>
                         <p className="font-semibold">
@@ -748,7 +748,7 @@ export default function MarketplaceBookingFlow() {
                     </div>
 
                     {selectedPetId && pets && (
-                      <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                      <div className="flex items-center gap-3 p-4 bg-white dark:bg-white/50 rounded-lg">
                         <Dog className="w-5 h-5 text-purple-600" />
                         <div>
                           <p className="font-semibold">
@@ -764,19 +764,19 @@ export default function MarketplaceBookingFlow() {
 
                   {/* T006 — Service Guarantee Badges */}
                   <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="flex flex-col items-center gap-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
+                    <div className="flex flex-col items-center gap-1 bg-green-50 dark:bg-white border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
                       <span className="text-2xl">🛡️</span>
                       <span className="text-xs font-semibold text-green-800 dark:text-green-300">
                         {isHebrew ? 'ערבות שביעות רצון' : 'Satisfaction Guarantee'}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+                    <div className="flex flex-col items-center gap-1 bg-blue-50 dark:bg-white border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
                       <span className="text-2xl">✅</span>
                       <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">
                         {isHebrew ? 'ספקים מאומתים' : 'Verified Providers'}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+                    <div className="flex flex-col items-center gap-1 bg-purple-50 dark:bg-white border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
                       <span className="text-2xl">🔒</span>
                       <span className="text-xs font-semibold text-purple-800 dark:text-purple-300">
                         {isHebrew ? 'תשלום מאובטח' : 'Secure Payment'}
@@ -797,7 +797,7 @@ export default function MarketplaceBookingFlow() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                        <div className="flex justify-between text-gray-700 dark:text-black">
                           <span>{isHebrew ? 'מחיר בסיס' : 'Base Price'}</span>
                           <span data-testid="price-base">₪{((quoteData?.baseAmountCents || basePriceCents) / 100).toFixed(2)}</span>
                         </div>
@@ -816,11 +816,11 @@ export default function MarketplaceBookingFlow() {
                           </div>
                         )}
                         
-                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                        <div className="flex justify-between text-gray-700 dark:text-black">
                           <span>{isHebrew ? 'עמלת פלטפורמה (10%)' : 'Platform Fee (10%)'}</span>
                           <span data-testid="price-platform-fee">₪{((quoteData?.platformFeeCents || platformFeeCents) / 100).toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                        <div className="flex justify-between text-gray-700 dark:text-black">
                           <span>{isHebrew ? 'מע״מ (18%)' : 'VAT (18%)'}</span>
                           <span data-testid="price-vat">₪{((quoteData?.vatCents || vatCents) / 100).toFixed(2)}</span>
                         </div>
@@ -856,7 +856,7 @@ export default function MarketplaceBookingFlow() {
                         }}
                       />
                       {appliedCredits && appliedCredits.totalCreditsAppliedCents > 0 && (
-                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-white border border-green-200 dark:border-green-800 rounded-lg">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-green-800 dark:text-green-200 font-medium">
                               {isHebrew ? 'זיכויים הופעלו' : 'Credits Applied'}
@@ -870,7 +870,7 @@ export default function MarketplaceBookingFlow() {
                               <span className="text-gray-600 dark:text-gray-400">
                                 {isHebrew ? 'יתרה לתשלום במזומן' : 'Remaining cash payment'}
                               </span>
-                              <span className="text-gray-800 dark:text-gray-200 font-semibold">
+                              <span className="text-gray-800 dark:text-black font-semibold">
                                 ₪{(appliedCredits.cashPaidCents / 100).toFixed(2)}
                               </span>
                             </div>

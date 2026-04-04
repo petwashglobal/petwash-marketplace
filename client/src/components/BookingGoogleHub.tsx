@@ -202,7 +202,7 @@ export function BookingGoogleHub({
       </div>
 
       {/* Timezone info bar */}
-      <div className="px-4 py-2 bg-neutral-50 border-t border-neutral-100 flex items-center gap-2">
+      <div className="px-4 py-2 bg-white border-t border-neutral-100 flex items-center gap-2">
         <span className="text-xs text-neutral-400">
           {isHe ? "אזור זמן: ישראל (Asia/Jerusalem) · כל האירועים מסונכרנים ל-Google" : "Timezone: Asia/Jerusalem · All events synced to Google"}
         </span>

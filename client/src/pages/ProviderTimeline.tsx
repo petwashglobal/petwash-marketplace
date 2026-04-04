@@ -16,13 +16,13 @@ const STATUS_CONFIG: Record<string, { color: string; label: string; icon: any }>
   in_progress: { color: "bg-blue-100 text-blue-800",    label: "בתהליך",   icon: Clock },
   confirmed:   { color: "bg-blue-100 text-blue-800",    label: "מאושר",    icon: Clock },
   pending:     { color: "bg-yellow-100 text-yellow-800",label: "ממתין",    icon: Clock },
-  cancelled:   { color: "bg-gray-100 text-gray-600",    label: "בוטל",     icon: XCircle },
-  declined:    { color: "bg-gray-100 text-gray-600",    label: "נדחה",     icon: XCircle },
+  cancelled:   { color: "bg-white text-gray-600",    label: "בוטל",     icon: XCircle },
+  declined:    { color: "bg-white text-gray-600",    label: "נדחה",     icon: XCircle },
   disputed:    { color: "bg-red-100 text-red-700",      label: "במחלוקת",  icon: AlertCircle },
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? { color: "bg-gray-100 text-gray-600", label: status, icon: Clock };
+  const cfg = STATUS_CONFIG[status] ?? { color: "bg-white text-gray-600", label: status, icon: Clock };
   return <Badge className={cn("text-xs gap-1", cfg.color)}>{cfg.label}</Badge>;
 }
 

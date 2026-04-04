@@ -28,13 +28,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
 const statusConfig: Record<string, { color: string; bgColor: string; icon: any; label: string; labelHe: string }> = {
-  draft: { color: 'text-gray-600', bgColor: 'bg-gray-100', icon: FileText, label: 'Draft', labelHe: 'טיוטה' },
+  draft: { color: 'text-gray-600', bgColor: 'bg-white', icon: FileText, label: 'Draft', labelHe: 'טיוטה' },
   pending: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Clock, label: 'Pending Review', labelHe: 'בהמתנה לבדיקה' },
   under_review: { color: 'text-amber-600', bgColor: 'bg-amber-100', icon: Eye, label: 'Under Review', labelHe: 'בבדיקה' },
   interview_scheduled: { color: 'text-purple-600', bgColor: 'bg-purple-100', icon: Calendar, label: 'Interview Scheduled', labelHe: 'ראיון נקבע' },
   approved: { color: 'text-emerald-600', bgColor: 'bg-emerald-100', icon: CheckCircle2, label: 'Approved', labelHe: 'אושר' },
   rejected: { color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle, label: 'Not Selected', labelHe: 'לא נבחר' },
-  withdrawn: { color: 'text-gray-500', bgColor: 'bg-gray-100', icon: XCircle, label: 'Withdrawn', labelHe: 'נמשך' },
+  withdrawn: { color: 'text-gray-500', bgColor: 'bg-white', icon: XCircle, label: 'Withdrawn', labelHe: 'נמשך' },
 };
 
 const roleColors: Record<string, string> = {
@@ -174,7 +174,7 @@ export default function MyApplications() {
               animate={{ opacity: 1 }}
               className="text-center py-16"
             >
-              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mx-auto mb-6">
                 <Briefcase className="w-10 h-10 text-gray-400" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-800 mb-2">
@@ -310,7 +310,7 @@ export default function MyApplications() {
                           {app.status !== 'draft' && (
                             <div className="mt-6 pt-4 border-t">
                               <div className="flex items-center justify-between relative">
-                                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -translate-y-1/2" />
+                                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white -translate-y-1/2" />
                                 
                                 {['pending', 'under_review', 'interview_scheduled', 'approved'].map((step, idx) => {
                                   const stepStatus = statusConfig[step];
@@ -321,7 +321,7 @@ export default function MyApplications() {
                                   return (
                                     <div key={step} className="flex flex-col items-center relative z-10">
                                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                        isCurrent ? stepStatus.bgColor : isActive ? 'bg-emerald-100' : 'bg-gray-100'
+                                        isCurrent ? stepStatus.bgColor : isActive ? 'bg-emerald-100' : 'bg-white'
                                       } ${isCurrent ? 'ring-2 ring-offset-2 ring-emerald-500' : ''}`}>
                                         <StepIcon className={`w-4 h-4 ${
                                           isCurrent ? stepStatus.color : isActive ? 'text-emerald-600' : 'text-gray-400'

@@ -78,7 +78,7 @@ const VERDICT_CFG: Record<OutcomeVerdict, { label: string; color: string; icon: 
   no_change:    { label: 'No change',    color: 'text-amber-700 bg-amber-50 border-amber-200',       icon: <Minus className="w-3 h-3" /> },
   deteriorated: { label: 'Deteriorated', color: 'text-red-700 bg-red-50 border-red-200',             icon: <TrendingDown className="w-3 h-3" /> },
   pending:      { label: 'Pending',      color: 'text-blue-700 bg-blue-50 border-blue-200',          icon: <Clock className="w-3 h-3" /> },
-  no_baseline:  { label: 'No baseline',  color: 'text-gray-600 bg-gray-50 border-gray-200',          icon: <Info className="w-3 h-3" /> },
+  no_baseline:  { label: 'No baseline',  color: 'text-gray-600 bg-white border-gray-200',          icon: <Info className="w-3 h-3" /> },
 };
 
 const DECISION_LABELS: Record<string, string> = {
@@ -133,7 +133,7 @@ function MetricBar({ value, max = 100, color = 'bg-blue-500' }: { value: number;
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-[40px]">
+      <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden min-w-[40px]">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs font-mono w-8">{Math.round(value)}%</span>
@@ -346,7 +346,7 @@ export default function Outcomes() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -376,7 +376,7 @@ export default function Outcomes() {
 
         {isLoading ? (
           <div className="space-y-4">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-gray-200 rounded-xl animate-pulse" />)}
+            {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-white rounded-xl animate-pulse" />)}
           </div>
         ) : data ? (
           <>

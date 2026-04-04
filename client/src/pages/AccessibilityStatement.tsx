@@ -179,7 +179,7 @@ export default function AccessibilityStatement() {
               <div className="space-y-4 luxury-text-body">
                 <p>אם נתקלתם בבעיית נגישות באתר, אנא דווחו לנו:</p>
                 
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
+                <div className="mt-4 p-4 bg-white dark:bg-white rounded-lg space-y-2">
                   <p className="font-semibold">פרטים לכלול בדיווח:</p>
                   <ul className="list-disc mr-6 space-y-1 text-sm">
                     <li>תיאור הבעיה והאתגר שנתקלתם בו</li>
@@ -200,7 +200,7 @@ export default function AccessibilityStatement() {
               <div className="space-y-4 luxury-text-body">
                 <p>אם לא קיבלתם מענה מספק מרכז הנגישות, ניתן לפנות ל:</p>
                 
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="mt-4 p-4 bg-white dark:bg-white rounded-lg">
                   <p className="font-semibold">נציבות שוויון זכויות לאנשים עם מוגבלות</p>
                   <p className="mt-2">טלפון: 1-800-254-401</p>
                   <p>פקס: 02-6496118</p>
@@ -383,7 +383,7 @@ export default function AccessibilityStatement() {
             <div className="space-y-4 luxury-text-body">
               <p>If you encounter an accessibility issue, please report it to us:</p>
               
-              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
+              <div className="mt-4 p-4 bg-white dark:bg-white rounded-lg space-y-2">
                 <p className="font-semibold">Details to include:</p>
                 <ul className="list-disc ml-6 space-y-1 text-sm">
                   <li>Description of the issue and challenge you encountered</li>

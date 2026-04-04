@@ -74,18 +74,18 @@ interface Analytics {
 const STATUS_COLORS: Record<string, string> = {
   published:      'bg-emerald-100 text-emerald-800 border-emerald-200',
   matched:        'bg-sky-100 text-sky-800 border-sky-200',
-  resolved:       'bg-slate-100 text-slate-600 border-slate-200',
+  resolved:       'bg-white text-slate-600 border-slate-200',
   pending_review: 'bg-amber-100 text-amber-800 border-amber-200',
   rejected:       'bg-rose-100 text-rose-800 border-rose-200',
-  draft:          'bg-slate-100 text-slate-500 border-slate-200',
-  archived:       'bg-zinc-100 text-zinc-500 border-zinc-200',
+  draft:          'bg-white text-slate-500 border-slate-200',
+  archived:       'bg-white text-zinc-500 border-zinc-200',
 };
 
 const MOD_COLORS: Record<string, string> = {
   approved: 'bg-emerald-100 text-emerald-700',
   flagged:  'bg-amber-100 text-amber-700',
   blocked:  'bg-rose-100 text-rose-700',
-  pending:  'bg-slate-100 text-slate-600',
+  pending:  'bg-white text-slate-600',
 };
 
 const PET_ICON: Record<string, any> = { dog: Dog, cat: Cat, bird: Bird };
@@ -105,7 +105,7 @@ function formatDate(d: string) {
 
 function AnalyticsBar({ analytics }: { analytics: Analytics }) {
   const cards = [
-    { label: 'Total Posts',    value: analytics.total_posts,   color: 'bg-slate-50  border-slate-200' },
+    { label: 'Total Posts',    value: analytics.total_posts,   color: 'bg-white  border-slate-200' },
     { label: 'Published',      value: analytics.published,     color: 'bg-emerald-50 border-emerald-200' },
     { label: 'Matched',        value: analytics.matched,       color: 'bg-sky-50    border-sky-200' },
     { label: 'Pending Review', value: analytics.pending_review,color: 'bg-amber-50  border-amber-200' },
@@ -182,18 +182,18 @@ function PostDetailModal({
             <div><span className="text-slate-500">Date:</span> <strong>{formatDate(post.event_date)}</strong></div>
             {post.breed && <div><span className="text-slate-500">Breed:</span> <strong>{post.breed}</strong></div>}
             {post.reward_amount && <div><span className="text-slate-500">Reward:</span> <strong>₪{post.reward_amount}</strong></div>}
-            <div><span className="text-slate-500">Posted by:</span> <code className="text-xs bg-slate-100 px-1 rounded">{post.user_id.slice(0, 12)}…</code></div>
-            <div><span className="text-slate-500">Post key:</span> <code className="text-xs bg-slate-100 px-1 rounded">{post.post_key}</code></div>
+            <div><span className="text-slate-500">Posted by:</span> <code className="text-xs bg-white px-1 rounded">{post.user_id.slice(0, 12)}…</code></div>
+            <div><span className="text-slate-500">Post key:</span> <code className="text-xs bg-white px-1 rounded">{post.post_key}</code></div>
           </div>
 
           {/* Description */}
-          <div className="bg-slate-50 rounded-xl p-3 text-sm text-slate-700 whitespace-pre-wrap">
+          <div className="bg-white rounded-xl p-3 text-sm text-slate-700 whitespace-pre-wrap">
             {post.description}
           </div>
 
           {/* Moderation status */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${MOD_COLORS[post.moderation_status] || 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${MOD_COLORS[post.moderation_status] || 'bg-white text-slate-600'}`}>
               {post.moderation_status}
             </span>
             {post.moderation_confidence != null && (
@@ -210,9 +210,9 @@ function PostDetailModal({
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Moderation Trail</div>
               <div className="space-y-1">
                 {post.moderation_history.map((ev, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+                  <div key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-white rounded-lg px-3 py-2">
                     <span className="font-medium text-slate-700">{ev.stage}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-xs ${MOD_COLORS[ev.verdict] || 'bg-slate-100'}`}>{ev.verdict}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${MOD_COLORS[ev.verdict] || 'bg-white'}`}>{ev.verdict}</span>
                     {ev.confidence != null && <span className="text-slate-400">{ev.confidence}%</span>}
                     {ev.flags?.length > 0 && (
                       <span className="text-rose-600">{ev.flags.join(', ')}</span>
@@ -291,7 +291,7 @@ function PostRow({ post, onSelect }: { post: AdminPost; onSelect: () => void }) 
   const hasFlag = post.moderation_status === 'flagged' || post.moderation_status === 'blocked';
   return (
     <div
-      className={`flex items-center gap-3 p-4 border-b last:border-0 hover:bg-slate-50 cursor-pointer transition-colors ${hasFlag ? 'bg-amber-50/30' : ''}`}
+      className={`flex items-center gap-3 p-4 border-b last:border-0 hover:bg-white cursor-pointer transition-colors ${hasFlag ? 'bg-amber-50/30' : ''}`}
       onClick={onSelect}
     >
       {post.primary_media ? (
@@ -302,7 +302,7 @@ function PostRow({ post, onSelect }: { post: AdminPost; onSelect: () => void }) 
           onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
       ) : (
-        <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
+        <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
           <PetIcon type={post.pet_type} />
         </div>
       )}
@@ -319,7 +319,7 @@ function PostRow({ post, onSelect }: { post: AdminPost; onSelect: () => void }) 
       </div>
 
       <div className="text-right flex-shrink-0">
-        <div className={`text-xs px-2 py-0.5 rounded-lg ${MOD_COLORS[post.moderation_status] || 'bg-slate-100 text-slate-500'}`}>
+        <div className={`text-xs px-2 py-0.5 rounded-lg ${MOD_COLORS[post.moderation_status] || 'bg-white text-slate-500'}`}>
           {post.moderation_status}
         </div>
         {post.moderation_confidence != null && (
@@ -419,7 +419,7 @@ export default function PawFinderAdmin() {
   const displayRows = tab === 'queue' ? queueRows : allRows;
 
   return (
-    <div className="min-h-screen bg-slate-50" dir="ltr">
+    <div className="min-h-screen bg-white" dir="ltr">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -450,7 +450,7 @@ export default function PawFinderAdmin() {
         {analytics && <AnalyticsBar analytics={analytics} />}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 bg-white p-1 rounded-xl w-fit">
           {(['queue', 'all'] as const).map(t => (
             <button
               key={t}

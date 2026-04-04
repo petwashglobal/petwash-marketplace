@@ -173,10 +173,10 @@ export default function DocumentSigning() {
                       <img
                         src={activeSignature.signatureImageUrl}
                         alt="Digital Signature"
-                        className="w-full h-32 object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4"
+                        className="w-full h-32 object-contain bg-white dark:bg-white border border-gray-200 dark:border-gray-800 rounded-lg p-4"
                       />
                       <div>
-                        <p className="text-sm font-medium text-black dark:text-white">
+                        <p className="text-sm font-medium text-black dark:text-black">
                           {activeSignature.signerName}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -196,7 +196,7 @@ export default function DocumentSigning() {
                       </p>
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200">
+                          <Button className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-white">
                             <Upload className="w-4 h-4 mr-2" />
                             Upload Signature
                           </Button>
@@ -231,11 +231,11 @@ export default function DocumentSigning() {
                 <CardContent className="p-8">
                   <form onSubmit={handleSignDocument} className="space-y-6">
                     <div>
-                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                         Document Type
                       </Label>
                       <Select value={documentType} onValueChange={setDocumentType}>
-                        <SelectTrigger className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white">
+                        <SelectTrigger className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -249,45 +249,45 @@ export default function DocumentSigning() {
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                         Document Title
                       </Label>
                       <Input
                         value={documentTitle}
                         onChange={(e) => setDocumentTitle(e.target.value)}
                         placeholder="e.g., Supplier Agreement - ABC Corp"
-                        className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white"
+                        className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black"
                         required
                       />
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                         Description
                       </Label>
                       <Textarea
                         value={documentDescription}
                         onChange={(e) => setDocumentDescription(e.target.value)}
                         placeholder="Brief description of the document..."
-                        className="min-h-24 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white"
+                        className="min-h-24 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                        <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                           Recipient Name
                         </Label>
                         <Input
                           value={recipientName}
                           onChange={(e) => setRecipientName(e.target.value)}
                           placeholder="John Doe"
-                          className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white"
+                          className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black"
                         />
                       </div>
 
                       <div>
-                        <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                        <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                           Recipient Email
                         </Label>
                         <Input
@@ -295,33 +295,33 @@ export default function DocumentSigning() {
                           value={recipientEmail}
                           onChange={(e) => setRecipientEmail(e.target.value)}
                           placeholder="john@example.com"
-                          className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white"
+                          className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black"
                           required
                         />
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                         CC Emails (optional)
                       </Label>
                       <Input
                         value={ccEmails}
                         onChange={(e) => setCcEmails(e.target.value)}
                         placeholder="email1@example.com, email2@example.com"
-                        className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white"
+                        className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black"
                       />
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">
+                      <Label className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-black">
                         Document URL (Temporary - For Demo)
                       </Label>
                       <Input
                         value={documentUrl}
                         onChange={(e) => setDocumentUrl(e.target.value)}
                         placeholder="https://storage.googleapis.com/..."
-                        className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white"
+                        className="h-14 mt-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-black"
                         required
                       />
                     </div>

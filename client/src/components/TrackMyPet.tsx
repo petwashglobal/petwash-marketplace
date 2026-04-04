@@ -98,7 +98,7 @@ export default function TrackMyPet() {
         <CardContent className="space-y-4">
           {/* Preview Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
               <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -110,7 +110,7 @@ export default function TrackMyPet() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
               <Navigation className="h-5 w-5 text-green-600 dark:text-green-400" />
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -122,7 +122,7 @@ export default function TrackMyPet() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
               <Heart className="h-5 w-5 text-red-600 dark:text-red-400" />
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -134,7 +134,7 @@ export default function TrackMyPet() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
               <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -271,7 +271,7 @@ export default function TrackMyPet() {
             {/* Live Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
               {/* Elapsed Time */}
-              <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+              <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
                 <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -284,7 +284,7 @@ export default function TrackMyPet() {
               </div>
 
               {/* Distance */}
-              <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+              <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
                 <Footprints className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -298,7 +298,7 @@ export default function TrackMyPet() {
 
               {/* Heart Rate */}
               {walk.vitalDataSummary?.heartRateAvg && (
-                <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+                <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
                   <Heart className="h-5 w-5 text-red-600 dark:text-red-400 animate-pulse" />
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -313,7 +313,7 @@ export default function TrackMyPet() {
 
               {/* Steps */}
               {walk.vitalDataSummary?.steps && (
-                <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-900/60 rounded-lg p-3 backdrop-blur-sm">
+                <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
                   <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -357,7 +357,7 @@ export default function TrackMyPet() {
                       key={index}
                       variant="secondary" 
                       className={marker.type === 'pee' 
-                        ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700" 
+                        ? "bg-blue-100 dark:bg-white text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700" 
                         : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"}
                       data-testid={`bathroom-marker-${index}`}
                     >

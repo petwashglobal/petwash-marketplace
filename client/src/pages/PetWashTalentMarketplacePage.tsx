@@ -94,7 +94,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     fullName: "K9000 Technicians",
     tagLine: "Engineers for smart wash hardware.",
     accent: "border-slate-500 text-slate-700",
-    chipColor: "bg-slate-100 text-slate-700",
+    chipColor: "bg-white text-slate-700",
     description:
       "Technicians and field engineers who install, service and monitor K9000 machines and IoT hardware.",
   },
@@ -469,7 +469,7 @@ const PetWashTalentMarketplacePage: FC = () => {
   const profiles = PROFILES.filter((p) => p.platformId === platformId);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
         {/* Top header */}
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -509,7 +509,7 @@ const PetWashTalentMarketplacePage: FC = () => {
                   className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-medium transition ${
                     active
                       ? "bg-slate-900 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100"
+                      : "text-slate-600 hover:bg-white"
                   }`}
                 >
                   {p.shortName}
@@ -540,18 +540,18 @@ const PetWashTalentMarketplacePage: FC = () => {
             {/* Filters placeholder */}
             <div className="flex flex-col gap-2 text-xs text-slate-500">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-slate-50 px-3 py-1 shadow-sm">
+                <span className="inline-flex items-center rounded-full bg-white px-3 py-1 shadow-sm">
                   ⭐ 4.9 average rating
                 </span>
-                <span className="hidden rounded-full bg-slate-50 px-3 py-1 shadow-sm sm:inline-flex">
+                <span className="hidden rounded-full bg-white px-3 py-1 shadow-sm sm:inline-flex">
                   Verified identity and phone
                 </span>
               </div>
               <div className="flex gap-2">
-                <div className="hidden flex-1 items-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] sm:flex">
+                <div className="hidden flex-1 items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[11px] sm:flex">
                   🔍 Search by city or suburb (coming soon)
                 </div>
-                <div className="hidden items-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] sm:flex">
+                <div className="hidden items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[11px] sm:flex">
                   Filter by price and rating (coming soon)
                 </div>
               </div>

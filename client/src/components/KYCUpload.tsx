@@ -182,7 +182,7 @@ export function KYCUpload({ language }: KYCUploadProps) {
   }) => (
     <div
       className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
-        file ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+        file ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white hover:border-blue-400 hover:bg-blue-50'
       }`}
       onClick={() => inputRef.current?.click()}
       data-testid={testId}
@@ -253,12 +253,12 @@ export function KYCUpload({ language }: KYCUploadProps) {
                 className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                   docType === dt.id
                     ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-white'
                 }`}
                 dir={isHe ? 'rtl' : 'ltr'}
                 data-testid={`doc-type-${dt.id}`}
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${docType === dt.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${docType === dt.id ? 'bg-blue-100 text-blue-600' : 'bg-white text-gray-500'}`}>
                   {dt.icon}
                 </div>
                 <div className="flex-1">
@@ -326,7 +326,7 @@ export function KYCUpload({ language }: KYCUploadProps) {
 
             {/* Consent checkbox */}
             <div
-              className={`flex items-start gap-2 p-3 rounded-lg border cursor-pointer ${consentGiven ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
+              className={`flex items-start gap-2 p-3 rounded-lg border cursor-pointer ${consentGiven ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
               onClick={() => setConsentGiven(v => !v)}
               dir={isHe ? 'rtl' : 'ltr'}
               data-testid="checkbox-consent"
@@ -372,7 +372,7 @@ export function KYCUpload({ language }: KYCUploadProps) {
         )}
 
         {/* Guidelines */}
-        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+        <div className="bg-white p-4 rounded-lg space-y-2">
           <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm" dir={isHe ? 'rtl' : 'ltr'}>
             <AlertCircle className="w-4 h-4 text-blue-600" />
             {isHe ? 'הנחיות' : 'Guidelines'}

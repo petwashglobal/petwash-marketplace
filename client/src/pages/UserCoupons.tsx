@@ -171,7 +171,7 @@ function CouponCard({ coupon, active, onDetails }: { coupon: IssuedCoupon; activ
                 <Badge variant="secondary" className="text-xs">פג תוקף</Badge>
               )}
             </div>
-            <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-0.5">{coupon.campaign_name}</div>
+            <div className="text-sm font-medium text-gray-800 dark:text-black mb-0.5">{coupon.campaign_name}</div>
             {coupon.description && (
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{coupon.description}</div>
             )}
@@ -197,7 +197,7 @@ function CouponCard({ coupon, active, onDetails }: { coupon: IssuedCoupon; activ
 
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{coupon.code}</span>
+              <span className="font-mono text-sm bg-white dark:bg-white px-2 py-0.5 rounded">{coupon.code}</span>
               {active && (
                 <button onClick={copyCode} className="text-gray-400 hover:text-purple-600 transition-colors">
                   <Copy className="w-3.5 h-3.5" />
@@ -224,8 +224,8 @@ function RedemptionRow({ r }: { r: Redemption }) {
     <div className={`flex items-center justify-between gap-3 py-3 border-b last:border-0 border-gray-100 dark:border-gray-700 ${r.cancelled_at ? 'opacity-60' : ''}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{r.code}</span>
-          <span className="text-sm text-gray-600 dark:text-gray-300">{r.campaign_name}</span>
+          <span className="font-mono text-xs bg-white dark:bg-white px-1.5 py-0.5 rounded">{r.code}</span>
+          <span className="text-sm text-gray-600 dark:text-black">{r.campaign_name}</span>
           {r.cancelled_at && (
             <Badge variant="secondary" className="text-xs">בוטל</Badge>
           )}
@@ -269,7 +269,7 @@ export default function UserCoupons() {
   const cancelledRedemptions = redemptions.filter(r => r.cancelled_at);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4" dir={dir}>
+    <div className="min-h-screen bg-white dark:bg-white p-4" dir={dir}>
       <div className="max-w-xl mx-auto space-y-5">
 
         <div className="flex items-center gap-3 pt-2">
@@ -277,7 +277,7 @@ export default function UserCoupons() {
             <Tag className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">הקופונים שלי</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-black">הקופונים שלי</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">PetWash™</p>
           </div>
         </div>
@@ -398,17 +398,17 @@ export default function UserCoupons() {
           ) : (
             <div className="space-y-4">
               <div className="text-center">
-                <div className="font-mono text-lg bg-gray-100 dark:bg-gray-700 rounded px-3 py-1.5 inline-block mb-1">
+                <div className="font-mono text-lg bg-white dark:bg-white rounded px-3 py-1.5 inline-block mb-1">
                   {detailsData.code}
                 </div>
-                <div className="font-bold text-gray-900 dark:text-white">{detailsData.campaignName}</div>
+                <div className="font-bold text-gray-900 dark:text-black">{detailsData.campaignName}</div>
                 {detailsData.description && (
                   <div className="text-sm text-gray-500 mt-1">{detailsData.description}</div>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
+                <div className="bg-purple-50 dark:bg-white rounded-lg p-3 text-center">
                   <div className="text-xs text-gray-500 mb-1">הטבה</div>
                   <div className="font-bold text-purple-700 dark:text-purple-300">
                     {detailsData.discountType === 'percent'   ? `${detailsData.discountPercent}%`  :
@@ -416,18 +416,18 @@ export default function UserCoupons() {
                      detailsData.discountType === 'free_wash' ? 'שטיפה חינם'                        : 'שירות חינם'}
                   </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+                <div className="bg-white dark:bg-white rounded-lg p-3 text-center">
                   <div className="text-xs text-gray-500 mb-1">תקף עבור</div>
-                  <div className="font-medium text-gray-700 dark:text-gray-200 text-xs">{scopeLabel(detailsData.scopeType)}</div>
+                  <div className="font-medium text-gray-700 dark:text-black text-xs">{scopeLabel(detailsData.scopeType)}</div>
                 </div>
                 {detailsData.minSpendCents && detailsData.minSpendCents > 0 && (
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+                  <div className="bg-white dark:bg-white rounded-lg p-3 text-center">
                     <div className="text-xs text-gray-500 mb-1">מינימום רכישה</div>
                     <div className="font-medium">{fmtCents(detailsData.minSpendCents)}</div>
                   </div>
                 )}
                 {detailsData.validUntil && (
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+                  <div className="bg-white dark:bg-white rounded-lg p-3 text-center">
                     <div className="text-xs text-gray-500 mb-1">תוקף</div>
                     <div className="font-medium text-xs">{fmtDate(detailsData.validUntil)}</div>
                   </div>

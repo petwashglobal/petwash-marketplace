@@ -483,12 +483,12 @@ export default function Subscriptions() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Check className="w-5 h-5 text-green-500" />
-                      <span className="text-gray-700 dark:text-gray-300">{tier.itemCount} curated items</span>
+                      <span className="text-gray-700 dark:text-black">{tier.itemCount} curated items</span>
                     </div>
                     {tier.features.map((feature, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <Check className="w-5 h-5 text-green-500" />
-                        <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                        <span className="text-gray-700 dark:text-black">{feature}</span>
                       </div>
                     ))}
                   </div>

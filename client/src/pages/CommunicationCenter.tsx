@@ -1691,7 +1691,7 @@ export default function CommunicationCenter() {
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">{t('communication.emailTemplates.content', 'Content')}</Label>
-                <div className="mt-2 p-4 border rounded-lg bg-slate-50 text-slate-900 whitespace-pre-wrap" data-testid="text-preview-email-content">
+                <div className="mt-2 p-4 border rounded-lg bg-white text-slate-900 whitespace-pre-wrap" data-testid="text-preview-email-content">
                   {selectedEmailTemplate.content}
                 </div>
               </div>
@@ -1722,7 +1722,7 @@ export default function CommunicationCenter() {
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">{t('communication.smsTemplates.content', 'Content')}</Label>
-                <div className="mt-2 p-4 border rounded-lg bg-slate-50 text-slate-900" data-testid="text-preview-sms-content">
+                <div className="mt-2 p-4 border rounded-lg bg-white text-slate-900" data-testid="text-preview-sms-content">
                   {selectedSmsTemplate.content}
                 </div>
               </div>

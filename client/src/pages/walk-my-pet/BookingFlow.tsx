@@ -363,22 +363,22 @@ export default function WalkBookingFlow() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8 luxury-fade-in">
           {/* Step 1: Details */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['summary', 'pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-gray-100 text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['summary', 'pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-white text-slate-500'}`}>
             1
           </div>
-          <div className={`h-1 w-8 sm:w-12 rounded-full ${['summary', 'pending_match', 'confirmation'].includes(step) ? 'bg-blue-500' : 'bg-gray-100'}`}></div>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${['summary', 'pending_match', 'confirmation'].includes(step) ? 'bg-blue-500' : 'bg-white'}`}></div>
           {/* Step 2: Summary */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-gray-100 text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-white text-slate-500'}`}>
             2
           </div>
-          <div className={`h-1 w-8 sm:w-12 rounded-full ${['pending_match', 'confirmation'].includes(step) ? 'bg-amber-500' : 'bg-gray-100'}`}></div>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${['pending_match', 'confirmation'].includes(step) ? 'bg-amber-500' : 'bg-white'}`}></div>
           {/* Step 3: Matching */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'pending_match' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white luxury-shadow-lg animate-pulse' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-amber-600' : 'bg-gray-100 text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'pending_match' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white luxury-shadow-lg animate-pulse' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-amber-600' : 'bg-white text-slate-500'}`}>
             3
           </div>
-          <div className={`h-1 w-8 sm:w-12 rounded-full ${step === 'confirmation' ? 'bg-emerald-500' : 'bg-gray-100'}`}></div>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${step === 'confirmation' ? 'bg-emerald-500' : 'bg-white'}`}></div>
           {/* Step 4: Confirmed */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white luxury-shadow-lg' : 'bg-gray-100 text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white luxury-shadow-lg' : 'bg-white text-slate-500'}`}>
             4
           </div>
         </div>
@@ -666,7 +666,7 @@ export default function WalkBookingFlow() {
               </div>
               
               {PAYMENTS_CONFIG.enableCreditCard && !PAYMENTS_CONFIG.enableNayax && (
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+                <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 mb-4">
                   <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                     <CreditCard className="h-5 w-5 text-blue-600" />
                   </div>
@@ -780,7 +780,7 @@ export default function WalkBookingFlow() {
               {walker?.businessName || walker?.displayName || 'המוליך/ה'} אישר/ה את ההזמנה!
             </p>
             {/* Booking reference card */}
-            <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-slate-200 bg-slate-50 mb-4 mx-auto">
+            <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-slate-200 bg-white mb-4 mx-auto">
               <p className="text-xs text-slate-400 tracking-widest uppercase">מספר הזמנה</p>
               <p className="text-lg font-mono font-semibold text-slate-800 tracking-wider">
                 #{bookingId || "—"}

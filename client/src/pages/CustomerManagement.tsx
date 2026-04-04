@@ -253,10 +253,10 @@ export default function CustomerManagement() {
       case 'diamond': return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'platinum': return 'bg-purple-100 text-purple-800 border-purple-300';
       case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'silver': return 'bg-white text-gray-800 border-gray-300';
       case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'new': return 'bg-slate-100 text-slate-800 border-slate-300'; // Legacy support
-      default: return 'bg-slate-100 text-slate-800 border-slate-300';
+      case 'new': return 'bg-white text-slate-800 border-slate-300'; // Legacy support
+      default: return 'bg-white text-slate-800 border-slate-300';
     }
   };
 
@@ -266,7 +266,7 @@ export default function CustomerManagement() {
     if (spent >= 5000) return { tier: t('customers.value.vip'), color: 'bg-purple-100 text-purple-800' };
     if (spent >= 2000) return { tier: t('customers.value.highValue'), color: 'bg-blue-100 text-blue-800' };
     if (spent >= 500) return { tier: t('customers.value.regular'), color: 'bg-green-100 text-green-800' };
-    return { tier: t('customers.value.new'), color: 'bg-gray-100 text-gray-800' };
+    return { tier: t('customers.value.new'), color: 'bg-white text-gray-800' };
   };
 
   // Handle customer detail view
@@ -536,7 +536,7 @@ export default function CustomerManagement() {
                       return (
                         <TableRow 
                           key={customer.id} 
-                          className="cursor-pointer hover:bg-slate-50"
+                          className="cursor-pointer hover:bg-white"
                           onClick={() => handleCustomerClick(customer)}
                           data-testid={`customer-row-${customer.id}`}
                         >
@@ -993,7 +993,7 @@ export default function CustomerManagement() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Add New Communication */}
-                    <div className="border rounded-lg p-4 bg-slate-50">
+                    <div className="border rounded-lg p-4 bg-white">
                       <h4 className="font-medium mb-4">Add New Communication</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">

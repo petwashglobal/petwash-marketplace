@@ -118,7 +118,7 @@ export const MobileInput = forwardRef<HTMLInputElement, MobileInputProps>(
               'font-medium',
               'transition-all duration-200',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500',
-              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-white',
               error
                 ? 'border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500'
                 : 'border-gray-300 hover:border-gray-400',

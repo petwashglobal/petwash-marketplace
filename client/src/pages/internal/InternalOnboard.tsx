@@ -204,7 +204,7 @@ export default function InternalOnboard() {
       <Layout language={language} setLanguage={() => {}}>
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-black">
           <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-black dark:text-white" />
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-black dark:text-black" />
             <p className="mt-4 text-gray-600 dark:text-gray-400">מאמת הזמנה...</p>
           </div>
         </div>
@@ -218,7 +218,7 @@ export default function InternalOnboard() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-black px-4">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+              <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-white rounded-full flex items-center justify-center mb-4">
                 <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
               <CardTitle className="text-xl">ההזמנה אינה זמינה</CardTitle>
@@ -247,13 +247,13 @@ export default function InternalOnboard() {
               <Shield className="h-4 w-4" />
               הרשמה פנימית
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-black mb-2">
               ברוכים הבאים לצוות ⁦Pet Wash™⁩
             </h1>
             {invitation && (
               <p className="text-gray-600 dark:text-gray-400">
                 הוזמנת להצטרף כ
-                <span className="font-semibold text-black dark:text-white mx-1">
+                <span className="font-semibold text-black dark:text-black mx-1">
                   {roleTitles[invitation.roleCode]?.he || invitation.roleCode}
                 </span>
                 {invitation.department && (
@@ -275,11 +275,11 @@ export default function InternalOnboard() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+                <div className="bg-white dark:bg-white/50 p-4 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Mail className="h-4 w-4" />
                     <span>כתובת דוא"ל:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
+                    <span className="font-medium text-gray-900 dark:text-black">
                       {invitation?.email}
                     </span>
                   </div>

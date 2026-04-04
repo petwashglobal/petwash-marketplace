@@ -123,7 +123,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
     <div className="flex items-start gap-3 px-5 py-4">
       {/* Icon dot */}
       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-base
-        ${isPositive ? "bg-emerald-50" : entry.eventType === "redeem" ? "bg-[#C5A55A]/10" : "bg-gray-100"}`}>
+        ${isPositive ? "bg-emerald-50" : entry.eventType === "redeem" ? "bg-[#C5A55A]/10" : "bg-white"}`}>
         {meta.icon}
       </div>
 
@@ -212,12 +212,12 @@ export default function LoyaltyCreditsHistory() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-lg mx-auto">
+    <div className="min-h-screen bg-white flex flex-col max-w-lg mx-auto">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => setLocation(-1 as any)} className="p-1.5 rounded-full hover:bg-gray-100">
+          <button onClick={() => setLocation(-1 as any)} className="p-1.5 rounded-full hover:bg-white">
             <ChevronRight className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="font-bold text-gray-900 flex-1 text-center">קרדיטים ומועדון</h1>
@@ -229,7 +229,7 @@ export default function LoyaltyCreditsHistory() {
 
         {/* ── Balance card ───────────────────────────────────────────────── */}
         {loading ? (
-          <div className="mx-5 mt-5 h-36 rounded-3xl bg-gray-100 animate-pulse" />
+          <div className="mx-5 mt-5 h-36 rounded-3xl bg-white animate-pulse" />
         ) : balance ? (
           <BalanceCard balance={balance} />
         ) : null}

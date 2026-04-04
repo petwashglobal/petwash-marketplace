@@ -402,7 +402,7 @@ export default function K9000Redeem() {
                   {qrDataUrl ? (
                     <img src={qrDataUrl} alt="QR Code" className="w-64 h-64 rounded-xl shadow-md mb-4" />
                   ) : (
-                    <div className="w-64 h-64 flex items-center justify-center bg-gray-100 rounded-xl mb-4">
+                    <div className="w-64 h-64 flex items-center justify-center bg-white rounded-xl mb-4">
                       <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                     </div>
                   )}

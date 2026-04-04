@@ -143,7 +143,7 @@ export default function MobileStationSheet() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
           <p className="text-gray-500">Loading station...</p>
@@ -285,7 +285,7 @@ export default function MobileStationSheet() {
   const hasMissingCouncilInfo = !councilContact || (!councilContact.name && !councilContact.contactPerson);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 py-3 flex items-center gap-3">

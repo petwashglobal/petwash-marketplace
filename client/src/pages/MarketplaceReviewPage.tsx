@@ -297,7 +297,7 @@ export default function MarketplaceReviewPage() {
             )}
 
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-black block mb-2">
                 {isHebrew ? "ספר עוד (אופציונלי)" : "Tell us more (optional)"}
               </label>
               <Textarea

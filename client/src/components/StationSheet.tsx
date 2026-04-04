@@ -449,7 +449,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
             </div>
           </SheetTitle>
           <div className="space-y-2 pt-2">
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
               <Badge variant="outline" className="font-mono text-xs">ID</Badge>
               <span className="font-mono text-xs text-slate-700 font-semibold">{stationId}</span>
             </div>

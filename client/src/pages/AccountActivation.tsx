@@ -260,7 +260,7 @@ export default function AccountActivation() {
         </div>
 
         {/* Step progress */}
-        <div className="my-10 bg-[#fafafa] border border-[#f0f0f0] rounded-sm p-6">
+        <div className="my-10 bg-white border border-[#f0f0f0] rounded-sm p-6">
           <StepItem
             number={1}
             label="Create account"

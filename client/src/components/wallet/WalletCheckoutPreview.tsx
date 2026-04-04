@@ -104,7 +104,7 @@ export function WalletCheckoutPreview({ subtotalCents, divisionCode, className =
 
   return (
     <div
-      className={`rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2 ${className}`}
+      className={`rounded-xl border border-gray-100 bg-white p-4 space-y-2 ${className}`}
       dir={isHebrew ? "rtl" : "ltr"}
     >
       <div className="flex items-center gap-2 mb-1">
