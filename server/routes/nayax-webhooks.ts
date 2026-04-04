@@ -539,57 +539,52 @@ router.post(
           });
         }
 
-        // ── [2] Store transaction ID + update booking atomically ──────────────
-        await db
-          .update(bookings)
-          .set({
-            status: 'pending_confirmation',
-            paymentStatus: 'paid',
-            paymentIntentId: payload.transactionId,  // [2] indexed DB column
-            updatedAt: new Date(),
-          } as any)
-          .where(
-            // Extra guard: only update if still in pending_payment (race condition protection)
-            eq(bookings.id, payload.bookingId)
-          );
+        // ── [2] Atomic transaction: booking + status history + escrow ────────
+        // All three writes are PostgreSQL. Wrapping them in db.transaction()
+        // guarantees atomicity: if the escrow update fails, the booking status
+        // update also rolls back — no "paid but escrow still pending_payment" drift.
+        await db.transaction(async (tx) => {
+          await tx
+            .update(bookings)
+            .set({
+              status: 'pending_confirmation',
+              paymentStatus: 'paid',
+              paymentIntentId: payload.transactionId,  // [2] indexed DB column
+              updatedAt: new Date(),
+            } as any)
+            .where(eq(bookings.id, payload.bookingId));
 
-        // ── Record status history ─────────────────────────────────────────────
-        await db.insert(bookingStatusHistory).values({
-          bookingId: payload.bookingId,
-          fromStatus: 'pending_payment' as any,
-          toStatus: 'pending_confirmation' as any,
-          changedBy: 'nayax_webhook',
-          reason: `Nayax online payment confirmed — txId: ${payload.transactionId}`,
-          metadata: {
-            nayaxTransactionId: payload.transactionId,
-            nayaxSessionId: payload.sessionId,
-            amountCents: payload.amountCents,
-            bookingTotalCents,
-            currency: payload.currency || 'ILS',
-            webhookTimestamp: payload.timestamp,
-            signatureVerified: !!signature,
-          },
+          await tx.insert(bookingStatusHistory).values({
+            bookingId: payload.bookingId,
+            fromStatus: 'pending_payment' as any,
+            toStatus: 'pending_confirmation' as any,
+            changedBy: 'nayax_webhook',
+            reason: `Nayax online payment confirmed — txId: ${payload.transactionId}`,
+            metadata: {
+              nayaxTransactionId: payload.transactionId,
+              nayaxSessionId: payload.sessionId,
+              amountCents: payload.amountCents,
+              bookingTotalCents,
+              currency: payload.currency || 'ILS',
+              webhookTimestamp: payload.timestamp,
+              signatureVerified: !!signature,
+            },
+          });
+
+          // Transition escrow_holdings pending_payment → held inside same transaction.
+          // Created at checkout, confirmed only on real Nayax payment.callback.
+          await tx
+            .update(escrowHoldings)
+            .set({
+              status: 'held',
+              capturedAt: new Date(),
+              paymentIntentId: payload.transactionId,
+              updatedAt: new Date(),
+            } as any)
+            .where(eq(escrowHoldings.bookingId, payload.bookingId));
         });
 
-        // ── [P1-FIX] Transition escrow pending_payment → held ───────────────────
-        // escrowHoldings record was created at booking checkout with status='pending_payment'.
-        // Now that payment is confirmed, move it to 'held' and record the transaction ID.
-        await db
-          .update(escrowHoldings)
-          .set({
-            status: 'held',
-            capturedAt: new Date(),
-            paymentIntentId: payload.transactionId,
-            updatedAt: new Date(),
-          } as any)
-          .where(eq(escrowHoldings.bookingId, payload.bookingId));
-
-        logger.info('[NayaxPaymentWebhook] ✅ Escrow → held', {
-          bookingId: payload.bookingId,
-          transactionId: payload.transactionId,
-        });
-
-        logger.info('[NayaxPaymentWebhook] ✅ Payment confirmed — booking → pending_confirmation', {
+        logger.info('[NayaxPaymentWebhook] ✅ Atomic transaction committed — booking paid, escrow held', {
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
           amountCents: payload.amountCents,

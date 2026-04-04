@@ -292,6 +292,12 @@ class BookingLifecycleService {
   }
 
   async createBooking(input: CreateBookingInput, tx?: any): Promise<{ bookingId: string; bookingNumber: string }> {
+    // Defense-in-depth: self-booking guard. The route layer checks this too,
+    // but we repeat here because createBooking can be called from other paths.
+    if (input.customerId === input.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {
+      throw new Error('Self-booking is not permitted: customer and provider cannot be the same user');
+    }
+
     const dbOrTx = tx ?? db;
     const bookingId = nanoid(16);
     const bookingNumber = `PW-${Date.now().toString(36).toUpperCase()}-${nanoid(4).toUpperCase()}`;

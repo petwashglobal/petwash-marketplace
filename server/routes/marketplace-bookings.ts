@@ -20,7 +20,7 @@ import {
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
-import { requireIdempotency } from '../middleware/idempotency';
+import { requireIdempotency, requireStrictIdempotency } from '../middleware/idempotency';
 import bookingLifecycleService from '../services/BookingLifecycleService';
 import { EmailService } from '../emailService';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
@@ -219,7 +219,7 @@ router.post('/create', requireIdempotency, async (req, res) => {
   }
 });
 
-router.post('/:quoteId/checkout', requireIdempotency, async (req, res) => {
+router.post('/:quoteId/checkout', requireStrictIdempotency, async (req, res) => {
   try {
     const { quoteId } = req.params;
     const userId = req.user?.uid || req.firebaseUser?.uid;
@@ -304,6 +304,19 @@ router.post('/:quoteId/checkout', requireIdempotency, async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         error: 'Slot reservation expired. Please select a new time.' 
+      });
+    }
+
+    // ── Self-booking guard ────────────────────────────────────────────────────
+    // quote.providerId is the provider's Firebase UID (varchar); userId is the
+    // customer's Firebase UID. If they are the same account, reject — money
+    // would flow from the user to themselves through escrow, enabling loyalty
+    // abuse and balance inflation. Set ALLOW_SELF_BOOKING=true for test accounts.
+    if (quote.providerId && userId === quote.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {
+      logger.warn('[MarketplaceBookings] Self-booking rejected', { userId });
+      return res.status(409).json({
+        success: false,
+        error: 'Self-booking is not permitted. You cannot book yourself as a provider.',
       });
     }
 

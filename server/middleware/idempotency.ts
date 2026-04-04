@@ -101,6 +101,89 @@ export function requireIdempotency(req: Request, res: Response, next: NextFuncti
 }
 
 /**
+ * Strict idempotency: FAIL-CLOSED on DB error.
+ * Use on checkout / payment endpoints where a duplicate charge is worse than
+ * a temporary 503. If the idempotency_keys table is unavailable we refuse
+ * the request so the client can retry safely when the DB recovers.
+ *
+ * Behaviour differences from requireIdempotency:
+ *   - Missing key  → 400 (same)
+ *   - Duplicate    → 200 cached (same)
+ *   - DB error     → 503 instead of passing through
+ */
+export function requireStrictIdempotency(req: Request, res: Response, next: NextFunction) {
+  const key = (req.headers['idempotency-key'] as string | undefined)?.trim();
+
+  if (!key) {
+    return res.status(400).json({
+      error: 'MISSING_IDEMPOTENCY_KEY',
+      message: 'Please include an Idempotency-Key header (UUID) to prevent duplicate charges.',
+    });
+  }
+
+  if (key.length > 128 || !/^[a-zA-Z0-9\-_]+$/.test(key)) {
+    return res.status(400).json({
+      error: 'INVALID_IDEMPOTENCY_KEY',
+      message: 'Idempotency-Key must be 1–128 alphanumeric characters.',
+    });
+  }
+
+  const endpoint = `${req.method}:${req.path}`;
+
+  (async () => {
+    try {
+      const rows = await db.execute(sql`
+        SELECT response_hash, endpoint, created_at
+        FROM idempotency_keys
+        WHERE key = ${key}
+          AND created_at > NOW() - INTERVAL '24 hours'
+        LIMIT 1
+      `);
+
+      if (rows.rows.length > 0) {
+        const existing = rows.rows[0] as any;
+        SystemEventService.doubleSubmitBlocked('strict_idempotency', key, endpoint);
+        logger.info('[Idempotency:strict] Duplicate request blocked', { key, endpoint });
+        return res.status(200).json({
+          idempotent: true,
+          message: 'This request was already processed. No duplicate charge was made.',
+          originalProcessedAt: existing.created_at,
+        });
+      }
+
+      // Insert BEFORE processing — ON CONFLICT DO NOTHING handles race window
+      await db.execute(sql`
+        INSERT INTO idempotency_keys (key, endpoint, response_hash, created_at)
+        VALUES (${key}, ${endpoint}, 'pending', NOW())
+        ON CONFLICT (key) DO NOTHING
+      `);
+
+      const origJson = res.json.bind(res);
+      res.json = function (body: any) {
+        db.execute(sql`
+          UPDATE idempotency_keys
+          SET response_hash = ${JSON.stringify({ status: res.statusCode }).slice(0, 255)}
+          WHERE key = ${key}
+        `).catch(() => {});
+        return origJson(body);
+      };
+
+      next();
+    } catch (err: any) {
+      // FAIL-CLOSED: DB unavailable means we cannot guarantee idempotency.
+      // Return 503 so the client retries with the same key when DB recovers.
+      logger.error('[Idempotency:strict] DB check failed — refusing request to prevent duplicate charge', {
+        error: err?.message, key, endpoint,
+      });
+      return res.status(503).json({
+        error: 'IDEMPOTENCY_UNAVAILABLE',
+        message: 'Payment service temporarily unavailable. Please retry with the same Idempotency-Key.',
+      });
+    }
+  })();
+}
+
+/**
  * Soft idempotency: logs duplicates but doesn't block.
  * Use on endpoints where you want visibility but not enforcement.
  */
