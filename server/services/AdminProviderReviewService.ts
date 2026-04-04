@@ -53,6 +53,16 @@ export interface ProviderApplicationReview {
   completedItems: number;
   totalItems: number;
   readyForApproval: boolean;
+  backgroundCheckDetails: {
+    // Whether the admin has ticked the police check box in the checklist
+    adminCheckedPoliceApproval: boolean;
+    // Whether a real document record exists in providerPoliceChecks table
+    hasRealPoliceCheckRecord: boolean;
+    // Combined trust level shown to admin — 'verified' | 'admin_checked_only' | 'not_completed'
+    trustLevel: 'verified' | 'admin_checked_only' | 'not_completed';
+    // Explicit warning when no real third-party BGC API has been called
+    warning: string | null;
+  };
 }
 
 // Queue statistics
@@ -161,6 +171,49 @@ class AdminProviderReviewService {
       const totalItems = Object.keys(checklist).length;
       const checklistComplete = completedItems === totalItems;
 
+      // ── Background check trust assessment ──────────────────────────────────
+      // Background checks have TWO levels:
+      //   Level 1 (admin_checked_only) — admin ticked policeCheckApproved on checklist.
+      //   Level 2 (verified)           — real document record exists in providerPoliceChecks
+      //                                  with status 'approved' (set by PoliceCheckService).
+      // The system currently has NO third-party BGC API, so Level 2 requires an admin
+      // to manually upload and approve a clearance document.  This warning must remain
+      // visible until a real integration exists.
+      let hasRealPoliceCheckRecord = false;
+      try {
+        const policeCheck = await db
+          .select({ id: providerPoliceChecks.id, status: providerPoliceChecks.status })
+          .from(providerPoliceChecks)
+          .where(
+            and(
+              eq(providerPoliceChecks.providerId, String(app.providerId)),
+              eq(providerPoliceChecks.status, 'approved'),
+            )
+          )
+          .limit(1);
+        hasRealPoliceCheckRecord = policeCheck.length > 0;
+      } catch {
+        hasRealPoliceCheckRecord = false;
+      }
+
+      const adminCheckedPoliceApproval = checklist.policeCheckApproved;
+      let trustLevel: 'verified' | 'admin_checked_only' | 'not_completed';
+      let warning: string | null;
+
+      if (hasRealPoliceCheckRecord) {
+        trustLevel = 'verified';
+        warning = null;
+      } else if (adminCheckedPoliceApproval) {
+        trustLevel = 'admin_checked_only';
+        warning = 'Police check box is ticked but no approved document record exists in providerPoliceChecks. ' +
+          'No third-party BGC API is integrated — a human admin must upload and approve the actual clearance document. ' +
+          'Do NOT mark this as verified or show a police-check badge to customers until a real document is on file.';
+      } else {
+        trustLevel = 'not_completed';
+        warning = 'Background check has NOT been completed. policeCheckApproved is false. ' +
+          'Provider must NOT be activated or shown as trusted until this is resolved.';
+      }
+
       return {
         application: app,
         checklist,
@@ -168,6 +221,12 @@ class AdminProviderReviewService {
         completedItems,
         totalItems,
         readyForApproval: checklistComplete && app.status !== 'approved' && app.status !== 'rejected',
+        backgroundCheckDetails: {
+          adminCheckedPoliceApproval,
+          hasRealPoliceCheckRecord,
+          trustLevel,
+          warning,
+        },
       };
     } catch (error) {
       logger.error('[AdminReview] Error getting application', error);

@@ -58,6 +58,7 @@ import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
+import adminEscrowReconciliationRoutes from "./routes/admin-escrow-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
 import { startSettlementReconciliationJob } from "./services/SettlementReconciliationJob";
@@ -1096,118 +1097,142 @@ self.addEventListener('notificationclick', (event) => {
         logger.warn('[Session] Failed to set super_admin role claim (non-blocking)', claimsErr);
       }
 
-      (async () => {
+      // ── Critical path: ensure PostgreSQL user row exists BEFORE responding ──
+      // This must be awaited so the client's immediate /api/auth/post-login call
+      // (fired ~100 ms after this response) finds the row.  3-second timeout
+      // prevents slow DB/Firestore from blocking session creation.
+      let _syncResult: { user: any; isNewUser: boolean } | null = null;
+      let _syncFirstName: string | undefined;
+      let _syncLastName: string | undefined;
+      let _syncPhone: string | undefined;
+      let _syncCountry: string | undefined;
+      let _syncLang: string | undefined;
+      let _syncDecoded: any = null;
+
+      try {
+        const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
+        _syncDecoded = decoded;
+        const { authService } = await import('./services/AuthService');
+
+        let firstName: string | undefined;
+        let lastName: string | undefined;
+        let phone: string | undefined;
+        let country: string | undefined;
+        let lang: string | undefined;
+
         try {
-          const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
-          const { authService } = await import('./services/AuthService');
-          
-          let firstName: string | undefined;
-          let lastName: string | undefined;
-          let phone: string | undefined;
-          let country: string | undefined;
-          let lang: string | undefined;
-          let dob: string | undefined;
-          let marketingConsent: boolean | undefined;
-          
-          try {
-            const profileDoc = await firestoreDb.collection('users').doc(decoded.uid).collection('profile').doc('data').get();
-            if (profileDoc.exists) {
-              const profile = profileDoc.data();
-              firstName = profile?.firstName;
-              lastName = profile?.lastName;
-              phone = profile?.phone;
-              country = profile?.country === 'Israel' ? 'IL' : profile?.country;
-              lang = profile?.lang;
-              dob = profile?.dob;
-              marketingConsent = profile?.marketing;
-            }
-          } catch (profileErr) {
-            logger.debug('[Session] Could not fetch Firestore profile for sync', profileErr);
+          const profileDoc = await firestoreDb
+            .collection('users').doc(decoded.uid)
+            .collection('profile').doc('data').get();
+          if (profileDoc.exists) {
+            const profile = profileDoc.data();
+            firstName = profile?.firstName;
+            lastName = profile?.lastName;
+            phone = profile?.phone;
+            country = profile?.country === 'Israel' ? 'IL' : profile?.country;
+            lang = profile?.lang;
           }
-          
-          if (!firstName) {
-            const nameParts = (decoded.name || '').split(' ');
-            firstName = nameParts[0] || undefined;
-            lastName = nameParts.slice(1).join(' ') || undefined;
-          }
-          
-          const syncResult = await authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
-            firstName,
-            lastName,
-            phone: phone || decoded.phone_number || undefined,
-            profileImageUrl: decoded.picture || undefined,
-            country,
-            language: lang,
-          });
-          logger.info('[Session] ✅ PostgreSQL user sync complete', { uid: decoded.uid });
-
-          // Social OAuth providers (Google, Apple, Facebook) implicitly accept PetWash
-          // terms through the OAuth consent screen. Stamp termsAcceptedAt so the
-          // postLoginDecider does not redirect them to /complete-profile.
-          const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
-          const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
-          if (socialOAuthProviders.includes(signInProviderForTerms) && syncResult?.user && !(syncResult.user as any).termsAcceptedAt) {
-            try {
-              const consentNow = new Date();
-              await authService.updateUser(decoded.uid, {
-                termsAcceptedAt: consentNow,
-                privacyAcceptedAt: consentNow,
-              });
-              logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', { uid: decoded.uid, provider: signInProviderForTerms });
-            } catch (termsErr) {
-              logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
-            }
-          }
-
-          if (syncResult?.isNewUser) {
-            try {
-              const { logRegistration } = await import('./services/googleSheetsIntegration');
-              await logRegistration({
-                userId: decoded.uid,
-                firstName: firstName || '',
-                lastName: lastName || '',
-                email: decoded.email || '',
-                phone: phone || decoded.phone_number || '',
-                country: country || 'IL',
-                registrationSource: decoded.firebase?.sign_in_provider === 'google.com' ? 'google_auth' : 'phone_auth',
-                profilePhotoUrl: decoded.picture || '',
-                language: lang || 'he',
-              });
-              logger.info('[Session] ✅ Google Sheets registration logged', { uid: decoded.uid });
-            } catch (sheetsErr) {
-              logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
-            }
-
-            // ── HubSpot CRM: capture every new social/phone sign-up ───────────────
-            // Previously, Google/Apple/Phone sign-ups bypassed HubSpot entirely.
-            // This is the authoritative server-side capture — fires regardless of client JS.
-            try {
-              const { syncUserToHubSpot, trackHubSpotEvent } = await import('./hubspot');
-              const provider = (decoded as any).firebase?.sign_in_provider || 'unknown';
-              await syncUserToHubSpot({
-                uid: decoded.uid,
-                email: decoded.email || '',
-                firstname: firstName,
-                lastname: lastName,
-                phone: phone || decoded.phone_number || undefined,
-                lang: lang || 'he',
-                country: country || 'IL',
-              });
-              await trackHubSpotEvent(decoded.email || '', 'petwash_user_registered', {
-                registrationSource: provider,
-                language: lang || 'he',
-                country: country || 'IL',
-                registeredAt: new Date().toISOString(),
-              });
-              logger.info('[Session] ✅ HubSpot new user synced', { uid: decoded.uid, provider });
-            } catch (hubspotErr) {
-              logger.warn('[Session] HubSpot new user sync failed (non-blocking)', hubspotErr);
-            }
-          }
-        } catch (syncErr) {
-          logger.warn('[Session] PostgreSQL auto-sync failed (non-blocking)', syncErr);
+        } catch (profileErr) {
+          logger.debug('[Session] Could not fetch Firestore profile for sync', profileErr);
         }
-      })();
+
+        if (!firstName) {
+          const nameParts = (decoded.name || '').split(' ');
+          firstName = nameParts[0] || undefined;
+          lastName = nameParts.slice(1).join(' ') || undefined;
+        }
+
+        _syncFirstName = firstName;
+        _syncLastName  = lastName;
+        _syncPhone     = phone;
+        _syncCountry   = country;
+        _syncLang      = lang;
+
+        // Race against 3-second ceiling: user creation must win to prevent the
+        // post-login 404-USER_NOT_FOUND race. If DB is slower, we continue anyway
+        // and post-login's own recovery upsert picks it up.
+        const syncRace = authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
+          firstName, lastName,
+          phone: phone || decoded.phone_number || undefined,
+          profileImageUrl: decoded.picture || undefined,
+          country,
+          language: lang,
+        });
+        const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000));
+        _syncResult = await Promise.race([syncRace, timeoutPromise]) as typeof _syncResult;
+
+        logger.info('[Session] ✅ PostgreSQL user sync complete', {
+          uid: decoded.uid, isNewUser: _syncResult?.isNewUser ?? 'timeout',
+        });
+
+        // Social OAuth providers implicitly consent via OAuth screen — stamp terms
+        // immediately so postLoginDecider does not redirect to /complete-profile.
+        const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
+        const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
+        if (socialOAuthProviders.includes(signInProviderForTerms) && _syncResult?.user && !(_syncResult.user as any).termsAcceptedAt) {
+          try {
+            const consentNow = new Date();
+            await authService.updateUser(decoded.uid, {
+              termsAcceptedAt: consentNow,
+              privacyAcceptedAt: consentNow,
+            });
+            logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', {
+              uid: decoded.uid, provider: signInProviderForTerms,
+            });
+          } catch (termsErr) {
+            logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
+          }
+        }
+      } catch (syncErr) {
+        logger.warn('[Session] Critical PostgreSQL sync failed (non-blocking) — post-login recovery will retry', syncErr);
+      }
+
+      // ── Non-critical async path: external CRM / analytics (fire-and-forget) ─
+      if (_syncResult?.isNewUser && _syncDecoded) {
+        (async () => {
+          const decoded = _syncDecoded;
+          const firstName = _syncFirstName;
+          const lastName  = _syncLastName;
+          const phone     = _syncPhone;
+          const country   = _syncCountry;
+          const lang      = _syncLang;
+          try {
+            const { logRegistration } = await import('./services/googleSheetsIntegration');
+            await logRegistration({
+              userId:             decoded.uid,
+              firstName:          firstName || '',
+              lastName:           lastName  || '',
+              email:              decoded.email || '',
+              phone:              phone || decoded.phone_number || '',
+              country:            country || 'IL',
+              registrationSource: decoded.firebase?.sign_in_provider === 'google.com' ? 'google_auth' : 'phone_auth',
+              profilePhotoUrl:    decoded.picture || '',
+              language:           lang || 'he',
+            });
+            logger.info('[Session] ✅ Google Sheets registration logged', { uid: decoded.uid });
+          } catch (sheetsErr) {
+            logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
+          }
+
+          try {
+            const { syncUserToHubSpot, trackHubSpotEvent } = await import('./hubspot');
+            const provider = (decoded as any).firebase?.sign_in_provider || 'unknown';
+            await syncUserToHubSpot({
+              uid: decoded.uid, email: decoded.email || '',
+              firstname: firstName, lastname: lastName,
+              phone: phone || decoded.phone_number || undefined,
+              lang: lang || 'he', country: country || 'IL',
+            });
+            await trackHubSpotEvent(decoded.email || '', 'petwash_user_registered', {
+              registrationSource: provider, language: lang || 'he',
+              country: country || 'IL', registeredAt: new Date().toISOString(),
+            });
+            logger.info('[Session] ✅ HubSpot new user synced', { uid: decoded.uid, provider });
+          } catch (hubspotErr) {
+            logger.warn('[Session] HubSpot new user sync failed (non-blocking)', hubspotErr);
+          }
+        })();
+      }
       
       logger.info('[Session] ✅ Session cookie created successfully', {
         traceId,
@@ -9925,6 +9950,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
   app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
   app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
+  app.use('/api/admin/escrow', adminLimiter, adminEscrowReconciliationRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);

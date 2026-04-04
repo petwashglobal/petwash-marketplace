@@ -805,6 +805,31 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
       codeLen: scannedCode.length,
     });
 
+    // ── PRODUCTION GUARD: block wallet debit when machine is not configured ──
+    // In production, MACHINE_ACTIVATION_URL must be set. Without it, the wallet
+    // debit would succeed but the physical machine would never start — customers
+    // would pay without receiving a wash.  This matches the same guard in
+    // the wash/start_cycle route (line ~278) for terminal-based payments.
+    //
+    // In development / staging, we allow the call through with a warning so that
+    // QR-code flow can be tested without real hardware.
+    if (!process.env.MACHINE_ACTIVATION_URL && process.env.NODE_ENV === 'production') {
+      logger.error('[K9000 Redeem] FATAL: MACHINE_ACTIVATION_URL not set in production — blocking wallet redemption to prevent charging without wash delivery', {
+        kioskId, correlationId,
+      });
+      return res.status(503).json({
+        error: 'עמדת השטיפה אינה מוגדרת לעבודה. לא בוצע חיוב. אנא פנה לצוות.',
+        errorEn: 'Wash station is not configured for production. No charge was made. Contact staff.',
+        status: 'MACHINE_NOT_CONFIGURED',
+        correlationId,
+      });
+    }
+    if (!process.env.MACHINE_ACTIVATION_URL) {
+      logger.warn('[K9000 Redeem] DEMO MODE — MACHINE_ACTIVATION_URL not set. Wallet will be debited but physical machine will NOT start. Set MACHINE_ACTIVATION_URL before going live.', {
+        kioskId, correlationId,
+      });
+    }
+
     // ── Step 1: Verify HMAC-signed user token (expiry + nonce + signature) ─
     const verification = verifySignedRedeemToken(scannedCode);
 
