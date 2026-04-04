@@ -227,13 +227,40 @@ jobs:
             --quiet
           echo "✅ Public access granted"
 
+      - name: Output Cloud Run service URL
+        run: |
+          echo "🌐 Real Cloud Run URL: ${{ steps.deploy.outputs.url }}"
+          echo "   Direct backend health: ${{ steps.deploy.outputs.url }}/api/health"
+          echo "   Via Firebase Hosting:  https://petwash.co.il/api/health"
+
       - name: Smoke test — backend health check
         run: |
           URL="${{ steps.deploy.outputs.url }}"
           echo "Testing: $URL/api/health"
+
+          # Attempt 1: unauthenticated (works when allUsers IAM binding is present)
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "$URL/api/health" || echo "000")
+
           if [ "$STATUS" = "200" ]; then
-            echo "✅ Backend health check passed (HTTP $STATUS)"
+            echo "✅ Backend health check passed — public access confirmed (HTTP $STATUS)"
+          elif [ "$STATUS" = "403" ]; then
+            # Attempt 2: authenticated via Identity Token (works even when org policy blocks allUsers)
+            echo "   Public access blocked (HTTP 403) — retrying with Identity Token..."
+            TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || echo "")
+            if [ -n "$TOKEN" ]; then
+              STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 \
+                -H "Authorization: Bearer $TOKEN" "$URL/api/health" || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "✅ Backend health check passed — authenticated access confirmed (HTTP $STATUS)"
+                echo "⚠️  Direct public access is blocked by org policy; traffic is routed via Firebase Hosting (petwash.co.il)"
+              else
+                echo "❌ Backend health check FAILED even with Identity Token (HTTP $STATUS)"
+                exit 1
+              fi
+            else
+              echo "❌ Could not obtain Identity Token for authenticated health check"
+              exit 1
+            fi
           else
             echo "❌ Backend health check FAILED (HTTP $STATUS)"
             exit 1
@@ -245,6 +272,12 @@ jobs:
           ENDPOINT="$URL/api/google/places-health"
           echo "Testing: $ENDPOINT"
 
+          # Obtain an Identity Token so the smoke test works even when org policy
+          # blocks allUsers public access (403). Used as a fallback Authorization header.
+          TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || echo "")
+          AUTH_HEADER=""
+          [ -n "$TOKEN" ] && AUTH_HEADER="-H \"Authorization: Bearer $TOKEN\""
+
           # Retry up to 5 times with backoff.
           # Handles two distinct failure modes:
           #   000 — curl transport failure (service not yet listening)
@@ -254,7 +287,12 @@ jobs:
           RESULT=""
           HTTP_STATUS=""
           for attempt in 1 2 3 4 5; do
+            # Try unauthenticated first; fall back to Identity Token on 403
             HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+            if [ "$HTTP_STATUS" = "403" ] && [ -n "$TOKEN" ]; then
+              HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
+                -H "Authorization: Bearer $TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+            fi
             RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
 
             if [ "$HTTP_STATUS" = "000" ]; then

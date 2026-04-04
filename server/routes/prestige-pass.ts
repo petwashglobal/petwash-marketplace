@@ -826,7 +826,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
         },
       ],
       expirationDate: null,
-      webServiceURL: `${process.env.BACKEND_URL || 'https://petwash-api-xxxxx-ew.a.run.app'}/api/prestige-pass/apple-wallet`,
+      webServiceURL: `${process.env.BASE_URL || 'https://petwash.co.il'}/api/prestige-pass/apple-wallet`,
       authenticationToken: Buffer.from(userId).toString('base64').slice(0, 32),
     };
 
