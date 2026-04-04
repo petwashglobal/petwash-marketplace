@@ -1,0 +1,102 @@
+Yes - this new dump looks like a mix of stale findings, repeated findings, and still-dangerous architecture gaps.
+
+The important part is this:
+
+Do not judge by how long the report is. Judge by what is still exploitable today.
+
+My honest read
+
+From everything you pasted, I would split it into 3 buckets.
+
+Bucket A - likely old or possibly already fixed
+
+These showed up many times and Replit later claimed they were fixed:
+	•	fake /api/express-checkout
+	•	test bypass token in auth
+	•	hardcoded fallback Nayax secrets
+	•	plain === admin secret checks
+	•	.secrets-for-nir-only.txt tracked in git
+	•	XSS on legal HTML render
+	•	IP allowlist fail-open
+	•	some admin email hardcoding
+
+These are not safe just because he said so, but they are no longer the most useful things to focus on first. They need proof, not another summary.
+
+Bucket B - the likely still-open critical series
+
+These are the ones I would treat as the real danger until proven closed with code and tests:
+	1.	Marketplace booking ownership / role spoofing
+	•	marketplace-bookings.ts
+	•	/transition, /complete, /confirm, /cancel
+	•	caller-controlled role
+	•	risk: user A can mutate user B booking, or force completion / payout path
+	2.	Two escrow systems live at once
+	•	Firestore escrow
+	•	PostgreSQL escrowHoldings
+	•	risk: drift, double release, missing refund, admin confusion, broken reconciliation
+	3.	Payment fail does not release slot
+	•	failed / expired / cancelled payment leaves slot booked
+	•	risk: dead calendar, false unavailability, broken customer experience
+	4.	No expiry for new marketplace bookings
+	•	booking can sit forever in quote / pending / deposit states
+	•	risk: frozen slot, frozen money, abandoned flow with no cleanup
+	5.	Provider availability update auth commented out
+	•	if that comment is still real, any authenticated user can alter provider availability
+	•	this is very bad
+	6.	Contractor invoice endpoints unauthenticated
+	•	privacy breach
+	•	tax / identity / banking exposure
+	7.	Completion state machine still too permissive
+	•	if owner_completion_review -> completed or provider_completion_review -> completed still exists, one side can finish alone
+	8.	Signup architecture is still broken
+	•	email path dead / old endpoint
+	•	wallet not created on social
+	•	loyalty not created consistently
+	•	Apple repeat sign-in issue
+	•	Facebook callback missing
+	•	verify-email page missing
+	•	multiple user creation paths racing each other
+	9.	Provider onboarding still not trustworthy
+	•	plaintext bank detail fallback
+	•	fake background check
+	•	police clearance not enforced
+	•	KYC stuck states / deadlocks
+	10.	K9000 still not production-ready
+
+	•	hardware activation stub
+	•	payment / session truth gap
+	•	route mounting confusion
+
+Bucket C - serious but second wave
+
+These matter, but after the above:
+	•	duplicate fee calculation
+	•	parseInt / parseFloat weak validation
+	•	missing tests
+	•	placeholder emails not replaced
+	•	non-blocking captcha
+	•	non-sequential invoice numbering
+	•	provider tables fragmented
+	•	role storage fragmented
+	•	no retention / archival model
+	•	no proper mobile deep-link / universal link setup
+
+What I think is the real story
+
+GitHub agent has done something very valuable:
+
+It stopped the conversation being about random cosmetic fixes and exposed that the system has four core broken foundations:
+	•	auth / signup
+	•	booking authority
+	•	escrow / payment integrity
+	•	provider onboarding / trust
+
+That is why Replit suddenly looks “fast”.
+He is no longer playing with surface bugs. He is being forced toward the actual weak bones of the system.
+
+What you should make him do now
+
+Do not ask for another essay.
+Ask for a live closure matrix.
+
+Send him this:
