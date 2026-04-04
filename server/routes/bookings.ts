@@ -591,7 +591,25 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
     const userId = req.user!.uid;
 
     const bookingDoc = await db.collection("bookings").doc(bookingId).get();
-    const booking = bookingDoc.data();
+
+    // ── Ownership guard ────────────────────────────────────────────────────
+    // Must be checked BEFORE any mutation. Previously this endpoint had no
+    // ownership check — any authenticated user could complete any booking.
+    if (!bookingDoc.exists) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const booking = bookingDoc.data()!;
+    const isSuperAdminUser = isSuperAdmin(
+      ((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase()
+    );
+    const isOwner    = booking.userId === userId || booking.customerId === userId;
+    const isProvider = booking.providerId === userId;
+
+    if (!isSuperAdminUser && !isOwner && !isProvider) {
+      logger.warn("[Bookings] Unauthorized complete attempt", { userId, bookingId });
+      return res.status(403).json({ error: "Forbidden — you are not a party to this booking" });
+    }
 
     await db.collection("bookings").doc(bookingId).update({
       status: "completed",
