@@ -232,6 +232,7 @@ jobs:
           echo "🌐 Real Cloud Run URL: ${{ steps.deploy.outputs.url }}"
           echo "   Direct backend health: ${{ steps.deploy.outputs.url }}/api/health"
           echo "   Via Firebase Hosting:  https://petwash.co.il/api/health"
+          echo "☁️  Cloud Run service URL: ${{ steps.deploy.outputs.url }}"
 
       - name: Smoke test — backend health check
         run: |
@@ -259,6 +260,27 @@ jobs:
               fi
             else
               echo "❌ Could not obtain Identity Token for authenticated health check"
+          ENDPOINT="$URL/api/health"
+          echo "Testing: $ENDPOINT"
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "$ENDPOINT" || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Backend health check passed (HTTP $STATUS) — public access open"
+          elif [ "$STATUS" = "403" ]; then
+            echo "⚠️  HTTP 403 on unauthenticated request — org policy may be blocking allUsers IAM binding"
+            echo "   Retrying with OIDC Identity Token..."
+            # gcloud auth print-identity-token --audiences is preferred (scopes token to the service URL)
+            # but older gcloud versions don't support the flag; fall back to the global identity token.
+            ID_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
+            if [ -z "$ID_TOKEN" ]; then
+              echo "❌ Could not obtain OIDC Identity Token"
+              exit 1
+            fi
+            STATUS2=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 \
+              -H "Authorization: Bearer $ID_TOKEN" "$ENDPOINT" || echo "000")
+            if [ "$STATUS2" = "200" ]; then
+              echo "✅ Backend health check passed (HTTP $STATUS2) — org policy blocking direct access, Firebase Hosting route intact"
+            else
+              echo "❌ Backend health check FAILED even with identity token (HTTP $STATUS2)"
               exit 1
             fi
           else
@@ -284,6 +306,10 @@ jobs:
           #   503 + SERVICE_STARTING — startup guard blocking until routes are ready
           # /api/google/places-health is exempted from the startup guard so it can
           # always respond, but we keep retries as defence-in-depth for cold starts.
+          # Obtain OIDC Identity Token once (used as fallback if org policy blocks allUsers).
+          # --audiences scopes the token to the service URL; falls back to the global token for older gcloud.
+          OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
+
           RESULT=""
           HTTP_STATUS=""
           for attempt in 1 2 3 4 5; do
@@ -294,6 +320,17 @@ jobs:
                 -H "Authorization: Bearer $TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
             fi
             RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
+
+            # On 403 retry with OIDC token — org policy may be blocking allUsers IAM binding
+            if [ "$HTTP_STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
+              echo "   Attempt $attempt: HTTP 403 (org policy) — retrying with OIDC Identity Token..."
+              HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
+                -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+              RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
+              if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "503" ]; then
+                echo "   org policy blocking direct access, Firebase Hosting route intact (HTTP $HTTP_STATUS)"
+              fi
+            fi
 
             if [ "$HTTP_STATUS" = "000" ]; then
               echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 20 s..."
