@@ -242,6 +242,8 @@ jobs:
           elif [ "$STATUS" = "403" ]; then
             echo "⚠️  HTTP 403 on unauthenticated request — org policy may be blocking allUsers IAM binding"
             echo "   Retrying with OIDC Identity Token..."
+            # gcloud auth print-identity-token --audiences is preferred (scopes token to the service URL)
+            # but older gcloud versions don't support the flag; fall back to the global identity token.
             ID_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
             if [ -z "$ID_TOKEN" ]; then
               echo "❌ Could not obtain OIDC Identity Token"
@@ -273,6 +275,7 @@ jobs:
           # /api/google/places-health is exempted from the startup guard so it can
           # always respond, but we keep retries as defence-in-depth for cold starts.
           # Obtain OIDC Identity Token once (used as fallback if org policy blocks allUsers).
+          # --audiences scopes the token to the service URL; falls back to the global token for older gcloud.
           OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
 
           RESULT=""
@@ -287,7 +290,9 @@ jobs:
               HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
                 -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
               RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
-              echo "   org policy blocking direct access, Firebase Hosting route intact (HTTP $HTTP_STATUS)"
+              if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "503" ]; then
+                echo "   org policy blocking direct access, Firebase Hosting route intact (HTTP $HTTP_STATUS)"
+              fi
             fi
 
             if [ "$HTTP_STATUS" = "000" ]; then
