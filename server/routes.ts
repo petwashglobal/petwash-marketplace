@@ -999,17 +999,21 @@ self.addEventListener('notificationclick', (event) => {
       try {
         const preDecoded = await fbAdminAuth.verifyIdToken(idToken, true);
         const role = (preDecoded as any).role || (preDecoded as any)['custom:role'] || '';
-        const PRIVILEGED_ROLES = ['admin', 'management', 'super_admin', 'ceo', 'finance'];
+        // Admin-level roles that bypass reCAPTCHA enforcement.
+        // Must stay in sync with ADMIN_ROLES in AdminLoginV2.tsx and AdminRouteGuard.tsx.
+        const PRIVILEGED_ROLES = ['admin', 'ops', 'management', 'super_admin', 'ceo', 'finance', 'staff', 'hr'];
         const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
         // reCAPTCHA enforcement: require captchaToken for password sign-in.
         // sign_in_provider comes from the decoded Firebase token — cannot be spoofed by the client.
         // Super admins (founder / hardcoded list) bypass captchaToken — they use Google SSO or passkey in practice.
+        // Users with existing privileged role claims also bypass: their identity was already verified by an admin
+        // when those claims were set, so re-gating with reCAPTCHA adds friction without security benefit.
         const signInProvider = (preDecoded as any).firebase?.sign_in_provider || '';
         const preEmail = (preDecoded.email || '').toLowerCase();
         const { isSuperAdmin: preSuperAdminCheck } = await import('./middleware/rbac');
         const isPreSuperAdmin = preSuperAdminCheck(preEmail);
-        if (signInProvider === 'password' && !isPreSuperAdmin) {
+        if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivileged) {
           if (!captchaToken) {
             logger.warn('[Session] Email/password sign-in rejected — missing captchaToken', { uid: preDecoded.uid, traceId });
             return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
