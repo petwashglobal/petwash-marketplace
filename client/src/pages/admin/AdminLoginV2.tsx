@@ -28,6 +28,10 @@ const isMobileBrowser = () => {
   return /iPhone|iPad|iPod|Android/i.test(ua);
 };
 
+// Roles that are allowed to access the admin area.
+// Must stay in sync with AdminRouteGuard and server-side privileged role checks (routes.ts PRIVILEGED_ROLES).
+const ADMIN_ROLES = ['admin', 'ops', 'management', 'super_admin', 'ceo', 'finance', 'staff', 'hr'] as const;
+
 const extractErrorMessage = (error: any): string => {
   if (error?.body?.error) return error.body.error;
   if (error?.body?.message) return error.body.message;
@@ -82,9 +86,8 @@ export default function AdminLoginV2() {
         const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
         if (whoamiRes.ok) {
           const whoami = await whoamiRes.json();
-          const ADMIN_ROLES = ['admin', 'ops', 'super_admin', 'management', 'staff', 'hr'];
           if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
-            throw new Error('This account does not have admin access.');
+            throw new Error('This account does not have admin access. Please use the correct login page.');
           }
         }
 
@@ -136,7 +139,6 @@ export default function AdminLoginV2() {
       const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
       if (whoamiRes.ok) {
         const whoami = await whoamiRes.json();
-        const ADMIN_ROLES = ['admin', 'ops', 'super_admin', 'management', 'staff', 'hr'];
         if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
           throw new Error('This account does not have admin access. Please use the correct login page.');
         }

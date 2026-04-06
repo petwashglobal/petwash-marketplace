@@ -999,7 +999,9 @@ self.addEventListener('notificationclick', (event) => {
       try {
         const preDecoded = await fbAdminAuth.verifyIdToken(idToken, true);
         const role = (preDecoded as any).role || (preDecoded as any)['custom:role'] || '';
-        const PRIVILEGED_ROLES = ['admin', 'management', 'super_admin', 'ceo', 'finance'];
+        // Admin-level roles that bypass reCAPTCHA enforcement.
+        // Must stay in sync with ADMIN_ROLES in AdminLoginV2.tsx and AdminRouteGuard.tsx.
+        const PRIVILEGED_ROLES = ['admin', 'ops', 'management', 'super_admin', 'ceo', 'finance', 'staff', 'hr'];
         const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
         // reCAPTCHA enforcement: require captchaToken for password sign-in.
@@ -1011,8 +1013,7 @@ self.addEventListener('notificationclick', (event) => {
         const preEmail = (preDecoded.email || '').toLowerCase();
         const { isSuperAdmin: preSuperAdminCheck } = await import('./middleware/rbac');
         const isPreSuperAdmin = preSuperAdminCheck(preEmail);
-        const isPrivilegedClaim = isPrivileged; // role in ['admin','management','super_admin','ceo','finance']
-        if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivilegedClaim) {
+        if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivileged) {
           if (!captchaToken) {
             logger.warn('[Session] Email/password sign-in rejected — missing captchaToken', { uid: preDecoded.uid, traceId });
             return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
