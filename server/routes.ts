@@ -1005,11 +1005,14 @@ self.addEventListener('notificationclick', (event) => {
         // reCAPTCHA enforcement: require captchaToken for password sign-in.
         // sign_in_provider comes from the decoded Firebase token — cannot be spoofed by the client.
         // Super admins (founder / hardcoded list) bypass captchaToken — they use Google SSO or passkey in practice.
+        // Users with existing privileged role claims also bypass: their identity was already verified by an admin
+        // when those claims were set, so re-gating with reCAPTCHA adds friction without security benefit.
         const signInProvider = (preDecoded as any).firebase?.sign_in_provider || '';
         const preEmail = (preDecoded.email || '').toLowerCase();
         const { isSuperAdmin: preSuperAdminCheck } = await import('./middleware/rbac');
         const isPreSuperAdmin = preSuperAdminCheck(preEmail);
-        if (signInProvider === 'password' && !isPreSuperAdmin) {
+        const isPrivilegedClaim = isPrivileged; // role in ['admin','management','super_admin','ceo','finance']
+        if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivilegedClaim) {
           if (!captchaToken) {
             logger.warn('[Session] Email/password sign-in rejected — missing captchaToken', { uid: preDecoded.uid, traceId });
             return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });

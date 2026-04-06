@@ -78,6 +78,16 @@ export default function AdminLoginV2() {
           throw new Error(err.error || 'Session creation failed');
         }
 
+        // Verify admin access before redirecting
+        const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
+        if (whoamiRes.ok) {
+          const whoami = await whoamiRes.json();
+          const ADMIN_ROLES = ['admin', 'ops', 'super_admin', 'management', 'staff', 'hr'];
+          if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
+            throw new Error('This account does not have admin access.');
+          }
+        }
+
         toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
         setLocation("/admin/dashboard");
       } catch (err: any) {
@@ -120,6 +130,16 @@ export default function AdminLoginV2() {
       if (!sessionRes.ok) {
         const err = await sessionRes.json();
         throw new Error(err.error || 'Session creation failed');
+      }
+
+      // Verify the user actually has admin-level access before redirecting
+      const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
+      if (whoamiRes.ok) {
+        const whoami = await whoamiRes.json();
+        const ADMIN_ROLES = ['admin', 'ops', 'super_admin', 'management', 'staff', 'hr'];
+        if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
+          throw new Error('This account does not have admin access. Please use the correct login page.');
+        }
       }
 
       toast({
