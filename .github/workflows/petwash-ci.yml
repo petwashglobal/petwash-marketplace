@@ -9,7 +9,6 @@ env:
   PROJECT_ID: signinpetwash
   REGION: me-west1
   SERVICE_NAME: petwash-api
-  REPO_NAME: petwash-api
   IMAGE: me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend
   # Opt into Node.js 24 runner for all actions ahead of June 2026 forced migration
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -107,7 +106,7 @@ jobs:
             fi
           fi
 
-      - name: Set up Node 20
+      - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -241,10 +240,16 @@ jobs:
 
           echo "Testing: $ENDPOINT"
 
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$ENDPOINT" || echo "000")
+          STATUS="000"
+          for attempt in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+            [ "$STATUS" != "000" ] && [ "$STATUS" != "503" ] && break
+            echo "  Attempt $attempt: HTTP $STATUS — retrying in 15s..."
+            sleep 15
+          done
 
           if [ "$STATUS" = "200" ]; then
-            echo "Backend health check passed (HTTP $STATUS)"
+            echo "✅ Backend health check passed (HTTP $STATUS)"
           elif [ "$STATUS" = "403" ]; then
             echo "HTTP 403 - retrying with identity token"
 
@@ -257,10 +262,10 @@ jobs:
 
             STATUS2=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
               -H "Authorization: Bearer $ID_TOKEN" \
-              "$ENDPOINT" || echo "000")
+              "$ENDPOINT" 2>/dev/null || echo "000")
 
             if [ "$STATUS2" = "200" ]; then
-              echo "Backend health check passed with auth (HTTP $STATUS2)"
+              echo "✅ Backend health check passed with auth (HTTP $STATUS2)"
             else
               echo "Health check failed (HTTP $STATUS2)"
               exit 1
@@ -275,12 +280,6 @@ jobs:
           URL="${{ steps.deploy.outputs.url }}"
           ENDPOINT="$URL/api/google/places-health"
           echo "Testing: $ENDPOINT"
-
-          # Obtain an Identity Token so the smoke test works even when org policy
-          # blocks allUsers public access (403). Used as a fallback Authorization header.
-          TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || echo "")
-          AUTH_HEADER=""
-          [ -n "$TOKEN" ] && AUTH_HEADER="-H \"Authorization: Bearer $TOKEN\""
 
           # Retry up to 5 times with backoff.
           # Handles two distinct failure modes:
@@ -297,9 +296,9 @@ jobs:
           for attempt in 1 2 3 4 5; do
             # Try unauthenticated first; fall back to Identity Token on 403
             HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-            if [ "$HTTP_STATUS" = "403" ] && [ -n "$TOKEN" ]; then
+            if [ "$HTTP_STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
               HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
-                -H "Authorization: Bearer $TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+                -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
             fi
             RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
 
@@ -394,7 +393,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node 20
+      - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -435,8 +434,8 @@ jobs:
       - name: Smoke test — live site check
         run: |
           sleep 20
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/" || echo "000")
-          API=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/api/health" || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/" || echo "000")
+          API=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/api/health" || echo "000")
           echo "Frontend: HTTP $STATUS | API via Firebase: HTTP $API"
           if [ "$STATUS" = "200" ] && [ "$API" = "200" ]; then
             echo "✅ Full stack live check passed"
