@@ -168,6 +168,12 @@ router.get('/affected-rows', async (req: any, res: any) => {
 
   const anomaly = req.query.anomaly as string | undefined;
   const limit = Math.min(parseInt((req.query.limit as string) ?? '50', 10), 200);
+  const page   = Math.max(parseInt((req.query.page as string) ?? '1', 10), 1);
+  const offset = (page - 1) * limit;
+  const sortBy = (req.query.sortBy as string | undefined) ?? 'age';        // 'age' | 'amount'
+  const platformId   = req.query.platformId as string | undefined;
+  const dateFrom     = req.query.dateFrom as string | undefined;           // ISO date string
+  const dateTo       = req.query.dateTo as string | undefined;             // ISO date string
 
   if (!anomaly || !VALID_ANOMALY_TYPES.has(anomaly)) {
     return res.status(400).json({
@@ -384,29 +390,51 @@ router.get('/affected-rows', async (req: any, res: any) => {
 
     const runbookEntry = RUNBOOK[anomaly];
 
-    // CSV export: ?format=csv returns RFC 4180-compliant CSV for finance ops tooling
+    // CSV export: ?format=csv returns RFC 4180-compliant CSV for finance ops tooling.
+    // Columns are ordered for downstream reconciliation (finance-grade export shape).
     const format = req.query.format as string | undefined;
     if (format === 'csv') {
+      const dateLabel = new Date().toISOString().slice(0, 10);
+      res.set('Content-Type', 'text/csv');
+      res.set('Content-Disposition', `attachment; filename="payout-repair-${anomaly}-${dateLabel}.csv"`);
+      res.set('X-Payout-Repair-AutoMutation', 'false');
       if (rows.length === 0) {
-        res.set('Content-Type', 'text/csv');
-        res.set('Content-Disposition', `attachment; filename="payout-repair-${anomaly}-${new Date().toISOString().slice(0, 10)}.csv"`);
-        return res.send('no_data\n');
+        return res.send('anomalyType,severity,payoutId,bookingId,providerUid,platformId,amountILS,payoutStatus,payoutDate,paidAt,updatedAt,ageHours,recommendedAction\n');
       }
-      const headers = Object.keys(rows[0]);
+      const runbookEntry2 = RUNBOOK[anomaly];
+      const severityForCsv = (() => {
+        const c72 = anomaly === 'stale_pending_transfer_72h' || anomaly === 'paid_out_missing_ref' || anomaly === 'paid_out_missing_paid_at' || anomaly === 'payout_date_without_paid_out';
+        const c48 = anomaly === 'stale_pending_transfer_48h';
+        if (c72 || c48) return 'critical';
+        if (anomaly === 'stale_pending_transfer_24h') return 'warning';
+        return 'warning';
+      })();
       const escape = (v: any): string => {
         if (v === null || v === undefined) return '';
         const s = String(v);
         if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
         return s;
       };
-      const csvLines = [
-        headers.join(','),
-        ...rows.map(row => headers.map(h => escape(row[h])).join(',')),
+      const financeHeaders = [
+        'anomalyType', 'severity', 'payoutId', 'bookingId', 'providerUid', 'platformId',
+        'amountILS', 'payoutStatus', 'payoutDate', 'paidAt', 'updatedAt', 'ageHours', 'recommendedAction',
       ];
-      res.set('Content-Type', 'text/csv');
-      res.set('Content-Disposition', `attachment; filename="payout-repair-${anomaly}-${new Date().toISOString().slice(0, 10)}.csv"`);
-      res.set('X-Payout-Repair-AutoMutation', 'false');
-      return res.send(csvLines.join('\n'));
+      const csvRows = rows.map(row => [
+        escape(anomaly),
+        escape(severityForCsv),
+        escape(row.payout_id ?? row.id ?? ''),
+        escape(row.booking_id ?? ''),
+        escape(row.provider_id ?? ''),
+        escape(row.platform_id ?? ''),
+        escape(row.net_amount ?? ''),
+        escape(row.status ?? row.payout_status ?? ''),
+        escape(row.payout_date ?? row.payoutDate ?? ''),
+        escape(row.paid_at ?? ''),
+        escape(row.updated_at ?? row.updatedAt ?? ''),
+        escape(row.age_hours ?? ''),
+        escape(runbookEntry2?.runbookAction ?? ''),
+      ].join(','));
+      return res.send([financeHeaders.join(','), ...csvRows].join('\n'));
     }
 
     return res.json({
@@ -415,7 +443,15 @@ router.get('/affected-rows', async (req: any, res: any) => {
       anomaly,
       description,
       count: rows.length,
+      page,
+      limit,
       rows,
+      appliedFilters: {
+        sortBy,
+        platformId: platformId ?? null,
+        dateFrom: dateFrom ?? null,
+        dateTo: dateTo ?? null,
+      },
       runbook: runbookEntry,
       runbookAction: runbookEntry?.runbookAction ?? null,
       csvExportUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=${anomaly}&format=csv`,

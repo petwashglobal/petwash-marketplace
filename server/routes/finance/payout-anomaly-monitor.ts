@@ -32,6 +32,100 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 
+
+/**
+ * PAYOUT_RISK_POLICY — Gemini threshold policy config.
+ *
+ * Intentionally separated from code logic so finance/ops can adjust risk thresholds
+ * without deep code edits. Gemini and monitoring logic must reference this object, not
+ * hardcode values inline.
+ *
+ * ownerTeam mapping:
+ *   'Finance Ops'       — payout state correctness, stale transfers, missing references
+ *   'Engineering'       — drift between booking/payout tables, orphan rows, legacy vocab
+ *   'Finance + Eng'     — cross-domain issues requiring both teams
+ *
+ * payoutFlowType:
+ *   'israeli_bank_transfer'  — all current payouts (Nayax-blocked, queued for ops release)
+ *   'escrow_release'         — booking→escrow→provider path
+ *   'direct_payout'          — future direct integration
+ */
+export const PAYOUT_RISK_POLICY = {
+  stalePendingTransfer: {
+    ownerTeam: 'Finance Ops',
+    platformType: 'booking_engine',
+    payoutFlowType: 'israeli_bank_transfer',
+    isCustomerFacing: false,
+    infoIfAnyOlderThanHours:     6,
+    warningIfAnyOlderThanHours:  24,
+    criticalIfAnyOlderThanHours: 48,
+    escalateIfAnyOlderThanHours: 72,
+    escalateIfCountExceeds:      10,
+    amountWeighting: {
+      criticalIfAnyAmountAboveILS:   5000,
+      escalateIfTotalAmountAboveILS: 20000,
+      smallAmountThresholdILS:       100,
+    },
+  },
+  bookingPayoutDrift: {
+    ownerTeam: 'Finance + Eng',
+    platformType: 'booking_engine',
+    payoutFlowType: 'escrow_release',
+    isCustomerFacing: false,
+    warningIfTotalDriftExceeds:  1,
+    criticalIfTotalDriftExceeds: 5,
+    criticalBuckets:     ['pending_transfer_vs_paid_out', 'paid_out_vs_failed', 'payout_row_missing_booking'],
+    warningBuckets:      ['pending_vs_pending_transfer', 'booking_missing_payout_row', 'payout_date_mismatch'],
+    alwaysCriticalBuckets: ['paid_out_vs_failed'],
+  },
+  paidOutMissingRef: {
+    ownerTeam: 'Finance Ops',
+    platformType: 'booking_engine',
+    payoutFlowType: 'israeli_bank_transfer',
+    isCustomerFacing: false,
+    criticalIfCountExceeds: 0,
+    amountWeighting: {
+      immediateEscalateIfAnyAboveILS: 1000,
+    },
+  },
+  paidOutMissingPaidAt: {
+    ownerTeam: 'Finance Ops',
+    platformType: 'booking_engine',
+    payoutFlowType: 'israeli_bank_transfer',
+    isCustomerFacing: false,
+    criticalIfCountExceeds: 0,
+  },
+  failedWithNoReason: {
+    ownerTeam: 'Finance Ops',
+    platformType: 'booking_engine',
+    payoutFlowType: 'israeli_bank_transfer',
+    isCustomerFacing: true,
+    warningIfCountExceeds:  0,
+    criticalIfCountExceeds: 5,
+    amountWeighting: {
+      criticalIfAnyAmountAboveILS: 2000,
+    },
+  },
+  orphanPayoutRows: {
+    ownerTeam: 'Engineering',
+    platformType: 'booking_engine',
+    payoutFlowType: 'escrow_release',
+    isCustomerFacing: false,
+    warningIfCountExceeds:  0,
+    criticalIfCountExceeds: 10,
+    amountWeighting: {
+      criticalIfTotalAmountAboveILS: 5000,
+    },
+  },
+  payoutDateWithoutPaidOut: {
+    ownerTeam: 'Finance + Eng',
+    platformType: 'booking_engine',
+    payoutFlowType: 'escrow_release',
+    isCustomerFacing: false,
+    criticalIfCountExceeds: 0,
+  },
+} as const;
+
 const router = Router();
 
 /**
@@ -353,8 +447,13 @@ router.get('/', async (req: any, res: any) => {
                 payoutId: r.id, bookingId: r.booking_id,
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 status: r.status, updatedAt: r.updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.id}`,
-                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+                ownerTeam: PAYOUT_RISK_POLICY.stalePendingTransfer.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
               })),
             },
             {
@@ -364,8 +463,13 @@ router.get('/', async (req: any, res: any) => {
                 payoutId: r.id, bookingId: r.booking_id,
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 status: r.status, updatedAt: r.updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.id}`,
-                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+                ownerTeam: PAYOUT_RISK_POLICY.stalePendingTransfer.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
               })),
             },
             {
@@ -375,8 +479,13 @@ router.get('/', async (req: any, res: any) => {
                 payoutId: r.id, bookingId: r.booking_id,
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 status: r.status, updatedAt: r.updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.id}`,
-                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+                ownerTeam: PAYOUT_RISK_POLICY.stalePendingTransfer.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
               })),
             },
             {
@@ -387,8 +496,13 @@ router.get('/', async (req: any, res: any) => {
                 payoutId: r.id, bookingId: r.booking_id,
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 status: r.status, updatedAt: r.updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.id}`,
-                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+                ownerTeam: PAYOUT_RISK_POLICY.stalePendingTransfer.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
               })),
             },
           ],
@@ -405,8 +519,8 @@ router.get('/', async (req: any, res: any) => {
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 payoutStatus: r.payout_status, bookingPayoutStatus: r.booking_payout_status,
                 updatedAt: r.payout_updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
-                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
               })),
             },
             {
@@ -417,8 +531,8 @@ router.get('/', async (req: any, res: any) => {
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 payoutStatus: r.payout_status, bookingPayoutStatus: r.booking_payout_status,
                 updatedAt: r.payout_updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
-                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
               })),
             },
             {
@@ -429,8 +543,8 @@ router.get('/', async (req: any, res: any) => {
                 providerUid: r.provider_id, amountILS: r.net_amount,
                 payoutStatus: r.payout_status, bookingPayoutStatus: r.booking_payout_status,
                 updatedAt: r.payout_updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
-                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
               })),
             },
             {
@@ -440,7 +554,7 @@ router.get('/', async (req: any, res: any) => {
                 bookingId: r.booking_id,
                 bookingPayoutStatus: r.booking_payout_status,
                 updatedAt: r.updated_at,
-                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+                adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
               })),
             },
             {
@@ -449,7 +563,7 @@ router.get('/', async (req: any, res: any) => {
               affectedIds: driftPayoutMissingBk.slice(0, 5).map((r: any) => ({
                 payoutId: r.payout_id, bookingId: r.booking_id,
                 payoutStatus: r.payout_status, updatedAt: r.updated_at,
-                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
+                adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
               })),
             },
             {
@@ -460,7 +574,7 @@ router.get('/', async (req: any, res: any) => {
                 bookingPayoutStatus: r.booking_payout_status,
                 payoutDate: r.payout_date,
                 updatedAt: r.updated_at,
-                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+                adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
               })),
             },
           ],
@@ -471,8 +585,8 @@ router.get('/', async (req: any, res: any) => {
             payoutId: r.id, bookingId: r.booking_id,
             providerUid: r.provider_id, amountILS: r.net_amount,
             paidAt: r.paid_at, updatedAt: r.updated_at,
-            adminPayoutUrl: `/admin/payouts/${r.id}`,
-            adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+            adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+            adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
           })),
         },
         paidOutMissingPaidAt: {
@@ -481,8 +595,8 @@ router.get('/', async (req: any, res: any) => {
             payoutId: r.id, bookingId: r.booking_id,
             providerUid: r.provider_id, amountILS: r.net_amount,
             updatedAt: r.updated_at,
-            adminPayoutUrl: `/admin/payouts/${r.id}`,
-            adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+            adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+            adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
           })),
         },
         failedWithNoReason: {
@@ -491,8 +605,8 @@ router.get('/', async (req: any, res: any) => {
             payoutId: r.id, bookingId: r.booking_id,
             providerUid: r.provider_id, amountILS: r.net_amount,
             updatedAt: r.updated_at,
-            adminPayoutUrl: `/admin/payouts/${r.id}`,
-            adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+            adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+            adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
           })),
         },
         orphanPayoutRows: {
@@ -501,7 +615,7 @@ router.get('/', async (req: any, res: any) => {
             payoutId: r.id,
             providerUid: r.provider_id, amountILS: r.net_amount,
             status: r.status, updatedAt: r.updated_at,
-            adminPayoutUrl: `/admin/payouts/${r.id}`,
+            adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
           })),
         },
         payoutDateWithoutPaidOut: {
@@ -511,61 +625,14 @@ router.get('/', async (req: any, res: any) => {
             bookingPayoutStatus: r.booking_payout_status,
             payoutDate: r.payout_date,
             updatedAt: r.updated_at,
-            adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+            adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
           })),
         },
 
-        // ── Gemini thresholds — per anomaly type with amount-aware severity ──
-        // Gemini must use these thresholds and amount weights to classify, not guess from counts.
-        geminiThresholds: {
-          stalePendingTransfer: {
-            infoIfAnyOlderThanHours:     6,
-            warningIfAnyOlderThanHours:  24,
-            criticalIfAnyOlderThanHours: 48,
-            escalateIfAnyOlderThanHours: 72,
-            escalateIfCountExceeds:      10,
-            // Amount weighting: a single large transfer stuck >24h outranks many small stale transfers
-            amountWeighting: {
-              criticalIfAnyAmountAboveILS: 5000,    // any single stale transfer >₪5000 → critical regardless of age tier
-              escalateIfTotalAmountAboveILS: 20000,  // total stale amount >₪20000 → escalate
-              smallAmountThresholdILS: 100,          // ≤₪100 rows are low-value; raise count threshold before escalating
-            },
-          },
-          bookingPayoutDrift: {
-            warningIfTotalDriftExceeds:  1,
-            criticalIfTotalDriftExceeds: 5,
-            criticalBuckets: ['pending_transfer_vs_paid_out', 'paid_out_vs_failed', 'payout_row_missing_booking'],
-            warningBuckets:  ['pending_vs_pending_transfer', 'booking_missing_payout_row', 'payout_date_mismatch'],
-            // paid_out_vs_failed is always critical regardless of amount — booking falsely shows success
-            alwaysCriticalBuckets: ['paid_out_vs_failed'],
-          },
-          paidOutMissingRef: {
-            criticalIfCountExceeds: 0,  // ANY count is critical — no financial proof of transfer
-            amountWeighting: {
-              immediateEscalateIfAnyAboveILS: 1000,  // any unprovable payout >₪1000 requires immediate escalation
-            },
-          },
-          paidOutMissingPaidAt: {
-            criticalIfCountExceeds: 0,
-          },
-          failedWithNoReason: {
-            warningIfCountExceeds:  0,
-            criticalIfCountExceeds: 5,
-            amountWeighting: {
-              criticalIfAnyAmountAboveILS: 2000,  // failed payout >₪2000 without reason → critical
-            },
-          },
-          orphanPayoutRows: {
-            warningIfCountExceeds:  0,
-            criticalIfCountExceeds: 10,
-            amountWeighting: {
-              criticalIfTotalAmountAboveILS: 5000,  // orphan rows with high total amount → critical
-            },
-          },
-          payoutDateWithoutPaidOut: {
-            criticalIfCountExceeds: 0,
-          },
-        },
+        // ── Gemini thresholds — sourced from PAYOUT_RISK_POLICY config object ──
+        // Finance/ops can adjust PAYOUT_RISK_POLICY at the top of this file without
+        // touching detection logic. Gemini must reference geminiThresholds, not raw counts.
+        geminiThresholds: PAYOUT_RISK_POLICY,
 
         // ── Advisory SQL pack (read-only queries for ops / finance) ──────────
         advisorySql: {

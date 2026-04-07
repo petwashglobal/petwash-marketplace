@@ -222,8 +222,8 @@ export class FCMService {
   }): Promise<void> {
     await this.sendToUser({
       userId: params.providerId,
-      title: 'Payout processed! 💰',
-      body: `${params.currency}${params.amount} has been transferred to your account`,
+      title: 'Payout queued 💰',
+      body: `${params.currency}${params.amount} has been released from escrow and queued for bank transfer. Funds will arrive once the transfer is confirmed.`,
       data: {
         type: 'payout',
         amount: params.amount.toString(),
