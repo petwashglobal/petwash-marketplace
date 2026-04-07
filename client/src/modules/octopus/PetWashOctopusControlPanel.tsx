@@ -1581,13 +1581,13 @@ const PayoutHealthPanel: React.FC = () => {
       )}
 
       {isError && (
-        <p className="text-xs text-slate-400">Finance monitor unavailable (admin access required)</p>
+        <p role="alert" aria-live="polite" className="text-xs text-slate-400">Finance monitor unavailable (admin access required)</p>
       )}
 
       {health && !isLoading && (
         <div className="flex gap-2 flex-wrap text-xs">
           {/* Stale pending_transfer tiers */}
-          {health.stalePendingTransfer?.tiers?.map(tier => tier.count > 0 && (
+          {health.stalePendingTransfer?.tiers?.filter(tier => tier.count > 0).map(tier => (
             <span
               key={tier.label}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[tier.severity] ?? SEVERITY_COLOR.info}`}
