@@ -613,7 +613,7 @@ class BookingLifecycleService {
 
         await db.update(bookings)
           .set({
-            payoutStatus: 'completed',
+            payoutStatus: 'paid_out',
             payoutDate: now,
             updatedAt: now,
           })

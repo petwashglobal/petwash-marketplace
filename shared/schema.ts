@@ -8256,7 +8256,7 @@ export const bookings = pgTable("bookings", {
   paymentStatus: varchar("payment_status").default("pending"),
   paymentIntentId: varchar("payment_intent_id"),
   paymentMethod: varchar("payment_method"),
-  payoutStatus: varchar("payout_status").default("pending"),
+  payoutStatus: varchar("payout_status").default("pending"), // pending | pending_transfer | paid_out | failed
   payoutDate: timestamp("payout_date"),
   subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
   platformFee: decimal("platform_fee", { precision: 12, scale: 2 }).default("0"),
@@ -8406,7 +8406,7 @@ export const superAppPayouts = pgTable("super_app_payouts", {
   currency: varchar("currency").default("ILS"),
   
   // Status and processing
-  status: varchar("status").default("pending"), // pending | in_escrow | released | processing | completed | failed
+  status: varchar("status").default("pending"), // pending | in_escrow | released | processing | pending_transfer | completed | failed
   escrowReleaseDate: timestamp("escrow_release_date"), // 72 hours after booking completion
   failureReason: text("failure_reason"),
   scheduledFor: timestamp("scheduled_for"),

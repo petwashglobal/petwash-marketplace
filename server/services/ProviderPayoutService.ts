@@ -7,8 +7,9 @@
  * Flow:
  * 1. Escrow expires after 72 hours
  * 2. Auto-release job finds expired escrows
- * 3. Process payout via Israeli bank transfer
- * 4. Update payout status to 'completed'
+ * 3. Process payout via Israeli bank transfer (integration pending)
+ * 4. Bank transfer blocked → superAppPayouts.status = 'pending_transfer' (manual ops release)
+ * 5. Bank transfer live   → superAppPayouts.status = 'completed'
  */
 
 import { db } from "../db";
@@ -56,6 +57,7 @@ export class ProviderPayoutService {
    */
   static async releaseEscrowAndPayout(payoutId: string, skipAIVerification = false): Promise<{
     success: boolean;
+    blocked?: boolean;
     error?: string;
     aiVerification?: {
       verified: boolean;
@@ -283,8 +285,28 @@ ${bookingRow}
         return {
           success: true,
         };
+      } else if (transferResult.blocked) {
+        // Bank transfer integration not yet live — queue for manual ops release.
+        // Do NOT mark as 'failed'; the money is safely held and will be released by ops.
+        await db.update(superAppPayouts)
+          .set({
+            status: 'pending_transfer',
+            updatedAt: new Date(),
+          })
+          .where(eq(superAppPayouts.id, payoutId));
+
+        logger.info('[ProviderPayout] Bank transfer blocked — queued for manual ops release (pending_transfer)', {
+          payoutId,
+          error: transferResult.error,
+        });
+
+        return {
+          success: false,
+          blocked: true,
+          error: transferResult.error,
+        };
       } else {
-        // Mark as failed
+        // Unrecoverable failure — mark as failed so ops are alerted
         await db.update(superAppPayouts)
           .set({
             status: 'failed',
@@ -316,13 +338,14 @@ ${bookingRow}
    * Process Israeli Bank Transfer
    * 
    * PRODUCTION: Integrate with Israeli bank API (Bank Hapoalim, Leumi, etc.)
-   * DEVELOPMENT: Stub implementation with simulated ACH reference
+   * INTEGRATION PENDING: Returns blocked=true until bank API is wired up.
    */
   private static async processIsraeliBankTransfer(
     payout: any,
     provider: any
   ): Promise<{
     success: boolean;
+    blocked?: boolean;
     bankTransferReference?: string;
     error?: string;
   }> {
@@ -343,27 +366,16 @@ ${bookingRow}
         currency: payout.currency,
       });
 
-      // STUB: Production would call Israeli bank API here
-      // Example integration points:
-      // - Bank Hapoalim API
-      // - Bank Leumi API
-      // - Israeli ACH network
-      // - Mizrahi-Tefahot Bank API
-      
-      const bankTransferReference = `IL_ACH_${Date.now()}_${nanoid(8).toUpperCase()}`;
-
-      logger.info('[ProviderPayout] Israeli bank transfer simulated (STUB)', {
-        bankTransferReference,
-        netAmount: payout.netAmount,
-        providerId: provider.id,
-      });
-
+      // Israeli bank transfer API is not yet integrated.
+      // Return blocked so caller sets superAppPayouts.status='pending_transfer'
+      // rather than 'completed', ensuring ops can release manually when live.
       return {
-        success: true,
-        bankTransferReference,
+        success: false,
+        blocked: true,
+        error: 'bank_transfer_integration_unavailable',
       };
 
-      // PRODUCTION CODE (commented out):
+      // PRODUCTION CODE (commented out — wire up when Israeli bank API is ready):
       /*
       const transferResult = await IsraeliBankAPI.initiateTransfer({
         accountNumber: provider.bankAccountNumber,
