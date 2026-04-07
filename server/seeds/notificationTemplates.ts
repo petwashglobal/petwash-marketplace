@@ -465,16 +465,42 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     isActive: true,
   },
 
-  // ==================== PAYOUT ISSUED ====================
+  // ==================== PAYOUT ISSUED (true paid_out path) ====================
   {
     key: 'payout_issued',
     name: 'Payout Issued – Provider Earnings',
-    description: 'Sent to the provider when a payout has been processed',
+    description: 'Sent to the provider when a payout transfer has been confirmed (paid_out state). NOT sent on blocked/pending_transfer path.',
     channels: ['push', 'in_app'],
-    pushTitle: 'Payout queued 💰',
-    pushBody: '₪{{payout.amount}} has been released from escrow and queued for bank transfer. Funds will arrive once the transfer is confirmed.',
-    inAppTitle: 'Payout queued for transfer',
-    inAppBody: '₪{{payout.amount}} queued for transfer to {{payout.bankLast4 ? "account ending " + payout.bankLast4 : "your bank account"}}. Transfer confirmation usually takes 1–3 business days.',
+    pushTitle: 'Payout transferred 💸',
+    pushBody: '₪{{payout.amount}} has been transferred to your bank account. Reference: {{payout.payoutRef}}.',
+    inAppTitle: 'Payout transferred',
+    inAppBody: '₪{{payout.amount}} transferred to {{payout.bankLast4 ? "account ending " + payout.bankLast4 : "your bank account"}}. Reference: {{payout.payoutRef}}.',
+    isActive: true,
+  },
+
+  // ==================== PAYOUT QUEUED (pending_transfer / blocked path) ====================
+  {
+    key: 'payout_queued',
+    name: 'Payout Queued for Transfer – Bank Transfer Pending',
+    description: 'Sent to the provider when payment is released from escrow but the bank transfer integration is pending (pending_transfer state). Money has NOT yet moved — do NOT say "transferred".',
+    channels: ['push', 'in_app'],
+    pushTitle: 'Payment queued for transfer ⏳',
+    pushBody: '₪{{payout.amount}} has been released from escrow and is queued for bank transfer. Funds will arrive once the transfer is confirmed (1–3 business days).',
+    inAppTitle: 'Transfer pending',
+    inAppBody: '₪{{payout.amount}} is queued for transfer to your bank account. Transfer confirmation usually takes 1–3 business days. You will be notified once it completes.',
+    isActive: true,
+  },
+
+  // ==================== PAYOUT FAILED ====================
+  {
+    key: 'payout_failed',
+    name: 'Payout Failed – Provider Earnings',
+    description: 'Sent to the provider when a payout attempt has failed. Support will follow up. Do NOT imply money moved.',
+    channels: ['push', 'in_app'],
+    pushTitle: 'Payout issue – we\'re on it ❌',
+    pushBody: 'We were unable to transfer ₪{{payout.amount}} to your account. Our support team will contact you shortly.',
+    inAppTitle: 'Payout needs attention',
+    inAppBody: 'We encountered an issue transferring ₪{{payout.amount}}. Our team is reviewing this and will be in touch. No action needed from you right now.',
     isActive: true,
   },
 ];

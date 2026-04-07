@@ -1500,9 +1500,8 @@ const LiveBookingDemoPanel: React.FC = () => {
    ----------------------------------------------------------- */
 
 type PayoutAnomalySeverity = 'info' | 'warning' | 'critical';
-interface PayoutHealthData {
-  generatedAt: string;
-  // Enriched metadata per affected row — providerUid, amount, admin URLs for direct navigation
+
+// Enriched metadata per affected row — providerUid, amount, admin URLs for direct navigation
 type AffectedPayoutId = {
   payoutId?: string;
   bookingId?: string;
@@ -1516,9 +1515,16 @@ type AffectedPayoutId = {
   updatedAt?: string | null;
   adminPayoutUrl?: string | null;
   adminBookingUrl?: string | null;
+  ownerTeam?: string;
+  platformType?: string;
+  payoutFlowType?: string;
+  isCustomerFacing?: boolean;
+  repairDetailUrl?: string;
 };
 
-stalePendingTransfer?: {
+interface PayoutHealthData {
+  generatedAt: string;
+  stalePendingTransfer?: {
     severity: PayoutAnomalySeverity;
     tiers?: Array<{ label: string; severity: string; count: number; escalationRequired?: boolean; oldestAgeHours?: number | null; affectedIds?: AffectedPayoutId[] }>;
   };

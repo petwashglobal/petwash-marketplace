@@ -210,7 +210,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           LEFT JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.status = 'pending_transfer' AND sap.updated_at < NOW() - INTERVAL '6 hours'
-          ORDER BY sap.updated_at ASC LIMIT ${limit}
+          ORDER BY sap.updated_at ASC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -225,7 +225,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           LEFT JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.status = 'pending_transfer' AND sap.updated_at < NOW() - INTERVAL '72 hours'
-          ORDER BY sap.updated_at ASC LIMIT ${limit}
+          ORDER BY sap.updated_at ASC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -240,7 +240,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           LEFT JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.status = 'pending_transfer' AND sap.updated_at < NOW() - INTERVAL '48 hours'
-          ORDER BY sap.updated_at ASC LIMIT ${limit}
+          ORDER BY sap.updated_at ASC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -255,7 +255,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           LEFT JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.status = 'pending_transfer' AND sap.updated_at < NOW() - INTERVAL '24 hours'
-          ORDER BY sap.updated_at ASC LIMIT ${limit}
+          ORDER BY sap.updated_at ASC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -269,7 +269,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.booking_id IS NOT NULL AND sap.status = 'pending_transfer' AND b.payout_status = 'pending'
-          ORDER BY sap.updated_at DESC LIMIT ${limit}
+          ORDER BY sap.updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -284,7 +284,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.booking_id IS NOT NULL AND sap.status = 'paid_out' AND b.payout_status = 'pending_transfer'
-          ORDER BY sap.updated_at DESC LIMIT ${limit}
+          ORDER BY sap.updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -298,7 +298,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           JOIN bookings b ON b.id = sap.booking_id
           WHERE sap.booking_id IS NOT NULL AND sap.status = 'failed' AND b.payout_status = 'paid_out'
-          ORDER BY sap.updated_at DESC LIMIT ${limit}
+          ORDER BY sap.updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -312,7 +312,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM bookings b
           WHERE b.payout_status IN ('pending_transfer', 'paid_out', 'failed')
             AND NOT EXISTS (SELECT 1 FROM super_app_payouts sap WHERE sap.booking_id = b.id)
-          ORDER BY b.updated_at DESC LIMIT ${limit}
+          ORDER BY b.updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -325,7 +325,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts sap
           WHERE sap.booking_id IS NOT NULL
             AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.id = sap.booking_id)
-          ORDER BY sap.updated_at DESC LIMIT ${limit}
+          ORDER BY sap.updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -338,7 +338,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
                  b.provider_id, b.provider_payout AS net_amount
           FROM bookings b
           WHERE b.payout_date IS NOT NULL AND b.payout_status IS DISTINCT FROM 'paid_out'
-          ORDER BY b.updated_at DESC LIMIT ${limit}
+          ORDER BY b.updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -350,7 +350,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts
           WHERE status = 'paid_out'
             AND (bank_transfer_reference IS NULL OR TRIM(bank_transfer_reference) = '')
-          ORDER BY updated_at DESC LIMIT ${limit}
+          ORDER BY updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -361,7 +361,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           SELECT id AS payout_id, booking_id, provider_id, net_amount, updated_at
           FROM super_app_payouts
           WHERE status = 'paid_out' AND paid_at IS NULL
-          ORDER BY updated_at DESC LIMIT ${limit}
+          ORDER BY updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -373,7 +373,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           FROM super_app_payouts
           WHERE status = 'failed'
             AND (failure_reason IS NULL OR TRIM(failure_reason) = '')
-          ORDER BY updated_at DESC LIMIT ${limit}
+          ORDER BY updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -384,7 +384,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
           SELECT id AS payout_id, provider_id, net_amount, status, created_at, updated_at
           FROM super_app_payouts
           WHERE booking_id IS NULL AND status NOT IN ('pending', 'in_escrow')
-          ORDER BY updated_at DESC LIMIT ${limit}
+          ORDER BY updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -396,7 +396,7 @@ router.get('/affected-rows', async (req: any, res: any) => {
                  provider_id, provider_payout AS net_amount
           FROM bookings
           WHERE payout_date IS NOT NULL AND payout_status IS DISTINCT FROM 'paid_out'
-          ORDER BY updated_at DESC LIMIT ${limit}
+          ORDER BY updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
@@ -407,12 +407,34 @@ router.get('/affected-rows', async (req: any, res: any) => {
           SELECT id AS payout_id, booking_id, provider_id, net_amount, status, created_at, updated_at
           FROM super_app_payouts
           WHERE status = 'completed'
-          ORDER BY updated_at DESC LIMIT ${limit}
+          ORDER BY updated_at DESC LIMIT ${limit} OFFSET ${offset}
         `);
         rows = r.rows ?? [];
         break;
       }
     }
+
+    // ── Post-query filters: dateFrom / dateTo / sortBy ─────────────────────────
+    // Applied after the switch so every anomaly type benefits identically.
+    // dateFrom/dateTo filter on updated_at (the canonical mutation timestamp for
+    // finance reconciliation windows). sortBy=amount re-orders by net_amount DESC
+    // so finance can surface highest-value anomalies first.
+    const updatedAtField = (r: any): string =>
+      String(r.updated_at ?? r.payout_updated_at ?? r.updatedAt ?? '');
+    if (dateFrom) {
+      rows = rows.filter((r) => updatedAtField(r) >= dateFrom!);
+    }
+    if (dateTo) {
+      rows = rows.filter((r) => updatedAtField(r) <= dateTo!);
+    }
+    if (sortBy === 'amount') {
+      rows = rows.slice().sort((a, b) => {
+        const aAmt = parseFloat(String(a.net_amount ?? a.amount ?? '0')) || 0;
+        const bAmt = parseFloat(String(b.net_amount ?? b.amount ?? '0')) || 0;
+        return bAmt - aAmt; // highest amount first
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     const runbookEntry = RUNBOOK[anomaly];
 
