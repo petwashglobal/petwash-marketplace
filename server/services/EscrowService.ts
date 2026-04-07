@@ -137,7 +137,7 @@ class EscrowService {
       userId: escrow.providerId,
       type: "payment",
       title: "Payment Released 💰",
-      message: `₪${providerPayout} has been released from escrow and transferred to your account.`,
+      message: `₪${providerPayout} has been released from escrow and queued for bank transfer. Funds will arrive once the transfer is confirmed.`,
       priority: "high",
       channel: "all",
       data: { 
