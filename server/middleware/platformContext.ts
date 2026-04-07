@@ -16,7 +16,10 @@ export type PlatformFeature =
   | "escrow"
   | "meet_greet"
   | "gps_tracking"
-  | "ai_verification";
+  | "ai_verification"
+  | "session_redeem"   // K9000 session/redeem engine
+  | "nayax_terminal"   // Nayax card/QR terminal integration
+  | "bay_targeting";   // bay/machine auth and targeting
 
 export interface PlatformConfig {
   id: string;
@@ -56,12 +59,16 @@ function uid(prefix = ""): string {
 }
 
 const DEFAULT_PLATFORM_FEATURES: Record<string, PlatformFeature[]> = {
+  // Booking-engine platforms
   SITTER_SUITE: ["marketplace", "bookings", "payments", "docs_verification", "search", "reviews", "chat", "escrow", "meet_greet"],
   WALK_MY_PET: ["marketplace", "bookings", "payments", "search", "reviews", "gps_tracking"],
-  PET_TREK: ["marketplace", "bookings", "payments", "search", "logistics", "gps_tracking"],
-  K9000_WASH: ["bookings", "payments", "search"],
+  // PET_TREK is frozen/coming-soon — no active features
+  PET_TREK: [],
+  // K9000 is a session/redeem engine — not a booking marketplace. Never use "bookings" here.
+  K9000_WASH: ["payments", "session_redeem", "nayax_terminal", "bay_targeting"],
   PAW_FINDER: ["marketplace", "search", "chat"],
   PLUSH_LAB: ["marketplace", "payments", "search"],
+  // Academy = pet trainers booking engine
   TRAINING: ["marketplace", "bookings", "payments", "search", "reviews"],
   GROOMING: ["marketplace", "bookings", "payments", "search", "reviews"],
   DAYCARE: ["marketplace", "bookings", "payments", "search", "reviews", "escrow"],

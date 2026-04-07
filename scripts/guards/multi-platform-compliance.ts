@@ -1,21 +1,28 @@
 /**
  * Multi-Platform Compliance Engine
- * 
- * Validates that ALL PetWash™ + Octopus™ platforms are properly integrated:
- * - PetWash™ Core
- * - PetSitter™
- * - PetTransport™
- * - PetWalk™
- * - Academy™
- * - Marketplace™
- * - Municipal Portal
- * - Franchise Portal
- * - Technician Dashboard
- * - Drivers App
- * - K9000™ Hardware Bridge
- * - Octopus™ Digital Screens
- * - EventBus Integration
- * - Payment Systems
+ *
+ * Validates that PetWash™ + Octopus™ platforms are properly integrated.
+ *
+ * PLATFORM CLASSIFICATION (source of truth — April 2026):
+ *
+ * BOOKING-ENGINE PLATFORMS:
+ *   - PetSitter™      : overnight/in-home/daycare care (provider = sitter)
+ *   - WalkMyPet™      : dog walking (provider = walker)
+ *   - PetWashAcademy™ : pet TRAINER sessions (provider = trainer)
+ *
+ * SESSION / REDEEM PLATFORM:
+ *   - K9000™ Dual Wash Bay : machine auth → session → atomic consume → ledger
+ *                            Do NOT apply booking-engine lifecycle here.
+ *
+ * FROZEN / COMING SOON:
+ *   - PetTrek™        : pet transport — pending licensing in Israel
+ *
+ * SHARED INFRASTRUCTURE:
+ *   - Octopus™ Digital Screens
+ *   - EventBus Integration
+ *   - Payment / Wallet / Ledger Systems
+ *   - Municipal Portal
+ *   - Franchise Portal
  */
 
 import * as fs from "node:fs";

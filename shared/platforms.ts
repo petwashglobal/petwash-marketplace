@@ -1,11 +1,40 @@
 /**
  * Pet Wash™ Platform Configuration
  * Unified platform definitions for the entire ecosystem
- * 
- * Architecture: One "Smart Hub" platform with modes for:
- * - diy_station: Indoor/covered smart hub
- * - outdoor_station: Outdoor K9000-style twin machine
+ *
+ * CORRECTED PLATFORM CLASSIFICATION (April 2026):
+ *
+ * BOOKING-ENGINE PLATFORMS (provider selection → availability → booking → confirm → complete → payout):
+ *   - PetSitter   : overnight/in-home/daycare care marketplace (like Mad Paws)
+ *   - HouseSitting: sub-mode of PetSitter — sitter stays at client's home
+ *   - DoggyDaycare: sub-mode of PetSitter — daytime care
+ *   - WalkMyPet   : dog walking marketplace
+ *   - Academy     : pet TRAINER booking marketplace (NOT generic course content)
+ *
+ * SESSION / REDEEM PLATFORM (entitlement validation → bay auth → session start → atomic consume → ledger):
+ *   - SmartHub (K9000 Dual Wash Bay): machine-based, self-service, walk-in + QR/Nayax/wallet/package
+ *     Do NOT apply booking-engine lifecycle to K9000.
+ *
+ * FROZEN / COMING SOON:
+ *   - PetTrek: pet transport — pending operational licensing in Israel.
+ *     Keep architecture awareness; do NOT build active flows.
+ *
+ * DIRECTORY (no direct bookings):
+ *   - TalentMarketplace: browse sitters/walkers/trainers across platforms
  */
+
+/**
+ * Engine type distinguishes operational logic at a platform level.
+ * - booking_engine      : provider → availability → booking → confirm → complete → payout
+ * - session_redeem      : entitlement/payment validation → machine auth → session → atomic consume → ledger
+ * - directory           : browse/search only, no direct booking
+ * - coming_soon         : frozen / pending licensing — no active flows
+ */
+export type PlatformEngineType =
+  | "booking_engine"
+  | "session_redeem"
+  | "directory"
+  | "coming_soon";
 
 export enum PlatformId {
   SmartHub = "SmartHub",
@@ -40,11 +69,16 @@ export interface PlatformDefinition {
   descriptionHe: string;
   modes: PlatformMode[];
   enabled: boolean;
+  /** True only for booking-engine platforms that accept provider bookings. K9000 is false. */
   bookingEnabled: boolean;
+  /** Operational engine type — must be used to select the correct lifecycle logic. */
+  engineType: PlatformEngineType;
   requiresEscrow: boolean;
   supportsLoyalty: boolean;
   supportsEGift: boolean;
   isPhysicalStation?: boolean;
+  /** True when the platform is frozen / pending licensing — no active flows allowed. */
+  comingSoon?: boolean;
   route: string;
 }
 
@@ -56,12 +90,13 @@ export const PLATFORMS: PlatformDefinition[] = [
     shortName: "Smart Hub",
     icon: "tub",
     description:
-      "Premium DIY Pet Wash Smart Hub with K9000 twin station, organic shampoo and conditioner, tea tree oil rinse, flea control, disinfect cycle and 24/7 QR + Nayax card payments.",
+      "K9000 dual wash bay — self-service, walk-in capable. Nayax QR + card terminal. Supports wallet, package, e-gift, loyalty, and coupon redemption. Session/redeem engine — not a booking marketplace.",
     descriptionHe:
-      "עמדת שטיפה חכמה DIY פרימיום עם עמדת K9000, שמפו ומרכך אורגניים, שטיפת שמן עץ התה, הדברת פרעושים, מחזור חיטוי ותשלומי QR + Nayax 24/7.",
+      "עמדת K9000 Dual Wash Bay לשטיפה עצמית, כניסה חופשית. תשלום Nayax QR + כרטיס. תומך בארנק, חבילות, כרטיסי מתנה, נאמנות וקופונים.",
     modes: ["diy_station", "outdoor_station"],
     enabled: true,
-    bookingEnabled: true,
+    bookingEnabled: false, // K9000 is a session/redeem engine — NOT a booking marketplace
+    engineType: "session_redeem",
     requiresEscrow: false,
     supportsLoyalty: true,
     supportsEGift: true,
@@ -74,11 +109,12 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "פנסיון לחיות מחמד",
     shortName: "Sitter",
     icon: "home",
-    description: "Overnight care in a loving sitter's home with PetWash Protect™ ₪25,000 guarantee.",
-    descriptionHe: "טיפול לילי בבית מארח אוהב עם ערבות Pet Wash Protect™ של ₪25,000.",
+    description: "Human-service booking marketplace for overnight and scheduled care in a loving sitter's home. Provider selection, availability, booking, confirmation, payout and refund/cancel logic. PetWash Protect™ ₪25,000 guarantee.",
+    descriptionHe: "שוק שירותי טיפול — טיפול לילי ומתוזמן בבית מארח אוהב עם ערבות Pet Wash Protect™ של ₪25,000.",
     modes: ["overnight"],
     enabled: true,
     bookingEnabled: true,
+    engineType: "booking_engine",
     requiresEscrow: true,
     supportsLoyalty: true,
     supportsEGift: true,
@@ -90,11 +126,12 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "שמרטפות בבית",
     shortName: "House Sit",
     icon: "sofa",
-    description: "Your sitter stays in your home with your pet, providing familiar comfort.",
-    descriptionHe: "המטפל נשאר בביתך עם חיית המחמד, מספק נוחות מוכרת.",
+    description: "Pet Sitter mode — sitter stays in your home with your pet, providing familiar comfort.",
+    descriptionHe: "מצב שמרטפות — המטפל נשאר בביתך עם חיית המחמד, מספק נוחות מוכרת.",
     modes: ["in_home"],
     enabled: true,
     bookingEnabled: true,
+    engineType: "booking_engine",
     requiresEscrow: true,
     supportsLoyalty: true,
     supportsEGift: true,
@@ -106,11 +143,12 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "מעון יום לכלבים",
     shortName: "Daycare",
     icon: "users",
-    description: "Daytime care while you work, with playtime and photo updates.",
-    descriptionHe: "טיפול יומי בזמן שאתה בעבודה, עם משחקים ועדכוני תמונות.",
+    description: "Pet Sitter mode — daytime care while you work, with playtime and photo updates.",
+    descriptionHe: "מצב שמרטפות — טיפול יומי בזמן שאתה בעבודה, עם משחקים ועדכוני תמונות.",
     modes: ["daycare"],
     enabled: true,
     bookingEnabled: true,
+    engineType: "booking_engine",
     requiresEscrow: true,
     supportsLoyalty: true,
     supportsEGift: true,
@@ -122,11 +160,12 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "Walk My Pet™ - טיולי כלבים",
     shortName: "Walk",
     icon: "footprints",
-    description: "30 or 60 minute walks with GPS tracking, photo updates, and potty break reports.",
-    descriptionHe: "טיולים של 30 או 60 דקות עם מעקב GPS, עדכוני תמונות ודוחות צרכים.",
+    description: "Dog walking booking marketplace. Separate from Pet Sitter — distinct provider (walker), scheduling, walk completion, payout, and refund/cancel logic. 30 or 60 minute walks with GPS tracking, photo updates, and potty break reports.",
+    descriptionHe: "שוק הזמנות ספציפי להליכת כלבים. ווקרים נפרדים מסיטרים. טיולים של 30 או 60 דקות עם מעקב GPS, עדכוני תמונות ודוחות צרכים.",
     modes: ["walk_30", "walk_60"],
     enabled: true,
     bookingEnabled: true,
+    engineType: "booking_engine",
     requiresEscrow: true,
     supportsLoyalty: true,
     supportsEGift: true,
@@ -138,14 +177,16 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "PetTrek™ - הסעות חיות מחמד",
     shortName: "PetTrek",
     icon: "car",
-    description: "Safe transportation anywhere you need with climate-controlled vehicles and GPS tracking.",
-    descriptionHe: "הסעה בטוחה לכל מקום שתצטרך עם רכבים ממוזגים ומעקב GPS.",
+    description: "Pet transport — COMING SOON. Pending operational licensing in Israel. No active flows. Architecture preserved for future implementation.",
+    descriptionHe: "הסעות חיות מחמד — בקרוב. ממתין לרישוי תפעולי בישראל. אין זרימות פעילות.",
     modes: ["transport"],
-    enabled: true,
-    bookingEnabled: true,
-    requiresEscrow: true,
-    supportsLoyalty: true,
-    supportsEGift: true,
+    enabled: false, // FROZEN — pending licensing. Do not enable without legal clearance.
+    bookingEnabled: false,
+    engineType: "coming_soon",
+    comingSoon: true,
+    requiresEscrow: false,
+    supportsLoyalty: false,
+    supportsEGift: false,
     route: "/pettrek",
   },
   {
@@ -154,11 +195,12 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "Pet Wash Academy™ - אילוף כלבים",
     shortName: "Academy",
     icon: "graduation-cap",
-    description: "Private and group training with certified trainers using positive reinforcement.",
-    descriptionHe: "אימון פרטי וקבוצתי עם מאלפים מוסמכים בגישה חיובית.",
+    description: "Pet TRAINER booking marketplace. Private and group training sessions with certified trainers using positive reinforcement. Provider (trainer) selection, availability, booking creation, confirmation, session completion, payout and refund/cancel logic.",
+    descriptionHe: "שוק הזמנות מאלפי חיות מחמד. אימון פרטי וקבוצתי עם מאלפים מוסמכים בגישה חיובית.",
     modes: ["private_training", "group_training"],
     enabled: true,
     bookingEnabled: true,
+    engineType: "booking_engine",
     requiresEscrow: true,
     supportsLoyalty: true,
     supportsEGift: true,
@@ -170,11 +212,12 @@ export const PLATFORMS: PlatformDefinition[] = [
     nameHe: "Talent Marketplace™ - מאגר אנשי מקצוע",
     shortName: "Talent",
     icon: "star",
-    description: "All sitters, walkers, drivers and trainers in one place with verified profiles.",
-    descriptionHe: "כל השמרטפים, הווקרז, הנהגים והמאמנים במקום אחד עם פרופילים מאומתים.",
+    description: "Browse sitters, walkers, and trainers across all booking-engine platforms in one place with verified profiles. Directory only — bookings are made through the individual platform.",
+    descriptionHe: "עיון בשמרטפים, ווקרים ומאלפים ממאגר אנשי מקצוע מאומתים. ספריית עיון בלבד.",
     modes: [],
     enabled: true,
     bookingEnabled: false,
+    engineType: "directory",
     requiresEscrow: false,
     supportsLoyalty: false,
     supportsEGift: false,
@@ -200,4 +243,19 @@ export const getPhysicalStations = (): PlatformDefinition[] => {
 
 export const getMarketplacePlatforms = (): PlatformDefinition[] => {
   return PLATFORMS.filter(p => p.enabled && p.bookingEnabled && p.requiresEscrow);
+};
+
+/** Returns only the active booking-engine platforms (Pet Sitter, Walk My Pet, Academy and their sub-modes). */
+export const getBookingEnginePlatforms = (): PlatformDefinition[] => {
+  return PLATFORMS.filter(p => p.enabled && p.engineType === "booking_engine");
+};
+
+/** Returns the K9000 session/redeem platforms. */
+export const getSessionRedeemPlatforms = (): PlatformDefinition[] => {
+  return PLATFORMS.filter(p => p.enabled && p.engineType === "session_redeem");
+};
+
+/** Returns platforms that are frozen / coming soon. */
+export const getComingSoonPlatforms = (): PlatformDefinition[] => {
+  return PLATFORMS.filter(p => p.engineType === "coming_soon");
 };
