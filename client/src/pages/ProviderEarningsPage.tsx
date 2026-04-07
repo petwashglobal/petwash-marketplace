@@ -109,7 +109,7 @@ function PayoutStatusPill({ status }: { status: string | null }) {
   );
 }
 
-type FilterTab = "all" | "pending" | "paid_out";
+type FilterTab = "all" | "pending" | "pending_transfer" | "paid_out" | "failed";
 
 export default function ProviderEarningsPage() {
   const { user } = useFirebaseAuth();
@@ -142,15 +142,19 @@ export default function ProviderEarningsPage() {
 
   const filteredPayouts = (earnings?.recentPayouts ?? []).filter((p) => {
     if (activeFilter === "all") return true;
-    if (activeFilter === "pending") return (p.payoutStatus ?? "pending") === "pending" || p.payoutStatus === "released";
+    if (activeFilter === "pending") return (p.payoutStatus ?? "pending") === "pending";
+    if (activeFilter === "pending_transfer") return p.payoutStatus === "pending_transfer";
     if (activeFilter === "paid_out") return p.payoutStatus === "paid_out";
+    if (activeFilter === "failed") return p.payoutStatus === "failed";
     return true;
   });
 
   const TABS: { id: FilterTab; label: string }[] = [
     { id: "all", label: "All" },
     { id: "pending", label: "Pending" },
+    { id: "pending_transfer", label: "Transfer Pending" },
     { id: "paid_out", label: "Paid Out" },
+    { id: "failed", label: "Failed" },
   ];
 
   return (
