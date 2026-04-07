@@ -629,7 +629,7 @@ export default function ProviderDashboard() {
                                       {'\u05D4\u05D5\u05E9\u05DC\u05DD:'} {formatDate(job.completedAt)}
                                     </div>
                                   )}
-                                  {/* Phase 6: Payout status badge */}
+                                  {/* Payout status badge — canonical 4-state vocabulary only */}
                                   {job.payoutStatus && (
                                     <div className="mt-1.5">
                                       {job.payoutStatus === 'paid_out' && (
@@ -642,19 +642,14 @@ export default function ProviderDashboard() {
                                           <Clock className="w-2.5 h-2.5" /> ממתין לתשלום
                                         </span>
                                       )}
-                                      {job.payoutStatus === 'released' && (
+                                      {job.payoutStatus === 'pending_transfer' && (
                                         <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-sm inline-flex items-center gap-1">
-                                          <Shield className="w-2.5 h-2.5" /> שוחרר
+                                          <TrendingUp className="w-2.5 h-2.5" /> בהעברה
                                         </span>
                                       )}
                                       {job.payoutStatus === 'failed' && (
                                         <span className="text-[10px] font-medium px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-sm inline-flex items-center gap-1">
                                           <Zap className="w-2.5 h-2.5" /> תשלום נכשל
-                                        </span>
-                                      )}
-                                      {job.payoutStatus === 'pending_transfer' && (
-                                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-sm inline-flex items-center gap-1">
-                                          <TrendingUp className="w-2.5 h-2.5" /> בהעברה
                                         </span>
                                       )}
                                     </div>
