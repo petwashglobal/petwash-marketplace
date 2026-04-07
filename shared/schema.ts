@@ -4319,7 +4319,7 @@ export const sitterBookings = pgTable("sitter_bookings", {
   nayaxTransactionId: varchar("nayax_transaction_id"), // Nayax payment transaction ID
   nayaxSplitPaymentId: varchar("nayax_split_payment_id"), // Nayax split payment reference
   paymentStatus: varchar("payment_status").default("pending"), // pending, captured, failed, refunded
-  payoutStatus: varchar("payout_status").default("pending"), // pending, completed, failed
+  payoutStatus: varchar("payout_status").default("pending"), // pending | pending_transfer | paid_out | failed
   
   // ESCROW SYSTEM (Matches Python EscrowManager - 24-hour hold)
   escrowHeldAt: timestamp("escrow_held_at"), // When funds moved to escrow
@@ -4767,6 +4767,9 @@ export const walkBookings = pgTable("walk_bookings", {
   reassignmentCount: integer("reassignment_count").default(0),     // How many times reassigned
   previousProviders: text("previous_providers").array(),           // walkerId[] already attempted
   lastReassignedAt: timestamp("last_reassigned_at"),
+
+  // Provider payout tracking (pending_transfer until Nayax transfer integration is live)
+  payoutStatus: varchar("payout_status", { length: 32 }).default("pending"), // pending | pending_transfer | paid_out | failed
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -7065,6 +7068,9 @@ export const trainerBookings = pgTable("trainer_bookings", {
   walletReleaseKey:    varchar("wallet_release_key", { length: 200 }),
   walletRefundKey:     varchar("wallet_refund_key", { length: 200 }),
   financeState:        varchar("finance_state", { length: 30 }).notNull().default("none"),
+
+  // Provider payout tracking (pending_transfer until Nayax transfer integration is live)
+  payoutStatus: varchar("payout_status", { length: 32 }).default("pending"), // pending | pending_transfer | paid_out | failed
 
   // Audit Trail
   ipAddress: varchar("ip_address"),
@@ -10633,7 +10639,7 @@ export const bookingRequests = pgTable("booking_requests", {
   // Provider payout (Phase 3 — source of truth for provider earnings)
   // providerPayoutCents = subtotalCents - serviceFeeCents (net after 15% platform commission)
   providerPayoutCents: integer("provider_payout_cents"),       // nullable until booking is confirmed
-  payoutStatus: varchar("payout_status", { length: 32 }).default("pending"), // pending | released | paid_out | failed
+  payoutStatus: varchar("payout_status", { length: 32 }).default("pending"), // pending | pending_transfer | paid_out | failed
   payoutDate: timestamp("payout_date"),                         // when funds were released to provider
 
   // Metadata

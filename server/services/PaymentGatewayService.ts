@@ -54,6 +54,7 @@ export interface UnifiedPaymentRequest {
 
 export interface UnifiedPaymentResponse {
   success: boolean;
+  blocked?: boolean;
   transactionId?: string;
   paymentIntentId?: string;
   receipt?: any;
@@ -597,19 +598,20 @@ export class PaymentGatewayService {
   // ==================== PLATFORM-SPECIFIC PROCESSORS ====================
 
   private static async processSitterPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
-    // Use NayaxSitterMarketplaceService
-    // This is simplified - in reality you'd extract booking params
+    // Nayax sitter payment collection is not yet integrated.
     return {
-      success: true,
-      transactionId: `SITTER_${nanoid(16)}`,
+      success: false,
+      blocked: true,
+      error: 'sitter_payment_integration_unavailable',
     };
   }
 
   private static async processWalkPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
-    // Use NayaxWalkMarketplaceService
+    // Nayax walk payment collection is not yet integrated.
     return {
-      success: true,
-      transactionId: `WALK_${nanoid(16)}`,
+      success: false,
+      blocked: true,
+      error: 'walk_payment_integration_unavailable',
     };
   }
 

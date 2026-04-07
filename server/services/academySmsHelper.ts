@@ -19,6 +19,7 @@ import { logger } from '../lib/logger';
 
 export type AcademySmsEvent =
   | 'confirmed'
+  | 'completed'
   | 'cancelled_release'
   | 'cancelled_refund';
 
@@ -47,12 +48,18 @@ export function buildAcademySmsCopy({
     if (event === 'confirmed') {
       return `הזמנה #${shortId} אושרה. החיוב בוצע. סכום: ₪${amountILS}.`;
     }
+    if (event === 'completed') {
+      return `שיעור #${shortId} הושלם. ₪${amountILS} יועברו לחשבונך בהקדם.`;
+    }
     return `הזמנה #${shortId} בוטלה. ההחזר יועבר לארנק תוך 24 שעות.`;
   }
 
   // Customer copy
   if (event === 'confirmed') {
     return `שיעורך עם ${trainerName} אושר! ₪${amountILS} נוכה מהארנק.`;
+  }
+  if (event === 'completed') {
+    return `שיעורך עם ${trainerName} הסתיים בהצלחה!`;
   }
   if (event === 'cancelled_release') {
     return `שיעורך בוטל. ₪${amountILS} שוחררו חזרה לארנק.`;

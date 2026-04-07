@@ -39,6 +39,7 @@ import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { dispatchNotifications, buildBookingCancelledSms } from '../services/PetWashNotificationEngine';
+import { NayaxWalkMarketplaceService } from '../services/NayaxWalkMarketplaceService';
 
 const router = Router();
 
@@ -1197,6 +1198,32 @@ router.post('/walks/:bookingId/complete', async (req, res) => {
 
     await syncChatToBookingStatus(bookingId, 'completed', 'walk_my_pet');
 
+    // Trigger walker payout (blocked stub — sets pending_transfer until Nayax transfer is live)
+    const walkerPayoutCents = Math.round(parseFloat(booking.walkerPayout) * 100);
+    const payoutResult = await NayaxWalkMarketplaceService.processWalkerPayout({
+      walkId: booking.id,
+      walkerId: booking.walkerId,
+      walkerPayoutCents,
+      walkerBankAccount: 'TBD',
+    });
+
+    const payoutStatus = (!payoutResult.success && payoutResult.blocked)
+      ? 'pending_transfer'
+      : payoutResult.success
+        ? 'paid_out'
+        : 'failed';
+
+    await db
+      .update(walkBookings)
+      .set({ payoutStatus, updatedAt: new Date() })
+      .where(eq(walkBookings.bookingId, bookingId));
+
+    logger.info('[Walk My Pet] Walk completed', {
+      bookingId,
+      payoutStatus,
+      walkerPayoutCents,
+    });
+
     // Create blockchain audit record
     const previousBlock = await db
       .select()
@@ -1654,47 +1681,64 @@ router.get('/walker/completed', requireAuth, async (req, res) => {
 // GET /api/walk-my-pet/walker/earnings — earnings summary
 router.get('/walker/earnings', requireAuth, async (req, res) => {
   try {
-    const walkerId = (req as any).user?.uid;
-    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+    const walkerUid = (req as any).user?.uid;
+    if (!walkerUid) return res.status(401).json({ error: 'Authentication required' });
 
+    // Resolve numeric walker profile for payout lookup
+    const [walkerProfile] = await db.select({ walkerId: walkerProfiles.walkerId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.userId, walkerUid))
+      .limit(1);
+
+    // walkBookings.walkerId is the Firebase UID (not the WALKER-xxx profile ID)
     const allCompleted = await db.select()
-      .from(bookingRequests)
+      .from(walkBookings)
       .where(and(
-        eq(bookingRequests.providerId, walkerId),
-        eq(bookingRequests.providerType, 'walker'),
-        sql`${bookingRequests.status} = 'completed'`
+        eq(walkBookings.walkerId, walkerUid),
+        eq(walkBookings.status, 'completed')
       ));
 
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
-
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const totalCents = allCompleted.reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
-    const weeklyCents = allCompleted
-      .filter(r => r.serviceCompletedAt && new Date(r.serviceCompletedAt) >= startOfWeek)
-      .reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
-    const monthlyCents = allCompleted
-      .filter(r => r.serviceCompletedAt && new Date(r.serviceCompletedAt) >= startOfMonth)
-      .reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
-
-    const pending = await db.select()
-      .from(bookingRequests)
+    const activeWalks = await db.select()
+      .from(walkBookings)
       .where(and(
-        eq(bookingRequests.providerId, walkerId),
-        eq(bookingRequests.providerType, 'walker'),
-        sql`${bookingRequests.status} IN ('accepted', 'in_progress')`
+        eq(walkBookings.walkerId, walkerUid),
+        sql`${walkBookings.status} IN ('confirmed', 'in_progress')`
       ));
 
-    const pendingCents = pending.reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+    // Payout-status buckets (walkerPayout is a decimal string)
+    const toCents = (w: typeof allCompleted[0]) => Math.round(parseFloat(w.walkerPayout) * 100);
+
+    const pendingTransferWalks = allCompleted.filter(w => w.payoutStatus === 'pending_transfer');
+    const paidOutWalks = allCompleted.filter(w => w.payoutStatus === 'paid_out');
+    const failedPayoutWalks = allCompleted.filter(w => w.payoutStatus === 'failed');
+
+    const totalCents = allCompleted.reduce((sum, w) => sum + toCents(w), 0);
+    const weeklyCents = allCompleted
+      .filter(w => w.actualEndTime && new Date(w.actualEndTime) >= startOfWeek)
+      .reduce((sum, w) => sum + toCents(w), 0);
+    const monthlyCents = allCompleted
+      .filter(w => w.actualEndTime && new Date(w.actualEndTime) >= startOfMonth)
+      .reduce((sum, w) => sum + toCents(w), 0);
+    const pendingCents = activeWalks.reduce((sum, w) => sum + Math.round(parseFloat(w.walkerPayout) * 100), 0);
+    const pendingTransferCents = pendingTransferWalks.reduce((sum, w) => sum + toCents(w), 0);
+    const paidOutCents = paidOutWalks.reduce((sum, w) => sum + toCents(w), 0);
+    const failedPayoutCents = failedPayoutWalks.reduce((sum, w) => sum + toCents(w), 0);
 
     res.json({
       total: totalCents / 100,
       weekly: weeklyCents / 100,
       monthly: monthlyCents / 100,
       pending: pendingCents / 100,
+      pendingTransfer: pendingTransferCents / 100,
+      paidOut: paidOutCents / 100,
+      failedPayout: failedPayoutCents / 100,
+      completedWalksAwaitingTransfer: pendingTransferWalks.length,
       currency: 'ILS',
       totalWalks: allCompleted.length,
     });

@@ -7,7 +7,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
-const PLATFORMS = ['K9000 Operator', 'Sitter Suite', 'Walk My Pet', 'PetTrek Guide', 'Academy Trainer', 'Plush Lab Groomer', 'Mobile Groomer', 'Other'];
+const PLATFORMS = ['K9000 Operator', 'Sitter Suite', 'Walk My Pet', 'Academy Trainer', 'Plush Lab Groomer', 'Mobile Groomer', 'Other'];
 const EXPERIENCE = ['Under 1 year', '1–2 years', '3–5 years', '5–10 years', '10+ years'];
 
 export default function ProviderRegistrationForm() {

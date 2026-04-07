@@ -1222,17 +1222,28 @@ router.patch('/bookings/:id/complete', async (req, res) => {
       sitterPayoutCents: netPayoutCents,
       sitterBankAccount: 'TBD',
     });
-    
-    if (!payoutResult.success) {
-      return res.status(500).json({ error: 'Payout failed' });
+
+    // Payout integration is not yet live — blocked result is expected.
+    // We record pending_transfer so ops can release manually when the integration ships.
+    const payoutStatus = (!payoutResult.success && payoutResult.blocked)
+      ? 'pending_transfer'
+      : payoutResult.success
+        ? 'paid_out'
+        : 'failed';
+
+    if (payoutStatus === 'failed' && !payoutResult.blocked) {
+      logger.error('[Sitter Suite] Payout failed (non-blocked)', {
+        bookingId: booking.bookingId,
+        error: payoutResult.error,
+      });
     }
-    
+
     // STEP 3: Update booking status
     const [updatedBooking] = await db
       .update(sitterBookings)
       .set({
         status: 'completed',
-        payoutStatus: 'completed',
+        payoutStatus,
         completedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -1470,7 +1481,7 @@ router.get('/sitter/earnings', requireAuth, async (req, res) => {
     if (!providerUid) return res.status(401).json({ error: 'Authentication required' });
 
     const [sitter] = await db.select().from(sitterProfiles).where(eq(sitterProfiles.userId, providerUid));
-    if (!sitter) return res.json({ total: 0, weekly: 0, monthly: 0, pending: 0, currency: 'ILS' });
+    if (!sitter) return res.json({ total: 0, weekly: 0, monthly: 0, pending: 0, pendingTransfer: 0, paidOut: 0, failedPayout: 0, completedBookingsAwaitingTransfer: 0, currency: 'ILS' });
 
     const allBookings = await db.select()
       .from(sitterBookings)
@@ -1483,7 +1494,12 @@ router.get('/sitter/earnings', requireAuth, async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const completed = allBookings.filter(b => b.status === 'completed');
-    const pending = allBookings.filter(b => ['confirmed', 'in_progress'].includes(b.status || ''));
+    const active = allBookings.filter(b => ['confirmed', 'in_progress'].includes(b.status || ''));
+
+    // Payout-status buckets
+    const pendingTransferBookings = completed.filter(b => b.payoutStatus === 'pending_transfer');
+    const paidOutBookings = completed.filter(b => b.payoutStatus === 'paid_out');
+    const failedPayoutBookings = completed.filter(b => b.payoutStatus === 'failed');
 
     const totalCents = completed.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
     const weeklyCents = completed
@@ -1492,13 +1508,20 @@ router.get('/sitter/earnings', requireAuth, async (req, res) => {
     const monthlyCents = completed
       .filter(b => b.completedAt && new Date(b.completedAt) >= startOfMonth)
       .reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
-    const pendingCents = pending.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const pendingCents = active.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const pendingTransferCents = pendingTransferBookings.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const paidOutCents = paidOutBookings.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const failedPayoutCents = failedPayoutBookings.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
 
     res.json({
       total: totalCents / 100,
       weekly: weeklyCents / 100,
       monthly: monthlyCents / 100,
       pending: pendingCents / 100,
+      pendingTransfer: pendingTransferCents / 100,
+      paidOut: paidOutCents / 100,
+      failedPayout: failedPayoutCents / 100,
+      completedBookingsAwaitingTransfer: pendingTransferBookings.length,
       currency: 'ILS',
       totalBookings: completed.length,
     });

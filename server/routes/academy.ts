@@ -570,6 +570,123 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
 });
 
 /**
+ * POST /api/academy/bookings/:id/complete - Mark session as done, queue trainer payout
+ * Trainer-only endpoint – only the assigned trainer may complete.
+ * Payout integration (Nayax transfer) is not yet live; sets payoutStatus='pending_transfer'
+ * so ops can release manually when the integration ships.
+ */
+router.post('/bookings/:id/complete', requireAuth, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    const [booking] = await db
+      .select()
+      .from(trainerBookings)
+      .where(eq(trainerBookings.bookingId, bookingId));
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.trainerUserId !== req.user!.uid) {
+      return res.status(403).json({ error: 'Only the assigned trainer can complete this booking' });
+    }
+    if (booking.bookingStatus !== 'confirmed') {
+      return res.status(400).json({ error: `Cannot complete booking in status: ${booking.bookingStatus}` });
+    }
+
+    // Trainer payout — Nayax transfer integration not yet live.
+    // Record pending_transfer so ops can release manually.
+    logger.info('[Academy] Trainer payout queued for manual processing (Nayax transfer integration pending)', {
+      bookingId,
+      trainerId: booking.trainerId,
+      trainerUserId: booking.trainerUserId,
+      amountILS: booking.trainerPayout,
+    });
+
+    const [completed] = await db
+      .update(trainerBookings)
+      .set({
+        bookingStatus: 'completed',
+        payoutStatus: 'pending_transfer',
+        updatedAt: new Date(),
+      })
+      .where(eq(trainerBookings.bookingId, bookingId))
+      .returning();
+
+    logger.info('[Academy] Booking completed', { bookingId, trainerId: booking.trainerId });
+
+    // fire-and-forget SMS to trainer + customer
+    dispatchAcademySms({
+      bookingId,
+      amountCents:    Math.round(parseFloat(booking.trainerPayout) * 100),
+      event:          'completed',
+      trainerUserId:  booking.trainerUserId,
+      customerUserId: booking.userId,
+    });
+
+    res.json(completed);
+  } catch (error) {
+    logger.error('[Academy] Error completing booking', error);
+    res.status(500).json({ error: 'Failed to complete booking' });
+  }
+});
+
+/**
+ * GET /api/academy/trainer/earnings — earnings summary for authenticated trainer
+ * Returns total/weekly/monthly earnings plus payout-status breakdown.
+ */
+router.get('/trainer/earnings', requireAuth, async (req, res) => {
+  try {
+    const trainerUid = req.user!.uid;
+
+    const allBookings = await db.select()
+      .from(trainerBookings)
+      .where(eq(trainerBookings.trainerUserId, trainerUid));
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const completed = allBookings.filter(b => b.bookingStatus === 'completed');
+    const active = allBookings.filter(b => b.bookingStatus === 'confirmed');
+
+    const toC = (b: typeof allBookings[0]) => Math.round(parseFloat(b.trainerPayout) * 100);
+
+    const pendingTransferBookings = completed.filter(b => b.payoutStatus === 'pending_transfer');
+    const paidOutBookings = completed.filter(b => b.payoutStatus === 'paid_out');
+    const failedPayoutBookings = completed.filter(b => b.payoutStatus === 'failed');
+
+    const totalCents = completed.reduce((sum, b) => sum + toC(b), 0);
+    const weeklyCents = completed
+      .filter(b => b.updatedAt && new Date(b.updatedAt) >= startOfWeek)
+      .reduce((sum, b) => sum + toC(b), 0);
+    const monthlyCents = completed
+      .filter(b => b.updatedAt && new Date(b.updatedAt) >= startOfMonth)
+      .reduce((sum, b) => sum + toC(b), 0);
+    const pendingCents = active.reduce((sum, b) => sum + toC(b), 0);
+    const pendingTransferCents = pendingTransferBookings.reduce((sum, b) => sum + toC(b), 0);
+    const paidOutCents = paidOutBookings.reduce((sum, b) => sum + toC(b), 0);
+    const failedPayoutCents = failedPayoutBookings.reduce((sum, b) => sum + toC(b), 0);
+
+    res.json({
+      total: totalCents / 100,
+      weekly: weeklyCents / 100,
+      monthly: monthlyCents / 100,
+      pending: pendingCents / 100,
+      pendingTransfer: pendingTransferCents / 100,
+      paidOut: paidOutCents / 100,
+      failedPayout: failedPayoutCents / 100,
+      completedSessionsAwaitingTransfer: pendingTransferBookings.length,
+      currency: 'ILS',
+      totalSessions: completed.length,
+    });
+  } catch (error) {
+    logger.error('[Academy] Error fetching trainer earnings', error);
+    res.status(500).json({ error: 'Failed to fetch trainer earnings' });
+  }
+});
+
+/**
  * POST /api/academy/trainers/register - Trainer self-registration
  * Public endpoint - trainer applies to join the platform, starts as pending
  */

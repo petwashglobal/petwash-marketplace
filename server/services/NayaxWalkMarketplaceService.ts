@@ -172,40 +172,24 @@ export class NayaxWalkMarketplaceService {
    */
   static async processWalkerPayout(params: WalkerPayoutParams): Promise<{
     success: boolean;
+    blocked?: boolean;
     payoutReference?: string;
     error?: string;
   }> {
-    try {
-      logger.info('[⁦Walk My Pet™⁩] Processing walker payout', {
-        walkId: params.walkId,
-        walkerId: params.walkerId,
-        payoutCents: params.walkerPayoutCents,
-        payoutILS: (params.walkerPayoutCents / 100).toFixed(2),
-      });
-      
-      // TODO: Integrate with Nayax payout/transfer API when API keys are provided
-      // For now, log the payout request for manual processing
-      logger.info('[⁦Walk My Pet™⁩] Walker payout queued (awaiting Nayax API keys)', {
-        walkId: params.walkId,
-        walkerId: params.walkerId,
-        amountILS: (params.walkerPayoutCents / 100).toFixed(2),
-        bankAccount: params.walkerBankAccount,
-        paymentGateway: 'Nayax Israel',
-      });
-      
-      return {
-        success: true,
-        payoutReference: `WALK_PAYOUT_${params.walkId}_${nanoid(10)}`,
-      };
-      
-    } catch (error) {
-      logger.error('[⁦Walk My Pet™⁩] Payout processing error', error);
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
+    logger.info('[Walk My Pet™] Walker payout queued for manual processing (Nayax transfer integration pending)', {
+      walkId: params.walkId,
+      walkerId: params.walkerId,
+      amountILS: (params.walkerPayoutCents / 100).toFixed(2),
+      bankAccount: params.walkerBankAccount,
+      paymentGateway: 'Nayax Israel',
+    });
+    // Nayax bank-transfer API is not yet integrated.
+    // Return blocked so callers set payoutStatus='pending_transfer' rather than 'paid_out'.
+    return {
+      success: false,
+      blocked: true,
+      error: 'walker_payout_integration_unavailable',
+    };
   }
   
   /**

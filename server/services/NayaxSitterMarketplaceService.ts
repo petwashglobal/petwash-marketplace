@@ -150,38 +150,23 @@ export class NayaxSitterMarketplaceService {
    */
   static async processSitterPayout(params: SitterPayoutParams): Promise<{
     success: boolean;
+    blocked?: boolean;
     payoutReference?: string;
     error?: string;
   }> {
-    try {
-      logger.info('[Sitter Suite] Processing sitter payout', {
-        bookingId: params.bookingId,
-        sitterId: params.sitterId,
-        payoutCents: params.sitterPayoutCents,
-      });
-      
-      // TODO: Integrate with Nayax payout/transfer API
-      // For now, log the payout request for manual processing
-      logger.info('[Sitter Suite] Sitter payout queued (manual processing)', {
-        bookingId: params.bookingId,
-        sitterId: params.sitterId,
-        amountILS: (params.sitterPayoutCents / 100).toFixed(2),
-        bankAccount: params.sitterBankAccount,
-      });
-      
-      return {
-        success: true,
-        payoutReference: `PAYOUT_${params.bookingId}_${nanoid(10)}`,
-      };
-      
-    } catch (error) {
-      logger.error('[Sitter Suite] Payout processing error', error);
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
+    logger.info('[Sitter Suite] Sitter payout queued for manual processing (Nayax transfer integration pending)', {
+      bookingId: params.bookingId,
+      sitterId: params.sitterId,
+      amountILS: (params.sitterPayoutCents / 100).toFixed(2),
+      bankAccount: params.sitterBankAccount,
+    });
+    // Nayax bank-transfer API is not yet integrated.
+    // Return blocked so callers set payoutStatus='pending_transfer' rather than 'paid_out'.
+    return {
+      success: false,
+      blocked: true,
+      error: 'sitter_payout_integration_unavailable',
+    };
   }
   
   /**
