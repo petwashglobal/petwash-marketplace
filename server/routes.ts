@@ -58,6 +58,7 @@ import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
+import payoutAnomalyMonitorRoutes from "./routes/finance/payout-anomaly-monitor";
 import adminEscrowReconciliationRoutes, { startEscrowDriftMonitor } from "./routes/admin-escrow-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
@@ -9980,6 +9981,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
   app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
   app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
+  app.use('/api/admin/finance/payout-anomaly', adminLimiter, payoutAnomalyMonitorRoutes);
   app.use('/api/admin/escrow', adminLimiter, adminEscrowReconciliationRoutes);
   
   // Thank you email route (management use)

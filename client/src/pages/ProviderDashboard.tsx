@@ -820,7 +820,7 @@ export default function ProviderDashboard() {
                                 <div className="text-left">
                                   <p className="text-sm font-semibold text-gray-900">{formatCurrency(payout.amount)}</p>
                                   <p className="text-[10px] text-gray-400 uppercase flex items-center gap-1">
-                                    {payout.payoutStatus === 'paid' ? (
+                                    {payout.payoutStatus === 'paid_out' ? (
                                       <><CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" /> {'\u05E9\u05D5\u05DC\u05DD'}</>
                                     ) : (
                                       <><Clock className="w-2.5 h-2.5 text-amber-500" /> {'\u05DE\u05DE\u05EA\u05D9\u05DF'}</>

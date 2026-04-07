@@ -60,6 +60,13 @@ const PAYOUT_CONFIG: Record<
     text: "text-blue-700",
     border: "border-blue-200",
   },
+  pending_transfer: {
+    label: "Transfer Pending",
+    icon: TrendingUp,
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-200",
+  },
   paid_out: {
     label: "Paid Out",
     icon: CheckCircle2,
