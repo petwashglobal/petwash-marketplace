@@ -96,13 +96,15 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
   // Correct field access — API returns { success, earnings: { ... } }
   const e = (earningsData as any)?.earnings;
-  const thisWeek   = e?.thisWeekEarnings  ?? null;
-  const thisMonth  = e?.thisMonthEarnings ?? null;
-  const pending    = e?.pendingPayouts    ?? null;
-  const paid       = e?.paidPayouts       ?? null;
-  const total      = e?.totalEarnings     ?? null;
-  const lastMonth  = e?.lastMonthEarnings ?? null;
-  const totalJobs  = e?.totalJobs         ?? 0;
+  const thisWeek        = e?.thisWeekEarnings        ?? null;
+  const thisMonth       = e?.thisMonthEarnings       ?? null;
+  const pending         = e?.pendingPayouts          ?? null;
+  const pendingTransfer = e?.pendingTransferPayouts  ?? null;
+  const failedPayout    = e?.failedPayouts           ?? null;
+  const paid            = e?.paidPayouts             ?? null;
+  const total           = e?.totalEarnings           ?? null;
+  const lastMonth       = e?.lastMonthEarnings       ?? null;
+  const totalJobs       = e?.totalJobs               ?? 0;
   const recentPayouts: any[] = e?.recentPayouts ?? [];
 
   const hasAnyEarnings = total !== null && total > 0;
@@ -171,6 +173,12 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
             <p className="text-xl font-bold text-gray-900">{pending !== null ? FMT_ILS(pending) : '—'}</p>
           )}
           <p className="text-xs text-gray-500">Pending (48h hold)</p>
+          {!earningsLoading && pendingTransfer !== null && pendingTransfer > 0 && (
+            <p className="text-xs text-blue-600 mt-0.5">+ {FMT_ILS(pendingTransfer)} in transfer</p>
+          )}
+          {!earningsLoading && failedPayout !== null && failedPayout > 0 && (
+            <p className="text-xs text-red-600 mt-0.5">{FMT_ILS(failedPayout)} failed</p>
+          )}
         </div>
 
         {/* Last month */}

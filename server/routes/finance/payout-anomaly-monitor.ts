@@ -331,12 +331,44 @@ router.get('/', async (req: any, res: any) => {
 
     return res.json({
       success: true,
+      generatedAt: new Date().toISOString(),
       scannedAt: new Date().toISOString(),
       overallSeverity,
       summary: {
         criticalCount,
         warningCount,
         totalDriftRows,
+      },
+
+      // ── Top-level shape consumed by Octopus PayoutHealthPanel + Gemini ──────
+      data: {
+        generatedAt: new Date().toISOString(),
+        stalePendingTransfer: {
+          severity: stale6hRows.length > 0 ? (stale48hRows.length > 0 ? 'critical' : 'warning') : 'ok',
+          tiers: [
+            { label: '>6h', severity: stale6hRows.length > 0 ? 'info' : 'ok', count: stale6hRows.length },
+            { label: '>24h', severity: stale24hRows.length > 0 ? 'warning' : 'ok', count: stale24hRows.length },
+            { label: '>48h', severity: stale48hRows.length > 0 ? 'critical' : 'ok', count: stale48hRows.length },
+            { label: '>72h', severity: stale72hRows.length > 0 ? 'critical' : 'ok', count: stale72hRows.length, escalationRequired: stale72hRows.length > 0 },
+          ],
+        },
+        bookingPayoutDrift: {
+          severity: totalDriftRows > 0 ? 'critical' : 'ok',
+          totalDriftRows,
+          buckets: [
+            { type: 'pending_vs_pending_transfer', count: driftPendingVsPT.length, severity: driftPendingVsPT.length > 0 ? 'warning' : 'ok' },
+            { type: 'pending_transfer_vs_paid_out', count: driftPTVsPaid.length, severity: driftPTVsPaid.length > 0 ? 'critical' : 'ok' },
+            { type: 'paid_out_vs_failed', count: driftPaidVsFailed.length, severity: driftPaidVsFailed.length > 0 ? 'critical' : 'ok' },
+            { type: 'booking_missing_payout_row', count: driftBkMissingPayout.length, severity: driftBkMissingPayout.length > 0 ? 'warning' : 'ok' },
+            { type: 'payout_row_missing_booking', count: driftPayoutMissingBk.length, severity: driftPayoutMissingBk.length > 0 ? 'critical' : 'ok' },
+            { type: 'payout_date_mismatch', count: driftDateMismatch.length, severity: driftDateMismatch.length > 0 ? 'critical' : 'ok' },
+          ],
+        },
+        paidOutMissingRef:      { severity: missingRef.length > 0 ? 'critical' : 'ok', count: missingRef.length },
+        paidOutMissingPaidAt:   { severity: missingDate.length > 0 ? 'critical' : 'ok', count: missingDate.length },
+        failedWithNoReason:     { severity: failedNoReas.length > 0 ? 'warning' : 'ok', count: failedNoReas.length },
+        orphanPayoutRows:       { severity: orphans.length > 0 ? 'warning' : 'ok', count: orphans.length },
+        payoutDateWithoutPaidOut: { severity: dateWithoutPaidOut.length > 0 ? 'critical' : 'ok', count: dateWithoutPaidOut.length },
       },
       alerts: {
 
@@ -458,6 +490,67 @@ router.get('/', async (req: any, res: any) => {
       distributionSummary: {
         superAppPayouts: sapDist,
         bookings:        bkDist,
+      },
+
+      // ── Ops runbook — advisory only, never auto-executed ─────────────────
+      runbook: {
+        stalePendingTransfer: {
+          meaning: 'A payout was initiated but the bank transfer has not confirmed within the expected window.',
+          likelyCauses: ['Nayax/bank integration blocked', 'provider bank details invalid', 'manual retry required'],
+          owner: 'finance-ops',
+          safePath: 'Check Nayax dashboard for transfer status. If blocked, mark failed and notify provider. Do not auto-retry.',
+          autoMutationAllowed: false,
+        },
+        bookingPayoutDrift: {
+          meaning: 'The payout_status on a booking row does not match the status on the linked super_app_payouts row.',
+          likelyCauses: ['Partial write failure', 'race condition during payout release', 'manual DB edit on one table only'],
+          owner: 'engineering + finance-ops',
+          safePath: 'Review both rows. Identify which side is authoritative. Apply manual correction via admin tool after confirmation.',
+          autoMutationAllowed: false,
+        },
+        paidOutMissingRef: {
+          meaning: 'A payout row claims success (paid_out) but has no bank_transfer_reference — financial proof of transfer is absent.',
+          likelyCauses: ['Payout service wrote paid_out before receiving transfer ref', 'integration returned success without ref', 'legacy import'],
+          owner: 'finance-ops (critical — SLA breach risk)',
+          safePath: 'Cross-reference Nayax/bank statement by booking ID and amount. Backfill reference if found. If not found, escalate to bank reconciliation team.',
+          autoMutationAllowed: false,
+        },
+        paidOutMissingPaidAt: {
+          meaning: 'A payout row claims success (paid_out) but has no paid_at timestamp — transfer time is unknown.',
+          likelyCauses: ['Service bug — wrote status without timestamp', 'legacy migration missing date'],
+          owner: 'engineering',
+          safePath: 'Check transaction logs for the booking ID to recover the actual transfer timestamp. Backfill if recoverable.',
+          autoMutationAllowed: false,
+        },
+        failedWithNoReason: {
+          meaning: 'A payout was marked failed but no failure_reason was recorded — ops cannot diagnose or retry.',
+          likelyCauses: ['Error caught but not forwarded to DB', 'partial write', 'integration returned generic failure'],
+          owner: 'engineering',
+          safePath: 'Check server logs around the failed_at timestamp. Populate failure_reason manually. Decide retry vs. provider notification.',
+          autoMutationAllowed: false,
+        },
+        orphanPayoutRows: {
+          meaning: 'super_app_payouts rows exist with no linked booking — reconciliation impossible without booking context.',
+          likelyCauses: ['Booking deleted after payout written', 'payout written with wrong booking_id', 'test data not cleaned up'],
+          owner: 'engineering + finance-ops',
+          safePath: 'Verify by provider_id and amount against booking history. Archive or link to correct booking. Do not delete without audit trail.',
+          autoMutationAllowed: false,
+        },
+        payoutDateWithoutPaidOut: {
+          meaning: 'bookings.payout_date is set but payout_status is not paid_out — data is semantically broken.',
+          likelyCauses: ['Date written optimistically before transfer confirmed', 'race condition', 'manual field edit'],
+          owner: 'engineering',
+          safePath: 'Null out payout_date if transfer not confirmed, OR update status to paid_out if transfer is confirmed. Never leave inconsistent.',
+          autoMutationAllowed: false,
+        },
+        legacyCompletedStatus: {
+          meaning: "status='completed' is the retired payout vocabulary. Canonical success state is 'paid_out'.",
+          likelyCauses: ['Pre-migration rows', 'backfill not yet run', 'legacy import path'],
+          owner: 'engineering (data migration)',
+          safePath: 'Run advisory SQL only after manual review confirms rows are genuine paid transfers. Never bulk-update without audit.',
+          backfillSql: "UPDATE super_app_payouts SET status = 'paid_out' WHERE status = 'completed'; -- advisory only",
+          autoMutationAllowed: false,
+        },
       },
     });
   } catch (error: any) {

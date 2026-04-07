@@ -1496,6 +1496,155 @@ const LiveBookingDemoPanel: React.FC = () => {
 };
 
 /* -----------------------------------------------------------
+   13. PAYOUT HEALTH PANEL (Finance / Octopus anomaly feed)
+   ----------------------------------------------------------- */
+
+type PayoutAnomalySeverity = 'info' | 'warning' | 'critical';
+interface PayoutHealthData {
+  generatedAt: string;
+  stalePendingTransfer?: {
+    severity: PayoutAnomalySeverity;
+    tiers?: Array<{ label: string; severity: string; count: number; escalationRequired?: boolean }>;
+  };
+  bookingPayoutDrift?: {
+    totalDriftRows: number;
+    buckets?: Array<{ type: string; count: number; severity: string }>;
+  };
+  paidOutMissingRef?: { severity: PayoutAnomalySeverity; count: number };
+  paidOutMissingPaidAt?: { severity: PayoutAnomalySeverity; count: number };
+  failedWithNoReason?: { severity: PayoutAnomalySeverity; count: number };
+  orphanPayoutRows?: { severity: PayoutAnomalySeverity; count: number };
+  payoutDateWithoutPaidOut?: { severity: PayoutAnomalySeverity; count: number };
+}
+
+const SEVERITY_COLOR: Record<PayoutAnomalySeverity | string, string> = {
+  info:     'border-blue-200 bg-blue-50 text-blue-700',
+  warning:  'border-amber-200 bg-amber-50 text-amber-700',
+  critical: 'border-red-200 bg-red-50 text-red-700',
+};
+
+const PayoutHealthPanel: React.FC = () => {
+  const { data, isLoading, isError } = useQuery<{ success: boolean; data: PayoutHealthData }>({
+    queryKey: ['/api/admin/finance/payout-anomaly'],
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const health = data?.data;
+
+  const criticalCount = health
+    ? [
+        health.paidOutMissingRef,
+        health.paidOutMissingPaidAt,
+        health.orphanPayoutRows,
+        health.payoutDateWithoutPaidOut,
+      ].filter(a => a && a.severity === 'critical' && a.count > 0).length +
+      (health.stalePendingTransfer?.tiers?.filter(t => t.severity === 'critical' && t.count > 0).length ?? 0)
+    : 0;
+
+  const totalDrift = health?.bookingPayoutDrift?.totalDriftRows ?? 0;
+
+  return (
+    <div
+      className={[
+        'col-span-12',
+        'border mt-4',
+        criticalCount > 0 ? 'border-red-200' : 'border-slate-200',
+        'rounded-2xl px-4 py-4',
+        criticalCount > 0 ? 'bg-red-50/40' : 'bg-white/70',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base">💸</span>
+          <span className="text-sm font-semibold text-slate-800">Payout Health Monitor</span>
+          {criticalCount > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-red-200 bg-red-100 text-red-700">
+              {criticalCount} critical
+            </span>
+          )}
+        </div>
+        {health?.generatedAt && (
+          <span className="text-[10px] text-slate-400">
+            {new Date(health.generatedAt).toLocaleTimeString('en-IL', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="flex gap-2 flex-wrap">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-8 w-28 rounded-full bg-slate-100 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <p className="text-xs text-slate-400">Finance monitor unavailable (admin access required)</p>
+      )}
+
+      {health && !isLoading && (
+        <div className="flex gap-2 flex-wrap text-xs">
+          {/* Stale pending_transfer tiers */}
+          {health.stalePendingTransfer?.tiers?.map(tier => tier.count > 0 && (
+            <span
+              key={tier.label}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[tier.severity] ?? SEVERITY_COLOR.info}`}
+            >
+              ⏳ {tier.label}: <b>{tier.count}</b>
+              {tier.escalationRequired && <span title="Escalation required">🚨</span>}
+            </span>
+          ))}
+
+          {/* Drift */}
+          {totalDrift > 0 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR.warning}`}>
+              🔀 Drift: <b>{totalDrift}</b>
+            </span>
+          )}
+
+          {/* Critical integrity checks */}
+          {health.paidOutMissingRef && health.paidOutMissingRef.count > 0 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[health.paidOutMissingRef.severity]}`}>
+              🚫 No ref: <b>{health.paidOutMissingRef.count}</b>
+            </span>
+          )}
+          {health.paidOutMissingPaidAt && health.paidOutMissingPaidAt.count > 0 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[health.paidOutMissingPaidAt.severity]}`}>
+              📅 No date: <b>{health.paidOutMissingPaidAt.count}</b>
+            </span>
+          )}
+          {health.failedWithNoReason && health.failedWithNoReason.count > 0 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[health.failedWithNoReason.severity]}`}>
+              ❌ Failed/no reason: <b>{health.failedWithNoReason.count}</b>
+            </span>
+          )}
+          {health.orphanPayoutRows && health.orphanPayoutRows.count > 0 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[health.orphanPayoutRows.severity]}`}>
+              👻 Orphan rows: <b>{health.orphanPayoutRows.count}</b>
+            </span>
+          )}
+          {health.payoutDateWithoutPaidOut && health.payoutDateWithoutPaidOut.count > 0 && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${SEVERITY_COLOR[health.payoutDateWithoutPaidOut.severity]}`}>
+              🗓️ Date/status mismatch: <b>{health.payoutDateWithoutPaidOut.count}</b>
+            </span>
+          )}
+
+          {/* All clear */}
+          {criticalCount === 0 && totalDrift === 0 &&
+           !health.paidOutMissingRef?.count && !health.orphanPayoutRows?.count && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
+              ✓ Payout integrity OK
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* -----------------------------------------------------------
    12. MAIN OCTOPUS CONTROL PANEL WRAPPER
    ----------------------------------------------------------- */
 
@@ -1583,6 +1732,7 @@ export const PetWashOctopusControlPanel: React.FC = () => {
           isLoading={metricsLoading}
         />
         <LocationDashboardPanel />
+        <PayoutHealthPanel />
         <LiveBookingDemoPanel />
       </main>
     </div>

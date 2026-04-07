@@ -87,6 +87,8 @@ interface Booking {
 interface EarningsData {
   totalEarnings: number;
   pendingPayouts: number;
+  pendingTransferPayouts: number;
+  failedPayouts: number;
   paidPayouts: number;
   thisMonthEarnings: number;
   lastMonthEarnings: number;
@@ -755,6 +757,12 @@ export default function ProviderDashboard() {
                           <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05EA\u05E9\u05DC\u05D5\u05DD'}</p>
                         </div>
                         <p className="text-2xl font-serif text-gray-900">{formatCurrency(earnings.pendingPayouts)}</p>
+                        {(earnings.pendingTransferPayouts ?? 0) > 0 && (
+                          <p className="text-xs text-blue-600 mt-1">+ {formatCurrency(earnings.pendingTransferPayouts)} {'\u05D1\u05D4\u05E2\u05D1\u05E8\u05D4 \u05DC\u05D1\u05E0\u05E7'}</p>
+                        )}
+                        {(earnings.failedPayouts ?? 0) > 0 && (
+                          <p className="text-xs text-red-600 mt-1">{formatCurrency(earnings.failedPayouts)} {'\u05E0\u05DB\u05E9\u05DC'}</p>
+                        )}
                       </div>
                     </div>
 

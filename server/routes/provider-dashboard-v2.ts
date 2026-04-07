@@ -343,7 +343,9 @@ router.get('/earnings', async (req: Request, res: Response) => {
       pool.query(
         `SELECT
           COALESCE(SUM(CASE WHEN payout_status = 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS paid_payouts_cents,
-          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_payouts_cents,
+          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND (payout_status IS NULL OR payout_status = 'pending') THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_payouts_cents,
+          COALESCE(SUM(CASE WHEN payout_status = 'pending_transfer' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_transfer_cents,
+          COALESCE(SUM(CASE WHEN payout_status = 'failed' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS failed_payouts_cents,
           COALESCE(SUM(CASE
             WHEN status IN ('completed','reviewed')
              AND service_completed_at >= date_trunc('week', NOW())
@@ -382,9 +384,11 @@ router.get('/earnings', async (req: Request, res: Response) => {
     res.json({
       success: true,
       earnings: {
-        totalEarnings:     toILS(row.total_earnings_cents),
-        paidPayouts:       toILS(row.paid_payouts_cents),
-        pendingPayouts:    toILS(row.pending_payouts_cents),
+        totalEarnings:            toILS(row.total_earnings_cents),
+        paidPayouts:              toILS(row.paid_payouts_cents),
+        pendingPayouts:           toILS(row.pending_payouts_cents),
+        pendingTransferPayouts:   toILS(row.pending_transfer_cents),
+        failedPayouts:            toILS(row.failed_payouts_cents),
         thisWeekEarnings:  toILS(row.this_week_cents),
         thisMonthEarnings: toILS(row.this_month_cents),
         lastMonthEarnings: toILS(row.last_month_cents),
@@ -425,7 +429,9 @@ router.get('/stats', async (req: Request, res: Response) => {
           COUNT(CASE WHEN status IN ('confirmed','in_progress') THEN 1 END)::int AS active,
           COUNT(CASE WHEN status IN ('cancelled','declined') THEN 1 END)::int AS cancelled,
           COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') THEN provider_payout_cents ELSE 0 END), 0)::bigint AS total_earnings_cents,
-          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_cents
+          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND (payout_status IS NULL OR payout_status = 'pending') THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_cents,
+          COALESCE(SUM(CASE WHEN payout_status = 'pending_transfer' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_transfer_cents,
+          COALESCE(SUM(CASE WHEN payout_status = 'failed' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS failed_payouts_cents
          FROM booking_requests
          WHERE provider_id = $1`,
         [user.uid],
@@ -449,8 +455,10 @@ router.get('/stats', async (req: Request, res: Response) => {
         completedBookings,
         activeBookings:    row.active     ?? 0,
         cancelledBookings: row.cancelled  ?? 0,
-        totalEarnings:     Number((Number(row.total_earnings_cents) / 100).toFixed(2)),
-        pendingPayouts:    Number((Number(row.pending_cents)        / 100).toFixed(2)),
+        totalEarnings:          Number((Number(row.total_earnings_cents)  / 100).toFixed(2)),
+        pendingPayouts:         Number((Number(row.pending_cents)          / 100).toFixed(2)),
+        pendingTransferPayouts: Number((Number(row.pending_transfer_cents) / 100).toFixed(2)),
+        failedPayouts:          Number((Number(row.failed_payouts_cents)   / 100).toFixed(2)),
         averageRating:     Math.round(avgRating * 10) / 10,
         totalReviews,
         completionRate:    totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0,
