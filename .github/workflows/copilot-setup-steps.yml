@@ -43,4 +43,6 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
+        # --legacy-peer-deps is required due to peer dependency conflicts in
+        # this repo's dependency tree (consistent with other workflow files).
         run: npm ci --legacy-peer-deps
