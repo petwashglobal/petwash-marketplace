@@ -302,6 +302,14 @@ ${bookingRow}
           })
           .where(eq(superAppPayouts.id, payoutId));
 
+        // Mirror onto booking row so booking-level dashboards stay in sync.
+        // payoutDate is intentionally null — no money has moved yet.
+        if (payout.bookingId) {
+          await db.update(bookings)
+            .set({ payoutStatus: 'pending_transfer', payoutDate: null, updatedAt: new Date() })
+            .where(eq(bookings.id, payout.bookingId));
+        }
+
         logger.info('[ProviderPayout] Bank transfer blocked — queued for manual ops release (pending_transfer)', {
           payoutId,
           error: transferResult.error,
@@ -321,6 +329,13 @@ ${bookingRow}
             updatedAt: new Date(),
           })
           .where(eq(superAppPayouts.id, payoutId));
+
+        // Mirror onto booking row — no money moved, date stays null.
+        if (payout.bookingId) {
+          await db.update(bookings)
+            .set({ payoutStatus: 'failed', payoutDate: null, updatedAt: new Date() })
+            .where(eq(bookings.id, payout.bookingId));
+        }
 
         logger.error('[ProviderPayout] Payout failed', {
           payoutId,
