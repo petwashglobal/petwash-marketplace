@@ -1,0 +1,46 @@
+name: "Copilot Setup Steps"
+
+# Run automatically when this file changes (validates setup before merging),
+# and allow manual runs from the Actions tab.
+# Copilot cloud agent will execute the copilot-setup-steps job before starting
+# work, ensuring Node.js and dependencies are available before the firewall
+# is enabled.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job name MUST be exactly `copilot-setup-steps` – GitHub uses it to
+  # identify and execute these steps before the Copilot agent begins.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    # Minimal permissions required for the setup steps only.
+    # The Copilot agent receives its own separate token for its operations.
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ===== IMPORTANT =====
+      # All tool/dependency setup MUST happen here, before Copilot's firewall
+      # is activated. Any npm install or network call made after this file
+      # completes will be subject to the agent's network restrictions.
+      # =====================
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
