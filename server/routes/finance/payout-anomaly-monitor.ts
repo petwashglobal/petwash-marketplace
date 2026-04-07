@@ -349,23 +349,47 @@ router.get('/', async (req: any, res: any) => {
             {
               label: '>6h', severity: stale6hRows.length > 0 ? 'info' : 'ok', count: stale6hRows.length,
               oldestAgeHours: stale6hRows.length > 0 ? Number(Number(stale6hRows[0].age_hours).toFixed(1)) : null,
-              affectedIds: stale6hRows.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+              affectedIds: stale6hRows.slice(0, 5).map((r: any) => ({
+                payoutId: r.id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                status: r.status, updatedAt: r.updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.id}`,
+                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+              })),
             },
             {
               label: '>24h', severity: stale24hRows.length > 0 ? 'warning' : 'ok', count: stale24hRows.length,
               oldestAgeHours: stale24hRows.length > 0 ? Number(Number(stale24hRows[0].age_hours).toFixed(1)) : null,
-              affectedIds: stale24hRows.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+              affectedIds: stale24hRows.slice(0, 5).map((r: any) => ({
+                payoutId: r.id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                status: r.status, updatedAt: r.updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.id}`,
+                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+              })),
             },
             {
               label: '>48h', severity: stale48hRows.length > 0 ? 'critical' : 'ok', count: stale48hRows.length,
               oldestAgeHours: stale48hRows.length > 0 ? Number(Number(stale48hRows[0].age_hours).toFixed(1)) : null,
-              affectedIds: stale48hRows.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+              affectedIds: stale48hRows.slice(0, 5).map((r: any) => ({
+                payoutId: r.id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                status: r.status, updatedAt: r.updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.id}`,
+                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+              })),
             },
             {
               label: '>72h', severity: stale72hRows.length > 0 ? 'critical' : 'ok', count: stale72hRows.length,
               escalationRequired: stale72hRows.length > 0,
               oldestAgeHours: stale72hRows.length > 0 ? Number(Number(stale72hRows[0].age_hours).toFixed(1)) : null,
-              affectedIds: stale72hRows.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+              affectedIds: stale72hRows.slice(0, 5).map((r: any) => ({
+                payoutId: r.id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                status: r.status, updatedAt: r.updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.id}`,
+                adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+              })),
             },
           ],
         },
@@ -376,58 +400,123 @@ router.get('/', async (req: any, res: any) => {
             {
               type: 'pending_vs_pending_transfer', count: driftPendingVsPT.length,
               severity: driftPendingVsPT.length > 0 ? 'warning' : 'ok',
-              affectedIds: driftPendingVsPT.slice(0, 5).map((r: any) => ({ payoutId: r.payout_id, bookingId: r.booking_id })),
+              affectedIds: driftPendingVsPT.slice(0, 5).map((r: any) => ({
+                payoutId: r.payout_id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                payoutStatus: r.payout_status, bookingPayoutStatus: r.booking_payout_status,
+                updatedAt: r.payout_updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
+                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+              })),
             },
             {
               type: 'pending_transfer_vs_paid_out', count: driftPTVsPaid.length,
               severity: driftPTVsPaid.length > 0 ? 'critical' : 'ok',
-              affectedIds: driftPTVsPaid.slice(0, 5).map((r: any) => ({ payoutId: r.payout_id, bookingId: r.booking_id })),
+              affectedIds: driftPTVsPaid.slice(0, 5).map((r: any) => ({
+                payoutId: r.payout_id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                payoutStatus: r.payout_status, bookingPayoutStatus: r.booking_payout_status,
+                updatedAt: r.payout_updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
+                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+              })),
             },
             {
               type: 'paid_out_vs_failed', count: driftPaidVsFailed.length,
               severity: driftPaidVsFailed.length > 0 ? 'critical' : 'ok',
-              affectedIds: driftPaidVsFailed.slice(0, 5).map((r: any) => ({ payoutId: r.payout_id, bookingId: r.booking_id })),
+              affectedIds: driftPaidVsFailed.slice(0, 5).map((r: any) => ({
+                payoutId: r.payout_id, bookingId: r.booking_id,
+                providerUid: r.provider_id, amountILS: r.net_amount,
+                payoutStatus: r.payout_status, bookingPayoutStatus: r.booking_payout_status,
+                updatedAt: r.payout_updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
+                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+              })),
             },
             {
               type: 'booking_missing_payout_row', count: driftBkMissingPayout.length,
               severity: driftBkMissingPayout.length > 0 ? 'warning' : 'ok',
-              affectedIds: driftBkMissingPayout.slice(0, 5).map((r: any) => ({ bookingId: r.booking_id })),
+              affectedIds: driftBkMissingPayout.slice(0, 5).map((r: any) => ({
+                bookingId: r.booking_id,
+                bookingPayoutStatus: r.booking_payout_status,
+                updatedAt: r.updated_at,
+                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+              })),
             },
             {
               type: 'payout_row_missing_booking', count: driftPayoutMissingBk.length,
               severity: driftPayoutMissingBk.length > 0 ? 'critical' : 'ok',
-              affectedIds: driftPayoutMissingBk.slice(0, 5).map((r: any) => ({ payoutId: r.payout_id, bookingId: r.booking_id })),
+              affectedIds: driftPayoutMissingBk.slice(0, 5).map((r: any) => ({
+                payoutId: r.payout_id, bookingId: r.booking_id,
+                payoutStatus: r.payout_status, updatedAt: r.updated_at,
+                adminPayoutUrl: `/admin/payouts/${r.payout_id}`,
+              })),
             },
             {
               type: 'payout_date_mismatch', count: driftDateMismatch.length,
               severity: driftDateMismatch.length > 0 ? 'critical' : 'ok',
-              affectedIds: driftDateMismatch.slice(0, 5).map((r: any) => ({ bookingId: r.booking_id })),
+              affectedIds: driftDateMismatch.slice(0, 5).map((r: any) => ({
+                bookingId: r.booking_id,
+                bookingPayoutStatus: r.booking_payout_status,
+                payoutDate: r.payout_date,
+                updatedAt: r.updated_at,
+                adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+              })),
             },
           ],
         },
         paidOutMissingRef: {
           severity: missingRef.length > 0 ? 'critical' : 'ok', count: missingRef.length,
-          affectedIds: missingRef.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+          affectedIds: missingRef.slice(0, 5).map((r: any) => ({
+            payoutId: r.id, bookingId: r.booking_id,
+            providerUid: r.provider_id, amountILS: r.net_amount,
+            paidAt: r.paid_at, updatedAt: r.updated_at,
+            adminPayoutUrl: `/admin/payouts/${r.id}`,
+            adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+          })),
         },
         paidOutMissingPaidAt: {
           severity: missingDate.length > 0 ? 'critical' : 'ok', count: missingDate.length,
-          affectedIds: missingDate.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+          affectedIds: missingDate.slice(0, 5).map((r: any) => ({
+            payoutId: r.id, bookingId: r.booking_id,
+            providerUid: r.provider_id, amountILS: r.net_amount,
+            updatedAt: r.updated_at,
+            adminPayoutUrl: `/admin/payouts/${r.id}`,
+            adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+          })),
         },
         failedWithNoReason: {
           severity: failedNoReas.length > 0 ? 'warning' : 'ok', count: failedNoReas.length,
-          affectedIds: failedNoReas.slice(0, 5).map((r: any) => ({ payoutId: r.id, bookingId: r.booking_id })),
+          affectedIds: failedNoReas.slice(0, 5).map((r: any) => ({
+            payoutId: r.id, bookingId: r.booking_id,
+            providerUid: r.provider_id, amountILS: r.net_amount,
+            updatedAt: r.updated_at,
+            adminPayoutUrl: `/admin/payouts/${r.id}`,
+            adminBookingUrl: r.booking_id ? `/admin/bookings/${r.booking_id}` : null,
+          })),
         },
         orphanPayoutRows: {
           severity: orphans.length > 0 ? 'warning' : 'ok', count: orphans.length,
-          affectedIds: orphans.slice(0, 5).map((r: any) => ({ payoutId: r.id })),
+          affectedIds: orphans.slice(0, 5).map((r: any) => ({
+            payoutId: r.id,
+            providerUid: r.provider_id, amountILS: r.net_amount,
+            status: r.status, updatedAt: r.updated_at,
+            adminPayoutUrl: `/admin/payouts/${r.id}`,
+          })),
         },
         payoutDateWithoutPaidOut: {
           severity: dateWithoutPaidOut.length > 0 ? 'critical' : 'ok', count: dateWithoutPaidOut.length,
-          affectedIds: dateWithoutPaidOut.slice(0, 5).map((r: any) => ({ bookingId: r.booking_id })),
+          affectedIds: dateWithoutPaidOut.slice(0, 5).map((r: any) => ({
+            bookingId: r.booking_id,
+            bookingPayoutStatus: r.booking_payout_status,
+            payoutDate: r.payout_date,
+            updatedAt: r.updated_at,
+            adminBookingUrl: `/admin/bookings/${r.booking_id}`,
+          })),
         },
 
-        // ── Gemini thresholds — per anomaly type, not only raw counts ────────
-        // Gemini must use these thresholds to classify severity, not guess from counts.
+        // ── Gemini thresholds — per anomaly type with amount-aware severity ──
+        // Gemini must use these thresholds and amount weights to classify, not guess from counts.
         geminiThresholds: {
           stalePendingTransfer: {
             infoIfAnyOlderThanHours:     6,
@@ -435,15 +524,26 @@ router.get('/', async (req: any, res: any) => {
             criticalIfAnyOlderThanHours: 48,
             escalateIfAnyOlderThanHours: 72,
             escalateIfCountExceeds:      10,
+            // Amount weighting: a single large transfer stuck >24h outranks many small stale transfers
+            amountWeighting: {
+              criticalIfAnyAmountAboveILS: 5000,    // any single stale transfer >₪5000 → critical regardless of age tier
+              escalateIfTotalAmountAboveILS: 20000,  // total stale amount >₪20000 → escalate
+              smallAmountThresholdILS: 100,          // ≤₪100 rows are low-value; raise count threshold before escalating
+            },
           },
           bookingPayoutDrift: {
             warningIfTotalDriftExceeds:  1,
             criticalIfTotalDriftExceeds: 5,
             criticalBuckets: ['pending_transfer_vs_paid_out', 'paid_out_vs_failed', 'payout_row_missing_booking'],
             warningBuckets:  ['pending_vs_pending_transfer', 'booking_missing_payout_row', 'payout_date_mismatch'],
+            // paid_out_vs_failed is always critical regardless of amount — booking falsely shows success
+            alwaysCriticalBuckets: ['paid_out_vs_failed'],
           },
           paidOutMissingRef: {
-            criticalIfCountExceeds: 0,  // any count is critical
+            criticalIfCountExceeds: 0,  // ANY count is critical — no financial proof of transfer
+            amountWeighting: {
+              immediateEscalateIfAnyAboveILS: 1000,  // any unprovable payout >₪1000 requires immediate escalation
+            },
           },
           paidOutMissingPaidAt: {
             criticalIfCountExceeds: 0,
@@ -451,10 +551,16 @@ router.get('/', async (req: any, res: any) => {
           failedWithNoReason: {
             warningIfCountExceeds:  0,
             criticalIfCountExceeds: 5,
+            amountWeighting: {
+              criticalIfAnyAmountAboveILS: 2000,  // failed payout >₪2000 without reason → critical
+            },
           },
           orphanPayoutRows: {
             warningIfCountExceeds:  0,
             criticalIfCountExceeds: 10,
+            amountWeighting: {
+              criticalIfTotalAmountAboveILS: 5000,  // orphan rows with high total amount → critical
+            },
           },
           payoutDateWithoutPaidOut: {
             criticalIfCountExceeds: 0,

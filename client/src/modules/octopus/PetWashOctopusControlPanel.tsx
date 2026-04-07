@@ -1502,19 +1502,35 @@ const LiveBookingDemoPanel: React.FC = () => {
 type PayoutAnomalySeverity = 'info' | 'warning' | 'critical';
 interface PayoutHealthData {
   generatedAt: string;
-  stalePendingTransfer?: {
+  // Enriched metadata per affected row — providerUid, amount, admin URLs for direct navigation
+type AffectedPayoutId = {
+  payoutId?: string;
+  bookingId?: string;
+  providerUid?: string | number;
+  amountILS?: string | number;
+  status?: string;
+  payoutStatus?: string;
+  bookingPayoutStatus?: string;
+  payoutDate?: string | null;
+  paidAt?: string | null;
+  updatedAt?: string | null;
+  adminPayoutUrl?: string | null;
+  adminBookingUrl?: string | null;
+};
+
+stalePendingTransfer?: {
     severity: PayoutAnomalySeverity;
-    tiers?: Array<{ label: string; severity: string; count: number; escalationRequired?: boolean; oldestAgeHours?: number | null; affectedIds?: Array<{ payoutId?: string; bookingId?: string }> }>;
+    tiers?: Array<{ label: string; severity: string; count: number; escalationRequired?: boolean; oldestAgeHours?: number | null; affectedIds?: AffectedPayoutId[] }>;
   };
   bookingPayoutDrift?: {
     totalDriftRows: number;
-    buckets?: Array<{ type: string; count: number; severity: string; affectedIds?: Array<{ payoutId?: string; bookingId?: string }> }>;
+    buckets?: Array<{ type: string; count: number; severity: string; affectedIds?: AffectedPayoutId[] }>;
   };
-  paidOutMissingRef?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: Array<{ payoutId?: string; bookingId?: string }> };
-  paidOutMissingPaidAt?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: Array<{ payoutId?: string; bookingId?: string }> };
-  failedWithNoReason?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: Array<{ payoutId?: string; bookingId?: string }> };
-  orphanPayoutRows?: { severity: PayoutAnomalySeverity; count: number };
-  payoutDateWithoutPaidOut?: { severity: PayoutAnomalySeverity; count: number };
+  paidOutMissingRef?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: AffectedPayoutId[] };
+  paidOutMissingPaidAt?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: AffectedPayoutId[] };
+  failedWithNoReason?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: AffectedPayoutId[] };
+  orphanPayoutRows?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: AffectedPayoutId[] };
+  payoutDateWithoutPaidOut?: { severity: PayoutAnomalySeverity; count: number; affectedIds?: AffectedPayoutId[] };
 }
 
 const SEVERITY_COLOR: Record<PayoutAnomalySeverity | string, string> = {
@@ -1648,33 +1664,62 @@ const PayoutHealthPanel: React.FC = () => {
           <summary className="cursor-pointer text-slate-500 hover:text-slate-700">
             Show affected IDs ({criticalCount + totalDrift} rows across anomaly buckets)
           </summary>
-          <div className="mt-1 space-y-1 max-h-36 overflow-y-auto">
+          <div className="mt-1 space-y-2 max-h-64 overflow-y-auto text-xs">
             {health.stalePendingTransfer?.tiers?.filter(t => t.count > 0 && t.affectedIds?.length).map(tier => (
               <div key={`drill-${tier.label}`} className="text-slate-600">
-                <span className="font-semibold">Stale {tier.label}:</span>{' '}
-                {tier.affectedIds!.map(id => (
-                  <span key={id.payoutId ?? id.bookingId} className="font-mono bg-slate-100 px-1 rounded mr-1">
-                    {id.payoutId ? `payout:${id.payoutId.slice(0, 8)}` : `bk:${id.bookingId?.slice(0, 8)}`}
-                  </span>
-                ))}
+                <span className="font-semibold text-slate-700">Stale {tier.label}:</span>
+                <div className="mt-0.5 space-y-0.5">
+                  {tier.affectedIds!.map(id => (
+                    <div key={id.payoutId ?? id.bookingId} className="flex items-center gap-2 flex-wrap">
+                      {id.adminPayoutUrl
+                        ? <a href={id.adminPayoutUrl} className="font-mono bg-blue-50 text-blue-700 px-1 rounded hover:underline" title="Open payout record">payout:{id.payoutId?.slice(0, 8)}</a>
+                        : id.payoutId ? <span className="font-mono bg-slate-100 px-1 rounded">payout:{id.payoutId.slice(0, 8)}</span> : null}
+                      {id.adminBookingUrl
+                        ? <a href={id.adminBookingUrl} className="font-mono bg-purple-50 text-purple-700 px-1 rounded hover:underline" title="Open booking record">bk:{id.bookingId?.slice(0, 8)}</a>
+                        : id.bookingId ? <span className="font-mono bg-slate-100 px-1 rounded">bk:{id.bookingId.slice(0, 8)}</span> : null}
+                      {id.amountILS != null && <span className="text-emerald-700 font-medium">₪{id.amountILS}</span>}
+                      {id.providerUid != null && <span className="text-slate-500">prov:{String(id.providerUid).slice(0, 6)}</span>}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
             {health.bookingPayoutDrift?.buckets?.filter(b => b.count > 0 && b.affectedIds?.length).map(bucket => (
               <div key={`drill-drift-${bucket.type}`} className="text-slate-600">
-                <span className="font-semibold">{bucket.type}:</span>{' '}
-                {bucket.affectedIds!.map(id => (
-                  <span key={id.payoutId ?? id.bookingId} className="font-mono bg-slate-100 px-1 rounded mr-1">
-                    {id.payoutId ? `payout:${id.payoutId.slice(0, 8)}` : `bk:${id.bookingId?.slice(0, 8)}`}
-                  </span>
-                ))}
+                <span className="font-semibold text-slate-700">{bucket.type}:</span>
+                <div className="mt-0.5 space-y-0.5">
+                  {bucket.affectedIds!.map(id => (
+                    <div key={(id.payoutId ?? '') + (id.bookingId ?? '')} className="flex items-center gap-2 flex-wrap">
+                      {id.adminPayoutUrl
+                        ? <a href={id.adminPayoutUrl} className="font-mono bg-blue-50 text-blue-700 px-1 rounded hover:underline">payout:{id.payoutId?.slice(0, 8)}</a>
+                        : id.payoutId ? <span className="font-mono bg-slate-100 px-1 rounded">payout:{id.payoutId.slice(0, 8)}</span> : null}
+                      {id.adminBookingUrl
+                        ? <a href={id.adminBookingUrl} className="font-mono bg-purple-50 text-purple-700 px-1 rounded hover:underline">bk:{id.bookingId?.slice(0, 8)}</a>
+                        : id.bookingId ? <span className="font-mono bg-slate-100 px-1 rounded">bk:{id.bookingId.slice(0, 8)}</span> : null}
+                      {id.amountILS != null && <span className="text-emerald-700 font-medium">₪{id.amountILS}</span>}
+                      {id.providerUid != null && <span className="text-slate-500">prov:{String(id.providerUid).slice(0, 6)}</span>}
+                      {(id.payoutStatus || id.bookingPayoutStatus) && (
+                        <span className="text-orange-600 font-mono">{id.payoutStatus ?? ''}{id.payoutStatus && id.bookingPayoutStatus ? '↔' : ''}{id.bookingPayoutStatus ?? ''}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
             {health.paidOutMissingRef && health.paidOutMissingRef.count > 0 && health.paidOutMissingRef.affectedIds?.length ? (
               <div className="text-slate-600">
-                <span className="font-semibold">Missing ref:</span>{' '}
-                {health.paidOutMissingRef.affectedIds.map(id => (
-                  <span key={id.payoutId} className="font-mono bg-slate-100 px-1 rounded mr-1">payout:{id.payoutId?.slice(0, 8)}</span>
-                ))}
+                <span className="font-semibold text-red-700">Missing bank ref:</span>
+                <div className="mt-0.5 space-y-0.5">
+                  {health.paidOutMissingRef.affectedIds.map(id => (
+                    <div key={id.payoutId} className="flex items-center gap-2 flex-wrap">
+                      {id.adminPayoutUrl
+                        ? <a href={id.adminPayoutUrl} className="font-mono bg-red-50 text-red-700 px-1 rounded hover:underline">payout:{id.payoutId?.slice(0, 8)}</a>
+                        : <span className="font-mono bg-slate-100 px-1 rounded">payout:{id.payoutId?.slice(0, 8)}</span>}
+                      {id.amountILS != null && <span className="text-emerald-700 font-medium">₪{id.amountILS}</span>}
+                      {id.paidAt && <span className="text-slate-400">{String(id.paidAt).slice(0, 10)}</span>}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>
