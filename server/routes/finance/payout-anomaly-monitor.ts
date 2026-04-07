@@ -31,100 +31,9 @@ import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
+import { PAYOUT_RISK_POLICY } from './payout-risk-policy';
 
-
-/**
- * PAYOUT_RISK_POLICY — Gemini threshold policy config.
- *
- * Intentionally separated from code logic so finance/ops can adjust risk thresholds
- * without deep code edits. Gemini and monitoring logic must reference this object, not
- * hardcode values inline.
- *
- * ownerTeam mapping:
- *   'Finance Ops'       — payout state correctness, stale transfers, missing references
- *   'Engineering'       — drift between booking/payout tables, orphan rows, legacy vocab
- *   'Finance + Eng'     — cross-domain issues requiring both teams
- *
- * payoutFlowType:
- *   'israeli_bank_transfer'  — all current payouts (Nayax-blocked, queued for ops release)
- *   'escrow_release'         — booking→escrow→provider path
- *   'direct_payout'          — future direct integration
- */
-export const PAYOUT_RISK_POLICY = {
-  stalePendingTransfer: {
-    ownerTeam: 'Finance Ops',
-    platformType: 'booking_engine',
-    payoutFlowType: 'israeli_bank_transfer',
-    isCustomerFacing: false,
-    infoIfAnyOlderThanHours:     6,
-    warningIfAnyOlderThanHours:  24,
-    criticalIfAnyOlderThanHours: 48,
-    escalateIfAnyOlderThanHours: 72,
-    escalateIfCountExceeds:      10,
-    amountWeighting: {
-      criticalIfAnyAmountAboveILS:   5000,
-      escalateIfTotalAmountAboveILS: 20000,
-      smallAmountThresholdILS:       100,
-    },
-  },
-  bookingPayoutDrift: {
-    ownerTeam: 'Finance + Eng',
-    platformType: 'booking_engine',
-    payoutFlowType: 'escrow_release',
-    isCustomerFacing: false,
-    warningIfTotalDriftExceeds:  1,
-    criticalIfTotalDriftExceeds: 5,
-    criticalBuckets:     ['pending_transfer_vs_paid_out', 'paid_out_vs_failed', 'payout_row_missing_booking'],
-    warningBuckets:      ['pending_vs_pending_transfer', 'booking_missing_payout_row', 'payout_date_mismatch'],
-    alwaysCriticalBuckets: ['paid_out_vs_failed'],
-  },
-  paidOutMissingRef: {
-    ownerTeam: 'Finance Ops',
-    platformType: 'booking_engine',
-    payoutFlowType: 'israeli_bank_transfer',
-    isCustomerFacing: false,
-    criticalIfCountExceeds: 0,
-    amountWeighting: {
-      immediateEscalateIfAnyAboveILS: 1000,
-    },
-  },
-  paidOutMissingPaidAt: {
-    ownerTeam: 'Finance Ops',
-    platformType: 'booking_engine',
-    payoutFlowType: 'israeli_bank_transfer',
-    isCustomerFacing: false,
-    criticalIfCountExceeds: 0,
-  },
-  failedWithNoReason: {
-    ownerTeam: 'Finance Ops',
-    platformType: 'booking_engine',
-    payoutFlowType: 'israeli_bank_transfer',
-    isCustomerFacing: true,
-    warningIfCountExceeds:  0,
-    criticalIfCountExceeds: 5,
-    amountWeighting: {
-      criticalIfAnyAmountAboveILS: 2000,
-    },
-  },
-  orphanPayoutRows: {
-    ownerTeam: 'Engineering',
-    platformType: 'booking_engine',
-    payoutFlowType: 'escrow_release',
-    isCustomerFacing: false,
-    warningIfCountExceeds:  0,
-    criticalIfCountExceeds: 10,
-    amountWeighting: {
-      criticalIfTotalAmountAboveILS: 5000,
-    },
-  },
-  payoutDateWithoutPaidOut: {
-    ownerTeam: 'Finance + Eng',
-    platformType: 'booking_engine',
-    payoutFlowType: 'escrow_release',
-    isCustomerFacing: false,
-    criticalIfCountExceeds: 0,
-  },
-} as const;
+export { PAYOUT_RISK_POLICY };
 
 const router = Router();
 
@@ -453,7 +362,7 @@ router.get('/', async (req: any, res: any) => {
                 platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
                 payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
                 isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
-                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_6h`,
               })),
             },
             {
@@ -469,7 +378,7 @@ router.get('/', async (req: any, res: any) => {
                 platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
                 payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
                 isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
-                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_24h`,
               })),
             },
             {
@@ -485,7 +394,7 @@ router.get('/', async (req: any, res: any) => {
                 platformType: PAYOUT_RISK_POLICY.stalePendingTransfer.platformType,
                 payoutFlowType: PAYOUT_RISK_POLICY.stalePendingTransfer.payoutFlowType,
                 isCustomerFacing: PAYOUT_RISK_POLICY.stalePendingTransfer.isCustomerFacing,
-                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_72h`,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=stale_pending_transfer_48h`,
               })),
             },
             {
@@ -521,6 +430,11 @@ router.get('/', async (req: any, res: any) => {
                 updatedAt: r.payout_updated_at,
                 adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
                 adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
+                ownerTeam: PAYOUT_RISK_POLICY.bookingPayoutDrift.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.bookingPayoutDrift.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.bookingPayoutDrift.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.bookingPayoutDrift.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=drift_pending_vs_pending_transfer`,
               })),
             },
             {
@@ -533,6 +447,11 @@ router.get('/', async (req: any, res: any) => {
                 updatedAt: r.payout_updated_at,
                 adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
                 adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
+                ownerTeam: PAYOUT_RISK_POLICY.bookingPayoutDrift.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.bookingPayoutDrift.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.bookingPayoutDrift.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.bookingPayoutDrift.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=drift_pending_transfer_vs_paid_out`,
               })),
             },
             {
@@ -545,6 +464,11 @@ router.get('/', async (req: any, res: any) => {
                 updatedAt: r.payout_updated_at,
                 adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
                 adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
+                ownerTeam: PAYOUT_RISK_POLICY.bookingPayoutDrift.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.bookingPayoutDrift.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.bookingPayoutDrift.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.bookingPayoutDrift.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=drift_paid_out_vs_failed`,
               })),
             },
             {
@@ -555,6 +479,11 @@ router.get('/', async (req: any, res: any) => {
                 bookingPayoutStatus: r.booking_payout_status,
                 updatedAt: r.updated_at,
                 adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
+                ownerTeam: PAYOUT_RISK_POLICY.bookingPayoutDrift.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.bookingPayoutDrift.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.bookingPayoutDrift.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.bookingPayoutDrift.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=drift_booking_missing_payout_row`,
               })),
             },
             {
@@ -564,6 +493,11 @@ router.get('/', async (req: any, res: any) => {
                 payoutId: r.payout_id, bookingId: r.booking_id,
                 payoutStatus: r.payout_status, updatedAt: r.updated_at,
                 adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+                ownerTeam: PAYOUT_RISK_POLICY.bookingPayoutDrift.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.bookingPayoutDrift.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.bookingPayoutDrift.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.bookingPayoutDrift.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=drift_payout_row_missing_booking`,
               })),
             },
             {
@@ -575,6 +509,11 @@ router.get('/', async (req: any, res: any) => {
                 payoutDate: r.payout_date,
                 updatedAt: r.updated_at,
                 adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
+                ownerTeam: PAYOUT_RISK_POLICY.bookingPayoutDrift.ownerTeam,
+                platformType: PAYOUT_RISK_POLICY.bookingPayoutDrift.platformType,
+                payoutFlowType: PAYOUT_RISK_POLICY.bookingPayoutDrift.payoutFlowType,
+                isCustomerFacing: PAYOUT_RISK_POLICY.bookingPayoutDrift.isCustomerFacing,
+                repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=drift_payout_date_mismatch`,
               })),
             },
           ],
@@ -587,6 +526,11 @@ router.get('/', async (req: any, res: any) => {
             paidAt: r.paid_at, updatedAt: r.updated_at,
             adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
             adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+            ownerTeam: PAYOUT_RISK_POLICY.paidOutMissingRef.ownerTeam,
+            platformType: PAYOUT_RISK_POLICY.paidOutMissingRef.platformType,
+            payoutFlowType: PAYOUT_RISK_POLICY.paidOutMissingRef.payoutFlowType,
+            isCustomerFacing: PAYOUT_RISK_POLICY.paidOutMissingRef.isCustomerFacing,
+            repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=paid_out_missing_ref`,
           })),
         },
         paidOutMissingPaidAt: {
@@ -597,6 +541,11 @@ router.get('/', async (req: any, res: any) => {
             updatedAt: r.updated_at,
             adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
             adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+            ownerTeam: PAYOUT_RISK_POLICY.paidOutMissingPaidAt.ownerTeam,
+            platformType: PAYOUT_RISK_POLICY.paidOutMissingPaidAt.platformType,
+            payoutFlowType: PAYOUT_RISK_POLICY.paidOutMissingPaidAt.payoutFlowType,
+            isCustomerFacing: PAYOUT_RISK_POLICY.paidOutMissingPaidAt.isCustomerFacing,
+            repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=paid_out_missing_paid_at`,
           })),
         },
         failedWithNoReason: {
@@ -607,6 +556,11 @@ router.get('/', async (req: any, res: any) => {
             updatedAt: r.updated_at,
             adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
             adminBookingUrl: r.booking_id ? `/admin/booking-chat/${r.booking_id}` : null,
+            ownerTeam: PAYOUT_RISK_POLICY.failedWithNoReason.ownerTeam,
+            platformType: PAYOUT_RISK_POLICY.failedWithNoReason.platformType,
+            payoutFlowType: PAYOUT_RISK_POLICY.failedWithNoReason.payoutFlowType,
+            isCustomerFacing: PAYOUT_RISK_POLICY.failedWithNoReason.isCustomerFacing,
+            repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=failed_no_reason`,
           })),
         },
         orphanPayoutRows: {
@@ -616,6 +570,11 @@ router.get('/', async (req: any, res: any) => {
             providerUid: r.provider_id, amountILS: r.net_amount,
             status: r.status, updatedAt: r.updated_at,
             adminPayoutUrl: null, /* no dedicated admin payout page yet — use repairDetailUrl */
+            ownerTeam: PAYOUT_RISK_POLICY.orphanPayoutRows.ownerTeam,
+            platformType: PAYOUT_RISK_POLICY.orphanPayoutRows.platformType,
+            payoutFlowType: PAYOUT_RISK_POLICY.orphanPayoutRows.payoutFlowType,
+            isCustomerFacing: PAYOUT_RISK_POLICY.orphanPayoutRows.isCustomerFacing,
+            repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=orphan_payout_rows`,
           })),
         },
         payoutDateWithoutPaidOut: {
@@ -626,6 +585,11 @@ router.get('/', async (req: any, res: any) => {
             payoutDate: r.payout_date,
             updatedAt: r.updated_at,
             adminBookingUrl: `/admin/booking-chat/${r.booking_id}`,
+            ownerTeam: PAYOUT_RISK_POLICY.payoutDateWithoutPaidOut.ownerTeam,
+            platformType: PAYOUT_RISK_POLICY.payoutDateWithoutPaidOut.platformType,
+            payoutFlowType: PAYOUT_RISK_POLICY.payoutDateWithoutPaidOut.payoutFlowType,
+            isCustomerFacing: PAYOUT_RISK_POLICY.payoutDateWithoutPaidOut.isCustomerFacing,
+            repairDetailUrl: `/api/admin/finance/payout-repair/affected-rows?anomaly=payout_date_without_paid_out`,
           })),
         },
 

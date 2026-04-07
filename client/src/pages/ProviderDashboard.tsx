@@ -652,6 +652,11 @@ export default function ProviderDashboard() {
                                           <Zap className="w-2.5 h-2.5" /> תשלום נכשל
                                         </span>
                                       )}
+                                      {job.payoutStatus === 'pending_transfer' && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-sm inline-flex items-center gap-1">
+                                          <TrendingUp className="w-2.5 h-2.5" /> בהעברה
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -830,6 +835,10 @@ export default function ProviderDashboard() {
                                   <p className="text-[10px] text-gray-400 uppercase flex items-center gap-1">
                                     {payout.payoutStatus === 'paid_out' ? (
                                       <><CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" /> {'\u05E9\u05D5\u05DC\u05DD'}</>
+                                    ) : payout.payoutStatus === 'pending_transfer' ? (
+                                      <><TrendingUp className="w-2.5 h-2.5 text-blue-500" /> {'\u05D1\u05D4\u05E2\u05D1\u05E8\u05D4'}</>
+                                    ) : payout.payoutStatus === 'failed' ? (
+                                      <><Zap className="w-2.5 h-2.5 text-red-500" /> {'\u05E0\u05DB\u05E9\u05DC'}</>
                                     ) : (
                                       <><Clock className="w-2.5 h-2.5 text-amber-500" /> {'\u05DE\u05DE\u05EA\u05D9\u05DF'}</>
                                     )}

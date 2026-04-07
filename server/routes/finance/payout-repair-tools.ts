@@ -39,6 +39,7 @@ import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
+import { PAYOUT_RISK_POLICY } from './payout-risk-policy';
 
 const router = Router();
 
@@ -49,6 +50,7 @@ function isAdmin(req: any): boolean {
 }
 
 const VALID_ANOMALY_TYPES = new Set([
+  'stale_pending_transfer_6h',
   'stale_pending_transfer_72h',
   'stale_pending_transfer_48h',
   'stale_pending_transfer_24h',
@@ -67,6 +69,12 @@ const VALID_ANOMALY_TYPES = new Set([
 ]);
 
 const RUNBOOK: Record<string, { meaning: string; owner: string; safePath: string; runbookAction: string }> = {
+  stale_pending_transfer_6h: {
+    meaning: 'Bank transfer has been queued for over 6 hours — early monitoring window.',
+    owner: 'Finance ops',
+    safePath: 'Check Nayax dashboard for transfer status. No action required unless count grows or transfer is large.',
+    runbookAction: 'MONITOR: Check Nayax dashboard. No action needed unless amount is large or count is growing rapidly.',
+  },
   stale_pending_transfer_72h: {
     meaning: 'Bank transfer has been queued for over 72 hours without confirmation.',
     owner: 'Finance ops',
@@ -192,6 +200,21 @@ router.get('/affected-rows', async (req: any, res: any) => {
     let description = '';
 
     switch (anomaly) {
+      case 'stale_pending_transfer_6h': {
+        description = 'pending_transfer rows older than 6 h — early monitoring window';
+        const r = await db.execute(sql`
+          SELECT sap.id AS payout_id, sap.booking_id, sap.provider_id, sap.net_amount, sap.status,
+                 sap.paid_at, sap.created_at, sap.updated_at,
+                 b.platform_id AS platform_id, b.payout_date AS payout_date,
+                 ROUND(EXTRACT(EPOCH FROM (NOW() - sap.updated_at)) / 3600, 1) AS age_hours
+          FROM super_app_payouts sap
+          LEFT JOIN bookings b ON b.id = sap.booking_id
+          WHERE sap.status = 'pending_transfer' AND sap.updated_at < NOW() - INTERVAL '6 hours'
+          ORDER BY sap.updated_at ASC LIMIT ${limit}
+        `);
+        rows = r.rows ?? [];
+        break;
+      }
       case 'stale_pending_transfer_72h': {
         description = 'pending_transfer rows older than 72 h — ops escalation required';
         const r = await db.execute(sql`
@@ -284,7 +307,8 @@ router.get('/affected-rows', async (req: any, res: any) => {
         description = 'booking has non-pending payout_status but no super_app_payouts row';
         const r = await db.execute(sql`
           SELECT b.id AS booking_id, b.payout_status AS booking_payout_status,
-                 b.payout_date, b.updated_at
+                 b.payout_date, b.updated_at,
+                 b.provider_id, b.provider_payout AS net_amount
           FROM bookings b
           WHERE b.payout_status IN ('pending_transfer', 'paid_out', 'failed')
             AND NOT EXISTS (SELECT 1 FROM super_app_payouts sap WHERE sap.booking_id = b.id)
@@ -310,7 +334,8 @@ router.get('/affected-rows', async (req: any, res: any) => {
         description = 'booking payout_date set but payout_status does not match paid_out';
         const r = await db.execute(sql`
           SELECT b.id AS booking_id, b.payout_status AS booking_payout_status,
-                 b.payout_date, b.updated_at
+                 b.payout_date, b.updated_at,
+                 b.provider_id, b.provider_payout AS net_amount
           FROM bookings b
           WHERE b.payout_date IS NOT NULL AND b.payout_status IS DISTINCT FROM 'paid_out'
           ORDER BY b.updated_at DESC LIMIT ${limit}
@@ -367,7 +392,8 @@ router.get('/affected-rows', async (req: any, res: any) => {
       case 'payout_date_without_paid_out': {
         description = 'bookings.payout_date set but payout_status != paid_out';
         const r = await db.execute(sql`
-          SELECT id AS booking_id, payout_status, payout_date, updated_at
+          SELECT id AS booking_id, payout_status, payout_date, updated_at,
+                 provider_id, provider_payout AS net_amount
           FROM bookings
           WHERE payout_date IS NOT NULL AND payout_status IS DISTINCT FROM 'paid_out'
           ORDER BY updated_at DESC LIMIT ${limit}

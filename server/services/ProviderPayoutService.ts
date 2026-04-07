@@ -19,7 +19,7 @@ import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
 import { AIPayoutVerificationService } from "./AIPayoutVerificationService";
 import { FinancialDocumentService } from "./FinancialDocumentService";
-import { dispatchNotifications, buildPayoutIssuedSms } from "./PetWashNotificationEngine";
+import { dispatchNotifications, buildPayoutIssuedSms, buildPayoutQueuedSms, buildPayoutFailedSms } from "./PetWashNotificationEngine";
 
 export class ProviderPayoutService {
   
@@ -315,6 +315,47 @@ ${bookingRow}
           error: transferResult.error,
         });
 
+        // ── Notify provider: payment is queued, not yet transferred (fire-and-forget) ──
+        // Never overstate: do NOT say money has moved — it is still held in escrow.
+        (async () => {
+          try {
+            const providerUserId: string = provider.userId;
+            const [provUser] = await db.select({ phone: users.phone })
+              .from(users).where(eq(users.id, providerUserId)).limit(1);
+
+            let bookingRef: string | null = null;
+            if (payout.bookingId) {
+              const [bk] = await db.select({ bookingNumber: bookings.bookingNumber })
+                .from(bookings).where(eq(bookings.id, payout.bookingId)).limit(1);
+              bookingRef = bk?.bookingNumber ?? null;
+            }
+
+            const netAmountStr = parseFloat(payout.netAmount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const idempotencyKey = `payout_queued:${payoutId}:${providerUserId}`;
+
+            await dispatchNotifications({
+              userId: providerUserId,
+              eventType: 'payout_issued',
+              templateKey: 'payout_queued',
+              channels: provUser?.phone ? ['sms', 'push'] : ['push'],
+              bookingId: payout.bookingId ?? undefined,
+              idempotencyKey,
+              sms: provUser?.phone ? {
+                to: provUser.phone,
+                text: buildPayoutQueuedSms({ netAmount: netAmountStr, bookingRef: bookingRef ?? undefined }),
+              } : undefined,
+              push: {
+                userId: providerUserId,
+                title: `תשלום בתהליך העברה – Pet Wash™ ⏳`,
+                body: `${netAmountStr} ₪ בתהליך העברה לחשבונך. ההעברה עדיין לא אושרה.`,
+                data: { type: 'payout_queued', payoutId },
+              },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderPayout] pending_transfer notification failed (non-fatal)', { error: notifErr?.message });
+          }
+        })();
+
         return {
           success: false,
           blocked: true,
@@ -341,6 +382,46 @@ ${bookingRow}
           payoutId,
           error: transferResult.error,
         });
+
+        // ── Notify provider: payout failed — support will follow up (fire-and-forget) ──
+        (async () => {
+          try {
+            const providerUserId: string = provider.userId;
+            const [provUser] = await db.select({ phone: users.phone })
+              .from(users).where(eq(users.id, providerUserId)).limit(1);
+
+            let bookingRef: string | null = null;
+            if (payout.bookingId) {
+              const [bk] = await db.select({ bookingNumber: bookings.bookingNumber })
+                .from(bookings).where(eq(bookings.id, payout.bookingId)).limit(1);
+              bookingRef = bk?.bookingNumber ?? null;
+            }
+
+            const netAmountStr = parseFloat(payout.netAmount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const idempotencyKey = `payout_failed:${payoutId}:${providerUserId}`;
+
+            await dispatchNotifications({
+              userId: providerUserId,
+              eventType: 'payout_issued',
+              templateKey: 'payout_failed',
+              channels: provUser?.phone ? ['sms', 'push'] : ['push'],
+              bookingId: payout.bookingId ?? undefined,
+              idempotencyKey,
+              sms: provUser?.phone ? {
+                to: provUser.phone,
+                text: buildPayoutFailedSms({ netAmount: netAmountStr, bookingRef: bookingRef ?? undefined }),
+              } : undefined,
+              push: {
+                userId: providerUserId,
+                title: `תשלום נכשל – Pet Wash™ ❌`,
+                body: `לא הצלחנו להעביר ${netAmountStr} ₪ לחשבונך. צוות התמיכה יצור איתך קשר.`,
+                data: { type: 'payout_failed', payoutId },
+              },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderPayout] failed payout notification failed (non-fatal)', { error: notifErr?.message });
+          }
+        })();
 
         return {
           success: false,

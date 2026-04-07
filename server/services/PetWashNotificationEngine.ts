@@ -428,6 +428,32 @@ export function buildPayoutIssuedSms(params: {
   );
 }
 
+export function buildPayoutQueuedSms(params: {
+  netAmount: string;
+  bookingRef?: string;
+}): string {
+  const bookingLine = params.bookingRef ? `מס' הזמנה: ${params.bookingRef}\n` : '';
+  return (
+    `PetWash™ - תשלום בתהליך העברה ⏳\n` +
+    bookingLine +
+    `סכום נטו: ${params.netAmount} ₪\n` +
+    `ההעברה עדיין לא אושרה — פרטים: https://petwash.co.il/provider/earnings`
+  );
+}
+
+export function buildPayoutFailedSms(params: {
+  netAmount: string;
+  bookingRef?: string;
+}): string {
+  const bookingLine = params.bookingRef ? `מס' הזמנה: ${params.bookingRef}\n` : '';
+  return (
+    `PetWash™ - תשלום נכשל ❌\n` +
+    bookingLine +
+    `סכום נטו: ${params.netAmount} ₪\n` +
+    `צוות התמיכה יצור איתך קשר. פרטים: https://petwash.co.il/provider/earnings`
+  );
+}
+
 export function buildRefundIssuedSms(params: {
   bookingRef: string;
   refundAmount: string;
