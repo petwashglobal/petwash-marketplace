@@ -606,6 +606,7 @@ router.post('/bookings/:id/complete', requireAuth, async (req, res) => {
       .set({
         bookingStatus: 'completed',
         payoutStatus: 'pending_transfer',
+        completedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(trainerBookings.bookingId, bookingId))
@@ -658,10 +659,10 @@ router.get('/trainer/earnings', requireAuth, async (req, res) => {
 
     const totalCents = completed.reduce((sum, b) => sum + toC(b), 0);
     const weeklyCents = completed
-      .filter(b => b.updatedAt && new Date(b.updatedAt) >= startOfWeek)
+      .filter(b => b.completedAt && new Date(b.completedAt) >= startOfWeek)
       .reduce((sum, b) => sum + toC(b), 0);
     const monthlyCents = completed
-      .filter(b => b.updatedAt && new Date(b.updatedAt) >= startOfMonth)
+      .filter(b => b.completedAt && new Date(b.completedAt) >= startOfMonth)
       .reduce((sum, b) => sum + toC(b), 0);
     const pendingCents = active.reduce((sum, b) => sum + toC(b), 0);
     const pendingTransferCents = pendingTransferBookings.reduce((sum, b) => sum + toC(b), 0);
