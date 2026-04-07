@@ -1,10 +1,17 @@
 name: "Copilot Setup Steps"
 
-# Run automatically when this file changes (validates setup before merging),
-# and allow manual runs from the Actions tab.
-# Copilot cloud agent will execute the copilot-setup-steps job before starting
-# work, ensuring Node.js and dependencies are available before the firewall
-# is enabled.
+# GitHub executes the `copilot-setup-steps` job automatically before the
+# Copilot coding agent starts work on any task in this repo.  It runs in a
+# normal, unrestricted network environment — BEFORE the agent's egress firewall
+# is activated.  Use it to pre-install everything the agent might need so no
+# package-manager or registry call is ever blocked at agent runtime.
+#
+# IMPORTANT: This file must live on the DEFAULT BRANCH (main) to take effect.
+# Changes on a feature branch are inert until merged.
+#
+# The workflow also self-validates: it re-runs whenever this file is changed
+# (push/pull_request path filter) and can be triggered manually from the
+# Actions tab.
 on:
   workflow_dispatch:
   push:
@@ -15,13 +22,13 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 
 jobs:
-  # The job name MUST be exactly `copilot-setup-steps` – GitHub uses it to
-  # identify and execute these steps before the Copilot agent begins.
+  # The job name MUST be exactly `copilot-setup-steps` — GitHub identifies
+  # and injects these steps by that exact name before the agent starts.
   copilot-setup-steps:
     runs-on: ubuntu-latest
 
-    # Minimal permissions required for the setup steps only.
-    # The Copilot agent receives its own separate token for its operations.
+    # Minimal permissions — setup steps only.  The Copilot agent receives its
+    # own separate token scoped to its actual operations.
     permissions:
       contents: read
       pull-requests: read
@@ -30,19 +37,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ===== IMPORTANT =====
-      # All tool/dependency setup MUST happen here, before Copilot's firewall
-      # is activated. Any npm install or network call made after this file
-      # completes will be subject to the agent's network restrictions.
-      # =====================
+      # ===== PRE-FIREWALL SETUP — DO ALL NETWORK WORK HERE =====
+      # Everything below runs before the Copilot agent's egress firewall is
+      # enabled.  Once the agent starts, outbound calls to npm, GitHub raw,
+      # etc. are blocked unless explicitly allow-listed.
+      # ===========================================================
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
+          # Node 20 — matches the engine target in package.json and is the
+          # same version used by petwash-ci.yml.  Pin to a major version so
+          # the Copilot environment stays consistent with CI.
           node-version: "20"
+          # Cache the npm store so repeated agent runs are fast and do not
+          # require a fresh registry download each time.
           cache: "npm"
 
       - name: Install dependencies
-        # --legacy-peer-deps is required due to peer dependency conflicts in
-        # this repo's dependency tree (consistent with other workflow files).
+        # --legacy-peer-deps is required because several packages in this
+        # repo's dependency tree have conflicting peer declarations that npm 7+
+        # rejects by default.  All other workflow files in this repo use the
+        # same flag; do not remove it.
+        #
+        # Keep this step simple: install the full workspace so the agent has
+        # everything it needs for any task (type-checking, linting, building,
+        # running tests).
+        #
+        # Do NOT add `npx playwright install` here unless a Copilot task truly
+        # requires browser tests.  Browser binaries are large (~300 MB) and
+        # only slow down every agent run for no benefit when not needed.  If a
+        # future task needs Playwright, add a dedicated step then.
         run: npm ci --legacy-peer-deps
