@@ -8406,7 +8406,7 @@ export const superAppPayouts = pgTable("super_app_payouts", {
   currency: varchar("currency").default("ILS"),
   
   // Status and processing
-  status: varchar("status").default("pending"), // pending | in_escrow | released | processing | pending_transfer | completed | failed
+  status: varchar("status").default("pending"), // pending | in_escrow | released | processing | pending_transfer | paid_out | failed
   escrowReleaseDate: timestamp("escrow_release_date"), // 72 hours after booking completion
   failureReason: text("failure_reason"),
   scheduledFor: timestamp("scheduled_for"),

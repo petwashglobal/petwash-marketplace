@@ -9,7 +9,7 @@
  * 2. Auto-release job finds expired escrows
  * 3. Process payout via Israeli bank transfer (integration pending)
  * 4. Bank transfer blocked → superAppPayouts.status = 'pending_transfer' (manual ops release)
- * 5. Bank transfer live   → superAppPayouts.status = 'completed'
+ * 5. Bank transfer live   → superAppPayouts.status = 'paid_out', bookings.payoutStatus = 'paid_out'
  */
 
 import { db } from "../db";
@@ -52,7 +52,7 @@ export class ProviderPayoutService {
 
   /**
    * Release escrow and process payout
-   * Updates status from 'in_escrow' → 'processing' → 'completed'
+   * Updates status from 'in_escrow' → 'processing' → 'paid_out' (or 'pending_transfer' when blocked)
    * MANDATORY: AI verification before payout release
    */
   static async releaseEscrowAndPayout(payoutId: string, skipAIVerification = false): Promise<{
@@ -161,17 +161,24 @@ export class ProviderPayoutService {
       const transferResult = await this.processIsraeliBankTransfer(payout, provider);
 
       if (transferResult.success) {
-        // Update status to 'completed'
+        // Update status to 'paid_out' — money actually transferred to provider
         await db.update(superAppPayouts)
           .set({
-            status: 'completed',
+            status: 'paid_out',
             bankTransferReference: transferResult.bankTransferReference,
             paidAt: new Date(),
             updatedAt: new Date(),
           })
           .where(eq(superAppPayouts.id, payoutId));
 
-        logger.info('[ProviderPayout] Payout completed', {
+        // Mirror canonical payout state onto the linked booking row
+        if (payout.bookingId) {
+          await db.update(bookings)
+            .set({ payoutStatus: 'paid_out', payoutDate: new Date(), updatedAt: new Date() })
+            .where(eq(bookings.id, payout.bookingId));
+        }
+
+        logger.info('[ProviderPayout] Payout completed — money transferred to provider', {
           payoutId,
           bankTransferReference: transferResult.bankTransferReference,
           netAmount: payout.netAmount,
