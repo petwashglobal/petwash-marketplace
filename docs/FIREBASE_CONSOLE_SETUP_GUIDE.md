@@ -68,7 +68,7 @@ http://localhost:*
 ### Verify API Key
 Test the API key is working:
 ```bash
-curl "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E"
+curl "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=YOUR_FIREBASE_API_KEY"
 ```
 
 Should return `400 INVALID_ARGUMENT` (not `403 FORBIDDEN`) - this means the key is accessible.
