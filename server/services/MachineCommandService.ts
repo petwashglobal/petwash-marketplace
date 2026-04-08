@@ -266,7 +266,34 @@ async function _sendToMachine(cmd: MachineCommand): Promise<void> {
     return;
   }
 
-  const url = `http://${cmd.machineClientIp}/api/command`;
+  // SSRF guard: machineClientIp comes from the DB (set by the k9000Security
+  // middleware from the validated ALLOWED_MACHINE_IPS allowlist), but we
+  // defensively block metadata and loopback addresses in case the DB record
+  // is ever tampered with.  K9000 machines use RFC-1918 LAN IPs — those are
+  // intentionally allowed.  Only the GCP/AWS metadata endpoints and loopback
+  // are blocked.
+  const ip = cmd.machineClientIp;
+  const BLOCKED_MACHINE_IP_PATTERNS = [
+    /^169\.254\./, // GCP/AWS instance metadata
+    /^fd00:ec2:/, // IPv6 metadata
+    /^127\./, // loopback
+    /^::1$/, // IPv6 loopback
+    /^0\.0\.0\.0$/, // wildcard
+    /^0$/, // bare 0
+  ];
+  if (BLOCKED_MACHINE_IP_PATTERNS.some((re) => re.test(ip))) {
+    logger.error('[MachineCmd] SSRF guard: blocked dangerous IP', {
+      commandId: cmd.commandId,
+      ip,
+    });
+    await db
+      .update(machineCommands)
+      .set({ status: 'failed', failedAt: new Date() })
+      .where(eq(machineCommands.id, cmd.id));
+    return;
+  }
+
+  const url = `http://${ip}/api/command`;
   try {
     const resp = await fetch(url, {
       method:  'POST',

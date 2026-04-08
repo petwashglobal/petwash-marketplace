@@ -44,22 +44,24 @@ integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistence:1.
 [userenv]
 
 [userenv.shared]
-VITE_PRODUCTION_API_URL = "https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev"
-GOOGLE_FORMS_SPREADSHEET_ID = "14mRX4qJSABg-EcfONomk-fksegYrcIF_sFaEi3Bm2ss"
-ACCOUNTING_SPREADSHEET_ID = "1dGgGUwiTI0htO0SvkzPEkXDWnjiOp8PUZRI3RDk_LJk"
-FIREBASE_PROJECT_ID = "signinpetwash"
-TWILIO_ACCOUNT_SID = "ACd21e697c18973a5ccf504ac2ee170b6e"
-TWILIO_MESSAGING_SERVICE_SID = "MG442e367c8e5c0f70cb245fbd21a6514d"
-VITE_TURNSTILE_SITE_KEY = "0x4AAAAAACwjyW7Iq8oy0C0Z"
-SUPER_ADMIN_EMAILS = "nirhadad1@gmail.com,nir.h@petwash.co.il,ido.s@petwash.co.il,idoshaka@gmail.com,idoshakarzi110@gmail.com"
-VITE_FIREBASE_APPCHECK_SITE_KEY = "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
-SUPER_ADMIN_ALERT_PHONE = "+61419773360"
-ADMIN_APPROVER_EMAIL = "nirhadad1@gmail.com"
-SUPER_ADMIN_UID = "vdiboz7IrUQEm2RbdO7VZLkBu552"
-FINANCE_AUTHORIZED_EMAILS = "nir.h@petwash.co.il,ido.s@petwash.co.il"
+# Set all of these in Replit Secrets (Tools → Secrets) — never hardcode real values here.
+# See docs/SECRETS_PLACEHOLDERS.md for the full list and where to obtain each value.
+VITE_PRODUCTION_API_URL = "https://YOUR_REPLIT_DEV_URL.replit.dev"
+GOOGLE_FORMS_SPREADSHEET_ID = "YOUR_GOOGLE_FORMS_SPREADSHEET_ID"
+ACCOUNTING_SPREADSHEET_ID = "YOUR_ACCOUNTING_SPREADSHEET_ID"
+FIREBASE_PROJECT_ID = "YOUR_FIREBASE_PROJECT_ID"
+TWILIO_ACCOUNT_SID = "YOUR_TWILIO_ACCOUNT_SID"
+TWILIO_MESSAGING_SERVICE_SID = "YOUR_TWILIO_MESSAGING_SERVICE_SID"
+VITE_TURNSTILE_SITE_KEY = "YOUR_CLOUDFLARE_TURNSTILE_SITE_KEY"
+SUPER_ADMIN_EMAILS = "admin@yourdomain.com"
+VITE_FIREBASE_APPCHECK_SITE_KEY = "YOUR_RECAPTCHA_ENTERPRISE_SITE_KEY"
+SUPER_ADMIN_ALERT_PHONE = "+COUNTRY_CODE_AND_NUMBER"
+ADMIN_APPROVER_EMAIL = "admin@yourdomain.com"
+SUPER_ADMIN_UID = "YOUR_FIREBASE_SUPER_ADMIN_UID"
+FINANCE_AUTHORIZED_EMAILS = "finance@yourdomain.com"
 
 [userenv.development]
-DEV_TEST_SECRET = "petwash-dev-test-2026-secret-internal"
+DEV_TEST_SECRET = "YOUR_DEV_TEST_SECRET"
 
 [userenv.production]
 NODE_ENV = "production"

@@ -1,19 +1,143 @@
 # Pet Wash™ Production Secrets Configuration
 
-> ⚠️ **SECURITY NOTE — Read before deploying**
+> ⚠️ **SECURITY NOTICE — read before deploying**
 >
-> All real secret values must live in environment variables only (Replit Secrets / Cloud Run Secret Manager).
-> **Never hard-code real secrets in source files, docs, or dist outputs.**
+> All real secret values must live in environment variables only
+> (Replit Secrets / GCP Secret Manager). **Never hard-code real secrets
+> in source files, docs, dist outputs, or workflow fallback values.**
 >
-> ## Known Leaked Secrets — Requires Manual Rotation
+> ## Active Secret Scanning Findings — Status After This Cleanup Pass
 >
-> | Secret | Status | Action Required |
-> |--------|--------|-----------------|
-> | Firebase Web API Key (`VITE_FIREBASE_API_KEY`) | Committed in docs + old dist bundles | Rotate key in Firebase Console → Project Settings → General → Web API Key |
-> | Twilio Account SID `ACd21e…` | In attached_assets support email transcript | Account was already suspended by Twilio. Confirm all API keys rotated and 2FA enabled per Twilio's instructions |
+> | Secret | Type | Files Cleaned | Rotation Required? |
+> |--------|------|---------------|--------------------|
+> | Twilio Account SID (`ACd21e…`) | Active credential | `.replit` replaced with placeholder | **YES — rotate in Twilio Console** |
+> | Twilio Messaging SID (`MG442e…`) | Active credential | `.replit` replaced with placeholder | **YES — rotate in Twilio Console** |
+> | Firebase Web API Key (`AIzaSyDzbXi…`) | Active credential | Removed from tracked `dist/` (1 631 files untracked) | **YES — restrict/rotate in Firebase Console** |
+> | RSA Private Key (`petwash-wallet.key` body) | Active private key | `attached_assets` transcript redacted | **YES — regenerate and re-provision the key pair** |
+> | Firebase VAPID Key (`BGkI_w5H…`) | FCM push public key | `attached_assets` transcript redacted | Recommended — regenerate in Firebase Console → Cloud Messaging |
+> | Google OAuth Client ID (`136197986889-vann…`) | OAuth public client ID | `attached_assets` transcript redacted | Recommended — restrict origins in GCP Console |
+> | reCAPTCHA Enterprise Site Key (`6LfPr3ks…`) | Site key (semi-public) | CI workflow hardcoded fallback removed | Recommended — restrict domains in GCP Console |
+> | Cloudflare Turnstile Site Key (`0x4AAAAA…`) | Site key (semi-public) | `.replit` replaced with placeholder | Optional — restrict domains in Cloudflare |
+> | Admin emails / phone / Firebase UID | PII | `.replit` replaced with placeholders | No rotation needed — values are access controls not secrets |
 >
-> The real values have been replaced with placeholders in docs and attached_assets.
-> **Do NOT close GitHub secret scanning alerts until you have confirmed rotation in the provider console.**
+> **Do NOT close any GitHub secret scanning alert until you have confirmed
+> rotation/revocation in the provider console and purged the value from
+> git history if required.**
+
+---
+
+## What Was Done In This Pass
+
+1. **`dist/` untracked** — 1 631 committed build artifacts removed from the git index.
+   `dist/` is already in `.gitignore`. Cloud Run CI rebuilds `dist/` fresh from
+   `npm run build` using VITE_* secrets injected at build time. Tracked dist files
+   are unnecessary and were leaking the Firebase API key in compiled bundles.
+
+2. **`.replit` sanitised** — All real Twilio SIDs, site keys, UIDs, emails, and phone
+   numbers replaced with `YOUR_*` placeholders.  Replit environments source secrets
+   from Replit Secrets (not from `.replit` userenv).
+
+3. **`attached_assets` scan transcript redacted** — The Replit security scan paste
+   contained two copies of `petwash-wallet.key` (RSA private key body), the Firebase
+   VAPID key, and the Google OAuth client ID.  All replaced with placeholders.
+
+4. **CI workflow hardcoded fallback removed** — `RECAPTCHA_SITE_KEY` and
+   `ACCOUNTING_SPREADSHEET_ID` were hardcoded as `ensure_secret` fallback values.
+   Changed to fail-loudly if the secret is absent from GCP Secret Manager.
+
+5. **IoT SSRF guard added** — `MachineCommandService.ts` now blocks fetches to
+   metadata IP ranges (169.254.x.x, ::1, 0.0.0.0) before sending commands to K9000
+   stations.
+
+---
+
+## Remaining Manual Actions (YOU must do outside GitHub)
+
+### 1. Twilio — **CRITICAL, do first**
+- Go to: https://console.twilio.com
+- Account → API Keys → revoke any key associated with SID `ACd21e…`
+- Create a new Account SID / Auth Token pair
+- Update `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in GCP Secret Manager
+- If `MG442e367c8e5c0f70cb245fbd21a6514d` was used for production messaging, recreate the Messaging Service
+
+### 2. Firebase API Key — **HIGH priority**
+- Go to: https://console.firebase.google.com → Project Settings → General → Web API Key
+- The key `AIzaSyDzbXi…` should be restricted to your production domain only (HTTP referrers)
+- If it was used without restrictions, rotate it (delete + recreate, update all references in GCP Secret Manager)
+
+### 3. RSA Private Key (`petwash-wallet.key`) — **CRITICAL**
+- The private key body was committed in an attached_assets paste transcript
+- This key is COMPROMISED — it must be considered public
+- Regenerate the key pair and provision the new public key wherever the old one was registered
+- Update the new private key in GCP Secret Manager (never commit to repo)
+- The `.gitignore` already blocks `*.key` files
+
+### 4. Firebase VAPID Key — recommended
+- Go to: Firebase Console → Project Settings → Cloud Messaging → Web configuration
+- Generate new VAPID key pair
+- Update `VITE_FIREBASE_VAPID_KEY` in GCP Secret Manager and redeploy
+
+### 5. Google OAuth Client ID — recommended
+- Go to: https://console.cloud.google.com/apis/credentials
+- Find the client ID `136197986889-vann…`
+- Add Authorized JavaScript origins (restrict to your domains only)
+- Consider rotating if origins were unrestricted
+
+### 6. reCAPTCHA Enterprise Site Key — recommended
+- Go to: https://console.cloud.google.com/security/recaptcha
+- Find key `6LfPr3ks…`
+- Add domain restrictions so the key only works on your production domain
+
+---
+
+## All Required Environment Variables (Placeholders)
+
+```env
+# ── Firebase ───────────────────────────────────────────────────────────────
+VITE_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN=YOUR_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID=YOUR_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET=YOUR_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID=YOUR_FIREBASE_APP_ID
+VITE_FIREBASE_MEASUREMENT_ID=YOUR_MEASUREMENT_ID
+VITE_FIREBASE_VAPID_KEY=YOUR_FIREBASE_VAPID_KEY
+VITE_FIREBASE_APPCHECK_SITE_KEY=YOUR_RECAPTCHA_ENTERPRISE_SITE_KEY
+
+# ── Twilio ─────────────────────────────────────────────────────────────────
+TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+TWILIO_MESSAGING_SERVICE_SID=YOUR_TWILIO_MESSAGING_SERVICE_SID
+TWILIO_VERIFY_SERVICE_SID=YOUR_TWILIO_VERIFY_SERVICE_SID
+
+# ── Google / GCP ──────────────────────────────────────────────────────────
+VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com
+GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY
+GOOGLE_TRANSLATE_API_KEY=YOUR_GOOGLE_TRANSLATE_API_KEY
+RECAPTCHA_SITE_KEY=YOUR_RECAPTCHA_ENTERPRISE_SITE_KEY
+ACCOUNTING_SPREADSHEET_ID=YOUR_ACCOUNTING_SPREADSHEET_ID
+GOOGLE_FORMS_SPREADSHEET_ID=YOUR_GOOGLE_FORMS_SPREADSHEET_ID
+
+# ── Cloudflare ────────────────────────────────────────────────────────────
+VITE_TURNSTILE_SITE_KEY=YOUR_CLOUDFLARE_TURNSTILE_SITE_KEY
+
+# ── SendGrid ──────────────────────────────────────────────────────────────
+SENDGRID_API_KEY=YOUR_SENDGRID_API_KEY
+
+# ── Slack ─────────────────────────────────────────────────────────────────
+ALERTS_SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+# ── Admin config (set per environment in GCP Secret Manager) ─────────────
+SUPER_ADMIN_EMAILS=admin@yourdomain.com
+SUPER_ADMIN_UID=YOUR_FIREBASE_SUPER_ADMIN_UID
+ADMIN_APPROVER_EMAIL=admin@yourdomain.com
+FINANCE_AUTHORIZED_EMAILS=finance@yourdomain.com
+```
+
+---
+
+**Last Updated**: 2026-04-08 — security hardening pass  
+**Maintained By**: Pet Wash™ DevOps Team
 
 This document lists all required and optional environment variables for production deployment. Add these secrets in the **Replit Secrets panel** (🔒 icon in left sidebar).
 
