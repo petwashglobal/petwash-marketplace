@@ -13,7 +13,8 @@ router.get('/synthetic/auth-check', async (req: Request, res: Response) => {
   try {
     const webauthnStart = Date.now();
     try {
-      const response = await fetch(`${req.protocol}://${req.get('host')}/api/auth/webauthn/login/options`, {
+      const port = process.env.PORT || '5000';
+      const response = await fetch(`http://127.0.0.1:${port}/api/auth/webauthn/login/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'synthetic-check@petwash.co.il' })

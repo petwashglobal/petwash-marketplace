@@ -14201,7 +14201,7 @@ router.post('/admin/wallet/approval-workload/rebalance-preview', async (req: Req
   try {
     const { requestId, targetApproverUid } = req.body;
     if (!requestId || !targetApproverUid) return res.status(400).json({ error: 'requestId and targetApproverUid required' });
-    const reqRow = await pool.query(`SELECT * FROM approval_requests WHERE id = ${parseInt(requestId, 10)}`);
+    const reqRow = await pool.query('SELECT * FROM approval_requests WHERE id = $1', [parseInt(requestId, 10)]);
     if (!reqRow.rows.length) return res.status(404).json({ error: 'Approval request not found' });
     const r = reqRow.rows[0];
     const ageHours = ((Date.now() - new Date(r.created_at).getTime()) / 3600000).toFixed(1);
@@ -14351,15 +14351,16 @@ router.get('/admin/wallet/operating-review-pack', async (req: Request, res: Resp
     if (cached.rows.length) return res.json({ ok: true, cached: true, pack: cached.rows[0].pack_json, signature: cached.rows[0].signature, generatedAt: cached.rows[0].generated_at });
 
     // Assemble pack from live data
+    const monthStart = `${month}-01`;
     const [closeRow, settlementRow, payoutRow, bottleneckRow, deliveryRow, scenarioRow, anomalyRow, recScoreRow] = await Promise.all([
-      pool.query(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'closed') AS closed FROM finance_close_periods WHERE period_key LIKE '${month}%'`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total, SUM(net_amount_cents) AS total_net FROM wallet_transactions WHERE transaction_type = 'settlement' AND created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'released') AS released FROM payout_batches WHERE created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours') AS stuck FROM approval_requests`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total, SUM(delivered_count) AS delivered, SUM(failed_count) AS failed FROM governance_delivery_analytics WHERE sent_at >= '${month}-01' AND sent_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS gold, COUNT(*) FILTER (WHERE quality_rank = 'silver') AS silver FROM scenario_quality_scores WHERE quality_rank IN ('gold', 'silver')`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total FROM anomaly_clusters`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT AVG(confidence_score) AS avg_conf FROM recommendation_scores WHERE created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'closed') AS closed FROM finance_close_periods WHERE period_key LIKE $1", [`${month}%`]).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, SUM(net_amount_cents) AS total_net FROM wallet_transactions WHERE transaction_type = 'settlement' AND created_at >= $1 AND created_at < $1::date + INTERVAL '1 month'", [monthStart]).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'released') AS released FROM payout_batches WHERE created_at >= $1 AND created_at < $1::date + INTERVAL '1 month'", [monthStart]).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours') AS stuck FROM approval_requests").catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, SUM(delivered_count) AS delivered, SUM(failed_count) AS failed FROM governance_delivery_analytics WHERE sent_at >= $1 AND sent_at < $1::date + INTERVAL '1 month'", [monthStart]).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS gold, COUNT(*) FILTER (WHERE quality_rank = 'silver') AS silver FROM scenario_quality_scores WHERE quality_rank IN ('gold', 'silver')").catch(() => ({ rows: [{}] })),
+      pool.query('SELECT COUNT(*) AS total FROM anomaly_clusters').catch(() => ({ rows: [{}] })),
+      pool.query("SELECT AVG(confidence_score) AS avg_conf FROM recommendation_scores WHERE created_at >= $1 AND created_at < $1::date + INTERVAL '1 month'", [monthStart]).catch(() => ({ rows: [{}] })),
     ]);
     const p = (r: any[], col: string) => r[0]?.[col] ?? null;
     const packJson = {
@@ -14481,7 +14482,7 @@ router.patch('/admin/wallet/recommendation-actions/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const { slaMet } = req.body;
     if (slaMet === undefined) return res.status(400).json({ error: 'slaMet required' });
-    const r = await pool.query(`UPDATE recommendation_actions SET sla_met = ${!!slaMet} WHERE id = ${id} RETURNING *`);
+    const r = await pool.query('UPDATE recommendation_actions SET sla_met = $1 WHERE id = $2 RETURNING *', [!!slaMet, parseInt(id, 10)]);
     if (!r.rows.length) return res.status(404).json({ error: 'Action not found' });
     return res.json({ action: r.rows[0] });
   } catch (err: any) {
@@ -14638,10 +14639,11 @@ router.post('/admin/wallet/policy-learning-suggestions/auto-generate', async (re
   try {
     const { planId } = req.body;
     if (!planId) return res.status(400).json({ error: 'planId required' });
-    const planResult = await pool.query(`SELECT * FROM remediation_plans WHERE id = ${parseInt(planId)}`);
+    const planIdInt = parseInt(planId, 10);
+    const planResult = await pool.query('SELECT * FROM remediation_plans WHERE id = $1', [planIdInt]);
     if (!planResult.rows.length) return res.status(404).json({ error: 'Remediation plan not found' });
     const plan = planResult.rows[0];
-    const outcomesResult = await pool.query(`SELECT * FROM remediation_outcomes WHERE remediation_plan_id = ${parseInt(planId)}`);
+    const outcomesResult = await pool.query('SELECT * FROM remediation_outcomes WHERE remediation_plan_id = $1', [planIdInt]);
     const outcomes = outcomesResult.rows;
     if (!outcomes.length) return res.status(400).json({ error: 'No outcomes recorded for this plan — record outcomes first' });
     const improved  = outcomes.filter((o: any) => o.outcome_status === 'improved').length;
@@ -15217,16 +15219,19 @@ router.patch('/admin/wallet/followups/:id', async (req: Request, res: Response) 
     const now = new Date().toISOString();
 
     const sets: string[] = [];
-    if (status)       sets.push(`status = '${status}'`);
-    if (notes)        sets.push(`notes = '${notes.replace(/'/g, "''")}'`);
-    if (ownerUid)     sets.push(`owner_uid = '${ownerUid}'`);
-    if (priority)     sets.push(`priority = '${priority}'`);
-    if (blockedReason !== undefined) sets.push(`blocked_reason = '${blockedReason.replace(/'/g, "''")}'`);
-    if (dueDate)      sets.push(`due_date = '${dueDate}'`);
-    if (status === 'closed') sets.push(`closed_at = '${now}'`);
+    const values: any[] = [];
+    let p = 1;
+    if (status)       { sets.push(`status = $${p++}`);         values.push(status); }
+    if (notes)        { sets.push(`notes = $${p++}`);          values.push(notes); }
+    if (ownerUid)     { sets.push(`owner_uid = $${p++}`);      values.push(ownerUid); }
+    if (priority)     { sets.push(`priority = $${p++}`);       values.push(priority); }
+    if (blockedReason !== undefined) { sets.push(`blocked_reason = $${p++}`); values.push(blockedReason); }
+    if (dueDate)      { sets.push(`due_date = $${p++}`);       values.push(dueDate); }
+    if (status === 'closed') { sets.push(`closed_at = $${p++}`); values.push(now); }
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
 
-    const r = await pool.query(`UPDATE review_follow_up_actions SET ${sets.join(', ')} WHERE id = ${id} RETURNING *`);
+    values.push(parseInt(id, 10));
+    const r = await pool.query(`UPDATE review_follow_up_actions SET ${sets.join(', ')} WHERE id = $${p} RETURNING *`, values);
     if (!r.rows.length) return res.status(404).json({ error: 'Follow-up not found' });
 
     return res.json({ ok: true, followUp: r.rows[0] });
@@ -16256,7 +16261,7 @@ router.get('/admin/wallet/kill-switches', async (req, res) => {
     const existing = new Set(r.rows.map((x: any) => x.key));
     for (const k of expected) {
       if (!existing.has(k)) {
-        await pool.query(`INSERT INTO system_kill_switches (key, enabled) VALUES ('${k}', true) ON CONFLICT (key) DO NOTHING`);
+        await pool.query('INSERT INTO system_kill_switches (key, enabled) VALUES ($1, true) ON CONFLICT (key) DO NOTHING', [k]);
       }
     }
     const final = await pool.query(`SELECT * FROM system_kill_switches ORDER BY key`);
@@ -16269,10 +16274,10 @@ router.get('/admin/wallet/kill-switches', async (req, res) => {
 router.post('/admin/wallet/kill-switches/:key/toggle', async (req, res) => {
   try {
     const { key } = req.params;
-    const current = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = '${key.replace(/'/g, "''")}'`);
+    const current = await pool.query('SELECT enabled FROM system_kill_switches WHERE key = $1', [key]);
     if (!current.rows.length) return res.status(404).json({ error: 'Kill switch not found' });
     const newVal = !current.rows[0].enabled;
-    await pool.query(`UPDATE system_kill_switches SET enabled = ${newVal}, updated_at = NOW() WHERE key = '${key.replace(/'/g, "''")}'`);
+    await pool.query('UPDATE system_kill_switches SET enabled = $1, updated_at = NOW() WHERE key = $2', [newVal, key]);
     return res.json({ key, enabled: newVal, message: newVal ? `${key} re-enabled` : `${key} DISABLED — operations blocked` });
   } catch (err: any) {
     return res.status(500).json({ error: 'Toggle failed', detail: err.message });
@@ -16807,7 +16812,7 @@ router.post('/admin/system/e2e/run', async (req, res) => {
 
 router.get('/admin/system/e2e/:id', async (req, res) => {
   try {
-    const r = await pool.query(`SELECT * FROM e2e_proof_runs WHERE id = ${parseInt(req.params.id)}`);
+    const r = await pool.query('SELECT * FROM e2e_proof_runs WHERE id = $1', [parseInt(req.params.id, 10)]);
     if (!r.rows.length) return res.status(404).json({ error: 'Run not found' });
     return res.json(r.rows[0]);
   } catch (err: any) {
@@ -18107,7 +18112,7 @@ router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
     const sid = parseInt(req.params.sid);
     const { actor = 'admin', auditNote = '' } = req.body;
 
-    const sRow = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const sRow = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [sid]);
     if (!sRow.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
     const s = sRow.rows[0];
     if (s.status !== 'pending') return res.status(400).json({ error: `Cannot apply suggestion with status: ${s.status}` });
@@ -18117,19 +18122,22 @@ router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
 
     // Execute based on action type
     if (s.action_type === 'kill_switch_toggle' && params.key) {
-      const val = params.value === true ? 'true' : 'false';
-      await pool.query(`UPDATE system_kill_switches SET enabled = ${val}, updated_at = NOW() WHERE key = '${params.key}'`);
-      executionNote = `Kill switch '${params.key}' set to ${val}`;
+      const enabled = params.value === true;
+      await pool.query('UPDATE system_kill_switches SET enabled = $1, updated_at = NOW() WHERE key = $2', [enabled, params.key]);
+      executionNote = `Kill switch '${params.key}' set to ${enabled}`;
     } else if (s.action_type === 'shadow_mode_enable' && params.key) {
-      await pool.query(`UPDATE system_kill_switches SET enabled = true, updated_at = NOW() WHERE key = 'shadow_mode'`);
+      await pool.query("UPDATE system_kill_switches SET enabled = true, updated_at = NOW() WHERE key = 'shadow_mode'");
       executionNote = `Shadow mode enabled via kill switch`;
     } else if (s.action_type === 'reconciliation_run') {
       executionNote = `Reconciliation trigger logged — finance team notified (manual execution required)`;
     } else if (s.action_type === 'alert_test') {
-      await pool.query(`
-        INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
-        VALUES ('system_test', 'low', 'Synthetic alert test triggered by remediation suggestion #${sid}', '{"source":"remediation","suggestion_id":${sid}}'::jsonb)
-      `);
+      await pool.query(
+        "INSERT INTO governance_alerts (alert_type, severity, message, triggered_by) VALUES ('system_test', 'low', $1, $2)",
+        [
+          `Synthetic alert test triggered by remediation suggestion #${sid}`,
+          JSON.stringify({ source: 'remediation', suggestion_id: sid }),
+        ]
+      );
       executionNote = `Synthetic governance alert inserted to verify alert pipeline`;
     } else if (s.action_type === 'manual_review' || s.action_type === 'assign_review') {
       executionNote = `Assigned for manual review — team: ${params.team ?? 'ops'}, priority: ${params.priority ?? 'high'}`;
@@ -18139,23 +18147,23 @@ router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
 
     // Mark as applied
     const noteText = `${executionNote}${auditNote ? ` | Operator note: ${auditNote}` : ''}`;
-    await pool.query(`
-      UPDATE remediation_suggestions
-      SET status = 'applied', applied_by = '${actor}', applied_at = NOW(),
-          audit_note = '${noteText.replace(/'/g, "''")}'
-      WHERE id = ${sid}
-    `);
+    await pool.query(
+      "UPDATE remediation_suggestions SET status = 'applied', applied_by = $1, applied_at = NOW(), audit_note = $2 WHERE id = $3",
+      [actor, noteText, sid]
+    );
 
     // Write audit trail to incident timeline
-    await pool.query(`
-      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
-      VALUES (${s.incident_id}, 'remediation_applied',
-        'Applied: ${s.action_label.replace(/'/g, "''")} — ${executionNote.replace(/'/g, "''")}',
-        '${actor}', '{"suggestion_id":${sid},"action_type":"${s.action_type}","action_params":${JSON.stringify(params)
-          .replace(/'/g, "''")}}'::jsonb)
-    `);
+    await pool.query(
+      "INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json) VALUES ($1, 'remediation_applied', $2, $3, $4)",
+      [
+        s.incident_id,
+        `Applied: ${s.action_label} — ${executionNote}`,
+        actor,
+        JSON.stringify({ suggestion_id: sid, action_type: s.action_type, action_params: params }),
+      ]
+    );
 
-    const updated = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const updated = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [sid]);
     return res.json({ suggestion: updated.rows[0], executionNote });
   } catch (err: any) {
     return res.status(500).json({ error: 'Apply failed', detail: err.message });
@@ -18168,27 +18176,28 @@ router.post('/admin/system/remediation/:sid/dismiss', async (req, res) => {
     const sid = parseInt(req.params.sid);
     const { actor = 'admin', reason = '' } = req.body;
 
-    const sRow = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const sRow = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [sid]);
     if (!sRow.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
     const s = sRow.rows[0];
     if (s.status !== 'pending') return res.status(400).json({ error: `Cannot dismiss suggestion with status: ${s.status}` });
 
     const note = reason || 'Dismissed by operator without execution';
-    await pool.query(`
-      UPDATE remediation_suggestions
-      SET status = 'dismissed', dismissed_by = '${actor}', dismissed_at = NOW(),
-          audit_note = '${note.replace(/'/g, "''")}'
-      WHERE id = ${sid}
-    `);
+    await pool.query(
+      "UPDATE remediation_suggestions SET status = 'dismissed', dismissed_by = $1, dismissed_at = NOW(), audit_note = $2 WHERE id = $3",
+      [actor, note, sid]
+    );
 
-    await pool.query(`
-      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
-      VALUES (${s.incident_id}, 'remediation_dismissed',
-        'Dismissed: ${s.action_label.replace(/'/g, "''")}${reason ? ` — Reason: ${reason.replace(/'/g, "''")}` : ''}',
-        '${actor}', '{"suggestion_id":${sid},"action_type":"${s.action_type}"}'::jsonb)
-    `);
+    await pool.query(
+      "INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json) VALUES ($1, 'remediation_dismissed', $2, $3, $4)",
+      [
+        s.incident_id,
+        `Dismissed: ${s.action_label}${reason ? ` — Reason: ${reason}` : ''}`,
+        actor,
+        JSON.stringify({ suggestion_id: sid, action_type: s.action_type }),
+      ]
+    );
 
-    const updated = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const updated = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [sid]);
     return res.json({ suggestion: updated.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Dismiss failed', detail: err.message });
@@ -18206,50 +18215,48 @@ async function executeSelfHealingAction(
     if (actionType === 'kill_switch_toggle') {
       const { key, value } = actionParams;
       if (!key) return { success: false, note: 'Missing key in action_params' };
-      await pool.query(`
-        INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
-        VALUES ('${key}', ${!!value}, NOW(), 'self_healing_engine', 'Auto-triggered by rule: ${context.ruleName.replace(/'/g, "''")}')
-        ON CONFLICT (switch_key) DO UPDATE
-          SET enabled = ${!!value}, last_toggled_at = NOW(),
-              toggled_by = 'self_healing_engine',
-              reason = 'Auto-triggered by rule: ${context.ruleName.replace(/'/g, "''")}'
-      `);
+      const reason = `Auto-triggered by rule: ${context.ruleName}`;
+      await pool.query(
+        `INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
+         VALUES ($1, $2, NOW(), 'self_healing_engine', $3)
+         ON CONFLICT (switch_key) DO UPDATE
+           SET enabled = $2, last_toggled_at = NOW(),
+               toggled_by = 'self_healing_engine',
+               reason = $3`,
+        [key, !!value, reason]
+      );
       return { success: true, note: `Kill switch '${key}' set to ${value} by self-healing engine` };
     }
 
     if (actionType === 'shadow_mode_enable') {
-      await pool.query(`
-        INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
-        VALUES ('shadow_mode', true, NOW(), 'self_healing_engine', 'Auto shadow mode by rule: ${context.ruleName.replace(/'/g, "''")}')
-        ON CONFLICT (switch_key) DO UPDATE
-          SET enabled = true, last_toggled_at = NOW(),
-              toggled_by = 'self_healing_engine',
-              reason = 'Auto shadow mode by rule: ${context.ruleName.replace(/'/g, "''")}'
-      `);
+      const reason = `Auto shadow mode by rule: ${context.ruleName}`;
+      await pool.query(
+        `INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
+         VALUES ('shadow_mode', true, NOW(), 'self_healing_engine', $1)
+         ON CONFLICT (switch_key) DO UPDATE
+           SET enabled = true, last_toggled_at = NOW(),
+               toggled_by = 'self_healing_engine',
+               reason = $1`,
+        [reason]
+      );
       return { success: true, note: 'Shadow mode enabled by self-healing engine' };
     }
 
     if (actionType === 'alert_test') {
       const { channel = 'ops', message = 'Self-healing alert test' } = actionParams;
-      await pool.query(`
-        INSERT INTO governance_alerts (alert_type, severity, title, detail, status)
-        VALUES ('self_healing_alert_test', 'low',
-          'Self-Healing Alert Test',
-          '${message.replace(/'/g, "''")} (channel: ${channel})',
-          'open')
-      `);
+      await pool.query(
+        "INSERT INTO governance_alerts (alert_type, severity, title, detail, status) VALUES ('self_healing_alert_test', 'low', 'Self-Healing Alert Test', $1, 'open')",
+        [`${message} (channel: ${channel})`]
+      );
       return { success: true, note: `Alert test fired to channel: ${channel}` };
     }
 
     if (actionType === 'assign_review' || actionType === 'manual_review') {
       const { team = 'ops', priority = 'high' } = actionParams;
-      await pool.query(`
-        INSERT INTO governance_alerts (alert_type, severity, title, detail, status)
-        VALUES ('self_healing_review_assigned', 'medium',
-          'Self-Healing: Manual Review Assigned',
-          'Rule "${context.ruleName.replace(/'/g, "''")}" triggered review assignment — team: ${team}, priority: ${priority}',
-          'open')
-      `);
+      await pool.query(
+        "INSERT INTO governance_alerts (alert_type, severity, title, detail, status) VALUES ('self_healing_review_assigned', 'medium', 'Self-Healing: Manual Review Assigned', $1, 'open')",
+        [`Rule "${context.ruleName}" triggered review assignment — team: ${team}, priority: ${priority}`]
+      );
       return { success: true, note: `Review assigned to team: ${team} (priority: ${priority})` };
     }
 
