@@ -53,13 +53,6 @@ const PAYOUT_CONFIG: Record<
     text: "text-yellow-700",
     border: "border-yellow-200",
   },
-  released: {
-    label: "Released",
-    icon: TrendingUp,
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    border: "border-blue-200",
-  },
   pending_transfer: {
     label: "Transfer Pending",
     icon: TrendingUp,

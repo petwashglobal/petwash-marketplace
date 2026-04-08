@@ -1,5 +1,20 @@
 # Pet Wash™ Production Secrets Configuration
 
+> ⚠️ **SECURITY NOTE — Read before deploying**
+>
+> All real secret values must live in environment variables only (Replit Secrets / Cloud Run Secret Manager).
+> **Never hard-code real secrets in source files, docs, or dist outputs.**
+>
+> ## Known Leaked Secrets — Requires Manual Rotation
+>
+> | Secret | Status | Action Required |
+> |--------|--------|-----------------|
+> | Firebase Web API Key (`VITE_FIREBASE_API_KEY`) | Committed in docs + old dist bundles | Rotate key in Firebase Console → Project Settings → General → Web API Key |
+> | Twilio Account SID `ACd21e…` | In attached_assets support email transcript | Account was already suspended by Twilio. Confirm all API keys rotated and 2FA enabled per Twilio's instructions |
+>
+> The real values have been replaced with placeholders in docs and attached_assets.
+> **Do NOT close GitHub secret scanning alerts until you have confirmed rotation in the provider console.**
+
 This document lists all required and optional environment variables for production deployment. Add these secrets in the **Replit Secrets panel** (🔒 icon in left sidebar).
 
 ## 🚨 Critical Production Secrets (Required)

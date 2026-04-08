@@ -9,13 +9,10 @@ import {
 type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
 
 const PAYOUT_STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  paid:             { label: 'Paid',             color: '#065f46', bg: '#d1fae5' },
   paid_out:         { label: 'Paid Out',          color: '#065f46', bg: '#d1fae5' },
   pending:          { label: 'Pending',           color: '#92400e', bg: '#fef3c7' },
   pending_transfer: { label: 'Transfer Pending',  color: '#1e40af', bg: '#dbeafe' },
-  processing:       { label: 'Processing',        color: '#1e40af', bg: '#dbeafe' },
   failed:           { label: 'Failed',            color: '#991b1b', bg: '#fee2e2' },
-  refunded:         { label: 'Refunded',          color: '#991b1b', bg: '#fee2e2' },
 };
 
 const PLATFORM_LABELS: Record<string, string> = {

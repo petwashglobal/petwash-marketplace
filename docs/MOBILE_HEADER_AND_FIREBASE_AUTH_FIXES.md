@@ -43,14 +43,14 @@ Completely restructured `client/src/components/Header.tsx` for optimal small pho
 
 ### Environment Variables Verified:
 ```env
-VITE_FIREBASE_API_KEY=AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E (fallback)
+VITE_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY (fallback)
 VITE_FIREBASE_APP_ID=1:136197986889:web:51bc2ff5f721d22da67d98 (fallback)
 ```
 
 ### Firebase Config (client/src/lib/firebase.ts):
 ```javascript
 {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY",
   authDomain: "signinpetwash.firebaseapp.com",
   projectId: "signinpetwash",
   storageBucket: "signinpetwash.firebasestorage.app",

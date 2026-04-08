@@ -503,7 +503,7 @@ localhost            │    ✅    │   ⚠️   │    ✅    │   ✅
 
 **Frontend (VITE_*):**
 ```bash
-VITE_FIREBASE_API_KEY=AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E
+VITE_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY
 VITE_FIREBASE_AUTH_DOMAIN=signinpetwash.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=signinpetwash
 VITE_FIREBASE_APP_ID=1:136197986889:web:51bc2ff5f721d22da67d98

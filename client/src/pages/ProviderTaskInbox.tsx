@@ -65,7 +65,6 @@ interface MarketplaceBooking {
 const PAYOUT_BADGE: Record<string, { label: string; className: string }> = {
   pending:           { label: "Payout Pending",    className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   pending_transfer:  { label: "Transfer Pending",  className: "bg-blue-100 text-blue-800 border-blue-200" },
-  released:          { label: "Payout Released",   className: "bg-blue-100 text-blue-800 border-blue-200" },
   paid_out:          { label: "Paid Out",           className: "bg-green-100 text-green-800 border-green-200" },
   failed:            { label: "Payout Failed",      className: "bg-red-100 text-red-800 border-red-200" },
 };

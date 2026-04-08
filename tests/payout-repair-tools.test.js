@@ -143,6 +143,32 @@ describe('§B JSON response shape', () => {
 
       // csvExportUrl must reference the anomaly type
       assert.ok(body.csvExportUrl.includes(anomaly), `${anomaly}: csvExportUrl must contain anomaly type`);
+
+      // §B-ROW: when rows are present, every row must carry the routing fields
+      // required by the Octopus repair panel and admin drill-down.
+      // (rows may be empty in a clean test environment — shape is validated when data exists)
+      if (body.rows.length > 0) {
+        const ROW_FIELDS = [
+          'ownerTeam', 'platformType', 'payoutFlowType',
+          'isCustomerFacing', 'repairDetailUrl',
+        ];
+        for (const row of body.rows) {
+          for (const field of ROW_FIELDS) {
+            assert.ok(field in row,
+              `${anomaly}: row is missing required routing field "${field}"`);
+          }
+          // repairDetailUrl must be a non-empty string pointing to the repair endpoint
+          assert.ok(
+            typeof row.repairDetailUrl === 'string' && row.repairDetailUrl.includes('/payout-repair/'),
+            `${anomaly}: row.repairDetailUrl must reference the repair endpoint`,
+          );
+          // isCustomerFacing must be boolean
+          assert.ok(
+            typeof row.isCustomerFacing === 'boolean',
+            `${anomaly}: row.isCustomerFacing must be boolean`,
+          );
+        }
+      }
     });
   }
 });

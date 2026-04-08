@@ -1,5 +1,8 @@
 node_modules
-# dist - REMOVED: Must be included in Cloud Run deployments (built before deploy)
+# dist/server and dist/public/assets contain baked-in env vars from build time.
+# They must NOT be committed — Cloud Run builds its own dist during CI/CD.
+# If you previously committed dist/ intentionally, remove it: git rm -r --cached dist/
+dist/
 .DS_Store
 server/public
 vite.config.ts.*

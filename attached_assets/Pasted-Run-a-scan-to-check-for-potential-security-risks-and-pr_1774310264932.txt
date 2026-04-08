@@ -15,12 +15,12 @@ Security
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 .github/workflows/petwash-ci.yml
-          ensure_secret "FIREBASE_WEB_API_KEY" "AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E"
+          ensure_secret "FIREBASE_WEB_API_KEY" "YOUR_FIREBASE_API_KEY"
 Security
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 .github/workflows/petwash-ci.yml
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E' }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'YOUR_FIREBASE_API_KEY' }}
 Security
 Google OAuth detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google OAuth detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
@@ -30,7 +30,7 @@ Security
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Dockerfile
-ARG VITE_FIREBASE_API_KEY=AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E
+ARG VITE_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY
 Security
 A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
@@ -171,12 +171,12 @@ Security
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 server/routes.ts
-        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E',
+        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'YOUR_FIREBASE_API_KEY',
 Security
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 server/routes.ts
-        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E',
+        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'YOUR_FIREBASE_API_KEY',
 Security
 Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
 Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
