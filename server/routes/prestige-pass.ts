@@ -14201,7 +14201,7 @@ router.post('/admin/wallet/approval-workload/rebalance-preview', async (req: Req
   try {
     const { requestId, targetApproverUid } = req.body;
     if (!requestId || !targetApproverUid) return res.status(400).json({ error: 'requestId and targetApproverUid required' });
-    const reqRow = await pool.query(`SELECT * FROM approval_requests WHERE id = ${parseInt(requestId, 10)}`);
+    const reqRow = await pool.query('SELECT * FROM approval_requests WHERE id = $1', [parseInt(requestId, 10)]);
     if (!reqRow.rows.length) return res.status(404).json({ error: 'Approval request not found' });
     const r = reqRow.rows[0];
     const ageHours = ((Date.now() - new Date(r.created_at).getTime()) / 3600000).toFixed(1);
@@ -14352,14 +14352,14 @@ router.get('/admin/wallet/operating-review-pack', async (req: Request, res: Resp
 
     // Assemble pack from live data
     const [closeRow, settlementRow, payoutRow, bottleneckRow, deliveryRow, scenarioRow, anomalyRow, recScoreRow] = await Promise.all([
-      pool.query(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'closed') AS closed FROM finance_close_periods WHERE period_key LIKE '${month}%'`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total, SUM(net_amount_cents) AS total_net FROM wallet_transactions WHERE transaction_type = 'settlement' AND created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'released') AS released FROM payout_batches WHERE created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'closed') AS closed FROM finance_close_periods WHERE period_key LIKE $1", [month + '%']).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, SUM(net_amount_cents) AS total_net FROM wallet_transactions WHERE transaction_type = 'settlement' AND created_at >= ($1 || '-01')::date AND created_at < ($1 || '-01')::date + INTERVAL '1 month'", [month]).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'released') AS released FROM payout_batches WHERE created_at >= ($1 || '-01')::date AND created_at < ($1 || '-01')::date + INTERVAL '1 month'", [month]).catch(() => ({ rows: [{}] })),
       pool.query(`SELECT COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours') AS stuck FROM approval_requests`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT COUNT(*) AS total, SUM(delivered_count) AS delivered, SUM(failed_count) AS failed FROM governance_delivery_analytics WHERE sent_at >= '${month}-01' AND sent_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT COUNT(*) AS total, SUM(delivered_count) AS delivered, SUM(failed_count) AS failed FROM governance_delivery_analytics WHERE sent_at >= ($1 || '-01')::date AND sent_at < ($1 || '-01')::date + INTERVAL '1 month'", [month]).catch(() => ({ rows: [{}] })),
       pool.query(`SELECT COUNT(*) AS gold, COUNT(*) FILTER (WHERE quality_rank = 'silver') AS silver FROM scenario_quality_scores WHERE quality_rank IN ('gold', 'silver')`).catch(() => ({ rows: [{}] })),
       pool.query(`SELECT COUNT(*) AS total FROM anomaly_clusters`).catch(() => ({ rows: [{}] })),
-      pool.query(`SELECT AVG(confidence_score) AS avg_conf FROM recommendation_scores WHERE created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query("SELECT AVG(confidence_score) AS avg_conf FROM recommendation_scores WHERE created_at >= ($1 || '-01')::date AND created_at < ($1 || '-01')::date + INTERVAL '1 month'", [month]).catch(() => ({ rows: [{}] })),
     ]);
     const p = (r: any[], col: string) => r[0]?.[col] ?? null;
     const packJson = {
@@ -14377,11 +14377,7 @@ router.get('/admin/wallet/operating-review-pack', async (req: Request, res: Resp
     const signatureSource = `${month}:${JSON.stringify(packJson)}`;
     const signature = Buffer.from(signatureSource).toString('base64').slice(0, 64);
     const packStr = JSON.stringify(packJson).replace(/'/g, "''");
-    await pool.query(`
-      INSERT INTO operating_review_packs (month, pack_json, signature)
-      VALUES ('${month}', '${packStr}'::jsonb, '${signature}')
-      ON CONFLICT (month) DO UPDATE SET pack_json = EXCLUDED.pack_json, signature = EXCLUDED.signature, generated_at = NOW()
-    `);
+    await pool.query('INSERT INTO operating_review_packs (month, pack_json, signature) VALUES ($1, $2::jsonb, $3) ON CONFLICT (month) DO UPDATE SET pack_json = EXCLUDED.pack_json, signature = EXCLUDED.signature, generated_at = NOW()', [month, JSON.stringify(packJson), signature]);
     return res.json({ ok: true, cached: false, pack: packJson, signature, generatedAt: new Date().toISOString() });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to generate operating review pack', detail: err.message });
@@ -14430,7 +14426,7 @@ router.get('/admin/wallet/recommendation-actions', async (req, res) => {
     const now = new Date();
     const breached = rows.rows.filter((r: any) => r.action_type === 'accept' && r.sla_due_at && new Date(r.sla_due_at) < now && r.sla_met === null);
     for (const b of breached) {
-      await pool.query(`UPDATE recommendation_actions SET sla_met = false WHERE id = ${b.id}`);
+      await pool.query('UPDATE recommendation_actions SET sla_met = false WHERE id = $1', [b.id]);
       b.sla_met = false;
     }
     const byType = rows.rows.reduce((acc: any, r: any) => { acc[r.action_type] = (acc[r.action_type] || 0) + 1; return acc; }, {});
@@ -14467,7 +14463,7 @@ router.post('/admin/wallet/recommendation-actions', async (req, res) => {
     `);
     // If reject, apply confidence penalty on the source score
     if (actionType === 'reject') {
-      await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score - 5) WHERE id = ${recommendationScoreId}`);
+      await pool.query('UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score - 5) WHERE id = $1', [recommendationScoreId]);
     }
     return res.status(201).json({ action: inserted.rows[0], message: `Recommendation ${actionType}d successfully` });
   } catch (err: any) {
@@ -14481,7 +14477,7 @@ router.patch('/admin/wallet/recommendation-actions/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const { slaMet } = req.body;
     if (slaMet === undefined) return res.status(400).json({ error: 'slaMet required' });
-    const r = await pool.query(`UPDATE recommendation_actions SET sla_met = ${!!slaMet} WHERE id = ${id} RETURNING *`);
+    const r = await pool.query('UPDATE recommendation_actions SET sla_met = $1 WHERE id = $2 RETURNING *', [!!slaMet, parseInt(id, 10)]);
     if (!r.rows.length) return res.status(404).json({ error: 'Action not found' });
     return res.json({ action: r.rows[0] });
   } catch (err: any) {
@@ -14638,10 +14634,10 @@ router.post('/admin/wallet/policy-learning-suggestions/auto-generate', async (re
   try {
     const { planId } = req.body;
     if (!planId) return res.status(400).json({ error: 'planId required' });
-    const planResult = await pool.query(`SELECT * FROM remediation_plans WHERE id = ${parseInt(planId)}`);
+    const planResult = await pool.query('SELECT * FROM remediation_plans WHERE id = $1', [parseInt(planId, 10)]);
     if (!planResult.rows.length) return res.status(404).json({ error: 'Remediation plan not found' });
     const plan = planResult.rows[0];
-    const outcomesResult = await pool.query(`SELECT * FROM remediation_outcomes WHERE remediation_plan_id = ${parseInt(planId)}`);
+    const outcomesResult = await pool.query('SELECT * FROM remediation_outcomes WHERE remediation_plan_id = $1', [parseInt(planId, 10)]);
     const outcomes = outcomesResult.rows;
     if (!outcomes.length) return res.status(400).json({ error: 'No outcomes recorded for this plan — record outcomes first' });
     const improved  = outcomes.filter((o: any) => o.outcome_status === 'improved').length;
@@ -14882,27 +14878,24 @@ router.post('/admin/wallet/execution-feedback', async (req, res) => {
     const updates: string[] = [];
     // Apply delta to affected recommendation_scores
     if (sourceType === 'recommendation_action') {
-      const actionResult = await pool.query(`SELECT recommendation_score_id FROM recommendation_actions WHERE id = ${parseInt(sourceId)}`);
+      const actionResult = await pool.query('SELECT recommendation_score_id FROM recommendation_actions WHERE id = $1', [parseInt(sourceId, 10)]);
       if (actionResult.rows.length) {
         const scoreId = actionResult.rows[0].recommendation_score_id;
-        await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + ${delta})) WHERE id = ${scoreId}`);
+        await pool.query('UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + $1)) WHERE id = $2', [delta, scoreId]);
         updates.push(`recommendation_score #${scoreId} adjusted by ${delta > 0 ? '+' : ''}${delta}`);
       }
     } else if (sourceType === 'remediation_outcome') {
-      const outcomeResult = await pool.query(`SELECT remediation_plan_id FROM remediation_outcomes WHERE id = ${parseInt(sourceId)}`);
+      const outcomeResult = await pool.query('SELECT remediation_plan_id FROM remediation_outcomes WHERE id = $1', [parseInt(sourceId, 10)]);
       if (outcomeResult.rows.length) {
         const planId = outcomeResult.rows[0].remediation_plan_id;
-        await pool.query(`
-          UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + ${delta}))
-          WHERE target_entity_type = (SELECT target_entity_type FROM remediation_plans WHERE id = ${planId} LIMIT 1)
-        `);
+        await pool.query('UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + $1)) WHERE target_entity_type = (SELECT target_entity_type FROM remediation_plans WHERE id = $2 LIMIT 1)', [delta, planId]);
         updates.push(`confidence adjusted by ${delta > 0 ? '+' : ''}${delta} for entity type of plan #${planId}`);
       }
     } else if (sourceType === 'unified_recommendation') {
-      const urResult = await pool.query(`SELECT recommendation_score_id FROM unified_recommendations WHERE id = ${parseInt(sourceId)}`);
+      const urResult = await pool.query('SELECT recommendation_score_id FROM unified_recommendations WHERE id = $1', [parseInt(sourceId, 10)]);
       if (urResult.rows.length && urResult.rows[0].recommendation_score_id) {
         const scoreId = urResult.rows[0].recommendation_score_id;
-        await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + ${delta})) WHERE id = ${scoreId}`);
+        await pool.query('UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + $1)) WHERE id = $2', [delta, scoreId]);
         updates.push(`recommendation_score #${scoreId} adjusted by ${delta > 0 ? '+' : ''}${delta}`);
       }
     }
@@ -14990,7 +14983,7 @@ router.post('/admin/wallet/recommendations/recompute-priority', async (req: Requ
     if (!recommendationId) return res.status(400).json({ error: 'recommendationId required' });
 
     // Fetch the unified recommendation
-    const recRow = await pool.query(`SELECT * FROM unified_recommendations WHERE id = ${recommendationId}`);
+    const recRow = await pool.query('SELECT * FROM unified_recommendations WHERE id = $1', [parseInt(recommendationId, 10)]);
     if (!recRow.rows.length) return res.status(404).json({ error: 'Recommendation not found' });
     const rec = recRow.rows[0];
 
@@ -15217,16 +15210,18 @@ router.patch('/admin/wallet/followups/:id', async (req: Request, res: Response) 
     const now = new Date().toISOString();
 
     const sets: string[] = [];
-    if (status)       sets.push(`status = '${status}'`);
-    if (notes)        sets.push(`notes = '${notes.replace(/'/g, "''")}'`);
-    if (ownerUid)     sets.push(`owner_uid = '${ownerUid}'`);
-    if (priority)     sets.push(`priority = '${priority}'`);
-    if (blockedReason !== undefined) sets.push(`blocked_reason = '${blockedReason.replace(/'/g, "''")}'`);
-    if (dueDate)      sets.push(`due_date = '${dueDate}'`);
-    if (status === 'closed') sets.push(`closed_at = '${now}'`);
+    const values: any[] = [];
+    if (status)       { values.push(status); sets.push(`status = $${values.length}`); }
+    if (notes)        { values.push(notes); sets.push(`notes = $${values.length}`); }
+    if (ownerUid)     { values.push(ownerUid); sets.push(`owner_uid = $${values.length}`); }
+    if (priority)     { values.push(priority); sets.push(`priority = $${values.length}`); }
+    if (blockedReason !== undefined) { values.push(blockedReason); sets.push(`blocked_reason = $${values.length}`); }
+    if (dueDate)      { values.push(dueDate); sets.push(`due_date = $${values.length}`); }
+    if (status === 'closed') { values.push(now); sets.push(`closed_at = $${values.length}`); }
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
 
-    const r = await pool.query(`UPDATE review_follow_up_actions SET ${sets.join(', ')} WHERE id = ${id} RETURNING *`);
+    values.push(parseInt(id, 10));
+    const r = await pool.query(`UPDATE review_follow_up_actions SET ${sets.join(', ')} WHERE id = $${values.length} RETURNING *`, values);
     if (!r.rows.length) return res.status(404).json({ error: 'Follow-up not found' });
 
     return res.json({ ok: true, followUp: r.rows[0] });
@@ -15522,7 +15517,7 @@ router.get('/admin/wallet/execution-timeline/:recommendationId', async (req: Req
     const recId = parseInt(req.params.recommendationId);
 
     // Core recommendation
-    const recRow = await pool.query(`SELECT * FROM unified_recommendations WHERE id = ${recId}`);
+    const recRow = await pool.query('SELECT * FROM unified_recommendations WHERE id = $1', [parseInt(recId, 10)]);
     if (!recRow.rows.length) return res.status(404).json({ error: 'Recommendation not found' });
     const rec = recRow.rows[0];
 
@@ -15924,7 +15919,7 @@ router.post('/policies/escalation-adjustments/generate', async (req, res) => {
 router.post('/policies/escalation-adjustments/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
-    const adj = await pool.query(`SELECT * FROM escalation_policy_adjustments WHERE id = ${id}`);
+    const adj = await pool.query('SELECT * FROM escalation_policy_adjustments WHERE id = $1', [parseInt(id, 10)]);
     if (!adj.rows.length) return res.status(404).json({ error: 'Adjustment not found' });
     const a = adj.rows[0];
     // Apply to policy
@@ -15932,7 +15927,7 @@ router.post('/policies/escalation-adjustments/:id/approve', async (req, res) => 
       UPDATE escalation_policies SET threshold_hours = ${a.suggested_threshold_hours}
       WHERE id = ${a.policy_id}
     `).catch(() => {}); // table may not exist in all environments
-    await pool.query(`UPDATE escalation_policy_adjustments SET status = 'approved' WHERE id = ${id}`);
+    await pool.query("UPDATE escalation_policy_adjustments SET status = 'approved' WHERE id = $1", [parseInt(id, 10)]);
     return res.json({ ok: true, applied: { policyId: a.policy_id, newThreshold: a.suggested_threshold_hours } });
   } catch (err: any) {
     return res.status(500).json({ error: 'Approve failed', detail: err.message });
@@ -15942,7 +15937,7 @@ router.post('/policies/escalation-adjustments/:id/approve', async (req, res) => 
 router.post('/policies/escalation-adjustments/:id/reject', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query(`UPDATE escalation_policy_adjustments SET status = 'rejected' WHERE id = ${id}`);
+    await pool.query("UPDATE escalation_policy_adjustments SET status = 'rejected' WHERE id = $1", [parseInt(id, 10)]);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Reject failed', detail: err.message });
@@ -16012,7 +16007,7 @@ router.post('/reviewers/apply-workload-adjustment', async (req, res) => {
   try {
     const { suggestionId, confirmedBy } = req.body as { suggestionId: number; confirmedBy?: string };
     if (!suggestionId) return res.status(400).json({ error: 'suggestionId required' });
-    const s = await pool.query(`SELECT * FROM reviewer_workload_suggestions WHERE id = ${suggestionId}`);
+    const s = await pool.query('SELECT * FROM reviewer_workload_suggestions WHERE id = $1', [parseInt(suggestionId, 10)]);
     if (!s.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
     // Record the confirmation — actual reassignment is a manual management action
     return res.json({ ok: true, confirmed: true, suggestion: s.rows[0], confirmedBy: confirmedBy ?? 'admin', note: 'Manual reassignment required — suggestion recorded' });
@@ -16153,7 +16148,7 @@ router.get('/governance-alerts', async (req, res) => {
 router.post('/governance-alerts/:id/ack', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query(`UPDATE governance_alerts SET acknowledged = true WHERE id = ${id}`);
+    await pool.query('UPDATE governance_alerts SET acknowledged = true WHERE id = $1', [parseInt(id, 10)]);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Ack failed', detail: err.message });
@@ -16221,7 +16216,7 @@ router.post('/governance-alerts/trigger', async (req, res) => {
 
 async function getKillSwitch(key: string): Promise<boolean> {
   try {
-    const r = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = '${key}'`);
+    const r = await pool.query('SELECT enabled FROM system_kill_switches WHERE key = $1', [key]);
     if (!r.rows.length) return true; // default open if key not found
     return r.rows[0].enabled;
   } catch { return true; }
@@ -16229,7 +16224,7 @@ async function getKillSwitch(key: string): Promise<boolean> {
 
 async function checkIdempotency(iKey: string, endpoint: string): Promise<{ hit: boolean; responseHash?: string }> {
   try {
-    const r = await pool.query(`SELECT response_hash FROM idempotency_keys WHERE key = '${iKey.replace(/'/g, "''")}' AND endpoint = '${endpoint.replace(/'/g, "''")}'`);
+    const r = await pool.query('SELECT response_hash FROM idempotency_keys WHERE key = $1 AND endpoint = $2', [iKey, endpoint]);
     if (r.rows.length) return { hit: true, responseHash: r.rows[0].response_hash };
     return { hit: false };
   } catch { return { hit: false }; }
@@ -16256,7 +16251,7 @@ router.get('/admin/wallet/kill-switches', async (req, res) => {
     const existing = new Set(r.rows.map((x: any) => x.key));
     for (const k of expected) {
       if (!existing.has(k)) {
-        await pool.query(`INSERT INTO system_kill_switches (key, enabled) VALUES ('${k}', true) ON CONFLICT (key) DO NOTHING`);
+        await pool.query('INSERT INTO system_kill_switches (key, enabled) VALUES ($1, true) ON CONFLICT (key) DO NOTHING', [k]);
       }
     }
     const final = await pool.query(`SELECT * FROM system_kill_switches ORDER BY key`);
@@ -16269,10 +16264,10 @@ router.get('/admin/wallet/kill-switches', async (req, res) => {
 router.post('/admin/wallet/kill-switches/:key/toggle', async (req, res) => {
   try {
     const { key } = req.params;
-    const current = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = '${key.replace(/'/g, "''")}'`);
+    const current = await pool.query('SELECT enabled FROM system_kill_switches WHERE key = $1', [key]);
     if (!current.rows.length) return res.status(404).json({ error: 'Kill switch not found' });
     const newVal = !current.rows[0].enabled;
-    await pool.query(`UPDATE system_kill_switches SET enabled = ${newVal}, updated_at = NOW() WHERE key = '${key.replace(/'/g, "''")}'`);
+    await pool.query('UPDATE system_kill_switches SET enabled = $1, updated_at = NOW() WHERE key = $2', [newVal, key]);
     return res.json({ key, enabled: newVal, message: newVal ? `${key} re-enabled` : `${key} DISABLED — operations blocked` });
   } catch (err: any) {
     return res.status(500).json({ error: 'Toggle failed', detail: err.message });
@@ -16613,7 +16608,7 @@ router.post('/admin/wallet/go-live-checklist/:id/verify', async (req, res) => {
 router.post('/admin/wallet/go-live-checklist/:id/unverify', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query(`UPDATE go_live_checklist SET status = 'pending', verified_by = NULL, verified_at = NULL WHERE id = ${id}`);
+    await pool.query("UPDATE go_live_checklist SET status = 'pending', verified_by = NULL, verified_at = NULL WHERE id = $1", [parseInt(id, 10)]);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Unverify failed', detail: err.message });
@@ -16807,7 +16802,7 @@ router.post('/admin/system/e2e/run', async (req, res) => {
 
 router.get('/admin/system/e2e/:id', async (req, res) => {
   try {
-    const r = await pool.query(`SELECT * FROM e2e_proof_runs WHERE id = ${parseInt(req.params.id)}`);
+    const r = await pool.query('SELECT * FROM e2e_proof_runs WHERE id = $1', [parseInt(req.params.id, 10)]);
     if (!r.rows.length) return res.status(404).json({ error: 'Run not found' });
     return res.json(r.rows[0]);
   } catch (err: any) {
@@ -16883,7 +16878,7 @@ router.post('/admin/system/config-audit/run', async (req, res) => {
 
     // Update go-live gate
     const gateVal = criticals.length === 0;
-    await pool.query(`UPDATE go_live_gates SET checks_json = checks_json || '{"config_audit_passed": ${gateVal}}'::jsonb WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)`);
+    await pool.query("UPDATE go_live_gates SET checks_json = checks_json || jsonb_build_object('config_audit_passed', $1::boolean) WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)", [gateVal]);
 
     return res.json({ id: r.rows[0].id, status: auditStatus, checks, failures, summary: { total: checks.length, valid: checks.filter(c => c.status === 'valid').length, warnings: warnings.length, criticals: criticals.length }, createdAt: r.rows[0].created_at });
   } catch (err: any) {
@@ -16980,7 +16975,7 @@ router.post('/admin/system/shadow/disable', async (req, res) => {
     `);
     // Update gate
     const noMismatches = parseInt(mismatchCount.rows[0].c) === 0;
-    await pool.query(`UPDATE go_live_gates SET checks_json = checks_json || '{"shadow_no_mismatches": ${noMismatches}}'::jsonb WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)`);
+    await pool.query("UPDATE go_live_gates SET checks_json = checks_json || jsonb_build_object('shadow_no_mismatches', $1::boolean) WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)", [noMismatches]);
     return res.json({ shadowMode: false, mismatchCount: parseInt(mismatchCount.rows[0].c), message: 'Shadow mode DISABLED — live mode restored' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to disable shadow mode', detail: err.message });
@@ -17064,7 +17059,7 @@ router.post('/admin/system/drill/run', async (req, res) => {
     const successes = parseInt(allDrills.rows[0].successes);
     const successRate = total > 0 ? successes / total : 0;
     const drillOk = successRate >= 0.8 && total >= 1;
-    await pool.query(`UPDATE go_live_gates SET checks_json = checks_json || '{"drill_success_rate_ok": ${drillOk}}'::jsonb WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)`);
+    await pool.query("UPDATE go_live_gates SET checks_json = checks_json || jsonb_build_object('drill_success_rate_ok', $1::boolean) WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)", [drillOk]);
 
     return res.json({
       id: r.rows[0].id,
@@ -17151,7 +17146,7 @@ router.post('/admin/system/go-live/approve', async (req, res) => {
     const { allPassed } = await computeGoLiveGateStatus();
     if (!allPassed) return res.status(400).json({ error: 'Cannot approve — not all gate conditions are met. Run missing checks first.' });
     const by = (approvedBy || 'admin').replace(/'/g, "''");
-    await pool.query(`UPDATE go_live_gates SET status = 'approved', approved_by = '${by}', approved_at = NOW() WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)`);
+    await pool.query("UPDATE go_live_gates SET status = 'approved', approved_by = $1, approved_at = NOW() WHERE id = (SELECT id FROM go_live_gates ORDER BY id DESC LIMIT 1)", [by]);
     return res.json({ approved: true, approvedBy: by, approvedAt: new Date().toISOString(), message: '🚀 Go-live approved — proceed to rollout' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Approval failed', detail: err.message });
@@ -17211,7 +17206,7 @@ router.post('/admin/system/rollout/set-phase', async (req, res) => {
     `);
 
     if (!r.rows.length) {
-      await pool.query(`INSERT INTO rollout_phases (phase, traffic_percentage, enabled) VALUES ('${phase}', ${traffic}, true)`);
+      await pool.query('INSERT INTO rollout_phases (phase, traffic_percentage, enabled) VALUES ($1, $2, true)', [phase, traffic]);
     }
 
     const currentIdx = ROLLOUT_ORDER.indexOf(phase);
@@ -17366,7 +17361,7 @@ router.get('/admin/system/anomalies', async (req, res) => {
 router.post('/admin/system/anomalies/ack/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await pool.query(`UPDATE anomaly_events SET status = 'acknowledged' WHERE id = ${id}`);
+    await pool.query("UPDATE anomaly_events SET status = 'acknowledged' WHERE id = $1", [parseInt(id, 10)]);
     return res.json({ id, status: 'acknowledged', message: 'Anomaly acknowledged' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Acknowledge failed', detail: err.message });
@@ -17377,7 +17372,7 @@ router.post('/admin/system/anomalies/ack/:id', async (req, res) => {
 router.post('/admin/system/anomalies/resolve/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await pool.query(`UPDATE anomaly_events SET status = 'resolved', resolved_at = NOW() WHERE id = ${id}`);
+    await pool.query("UPDATE anomaly_events SET status = 'resolved', resolved_at = NOW() WHERE id = $1", [parseInt(id, 10)]);
     return res.json({ id, status: 'resolved', resolvedAt: new Date().toISOString(), message: 'Anomaly resolved' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Resolve failed', detail: err.message });
@@ -17593,16 +17588,16 @@ router.post('/admin/system/kill-switch-triggers/execute', async (req, res) => {
     }
 
     // Get current score for logging
-    const aps = await pool.query(`SELECT priority_score FROM alert_priority_scores WHERE alert_id = ${anomalyEventId}`);
+    const aps = await pool.query('SELECT priority_score FROM alert_priority_scores WHERE alert_id = $1', [parseInt(anomalyEventId, 10)]);
     const score = aps.rows[0]?.priority_score ?? 0;
 
     // Disable the kill switch (set enabled = false to halt the feature)
-    const current = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = '${killSwitchKey}'`);
+    const current = await pool.query('SELECT enabled FROM system_kill_switches WHERE key = $1', [killSwitchKey]);
     if (!current.rows.length) {
       // Insert it disabled if it doesn't exist yet
-      await pool.query(`INSERT INTO system_kill_switches (key, enabled) VALUES ('${killSwitchKey}', false) ON CONFLICT (key) DO UPDATE SET enabled = false, updated_at = NOW()`);
+      await pool.query('INSERT INTO system_kill_switches (key, enabled) VALUES ($1, false) ON CONFLICT (key) DO UPDATE SET enabled = false, updated_at = NOW()', [killSwitchKey]);
     } else {
-      await pool.query(`UPDATE system_kill_switches SET enabled = false, updated_at = NOW() WHERE key = '${killSwitchKey}'`);
+      await pool.query('UPDATE system_kill_switches SET enabled = false, updated_at = NOW() WHERE key = $1', [killSwitchKey]);
     }
 
     // Log the trigger event
@@ -17631,7 +17626,7 @@ router.post('/admin/system/kill-switch-triggers/dismiss', async (req, res) => {
       return res.status(400).json({ error: 'ruleId, anomalyEventId and killSwitchKey required' });
     }
 
-    const aps = await pool.query(`SELECT priority_score FROM alert_priority_scores WHERE alert_id = ${anomalyEventId}`);
+    const aps = await pool.query('SELECT priority_score FROM alert_priority_scores WHERE alert_id = $1', [parseInt(anomalyEventId, 10)]);
     const score = aps.rows[0]?.priority_score ?? 0;
 
     await pool.query(`
@@ -17913,7 +17908,7 @@ async function runRCAForAnomaly(anomalyType: string, windowStart: Date): Promise
 router.get('/admin/system/incidents/:id/rca', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const rca = await pool.query(`SELECT * FROM incident_rca WHERE incident_id = ${id} ORDER BY generated_at DESC LIMIT 1`);
+    const rca = await pool.query('SELECT * FROM incident_rca WHERE incident_id = $1 ORDER BY generated_at DESC LIMIT 1', [parseInt(id, 10)]);
     if (!rca.rows.length) return res.status(404).json({ error: 'No RCA found for this incident', incidentId: id });
     return res.json({ rca: rca.rows[0] });
   } catch (err: any) {
@@ -17928,14 +17923,14 @@ router.post('/admin/system/incidents/:id/rca', async (req, res) => {
     const { exportToTimeline = false } = req.body;
 
     // Load incident
-    const incRow = await pool.query(`SELECT * FROM incidents WHERE id = ${id}`);
+    const incRow = await pool.query('SELECT * FROM incidents WHERE id = $1', [parseInt(id, 10)]);
     if (!incRow.rows.length) return res.status(404).json({ error: 'Incident not found' });
     const incident = incRow.rows[0];
 
     // Determine anomaly type
     let anomalyType = 'unknown';
     if (incident.anomaly_event_id) {
-      const ae = await pool.query(`SELECT anomaly_type, detected_at FROM anomaly_events WHERE id = ${incident.anomaly_event_id}`);
+      const ae = await pool.query('SELECT anomaly_type, detected_at FROM anomaly_events WHERE id = $1', [incident.anomaly_event_id]);
       if (ae.rows.length) anomalyType = ae.rows[0].anomaly_type;
     } else {
       // Try to infer from incident title
@@ -17961,7 +17956,7 @@ router.post('/admin/system/incidents/:id/rca', async (req, res) => {
         generated_at = NOW()
     `);
 
-    const rcaRow = await pool.query(`SELECT * FROM incident_rca WHERE incident_id = ${id}`);
+    const rcaRow = await pool.query('SELECT * FROM incident_rca WHERE incident_id = $1', [parseInt(id, 10)]);
 
     // Optionally export conclusion to timeline
     if (exportToTimeline) {
@@ -18036,11 +18031,11 @@ router.post('/admin/system/incidents/:id/remediation/generate', async (req, res)
     const incidentId = parseInt(req.params.id);
     const { actor = 'admin' } = req.body;
 
-    const incRow = await pool.query(`SELECT * FROM incidents WHERE id = ${incidentId}`);
+    const incRow = await pool.query('SELECT * FROM incidents WHERE id = $1', [parseInt(incidentId, 10)]);
     if (!incRow.rows.length) return res.status(404).json({ error: 'Incident not found' });
 
     // Get RCA for anomaly type
-    const rcaRow = await pool.query(`SELECT * FROM incident_rca WHERE incident_id = ${incidentId} ORDER BY generated_at DESC LIMIT 1`);
+    const rcaRow = await pool.query('SELECT * FROM incident_rca WHERE incident_id = $1 ORDER BY generated_at DESC LIMIT 1', [parseInt(incidentId, 10)]);
     let anomalyType = 'unknown';
     let rcaId: number | null = null;
     if (rcaRow.rows.length) {
@@ -18050,13 +18045,13 @@ router.post('/admin/system/incidents/:id/remediation/generate', async (req, res)
       // Infer from anomaly_event_id
       const inc = incRow.rows[0];
       if (inc.anomaly_event_id) {
-        const ae = await pool.query(`SELECT anomaly_type FROM anomaly_events WHERE id = ${inc.anomaly_event_id}`);
+        const ae = await pool.query('SELECT anomaly_type FROM anomaly_events WHERE id = $1', [inc.anomaly_event_id]);
         if (ae.rows.length) anomalyType = ae.rows[0].anomaly_type;
       }
     }
 
     // Delete existing pending suggestions for this incident (regenerate fresh)
-    await pool.query(`DELETE FROM remediation_suggestions WHERE incident_id = ${incidentId} AND status = 'pending'`);
+    await pool.query("DELETE FROM remediation_suggestions WHERE incident_id = $1 AND status = 'pending'", [parseInt(incidentId, 10)]);
 
     // Build playbook
     const playbook = buildRemediationPlaybook(anomalyType);
@@ -18074,7 +18069,7 @@ router.post('/admin/system/incidents/:id/remediation/generate', async (req, res)
       `);
     }
 
-    const suggestions = await pool.query(`SELECT * FROM remediation_suggestions WHERE incident_id = ${incidentId} ORDER BY rank ASC`);
+    const suggestions = await pool.query('SELECT * FROM remediation_suggestions WHERE incident_id = $1 ORDER BY rank ASC', [parseInt(incidentId, 10)]);
 
     // Log generation to timeline
     await pool.query(`
@@ -18094,7 +18089,7 @@ router.post('/admin/system/incidents/:id/remediation/generate', async (req, res)
 router.get('/admin/system/incidents/:id/remediation', async (req, res) => {
   try {
     const incidentId = parseInt(req.params.id);
-    const rows = await pool.query(`SELECT * FROM remediation_suggestions WHERE incident_id = ${incidentId} ORDER BY rank ASC`);
+    const rows = await pool.query('SELECT * FROM remediation_suggestions WHERE incident_id = $1 ORDER BY rank ASC', [parseInt(incidentId, 10)]);
     return res.json({ suggestions: rows.rows, incidentId });
   } catch (err: any) {
     return res.status(500).json({ error: 'Remediation fetch failed', detail: err.message });
@@ -18107,7 +18102,7 @@ router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
     const sid = parseInt(req.params.sid);
     const { actor = 'admin', auditNote = '' } = req.body;
 
-    const sRow = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const sRow = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [parseInt(sid, 10)]);
     if (!sRow.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
     const s = sRow.rows[0];
     if (s.status !== 'pending') return res.status(400).json({ error: `Cannot apply suggestion with status: ${s.status}` });
@@ -18118,7 +18113,7 @@ router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
     // Execute based on action type
     if (s.action_type === 'kill_switch_toggle' && params.key) {
       const val = params.value === true ? 'true' : 'false';
-      await pool.query(`UPDATE system_kill_switches SET enabled = ${val}, updated_at = NOW() WHERE key = '${params.key}'`);
+      await pool.query('UPDATE system_kill_switches SET enabled = $1, updated_at = NOW() WHERE key = $2', [val, params.key]);
       executionNote = `Kill switch '${params.key}' set to ${val}`;
     } else if (s.action_type === 'shadow_mode_enable' && params.key) {
       await pool.query(`UPDATE system_kill_switches SET enabled = true, updated_at = NOW() WHERE key = 'shadow_mode'`);
@@ -18155,7 +18150,7 @@ router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
           .replace(/'/g, "''")}}'::jsonb)
     `);
 
-    const updated = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const updated = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [parseInt(sid, 10)]);
     return res.json({ suggestion: updated.rows[0], executionNote });
   } catch (err: any) {
     return res.status(500).json({ error: 'Apply failed', detail: err.message });
@@ -18168,7 +18163,7 @@ router.post('/admin/system/remediation/:sid/dismiss', async (req, res) => {
     const sid = parseInt(req.params.sid);
     const { actor = 'admin', reason = '' } = req.body;
 
-    const sRow = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const sRow = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [parseInt(sid, 10)]);
     if (!sRow.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
     const s = sRow.rows[0];
     if (s.status !== 'pending') return res.status(400).json({ error: `Cannot dismiss suggestion with status: ${s.status}` });
@@ -18188,7 +18183,7 @@ router.post('/admin/system/remediation/:sid/dismiss', async (req, res) => {
         '${actor}', '{"suggestion_id":${sid},"action_type":"${s.action_type}"}'::jsonb)
     `);
 
-    const updated = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    const updated = await pool.query('SELECT * FROM remediation_suggestions WHERE id = $1', [parseInt(sid, 10)]);
     return res.json({ suggestion: updated.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Dismiss failed', detail: err.message });
@@ -18480,7 +18475,7 @@ async function runSelfHealingCheck(): Promise<void> {
             '[L1/conf:${confidence}] Autonomy level 1 — human approval required (global_mode:${globalMode}, domain_cap:${domainCap})',
             'self_healing_engine', ${confidence})
         `);
-        await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+        await pool.query('UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = $1', [rule.id]);
         await logDecision('manual', { incident_id: manualIncidentId });
         logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L1 → pending_manual`);
 
@@ -18500,7 +18495,7 @@ async function runSelfHealingCheck(): Promise<void> {
             'Self-healing rule "${rule.name.replace(/'/g, "''")}": level 2 — action notified but not executed (conf ${confidence}/100)',
             'self_healing_engine')
         `);
-        await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+        await pool.query('UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = $1', [rule.id]);
         await logDecision('notify');
         logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L2 → notify_only (conf ${confidence})`);
 
@@ -18521,7 +18516,7 @@ async function runSelfHealingCheck(): Promise<void> {
               'Self-healing rule "${rule.name.replace(/'/g, "''")}": level 3 low confidence ${confidence}/100 — not executed',
               'self_healing_engine')
           `);
-          await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+          await pool.query('UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = $1', [rule.id]);
           await logDecision('notify', { reason: 'confidence_below_40' });
           logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L3 conf ${confidence} < 40 → notify_only`);
         } else {
@@ -18537,7 +18532,7 @@ async function runSelfHealingCheck(): Promise<void> {
               '[L3/conf:${confidence}] ${note.replace(/'/g, "''")}',
               'self_healing_engine', ${confidence})
           `);
-          await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+          await pool.query('UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = $1', [rule.id]);
           const openIncRes3 = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
           if (openIncRes3.rows.length) {
             await pool.query(`
@@ -18573,7 +18568,7 @@ async function runSelfHealingCheck(): Promise<void> {
             '[L4-FULL_AUTO/conf:${confidence}] ${note.replace(/'/g, "''")}',
             'self_healing_engine', ${confidence})
         `);
-        await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+        await pool.query('UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = $1', [rule.id]);
         const openIncRes4 = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
         if (openIncRes4.rows.length) {
           await pool.query(`
@@ -18670,7 +18665,16 @@ router.patch('/admin/system/self-healing/rules/:id', async (req, res) => {
     if (enabled !== undefined) setClauses.push(`enabled = ${!!enabled}`);
     if (rationale !== undefined) setClauses.push(`rationale = '${rationale.replace(/'/g, "''")}'`);
     if (!setClauses.length) return res.status(400).json({ error: 'No fields to update' });
-    const r = await pool.query(`UPDATE self_healing_rules SET ${setClauses.join(', ')} WHERE id = ${id} RETURNING *`);
+    const values: any[] = [];
+    // rebuild setClauses with proper $N indices
+    const setClauses2: string[] = [];
+    if (name !== undefined) { values.push(name); setClauses2.push(`name = $${values.length}`); }
+    if (minScore !== undefined) { values.push(parseInt(minScore)); setClauses2.push(`min_score = $${values.length}`); }
+    if (consecutiveTriggers !== undefined) { values.push(parseInt(consecutiveTriggers)); setClauses2.push(`consecutive_triggers = $${values.length}`); }
+    if (enabled !== undefined) { values.push(!!enabled); setClauses2.push(`enabled = $${values.length}`); }
+    if (rationale !== undefined) { values.push(rationale); setClauses2.push(`rationale = $${values.length}`); }
+    values.push(parseInt(id, 10));
+    const r = await pool.query(`UPDATE self_healing_rules SET ${setClauses2.join(', ')} WHERE id = $${values.length} RETURNING *`, values);
     if (!r.rows.length) return res.status(404).json({ error: 'Rule not found' });
     return res.json({ rule: r.rows[0] });
   } catch (err: any) {
@@ -18682,7 +18686,7 @@ router.patch('/admin/system/self-healing/rules/:id', async (req, res) => {
 router.delete('/admin/system/self-healing/rules/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await pool.query(`DELETE FROM self_healing_rules WHERE id = ${id}`);
+    await pool.query('DELETE FROM self_healing_rules WHERE id = $1', [parseInt(id, 10)]);
     return res.json({ deleted: id });
   } catch (err: any) {
     return res.status(500).json({ error: 'Delete failed', detail: err.message });
@@ -18702,7 +18706,7 @@ router.patch('/admin/system/self-healing/rules/:id/tune', async (req, res) => {
       return res.status(400).json({ error: 'reason is required for all threshold changes' });
     }
 
-    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    const ruleRes = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [parseInt(id, 10)]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
     const rule = ruleRes.rows[0];
 
@@ -18740,21 +18744,22 @@ router.patch('/admin/system/self-healing/rules/:id/tune', async (req, res) => {
       return res.json({ rule, changes: [], message: 'No values changed' });
     }
 
-    await pool.query(`UPDATE self_healing_rules SET ${setClauses.join(', ')} WHERE id = ${id}`);
+    const tuneValues: any[] = [];
+    const tuneClauses: string[] = [];
+    if (auditRows.some(r => r.field === 'min_score')) { tuneValues.push(parseInt(minScore)); tuneClauses.push(`min_score = $${tuneValues.length}`); }
+    if (auditRows.some(r => r.field === 'consecutive_triggers')) { tuneValues.push(parseInt(consecutiveTriggers)); tuneClauses.push(`consecutive_triggers = $${tuneValues.length}`); }
+    if (auditRows.some(r => r.field === 'cooldown_minutes')) { tuneValues.push(parseInt(cooldownMinutes)); tuneClauses.push(`cooldown_minutes = $${tuneValues.length}`); }
+    tuneValues.push(parseInt(id, 10));
+    await pool.query(`UPDATE self_healing_rules SET ${tuneClauses.join(', ')} WHERE id = $${tuneValues.length}`, tuneValues);
 
     for (const row of auditRows) {
-      await pool.query(`
-        INSERT INTO self_healing_rule_changes
-          (rule_id, changed_by, field_changed, old_value, new_value, reason)
-        VALUES (${id}, '${actor.replace(/'/g, "''")}',
-          '${row.field}',
-          '${row.oldVal.replace(/'/g, "''")}',
-          '${row.newVal.replace(/'/g, "''")}',
-          '${reason.replace(/'/g, "''")}')
-      `);
+      await pool.query(
+        'INSERT INTO self_healing_rule_changes (rule_id, changed_by, field_changed, old_value, new_value, reason) VALUES ($1, $2, $3, $4, $5, $6)',
+        [parseInt(id, 10), actor, row.field, row.oldVal, row.newVal, reason]
+      );
     }
 
-    const updated = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    const updated = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [parseInt(id, 10)]);
     return res.json({ rule: updated.rows[0], changes: auditRows });
   } catch (err: any) {
     return res.status(500).json({ error: 'Tune failed', detail: err.message });
@@ -18765,12 +18770,7 @@ router.patch('/admin/system/self-healing/rules/:id/tune', async (req, res) => {
 router.get('/admin/system/self-healing/rules/:id/history', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const rows = await pool.query(`
-      SELECT * FROM self_healing_rule_changes
-      WHERE rule_id = ${id}
-      ORDER BY changed_at DESC
-      LIMIT 50
-    `);
+    const rows = await pool.query('SELECT * FROM self_healing_rule_changes WHERE rule_id = $1 ORDER BY changed_at DESC LIMIT 50', [parseInt(id, 10)]);
     return res.json({ changes: rows.rows, ruleId: id });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to fetch history', detail: err.message });
@@ -18782,7 +18782,7 @@ router.get('/admin/system/self-healing/rules/:id/history', async (req, res) => {
 router.get('/admin/system/self-healing/rules/:id/preview', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    const ruleRes = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [parseInt(id, 10)]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
     const rule = ruleRes.rows[0];
 
@@ -18932,12 +18932,12 @@ router.post('/admin/system/self-healing/executions/:id/false-positive', async (r
     if (!reviewed_by || !reviewed_by.trim()) return res.status(400).json({ error: 'reviewed_by is required' });
 
     // Verify execution exists
-    const execRes = await pool.query(`SELECT id, rule_id FROM self_healing_executions WHERE id = ${execId}`);
+    const execRes = await pool.query('SELECT id, rule_id FROM self_healing_executions WHERE id = $1', [parseInt(execId, 10)]);
     if (!execRes.rows.length) return res.status(404).json({ error: 'Execution not found' });
     const ruleId = execRes.rows[0].rule_id;
 
     // Idempotent — only one FP review per execution
-    const existing = await pool.query(`SELECT id FROM false_positive_reviews WHERE execution_id = ${execId}`);
+    const existing = await pool.query('SELECT id FROM false_positive_reviews WHERE execution_id = $1', [parseInt(execId, 10)]);
     if (existing.rows.length) return res.status(409).json({ error: 'This execution is already marked as a false positive', reviewId: existing.rows[0].id });
 
     const ins = await pool.query(`
@@ -18958,7 +18958,7 @@ router.delete('/admin/system/self-healing/executions/:id/false-positive', async 
     const execId = parseInt(req.params.id);
     if (isNaN(execId)) return res.status(400).json({ error: 'Invalid execution ID' });
 
-    const del = await pool.query(`DELETE FROM false_positive_reviews WHERE execution_id = ${execId} RETURNING id`);
+    const del = await pool.query('DELETE FROM false_positive_reviews WHERE execution_id = $1 RETURNING id', [parseInt(execId, 10)]);
     if (!del.rows.length) return res.status(404).json({ error: 'No false positive review found for this execution' });
 
     return res.json({ removed: true, reviewId: del.rows[0].id });
@@ -18973,7 +18973,7 @@ router.get('/admin/system/self-healing/rules/:id/false-positive-rate', async (re
     const ruleId = parseInt(req.params.id);
     if (isNaN(ruleId)) return res.status(400).json({ error: 'Invalid rule ID' });
 
-    const ruleRes = await pool.query(`SELECT id, name FROM self_healing_rules WHERE id = ${ruleId}`);
+    const ruleRes = await pool.query('SELECT id, name FROM self_healing_rules WHERE id = $1', [parseInt(ruleId, 10)]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
 
     // Total executions for this rule (last 30 days)
@@ -19023,7 +19023,7 @@ router.get('/admin/system/self-healing/executions/:id/false-positive', async (re
     const execId = parseInt(req.params.id);
     if (isNaN(execId)) return res.status(400).json({ error: 'Invalid execution ID' });
 
-    const r = await pool.query(`SELECT * FROM false_positive_reviews WHERE execution_id = ${execId}`);
+    const r = await pool.query('SELECT * FROM false_positive_reviews WHERE execution_id = $1', [parseInt(execId, 10)]);
     if (!r.rows.length) return res.json({ isFalsePositive: false });
 
     return res.json({ isFalsePositive: true, review: r.rows[0] });
@@ -19119,7 +19119,7 @@ router.post('/admin/system/self-healing/rules/:id/confidence-preview', async (re
 
     const { anomalyScore = 75, consecutiveTriggers = 2 } = req.body;
 
-    const ruleRes = await pool.query(`SELECT name FROM self_healing_rules WHERE id = ${ruleId}`);
+    const ruleRes = await pool.query('SELECT name FROM self_healing_rules WHERE id = $1', [parseInt(ruleId, 10)]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
 
     const result = await computeConfidenceScore(ruleId, parseInt(anomalyScore), parseInt(consecutiveTriggers));
@@ -19181,7 +19181,7 @@ router.post('/admin/system/incidents', async (req, res) => {
 
     // If linked to an anomaly, pull in its detection + priority events
     if (anomalyEventId) {
-      const anomaly = await pool.query(`SELECT * FROM anomaly_events WHERE id = ${anomalyEventId}`);
+      const anomaly = await pool.query('SELECT * FROM anomaly_events WHERE id = $1', [parseInt(anomalyEventId, 10)]);
       if (anomaly.rows.length) {
         const a = anomaly.rows[0];
         await pool.query(`
@@ -19190,7 +19190,7 @@ router.post('/admin/system/incidents', async (req, res) => {
             'Anomaly detected: ${a.anomaly_type} — ${a.severity} severity, +${parseFloat(a.deviation_pct).toFixed(1)}% deviation',
             'anomaly_engine', '{"anomaly_id":${a.id},"severity":"${a.severity}","deviation_pct":${a.deviation_pct}}'::jsonb, '${a.detected_at}')
         `);
-        const aps = await pool.query(`SELECT * FROM alert_priority_scores WHERE alert_id = ${anomalyEventId}`);
+        const aps = await pool.query('SELECT * FROM alert_priority_scores WHERE alert_id = $1', [parseInt(anomalyEventId, 10)]);
         if (aps.rows.length) {
           const s = aps.rows[0];
           await pool.query(`
@@ -19200,7 +19200,7 @@ router.post('/admin/system/incidents', async (req, res) => {
               'priority_engine', '{"score":${s.priority_score},"rank":${s.rank}}'::jsonb, '${s.computed_at}')
           `);
         }
-        const ksLogs = await pool.query(`SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = ${anomalyEventId} ORDER BY triggered_at ASC`);
+        const ksLogs = await pool.query('SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = $1 ORDER BY triggered_at ASC', [parseInt(anomalyEventId, 10)]);
         for (const ks of ksLogs.rows) {
           await pool.query(`
             INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at)
@@ -19222,7 +19222,7 @@ router.post('/admin/system/incidents', async (req, res) => {
 router.get('/admin/system/incidents/:id/timeline', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const inc = await pool.query(`SELECT * FROM incidents WHERE id = ${id}`);
+    const inc = await pool.query('SELECT * FROM incidents WHERE id = $1', [parseInt(id, 10)]);
     if (!inc.rows.length) return res.status(404).json({ error: 'Incident not found' });
 
     const entries = await pool.query(`
@@ -19258,7 +19258,11 @@ router.post('/admin/system/incidents/:id/resolve', async (req, res) => {
     const id = parseInt(req.params.id);
     const { summary, actor = 'operator' } = req.body;
 
-    await pool.query(`UPDATE incidents SET status = 'resolved', resolved_at = NOW()${summary ? `, summary = '${summary.replace(/'/g, "''")}'` : ''} WHERE id = ${id}`);
+    if (summary) {
+      await pool.query("UPDATE incidents SET status = $1, resolved_at = NOW(), summary = $2 WHERE id = $3", ['resolved', summary, parseInt(id, 10)]);
+    } else {
+      await pool.query("UPDATE incidents SET status = $1, resolved_at = NOW() WHERE id = $2", ['resolved', parseInt(id, 10)]);
+    }
     await pool.query(`
       INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor)
       VALUES (${id}, 'incident_resolved', 'Incident resolved${summary ? ': ' + summary.replace(/'/g, "''") : ''}', '${actor.replace(/'/g, "''")}')
@@ -19294,17 +19298,17 @@ router.post('/admin/system/incidents/auto-build', async (req, res) => {
       `);
       const incident = inc.rows[0];
 
-      await pool.query(`INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES (${incident.id}, 'anomaly_detected', 'Anomaly detected: ${a.anomaly_type} — ${a.severity} severity, +${parseFloat(a.deviation_pct).toFixed(1)}% deviation', 'anomaly_engine', '{"anomaly_id":${a.id},"severity":"${a.severity}","score":${a.priority_score}}'::jsonb, '${a.detected_at}')`);
+      await pool.query('INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)', [incident.id, 'anomaly_detected', 'Anomaly detected: ' + a.anomaly_type + ' — ' + a.severity + ' severity, +' + parseFloat(a.deviation_pct).toFixed(1) + '% deviation', 'anomaly_engine', JSON.stringify({anomaly_id: a.id, severity: a.severity, score: a.priority_score}), a.detected_at]);
 
       const aps = await pool.query(`SELECT * FROM alert_priority_scores WHERE alert_id = ${a.id}`);
       if (aps.rows.length) {
         const s = aps.rows[0];
-        await pool.query(`INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES (${incident.id}, 'priority_scored', 'Alert prioritized: score ${s.priority_score}/100, rank #${s.rank}', 'priority_engine', '{"score":${s.priority_score},"rank":${s.rank}}'::jsonb, '${s.computed_at}')`);
+        await pool.query('INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)', [incident.id, 'priority_scored', 'Alert prioritized: score ' + s.priority_score + '/100, rank #' + s.rank, 'priority_engine', JSON.stringify({score: s.priority_score, rank: s.rank}), s.computed_at]);
       }
 
       const ksLogs = await pool.query(`SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = ${a.id} ORDER BY triggered_at ASC`);
       for (const ks of ksLogs.rows) {
-        await pool.query(`INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES (${incident.id}, 'kill_switch_${ks.action_taken}', 'Kill switch ${ks.kill_switch_key} ${ks.action_taken}', 'operator', '{"kill_switch_key":"${ks.kill_switch_key}","score":${ks.priority_score}}'::jsonb, '${ks.triggered_at}')`);
+        await pool.query('INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)', [incident.id, 'kill_switch_' + ks.action_taken, 'Kill switch ' + ks.kill_switch_key + ' ' + ks.action_taken, 'operator', JSON.stringify({kill_switch_key: ks.kill_switch_key, score: ks.priority_score}), ks.triggered_at]);
       }
 
       created.push({ incidentId: incident.id, title, anomalyEventId: a.id, score: a.priority_score });
@@ -19325,7 +19329,7 @@ router.post('/admin/system/incidents/:id/postmortem', async (req, res) => {
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid incident ID' });
 
     // Fetch incident + timeline + self-healing executions linked to it
-    const incRes = await pool.query(`SELECT * FROM incidents WHERE id = ${id}`);
+    const incRes = await pool.query('SELECT * FROM incidents WHERE id = $1', [parseInt(id, 10)]);
     if (!incRes.rows.length) return res.status(404).json({ error: 'Incident not found' });
     const inc = incRes.rows[0];
 
@@ -19395,7 +19399,7 @@ Write in a professional but concise style. Focus on technical accuracy. This is 
     const postmortemText = aiRes.text ?? '';
 
     // Persist to incidents table
-    await pool.query(`UPDATE incidents SET postmortem_text = '${postmortemText.replace(/'/g, "''")}' WHERE id = ${id}`);
+    await pool.query('UPDATE incidents SET postmortem_text = $1 WHERE id = $2', [postmortemText, parseInt(id, 10)]);
 
     // Timeline entry
     await pool.query(`
@@ -19415,7 +19419,7 @@ router.get('/admin/system/incidents/:id/postmortem', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid incident ID' });
-    const res2 = await pool.query(`SELECT id, title, postmortem_text FROM incidents WHERE id = ${id}`);
+    const res2 = await pool.query('SELECT id, title, postmortem_text FROM incidents WHERE id = $1', [parseInt(id, 10)]);
     if (!res2.rows.length) return res.status(404).json({ error: 'Incident not found' });
     const inc = res2.rows[0];
     return res.json({
@@ -19549,7 +19553,7 @@ router.post('/admin/system/self-healing/rules/:id/promote', async (req, res) => 
     const newLevel = currentLevel + 1;
     const metricsSnap = JSON.stringify({ total_exec: s.total_exec, fp_rate: fpRate, avg_conf: avgConf, success_rate: successRate }).replace(/'/g, "''");
 
-    await pool.query(`UPDATE self_healing_rules SET autonomy_level = ${newLevel} WHERE id = ${id}`);
+    await pool.query('UPDATE self_healing_rules SET autonomy_level = $1 WHERE id = $2', [newLevel, parseInt(id, 10)]);
     await pool.query(`
       INSERT INTO autonomy_promotions (rule_id, from_level, to_level, reason, metrics_snapshot_json, approved_by)
       VALUES (${id}, ${currentLevel}, ${newLevel}, '${reason.replace(/'/g, "''")}', '${metricsSnap}'::jsonb, '${approvedBy.replace(/'/g, "''")}')
@@ -19571,11 +19575,11 @@ router.post('/admin/system/self-healing/rules/:id/promote', async (req, res) => 
 router.get('/admin/system/self-healing/rules/:id/autonomy', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const ruleRes = await pool.query(`SELECT id, name, autonomy_level, approval_mode FROM self_healing_rules WHERE id = ${id}`);
+    const ruleRes = await pool.query('SELECT id, name, autonomy_level, approval_mode FROM self_healing_rules WHERE id = $1', [parseInt(id, 10)]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
 
-    const promotions = await pool.query(`SELECT * FROM autonomy_promotions WHERE rule_id = ${id} ORDER BY promoted_at DESC LIMIT 20`);
-    const demotions = await pool.query(`SELECT * FROM autonomy_demotions WHERE rule_id = ${id} ORDER BY demoted_at DESC LIMIT 20`);
+    const promotions = await pool.query('SELECT * FROM autonomy_promotions WHERE rule_id = $1 ORDER BY promoted_at DESC LIMIT 20', [parseInt(id, 10)]);
+    const demotions = await pool.query('SELECT * FROM autonomy_demotions WHERE rule_id = $1 ORDER BY demoted_at DESC LIMIT 20', [parseInt(id, 10)]);
 
     return res.json({
       rule: ruleRes.rows[0],
