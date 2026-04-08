@@ -18893,7 +18893,7 @@ router.patch('/admin/system/self-healing/rules/:id/mode', async (req, res) => {
     if (!reason || !reason.trim()) return res.status(400).json({ error: 'reason is required for mode changes' });
     if (!actor || !actor.trim()) return res.status(400).json({ error: 'actor is required' });
 
-    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    const ruleRes = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [id]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
     const rule = ruleRes.rows[0];
 
@@ -19040,7 +19040,7 @@ router.get('/admin/system/self-healing/rules/:id/confidence-summary', async (req
     const ruleId = parseInt(req.params.id);
     if (isNaN(ruleId)) return res.status(400).json({ error: 'Invalid rule ID' });
 
-    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${ruleId}`);
+    const ruleRes = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [ruleId]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
     const rule = ruleRes.rows[0];
 
@@ -19300,13 +19300,13 @@ router.post('/admin/system/incidents/auto-build', async (req, res) => {
 
       await pool.query('INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)', [incident.id, 'anomaly_detected', 'Anomaly detected: ' + a.anomaly_type + ' — ' + a.severity + ' severity, +' + parseFloat(a.deviation_pct).toFixed(1) + '% deviation', 'anomaly_engine', JSON.stringify({anomaly_id: a.id, severity: a.severity, score: a.priority_score}), a.detected_at]);
 
-      const aps = await pool.query(`SELECT * FROM alert_priority_scores WHERE alert_id = ${a.id}`);
+      const aps = await pool.query('SELECT * FROM alert_priority_scores WHERE alert_id = $1', [a.id]);
       if (aps.rows.length) {
         const s = aps.rows[0];
         await pool.query('INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)', [incident.id, 'priority_scored', 'Alert prioritized: score ' + s.priority_score + '/100, rank #' + s.rank, 'priority_engine', JSON.stringify({score: s.priority_score, rank: s.rank}), s.computed_at]);
       }
 
-      const ksLogs = await pool.query(`SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = ${a.id} ORDER BY triggered_at ASC`);
+      const ksLogs = await pool.query('SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = $1 ORDER BY triggered_at ASC', [a.id]);
       for (const ks of ksLogs.rows) {
         await pool.query('INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)', [incident.id, 'kill_switch_' + ks.action_taken, 'Kill switch ' + ks.kill_switch_key + ' ' + ks.action_taken, 'operator', JSON.stringify({kill_switch_key: ks.kill_switch_key, score: ks.priority_score}), ks.triggered_at]);
       }
@@ -19511,7 +19511,7 @@ router.post('/admin/system/self-healing/rules/:id/promote', async (req, res) => 
     const id = parseInt(req.params.id);
     const { approvedBy = 'operator', reason = '' } = req.body;
 
-    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    const ruleRes = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [id]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
     const rule = ruleRes.rows[0];
     const currentLevel: number = rule.autonomy_level ?? 1;
@@ -19892,7 +19892,7 @@ router.get('/admin/system/self-healing/rules/:id/trust-metrics', async (req, res
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid rule ID' });
 
     // Rule existence check
-    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    const ruleRes = await pool.query('SELECT * FROM self_healing_rules WHERE id = $1', [id]);
     if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
     const rule = ruleRes.rows[0];
 
