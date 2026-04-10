@@ -5,7 +5,7 @@ Feb 26, 2026, 2:35 PM PST
 
 Hello Nir,
  
-We’re reaching out because we detected an unusual increase in call activity on your account ACd21e697c18973a5ccf504ac2ee170b6e to Israel  that could indicate a potential compromise of your account.
+We’re reaching out because we detected an unusual increase in call activity on your account YOUR_TWILIO_ACCOUNT_SID to Israel  that could indicate a potential compromise of your account.
  
 We’ve temporarily suspended your account as a precaution and restricted outbound calling to specific phone number prefixes: 972568280.
  
