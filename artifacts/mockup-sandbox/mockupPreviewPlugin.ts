@@ -72,10 +72,15 @@ export function mockupPreviewPlugin(): Plugin {
 
   function generateSource(components: Array<DiscoveredComponent>): string {
     const entries = components
-      .map(
-        (c) =>
-          `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(c.importPath)})`,
-      )
+      .map((c) => {
+        // Validate importPath to ensure it stays within the expected source tree
+        // before embedding it in the generated module file
+        const safeImportPath = c.importPath.replace(/\\/g, '/');
+        if (safeImportPath.includes('..') || path.isAbsolute(safeImportPath)) {
+          throw new Error(`Unsafe import path detected: ${safeImportPath}`);
+        }
+        return `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(safeImportPath)})`;
+      })
       .join(",\n");
 
     return [

@@ -93,7 +93,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       return res.status(400).json({ error: 'Missing required fields', errorCode: 'MISSING_FIELDS' });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Invalid email address', errorCode: 'INVALID_EMAIL' });
     }

@@ -99,6 +99,8 @@ export function useLocationService(role: 'customer' | 'provider' = 'customer') {
           timestamp: new Date().toISOString(),
           source: 'device_gps',
         };
+        // Intentional: caches the GPS stamp (lat/lng, accuracy, timestamp, source) across
+        // page reloads for up to 24 h (STAMP_TTL_MS). No auth tokens or secrets are stored here.
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newStamp));
         setStamp(newStamp);
         setPermissionState('granted');
@@ -125,6 +127,7 @@ export function useLocationService(role: 'customer' | 'provider' = 'customer') {
       timestamp: new Date().toISOString(),
       source: 'typed_address',
     };
+    // Intentional: same as GPS stamp — caches typed-address location for UX persistence.
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newStamp));
     setStamp(newStamp);
     await sendStampToBackend(newStamp, role);

@@ -220,7 +220,12 @@ export async function handleWhatsAppWebhook(
       
       if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
         logger.info('[WhatsApp] Webhook verified successfully');
-        res.status(200).send(challenge);
+        const challengeStr = String(challenge ?? '');
+        if (!/^[A-Za-z0-9_-]+$/.test(challengeStr)) {
+          res.status(400).send('Invalid challenge');
+          return;
+        }
+        res.status(200).type('text/plain').send(challengeStr);
         return;
       } else {
         res.status(403).send('Forbidden');

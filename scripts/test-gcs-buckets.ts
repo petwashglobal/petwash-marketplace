@@ -34,7 +34,8 @@ async function testGCSBuckets() {
   console.log('═'.repeat(60));
   console.log('  PetWash™ — GCS Bucket Connectivity Test');
   console.log('═'.repeat(60));
-  console.log(`  Service Account : ${credentials.client_email}`);
+  const redactedEmail = credentials.client_email?.replace(/^(.{3}).*(@.*)$/, '$1***$2') ?? '(unknown)';
+  console.log(`  Service Account : ${redactedEmail}`);
   console.log(`  Project         : ${credentials.project_id}`);
   console.log('');
 
@@ -71,7 +72,8 @@ async function testGCSBuckets() {
     } catch (err: any) {
       if (err.code === 403 || err.code === 'PERMISSION_DENIED') {
         console.log('⚠️  EXISTS but no write access');
-        console.log(`     → Grant Storage Object Admin to: ${credentials.client_email}`);
+        const redactedEmailErr = credentials.client_email?.replace(/^(.{3}).*(@.*)$/, '$1***$2') ?? '(unknown)';
+        console.log(`     → Grant Storage Object Admin to: ${redactedEmailErr}`);
       } else {
         console.log(`❌ ERROR: ${err.message}`);
       }

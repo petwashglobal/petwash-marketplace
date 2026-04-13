@@ -23,6 +23,7 @@ import {
 } from "@shared/petwashVoucher2025";
 import { requireAuth } from "../customAuth";
 import { verifyAndRepairBalance } from "../services/voucherSecurityService";
+import { apiLimiter } from "../middleware/rateLimiter";
 
 const router = Router();
 
@@ -200,7 +201,7 @@ async function verifyVoucherIntegrity(dbVoucher: any): Promise<{ valid: boolean;
  * Create a new voucher
  * POST /api/vouchers-2025/create
  */
-router.post("/create", requireAuth, validateBody(createVoucherSchema), async (req, res) => {
+router.post("/create", apiLimiter, requireAuth, validateBody(createVoucherSchema), async (req, res) => {
   try {
     const {
       type,
@@ -277,7 +278,7 @@ router.post("/create", requireAuth, validateBody(createVoucherSchema), async (re
  * Get all vouchers for current user
  * GET /api/vouchers-2025/my-vouchers
  */
-router.get("/my-vouchers", requireAuth, async (req, res) => {
+router.get("/my-vouchers", apiLimiter, requireAuth, async (req, res) => {
   try {
     const vouchers = await db
       .select()
@@ -318,7 +319,7 @@ router.get("/my-vouchers", requireAuth, async (req, res) => {
  * Get a specific voucher by public code
  * GET /api/vouchers-2025/:publicCode
  */
-router.get("/:publicCode", requireAuth, async (req, res) => {
+router.get("/:publicCode", apiLimiter, requireAuth, async (req, res) => {
   try {
     const { publicCode } = req.params;
 
@@ -375,7 +376,7 @@ router.get("/:publicCode", requireAuth, async (req, res) => {
  * Redeem a voucher (wash or amount)
  * POST /api/vouchers-2025/redeem
  */
-router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (req, res) => {
+router.post("/redeem", apiLimiter, requireAuth, validateBody(redeemVoucherSchema), async (req, res) => {
   try {
     const {
       public_code,
@@ -627,7 +628,7 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
  * Get voucher statistics
  * GET /api/vouchers-2025/stats/summary
  */
-router.get("/stats/summary", requireAuth, async (req, res) => {
+router.get("/stats/summary", apiLimiter, requireAuth, async (req, res) => {
   try {
     const vouchers = await db
       .select()

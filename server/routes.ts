@@ -3182,7 +3182,7 @@ self.addEventListener('notificationclick', (event) => {
       // Store state and verifier in signed, short-lived cookie (5 min)
       res.cookie('tiktok_oauth_state', state, {
         httpOnly: true,
-        secure: req.secure || host.includes('petwash.co.il') || false,
+        secure: true,
         sameSite: 'lax',
         maxAge: 5 * 60 * 1000, // 5 minutes
         signed: true,
@@ -3191,7 +3191,7 @@ self.addEventListener('notificationclick', (event) => {
       
       res.cookie('tiktok_oauth_verifier', codeVerifier, {
         httpOnly: true,
-        secure: req.secure || host.includes('petwash.co.il') || false,
+        secure: true,
         sameSite: 'lax',
         maxAge: 5 * 60 * 1000, // 5 minutes
         signed: true,
@@ -3220,6 +3220,9 @@ self.addEventListener('notificationclick', (event) => {
   // GET /api/auth/tiktok/callback - Handle TikTok OAuth callback
   app.get('/api/auth/tiktok/callback', async (req, res) => {
     try {
+      // OAuth 2.0 requires the authorization code to be delivered via GET query
+      // parameter (RFC 6749 §4.1.2). The code is short-lived and one-time-use;
+      // do not log its value.
       const { code, state, error: oauthError, error_description } = req.query;
       const { TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET } = process.env;
 
@@ -11003,7 +11006,7 @@ self.addEventListener('notificationclick', (event) => {
       const validationErrors: string[] = [];
       if (!firstName || typeof firstName !== 'string' || firstName.trim().length < 1) validationErrors.push('firstName is required');
       if (!lastName || typeof lastName !== 'string' || lastName.trim().length < 1) validationErrors.push('lastName is required');
-      if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) validationErrors.push('Valid email is required');
+      if (!email || typeof email !== 'string' || !/^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/.test(email.trim())) validationErrors.push('Valid email is required');
       if (phone) {
         const cleanPhone = phone.replace(/[\s\-()]/g, '');
         if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) validationErrors.push('Phone must be international format (e.g. +972501234567)');
@@ -11640,8 +11643,8 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
       
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Validate email format (bounded character classes prevent ReDoS)
+      const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({ 
           success: false, 

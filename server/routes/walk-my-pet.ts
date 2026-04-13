@@ -591,7 +591,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           walker.userId
         );
       } catch (escrowErr: any) {
-        console.error(`[Walk My Pet] Escrow confirmation failed for ${bookingId}`, escrowErr);
+        console.error('[Walk My Pet] Escrow confirmation failed for bookingId:', bookingId, escrowErr);
       }
 
       await db

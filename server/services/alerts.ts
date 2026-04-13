@@ -7,6 +7,7 @@ import sgMail from '../lib/sendgrid';
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
+import { isPublicIP } from '../utils/ipValidation';
 
 const FROM = process.env.ALERT_EMAIL_FROM || 'noreply@petwash.co.il';
 const TO = process.env.ALERT_EMAIL_TO || 'nir.h@petwash.co.il';
@@ -165,8 +166,8 @@ export function getClientIP(req: any): string {
  * Returns 'Unknown' if geolocation fails
  */
 export async function getCityFromIP(ip: string): Promise<string> {
-  if (!ip || ip === 'unknown' || ip === '127.0.0.1' || ip.startsWith('10.') || ip.startsWith('192.168.')) {
-    return 'Unknown'; // Skip localhost and private IPs
+  if (!isPublicIP(ip)) {
+    return 'Unknown'; // Skip non-public IPs (loopback, private, link-local, etc.)
   }
 
   try {

@@ -88,47 +88,72 @@ import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
 // CORS middleware - inline implementation due to ESM import issues
-function cors(options: { origin: any; credentials?: boolean; methods?: string[]; allowedHeaders?: string[]; maxAge?: number }) {
+// Security: ACAO is only set after explicit allowlist approval; arbitrary origin reflection
+// with credentials is never permitted.
+function cors(options: {
+  origin: boolean | ((origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) => void);
+  credentials?: boolean;
+  methods?: string[];
+  allowedHeaders?: string[];
+  maxAge?: number;
+}) {
   return (req: any, res: any, next: any) => {
-    const origin = req.get('Origin');
-    
-    // Handle origin checking
-    if (options.origin === true || !origin) {
-      res.set('Access-Control-Allow-Origin', origin || '*');
-    } else if (typeof options.origin === 'function') {
-      options.origin(origin, (err: any, allowed: boolean) => {
+    const requestOrigin = req.get('Origin') as string | undefined;
+
+    const applyResponseHeaders = (approvedOrigin?: string) => {
+      if (approvedOrigin) {
+        res.set('Access-Control-Allow-Origin', approvedOrigin);
+      }
+      if (options.credentials) {
+        res.set('Access-Control-Allow-Credentials', 'true');
+      }
+      if (options.methods) {
+        res.set('Access-Control-Allow-Methods', options.methods.join(', '));
+      }
+      if (options.allowedHeaders) {
+        res.set('Access-Control-Allow-Headers', options.allowedHeaders.join(', '));
+      }
+      if (options.maxAge) {
+        res.set('Access-Control-Max-Age', String(options.maxAge));
+      }
+      if (req.method === 'OPTIONS') {
+        // Use only the pre-approved header list for preflight; do not reflect arbitrary request headers.
+        res.set('Access-Control-Allow-Headers', options.allowedHeaders?.join(', ') || '');
+        return res.status(204).end();
+      }
+      next();
+    };
+
+    if (typeof options.origin === 'function') {
+      // Allowlist-based validation: ACAO is set only after the allowlist callback approves.
+      options.origin(requestOrigin, (err: Error | null, allowed?: boolean) => {
         if (err || !allowed) {
+          // Reject blocked origins; return 403 when credentials are in play
+          if (options.credentials && requestOrigin) {
+            return res.status(403).end();
+          }
           return next(err || new Error('Not allowed by CORS'));
         }
-        res.set('Access-Control-Allow-Origin', origin);
+        // Origin has been explicitly approved by the allowlist — safe to reflect.
+        applyResponseHeaders(requestOrigin);
       });
+      return; // wait for callback; do not fall through
+    }
+
+    // options.origin === true: dev-only "allow all" path.
+    // Only reached in non-production; never used when isProduction === true.
+    if (requestOrigin && options.origin === true) {
+      applyResponseHeaders(requestOrigin);
+    } else if (!requestOrigin) {
+      // No Origin header (same-origin or server-to-server): no ACAO needed.
+      applyResponseHeaders();
     } else {
-      res.set('Access-Control-Allow-Origin', origin || '*');
+      // Origin present but not approved (options.origin is false/undefined).
+      if (options.credentials) {
+        return res.status(403).end();
+      }
+      next();
     }
-    
-    if (options.credentials) {
-      res.set('Access-Control-Allow-Credentials', 'true');
-    }
-    
-    if (options.methods) {
-      res.set('Access-Control-Allow-Methods', options.methods.join(', '));
-    }
-    
-    if (options.allowedHeaders) {
-      res.set('Access-Control-Allow-Headers', options.allowedHeaders.join(', '));
-    }
-    
-    if (options.maxAge) {
-      res.set('Access-Control-Max-Age', String(options.maxAge));
-    }
-    
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-      res.set('Access-Control-Allow-Headers', req.get('Access-Control-Request-Headers') || options.allowedHeaders?.join(', ') || '*');
-      return res.status(204).end();
-    }
-    
-    next();
   };
 }
 import cookieParser from "cookie-parser";
@@ -188,6 +213,16 @@ setTimeout(async () => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/** HTML-encode a string to prevent reflected XSS when embedding in HTML responses. */
+function htmlEncode(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
 
@@ -202,7 +237,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 // A. Security Headers — Helmet (basic hardening only)
 // CSP, HSTS, X-Frame-Options, Permissions-Policy, COOP/COEP are owned by
 // enhancedSecurityHeaders middleware (server/middleware/securityHeaders.ts).
-// Helmet is kept for noSniff only to avoid duplicate / conflicting headers.
+// Helmet is kept for noSniff, dnsPrefetchControl, hidePoweredBy, and
+// permittedCrossDomainPolicies — all safe and non-conflicting with enhancedSecurityHeaders.
 app.use(helmet({
   contentSecurityPolicy: false,       // Owned by enhancedSecurityHeaders
   hsts: false,                        // Owned by enhancedSecurityHeaders
@@ -211,8 +247,11 @@ app.use(helmet({
   crossOriginOpenerPolicy: false,     // Owned by enhancedSecurityHeaders
   crossOriginResourcePolicy: false,   // Owned by enhancedSecurityHeaders
   referrerPolicy: false,              // Owned by enhancedSecurityHeaders
-  noSniff: true,                      // X-Content-Type-Options: nosniff (harmless to keep)
+  noSniff: true,                      // X-Content-Type-Options: nosniff
   xssFilter: false,                   // X-XSS-Protection: 0 — disabled per 2026 OWASP guidance
+  dnsPrefetchControl: { allow: false },           // X-DNS-Prefetch-Control: off
+  hidePoweredBy: true,                            // Remove X-Powered-By header
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' }, // X-Permitted-Cross-Domain-Policies: none
 }));
 
 // B. Compression (Makes your site load 70% faster)
@@ -264,6 +303,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// CSRF mitigation strategy:
+// - Session cookies use SameSite=strict in production, preventing cross-site request forgery
+//   for cookie-based sessions entirely.
+// - All API mutations require a Firebase ID token or Bearer token in the Authorization header,
+//   which browsers never attach automatically to cross-origin requests, making CSRF impossible
+//   for the vast majority of protected routes regardless of cookie policy.
+// No additional CSRF token middleware is required under this architecture.
 
 // D. Session with ENHANCED security settings
 app.use(
@@ -488,7 +535,7 @@ app.use((req, res, next) => {
       req.path.startsWith('/api/prestige-pass/google-wallet');
 
     if (isWalletPath) {
-      const retryUrl = req.originalUrl;
+      const retryUrl = htmlEncode(req.originalUrl);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Retry-After', '5');
       return res.status(503).send(`<!DOCTYPE html>

@@ -26,6 +26,7 @@ import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
 import * as Sentry from "@sentry/node";
 import { ensureWebAuthnSession, setWebAuthnCsrfToken, verifyWebAuthnCsrfToken } from "../webauthn/csrfProtection";
+import { webauthnLimiter } from "../middleware/rateLimiter";
 
 import { sql } from "drizzle-orm";
 import { db as pgDb } from "../db";
@@ -53,7 +54,7 @@ const ORIGIN = process.env.WEBAUTHN_ORIGIN
  * SECURITY: Sets CSRF token in response header for client to use in verify step
  * NOTE: requireAuth ensures session exists, no need for ensureWebAuthnSession
  */
-router.post("/register/options", requireAuth, setWebAuthnCsrfToken, async (req, res) => {
+router.post("/register/options", webauthnLimiter, requireAuth, setWebAuthnCsrfToken, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const userEmail = req.user!.email || "user@petwash.co.il";
@@ -127,7 +128,7 @@ router.post("/register/options", requireAuth, setWebAuthnCsrfToken, async (req, 
  * SECURITY: Protected with CSRF token to prevent cross-site passkey enrollment
  * NOTE: requireAuth ensures session exists, no need for ensureWebAuthnSession
  */
-router.post("/register/verify", requireAuth, verifyWebAuthnCsrfToken, async (req, res) => {
+router.post("/register/verify", webauthnLimiter, requireAuth, verifyWebAuthnCsrfToken, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const { response, deviceName } = req.body;
@@ -204,7 +205,7 @@ router.post("/register/verify", requireAuth, verifyWebAuthnCsrfToken, async (req
  * provides inherent CSRF protection. The challenge is cryptographically random, stored in Firestore,
  * and must be signed by the client's credential. An attacker cannot forge this flow.
  */
-router.post("/authenticate/options", async (req, res) => {
+router.post("/authenticate/options", webauthnLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -259,7 +260,7 @@ router.post("/authenticate/options", async (req, res) => {
  * provides inherent CSRF protection by requiring the client to sign the server-issued challenge.
  * This prevents cross-site authentication attacks.
  */
-router.post("/authenticate/verify", async (req, res) => {
+router.post("/authenticate/verify", webauthnLimiter, async (req, res) => {
   try {
     const { response, email } = req.body;
 
@@ -366,7 +367,7 @@ router.post("/authenticate/verify", async (req, res) => {
  * GET /webauthn/devices
  * Get user's registered devices
  */
-router.get("/devices", requireAuth, async (req, res) => {
+router.get("/devices", webauthnLimiter, requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
 
@@ -393,7 +394,7 @@ router.get("/devices", requireAuth, async (req, res) => {
  * DELETE /webauthn/devices/:deviceId
  * Remove a registered device
  */
-router.delete("/devices/:deviceId", requireAuth, async (req, res) => {
+router.delete("/devices/:deviceId", webauthnLimiter, requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const { deviceId } = req.params;

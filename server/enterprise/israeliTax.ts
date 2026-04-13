@@ -344,6 +344,11 @@ export async function checkInvoiceStatus(
       res.status(400).json({ error: 'Missing allocationNumber parameter' });
       return;
     }
+
+    if (!/^\d{1,20}$/.test(String(allocationNumber))) {
+      res.status(400).json({ error: 'Invalid allocationNumber format' });
+      return;
+    }
     
     if (!SUPPLIER_API_KEY) {
       res.status(200).json({

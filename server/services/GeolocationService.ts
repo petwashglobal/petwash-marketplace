@@ -12,6 +12,7 @@
  */
 
 import { COUNTRY_TO_LANGUAGE, type LanguageCode } from '../../shared/languages';
+import { isPublicIP } from '../utils/ipValidation';
 
 export interface GeolocationData {
   // Country Information
@@ -138,6 +139,9 @@ export class GeolocationService {
    * Primary API: ip-api.com (free, 45 req/min)
    */
   private async useIPAPI(ip: string): Promise<GeolocationData> {
+    if (!isPublicIP(ip)) {
+      throw new Error(`ip-api.com: invalid or non-public IP address`);
+    }
     const response = await fetch(`https://ip-api.com/json/${ip}`);
     
     if (!response.ok) {
@@ -172,6 +176,9 @@ export class GeolocationService {
    * Fallback API: ipapi.co (free, 1000 req/day)
    */
   private async useIPAPIco(ip: string): Promise<GeolocationData> {
+    if (!isPublicIP(ip)) {
+      throw new Error(`ipapi.co: invalid or non-public IP address`);
+    }
     const response = await fetch(`https://ipapi.co/${ip}/json/`);
     
     if (!response.ok) {
@@ -206,6 +213,9 @@ export class GeolocationService {
    * Fallback API: ipinfo.io (free, 50k req/month)
    */
   private async useIPInfo(ip: string): Promise<GeolocationData> {
+    if (!isPublicIP(ip)) {
+      throw new Error(`ipinfo.io: invalid or non-public IP address`);
+    }
     const response = await fetch(`https://ipinfo.io/${ip}/json`);
     
     if (!response.ok) {

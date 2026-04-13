@@ -1758,7 +1758,7 @@ router.post('/:requestId/confirm', async (req, res) => {
     }
     const { ownerPhone, ownerEmail } = req.body;
     const phoneRegex = /^\+?[1-9]\d{6,14}$/;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
     const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));
     const validEmail = ownerEmail && emailRegex.test(ownerEmail);
     if (validPhone && booking.ownerId === callerUserId) {
