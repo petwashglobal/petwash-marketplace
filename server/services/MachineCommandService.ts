@@ -267,6 +267,20 @@ async function _sendToMachine(cmd: MachineCommand): Promise<void> {
   }
 
   const url = `http://${cmd.machineClientIp}/api/command`;
+
+  // SSRF guard: block fetches to loopback, link-local, and RFC-1918 ranges
+  const blockedIpPattern = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|169\.254\.|::1$|0\.0\.0\.0)/;
+  if (blockedIpPattern.test(cmd.machineClientIp)) {
+    logger.warn('[MachineCmd] SSRF guard: blocked fetch to private/reserved IP', {
+      commandId: cmd.commandId,
+      machineClientIp: cmd.machineClientIp,
+    });
+    await db.update(machineCommands)
+      .set({ status: 'failed', updatedAt: new Date() })
+      .where(eq(machineCommands.id, cmd.id));
+    return;
+  }
+
   try {
     const resp = await fetch(url, {
       method:  'POST',
