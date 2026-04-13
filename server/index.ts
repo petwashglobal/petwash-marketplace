@@ -73,7 +73,7 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
     /^example/i,
     /^placeholder/i,
     /^changeme$/i,
-    /^\+1234567890$/,          // default phone placeholder in .env.example
+    /^\+1234567890$/,          // default phone placeholder in .env.example — update both if example changes
   ];
 
   function isPlaceholder(val: string): boolean {
