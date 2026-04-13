@@ -29,6 +29,13 @@
       "when": 1761927107043,
       "tag": "0003_thin_strong_guy",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776081545397,
+      "tag": "0008_onboarding_user_unique_index",
+      "breakpoints": true
     }
   ]
 }
