@@ -14792,17 +14792,17 @@ router.patch('/admin/wallet/review-follow-up-actions/:id', async (req, res) => {
     const { status, notes } = req.body;
     const validStatuses = ['open', 'in_progress', 'closed', 'cancelled'];
     if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
-    const closedAt    = (status === 'closed' || status === 'cancelled') ? 'NOW()' : 'NULL';
+    const closedAt = (status === 'closed' || status === 'cancelled') ? new Date() : null;
     let r;
     if (notes !== undefined) {
       r = await pool.query(
-        `UPDATE review_follow_up_actions SET status = $1, closed_at = ${closedAt}, notes = $2 WHERE id = $3 RETURNING *`,
-        [status, notes, id]
+        `UPDATE review_follow_up_actions SET status = $1, closed_at = $2, notes = $3 WHERE id = $4 RETURNING *`,
+        [status, closedAt, notes, id]
       );
     } else {
       r = await pool.query(
-        `UPDATE review_follow_up_actions SET status = $1, closed_at = ${closedAt} WHERE id = $2 RETURNING *`,
-        [status, id]
+        `UPDATE review_follow_up_actions SET status = $1, closed_at = $2 WHERE id = $3 RETURNING *`,
+        [status, closedAt, id]
       );
     }
     if (!r.rows.length) return res.status(404).json({ error: 'Follow-up action not found' });
@@ -14863,17 +14863,17 @@ router.patch('/admin/wallet/unified-recommendations/:id', async (req, res) => {
     const { status, assignedTo } = req.body;
     const validStatuses = ['open', 'accepted', 'rejected', 'snoozed', 'resolved'];
     if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
-    const resolvedAt = (status === 'resolved' || status === 'rejected') ? 'NOW()' : 'NULL';
+    const resolvedAt = (status === 'resolved' || status === 'rejected') ? new Date() : null;
     let r;
     if (assignedTo) {
       r = await pool.query(
-        `UPDATE unified_recommendations SET status = $1, resolved_at = ${resolvedAt}, assigned_to = $2 WHERE id = $3 RETURNING *`,
-        [status, assignedTo, id]
+        `UPDATE unified_recommendations SET status = $1, resolved_at = $2, assigned_to = $3 WHERE id = $4 RETURNING *`,
+        [status, resolvedAt, assignedTo, id]
       );
     } else {
       r = await pool.query(
-        `UPDATE unified_recommendations SET status = $1, resolved_at = ${resolvedAt} WHERE id = $2 RETURNING *`,
-        [status, id]
+        `UPDATE unified_recommendations SET status = $1, resolved_at = $2 WHERE id = $3 RETURNING *`,
+        [status, resolvedAt, id]
       );
     }
     if (!r.rows.length) return res.status(404).json({ error: 'Unified recommendation not found' });
