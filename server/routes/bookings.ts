@@ -68,10 +68,10 @@ router.post("/create", requireAuth, async (req, res) => {
       endDate.setDate(endDate.getDate() + booking.duration);
     }
 
-    // Check provider availability - look for conflicting confirmed bookings
+    // Check provider availability - look for conflicting confirmed or pending bookings
     const existingBookings = await db.collection("bookings")
       .where("providerId", "==", booking.providerId)
-      .where("status", "in", ["confirmed", "in_progress"])
+      .where("status", "in", ["confirmed", "in_progress", "pending_provider", "pending_customer"])
       .get();
 
     const hasConflict = existingBookings.docs.some((doc: any) => {
@@ -184,7 +184,7 @@ router.post("/create", requireAuth, async (req, res) => {
           FROM bookings
           WHERE start_time >= NOW()
             AND start_time < NOW() + INTERVAL '7 days'
-            AND status IN ('accepted','confirmed','started','pending')
+            AND status IN ('accepted','confirmed','started','pending','pending_provider','pending_customer')
           GROUP BY station_id
         ) bc ON bc.station_id = s.id
         LEFT JOIN (

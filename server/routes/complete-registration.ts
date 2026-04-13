@@ -100,40 +100,36 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     const onboardingStatus = INITIAL_STATUS[userType];
     const redirectTo = ROUTE_MAP[userType];
 
-    // Idempotent: skip insert if a case for this email+context already exists
-    // (prevents duplicate rows from double-submit or concurrent requests)
-    const [existingCase] = await db.select({ id: onboardingCases.id })
-      .from(onboardingCases)
-      .where(eq(onboardingCases.userId, normalizedEmail))
-      .limit(1);
+    const [newCase] = await db.insert(onboardingCases).values({
+      userId: normalizedEmail,
+      context: userType,
+      status: onboardingStatus,
+      currentStep: 'registration_complete',
+    }).onConflictDoNothing().returning({ id: onboardingCases.id });
 
-    if (!existingCase) {
-      await db.insert(onboardingCases).values({
-        userId: normalizedEmail,
-        context: userType,
-        status: onboardingStatus,
-        currentStep: 'registration_complete',
-      });
-    }
+    const isNewCase = !!newCase;
 
     logger.info('[CompleteRegistration] Registration completed', {
       userType,
       onboardingStatus,
       membershipNumber,
       redirectTo,
+      isNewCase,
       email: normalizedEmail.slice(0, 3) + '***',
       traceId,
     });
 
-    WelcomeEmailService.sendWelcomeEmail({
-      audience: AUDIENCE_MAP[userType],
-      toEmail: normalizedEmail,
-      membershipNumber,
-      language,
-      traceId,
-    }).catch(err => {
-      logger.warn('[CompleteRegistration] Welcome email send failed (non-blocking)', { error: err.message, traceId });
-    });
+    if (isNewCase) {
+      WelcomeEmailService.sendWelcomeEmail({
+        audience: AUDIENCE_MAP[userType],
+        toEmail: normalizedEmail,
+        membershipNumber,
+        language,
+        traceId,
+      }).catch(err => {
+        logger.warn('[CompleteRegistration] Welcome email send failed (non-blocking)', { error: err.message, traceId });
+      });
+    }
 
     // ── HubSpot CRM sync — server-side safety net (fires regardless of client-side success) ──
     syncUserToHubSpot({

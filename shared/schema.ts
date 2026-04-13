@@ -12246,7 +12246,7 @@ export const onboardingCases = pgTable("onboarding_cases", {
   decidedAt: timestamp("decided_at"),
   decisionReason: text("decision_reason"),
 }, (table) => [
-  index("idx_onboarding_user").on(table.userId),
+  uniqueIndex("idx_onboarding_user_unique").on(table.userId),
   index("idx_onboarding_context").on(table.context),
   index("idx_onboarding_status").on(table.status),
 ]);
