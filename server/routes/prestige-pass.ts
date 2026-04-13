@@ -14668,11 +14668,12 @@ router.post('/admin/wallet/policy-learning-suggestions/auto-generate', async (re
     }
     const policyArea = plan.issue_type;
     const suggestedChange = { planId, issueType: plan.issue_type, improvementRate, outcomes: total, suggestionType };
-    const inserted = await pool.query(`
-      INSERT INTO policy_learning_suggestions (source_plan_id, suggestion_type, policy_area, suggested_change, trigger_reason, confidence_delta)
-      VALUES (${parseInt(planId)}, '${suggestionType}', '${policyArea.replace(/'/g,"''")}', '${JSON.stringify(suggestedChange).replace(/'/g,"''")}', '${triggerReason.replace(/'/g,"''")}', ${confidenceDelta})
-      RETURNING *
-    `);
+    const inserted = await pool.query(
+      `INSERT INTO policy_learning_suggestions (source_plan_id, suggestion_type, policy_area, suggested_change, trigger_reason, confidence_delta)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [parseInt(planId), suggestionType, policyArea, JSON.stringify(suggestedChange), triggerReason, confidenceDelta]
+    );
     return res.status(201).json({ suggestion: inserted.rows[0], derivedFrom: { improved, worsened, total, improvementRate } });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to auto-generate suggestion', detail: err.message });
@@ -14717,10 +14718,11 @@ router.post('/admin/wallet/reviewer-performance/snapshot', async (req, res) => {
     if (!reviewerUid || !periodKey) return res.status(400).json({ error: 'reviewerUid, periodKey required' });
     // Compute from recommendation_actions for this reviewer in this period
     const monthStart = `${periodKey}-01`;
-    const actions = await pool.query(`
-      SELECT action_type, sla_met, created_at FROM recommendation_actions
-      WHERE actor_uid = '${reviewerUid.replace(/'/g,"''")}' AND created_at >= '${monthStart}'::date AND created_at < ('${monthStart}'::date + INTERVAL '1 month')
-    `);
+    const actions = await pool.query(
+      `SELECT action_type, sla_met, created_at FROM recommendation_actions
+       WHERE actor_uid = $1 AND created_at >= $2::date AND created_at < ($2::date + INTERVAL '1 month')`,
+      [reviewerUid, monthStart]
+    );
     const total      = actions.rows.length;
     const rejected   = actions.rows.filter((a: any) => a.action_type === 'reject').length;
     const slaBreaches= actions.rows.filter((a: any) => a.sla_met === false).length;
@@ -14729,12 +14731,12 @@ router.post('/admin/wallet/reviewer-performance/snapshot', async (req, res) => {
     const outcomeQualityScore = Math.max(0, 100 - reversalRate * 30 - overdueRate * 20);
     const avgApprovalHours = 0; // computed from SLA data — placeholder if no timing stored
     const snapshotJson = { total, rejected, slaBreaches, actions: actions.rows.length };
-    const safeUid = reviewerUid.replace(/'/g,"''");
-    const inserted = await pool.query(`
-      INSERT INTO reviewer_performance_snapshots (reviewer_uid, period_key, total_reviewed, avg_approval_hours, reversal_rate, overdue_rate, outcome_quality_score, snapshot_json)
-      VALUES ('${safeUid}', '${periodKey}', ${total}, ${avgApprovalHours}, ${reversalRate}, ${overdueRate}, ${outcomeQualityScore}, '${JSON.stringify(snapshotJson).replace(/'/g,"''")}')
-      ON CONFLICT DO NOTHING RETURNING *
-    `);
+    const inserted = await pool.query(
+      `INSERT INTO reviewer_performance_snapshots (reviewer_uid, period_key, total_reviewed, avg_approval_hours, reversal_rate, overdue_rate, outcome_quality_score, snapshot_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT DO NOTHING RETURNING *`,
+      [reviewerUid, periodKey, total, avgApprovalHours, reversalRate, overdueRate, outcomeQualityScore, JSON.stringify(snapshotJson)]
+    );
     const snap = inserted.rows[0] ?? { reviewerUid, periodKey, totalReviewed: total, reversalRate, overdueRate, outcomeQualityScore };
     return res.status(201).json({ snapshot: snap, computed: { total, rejected, slaBreaches, reversalRate, overdueRate, outcomeQualityScore } });
   } catch (err: any) {
@@ -14771,12 +14773,12 @@ router.post('/admin/wallet/review-follow-up-actions', async (req, res) => {
     if (!month || !title || !ownerUid || !dueDate) return res.status(400).json({ error: 'month, title, ownerUid, dueDate required' });
     const validPriorities = ['low', 'medium', 'high', 'critical'];
     const p = validPriorities.includes(priority) ? priority : 'medium';
-    const notesVal = notes ? `'${notes.replace(/'/g,"''")}'` : 'NULL';
-    const inserted = await pool.query(`
-      INSERT INTO review_follow_up_actions (month, title, owner_uid, due_date, priority, notes)
-      VALUES ('${month}', '${title.replace(/'/g,"''")}', '${ownerUid.replace(/'/g,"''")}', '${dueDate}', '${p}', ${notesVal})
-      RETURNING *
-    `);
+    const inserted = await pool.query(
+      `INSERT INTO review_follow_up_actions (month, title, owner_uid, due_date, priority, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [month, title, ownerUid, dueDate, p, notes ?? null]
+    );
     return res.status(201).json({ action: inserted.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to create follow-up action', detail: err.message });
@@ -14791,10 +14793,18 @@ router.patch('/admin/wallet/review-follow-up-actions/:id', async (req, res) => {
     const validStatuses = ['open', 'in_progress', 'closed', 'cancelled'];
     if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
     const closedAt    = (status === 'closed' || status === 'cancelled') ? 'NOW()' : 'NULL';
-    const notesClause = notes !== undefined ? `, notes = '${notes.replace(/'/g,"''")}'` : '';
-    const r = await pool.query(`
-      UPDATE review_follow_up_actions SET status = '${status}', closed_at = ${closedAt}${notesClause} WHERE id = ${id} RETURNING *
-    `);
+    let r;
+    if (notes !== undefined) {
+      r = await pool.query(
+        `UPDATE review_follow_up_actions SET status = $1, closed_at = ${closedAt}, notes = $2 WHERE id = $3 RETURNING *`,
+        [status, notes, id]
+      );
+    } else {
+      r = await pool.query(
+        `UPDATE review_follow_up_actions SET status = $1, closed_at = ${closedAt} WHERE id = $2 RETURNING *`,
+        [status, id]
+      );
+    }
     if (!r.rows.length) return res.status(404).json({ error: 'Follow-up action not found' });
     return res.json({ action: r.rows[0] });
   } catch (err: any) {
@@ -14830,20 +14840,16 @@ router.post('/admin/wallet/unified-recommendations', async (req, res) => {
     if (!title || !sourceTab) return res.status(400).json({ error: 'title, sourceTab required' });
     const validTabs = ['command-center', 'governance', 'orchestration', 'simulation', 'policies'];
     const vtabs = (Array.isArray(visibilityTabs) ? visibilityTabs : [sourceTab]).filter((t: string) => validTabs.includes(t));
-    const tabsArray = `ARRAY[${vtabs.map((t: string) => `'${t}'`).join(',')}]::TEXT[]`;
-    const descVal   = description ? `'${description.replace(/'/g,"''")}'` : 'NULL';
-    const etVal     = entityType  ? `'${entityType.replace(/'/g,"''")}'` : 'NULL';
-    const eidVal    = entityId    ? `'${entityId.replace(/'/g,"''")}'`   : 'NULL';
-    const atoVal    = assignedTo  ? `'${assignedTo.replace(/'/g,"''")}'` : 'NULL';
-    const csVal     = parseFloat(confidenceScore ?? '0');
-    const rscoreId  = recommendationScoreId ? parseInt(recommendationScoreId) : 'NULL';
+    const csVal = parseFloat(confidenceScore ?? '0');
+    const rscoreId = recommendationScoreId ? parseInt(recommendationScoreId) : null;
     const validPriorities = ['low', 'medium', 'high', 'critical'];
     const p = validPriorities.includes(priority) ? priority : 'medium';
-    const inserted = await pool.query(`
-      INSERT INTO unified_recommendations (recommendation_score_id, title, description, entity_type, entity_id, source_tab, visibility_tabs, priority, assigned_to, confidence_score)
-      VALUES (${rscoreId}, '${title.replace(/'/g,"''")}', ${descVal}, ${etVal}, ${eidVal}, '${sourceTab}', ${tabsArray}, '${p}', ${atoVal}, ${csVal})
-      RETURNING *
-    `);
+    const inserted = await pool.query(
+      `INSERT INTO unified_recommendations (recommendation_score_id, title, description, entity_type, entity_id, source_tab, visibility_tabs, priority, assigned_to, confidence_score)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::text[], $8, $9, $10)
+       RETURNING *`,
+      [rscoreId, title, description ?? null, entityType ?? null, entityId ?? null, sourceTab, vtabs, p, assignedTo ?? null, csVal]
+    );
     return res.status(201).json({ recommendation: inserted.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to create unified recommendation', detail: err.message });
@@ -14857,11 +14863,19 @@ router.patch('/admin/wallet/unified-recommendations/:id', async (req, res) => {
     const { status, assignedTo } = req.body;
     const validStatuses = ['open', 'accepted', 'rejected', 'snoozed', 'resolved'];
     if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
-    const resolvedAt  = (status === 'resolved' || status === 'rejected') ? 'NOW()' : 'NULL';
-    const assignedVal = assignedTo ? `, assigned_to = '${assignedTo.replace(/'/g,"''")}' ` : '';
-    const r = await pool.query(`
-      UPDATE unified_recommendations SET status = '${status}', resolved_at = ${resolvedAt}${assignedVal} WHERE id = ${id} RETURNING *
-    `);
+    const resolvedAt = (status === 'resolved' || status === 'rejected') ? 'NOW()' : 'NULL';
+    let r;
+    if (assignedTo) {
+      r = await pool.query(
+        `UPDATE unified_recommendations SET status = $1, resolved_at = ${resolvedAt}, assigned_to = $2 WHERE id = $3 RETURNING *`,
+        [status, assignedTo, id]
+      );
+    } else {
+      r = await pool.query(
+        `UPDATE unified_recommendations SET status = $1, resolved_at = ${resolvedAt} WHERE id = $2 RETURNING *`,
+        [status, id]
+      );
+    }
     if (!r.rows.length) return res.status(404).json({ error: 'Unified recommendation not found' });
     return res.json({ recommendation: r.rows[0] });
   } catch (err: any) {
