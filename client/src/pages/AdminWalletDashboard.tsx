@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { sanitizeUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5745,7 +5746,7 @@ export default function AdminWalletDashboard() {
                         <option value="quickbooks_iif">QuickBooks IIF</option>
                       </select>
                       <a
-                        href={`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/export?format=${selectedFormat}`}
+                        href={sanitizeUrl(`/api/prestige-pass/admin/wallet/payout-batches/${encodeURIComponent(selectedBatchId)}/export?format=${encodeURIComponent(selectedFormat)}`)}
                         className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-500 flex items-center gap-1"
                       >
                         <Download className="w-3 h-3" /> Export for Bank
@@ -7274,7 +7275,7 @@ export default function AdminWalletDashboard() {
                             {signoffData.signOff.notes && <span className="text-emerald-500">— {signoffData.signOff.notes}</span>}
                           </div>
                           <a
-                            href={`/api/prestige-pass/admin/wallet/monthly-signoff/${varianceMonth}/export`}
+                            href={sanitizeUrl(`/api/prestige-pass/admin/wallet/monthly-signoff/${encodeURIComponent(varianceMonth)}/export`)}
                             download={`signoff-pack-${varianceMonth}.json`}
                             className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-emerald-700 text-white rounded hover:bg-emerald-600"
                           >
@@ -11284,7 +11285,7 @@ export default function AdminWalletDashboard() {
                   <button onClick={() => refetchReviewPack()} className="text-xs px-2 py-1 border rounded hover:bg-white flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Generate
                   </button>
-                  <a href={`/api/prestige-pass/admin/wallet/operating-review-pack/export?month=${reviewMonth}`} target="_blank" rel="noreferrer"
+                  <a href={sanitizeUrl(`/api/prestige-pass/admin/wallet/operating-review-pack/export?month=${encodeURIComponent(reviewMonth)}`)} target="_blank" rel="noreferrer"
                     className="text-xs px-2 py-1 bg-gray-800 text-white rounded hover:bg-gray-700 flex items-center gap-1">
                     <Download className="w-3 h-3" /> Export JSON
                   </a>

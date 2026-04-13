@@ -263,7 +263,8 @@ router.post("/v1/wallet/redeem", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Validation failed", details: err.errors });
     }
     if (err.status) {
-      return res.status(err.status).json({ error: err.message, ...err });
+      // Avoid spreading err to prevent leaking stack traces or internal fields to clients
+      return res.status(err.status).json({ error: err.message });
     }
     logger.error("[Wallet] Redeem failed", err);
     return res.status(500).json({ error: "Internal server error" });

@@ -51,14 +51,14 @@ const FROM_NAME  = 'PetWash™';
  * Strip HTML tags to produce a plain-text version for SMS.
  */
 function stripHtml(html: string): string {
+  if (typeof html !== 'string') return '';
   return html
-    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<br[^>]*>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
+    .replace(/&[a-zA-Z]{1,10};/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

@@ -111,7 +111,8 @@ function getStorageClient(): Storage {
   if (credEnv) {
     try {
       const credentials = JSON.parse(credEnv);
-      console.log(`🔑 Using service account: ${credentials.client_email}`);
+      const redactedEmail = credentials.client_email?.replace(/^(.{3}).*(@.*)$/, '$1***$2') ?? '(unknown)';
+      console.log(`🔑 Using service account: ${redactedEmail}`);
       console.log(`📂 Project: ${credentials.project_id}\n`);
       return new Storage({ credentials });
     } catch {

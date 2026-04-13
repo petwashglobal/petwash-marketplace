@@ -103,7 +103,7 @@ async function getPlatformById(id: string): Promise<PlatformConfig | null> {
     platformCache.set(id, { platform, cachedAt: Date.now() });
     return platform;
   } catch (error) {
-    console.error(`[PlatformContext] Error fetching platform ${id}:`, error);
+    console.error('[PlatformContext] Error fetching platform, id:', id, error);
     return null;
   }
 }

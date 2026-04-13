@@ -286,8 +286,25 @@ router.post('/wash/start_cycle', async (req, res) => {
     }
 
     if (machineActivationUrl) {
+      // Validate the URL is a legitimate HTTP/HTTPS URL and matches the
+      // configured base to prevent SSRF if the env var is tampered with.
+      let parsedMachineUrl: URL;
       try {
-        const machineRes = await fetch(`${machineActivationUrl}/${machineId}`, {
+        parsedMachineUrl = new URL(machineActivationUrl);
+      } catch {
+        throw new Error('MACHINE_ACTIVATION_URL is not a valid URL');
+      }
+      if (parsedMachineUrl.protocol !== 'http:' && parsedMachineUrl.protocol !== 'https:') {
+        throw new Error('MACHINE_ACTIVATION_URL must use http or https');
+      }
+      // Ensure machineId contains no path-traversal characters
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(machineId))) {
+        throw new Error('Invalid machineId format');
+      }
+      try {
+        // Build the target URL safely using the URL API to avoid path-traversal
+        const activationUrl = new URL(`${String(machineId)}`, parsedMachineUrl.href.replace(/\/?$/, '/'));
+        const machineRes = await fetch(activationUrl.href, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

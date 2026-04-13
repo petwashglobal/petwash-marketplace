@@ -18,6 +18,15 @@ const router = Router();
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+function htmlEncode(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // =================== PAYMENT SESSION ===================
 
 /**
@@ -67,6 +76,9 @@ router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
   }
   const { sessionId } = req.params;
   const { holdId, amount, service } = req.query;
+  const safeSessionId = htmlEncode(String(sessionId));
+  const safeService = htmlEncode(String(service || ''));
+  const safeHoldId = htmlEncode(String(holdId || ''));
 
   res.send(`
     <!DOCTYPE html>
@@ -87,8 +99,8 @@ router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
     <body>
       <div class="card">
         <h2>Emergency Walk Payment</h2>
-        <p><strong>Session:</strong> ${sessionId}</p>
-        <p><strong>Service:</strong> ${service}</p>
+        <p><strong>Session:</strong> ${safeSessionId}</p>
+        <p><strong>Service:</strong> ${safeService}</p>
         <div class="amount">₪${parseFloat(amount as string || '0').toFixed(2)}</div>
         <p>Secure payment powered by Nayax Israel</p>
         <button onclick="confirmPayment()">Pay Now with Nayax</button>
@@ -101,18 +113,18 @@ router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               event: 'payment.succeeded',
-              sessionId: '${sessionId}',
-              holdId: '${holdId}',
-              amount: ${amount || 0},
-              service: '${service}',
+              sessionId: '${safeSessionId}',
+              holdId: '${safeHoldId}',
+              amount: ${parseFloat(amount as string || '0')},
+              service: '${safeService}',
               paymentId: 'NAYAX-' + Date.now()
             })
           }).then(() => {
-            window.location.href = '/walks/confirmed?session=${sessionId}';
+            window.location.href = '/walks/confirmed?session=${safeSessionId}';
           });
         }
         function cancelPayment() {
-          window.location.href = '/walks/cancelled?holdId=${holdId}';
+          window.location.href = '/walks/cancelled?holdId=${safeHoldId}';
         }
       </script>
     </body>

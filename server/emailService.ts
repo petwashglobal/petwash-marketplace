@@ -351,8 +351,8 @@ export class EmailService {
         return { isValid: false, error: 'Token too old' };
       }
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Validate email format (bounded character classes prevent ReDoS)
+      const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
       if (!emailRegex.test(payload.email)) {
         logger.warn(`Invalid email format in token: ${payload.email}`);
         return { isValid: false, error: 'Invalid email format' };

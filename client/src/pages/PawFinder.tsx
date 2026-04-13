@@ -20,6 +20,7 @@ import {
   Upload, Camera, Bell, BellDot, X, Filter,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { sanitizeUrl } from '@/lib/utils';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -691,7 +692,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
           )}
           {uploadProgress === 'done' && uploadPreviewUrl && (
             <div className="flex items-center gap-3">
-              <img src={uploadPreviewUrl} alt="preview" className="h-24 w-24 object-cover rounded-xl border border-slate-200" />
+              <img src={sanitizeUrl(uploadPreviewUrl)} alt="preview" className="h-24 w-24 object-cover rounded-xl border border-slate-200" />
               <div className="flex-1">
                 <div className="flex items-center gap-1 text-sm text-emerald-600 font-medium">
                   <CheckCircle2 className="w-4 h-4" /> תמונה הועלתה
