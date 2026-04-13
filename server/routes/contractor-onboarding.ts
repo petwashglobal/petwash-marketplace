@@ -23,6 +23,7 @@ import {
 } from "../../shared/petwashIsraeliContractors";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAuth } from "../customAuth";
 import crypto from "crypto";
 
 const router = Router();
@@ -59,10 +60,14 @@ const encryptPII = encryptBankAccount;
  * POST /api/contractor-onboarding/profile
  * Step 1: Create contractor base profile
  */
-router.post("/profile", async (req, res) => {
+router.post("/profile", requireAuth, async (req, res) => {
   try {
+    const contractorId = (req as any).user?.uid;
+    if (!contractorId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const {
-      id,
       displayName,
       legalName,
       email,
@@ -72,9 +77,9 @@ router.post("/profile", async (req, res) => {
       languageCodes,
     } = req.body;
 
-    if (!id || !displayName || !legalName || !email || !phoneE164) {
+    if (!displayName || !legalName || !email || !phoneE164) {
       return res.status(400).json({
-        error: "Missing required fields: id, displayName, legalName, email, phoneE164",
+        error: "Missing required fields: displayName, legalName, email, phoneE164",
       });
     }
 
@@ -82,7 +87,7 @@ router.post("/profile", async (req, res) => {
     const existing = await db
       .select()
       .from(contractorProfiles)
-      .where(eq(contractorProfiles.id, id))
+      .where(eq(contractorProfiles.id, contractorId))
       .limit(1);
 
     if (existing.length > 0) {
@@ -96,7 +101,7 @@ router.post("/profile", async (req, res) => {
     const [profile] = await db
       .insert(contractorProfiles)
       .values({
-        id,
+        id: contractorId,
         displayName,
         legalName,
         email,
