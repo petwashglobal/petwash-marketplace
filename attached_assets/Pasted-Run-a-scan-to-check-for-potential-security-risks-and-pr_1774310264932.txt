@@ -25,7 +25,7 @@ Security
 Google OAuth detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google OAuth detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 .github/workflows/petwash-ci.yml
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || '136197986889-vannurqgm5jc7f1q2napctp8jbhs5l8a.apps.googleusercontent.com' }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID' }}
 Security
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
@@ -35,49 +35,25 @@ Security
 A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Dockerfile
-ARG VITE_FIREBASE_VAPID_KEY=BGkI_w5HJH7PP6GeTtMWsX0Bj8J_KnC6auuGNyDv9ozlyAM5CdhGFzOv3svsWDc8UtSx7bOkqUktm9D9a-Sj8fQ
+ARG VITE_FIREBASE_VAPID_KEY=YOUR_FIREBASE_VAPID_KEY
 Security
 Google OAuth detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Google OAuth detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Dockerfile
-ARG VITE_GOOGLE_CLIENT_ID=136197986889-vannurqgm5jc7f1q2napctp8jbhs5l8a.apps.googleusercontent.com
+ARG VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
 Security
 Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 petwash-wallet.key
 -----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCnPsntS78cMTTj
+[REDACTED - private key removed]
+-----END PRIVATE KEY-----
 Security
 A gitleaks Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 A gitleaks Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 petwash-wallet.key
 -----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCnPsntS78cMTTj
-N4OOZXCexvzm8syOxX6lCHymufl3Rt9hSstYDA3wMR/j0IglyWlgiID0cgQO70dn
-Q89nGD4xYSFieJtP14Qn49IKKJEvLxFQfnS9MjbX2WuGOpmZ16hrbcyRDlNWRCuS
-S+7+kHUSZ5ZLNLtvhJ+O/epL5SN0gLZjaCF3E5fi0ishv8YObU2bEqIftLIuD61y
-vFc0m/NsB2LLmrl4b5xscVS9AQeJv44dVkTq/RVU2uA9aMZgw7bwWPlV9JHkBcta
-703ETzu0SCQit6A9I06BXnOzHGVl7KJeK9pAJLQjMBhRUoqkX0/HSU2t1ap4A8Xq
-S076KAkpAgMBAAECggEAD7+LtdiouJvBEEa3UHKom8jewlP5U1XRNrLRgwUW0qaV
-rPSFKIetDdGgYDwv/8fjEHQWGX59d5cMNRL3bgykOZPc+Afljwt7DiMHkY2Pmz7u
-PVNFBJY8gA+A7pkowsnh+eizRzLvQbumUy6rhOS/I2Il7rO61RXKzQUHmYkscSEx
-H4xCqNVlN/w/FdaBvVhvwhtfTrumm/Q7eQ+Tn+iqGt2zlyVsKHAyAvnC2QY8JktN
-50+2RUea2mxDJbYqo8hV3QSdZBDbaMJ6kQDQKtuXFytTLPUxwGh/S9XAV0wL+twA
-ZwFwApXf/GBznELXWgY6VuhX2awPPddbQzIn6E6LMQKBgQDU4NEdrcOqo7lthxdm
-Ejht9DVR6pM/Fty04Y0UjBn0Lzjuf3mYYEqqeZQEwfIKzZohemRCwUuyNkfIz2B3
-gnrl5QUDARTBowctIarjL21amb2JKK4UdV4W824vTuK8Ud42PcuS6G1GsHmiXqL1
-wkiREk09X3arpu+zf8lpsrx/kQKBgQDJH5gkTOVKiuy+k1OtjMjsjSelHAzn/fUw
-gYB06TMhjwZDBXI2NcOzDsmC6R5he03eJr/PWzQXT/S3A0hG0pZNPy7r1Xp8X+I8
-KEuMsyo9NQLspWKbji5RQVj9fS1Su/oq5LFwx06IkrRN2xAhOjzvqYsL9HWTjLRN
-jHMSQ6RUGQKBgQCudv4LU9DrtbkPocq0dbRXsPBODXDWINeLSttD/rp6nIUNOd4e
-2rP22SNNbuH+pphuXY90AlUWXlQgqIzIBWDRrwuXdbhcJk+IVnJmNQVrXlqu4W8i
-Bzqwlps0HHPIoVP7olOIOALvD0zwnJzzy2GLu7Mf3HA2p98FfnJEtR61cQKBgGU9
-0DpFsw5pDG+Kfg7Y1bOuAozsp9qITkqShfVUBncYJhDKxwle2xphkTKi4rYzeakg
-XGGnCXvKtecCcfmkvCA6dAYnOjctlRavOgijj9mru8MgJZkkY1Bn0sIXpx8EnRPG
-d0PMME4zeyvN4Dq5tD74W5QzBJS3uXNoBezlu+zRAoGBALLpufXun2/kVrjbZ+Td
-+76UkZUadur/HbtPujZcKFW5ryBmFR4pM6IoD5nz7KqE2tc3FsV6dNcjun75CdUY
-g1Rm3euaRKZT6NPW0ESvonMKeMupH/DsPYRUi02hoYH0v77rtdvFM6J+ShS1uaFV
-ugeiLObA50m/9UPforiXcQZA
+[REDACTED - private key removed]
 -----END PRIVATE KEY-----
 Security
 Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
