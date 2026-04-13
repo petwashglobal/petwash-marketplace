@@ -8,23 +8,117 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
 
 // ── Startup secrets validation (fail fast with clear errors) ──────────────────
 (function validateSecrets() {
-  const REQUIRED = [
-    { key: 'TWILIO_ACCOUNT_SID',  pattern: /^AC[a-f0-9]{32}$/,         hint: 'Must start with AC and be 34 chars (found in Twilio Console)' },
-    { key: 'TWILIO_AUTH_TOKEN',   pattern: /^[a-f0-9]{32}$/,           hint: 'Must be 32 hex chars (rotate at console.twilio.com)' },
-    { key: 'RECAPTCHA_SECRET_KEY',pattern: /^6[A-Za-z0-9_-]{39,}$/,    hint: 'Must start with 6 — get from Google reCAPTCHA console' },
-    { key: 'SUPER_ADMIN_EMAILS',  pattern: /.+@.+/,                    hint: 'Must be at least one valid email address' },
+  const isProd = process.env.NODE_ENV === 'production';
+
+  // Secrets required for core functionality with expected format patterns.
+  // In production a missing or malformed value is fatal — throw immediately so
+  // the container fails the Cloud Run startup probe rather than running silently
+  // broken and serving 200 OK responses with no SMS or email capability.
+  const REQUIRED: Array<{
+    key: string;
+    pattern: RegExp;
+    hint: string;
+    fatalInProd: boolean;
+  }> = [
+    {
+      key: 'TWILIO_ACCOUNT_SID',
+      pattern: /^AC[a-f0-9]{32}$/,
+      hint: 'Must start with AC and be 34 chars (found in Twilio Console → Account Info)',
+      fatalInProd: true,
+    },
+    {
+      key: 'TWILIO_AUTH_TOKEN',
+      pattern: /^[a-f0-9]{32}$/,
+      hint: 'Must be 32 lowercase hex chars (rotate at console.twilio.com)',
+      fatalInProd: true,
+    },
+    {
+      // Primary outbound number used when TWILIO_MESSAGING_SERVICE_SID is absent.
+      // Either this OR TWILIO_MESSAGING_SERVICE_SID must be present.
+      key: 'TWILIO_PHONE_NUMBER',
+      pattern: /^\+[1-9]\d{7,14}$/,
+      hint: 'Must be in E.164 format, e.g. +972501234567',
+      fatalInProd: false, // non-fatal alone — acceptable if TWILIO_MESSAGING_SERVICE_SID set instead
+    },
+    {
+      // SendGrid API key — required for ALL transactional email.
+      // Must start with "SG." — the only format accepted by the SendGrid SDK.
+      key: 'SENDGRID_API_KEY',
+      pattern: /^SG\.[A-Za-z0-9_-]{20,}$/,
+      hint: 'Must start with "SG." — create at app.sendgrid.com → Settings → API Keys',
+      fatalInProd: true,
+    },
+    {
+      key: 'RECAPTCHA_SECRET_KEY',
+      pattern: /^6[A-Za-z0-9_-]{39,}$/,
+      hint: 'Must start with 6 — get from Google reCAPTCHA console',
+      fatalInProd: false,
+    },
+    {
+      key: 'SUPER_ADMIN_EMAILS',
+      pattern: /.+@.+/,
+      hint: 'Must be at least one valid email address',
+      fatalInProd: false,
+    },
   ];
+
+  // Placeholder values that operators copy from documentation but never replace.
+  // If any configured secret literally matches one of these strings the service
+  // that depends on it will fail at call-time with a confusing API error rather
+  // than immediately on startup — reject them early.
+  const PLACEHOLDER_PATTERNS = [
+    /^your-/i,
+    /^YOUR_/,
+    /^<.*>$/,
+    /^example/i,
+    /^placeholder/i,
+    /^changeme$/i,
+    /^\+1234567890$/,          // default phone placeholder in .env.example
+  ];
+
+  function isPlaceholder(val: string): boolean {
+    return PLACEHOLDER_PATTERNS.some(re => re.test(val));
+  }
+
+  const fatalErrors: string[] = [];
   const warnings: string[] = [];
-  for (const { key, pattern, hint } of REQUIRED) {
+
+  for (const { key, pattern, hint, fatalInProd } of REQUIRED) {
     const val = (process.env[key] || '').trim();
+    const isFatal = isProd && fatalInProd;
+    const push = (msg: string) => (isFatal ? fatalErrors : warnings).push(msg);
+
     if (!val) {
-      warnings.push(`[startup] ⚠️  ${key} is missing — ${hint}`);
+      push(`[startup] ${isFatal ? '🚨 FATAL' : '⚠️ '} ${key} is missing — ${hint}`);
+    } else if (isPlaceholder(val)) {
+      push(`[startup] ${isFatal ? '🚨 FATAL' : '⚠️ '} ${key} contains a placeholder value — replace it with the real secret (${hint})`);
     } else if (!pattern.test(val)) {
-      warnings.push(`[startup] ⚠️  ${key} has unexpected format — ${hint}`);
+      push(`[startup] ${isFatal ? '🚨 FATAL' : '⚠️ '} ${key} has unexpected format — ${hint}`);
     }
   }
+
+  // TWILIO_PHONE_NUMBER is individually non-fatal but we need at least one sender.
+  if (isProd) {
+    const hasPhone    = !!(process.env.TWILIO_PHONE_NUMBER || '').trim();
+    const hasMsgSvc   = !!(process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+    if (!hasPhone && !hasMsgSvc) {
+      fatalErrors.push(
+        '[startup] 🚨 FATAL Neither TWILIO_PHONE_NUMBER nor TWILIO_MESSAGING_SERVICE_SID is set — ' +
+        'SMS/OTP will be completely non-functional in production'
+      );
+    }
+  }
+
   if (warnings.length > 0) {
     console.warn('\n' + warnings.join('\n') + '\n');
+  }
+  if (fatalErrors.length > 0) {
+    const msg = '\n' + fatalErrors.join('\n') + '\n';
+    console.error(msg);
+    throw new Error(
+      `Startup aborted: ${fatalErrors.length} required secret(s) are missing or malformed in production.\n` +
+      fatalErrors.join('\n')
+    );
   }
 
   // ── ADMIN_SECRET / PETWASH_ADMIN_SECRET weak-value guard ─────────────────────
