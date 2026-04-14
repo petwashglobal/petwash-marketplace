@@ -100,6 +100,28 @@ router.post(
       // SECURITY: Use platformId from route params (verified by middleware)
       const platformId = req.platformContext.platformId;
 
+      // ============================================================
+      // K9000 SAFETY FENCE — DO NOT REMOVE
+      // K9000 is a self-service IoT wash station. It NEVER creates
+      // booking rows, NEVER uses escrow, and NEVER triggers provider
+      // payout. K9000 live flows use /api/k9000/start-session,
+      // /api/k9000/end-session, and /api/k9000/generate-qr instead.
+      // Allowing a booking row here would contaminate K9000 with
+      // marketplace-booking escrow and payout logic.
+      // ============================================================
+      if (platformId === 'k9000') {
+        logger.warn('[K9000 Safety Fence] Blocked booking-row creation attempt on K9000 platform', {
+          userId,
+          platformId,
+        });
+        return res.status(403).json({
+          error: 'k9000_booking_not_allowed',
+          message:
+            'K9000 self-service washes do not use the booking system. ' +
+            'Use /api/k9000/generate-qr for member QR redeem or /api/k9000/start-session for terminal wash.',
+        });
+      }
+
       // Create booking
       const booking = await bookingService.createBooking({
         ...validatedData,
