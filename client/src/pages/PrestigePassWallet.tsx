@@ -1448,7 +1448,7 @@ export default function PrestigePassWallet() {
                 <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
               </a>
 
-              {/* Priority Call */}
+              {/* Concierge Call */}
               <a
                 href="tel:+972549833355"
                 style={{
@@ -1463,35 +1463,12 @@ export default function PrestigePassWallet() {
                     <Phone size={14} color="#D4AF37" />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFFFFF' }}>{he ? 'שיחה עדיפות' : 'Priority Call'}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{he ? 'דלג על התור' : 'Skip the queue'}</div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFFFFF' }}>{he ? 'שיחת קונסיירז׳' : 'Concierge Call'}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{he ? 'קו ישיר לצוות שלנו' : 'Direct line to our team'}</div>
                   </div>
                 </div>
                 <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
               </a>
-
-              {/* Priority Booking */}
-              <button
-                onClick={() => navigate('/booking')}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '14px 16px', borderRadius: '14px', cursor: 'pointer',
-                  background: 'linear-gradient(90deg, rgba(212,175,55,0.15), rgba(212,175,55,0.08))',
-                  border: '1px solid rgba(212,175,55,0.25)',
-                  width: '100%',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(212,175,55,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Star size={14} color="#D4AF37" fill="#D4AF37" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#D4AF37' }}>{he ? 'הזמנה עדיפות' : 'Priority Booking'}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(212,175,55,0.5)' }}>{he ? 'מקום מובטח, תמיד' : 'Guaranteed slot, always'}</div>
-                  </div>
-                </div>
-                <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
-              </button>
             </div>
           </div>
         </div>

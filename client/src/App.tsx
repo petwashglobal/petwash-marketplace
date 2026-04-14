@@ -313,7 +313,7 @@ const MobileManagementDashboard = lazy(() => import("@/pages/MobileManagementDas
 
 // K9000 Wash Stations - Self-Service Organic Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
-const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
+const K9000BayStatus = lazy(() => import("@/pages/k9000/BayStatus"));
 
 const GroomingFeedback = lazy(() => import("@/pages/GroomingFeedback"));
 const GroomingReviews = lazy(() => import("@/pages/GroomingReviews"));
@@ -1555,7 +1555,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
-                <K9000BookingFlow />
+                <K9000BayStatus />
               </Suspense>
             </RequireAuth>
           )}
@@ -1570,7 +1570,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* K9000 Wash Stations - Browse/Explore Stations (future - for now redirect to booking) */}
+        {/* K9000 Wash Stations - Browse/Explore Stations (future - for now redirect to overview) */}
         <Route path="/k9000/explore">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1579,12 +1579,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* K9000 Wash Stations - Unified Hub (placeholder - routes to booking for now) */}
+        {/* K9000 Wash Stations - Bay Status hub (same view as /k9000/booking) */}
         <Route path="/k9000/hub">
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
-                <K9000BookingFlow />
+                <K9000BayStatus />
               </Suspense>
             </RequireAuth>
           )}
