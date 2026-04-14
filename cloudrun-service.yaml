@@ -69,6 +69,76 @@ spec:
             secretKeyRef:
               key: latest
               name: TWILIO_PHONE_NUMBER
+        # ── K9000 IoT machine control ───────────────────────────────────────────
+        - name: MACHINE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: MACHINE_SECRET_KEY
+        - name: MACHINE_ACTIVATION_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: MACHINE_ACTIVATION_URL
+        # ── Prestige Pass / wallet tokens ──────────────────────────────────────
+        - name: PRESTIGE_QR_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: PRESTIGE_QR_SECRET
+        - name: PASS_LINK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: PASS_LINK_SECRET
+        - name: WALLET_LINK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: WALLET_LINK_SECRET
+        - name: SENDGRID_TEMPLATE_ID_MEMBER_PASS
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: SENDGRID_TEMPLATE_ID_MEMBER_PASS
+        # ── Nayax payment gateway ───────────────────────────────────────────────
+        - name: NAYAX_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: NAYAX_API_KEY
+        - name: NAYAX_MERCHANT_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: NAYAX_MERCHANT_ID
+        - name: NAYAX_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: NAYAX_SECRET
+        - name: NAYAX_TERMINAL_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: NAYAX_TERMINAL_SECRET
+        # ── Provider KYC / document security ───────────────────────────────────
+        - name: DOCUMENT_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: DOCUMENT_ENCRYPTION_KEY
+        - name: KYC_SALT
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: KYC_SALT
+        # ── Mobile auth ─────────────────────────────────────────────────────────
+        - name: MOBILE_LINK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: MOBILE_LINK_SECRET
         startupProbe:
           httpGet:
             path: /health
