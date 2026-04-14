@@ -513,6 +513,132 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
   }
 });
 
+
+// POST /api/provider-applications/draft
+// ──────────────────────────────────────
+// Upserts a draft application so the provider can leave and return later.
+// Accepts the same JSON fields as the main submit endpoint but requires only
+// the step-1 fields.  Text fields only — no files.  Creates the row with
+// status='draft' if none exists; updates it if a draft already exists.
+//
+// The GET /my endpoint returns the draft so the frontend can pre-populate.
+router.post('/draft', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const draftSchema = z.object({
+      firstName:              z.string().min(1).optional(),
+      lastName:               z.string().min(1).optional(),
+      email:                  z.string().email().optional(),
+      phoneNumber:            z.string().min(7).optional(),
+      dateOfBirth:            z.string().optional(),
+      streetAddress:          z.string().optional(),
+      city:                   z.string().optional(),
+      postalCode:             z.string().optional(),
+      serviceTypes:           z.array(z.string()).optional(),
+      biography:              z.string().optional(),
+      yearsExperience:        z.number().int().min(0).max(50).optional(),
+      languages:              z.array(z.string()).optional(),
+      serviceRadius:          z.number().int().min(1).max(200).optional(),
+      maxPetsAtOnce:          z.number().int().min(1).max(20).optional(),
+      petTypesAccepted:       z.array(z.string()).optional(),
+      hasOwnVehicle:          z.boolean().optional(),
+      hasHomeSpace:           z.boolean().optional(),
+      emergencyContactName:   z.string().optional(),
+      emergencyContactPhone:  z.string().optional(),
+      emergencyContactRelation: z.string().optional(),
+    });
+
+    const parsed = draftSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid draft data', details: parsed.error.flatten() });
+    }
+    const data = parsed.data;
+
+    // Check if the user already has a non-draft application
+    const [existing] = await db.select({ id: providerApplicants.id, status: providerApplicants.status })
+      .from(providerApplicants)
+      .where(eq(providerApplicants.userId, userId))
+      .limit(1);
+
+    if (existing && existing.status !== 'draft') {
+      return res.status(409).json({
+        error: 'Cannot save draft — you already have an active application',
+        status: existing.status,
+        applicationId: existing.id,
+      });
+    }
+
+    if (existing) {
+      // Update the existing draft
+      await db.update(providerApplicants)
+        .set({
+          ...(data.firstName       && { firstName: data.firstName }),
+          ...(data.lastName        && { lastName: data.lastName }),
+          ...(data.email           && { email: data.email }),
+          ...(data.phoneNumber     && { phoneNumber: data.phoneNumber }),
+          ...(data.dateOfBirth     && { dateOfBirth: data.dateOfBirth as any }),
+          ...(data.streetAddress   && { streetAddress: data.streetAddress }),
+          ...(data.city            && { city: data.city }),
+          ...(data.postalCode      && { postalCode: data.postalCode }),
+          ...(data.serviceTypes    && { serviceTypes: data.serviceTypes }),
+          ...(data.biography       !== undefined && { biography: data.biography }),
+          ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
+          ...(data.languages       && { languages: data.languages }),
+          ...(data.serviceRadius   !== undefined && { serviceRadius: data.serviceRadius }),
+          ...(data.maxPetsAtOnce   !== undefined && { maxPetsAtOnce: data.maxPetsAtOnce }),
+          ...(data.petTypesAccepted && { petTypesAccepted: data.petTypesAccepted }),
+          ...(data.hasOwnVehicle   !== undefined && { hasOwnVehicle: data.hasOwnVehicle }),
+          ...(data.hasHomeSpace    !== undefined && { hasHomeSpace: data.hasHomeSpace }),
+          ...(data.emergencyContactName     && { emergencyContactName: data.emergencyContactName }),
+          ...(data.emergencyContactPhone    && { emergencyContactPhone: data.emergencyContactPhone }),
+          ...(data.emergencyContactRelation && { emergencyContactRelation: data.emergencyContactRelation }),
+          updatedAt: new Date(),
+        })
+        .where(eq(providerApplicants.userId, userId));
+
+      return res.json({ ok: true, action: 'updated', applicationId: existing.id });
+    }
+
+    // Create a new draft row — required NOT NULL fields get placeholder values
+    // that the provider must complete before final submit.
+    const [draft] = await db.insert(providerApplicants).values({
+      userId,
+      email:           data.email          || '',
+      firstName:       data.firstName      || '',
+      lastName:        data.lastName       || '',
+      phoneNumber:     data.phoneNumber    || '',
+      // dateOfBirth is NOT NULL in schema; drafts may not have it yet.
+      // The placeholder '0001-01-01' is an out-of-range sentinel that the
+      // final submission validator will reject, forcing the user to fill it in.
+      dateOfBirth:     (data.dateOfBirth   || '0001-01-01') as any,
+      streetAddress:   data.streetAddress  || '',
+      city:            data.city           || '',
+      serviceTypes:    data.serviceTypes   || [],
+      status:          'draft',
+      stage:           'draft',
+      ...(data.postalCode      && { postalCode: data.postalCode }),
+      ...(data.biography       && { biography: data.biography }),
+      ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
+      ...(data.languages       && { languages: data.languages }),
+      ...(data.serviceRadius   !== undefined && { serviceRadius: data.serviceRadius }),
+      ...(data.maxPetsAtOnce   !== undefined && { maxPetsAtOnce: data.maxPetsAtOnce }),
+      ...(data.petTypesAccepted && { petTypesAccepted: data.petTypesAccepted }),
+      ...(data.hasOwnVehicle   !== undefined && { hasOwnVehicle: data.hasOwnVehicle }),
+      ...(data.hasHomeSpace    !== undefined && { hasHomeSpace: data.hasHomeSpace }),
+      ...(data.emergencyContactName     && { emergencyContactName: data.emergencyContactName }),
+      ...(data.emergencyContactPhone    && { emergencyContactPhone: data.emergencyContactPhone }),
+      ...(data.emergencyContactRelation && { emergencyContactRelation: data.emergencyContactRelation }),
+    }).returning({ id: providerApplicants.id });
+
+    return res.json({ ok: true, action: 'created', applicationId: draft?.id });
+  } catch (err: any) {
+    logger.error('[ProviderApplications] Draft save error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to save draft' });
+  }
+});
+
 // GET /api/provider-applications/my - Get current user's application
 router.get('/my', async (req: Request, res: Response) => {
   try {

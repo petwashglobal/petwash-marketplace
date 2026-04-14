@@ -34,6 +34,7 @@ import walletRoutes from "./routes/wallet";
 import couponRoutes, { adminCouponRouter } from "./routes/coupons";
 import googleWalletRoutes from "./routes/google-wallet";
 import prestigePassRoutes from "./routes/prestige-pass";
+import prestigeJoinRoutes from "./routes/prestige-join";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import googleServicesRoutes from "./routes/google-services";
@@ -458,6 +459,12 @@ export async function registerRoutes(app: Express): Promise<void> {
     // Returns machineMode: 'live' | 'demo' based on MACHINE_ACTIVATION_URL env var.
     // Frontend queries this on the confirmed redemption step to warn users about demo mode.
     if (path === '/api/k9000/system-mode') {
+      return next();
+    }
+
+    // ✅ K9000 user-facing QR token generation — Firebase auth required (not machine auth).
+    // Registered here so it is NOT blocked by the machine-secret check below.
+    if (path === '/api/k9000/generate-qr') {
       return next();
     }
 
@@ -9799,6 +9806,101 @@ self.addEventListener('notificationclick', (event) => {
     });
   });
 
+  /**
+   * POST /api/k9000/generate-qr
+   *
+   * User-facing endpoint (Firebase auth required, NOT machine-secret auth).
+   * Generates a 45-second HMAC-signed QR token that the user presents at the K9000 kiosk.
+   * The kiosk scans the QR and calls POST /api/k9000/redeem-wash which verifies the token,
+   * debits the wallet, and starts the pump.
+   *
+   * Request body: { redemptionType: 'wash_package' | 'wallet_balance' | 'gift_credit' | 'loyalty_benefit' | 'promo_coupon', kioskId?: string }
+   * Response:     { sessionId, qrToken, qrData, expiresAt, creditsApplied, cashDueCents }
+   */
+  app.post('/api/k9000/generate-qr', apiLimiter, requireAuth, async (req: any, res) => {
+    try {
+      const { generateSignedRedeemToken } = await import('./lib/signedRedeemToken');
+      const { walletAccounts: walletAccountsTable } = await import('@shared/schema');
+      const { redemptionSessions } = await import('@shared/schema');
+
+      const userId = req.firebaseUser?.uid;
+      if (!userId) return res.status(401).json({ error: 'Auth required' });
+
+      const ALLOWED_TYPES = ['wash_package', 'wallet_balance', 'gift_credit', 'loyalty_benefit', 'promo_coupon'] as const;
+      type RedemptionType = typeof ALLOWED_TYPES[number];
+      const rawType = req.body?.redemptionType as string | undefined;
+      if (!rawType || !ALLOWED_TYPES.includes(rawType as RedemptionType)) {
+        return res.status(400).json({ error: 'Invalid redemptionType', allowed: ALLOWED_TYPES });
+      }
+      const redemptionType = rawType as RedemptionType;
+
+      // Resolve wallet for the user so we can embed the walletId as passSerial
+      const [wallet] = await db
+        .select({ walletId: walletAccountsTable.walletId })
+        .from(walletAccountsTable)
+        .where(eq(walletAccountsTable.userId, userId))
+        .limit(1);
+
+      const passSerial = wallet?.walletId ?? userId;
+      const TTL_SECONDS = 45;
+
+      const qrToken = generateSignedRedeemToken({
+        userId,
+        passSerial,
+        machineId: req.body?.kioskId ?? null,
+        ttlSeconds: TTL_SECONDS,
+      });
+
+      if (!qrToken) {
+        return res.status(503).json({
+          error: 'QR token generation unavailable — PASS_TOKEN_SECRET is not configured',
+          errorCode: 'MISSING_SECRET',
+        });
+      }
+
+      // Create a redemption session record so the polling endpoint works
+      const sessionId = `K9-${Date.now().toString(36).toUpperCase()}-${userId.slice(-6).toUpperCase()}`;
+      const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
+
+      try {
+        await db.insert(redemptionSessions).values({
+          sessionId,
+          walletId: passSerial,
+          userId,
+          platform: 'k9000',
+          redemptionType,
+          requestedAmountCents: 5500, // ₪55 standard wash
+          status: 'pending',
+          expiresAt,
+          stationId: req.body?.kioskId ?? 'any',
+        } as any);
+      } catch (dbErr: any) {
+        // Non-fatal — session row missing just breaks status polling, not the wash itself
+        logger.warn('[K9000 GenerateQR] Failed to create redemption session (non-fatal)', { error: dbErr?.message, sessionId });
+      }
+
+      return res.json({
+        success: true,
+        sessionId,
+        qrToken,
+        qrData: qrToken,         // `qrData` is what K9000Redeem.tsx passes to generateQrCode()
+        redemptionCode: sessionId,
+        expiresAt: expiresAt.toISOString(),
+        ttlSeconds: TTL_SECONDS,
+        creditsApplied: {
+          egiftCents: 0,
+          washPackages: redemptionType === 'wash_package' ? 1 : 0,
+          loyaltyPoints: 0,
+          promoCents: 0,
+        },
+        cashDueCents: redemptionType === 'wallet_balance' ? 5500 : 0,
+      });
+    } catch (err: any) {
+      logger.error('[K9000 GenerateQR] Error', { error: err?.message });
+      return res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
   // MUST be registered FIRST — IoT routes use machine-secret auth (not Firebase).
   // The supplier/dashboard routers apply validateFirebaseToken globally; registering
   // them first would block unauthenticated kiosk hardware from reaching IoT endpoints.
@@ -9821,6 +9923,11 @@ self.addEventListener('notificationclick', (event) => {
   // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
   app.use('/api/prestige-pass', apiLimiter, prestigePassRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
+
+  // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
+  // loyalty_profiles, privilege_members, and Firestore prestige_passes in one call.
+  app.use('/api/prestige', validateFirebaseToken, apiLimiter, prestigeJoinRoutes);
+  logger.info('[Routes] ✅ Prestige Join coordinator registered at /api/prestige/join');
 
   // Universal Pass Distribution — UA-aware link + Apple update web service
   // Mounts at /api/pass (universal link) and /api/pass/apple/v1/* (Apple wallet update service)
