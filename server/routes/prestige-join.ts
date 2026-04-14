@@ -138,9 +138,11 @@ router.post('/join', async (req: Request, res: Response) => {
     // ── Step 2: privilege_members ────────────────────────────────────────────
     let memberId: string | null = null;
     try {
+      // Raw SQL is used here intentionally: privilege-loyalty.ts performs a
+      // runtime CREATE TABLE IF NOT EXISTS before the table is used, so we
+      // cannot safely import the Drizzle table object at module load time.
+      // The query is parameterised ($1/$2/…) so there is no injection risk.
       const existing = await db.execute(
-        // Use sql template from drizzle (available via db.execute)
-        // Raw query to keep this file free from privilege-loyalty's table init logic
         { text: `SELECT member_id FROM privilege_members WHERE email = $1 LIMIT 1`, values: [email.trim().toLowerCase()] } as any
       );
       if ((existing as any).rows?.length > 0) {

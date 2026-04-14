@@ -609,7 +609,10 @@ router.post('/draft', async (req: Request, res: Response) => {
       firstName:       data.firstName      || '',
       lastName:        data.lastName       || '',
       phoneNumber:     data.phoneNumber    || '',
-      dateOfBirth:     (data.dateOfBirth   || '1990-01-01') as any,
+      // dateOfBirth is NOT NULL in schema; drafts may not have it yet.
+      // The placeholder '0001-01-01' is an out-of-range sentinel that the
+      // final submission validator will reject, forcing the user to fill it in.
+      dateOfBirth:     (data.dateOfBirth   || '0001-01-01') as any,
       streetAddress:   data.streetAddress  || '',
       city:            data.city           || '',
       serviceTypes:    data.serviceTypes   || [],
