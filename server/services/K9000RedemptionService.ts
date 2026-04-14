@@ -977,3 +977,176 @@ function rejectWith(code: string, messageHe: string, httpStatus: number): Error 
   err.httpStatus = httpStatus;
   return err;
 }
+
+// ── Auto-compensation ─────────────────────────────────────────────────────────
+
+/**
+ * autoCompensateSession — called automatically when START_PUMP fails after
+ * all retries without an ACK, meaning the machine never started but the
+ * wallet credit was already deducted.
+ *
+ * Idempotent: skips silently if the session has already been compensated
+ * (compensatedAt is set) or if the session source is 'terminal_card' (no
+ * wallet was debited — Nayax handles its own reversal).
+ *
+ * Reversal logic per source:
+ *   wash_package    → washPackageCredits    += 1
+ *   wallet_balance  → cashWalletBalanceCents += WASH_PRICE_ILS_CENTS
+ *   gift_credit     → egiftBalanceCents      += WASH_PRICE_ILS_CENTS
+ *   loyalty_benefit → loyaltyPointsBalance   += LOYALTY_WASH_COST_POINTS
+ *   promo_coupon    → promoBalanceCents       += WASH_PRICE_ILS_CENTS
+ */
+export async function autoCompensateSession(sessionId: string): Promise<void> {
+  const now = new Date();
+
+  // Load the session
+  const [session] = await db
+    .select({
+      id:          baySessions.id,
+      userId:      baySessions.userId,
+      source:      baySessions.source,
+      amountCents: baySessions.amountCents,
+      status:      baySessions.status,
+    })
+    .from(baySessions)
+    .where(eq(baySessions.id, sessionId))
+    .limit(1);
+
+  if (!session) {
+    logger.warn('[AutoCompensation] Session not found — skipping', { sessionId });
+    return;
+  }
+
+  // Only compensate wallet-funded (Flow B) sources
+  const WALLET_SOURCES = ['wash_package', 'wallet_balance', 'gift_credit', 'loyalty_benefit', 'promo_coupon'];
+  if (!session.userId || !WALLET_SOURCES.includes(session.source)) {
+    logger.info('[AutoCompensation] No wallet debit for this source — skipping', {
+      sessionId,
+      source: session.source,
+    });
+    return;
+  }
+
+  // Load wallet
+  const [wallet] = await db
+    .select({ walletId: walletAccounts.walletId })
+    .from(walletAccounts)
+    .where(eq(walletAccounts.userId, session.userId))
+    .limit(1);
+
+  if (!wallet) {
+    logger.error('[AutoCompensation] Wallet not found for user', { sessionId, userId: session.userId });
+    return;
+  }
+
+  const txnId = `COMP-${Date.now()}-${nanoid(8)}`;
+  const correlationId = nanoid(10);
+  const isMonetary = session.source !== 'wash_package' && session.source !== 'loyalty_benefit';
+  const refundCents = isMonetary ? WASH_PRICE_ILS_CENTS : null;
+
+  await db.transaction(async (tx) => {
+    // ── Restore the correct bucket ───────────────────────────────────────────
+    switch (session.source as K9000RedemptionType) {
+      case 'wash_package':
+        await tx
+          .update(walletAccounts)
+          .set({
+            washPackageCredits:    sql`${walletAccounts.washPackageCredits} + 1`,
+            lifetimeRedeemedCents: sql`${walletAccounts.lifetimeRedeemedCents} - ${WASH_PRICE_ILS_CENTS}`,
+            lastActivityAt: now, updatedAt: now,
+          })
+          .where(eq(walletAccounts.userId, session.userId!));
+        break;
+      case 'wallet_balance':
+        await tx
+          .update(walletAccounts)
+          .set({
+            cashWalletBalanceCents: sql`${walletAccounts.cashWalletBalanceCents} + ${WASH_PRICE_ILS_CENTS}`,
+            lifetimeRedeemedCents:  sql`${walletAccounts.lifetimeRedeemedCents} - ${WASH_PRICE_ILS_CENTS}`,
+            lastActivityAt: now, updatedAt: now,
+          })
+          .where(eq(walletAccounts.userId, session.userId!));
+        break;
+      case 'gift_credit':
+        await tx
+          .update(walletAccounts)
+          .set({
+            egiftBalanceCents:     sql`${walletAccounts.egiftBalanceCents} + ${WASH_PRICE_ILS_CENTS}`,
+            lifetimeRedeemedCents: sql`${walletAccounts.lifetimeRedeemedCents} - ${WASH_PRICE_ILS_CENTS}`,
+            lastActivityAt: now, updatedAt: now,
+          })
+          .where(eq(walletAccounts.userId, session.userId!));
+        break;
+      case 'loyalty_benefit':
+        await tx
+          .update(walletAccounts)
+          .set({
+            loyaltyPointsBalance: sql`${walletAccounts.loyaltyPointsBalance} + ${LOYALTY_WASH_COST_POINTS}`,
+            lastActivityAt: now, updatedAt: now,
+          })
+          .where(eq(walletAccounts.userId, session.userId!));
+        break;
+      case 'promo_coupon':
+        await tx
+          .update(walletAccounts)
+          .set({
+            promoBalanceCents:     sql`${walletAccounts.promoBalanceCents} + ${WASH_PRICE_ILS_CENTS}`,
+            lifetimeRedeemedCents: sql`${walletAccounts.lifetimeRedeemedCents} - ${WASH_PRICE_ILS_CENTS}`,
+            lastActivityAt: now, updatedAt: now,
+          })
+          .where(eq(walletAccounts.userId, session.userId!));
+        break;
+    }
+
+    // ── Write a compensation credit-transaction record ────────────────────────
+    await tx.insert(creditTransactions).values({
+      transactionId:    txnId,
+      walletId:         wallet.walletId,
+      creditType:       creditTypeForRedemption(session.source as K9000RedemptionType),
+      transactionType:  'compensation',
+      amountCents:      refundCents,
+      amountUnits:      session.source === 'wash_package' ? 1 : null,
+      sourceType:       'k9000_auto_compensation',
+      platform:         'k9000',
+      description:      `Auto-compensation: START_PUMP never ACKed — session ${sessionId}`,
+      initiatedBy:      'system',
+      createdAt:        now,
+    } as any);
+
+    // ── Write a compensation audit entry ─────────────────────────────────────
+    const auditId = `AUD-COMP-${Date.now()}-${nanoid(6)}`;
+    await tx.insert(auditLedger).values({
+      auditId,
+      userId:    session.userId,
+      eventType: 'k9000_auto_compensation',
+      platform:  'k9000',
+      metadata: JSON.stringify({
+        sessionId,
+        source:     session.source,
+        refundCents,
+        txnId,
+        reason:     'start_pump_ack_timeout_auto_reversed',
+      }),
+      hashChain: crypto
+        .createHash('sha256')
+        .update(`${auditId}|${session.userId}|k9000_auto_compensation|${sessionId}`)
+        .digest('hex'),
+      createdAt: now,
+    } as any);
+
+    // ── Mark session as compensated ───────────────────────────────────────────
+    await tx
+      .update(baySessions)
+      .set({ status: 'timed_out', updatedAt: now } as any)
+      .where(eq(baySessions.id, sessionId));
+  });
+
+  logger.info('[AutoCompensation] ✅ Credit auto-restored', {
+    sessionId,
+    userId:     session.userId,
+    source:     session.source,
+    refundCents,
+    txnId,
+    correlationId,
+  });
+}

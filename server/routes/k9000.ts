@@ -55,7 +55,7 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands } from '@shared/schema';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -1253,5 +1253,77 @@ function getEstimatedDuration(washType: string): number {
   
   return durations[washType] || 12;
 }
+
+/**
+ * POST /api/k9000/heartbeat
+ *
+ * IoT heartbeat endpoint — called by the K9000 controller every 30–60 seconds
+ * to signal that the station is alive and to push per-bay status snapshots.
+ *
+ * Auth: machine IP allowlist + HMAC headers (inherits router middleware).
+ *
+ * Body:
+ *   kioskId            string   — matches kioskMachines.kioskId
+ *   bays               array    — [{side: 'left'|'right', status, waterTempC?, shampooLevelPct?}]
+ *   firmwareVersion?   string
+ *
+ * Effect:
+ *   - Updates kioskMachines.lastHeartbeat = NOW(), isOnline = true
+ *   - Updates stationBays snapshot fields per bay (status NOT overwritten if
+ *     controller says 'busy' — that is owned by the session lifecycle)
+ */
+router.post('/heartbeat', async (req, res) => {
+  const correlationId = nanoid(10);
+  try {
+    const { kioskId, bays = [], firmwareVersion } = req.body as {
+      kioskId: string;
+      bays?: { side: string; status?: string; waterTempC?: number; shampooLevelPct?: number }[];
+      firmwareVersion?: string;
+    };
+
+    if (!kioskId) {
+      return res.status(400).json({ ok: false, error: 'kioskId required' });
+    }
+
+    const now = new Date();
+
+    // Update machine last_heartbeat + mark online
+    await db
+      .update(kioskMachines)
+      .set({
+        lastHeartbeat: now,
+        isOnline:      true,
+        updatedAt:     now,
+      } as any)
+      .where(eq(kioskMachines.kioskId, kioskId));
+
+    // Update per-bay telemetry snapshots.
+    // We only update telemetry fields — session-owned fields (status, currentSessionId)
+    // are managed by the session lifecycle and must not be overwritten here.
+    for (const bay of bays) {
+      if (!bay.side) continue;
+      const updatePayload: Record<string, any> = {
+        lastHeartbeat: now,
+        updatedAt:     now,
+      };
+      if (typeof bay.waterTempC === 'number') {
+        updatePayload.waterTempC = String(bay.waterTempC);
+      }
+      if (typeof bay.shampooLevelPct === 'number') {
+        updatePayload.shampooLevelPct = bay.shampooLevelPct;
+      }
+      await db
+        .update(stationBays)
+        .set(updatePayload)
+        .where(and(eq(stationBays.stationId, kioskId), eq(stationBays.side, bay.side)));
+    }
+
+    logger.debug('[K9000 Heartbeat] Received', { kioskId, bayCount: bays.length, firmwareVersion, correlationId });
+    return res.json({ ok: true, serverTime: now.toISOString() });
+  } catch (error: any) {
+    logger.error('[K9000 Heartbeat] Failed', { error: error.message, correlationId });
+    return res.status(500).json({ ok: false, error: 'Heartbeat processing failed', correlationId });
+  }
+});
 
 export default router;

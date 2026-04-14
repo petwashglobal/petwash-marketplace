@@ -281,6 +281,7 @@ import {
   customerPets,
   users,
   stationBays,
+  baySessions,
   kioskMachines
 } from "@shared/schema";
 import { z } from "zod";
@@ -9824,8 +9825,13 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { stationId } = req.params;
 
-      // Fetch both bays and the parent machine record in parallel
-      const [bays, machines] = await Promise.all([
+      // Heartbeat freshness window: machine is considered online only if it sent
+      // a heartbeat within this window. 120 seconds allows for a missed beat at
+      // a 60-second cadence without false-offline flaps.
+      const HEARTBEAT_WINDOW_MS = 120_000;
+
+      // Fetch bays, machine record, and active sessions in parallel
+      const [bays, machines, activeSessions, recentCompleted] = await Promise.all([
         db
           .select({
             side:     stationBays.side,
@@ -9843,11 +9849,42 @@ self.addEventListener('notificationclick', (event) => {
           .from(kioskMachines)
           .where(eq(kioskMachines.kioskId, stationId))
           .limit(1),
+        // Active sessions — used to compute dynamic estimated wait time
+        db
+          .select({
+            side:        baySessions.side,
+            activatedAt: baySessions.activatedAt,
+            startedAt:   baySessions.startedAt,
+          })
+          .from(baySessions)
+          .where(and(eq(baySessions.stationId, stationId), eq(baySessions.status, 'active'))),
+        // Recent completed sessions — used to compute average wash duration
+        db
+          .select({ actualDurationSeconds: baySessions.actualDurationSeconds })
+          .from(baySessions)
+          .where(
+            and(
+              eq(baySessions.stationId, stationId),
+              eq(baySessions.status, 'completed'),
+              gte(baySessions.endedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+            ),
+          )
+          .limit(50),
       ]);
 
       const machine = machines[0];
       const maintenanceMode = machine?.status === 'maintenance' || machine?.status === 'offline';
-      const stationOnline   = !!machine?.isOnline && machine.status === 'active';
+
+      // station_online: derived from live heartbeat freshness, not static DB flag.
+      // If no heartbeat has ever been received (lastHeartbeat is null), or the last
+      // heartbeat is older than HEARTBEAT_WINDOW_MS, station is considered offline
+      // regardless of the isOnline flag.
+      const heartbeatAge = machine?.lastHeartbeat
+        ? Date.now() - machine.lastHeartbeat.getTime()
+        : Infinity;
+      const stationOnline =
+        machine?.status === 'active' &&
+        heartbeatAge < HEARTBEAT_WINDOW_MS;
 
       // Map left/right bays to bay_1 (left) and bay_2 (right)
       const left  = bays.find((b) => b.side === 'left');
@@ -9855,13 +9892,42 @@ self.addEventListener('notificationclick', (event) => {
 
       const bay1Status  = left?.status  ?? 'unknown';
       const bay2Status  = right?.status ?? 'unknown';
-      const bay1Ready   = bay1Status === 'ready' && !!left?.isActive  && !maintenanceMode;
-      const bay2Ready   = bay2Status === 'ready' && !!right?.isActive && !maintenanceMode;
+      const bay1Ready   = bay1Status === 'ready' && !!left?.isActive  && !maintenanceMode && stationOnline;
+      const bay2Ready   = bay2Status === 'ready' && !!right?.isActive && !maintenanceMode && stationOnline;
 
-      // Estimated wait: if a bay is busy, average wash is ~12 min; if both busy, show 5-12 min range
+      // ── Dynamic estimated wait ────────────────────────────────────────────
+      // Compute from: active session elapsed time + recent average wash duration.
       let estimatedWaitMinutes: number | null = null;
+
       if (!bay1Ready && !bay2Ready && (bay1Status === 'busy' || bay2Status === 'busy')) {
-        estimatedWaitMinutes = 8; // conservative mid-estimate
+        // Average wash duration from recent completed sessions (excluding outliers)
+        const validDurations = recentCompleted
+          .map((s) => s.actualDurationSeconds)
+          .filter((d): d is number => typeof d === 'number' && d > 60 && d < 1800); // 1 min – 30 min sanity range
+
+        const avgDurationSeconds = validDurations.length > 0
+          ? validDurations.reduce((a, b) => a + b, 0) / validDurations.length
+          : 12 * 60; // default 12 minutes if no history
+
+        // Find the active session that started most recently (highest chance of finishing first)
+        // activatedAt is the IoT-confirmed start; fall back to startedAt if not yet confirmed
+        const busySessionTimes = activeSessions.map((s) => {
+          const startMs = (s.activatedAt ?? s.startedAt)?.getTime() ?? Date.now();
+          return startMs;
+        });
+
+        if (busySessionTimes.length > 0) {
+          // Pick the session that has been running longest (closest to completion)
+          const oldestStartMs = Math.min(...busySessionTimes);
+          const elapsedSeconds = (Date.now() - oldestStartMs) / 1000;
+          const remainingSeconds = Math.max(0, avgDurationSeconds - elapsedSeconds);
+          // Add 30 s cleanup window
+          const totalWaitSeconds = remainingSeconds + 30;
+          estimatedWaitMinutes = Math.max(1, Math.ceil(totalWaitSeconds / 60));
+        } else {
+          // No active session data — fall back to average duration
+          estimatedWaitMinutes = Math.ceil(avgDurationSeconds / 60);
+        }
       }
 
       res.json({
