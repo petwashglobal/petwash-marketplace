@@ -73,7 +73,7 @@ export default function K9000Redeem() {
   const [selectedOption, setSelectedOption] = useState<RedeemOption | ''>('');
   const [redemption, setRedemption] = useState<RedemptionResult | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [secondsLeft, setSecondsLeft] = useState(600);
+  const [secondsLeft, setSecondsLeft] = useState(45);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState('');
@@ -165,21 +165,29 @@ export default function K9000Redeem() {
     }
   };
 
+  const [qrTtlSeconds, setQrTtlSeconds] = useState(45);
+
   const handleGenerate = async () => {
     if (!selectedOption) return;
     setIsGenerating(true);
     setError('');
     try {
-      const res = await apiRequest('POST', '/api/credit-wallet/redemptions', {
-        platform: 'k9000',
-        requestedAmountCents: WASH_PRICE_CENTS,
-        stationId: 'any',
-        serviceType: selectedOption,
+      // Map the UI option to the redemption type expected by the K9000 QR endpoint
+      const redemptionTypeMap: Record<string, string> = {
+        wash_package: 'wash_package',
+        egift: 'gift_credit',
+        loyalty: 'loyalty_benefit',
+      };
+      const res = await apiRequest('POST', '/api/k9000/generate-qr', {
+        redemptionType: redemptionTypeMap[selectedOption] ?? 'wash_package',
+        kioskId: 'any',
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed');
-      const r = data.redemption as RedemptionResult;
+      const r = data as RedemptionResult;
       setRedemption(r);
+      const ttl = data.ttlSeconds ?? 45;
+      setQrTtlSeconds(ttl);
       const expMs = new Date(r.expiresAt).getTime() - Date.now();
       setSecondsLeft(Math.max(0, Math.floor(expMs / 1000)));
       await generateQrCode(r.qrData);
@@ -199,7 +207,7 @@ export default function K9000Redeem() {
       setStep('select');
       setRedemption(null);
       setQrDataUrl('');
-      setSecondsLeft(600);
+      setSecondsLeft(45);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -209,7 +217,7 @@ export default function K9000Redeem() {
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const timerProgress = (secondsLeft / 600) * 100;
+  const timerProgress = (secondsLeft / qrTtlSeconds) * 100;
   const { deducted, cashDue } = getDeduction();
 
   if (walletLoading) {

@@ -86,7 +86,7 @@ export default function WalkerBooking() {
   // Create walk booking mutation
   const createBooking = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/walks/book', 'POST', data);
+      return await apiRequest('/api/walk-my-pet/walks/book', 'POST', data);
     },
     onSuccess: (data: any) => {
       toast({

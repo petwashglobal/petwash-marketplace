@@ -77,6 +77,9 @@ const EnvSchema = z.object({
     .describe("HTTP endpoint of K9000 IoT controller — absent = DEMO MODE (machine not commanded)"),
 
   // ===== PRESTIGE PASS / WALLET TOKENS =====
+  PASS_TOKEN_SECRET: z.string().min(32).optional()
+    .describe("HMAC secret for K9000 mobile QR tokens — must be ≥ 32 chars; falls back to COOKIE_SECRET"),
+
   PRESTIGE_QR_SECRET: z.string().min(16).optional()
     .describe("HMAC secret for 45-second kiosk QR tokens — hard-throws in production if absent"),
 
@@ -179,6 +182,7 @@ export function validateEnv(): ValidatedEnv {
   console.log("\n🏭 K9000 IoT:");
   console.log(`   → Machine secret key:       ${env.MACHINE_SECRET_KEY ? '✅ Configured' : '❌ MISSING — K9000 HMAC verification disabled; kiosk coupon uses fallback secret'}`);
   console.log(`   → Machine activation URL:   ${env.MACHINE_ACTIVATION_URL ? '✅ Configured' : '❌ MISSING — K9000 in DEMO MODE; machine will not start (wallet will be debited in dev)'}`);
+  console.log(`   → Pass token secret:        ${env.PASS_TOKEN_SECRET ? '✅ Configured' : '❌ MISSING — K9000 QR tokens use COOKIE_SECRET fallback (ok if COOKIE_SECRET ≥ 32 chars)'}`);
 
   console.log("\n🎴 Prestige Pass / Wallet:");
   console.log(`   → Prestige QR secret:       ${env.PRESTIGE_QR_SECRET ? '✅ Configured' : '❌ MISSING — FATAL in production (throws on startup)'}`);
@@ -198,6 +202,37 @@ export function validateEnv(): ValidatedEnv {
   console.log(`   → ITA (Israeli Tax): ${env.ITA_CLIENT_ID ? '✅ Enabled' : '⚠️  Disabled'}`);
   console.log(`   → Weather APIs: ${env.OPENWEATHER_API_KEY || env.WEATHERAPI_KEY ? '✅ Enabled' : '⚠️  Disabled'}`);
   
+  // ── Production hard-stop for biometric document encryption ─────────────────
+  // DOCUMENT_ENCRYPTION_KEY is optional in the schema so we can start the server
+  // in dev/staging without it.  In production we MUST have it — without it, provider
+  // KYC document uploads throw at runtime (encryptBiometricBuffer throws).
+  // Fail fast here instead of surfacing a crash only on the first upload attempt.
+  if (env.NODE_ENV === 'production' && !env.DOCUMENT_ENCRYPTION_KEY) {
+    console.error('\n❌ FATAL: DOCUMENT_ENCRYPTION_KEY is not set in production.');
+    console.error('   Provider KYC document uploads will throw and all provider');
+    console.error('   onboarding will be BLOCKED until this secret is added.');
+    console.error('   → Set it in GCP Secret Manager and bind to the Cloud Run revision.');
+    console.error('   → Minimum length: 32 characters (AES-256-GCM key).\n');
+    throw new Error(
+      '[env-validation] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
+      'Add it to GCP Secret Manager and redeploy.'
+    );
+  }
+
+  // ── Production hard-stop for K9000 QR token signing ─────────────────────────
+  // PASS_TOKEN_SECRET (or COOKIE_SECRET fallback) powers the HMAC-signed 45-second
+  // QR tokens used by the K9000 mobile redeem flow.  Without it every QR scan
+  // returns MISSING_SECRET and the machine will not start.
+  const passTokenSecret = env.PASS_TOKEN_SECRET ?? env.COOKIE_SECRET ?? '';
+  if (env.NODE_ENV === 'production' && passTokenSecret.length < 32) {
+    console.error('\n❌ FATAL: PASS_TOKEN_SECRET is not set (or < 32 chars) in production.');
+    console.error('   K9000 mobile QR generation will return MISSING_SECRET for every user.');
+    console.error('   → Set PASS_TOKEN_SECRET in GCP Secret Manager (≥ 32 random chars).\n');
+    throw new Error(
+      '[env-validation] PASS_TOKEN_SECRET is required in production for K9000 QR tokens.'
+    );
+  }
+
   console.log("\n✅ System Integrity Verified. Environment is secure.\n");
   
   return env;
