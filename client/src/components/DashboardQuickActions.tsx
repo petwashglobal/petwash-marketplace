@@ -35,13 +35,13 @@ export function DashboardQuickActions({ language }: DashboardQuickActionsProps) 
       <Button 
         className="w-full" 
         variant="outline"
-        onClick={go('/packages', 'book', 'book_wash')}
-        disabled={busy === 'book'}
-        aria-label={t('quickActions.bookWash', language)}
-        data-testid="button-book-wash"
+        onClick={go('/k9000', 'wash', 'wash_now')}
+        disabled={busy === 'wash'}
+        aria-label={t('quickActions.washNow', language)}
+        data-testid="button-wash-now"
       >
         <CreditCard className="w-4 h-4 mr-2" />
-        {busy === 'book' ? t('quickActions.opening', language) : t('quickActions.bookWash', language)}
+        {busy === 'wash' ? t('quickActions.opening', language) : t('quickActions.washNow', language)}
       </Button>
       <Button 
         className="w-full" 

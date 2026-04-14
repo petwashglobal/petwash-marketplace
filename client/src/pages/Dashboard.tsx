@@ -177,12 +177,12 @@ const dashText: Record<string, Record<string, string>> = {
     ru: 'Кредиты На Мойку',
   },
   bookWash: {
-    en: 'Book a Wash',
-    he: 'הזמן שטיפה',
-    ar: 'احجز غسلة',
-    es: 'Reservar Lavado',
-    fr: 'Réserver un Lavage',
-    ru: 'Записаться на Мойку',
+    en: 'Wash Now',
+    he: 'שטוף עכשיו',
+    ar: 'اغسل الآن',
+    es: 'Lavar Ahora',
+    fr: 'Laver Maintenant',
+    ru: 'Помыть сейчас',
   },
   findStation: {
     en: 'Find a Station',

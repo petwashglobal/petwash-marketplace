@@ -1,24 +1,66 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Waves, CreditCard, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react";
+import { ChevronLeft, Waves, CreditCard, CheckCircle, Clock, AlertCircle, RefreshCw, WifiOff, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/lib/languageStore";
 import { t } from "@/lib/i18n";
 
-interface BayInfo {
-  side: string;
-  label: string;
-  labelHe: string;
-  status: string;
-  isReady: boolean;
-}
+/**
+ * K9000 Self-Service Bay Status page.
+ *
+ * This is NOT a booking wizard.
+ * K9000 is a self-service wash station — like a car wash or laundromat.
+ * - Public customers: arrive, see if a bay is free, pay at the Nayax terminal
+ * - Member customers: use the Redeem Wash button to generate a QR/token
+ * No date picker, no booking lifecycle, no escrow, no provider acceptance.
+ */
 
 interface BayStatusResponse {
-  stationId: string;
-  bays: BayInfo[];
-  anyReady: boolean;
-  allBusy: boolean;
+  station_id: string;
+  station_online: boolean;
+  bay_1_status: string;  // 'ready' | 'busy' | 'cleanup' | 'fault' | 'maintenance' | 'offline' | 'unknown'
+  bay_2_status: string;
+  bay_1_ready: boolean;
+  bay_2_ready: boolean;
+  maintenance_mode: boolean;
+  estimated_wait_minutes: number | null;
+}
+
+function BayChip({ label, labelHe, status, isReady, isHebrew }: {
+  label: string; labelHe: string; status: string; isReady: boolean; isHebrew: boolean;
+}) {
+  if (isReady) {
+    return (
+      <div className="flex items-center justify-between rounded-xl px-4 py-3 border bg-green-50 border-green-200">
+        <span className="font-semibold text-gray-800">{isHebrew ? labelHe : label}</span>
+        <Badge className="bg-green-100 text-green-800 border-green-300 text-sm px-3 py-1">
+          <CheckCircle className="h-4 w-4 mr-1 inline" />
+          {isHebrew ? 'פנוי' : 'Available'}
+        </Badge>
+      </div>
+    );
+  }
+  if (status === 'busy' || status === 'cleanup') {
+    return (
+      <div className="flex items-center justify-between rounded-xl px-4 py-3 border bg-red-50 border-red-200">
+        <span className="font-semibold text-gray-800">{isHebrew ? labelHe : label}</span>
+        <Badge className="bg-red-100 text-red-800 border-red-300 text-sm px-3 py-1">
+          <Clock className="h-4 w-4 mr-1 inline" />
+          {isHebrew ? 'תפוס' : 'In Use'}
+        </Badge>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-between rounded-xl px-4 py-3 border bg-gray-50 border-gray-200">
+      <span className="font-semibold text-gray-800">{isHebrew ? labelHe : label}</span>
+      <Badge className="bg-gray-200 text-gray-700 border-gray-300 text-sm px-3 py-1">
+        <AlertCircle className="h-4 w-4 mr-1 inline" />
+        {isHebrew ? 'לא זמין' : 'Unavailable'}
+      </Badge>
+    </div>
+  );
 }
 
 export default function K9000BookingFlow() {
@@ -26,10 +68,9 @@ export default function K9000BookingFlow() {
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
-  const isRtl = language === 'he' || language === 'ar';
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery<BayStatusResponse>({
-    queryKey: ['/api/k9000/stations', stationId ?? 'default', 'bay-status'],
+    queryKey: ['/api/k9000/stations', stationId ?? '1', 'bay-status'],
     queryFn: async () => {
       const id = stationId ?? '1';
       const res = await fetch(`/api/k9000/stations/${id}/bay-status`);
@@ -37,44 +78,11 @@ export default function K9000BookingFlow() {
       return res.json();
     },
     refetchInterval: 15_000,
-    enabled: true,
   });
 
-  const bays: BayInfo[] = data?.bays ?? [];
-  const anyReady = data?.anyReady ?? null;
-  const allBusy  = data?.allBusy  ?? false;
-
-  function bayStatusBadge(bay: BayInfo) {
-    if (bay.isReady) {
-      return (
-        <Badge className="bg-green-100 text-green-800 border-green-300 text-sm px-3 py-1">
-          <CheckCircle className="h-4 w-4 mr-1 inline" />
-          {isHebrew ? 'פנוי' : t('k9000.bayAvailable', language)}
-        </Badge>
-      );
-    }
-    if (bay.status === 'busy' || bay.status === 'cleanup') {
-      return (
-        <Badge className="bg-red-100 text-red-800 border-red-300 text-sm px-3 py-1">
-          <Clock className="h-4 w-4 mr-1 inline" />
-          {isHebrew ? 'תפוס' : t('k9000.bayBusy', language)}
-        </Badge>
-      );
-    }
-    if (bay.status === 'fault' || bay.status === 'maintenance' || bay.status === 'offline') {
-      return (
-        <Badge className="bg-gray-200 text-gray-700 border-gray-300 text-sm px-3 py-1">
-          <AlertCircle className="h-4 w-4 mr-1 inline" />
-          {isHebrew ? 'לא זמין' : 'Unavailable'}
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="bg-gray-100 text-gray-600 text-sm px-3 py-1">
-        {bay.status}
-      </Badge>
-    );
-  }
+  const bothBusy = data
+    ? !data.bay_1_ready && !data.bay_2_ready && !data.maintenance_mode
+    : false;
 
   return (
     <div className="min-h-screen luxury-bg-mesh">
@@ -113,6 +121,7 @@ export default function K9000BookingFlow() {
               onClick={() => refetch()}
               className="text-gray-400 hover:text-blue-500 transition-colors"
               aria-label="Refresh bay status"
+              data-testid="button-refresh-bay"
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             </button>
@@ -126,57 +135,64 @@ export default function K9000BookingFlow() {
           )}
 
           {isError && !isLoading && (
-            <div className="text-center py-4 luxury-text-body text-amber-600">
+            <div className="flex items-center gap-2 text-amber-600 py-3 text-sm">
+              <WifiOff className="h-4 w-4 flex-shrink-0" />
               {isHebrew
-                ? 'לא ניתן לטעון את מצב המפרצים. בדוק שוב בעוד כמה שניות.'
+                ? 'לא ניתן לטעון מצב מפרצים. בדוק שוב בעוד כמה שניות.'
                 : 'Could not load bay status. Please check again in a moment.'}
             </div>
           )}
 
-          {!isLoading && bays.length === 0 && !isError && (
-            <div className="text-center py-4 luxury-text-body opacity-60">
-              {isHebrew
-                ? 'פרטי מפרצים לא זמינים עדיין. גש פיזית לתחנה.'
-                : 'Bay details not yet available. Please go to the station directly.'}
+          {data?.maintenance_mode && (
+            <div className="flex items-center gap-2 rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-yellow-800 text-sm mb-3">
+              <Wrench className="h-4 w-4 flex-shrink-0" />
+              {isHebrew ? 'התחנה בתחזוקה. אנא נסה מאוחר יותר.' : 'Station is under maintenance. Please try again later.'}
             </div>
           )}
 
-          {bays.length > 0 && (
+          {data && !data.maintenance_mode && (
             <div className="space-y-3">
-              {bays.map((bay) => (
-                <div
-                  key={bay.side}
-                  className={`flex items-center justify-between rounded-xl px-4 py-3 border ${
-                    bay.isReady ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-                  }`}
-                  data-testid={`bay-status-${bay.side}`}
-                >
-                  <span className="font-semibold text-gray-800">
-                    {isHebrew ? bay.labelHe : bay.label}
-                  </span>
-                  {bayStatusBadge(bay)}
-                </div>
-              ))}
+              <BayChip
+                label="Bay 1 (Left)"
+                labelHe="מפרץ 1 (שמאל)"
+                status={data.bay_1_status}
+                isReady={data.bay_1_ready}
+                isHebrew={isHebrew}
+              />
+              <BayChip
+                label="Bay 2 (Right)"
+                labelHe="מפרץ 2 (ימין)"
+                status={data.bay_2_status}
+                isReady={data.bay_2_ready}
+                isHebrew={isHebrew}
+              />
             </div>
           )}
 
-          {allBusy && !isLoading && (
+          {bothBusy && (
             <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-amber-800 text-sm">
               <Clock className="h-4 w-4 inline mr-1" />
               {isHebrew
-                ? 'שני המפרצים תפוסים כרגע — המתן כמה דקות, מפרץ צפוי להתפנות בקרוב'
-                : t('k9000.waitMessage', language)}
+                ? 'שני המפרצים תפוסים כרגע'
+                : t('k9000.bothBaysBusy', language)}
+              {data?.estimated_wait_minutes && (
+                <span className="ml-1">
+                  {isHebrew
+                    ? `— המתן כ-${data.estimated_wait_minutes} דקות`
+                    : `— ${t('k9000.waitMessage', language)}`}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* How it works */}
+        {/* Payment paths */}
         <div className="luxury-glass-card luxury-shadow-xl p-6 space-y-4">
           <h2 className="luxury-heading-sm">
-            {isHebrew ? 'איך זה עובד' : 'How it works'}
+            {isHebrew ? 'כיצד להתחיל שטיפה' : 'How to start your wash'}
           </h2>
 
-          {/* Path 1: Pay at terminal */}
+          {/* Path 1: Pay at terminal (public / walk-up) */}
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
             <div className="flex items-center gap-2 font-semibold text-blue-800">
               <CreditCard className="h-5 w-5" />
@@ -189,7 +205,7 @@ export default function K9000BookingFlow() {
             </p>
           </div>
 
-          {/* Path 2: Redeem via app */}
+          {/* Path 2: Member redemption */}
           <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-2">
             <div className="flex items-center gap-2 font-semibold text-purple-800">
               <Waves className="h-5 w-5" />
@@ -211,8 +227,8 @@ export default function K9000BookingFlow() {
           </div>
         </div>
 
-        {/* No booking notice */}
-        <p className="text-center luxury-text-small opacity-50 px-4">
+        {/* Product model notice */}
+        <p className="text-center luxury-text-small opacity-50 px-4" data-testid="self-service-notice">
           {isHebrew
             ? 'K9000 פועל כמו מכונת שירות עצמי — אין צורך בהזמנה מראש, בלוח זמנים או בקביעת תור.'
             : 'K9000 works like a self-service car wash — no advance booking, no calendar slot, no appointment needed.'}

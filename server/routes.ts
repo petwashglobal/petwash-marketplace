@@ -280,7 +280,8 @@ import {
   washHistory,
   customerPets,
   users,
-  stationBays
+  stationBays,
+  kioskMachines
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -9811,36 +9812,68 @@ self.addEventListener('notificationclick', (event) => {
    * GET /api/k9000/stations/:stationId/bay-status
    *
    * Public customer-facing endpoint — no auth required.
-   * Returns live bay availability so the customer UI can show "Bay 1 — Available / In Use"
-   * before the customer walks up to the machine.
+   * Returns live bay availability (spec-required shape) so the customer UI can
+   * show "Bay 1 Available / Bay 2 In Use" without needing admin-level detail.
    * Registered BEFORE IoT routes so it bypasses machine IP/HMAC middleware.
+   *
+   * Response shape (public contract — do not add internal fields here):
+   *   station_id, station_online, bay_1_status, bay_2_status,
+   *   bay_1_ready, bay_2_ready, maintenance_mode, estimated_wait_minutes
    */
   app.get('/api/k9000/stations/:stationId/bay-status', apiLimiter, async (req, res) => {
     try {
       const { stationId } = req.params;
-      const bays = await db
-        .select({
-          side:       stationBays.side,
-          label:      stationBays.bayLabel,
-          labelHe:    stationBays.bayLabelHe,
-          status:     stationBays.status,
-          isActive:   stationBays.isActive,
-        })
-        .from(stationBays)
-        .where(eq(stationBays.stationId, stationId));
 
-      const mapped = bays.map((b) => ({
-        side:    b.side,
-        label:   b.label    ?? (b.side === 'left' ? 'Bay 1 (Left)'  : 'Bay 2 (Right)'),
-        labelHe: b.labelHe  ?? (b.side === 'left' ? 'מפרץ 1 (שמאל)' : 'מפרץ 2 (ימין)'),
-        status:  b.status,
-        isReady: b.status === 'ready' && !!b.isActive,
-      }));
+      // Fetch both bays and the parent machine record in parallel
+      const [bays, machines] = await Promise.all([
+        db
+          .select({
+            side:     stationBays.side,
+            status:   stationBays.status,
+            isActive: stationBays.isActive,
+          })
+          .from(stationBays)
+          .where(eq(stationBays.stationId, stationId)),
+        db
+          .select({
+            status:        kioskMachines.status,
+            isOnline:      kioskMachines.isOnline,
+            lastHeartbeat: kioskMachines.lastHeartbeat,
+          })
+          .from(kioskMachines)
+          .where(eq(kioskMachines.kioskId, stationId))
+          .limit(1),
+      ]);
 
-      const anyReady = mapped.some((b) => b.isReady);
-      const allBusy  = mapped.length > 0 && mapped.every((b) => !b.isReady);
+      const machine = machines[0];
+      const maintenanceMode = machine?.status === 'maintenance' || machine?.status === 'offline';
+      const stationOnline   = !!machine?.isOnline && machine.status === 'active';
 
-      res.json({ stationId, bays: mapped, anyReady, allBusy });
+      // Map left/right bays to bay_1 (left) and bay_2 (right)
+      const left  = bays.find((b) => b.side === 'left');
+      const right = bays.find((b) => b.side === 'right');
+
+      const bay1Status  = left?.status  ?? 'unknown';
+      const bay2Status  = right?.status ?? 'unknown';
+      const bay1Ready   = bay1Status === 'ready' && !!left?.isActive  && !maintenanceMode;
+      const bay2Ready   = bay2Status === 'ready' && !!right?.isActive && !maintenanceMode;
+
+      // Estimated wait: if a bay is busy, average wash is ~12 min; if both busy, show 5-12 min range
+      let estimatedWaitMinutes: number | null = null;
+      if (!bay1Ready && !bay2Ready && (bay1Status === 'busy' || bay2Status === 'busy')) {
+        estimatedWaitMinutes = 8; // conservative mid-estimate
+      }
+
+      res.json({
+        station_id:               stationId,
+        station_online:           stationOnline,
+        bay_1_status:             bay1Status,
+        bay_2_status:             bay2Status,
+        bay_1_ready:              bay1Ready,
+        bay_2_ready:              bay2Ready,
+        maintenance_mode:         maintenanceMode,
+        estimated_wait_minutes:   estimatedWaitMinutes,
+      });
     } catch (error) {
       logger.error('[K9000 BayStatus] Failed', { error });
       res.status(500).json({ error: 'Failed to fetch bay status' });
