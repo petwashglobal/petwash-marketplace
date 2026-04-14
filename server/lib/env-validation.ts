@@ -47,8 +47,13 @@ const EnvSchema = z.object({
   NAYAX_MERCHANT_ID: z.string().optional()
     .describe("Nayax merchant identifier"),
   
-  NAYAX_SECRET_KEY: z.string().optional()
-    .describe("Nayax webhook signature secret"),
+  // NOTE: env-validation previously used NAYAX_SECRET_KEY which is wrong.
+  // All server code reads NAYAX_SECRET — this is the correct key name.
+  NAYAX_SECRET: z.string().optional()
+    .describe("Nayax API signing secret (used by nayaxService, nayaxFirestoreService)"),
+
+  NAYAX_TERMINAL_SECRET: z.string().optional()
+    .describe("Shared secret for Nayax-terminal → Cloud Run wallet redemption requests (fail-closed if absent)"),
   
   // ===== TAX & COMPLIANCE (ISRAEL) =====
   ITA_CLIENT_ID: z.string().optional()
@@ -56,6 +61,38 @@ const EnvSchema = z.object({
   
   ITA_CLIENT_SECRET: z.string().optional()
     .describe("Israeli Tax Authority OAuth2 client secret"),
+
+  // ===== KYC / DOCUMENT SECURITY =====
+  DOCUMENT_ENCRYPTION_KEY: z.string().min(32).optional()
+    .describe("AES-256-GCM master key for provider KYC / biometric document encryption (min 32 chars)"),
+
+  KYC_SALT: z.string().optional()
+    .describe("Salt for KYC hash derivation — required for provider onboarding"),
+
+  // ===== K9000 IoT MACHINE CONTROL =====
+  MACHINE_SECRET_KEY: z.string().optional()
+    .describe("HMAC secret shared with K9000 IoT controllers — must match hardware config"),
+
+  MACHINE_ACTIVATION_URL: z.string().url().optional()
+    .describe("HTTP endpoint of K9000 IoT controller — absent = DEMO MODE (machine not commanded)"),
+
+  // ===== PRESTIGE PASS / WALLET TOKENS =====
+  PRESTIGE_QR_SECRET: z.string().min(16).optional()
+    .describe("HMAC secret for 45-second kiosk QR tokens — hard-throws in production if absent"),
+
+  PASS_LINK_SECRET: z.string().min(16).optional()
+    .describe("HMAC secret for 72-hour wallet email link tokens — falls back to PRESTIGE_QR_SECRET if absent (wrong)"),
+
+  WALLET_LINK_SECRET: z.string().min(32).optional()
+    .describe("HMAC secret for gift-card wallet pass links — falls back to COOKIE_SECRET if absent"),
+
+  // ===== SENDGRID TEMPLATES =====
+  SENDGRID_TEMPLATE_ID_MEMBER_PASS: z.string().optional()
+    .describe("SendGrid dynamic template ID for Prestige Pass delivery email — blank = SendGrid 400"),
+
+  // ===== MOBILE AUTH =====
+  MOBILE_LINK_SECRET: z.string().optional()
+    .describe("JWT signing secret for mobile one-tap auth links — throws if absent when route is called"),
   
   // ===== E-SIGNATURE =====
   DOCUSEAL_API_KEY: z.string().optional()
@@ -134,8 +171,28 @@ export function validateEnv(): ValidatedEnv {
   console.log(`   → JWT Secrets: ${env.JWT_SECRET && env.JWT_REFRESH_SECRET ? '✅ Configured' : '❌ Missing'}`);
   
   console.log("\n💳 Payment Gateway:");
-  console.log(`   → Nayax Israel (Exclusive): ${env.NAYAX_API_KEY ? '✅ Enabled' : '⚠️  Disabled'}`);
-  
+  console.log(`   → Nayax API key:           ${env.NAYAX_API_KEY ? '✅ Configured' : '⚠️  MISSING — NayaxOnlinePaymentService in DEMO MODE'}`);
+  console.log(`   → Nayax merchant ID:        ${env.NAYAX_MERCHANT_ID ? '✅ Configured' : '⚠️  MISSING — demo mode'}`);
+  console.log(`   → Nayax signing secret:     ${env.NAYAX_SECRET ? '✅ Configured' : '⚠️  MISSING — nayaxService will CRASH in production'}`);
+  console.log(`   → Nayax terminal secret:    ${env.NAYAX_TERMINAL_SECRET ? '✅ Configured' : '❌ MISSING — ALL terminal wallet redemptions BLOCKED (fail-closed)'}`);
+
+  console.log("\n🏭 K9000 IoT:");
+  console.log(`   → Machine secret key:       ${env.MACHINE_SECRET_KEY ? '✅ Configured' : '❌ MISSING — K9000 HMAC verification disabled; kiosk coupon uses fallback secret'}`);
+  console.log(`   → Machine activation URL:   ${env.MACHINE_ACTIVATION_URL ? '✅ Configured' : '❌ MISSING — K9000 in DEMO MODE; machine will not start (wallet will be debited in dev)'}`);
+
+  console.log("\n🎴 Prestige Pass / Wallet:");
+  console.log(`   → Prestige QR secret:       ${env.PRESTIGE_QR_SECRET ? '✅ Configured' : '❌ MISSING — FATAL in production (throws on startup)'}`);
+  console.log(`   → Pass link secret:         ${env.PASS_LINK_SECRET ? '✅ Configured' : '⚠️  MISSING — wallet email links fall back to PRESTIGE_QR_SECRET (wrong key type)'}`);
+  console.log(`   → Wallet link secret:       ${env.WALLET_LINK_SECRET ? '✅ Configured' : '⚠️  MISSING — wallet pass links fall back to COOKIE_SECRET'}`);
+  console.log(`   → SendGrid pass template:   ${env.SENDGRID_TEMPLATE_ID_MEMBER_PASS ? '✅ Configured' : '⚠️  MISSING — pass delivery email has blank templateId (SendGrid 400)'}`);
+
+  console.log("\n🔐 Provider KYC / Docs:");
+  console.log(`   → Document encryption key:  ${env.DOCUMENT_ENCRYPTION_KEY ? '✅ Configured' : '❌ MISSING — provider KYC documents stored UNENCRYPTED in GCS'}`);
+  console.log(`   → KYC salt:                 ${env.KYC_SALT ? '✅ Configured' : '❌ MISSING — KYC hash derivation throws at runtime'}`);
+
+  console.log("\n📱 Mobile Auth:");
+  console.log(`   → Mobile link secret:       ${env.MOBILE_LINK_SECRET ? '✅ Configured' : '❌ MISSING — mobile one-tap link generation throws when called'}`);
+
   console.log("\n📝 Integrations:");
   console.log(`   → DocuSeal (E-Signature): ${env.DOCUSEAL_API_KEY ? '✅ Enabled' : '⚠️  Demo Mode'}`);
   console.log(`   → ITA (Israeli Tax): ${env.ITA_CLIENT_ID ? '✅ Enabled' : '⚠️  Disabled'}`);

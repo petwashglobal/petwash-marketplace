@@ -57,8 +57,57 @@ jobs:
             fi
           }
 
-          # PRESTIGE_QR_SECRET — QR token signing key for Prestige Pass
+          # PRESTIGE_QR_SECRET — QR token signing key for Prestige Pass (45-second kiosk QR)
           ensure_secret "PRESTIGE_QR_SECRET" "$(openssl rand -hex 32)"
+
+          # PASS_LINK_SECRET — distinct 72-hour wallet-email link signing key
+          # Must be different from PRESTIGE_QR_SECRET; auto-generated if not yet present.
+          ensure_secret "PASS_LINK_SECRET" "$(openssl rand -hex 32)"
+
+          # DOCUMENT_ENCRYPTION_KEY — AES-256-GCM master key for provider KYC / biometric docs
+          # Auto-generated on first deploy; value is stable once created (rotation requires key migration).
+          ensure_secret "DOCUMENT_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+
+          # MACHINE_SECRET_KEY — shared HMAC secret between Cloud Run and K9000 IoT controllers.
+          # MUST match the value programmed into the physical machines — do NOT auto-generate.
+          # Pre-create with: gcloud secrets create MACHINE_SECRET_KEY --data-file=-
+          if ! gcloud secrets describe "MACHINE_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ MACHINE_SECRET_KEY secret not found in GCP Secret Manager."
+            echo "   Create it with the value matching your K9000 hardware config before deploying."
+            exit 1
+          fi
+
+          # MACHINE_ACTIVATION_URL — HTTP endpoint of K9000 IoT controller (e.g. http://10.x.x.x/api/start).
+          # MUST be the real machine controller URL — do NOT auto-generate.
+          # Pre-create with: gcloud secrets create MACHINE_ACTIVATION_URL --data-file=-
+          if ! gcloud secrets describe "MACHINE_ACTIVATION_URL" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ MACHINE_ACTIVATION_URL secret not found in GCP Secret Manager."
+            echo "   Create it with the K9000 controller URL before deploying."
+            exit 1
+          fi
+
+          # NAYAX_API_KEY / NAYAX_MERCHANT_ID / NAYAX_SECRET — Nayax payment gateway credentials.
+          # Must be set to real Nayax-issued values; missing = demo/blocked mode on all payment flows.
+          # Pre-create each with: gcloud secrets create <NAME> --data-file=-
+          for NAYAX_VAR in NAYAX_API_KEY NAYAX_MERCHANT_ID NAYAX_SECRET NAYAX_TERMINAL_SECRET; do
+            if ! gcloud secrets describe "$NAYAX_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "❌ $NAYAX_VAR secret not found in GCP Secret Manager."
+              echo "   Create it with the real Nayax credential before deploying."
+              exit 1
+            fi
+          done
+
+          # SENDGRID_TEMPLATE_ID_MEMBER_PASS — SendGrid dynamic template ID for pass delivery emails.
+          # Auto-creates a placeholder; replace with the real template ID from the SendGrid dashboard.
+          ensure_secret "SENDGRID_TEMPLATE_ID_MEMBER_PASS" "d-PLACEHOLDER_SET_REAL_TEMPLATE_ID"
+
+          # Warn loudly if the SendGrid template is still a placeholder so deploys don't silently ship broken pass emails.
+          TMPL_VAL=$(gcloud secrets versions access latest --secret="SENDGRID_TEMPLATE_ID_MEMBER_PASS" --project="$PROJECT" 2>/dev/null || true)
+          if [ "$TMPL_VAL" = "d-PLACEHOLDER_SET_REAL_TEMPLATE_ID" ]; then
+            echo "⚠️  WARNING: SENDGRID_TEMPLATE_ID_MEMBER_PASS is still a placeholder."
+            echo "   Prestige Pass delivery emails will receive a SendGrid 400 error until this is set."
+            echo "   Update with: gcloud secrets versions add SENDGRID_TEMPLATE_ID_MEMBER_PASS --data-file=- <<< 'd-yourRealTemplateId'"
+          fi
 
           # RECAPTCHA_SITE_KEY — reCAPTCHA Enterprise site key (server-side)
           ensure_secret "RECAPTCHA_SITE_KEY" "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
@@ -203,6 +252,15 @@ jobs:
             SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
             GOOGLE_FORMS_SPREADSHEET_ID=GOOGLE_FORMS_SPREADSHEET_ID:latest
             PRESTIGE_QR_SECRET=PRESTIGE_QR_SECRET:latest
+            PASS_LINK_SECRET=PASS_LINK_SECRET:latest
+            DOCUMENT_ENCRYPTION_KEY=DOCUMENT_ENCRYPTION_KEY:latest
+            SENDGRID_TEMPLATE_ID_MEMBER_PASS=SENDGRID_TEMPLATE_ID_MEMBER_PASS:latest
+            MACHINE_SECRET_KEY=MACHINE_SECRET_KEY:latest
+            MACHINE_ACTIVATION_URL=MACHINE_ACTIVATION_URL:latest
+            NAYAX_API_KEY=NAYAX_API_KEY:latest
+            NAYAX_MERCHANT_ID=NAYAX_MERCHANT_ID:latest
+            NAYAX_SECRET=NAYAX_SECRET:latest
+            NAYAX_TERMINAL_SECRET=NAYAX_TERMINAL_SECRET:latest
             RECAPTCHA_SITE_KEY=RECAPTCHA_SITE_KEY:latest
             FIREBASE_WEB_API_KEY=FIREBASE_WEB_API_KEY:latest
             ACCOUNTING_SPREADSHEET_ID=ACCOUNTING_SPREADSHEET_ID:latest

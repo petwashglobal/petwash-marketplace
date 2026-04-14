@@ -45,11 +45,16 @@ Security
 Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 petwash-wallet.key
+-----BEGIN PRIVATE KEY-----
 [REDACTED - private key removed]
+-----END PRIVATE KEY-----
 Security
 A gitleaks Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 A gitleaks Private Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
 petwash-wallet.key
+-----BEGIN PRIVATE KEY-----
+[REDACTED - private key removed]
+-----END PRIVATE KEY-----
 [REDACTED - private key removed]
 Security
 Replace pool.query(), db.execute() and sql.raw() calls with Drizzle's recommended sql`...` template literals or Drizzle's query builders. This is a required coding standard for all Drizzle projects regardless of context (including migrations). Raw string queries violate framework conventions and must be converted to maintain codebase consistency and type safety.
