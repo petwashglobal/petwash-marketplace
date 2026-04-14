@@ -279,7 +279,8 @@ import {
   hrDocuments,
   washHistory,
   customerPets,
-  users
+  users,
+  stationBays
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -9804,6 +9805,46 @@ self.addEventListener('notificationclick', (event) => {
         ? 'Machine is in demo mode — physical wash will not start. Contact staff if needed.'
         : 'Machine is live and connected.',
     });
+  });
+
+  /**
+   * GET /api/k9000/stations/:stationId/bay-status
+   *
+   * Public customer-facing endpoint — no auth required.
+   * Returns live bay availability so the customer UI can show "Bay 1 — Available / In Use"
+   * before the customer walks up to the machine.
+   * Registered BEFORE IoT routes so it bypasses machine IP/HMAC middleware.
+   */
+  app.get('/api/k9000/stations/:stationId/bay-status', apiLimiter, async (req, res) => {
+    try {
+      const { stationId } = req.params;
+      const bays = await db
+        .select({
+          side:       stationBays.side,
+          label:      stationBays.bayLabel,
+          labelHe:    stationBays.bayLabelHe,
+          status:     stationBays.status,
+          isActive:   stationBays.isActive,
+        })
+        .from(stationBays)
+        .where(eq(stationBays.stationId, stationId));
+
+      const mapped = bays.map((b) => ({
+        side:    b.side,
+        label:   b.label    ?? (b.side === 'left' ? 'Bay 1 (Left)'  : 'Bay 2 (Right)'),
+        labelHe: b.labelHe  ?? (b.side === 'left' ? 'מפרץ 1 (שמאל)' : 'מפרץ 2 (ימין)'),
+        status:  b.status,
+        isReady: b.status === 'ready' && !!b.isActive,
+      }));
+
+      const anyReady = mapped.some((b) => b.isReady);
+      const allBusy  = mapped.length > 0 && mapped.every((b) => !b.isReady);
+
+      res.json({ stationId, bays: mapped, anyReady, allBusy });
+    } catch (error) {
+      logger.error('[K9000 BayStatus] Failed', { error });
+      res.status(500).json({ error: 'Failed to fetch bay status' });
+    }
   });
 
   /**

@@ -1550,7 +1550,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* K9000 Wash Stations - Specific routes BEFORE general routes */}
-        {/* K9000 Wash Stations - Booking Flow (3-step wizard: station, datetime, review) */}
+        {/* K9000 Wash Stations - Self-Service Bay Status + Wash Start (real-time, no booking) */}
         <Route path="/k9000/booking/:stationId?">
           {() => (
             <RequireAuth>
