@@ -1,5 +1,6 @@
 import type { TaxInvoice, TransactionRecord } from '@shared/israeliTax';
 import { IsraeliTaxService } from '@shared/israeliTax';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 import type { CrmEmailTemplate, CrmCommunicationLog, InsertCrmCommunicationLog } from '@shared/schema';
 import { storage } from './storage';
 import sanitizeHtml from 'sanitize-html';
@@ -16,8 +17,8 @@ const mailService = createMailService();
 
 export class EmailService {
   private static readonly FROM_EMAIL = 'noreply@petwash.co.il';
-  private static readonly SUPPORT_EMAIL = 'support@petwash.co.il';
-  private static readonly REPORTS_EMAIL = process.env.REPORTS_EMAIL_TO || 'support@petwash.co.il';
+  private static readonly SUPPORT_EMAIL = CANONICAL_SUPPORT_EMAIL;
+  private static readonly REPORTS_EMAIL = process.env.REPORTS_EMAIL_TO || CANONICAL_SUPPORT_EMAIL;
   private static readonly REPORTS_CC = process.env.REPORTS_EMAIL_CC || '';
   private static readonly UNSUBSCRIBE_URL = 'https://petwash.co.il/unsubscribe';
   

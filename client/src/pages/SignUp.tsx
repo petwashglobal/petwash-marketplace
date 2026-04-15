@@ -48,6 +48,26 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [, navigate] = useLocation();
   const { trackEvent } = useAnalytics();
   const { user, loading: authLoading } = useFirebaseAuth();
+
+  // Role-aware post-login navigation — always routes providers to /provider-os
+  const navigatePostLogin = async (fallback = '/home') => {
+    try {
+      const intent = localStorage.getItem('signup_intent') || undefined;
+      const res = await fetch(getApiUrl('/api/auth/post-login'), {
+        method: 'POST',
+        headers: intent ? { 'Content-Type': 'application/json' } : {},
+        credentials: 'include',
+        body: intent ? JSON.stringify({ intent }) : undefined,
+      });
+      const data = res.ok ? await res.json() : null;
+      localStorage.removeItem('signup_intent');
+      window.scrollTo(0, 0);
+      navigate(data?.nextUrl || data?.redirectTo || fallback);
+    } catch {
+      window.scrollTo(0, 0);
+      navigate(fallback);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [termsError, setTermsError] = useState(false);
   const [geoDetected, setGeoDetected] = useState(false);
@@ -103,13 +123,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   // Pre-warm reCAPTCHA on page mount so script is already loaded when user submits
   useEffect(() => { preloadReCaptcha(); }, []);
 
-  // Auto-redirect logged-in users to dashboard
+  // Auto-redirect logged-in users — use role-aware post-login to avoid sending providers to /dashboard
   useEffect(() => {
     if (user && !authLoading) {
-      logger.info("User already logged in, auto-redirecting to dashboard");
-      navigate("/dashboard");
+      logger.info("User already logged in, redirecting via post-login role decider");
+      navigatePostLogin('/home');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading]);
 
   // Auto-detect location on component mount
   useEffect(() => {
@@ -250,8 +270,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉',
         description: language === 'he' ? 'החשבון שלך נוצר בהצלחה' : 'Your account has been created successfully',
       });
-      window.scrollTo(0, 0);
-      navigate('/dashboard');
+      await navigatePostLogin('/home');
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') return;
       logger.error(`[Auth] ${provider} OAuth signup failed:`, err);
@@ -401,11 +420,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       const data = res.ok ? await res.json() : null;
       toast({ title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉', description: language === 'he' ? 'ההרשמה הצליחה' : 'Sign-up successful' });
       window.scrollTo(0, 0);
-      navigate(data?.nextUrl || data?.redirectTo || '/dashboard');
+      navigate(data?.nextUrl || data?.redirectTo || '/home');
     } catch (err: any) {
       logger.error('[PhoneAuth] Name submission failed:', err);
-      // Non-blocking: navigate to dashboard even if post-login fails
-      navigate('/dashboard');
+      // Non-blocking: use role-aware navigation even if post-login API errors
+      navigatePostLogin('/home');
     } finally {
       setPhoneLoading(false);
     }
@@ -574,9 +593,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       if (isPasskeySupported()) {
         setShowPasskeyPrompt(true);
       } else {
-        logger.debug("Navigating to dashboard");
-        window.scrollTo(0, 0);
-        navigate("/dashboard");
+        logger.debug("Navigating via post-login role decider");
+        await navigatePostLogin('/home');
       }
 
     } catch (error: any) {
@@ -708,12 +726,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     if (!firebaseToken) {
       logger.error("No Firebase token available");
       setShowPasskeyPrompt(false);
-      window.scrollTo(0, 0);
-      navigate('/dashboard');
+      await navigatePostLogin('/home');
       return;
     }
-
-    const postConsentTarget = '/dashboard';
 
     try {
       setPasskeyLoading(true);
@@ -746,8 +761,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       setPasskeyLoading(false);
       setShowPasskeyPrompt(false);
       setTimeout(() => {
-        window.scrollTo(0, 0);
-        navigate(postConsentTarget);
+        navigatePostLogin('/home');
       }, 500);
     }
   };
@@ -764,8 +778,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     });
 
     setShowPasskeyPrompt(false);
-    window.scrollTo(0, 0);
-    navigate('/dashboard');
+    navigatePostLogin('/home');
   };
 
   return (

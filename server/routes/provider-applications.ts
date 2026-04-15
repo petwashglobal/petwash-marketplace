@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { db } from '../db';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from '@shared/support-contact';
 import { 
   providerApplicants, 
   providerDocuments, 
@@ -470,7 +471,7 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
           </div>
         </div>`;
       await sendLuxuryEmail({
-        to: process.env.SUPPORT_EMAIL || 'support@petwash.co.il',
+        to: process.env.SUPPORT_EMAIL || SUPPORT_EMAIL,
         subject: `[Pet Wash™] New Provider Application #${application.id} — ${formData.firstName} ${formData.lastName}`,
         html: adminHtml,
         from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
@@ -1416,13 +1417,13 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
                   : 'If you have questions or wish to appeal this decision, please contact our support team.'}
               </p>
               <div style="margin-top:24px;text-align:center">
-                <a href="mailto:support@petwash.co.il" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">
+                <a href="${SUPPORT_MAILTO_URL}" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">
                   ${isHebrew ? 'צור קשר עם תמיכה' : 'Contact Support'}
                 </a>
               </div>
             </div>
             <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af">
-              Pet Wash™ · support@petwash.co.il
+              Pet Wash™ · ${SUPPORT_EMAIL}
             </div>
           </div>`;
         await sendLuxuryEmail({

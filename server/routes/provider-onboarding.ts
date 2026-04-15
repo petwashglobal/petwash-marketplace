@@ -3,6 +3,7 @@
 
 import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt, createHash } from 'crypto';
+import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
@@ -1054,7 +1055,7 @@ router.post('/apply', upload.fields([
                   reviewUrl,
                 });
                 await sgMail.send({
-                  to: 'support@petwash.co.il',
+                  to: SUPPORT_EMAIL,
                   from: PROVIDER_SENDER,
                   replyTo: PROVIDER_SENDER.replyTo,
                   subject: adminAlert.subject,
@@ -1748,7 +1749,7 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
       direction: direction as any,
       channel: channel as any,
       body,
-      fromAddress: adminEmail || 'support@petwash.co.il',
+      fromAddress: adminEmail || SUPPORT_EMAIL,
       toAddress,
       sentBy: adminEmail || adminUid || 'admin',
       deliveryStatus: 'sent',
@@ -1946,7 +1947,7 @@ router.post(
         if (check.rows[0].fulfilled_at) {
           return res.status(409).json({ error: 'This upload link has already been used.', errorCode: 'TOKEN_ALREADY_USED' });
         }
-        return res.status(410).json({ error: 'This upload link has expired. Please contact support@petwash.co.il', errorCode: 'TOKEN_EXPIRED' });
+        return res.status(410).json({ error: `This upload link has expired. Please contact ${SUPPORT_EMAIL}`, errorCode: 'TOKEN_EXPIRED' });
       }
 
       const resubRow = claimResult.rows[0];

@@ -84,7 +84,7 @@ export default function ProviderOS() {
     queryKey: ['/api/notifications'],
     queryFn: () => fetch('/api/notifications', { credentials: 'include' }).then(r => r.json()),
     staleTime: 30_000,
-    select: (data) => (Array.isArray(data) ? data : []),
+    select: (data: any) => (Array.isArray(data?.notifications) ? data.notifications : Array.isArray(data) ? data : []),
   });
   const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
 
