@@ -1285,37 +1285,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
         
-        {/* Unified Provider Dashboard (Pet Wash™ style) */}
-        <Route path="/provider/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <UnifiedProviderDashboard />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
-
-        <Route path="/provider/timeline">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <ProviderTimeline />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
-
-        {/* Provider Operations Console 2026 */}
-        <Route path="/provider/console">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <ProviderConsole />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
+        {/* Legacy provider routes — all redirect to /provider-os (canonical provider surface) */}
+        <Route path="/provider/dashboard">{() => <Redirect to="/provider-os" />}</Route>
+        <Route path="/provider/timeline">{() => <Redirect to="/provider-os" />}</Route>
+        <Route path="/provider/console">{() => <Redirect to="/provider-os" />}</Route>
 
         {/* Provider OS — Full Operating System */}
         <Route path="/provider-os">

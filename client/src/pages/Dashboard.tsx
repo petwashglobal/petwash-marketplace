@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 import { Link, useLocation } from 'wouter';
@@ -335,10 +336,17 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
 
 export default function Dashboard() {
   const { user: firebaseUser, loading } = useFirebaseAuth();
+  const { role: serverRole, isLoading: whoamiLoading } = useWhoami();
   const { language } = useLanguage();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const he = language === 'he';
+
+  // Providers must use /provider-os — never the customer dashboard
+  if (!whoamiLoading && serverRole === 'provider') {
+    setLocation('/provider-os');
+    return null;
+  }
 
   const sendWalletEmailMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),

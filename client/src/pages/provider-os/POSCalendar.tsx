@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import {
-  ChevronLeft, ChevronRight, Plus, X, Clock,
-  MapPin, Zap, Coffee, Moon, Sun, Repeat,
+  ChevronLeft, ChevronRight, X, Clock,
+  MapPin, Zap, Coffee, Moon, Sun, Repeat, Loader2, Save,
 } from 'lucide-react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAYS_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const DEFAULT_SCHEDULE: Record<string, { active: boolean; start: string; end: string }> = {
@@ -22,10 +22,10 @@ const DEFAULT_SCHEDULE: Record<string, { active: boolean; start: string; end: st
 
 export default function POSCalendar() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [vacationMode, setVacationMode] = useState(false);
   const [pauseNewBookings, setPauseNewBookings] = useState(false);
@@ -37,6 +37,63 @@ export default function POSCalendar() {
   const [instantBooking, setInstantBooking] = useState(true);
   const [lastMinuteBooking, setLastMinuteBooking] = useState(true);
   const [activeTab, setActiveTab] = useState<'calendar' | 'schedule' | 'advanced'>('calendar');
+
+  // Load provider profile for blocked_dates + working_hours
+  const { data: profileData, isLoading: profileLoading } = useQuery<any>({
+    queryKey: ['/api/provider-profile/me'],
+    queryFn: () => fetch('/api/provider-profile/me', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 60_000,
+  });
+
+  // Load console settings for buffer/max-jobs/radius
+  const { data: consoleSettings } = useQuery<any>({
+    queryKey: ['/api/provider-console/settings'],
+    queryFn: () => fetch('/api/provider-console/settings', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    const p = profileData?.profile || profileData;
+    if (!p) return;
+    if (Array.isArray(p.blockedDates)) setBlockedDates(p.blockedDates);
+    else if (Array.isArray(p.blocked_dates)) setBlockedDates(p.blocked_dates);
+    if (p.workingHours || p.working_hours) {
+      const wh = p.workingHours || p.working_hours;
+      if (typeof wh === 'object' && wh !== null) setSchedule(prev => ({ ...prev, ...wh }));
+    }
+    if (p.availabilityState === 'vacation' || p.availability_state === 'vacation') setVacationMode(true);
+    if (p.availabilityState === 'paused' || p.availability_state === 'paused') setPauseNewBookings(true);
+  }, [profileData]);
+
+  useEffect(() => {
+    if (!consoleSettings) return;
+    if (consoleSettings.bufferMinutes != null) setBufferMinutes(consoleSettings.bufferMinutes);
+    if (consoleSettings.maxJobsPerDay != null) setMaxJobsPerDay(consoleSettings.maxJobsPerDay);
+    if (consoleSettings.travelRadiusKm != null) setMaxRadiusKm(consoleSettings.travelRadiusKm);
+    if (consoleSettings.instantBooking != null) setInstantBooking(consoleSettings.instantBooking);
+  }, [consoleSettings]);
+
+  const profileMutation = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/provider-profile/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/me'] }),
+  });
+
+  const consoleMutation = useMutation({
+    mutationFn: (body: any) =>
+      fetch('/api/provider-console/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/provider-console/settings'] }),
+  });
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
@@ -57,9 +114,33 @@ export default function POSCalendar() {
     setBlockedDates(prev => prev.includes(ds) ? prev.filter(d => d !== ds) : [...prev, ds]);
   };
 
-  const handleSave = () => {
+  const isSaving = profileMutation.isPending || consoleMutation.isPending;
+
+  const handleSave = async () => {
+    const availabilityState = vacationMode ? 'vacation' : pauseNewBookings ? 'paused' : 'active';
+    await Promise.all([
+      profileMutation.mutateAsync({
+        blockedDates,
+        workingHours: schedule,
+        availabilityState,
+      }),
+      consoleMutation.mutateAsync({
+        bufferMinutes,
+        maxJobsPerDay,
+        travelRadiusKm: maxRadiusKm,
+        instantBooking,
+      }),
+    ]);
     toast({ title: 'Availability saved', description: 'Your schedule has been updated.' });
   };
+
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -268,9 +349,12 @@ export default function POSCalendar() {
 
       {/* Save button */}
       <button onClick={handleSave}
-        className="w-full py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors">
-        Save Availability Settings
+        disabled={isSaving}
+        className="w-full py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {isSaving ? 'Saving...' : 'Save Availability Settings'}
       </button>
     </div>
   );
 }
+

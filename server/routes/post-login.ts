@@ -144,7 +144,7 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
       // If role is still not 'provider' here, fall through to the default routing rather than
       // directing a non-provider user to the provider dashboard.
       if (role === 'provider') {
-        return { nextUrl: '/provider/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
+        return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
       // Role mismatch — data inconsistency; route to home and let post-login re-sync on next call.
       return { nextUrl: '/home', reason: 'ROLE_SYNC_PENDING', profileStatus: 'pending_review', role, userStatus };
