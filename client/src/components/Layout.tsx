@@ -42,7 +42,7 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
     document.documentElement.setAttribute('data-language', language);
     document.documentElement.setAttribute('data-rtl', rtl ? 'true' : 'false');
     
-    localStorage.setItem('language', language);
+    localStorage.setItem('pw_lang', language);
   }, [language]);
 
 

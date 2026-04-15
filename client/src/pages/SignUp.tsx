@@ -174,7 +174,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     // DO NOT change document.dir - layout must stay consistent across all languages
     
     // Save language preference
-    localStorage.setItem('petwash_lang', language);
+    localStorage.setItem('pw_lang', language);
     
     return () => {
       document.documentElement.removeAttribute('data-auth-page');

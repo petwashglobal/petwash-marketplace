@@ -480,7 +480,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (newLanguage !== language) {
       trackLanguageChange(language, newLanguage);
       onLanguageChange(newLanguage);
-      localStorage.setItem('language', newLanguage);
+      localStorage.setItem('pw_lang', newLanguage);
     }
   };
 
@@ -2986,17 +2986,23 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Use consistent key 'petwash_lang' - default to Hebrew for Israeli market
-    const savedLanguage = (localStorage.getItem('petwash_lang') || localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
+    // Read canonical key (pw_lang) with one-time migration from legacy keys
+    let savedLanguage = localStorage.getItem('pw_lang') as Language;
+    if (!savedLanguage || !['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(savedLanguage)) {
+      const legacy = (localStorage.getItem('petwash_lang') || localStorage.getItem('language')) as Language;
+      if (legacy && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(legacy)) {
+        localStorage.setItem('pw_lang', legacy);
+        savedLanguage = legacy;
+      }
+    }
     if (savedLanguage && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(savedLanguage)) {
       setCurrentLanguage(savedLanguage);
       document.documentElement.dir = isRTL(savedLanguage) ? 'rtl' : 'ltr';
       document.documentElement.lang = savedLanguage;
       setIsLanguageInitialized(true);
     } else {
-      // Default to Hebrew for Israeli market
+      // No saved preference — show Hebrew temporarily while geo detects
       setCurrentLanguage('he');
-      localStorage.setItem('petwash_lang', 'he');
       document.documentElement.dir = 'rtl';
       document.documentElement.lang = 'he';
       setIsLanguageInitialized(true);
@@ -3005,12 +3011,14 @@ function App() {
     async function detectLanguageInBackground() {
       try {
         const defaultLanguage = await getDefaultLanguageByLocation();
-        const currentSaved = localStorage.getItem('petwash_lang') as Language;
+        // getDefaultLanguageByLocation already returns the saved preference when one
+        // exists, so this guard is purely a race-condition safety net.
+        const currentSaved = localStorage.getItem('pw_lang') as Language;
         
         // Only update if no saved preference exists
-        if (!currentSaved) {
+        if (!currentSaved || !['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(currentSaved)) {
           setCurrentLanguage(defaultLanguage);
-          localStorage.setItem('petwash_lang', defaultLanguage);
+          localStorage.setItem('pw_lang', defaultLanguage);
           document.documentElement.dir = isRTL(defaultLanguage) ? 'rtl' : 'ltr';
           document.documentElement.lang = defaultLanguage;
           
@@ -3088,8 +3096,6 @@ console.log("Build: 1769350182889");
               <ActivationBanner />
               <Router language={currentLanguage} onLanguageChange={(newLang) => {
                 setCurrentLanguage(newLang);
-                localStorage.setItem('language', newLang);
-                localStorage.setItem('petwash_lang', newLang);
                 localStorage.setItem('pw_lang', newLang);
                 document.documentElement.dir = isRTL(newLang) ? 'rtl' : 'ltr';
                 document.documentElement.lang = newLang;
