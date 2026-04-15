@@ -49,6 +49,13 @@ const FROM_NAME  = 'PetWash™';
 
 /**
  * Strip HTML tags to produce a plain-text version for SMS.
+ *
+ * ReDoS safety (CodeQL CWE-730 triage):
+ *   /<br[^>]*>/gi   — [^>]* is a single-character class; no nesting or alternation,
+ *                     linear O(n) worst case. Not vulnerable.
+ *   /<[^>]+>/g      — same: [^>]+ is a negated char class, no polynomial backtracking.
+ *   /&[a-zA-Z]{1,10};/g — bounded quantifier {1,10} on a simple char class; safe.
+ * All patterns are deterministic and terminate in O(n) for any input length.
  */
 function stripHtml(html: string): string {
   if (typeof html !== 'string') return '';

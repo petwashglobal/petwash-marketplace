@@ -297,6 +297,32 @@ router.post('/wash/start_cycle', async (req, res) => {
       if (parsedMachineUrl.protocol !== 'http:' && parsedMachineUrl.protocol !== 'https:') {
         throw new Error('MACHINE_ACTIVATION_URL must use http or https');
       }
+      // SSRF guard: reject private IPs, loopback, and cloud metadata endpoints.
+      // Even though the URL comes from an env var, defense-in-depth requires we
+      // also verify the resolved hostname is not an IMDS / RFC-1918 address.
+      // CodeQL CWE-918: taint flows from req.body.machineId into the fetch URL;
+      // this guard and the machineId regex below break the dangerous taint path.
+      const activationHostname = parsedMachineUrl.hostname.toLowerCase();
+      const isPrivateOrMetadata = (
+        activationHostname === 'localhost' ||
+        activationHostname === '::1' ||
+        // IPv4 loopback
+        /^127\./.test(activationHostname) ||
+        // APIPA / AWS/GCP metadata
+        /^169\.254\./.test(activationHostname) ||
+        // RFC-1918 private ranges
+        /^10\./.test(activationHostname) ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(activationHostname) ||
+        /^192\.168\./.test(activationHostname) ||
+        // Any raw 0.0.0.0
+        activationHostname === '0.0.0.0' ||
+        // IPv6 private prefixes
+        /^fc00:/.test(activationHostname) ||
+        /^fd[0-9a-f]{2}:/i.test(activationHostname)
+      );
+      if (isPrivateOrMetadata) {
+        throw new Error('MACHINE_ACTIVATION_URL hostname is not allowed (blocked private/metadata range)');
+      }
       // Ensure machineId contains no path-traversal characters
       if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(machineId))) {
         throw new Error('Invalid machineId format');

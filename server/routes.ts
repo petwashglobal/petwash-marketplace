@@ -3232,6 +3232,14 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // GET /api/auth/tiktok/callback - Handle TikTok OAuth callback
+  // CodeQL CWE-598 triage: the `code` query param is an OAuth authorization code
+  // delivered by TikTok per RFC 6749 §4.1.2. This is the ONLY compliant delivery
+  // method for browser-based OAuth flows. Mitigations already in place:
+  //   - `code` is never logged (see logger.info calls below — state prefix only)
+  //   - `code` is one-time-use; immediately exchanged for tokens then discarded
+  //   - `state` CSRF token is verified against session to prevent code injection
+  //   - After token exchange, browser is redirected to a clean URL without the code
+  // False positive: no sensitive data persisted or reflected via GET params here.
   app.get('/api/auth/tiktok/callback', async (req, res) => {
     try {
       // OAuth 2.0 requires the authorization code to be delivered via GET query
@@ -8737,6 +8745,10 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Get appointment reminders with filtering
+  // CodeQL CWE-598 triage: query params here are non-sensitive admin filter fields
+  // (customerId integer, status enum, reminderType enum, pagination). None are
+  // secrets, tokens, or PII credentials. Route is admin-only (requireAdmin guard).
+  // False positive: no sensitive data exposed via GET params on this route.
   app.get('/api/crm/communications/appointment-reminders', requireAdmin, async (req: any, res) => {
     try {
       const {
