@@ -131,13 +131,14 @@ export class TranzilaWebhookService {
     }
 
     // TODO: confirm exact header format with Tranzila (e.g. "sha256=<hex>")
-    // For now: accept any non-empty signature when secret is configured and
-    // NODE_ENV !== production, so testing can proceed without real credentials.
-    // REMOVE this bypass before any production deployment.
-    if (process.env.NODE_ENV !== 'production') {
+    // Bypass is OPT-IN via explicit env flag — never opt-out based on NODE_ENV.
+    // Set TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true ONLY in isolated dev/test environments
+    // that are NOT network-reachable from the internet.
+    // NEVER set this flag in staging or production.
+    if (process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true') {
       logger.warn(
-        '[TranzilaWebhookService] ⚠️  Non-production: signature verification bypassed. ' +
-        'Remove bypass before production deployment.',
+        '[TranzilaWebhookService] ⚠️  TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true: ' +
+        'signature verification bypassed. MUST NOT be set in staging or production.',
       );
       return true;
     }
