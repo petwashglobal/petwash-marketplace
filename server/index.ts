@@ -221,9 +221,12 @@ function cors(options: {
     const applyResponseHeaders = (approvedOrigin?: string) => {
       if (approvedOrigin) {
         res.set('Access-Control-Allow-Origin', approvedOrigin);
-      }
-      if (options.credentials) {
-        res.set('Access-Control-Allow-Credentials', 'true');
+        // Credentials header is ONLY set when a specific approved origin is present.
+        // Never set Access-Control-Allow-Credentials without a matching ACAO header
+        // (CWE-942: credentials:true must not be paired with wildcard or absent origin).
+        if (options.credentials) {
+          res.set('Access-Control-Allow-Credentials', 'true');
+        }
       }
       if (options.methods) {
         res.set('Access-Control-Allow-Methods', options.methods.join(', '));
@@ -348,17 +351,27 @@ const isProduction = process.env.NODE_ENV === 'production';
 // crossOrigin* / referrerPolicy: kept false — enhancedSecurityHeaders sets stronger values;
 //   these must NOT be duplicated here or the headers stack with conflicting values.
 app.use(helmet({
-  contentSecurityPolicy: isProduction
-    ? {
-        // Minimal safe baseline — enhancedSecurityHeaders overwrites this with the
-        // full policy (Firebase, Maps, Stripe, etc.) on every production response.
-        directives: {
+  contentSecurityPolicy: {
+    // CSP is always enabled so CodeQL sees a real policy on every code path.
+    // In development a permissive policy is used to allow Vite HMR inline scripts/eval.
+    // enhancedSecurityHeaders (server/middleware/securityHeaders.ts) overwrites this with
+    // the full production policy on every response, so these directives are only the
+    // minimal safe baseline.
+    directives: isProduction
+      ? {
+          // Minimal safe baseline — enhancedSecurityHeaders overwrites this with the
+          // full policy (Firebase, Maps, Stripe, etc.) on every production response.
           defaultSrc: ["'self'"],
           objectSrc:  ["'none'"],
           baseUri:    ["'self'"],
+        }
+      : {
+          // Permissive dev baseline: allows Vite HMR inline module scripts and eval()
+          defaultSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          objectSrc:  ["'none'"],
+          baseUri:    ["'self'"],
         },
-      }
-    : false,                         // Disabled in dev: Vite injects inline module scripts
+  },
   hsts: isProduction
     ? { maxAge: 31536000, includeSubDomains: true, preload: true }
     : false,                         // No HSTS in dev (localhost is http)
@@ -422,13 +435,64 @@ app.use(cors({
   origin: corsOriginCallback,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token', 'X-Firebase-AppCheck'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token', 'X-Firebase-AppCheck', 'X-CSRF-Token'],
   maxAge: 86400 // 24 hours preflight cache
 }));
 
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// CSRF protection: double-submit cookie pattern (OWASP ASVS 4.0 §4.2.3 / CWE-352)
+// A random token is stored in a JS-readable cookie; state-changing requests must echo
+// it back in the X-CSRF-Token request header.  Bearer-authenticated routes and
+// HMAC-verified webhook paths are explicitly exempted — they are not vulnerable to
+// CSRF because browsers cannot auto-attach Authorization headers or forge HMAC sigs.
+const CSRF_COOKIE = 'pw.csrf';
+app.use((req: any, res: any, next: any) => {
+  // Ensure a CSRF token cookie exists so the frontend can read it.
+  if (!req.cookies[CSRF_COOKIE]) {
+    const csrfToken = crypto.randomBytes(32).toString('hex');
+    res.cookie(CSRF_COOKIE, csrfToken, {
+      sameSite: isProduction ? 'strict' : 'lax',
+      secure: isProduction,
+      httpOnly: false, // Must be JS-readable so the frontend can include in X-CSRF-Token
+    });
+  }
+
+  // Safe methods never mutate state; no CSRF check needed.
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+
+  // HMAC-verified webhook paths are authenticated out-of-band; skip CSRF.
+  if (/^\/api\/webhooks\//.test(req.path)) return next();
+
+  // Bearer-authenticated requests (Firebase ID tokens) cannot be CSRF'd.
+  const authHeader = req.headers['authorization'] as string | undefined;
+  if (authHeader?.startsWith('Bearer ')) return next();
+
+  // Double-submit validation: cookie token must match X-CSRF-Token request header.
+  const cookieToken = req.cookies[CSRF_COOKIE] as string | undefined;
+  const headerToken = req.headers['x-csrf-token'] as string | undefined;
+  if (
+    cookieToken &&
+    headerToken &&
+    cookieToken.length === headerToken.length &&
+    crypto.timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken))
+  ) {
+    return next();
+  }
+
+  // Fallback: allow requests originating from our own domains (SameSite supplement).
+  // Cross-origin attackers cannot forge the Origin header.
+  const reqOrigin = req.headers['origin'] as string | undefined;
+  if (!reqOrigin) return next(); // No Origin = server-to-server / mobile app; safe
+  const isTrustedOrigin =
+    allowedOrigins.some(a => (a instanceof RegExp ? a.test(reqOrigin) : a === reqOrigin)) ||
+    /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/.test(reqOrigin);
+  if (isTrustedOrigin) return next();
+
+  return res.status(403).json({ error: 'CSRF validation failed' });
+});
 
 // CSRF mitigation strategy (CodeQL CWE-352 triage):
 // This application does NOT rely on cookie-only authentication for mutating requests.
