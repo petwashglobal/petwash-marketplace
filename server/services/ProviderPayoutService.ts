@@ -283,8 +283,29 @@ ${bookingRow}
         return {
           success: true,
         };
+      } else if (transferResult.blocked) {
+        // Bank transfer is not live yet — queue as pending_transfer.
+        // The provider dashboard will show "queued — not yet moved" (payout_queued template).
+        // Status must NOT be set to 'failed' here: failed implies a permanent error,
+        // while blocked means "awaiting real bank wiring — will be retried when live".
+        await db.update(superAppPayouts)
+          .set({
+            status: 'pending_transfer',
+            updatedAt: new Date(),
+          })
+          .where(eq(superAppPayouts.id, payoutId));
+
+        logger.warn('[ProviderPayout] Payout blocked — bank transfer not live', {
+          payoutId,
+          error: transferResult.error,
+        });
+
+        return {
+          success: false,
+          error: transferResult.error,
+        };
       } else {
-        // Mark as failed
+        // Genuine bank transfer failure — mark as failed so ops can investigate.
         await db.update(superAppPayouts)
           .set({
             status: 'failed',
@@ -323,6 +344,7 @@ ${bookingRow}
     provider: any
   ): Promise<{
     success: boolean;
+    blocked?: boolean;  // true = bank not live yet; route to pending_transfer, not failed
     bankTransferReference?: string;
     error?: string;
   }> {
@@ -349,7 +371,27 @@ ${bookingRow}
       // - Bank Leumi API
       // - Israeli ACH network
       // - Mizrahi-Tefahot Bank API
-      
+
+      // SAFETY GATE: if BANK_PAYOUT_LIVE is not explicitly enabled, the stub
+      // must NOT return success.  Returning success from a stub would cause the
+      // dashboard to show "paid_out" before any real bank transfer has occurred,
+      // creating a false payout state (financial + trust risk).
+      //
+      // When not live, the payout is queued as 'blocked' which maps to
+      // pending_transfer in the canonical vocabulary (shared/payout-status.ts).
+      // The provider is notified with "queued — not yet moved" messaging.
+      if (process.env.BANK_PAYOUT_LIVE !== 'true') {
+        logger.warn('[ProviderPayout] BANK_PAYOUT_LIVE is not set — payout queued (pending_transfer), no bank transfer issued', {
+          providerId: provider.id,
+          netAmount: payout.netAmount,
+        });
+        return {
+          success: false,
+          blocked: true,
+          error: 'Bank transfer not live. Set BANK_PAYOUT_LIVE=true and wire real bank API to enable. Payout queued as pending_transfer.',
+        };
+      }
+
       const bankTransferReference = `IL_ACH_${Date.now()}_${nanoid(8).toUpperCase()}`;
 
       logger.info('[ProviderPayout] Israeli bank transfer simulated (STUB)', {
