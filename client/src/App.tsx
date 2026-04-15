@@ -35,6 +35,7 @@ import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ActivationBanner } from "@/components/ActivationBanner";
+import { PromoAdPopup } from "@/components/PromoAdPopup";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -3117,6 +3118,9 @@ console.log("Build: 1769350182889");
             isOpen={isConsentManagerOpen}
             onClose={() => setIsConsentManagerOpen(false)}
           />
+
+          {/* Luxury entry popup — single global instance, z-[9999] sits above all overlays */}
+          <PromoAdPopup />
           
         </TooltipProvider>
       </LanguageProvider>
