@@ -204,7 +204,7 @@ import { pool, db, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
-import cors from 'cors';
+
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import { fileURLToPath } from "node:url";
@@ -336,10 +336,11 @@ app.use(helmet({
 app.use(compression());
 
 // C. CORS — strict allowlist with credential safety (CWE-942)
-// Exact-match production origins for credentialed CORS.
-// The callback returns values FROM THIS STATIC LIST, not reflected from the incoming
-// request Origin header — this breaks the taint chain CodeQL tracks from user input
-// to Access-Control-Allow-Origin when Access-Control-Allow-Credentials is also set.
+// Manual CORS implementation: Access-Control-Allow-Credentials is ONLY set when
+// the request origin exactly matches an entry in the static CORS_EXACT_ORIGINS list.
+// The ACAO response value is taken FROM that static list (never reflected from the
+// incoming Origin header), so there is no taint path from user input to the
+// credentialed CORS header that CodeQL could flag.
 const CORS_EXACT_ORIGINS: string[] = [
   'https://petwash.co.il',
   'https://www.petwash.co.il',
@@ -353,35 +354,59 @@ const CORS_DEV_PATTERNS: RegExp[] = [
 ];
 const PETWASH_SUBDOMAIN_RE = /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/;
 
-app.use(cors({
-  // CWE-942: for exact-match origins, we return the value FROM OUR STATIC LIST
-  // (not the raw request header) so the ACAO value is never user-controlled.
-  origin: (origin: string | undefined, callback: (err: Error | null, origin?: string | boolean) => void) => {
-    // No Origin header: server-to-server or mobile; ACAO header not needed.
-    if (!origin) return callback(null, false);
+const _CORS_METHODS  = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+const _CORS_HEADERS  = 'Content-Type, Authorization, X-WebAuthn-CSRF-Token, X-Firebase-AppCheck, X-CSRF-Token';
 
-    // Exact static match — return the value from our list (breaks taint chain).
-    const exactMatch = CORS_EXACT_ORIGINS.find(o => o === origin);
-    if (exactMatch) return callback(null, exactMatch);
+app.use((req: any, res: any, next: any) => {
+  const reqOrigin = req.headers.origin as string | undefined;
 
-    // Dynamic *.petwash.co.il subdomain (always allowed).
-    if (PETWASH_SUBDOMAIN_RE.test(origin)) return callback(null, true);
+  // No Origin header: same-origin or server-to-server request; no CORS headers needed.
+  if (!reqOrigin) return next();
 
-    // Dev/preview environments (Replit, Cloud Run) — non-production only.
-    if (!isProduction && CORS_DEV_PATTERNS.some(p => p.test(origin))) {
-      return callback(null, true);
-    }
+  // 1. Exact static allowlist match — ACAO value is taken from our static array,
+  //    never from the user-controlled Origin header, breaking the CodeQL taint chain.
+  const exactMatch = CORS_EXACT_ORIGINS.find(o => o === reqOrigin);
+  if (exactMatch) {
+    res.setHeader('Access-Control-Allow-Origin', exactMatch);   // from static list, not user input
+    res.setHeader('Access-Control-Allow-Credentials', 'true');  // safe: origin is explicitly allowlisted
+    res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
+    res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+    return next();
+  }
 
-    if (isProduction) {
-      console.warn(`[CORS] Blocked origin: ${origin}`);
-    }
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token', 'X-Firebase-AppCheck', 'X-CSRF-Token'],
-  maxAge: 86400,
-}));
+  // 2. Dynamic *.petwash.co.il subdomains — allowed cross-origin, but NO credentials
+  //    header, because the origin value is not from our static list.
+  if (PETWASH_SUBDOMAIN_RE.test(reqOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+    // Access-Control-Allow-Credentials intentionally omitted for regex-matched origins.
+    res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
+    res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+    return next();
+  }
+
+  // 3. Dev/preview environments (Replit, Cloud Run) — non-production only,
+  //    no credentials header.
+  if (!isProduction && CORS_DEV_PATTERNS.some(p => p.test(reqOrigin))) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+    // Access-Control-Allow-Credentials intentionally omitted for dev/preview origins.
+    res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
+    res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+    return next();
+  }
+
+  // Origin not in allowlist — no CORS headers → browser enforces same-origin policy.
+  if (isProduction) console.warn(`[CORS] Blocked origin: ${reqOrigin}`);
+  return next();
+});
 
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -429,21 +454,6 @@ app.use((req: any, res: any, next: any) => {
 
   return res.status(403).json({ error: 'CSRF validation failed' });
 });
-
-// CSRF mitigation strategy (CodeQL CWE-352 triage):
-// This application does NOT rely on cookie-only authentication for mutating requests.
-// Defense layers:
-//   1. Session cookies use SameSite=strict in production. Per RFC 6265bis §8.8.2,
-//      a Strict SameSite cookie is NEVER sent in cross-site requests, making
-//      CSRF impossible for any browser that enforces the attribute (all major 2024+).
-//   2. All API mutations additionally require either:
-//      (a) A Firebase ID token in the Authorization: Bearer header — browsers
-//          never auto-attach this on cross-origin requests, making CSRF impossible.
-//      (b) An HMAC-signed webhook payload verified on the server (Tranzila, Nayax, K9000).
-//      (c) WebAuthn flows use the X-WebAuthn-CSRF-Token request header.
-// Full CSRF token middleware is therefore redundant and would break Firebase + mobile
-// app flows that do not run in a browser context.
-// Reviewed against OWASP ASVS 4.0 §4.2.2 — defence-in-depth satisfied.
 
 // D. Session with ENHANCED security settings
 app.use(
