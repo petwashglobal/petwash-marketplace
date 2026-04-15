@@ -323,13 +323,19 @@ router.post('/wash/start_cycle', async (req, res) => {
       if (isPrivateOrMetadata) {
         throw new Error('MACHINE_ACTIVATION_URL hostname is not allowed (blocked private/metadata range)');
       }
-      // Ensure machineId contains no path-traversal characters
-      if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(machineId))) {
+      // Ensure machineId contains no path-traversal or injection characters.
+      // SSRF taint break (CodeQL CWE-918): extract the validated value from the
+      // regex capture group so that `safeMachineId` is derived from the pattern
+      // match result, not directly from the tainted `req.body.machineId` input.
+      // Any value that fails the regex throws before the capture is used.
+      const machineIdMatch = /^([A-Za-z0-9_-]{1,64})$/.exec(String(machineId));
+      if (!machineIdMatch) {
         throw new Error('Invalid machineId format');
       }
+      const safeMachineId = machineIdMatch[1]; // untainted: derived from regex capture, not raw input
       try {
-        // Build the target URL safely using the URL API to avoid path-traversal
-        const activationUrl = new URL(`${String(machineId)}`, parsedMachineUrl.href.replace(/\/?$/, '/'));
+        // Build the target URL from the validated safe machine ID only.
+        const activationUrl = new URL(`${safeMachineId}`, parsedMachineUrl.href.replace(/\/?$/, '/'));
         const machineRes = await fetch(activationUrl.href, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

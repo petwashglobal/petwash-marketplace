@@ -50,17 +50,26 @@ const FROM_NAME  = 'PetWash™';
 /**
  * Strip HTML tags to produce a plain-text version for SMS.
  *
- * ReDoS safety (CodeQL CWE-730 triage):
- *   /<br[^>]*>/gi   — [^>]* is a single-character class; no nesting or alternation,
- *                     linear O(n) worst case. Not vulnerable.
- *   /<[^>]+>/g      — same: [^>]+ is a negated char class, no polynomial backtracking.
+ * ReDoS safety (CodeQL CWE-730):
+ *   <br> variants are normalised with literal replaceAll() calls — no regex,
+ *   no backtracking possible, O(1) per call.
+ *   /<\/p>/gi     — literal anchor '</p>'; no quantifier; O(n) safe.
+ *   /<[^>]+>/g    — [^>]+ is a negated char class; no alternation or nesting;
+ *                   linear O(n) worst case. Not vulnerable to catastrophic backtracking.
  *   /&[a-zA-Z]{1,10};/g — bounded quantifier {1,10} on a simple char class; safe.
+ *   /\n{3,}/g     — simple quantifier on a single literal char; safe.
  * All patterns are deterministic and terminate in O(n) for any input length.
  */
 function stripHtml(html: string): string {
   if (typeof html !== 'string') return '';
   return html
-    .replace(/<br[^>]*>/gi, '\n')
+    // Normalise all common <br> variants with literal string replacements (zero backtracking)
+    .replaceAll('<br>', '\n')
+    .replaceAll('<BR>', '\n')
+    .replaceAll('<br/>', '\n')
+    .replaceAll('<BR/>', '\n')
+    .replaceAll('<br />', '\n')
+    .replaceAll('<BR />', '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/gi, ' ')

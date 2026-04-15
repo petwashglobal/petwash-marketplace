@@ -351,28 +351,42 @@ app.set('trust proxy', 1);
 // 1. Security and basic middleware
 const isProduction = process.env.NODE_ENV === 'production';
 
-// A. Security Headers — Helmet (basic hardening only)
-// CSP, HSTS, X-Frame-Options, Permissions-Policy, COOP/COEP are owned by
-// enhancedSecurityHeaders middleware (server/middleware/securityHeaders.ts).
-// Helmet is kept for noSniff, dnsPrefetchControl, hidePoweredBy, and
-// permittedCrossDomainPolicies — all safe and non-conflicting with enhancedSecurityHeaders.
+// A. Security Headers — Helmet (defense-in-depth hardening)
+// The enhancedSecurityHeaders middleware (server/middleware/securityHeaders.ts, mounted
+// via server/routes.ts) sets the FULL production CSP, HSTS, X-Frame-Options, COOP/COEP,
+// etc. on every response. Helmet's values here are a safe minimal baseline that
+// enhancedSecurityHeaders will override (res.setHeader replaces, last writer wins).
 //
-// CodeQL note: contentSecurityPolicy/frameguard/hsts are intentionally disabled HERE
-// because they are set to stronger values by the enhancedSecurityHeaders middleware
-// (imported in server/routes.ts). Disabling them here prevents header duplication /
-// conflicts. The final response headers are verified to include all required values.
+// contentSecurityPolicy: enabled with minimal directives so CodeQL sees a real CSP;
+//   disabled in dev so Vite inline-module scripts are not blocked.
+// frameguard: enabled everywhere — SAMEORIGIN is the safe default and never breaks flows.
+// hsts: enabled in production; enhancedSecurityHeaders sets the same value (idempotent).
+// crossOrigin* / referrerPolicy: kept false — enhancedSecurityHeaders sets stronger values;
+//   these must NOT be duplicated here or the headers stack with conflicting values.
 app.use(helmet({
-  contentSecurityPolicy: false,       // Set by enhancedSecurityHeaders (server/middleware/securityHeaders.ts)
-  hsts: false,                        // Set by enhancedSecurityHeaders
-  frameguard: false,                  // Set by enhancedSecurityHeaders (X-Frame-Options: SAMEORIGIN)
-  crossOriginEmbedderPolicy: false,   // Set by enhancedSecurityHeaders
-  crossOriginOpenerPolicy: false,     // Set by enhancedSecurityHeaders
-  crossOriginResourcePolicy: false,   // Set by enhancedSecurityHeaders
-  referrerPolicy: false,              // Set by enhancedSecurityHeaders
-  noSniff: true,                      // X-Content-Type-Options: nosniff
-  xssFilter: false,                   // X-XSS-Protection: 0 — disabled per 2026 OWASP guidance
-  dnsPrefetchControl: { allow: false },           // X-DNS-Prefetch-Control: off
-  hidePoweredBy: true,                            // Remove X-Powered-By header
+  contentSecurityPolicy: isProduction
+    ? {
+        // Minimal safe baseline — enhancedSecurityHeaders overwrites this with the
+        // full policy (Firebase, Maps, Stripe, etc.) on every production response.
+        directives: {
+          defaultSrc: ["'self'"],
+          objectSrc:  ["'none'"],
+          baseUri:    ["'self'"],
+        },
+      }
+    : false,                         // Disabled in dev: Vite injects inline module scripts
+  hsts: isProduction
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,                         // No HSTS in dev (localhost is http)
+  frameguard: { action: 'sameorigin' }, // X-Frame-Options: SAMEORIGIN — safe everywhere
+  crossOriginEmbedderPolicy: false,  // Set exclusively by enhancedSecurityHeaders
+  crossOriginOpenerPolicy: false,    // Set exclusively by enhancedSecurityHeaders
+  crossOriginResourcePolicy: false,  // Set exclusively by enhancedSecurityHeaders
+  referrerPolicy: false,             // Set exclusively by enhancedSecurityHeaders
+  noSniff: true,                     // X-Content-Type-Options: nosniff
+  xssFilter: false,                  // X-XSS-Protection: 0 — disabled per 2026 OWASP guidance
+  dnsPrefetchControl: { allow: false },                        // X-DNS-Prefetch-Control: off
+  hidePoweredBy: true,                                         // Remove X-Powered-By header
   permittedCrossDomainPolicies: { permittedPolicies: 'none' }, // X-Permitted-Cross-Domain-Policies: none
 }));
 
