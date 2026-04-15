@@ -205,10 +205,11 @@ import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
 // CORS middleware - inline implementation due to ESM import issues
-// Security: ACAO is only set after explicit allowlist approval; arbitrary origin reflection
-// with credentials is never permitted.
+// Security (CWE-942): ACAO is only set after explicit allowlist approval.
+// origin MUST be a callback function — the boolean-true wildcard path has been
+// removed so that credentials:true can never be paired with an open-origin policy.
 function cors(options: {
-  origin: boolean | ((origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) => void);
+  origin: ((origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) => void);
   credentials?: boolean;
   methods?: string[];
   allowedHeaders?: string[];
@@ -241,36 +242,19 @@ function cors(options: {
       next();
     };
 
-    if (typeof options.origin === 'function') {
-      // Allowlist-based validation: ACAO is set only after the allowlist callback approves.
-      options.origin(requestOrigin, (err: Error | null, allowed?: boolean) => {
-        if (err || !allowed) {
-          // Reject blocked origins; return 403 when credentials are in play
-          if (options.credentials && requestOrigin) {
-            return res.status(403).end();
-          }
-          return next(err || new Error('Not allowed by CORS'));
+    // Allowlist-based validation: ACAO is set only after the callback approves.
+    // No boolean-true path exists — credentials:true is never paired with wildcard origin.
+    options.origin(requestOrigin, (err: Error | null, allowed?: boolean) => {
+      if (err || !allowed) {
+        // Blocked origin: return 403 when credentials are in play, else silent next().
+        if (options.credentials && requestOrigin) {
+          return res.status(403).end();
         }
-        // Origin has been explicitly approved by the allowlist — safe to reflect.
-        applyResponseHeaders(requestOrigin);
-      });
-      return; // wait for callback; do not fall through
-    }
-
-    // options.origin === true: dev-only "allow all" path.
-    // Only reached in non-production; never used when isProduction === true.
-    if (requestOrigin && options.origin === true) {
-      applyResponseHeaders(requestOrigin);
-    } else if (!requestOrigin) {
-      // No Origin header (same-origin or server-to-server): no ACAO needed.
-      applyResponseHeaders();
-    } else {
-      // Origin present but not approved (options.origin is false/undefined).
-      if (options.credentials) {
-        return res.status(403).end();
+        return next(err || new Error('Not allowed by CORS'));
       }
-      next();
-    }
+      // Origin has been explicitly approved by the allowlist — safe to reflect.
+      applyResponseHeaders(requestOrigin);
+    });
   };
 }
 import cookieParser from "cookie-parser";
