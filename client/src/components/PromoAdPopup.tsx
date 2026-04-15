@@ -149,7 +149,7 @@ export function PromoAdPopup({
           transition={{ duration: transitionDuration }}
           // Use inset-0 + fixed for true full-screen on all browsers/devices.
           // 100dvh is set inline to properly handle Safari dynamic toolbar.
-          className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
           data-testid="promo-ad-popup"
           aria-modal="true"
@@ -169,7 +169,7 @@ export function PromoAdPopup({
             // On mobile: fill the entire visual viewport.
             // On md+: float as a rounded card.
             // overflow-y-auto ensures content is reachable in landscape without clipping.
-            className="relative w-full h-full md:w-[95%] md:max-w-4xl md:rounded-3xl overflow-hidden shadow-2xl"
+            className="relative w-full h-full md:w-[95%] md:max-w-4xl md:rounded-3xl overflow-y-auto overflow-x-hidden shadow-2xl"
             style={{ maxHeight: '100dvh' }}
           >
             {/* Close button — safe-area aware so it's always tappable */}
