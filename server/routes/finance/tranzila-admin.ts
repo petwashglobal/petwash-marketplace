@@ -36,6 +36,8 @@ import { eq, desc, and, gte, lte, or, ilike, sql } from 'drizzle-orm';
 import { requireAdmin } from '../../adminAuth';
 import { logger } from '../../lib/logger';
 import { nanoid } from 'nanoid';
+import TranzilaChargebackService from '../../services/TranzilaChargebackService';
+import TranzilaPaymentRequestService from '../../services/TranzilaPaymentRequestService';
 import {
   TRANZILA_EGIFT_ENABLED,
   TRANZILA_WALLET_TOPUP_ENABLED,
@@ -301,6 +303,71 @@ router.post('/settlement/import', async (req, res) => {
   }
 });
 
+// ── POST /chargebacks/:caseId/evidence-submitted ────────────────────────────
+// Record that admin has submitted evidence in Tranzila console for a chargeback.
+
+router.post('/chargebacks/:caseId/evidence-submitted', async (req, res) => {
+  const { caseId } = req.params;
+  const schema = z.object({
+    notes: z.string().max(2000).optional(),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid request', details: parsed.error.format() });
+    return;
+  }
+
+  const adminUid = (req as any).adminUid ?? 'unknown';
+  const result = await TranzilaChargebackService.recordEvidenceSubmitted(
+    caseId,
+    adminUid,
+    parsed.data.notes,
+  );
+
+  if (result.outcome === 'not_found') {
+    res.status(404).json({ error: 'Chargeback case not found', chargebackCaseId: caseId });
+    return;
+  }
+  if (result.outcome === 'already_resolved') {
+    res.status(409).json({ error: 'Case already in terminal state', chargebackCaseId: caseId });
+    return;
+  }
+  if (result.outcome === 'error') {
+    res.status(500).json({ error: result.error ?? 'Internal error' });
+    return;
+  }
+
+  res.json({ status: 'recorded', chargebackCaseId: caseId });
+});
+
+// ── POST /payment-requests/:id/cancel ───────────────────────────────────────
+// Cancel an outstanding payment request.
+
+router.post('/payment-requests/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+  const result = await TranzilaPaymentRequestService.cancel(id);
+
+  if (result.outcome === 'not_found') {
+    res.status(404).json({ error: 'Payment request not found', paymentRequestId: id });
+    return;
+  }
+  if (result.outcome === 'already_terminal') {
+    res.status(409).json({ error: 'Payment request already in terminal state', paymentRequestId: id });
+    return;
+  }
+  if (result.outcome === 'disabled') {
+    res.status(503).json({ error: 'TRANZILA_PAYMENT_REQUESTS_ENABLED is false' });
+    return;
+  }
+  if (result.outcome === 'error') {
+    res.status(500).json({ error: result.error ?? 'Internal error' });
+    return;
+  }
+
+  res.json({ status: 'cancelled', paymentRequestId: id });
+});
+
 // ── GET /status ──────────────────────────────────────────────────────────────
 
 router.get('/status', async (_req, res) => {
@@ -339,7 +406,17 @@ router.get('/status', async (_req, res) => {
         'CPA written confirmation on VAT document timing required before TRANZILA_DOCUMENT_INGESTION_ENABLED=true',
     ].filter(Boolean),
     webhookEndpoint: 'POST /api/payments/tranzila/webhook',
-    adminDashboard:  '/api/admin/finance/tranzila',
+    webhookEventEndpoints: {
+      payment_success:         'POST /api/webhooks/tranzila/payment-success',
+      payment_failed:          'POST /api/webhooks/tranzila/payment-failed',
+      refund_success:          'POST /api/webhooks/tranzila/refund-success',
+      refund_failed:           'POST /api/webhooks/tranzila/refund-failed',
+      payment_request_updated: 'POST /api/webhooks/tranzila/payment-request-updated',
+      document_issued:         'POST /api/webhooks/tranzila/document-issued',
+      chargeback_updated:      'POST /api/webhooks/tranzila/chargeback-updated',
+      settlement_updated:      'POST /api/webhooks/tranzila/settlement-updated',
+    },
+    adminDashboard: '/api/admin/finance/tranzila',
   });
 });
 

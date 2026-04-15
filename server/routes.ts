@@ -52,6 +52,7 @@ import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
 import nayaxPaymentsRoutes from "./routes/nayax-payments";
 import tranzilaWebhookRoutes from "./routes/tranzila-webhooks";
+import tranzilaEventWebhookRoutes from "./routes/tranzila-event-webhooks";
 import tranzilaAdminRoutes from "./routes/finance/tranzila-admin";
 import thankYouRoutes from "./routes/send-thank-you";
 import platformCopyEmailRoutes from "./routes/platform-copy-email";
@@ -10217,6 +10218,11 @@ self.addEventListener('notificationclick', (event) => {
   // Tranzila Webhook (digital purchase rail: e-gift, wallet top-up, marketplace, payment requests, chargebacks)
   // NO rate limiting on webhook path — Tranzila retries may burst legitimately
   app.use('/api/payments/tranzila/webhook', tranzilaWebhookRoutes);
+
+  // Tranzila per-event webhook aliases at /api/webhooks/tranzila/<event>
+  // Same security pipeline — allows Tranzila to be configured with individual event URLs
+  // NO rate limiting — same reason as above
+  app.use('/api/webhooks/tranzila', tranzilaEventWebhookRoutes);
 
   // Tranzila Admin (read-only processor monitoring, settlement import)
   app.use('/api/admin/finance/tranzila', adminLimiter, tranzilaAdminRoutes);

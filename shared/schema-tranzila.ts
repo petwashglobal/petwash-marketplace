@@ -125,6 +125,25 @@ export const tranzilaTransactions = pgTable('tranzila_transactions', {
   settlementStatus: varchar('settlement_status'),         // unsettled | in_batch | settled
   processorConfirmedAt: timestamp('processor_confirmed_at'),
 
+  // ── Processor reference ───────────────────────────────────────────────────
+  /**
+   * Tranzila's human-readable reference string (e.g. invoice reference or
+   * authorization number) returned in API response.  Distinct from
+   * processorTransactionId (tran_num) which is the numeric Tranzila ID.
+   * Maps to Tranzila 'reference' or 'auth_num' field depending on operation.
+   */
+  processorReference: varchar('processor_reference'),
+
+  // ── Reconciliation ────────────────────────────────────────────────────────
+  /**
+   * unreconciled — transaction not yet matched to a settlement batch
+   * matched      — found in settlement batch, amounts agree
+   * discrepancy  — found in settlement batch but amounts differ
+   * missing      — expected in batch but absent (flag for ops investigation)
+   * excluded     — intentionally excluded (e.g. voided before settlement)
+   */
+  reconciliationStatus: varchar('reconciliation_status').default('unreconciled'),
+
   // ── Raw processor payload ─────────────────────────────────────────────────
   /** Full Tranzila API response body — stored for reconciliation and debugging. */
   processorPayloadRaw: jsonb('processor_payload_raw'),
@@ -137,14 +156,15 @@ export const tranzilaTransactions = pgTable('tranzila_transactions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({
-  idempotencyIdx:         uniqueIndex('idx_trz_tx_idempotency').on(t.idempotencyKey),
-  processorTxIdx:         uniqueIndex('idx_trz_tx_processor_id').on(t.processorTransactionId),
-  pwPaymentIdx:           index('idx_trz_tx_pw_payment').on(t.pwPaymentId),
-  customerIdx:            index('idx_trz_tx_customer').on(t.customerId),
-  statusIdx:              index('idx_trz_tx_status').on(t.status),
-  productTypeIdx:         index('idx_trz_tx_product_type').on(t.productType),
-  settlementBatchIdx:     index('idx_trz_tx_settlement').on(t.settlementBatchId),
-  createdAtIdx:           index('idx_trz_tx_created_at').on(t.createdAt),
+  idempotencyIdx:              uniqueIndex('idx_trz_tx_idempotency').on(t.idempotencyKey),
+  processorTxIdx:              uniqueIndex('idx_trz_tx_processor_id').on(t.processorTransactionId),
+  pwPaymentIdx:                index('idx_trz_tx_pw_payment').on(t.pwPaymentId),
+  customerIdx:                 index('idx_trz_tx_customer').on(t.customerId),
+  statusIdx:                   index('idx_trz_tx_status').on(t.status),
+  productTypeIdx:              index('idx_trz_tx_product_type').on(t.productType),
+  settlementBatchIdx:          index('idx_trz_tx_settlement').on(t.settlementBatchId),
+  reconciliationStatusIdx:     index('idx_trz_tx_reconciliation').on(t.reconciliationStatus),
+  createdAtIdx:                index('idx_trz_tx_created_at').on(t.createdAt),
 }));
 
 export const insertTranzilaTransactionSchema = createInsertSchema(tranzilaTransactions).omit({
