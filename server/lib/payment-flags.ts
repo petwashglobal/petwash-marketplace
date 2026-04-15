@@ -23,19 +23,60 @@
  *  When false, ProviderPayoutService routes payouts to pending_transfer, not paid_out. */
 export const BANK_PAYOUT_LIVE = process.env.BANK_PAYOUT_LIVE === 'true';
 
+// ── Tranzila webhook security gate ───────────────────────────────────────────
+//
+// ALL live Tranzila charge flags are hard-blocked if the inbound webhook
+// endpoint is not properly secured.  This prevents money writes from flowing
+// through a path whose authenticity cannot be verified.
+//
+// Required for ANY live Tranzila flag to be active:
+//   1. TRANZILA_WEBHOOK_SECRET must be set (HMAC verification key).
+//   2. TRANZILA_WEBHOOK_BYPASS_SIGNATURE must NOT be 'true' (bypass off).
+//   3. TRANZILA_ALLOWED_IPS must be set in production/staging.
+//      (optional in local dev where IPs are not fixed)
+//
+// If any condition fails, all Tier-1 charge flags resolve to false regardless
+// of their own env-var values.
+//
+// NOTE: This guard runs at module load time.  A flag change requires a
+// process restart (no hot-reload).
+const _isTranzilaWebhookSecured: boolean = (() => {
+  const hasSecret    = !!process.env.TRANZILA_WEBHOOK_SECRET;
+  const bypassActive = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';
+  const hasAllowedIPs = !!(process.env.TRANZILA_ALLOWED_IPS || '').trim();
+  const env = (process.env.NODE_ENV || '').toLowerCase();
+  const isRestrictedEnv = env === 'production' || env === 'staging';
+
+  if (!hasSecret)    return false;
+  if (bypassActive)  return false;
+  // In production/staging the IP allowlist is mandatory
+  if (isRestrictedEnv && !hasAllowedIPs) return false;
+  return true;
+})();
+
+/**
+ * Exported for use in status endpoints and tests.
+ * Returns true only when all webhook security requirements are satisfied.
+ */
+export function isTranzilaWebhookSecured(): boolean {
+  return _isTranzilaWebhookSecured;
+}
+
 // ── Tranzila charge flows (Tier 1) ───────────────────────────────────────────
+// Each flag is gated behind _isTranzilaWebhookSecured.
+// A live charge flag is meaningless without a secure inbound confirmation path.
 
 /** True when Tranzila e-gift purchase flow is enabled.
  *  First Tranzila product to migrate — safest because it is discrete & lower risk. */
-export const TRANZILA_EGIFT_ENABLED = process.env.TRANZILA_EGIFT_ENABLED === 'true';
+export const TRANZILA_EGIFT_ENABLED = _isTranzilaWebhookSecured && process.env.TRANZILA_EGIFT_ENABLED === 'true';
 
 /** True when Tranzila wallet top-up flow is enabled.
  *  Migrate after e-gift is proven stable. */
-export const TRANZILA_WALLET_TOPUP_ENABLED = process.env.TRANZILA_WALLET_TOPUP_ENABLED === 'true';
+export const TRANZILA_WALLET_TOPUP_ENABLED = _isTranzilaWebhookSecured && process.env.TRANZILA_WALLET_TOPUP_ENABLED === 'true';
 
 /** True when Tranzila marketplace booking capture is enabled.
  *  Migrate last — highest volume, highest risk. */
-export const TRANZILA_MARKETPLACE_ENABLED = process.env.TRANZILA_MARKETPLACE_ENABLED === 'true';
+export const TRANZILA_MARKETPLACE_ENABLED = _isTranzilaWebhookSecured && process.env.TRANZILA_MARKETPLACE_ENABLED === 'true';
 
 /**
  * Wash package purchase via Tranzila is intentionally NOT exposed as a flag here.

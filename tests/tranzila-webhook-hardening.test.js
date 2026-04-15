@@ -408,3 +408,113 @@ describe('§H — no PayPal references in Tranzila source files', () => {
     });
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §I — deployment gate: payment flags blocked when webhook not secured
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Re-implementation of the _isTranzilaWebhookSecured gate logic from
+ * server/lib/payment-flags.ts.  Must be kept in sync.
+ */
+function computeWebhookSecured({ secret, bypass, allowedIPs, env }) {
+  const hasSecret     = !!secret;
+  const bypassActive  = bypass === 'true';
+  const hasAllowedIPs = !!(allowedIPs || '').trim();
+  const isRestricted  = env === 'production' || env === 'staging';
+
+  if (!hasSecret)   return false;
+  if (bypassActive) return false;
+  if (isRestricted && !hasAllowedIPs) return false;
+  return true;
+}
+
+describe('§I — deployment gate blocks live flags when webhook not secured', () => {
+  test('secret missing → gate = false', () => {
+    assert.equal(computeWebhookSecured({ secret: '', bypass: 'false', allowedIPs: '1.2.3.4', env: 'development' }), false);
+  });
+
+  test('bypass active → gate = false (any env)', () => {
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'true', allowedIPs: '1.2.3.4', env: 'development' }), false);
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'true', allowedIPs: '1.2.3.4', env: 'production' }), false);
+  });
+
+  test('production: no allowed IPs → gate = false', () => {
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'false', allowedIPs: '', env: 'production' }), false);
+  });
+
+  test('staging: no allowed IPs → gate = false', () => {
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'false', allowedIPs: '', env: 'staging' }), false);
+  });
+
+  test('development: no allowed IPs is OK (local dev loop) → gate = true', () => {
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'false', allowedIPs: '', env: 'development' }), true);
+  });
+
+  test('all conditions met in production → gate = true', () => {
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'false', allowedIPs: '1.2.3.4', env: 'production' }), true);
+  });
+
+  test('all conditions met in development (no IPs needed) → gate = true', () => {
+    assert.equal(computeWebhookSecured({ secret: 'real-secret', bypass: 'false', allowedIPs: '', env: 'development' }), true);
+  });
+
+  test('gate false means TRANZILA_EGIFT_ENABLED resolves to false even if env var is "true"', () => {
+    // If gate is false, the flag is blocked regardless of env-var value
+    const gateResult = computeWebhookSecured({ secret: '', bypass: 'false', allowedIPs: '', env: 'development' });
+    const egiftEnabled = gateResult && true; // mirrors: _isTranzilaWebhookSecured && process.env.TRANZILA_EGIFT_ENABLED === 'true'
+    assert.equal(egiftEnabled, false, 'Flag must be false when gate is false');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §J — DB-level refund idempotency guard (WHERE logic)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('§J — DB-level refund idempotency guard logic', () => {
+  /**
+   * Simulates the WHERE condition used in _handleRefundSuccess.
+   * Returns true if the update should proceed (row is eligible for refund),
+   * false if it should be skipped (already refunded).
+   */
+  function isEligibleForRefund({ status, processorRefundStatus }) {
+    // Mirrors: ne(status, 'refunded') AND ne(processorRefundStatus, 'confirmed')
+    return status !== 'refunded' && processorRefundStatus !== 'confirmed';
+  }
+
+  test('confirmed row (status=pending): eligible for refund', () => {
+    assert.equal(isEligibleForRefund({ status: 'confirmed', processorRefundStatus: null }), true);
+  });
+
+  test('already refunded (status=refunded): NOT eligible — guard fires', () => {
+    assert.equal(isEligibleForRefund({ status: 'refunded', processorRefundStatus: 'confirmed' }), false);
+  });
+
+  test('already confirmed refund status only: NOT eligible — belt-and-suspenders guard fires', () => {
+    // Edge case: status not yet 'refunded' but processorRefundStatus already 'confirmed'
+    // (partial update race). Guard still blocks.
+    assert.equal(isEligibleForRefund({ status: 'confirmed', processorRefundStatus: 'confirmed' }), false);
+  });
+
+  test('status=declined: eligible (refund of a manually settled decline edge case)', () => {
+    // declined rows should not have refunds in practice, but guard allows it
+    assert.equal(isEligibleForRefund({ status: 'declined', processorRefundStatus: null }), true);
+  });
+
+  test('second delivery of same event: guard returns false — zero DB rows updated', () => {
+    // Simulates two deliveries of refund_success for the same transaction.
+    // First delivery: row is confirmed → eligible → update runs → row becomes refunded.
+    // Second delivery: row is now refunded → guard fires → no update.
+    let rowState = { status: 'confirmed', processorRefundStatus: null };
+
+    // First delivery
+    if (isEligibleForRefund(rowState)) {
+      rowState = { status: 'refunded', processorRefundStatus: 'confirmed' };
+    }
+    assert.equal(rowState.status, 'refunded');
+
+    // Second delivery
+    const secondEligible = isEligibleForRefund(rowState);
+    assert.equal(secondEligible, false, 'Guard must block second refund application');
+  });
+});

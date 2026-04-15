@@ -125,14 +125,26 @@ export const tranzilaTransactions = pgTable('tranzila_transactions', {
   settlementStatus: varchar('settlement_status'),         // unsettled | in_batch | settled
   processorConfirmedAt: timestamp('processor_confirmed_at'),
 
-  // ── Processor reference ───────────────────────────────────────────────────
+  // ── Processor reference fields ────────────────────────────────────────────
   /**
-   * Tranzila's human-readable reference string (e.g. invoice reference or
-   * authorization number) returned in API response.  Distinct from
-   * processorTransactionId (tran_num) which is the numeric Tranzila ID.
-   * Maps to Tranzila 'reference' or 'auth_num' field depending on operation.
+   * Tranzila 'reference' field — a human-readable order or invoice reference
+   * supplied by the merchant at charge time.  Distinct from processorTransactionId
+   * (tran_num) which is the numeric Tranzila ID assigned by the processor.
    */
   processorReference: varchar('processor_reference'),
+
+  /**
+   * Tranzila 'auth_num' field — the authorization number issued by the acquiring
+   * bank when the charge is approved.  This is the most reliable reconciliation
+   * anchor: it appears on card statements and in bank settlement reports.
+   *
+   * NOT to be confused with processorReference (merchant-supplied) or
+   * processorTransactionId (Tranzila-assigned tran_num).
+   *
+   * Populated from Tranzila API response and/or webhook payload.
+   * Null for declined transactions (no authorization issued).
+   */
+  processorAuthNumber: varchar('processor_auth_number'),
 
   // ── Reconciliation ────────────────────────────────────────────────────────
   /**

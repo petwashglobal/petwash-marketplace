@@ -38,7 +38,7 @@ import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { tranzilaTransactions } from '../../shared/schema-tranzila';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import TranzilaDocumentMapper from './TranzilaDocumentMapper';
 import TranzilaPaymentRequestMapper from './TranzilaPaymentRequestMapper';
 import TranzilaChargebackMapper from './TranzilaChargebackMapper';
@@ -245,6 +245,13 @@ export class TranzilaWebhookService {
       return { verified: true, eventType: 'payment_success', outcome: 'error', error: 'Missing tran_num' };
     }
 
+    // Extract processor auth number (Tranzila 'auth_num' — bank authorization number).
+    // Prefer payload.auth_num; fall back to payload.AuthNum if Tranzila uses that casing.
+    const processorAuthNumber =
+      (payload.auth_num as string | undefined) ??
+      (payload.AuthNum as string | undefined) ??
+      undefined;
+
     // Update tranzila_transactions row to confirmed
     const existing = await db
       .select()
@@ -268,6 +275,7 @@ export class TranzilaWebhookService {
           ? Math.round(payload.sum * 100)
           : parseInt(String(payload.sum ?? '0'), 10) * 100,
         status: 'confirmed',
+        processorAuthNumber: processorAuthNumber ?? null,
         processorConfirmedAt: payload.event_at ? new Date(payload.event_at) : new Date(),
         processorPayloadRaw: payload as any,
       });
@@ -276,6 +284,7 @@ export class TranzilaWebhookService {
         .update(tranzilaTransactions)
         .set({
           status: 'confirmed',
+          processorAuthNumber: processorAuthNumber ?? undefined,
           processorConfirmedAt: payload.event_at ? new Date(payload.event_at) : new Date(),
           processorPayloadRaw: payload as any,
           updatedAt: new Date(),
@@ -301,7 +310,7 @@ export class TranzilaWebhookService {
       });
     }
 
-    logger.info('[TranzilaWebhookService] payment_success processed', { processorTransactionId });
+    logger.info('[TranzilaWebhookService] payment_success processed', { processorTransactionId, processorAuthNumber });
     return { verified: true, eventType: 'payment_success', outcome: 'confirmed', processorTransactionId };
   }
 
@@ -327,7 +336,12 @@ export class TranzilaWebhookService {
   ): Promise<TranzilaWebhookDispatchResult> {
     const processorTransactionId = payload.tran_num;
     if (processorTransactionId) {
-      await db
+      // DB-LEVEL IDEMPOTENCY GUARD:
+      // Only update rows that are NOT already marked 'refunded'.
+      // This prevents a second delivery of the same refund_success event from
+      // being applied twice — even if Redis dedup is bypassed or unavailable.
+      // A duplicate delivery updates zero rows and is logged as a no-op.
+      const result = await db
         .update(tranzilaTransactions)
         .set({
           status: 'refunded',
@@ -335,7 +349,23 @@ export class TranzilaWebhookService {
           processorPayloadRaw: payload as any,
           updatedAt: new Date(),
         })
-        .where(eq(tranzilaTransactions.processorTransactionId, processorTransactionId));
+        .where(
+          and(
+            eq(tranzilaTransactions.processorTransactionId, processorTransactionId),
+            ne(tranzilaTransactions.status, 'refunded'),        // DB-level guard
+            ne(tranzilaTransactions.processorRefundStatus, 'confirmed'), // belt-and-suspenders
+          ),
+        );
+
+      // Drizzle returns the affected rows — log if the guard fired (duplicate detected)
+      const affectedRows = (result as any)?.rowCount ?? (result as any)?.rowsAffected ?? -1;
+      if (affectedRows === 0) {
+        logger.warn(
+          '[TranzilaWebhookService] refund_success duplicate — row already refunded, no DB write',
+          { audit: 'webhook_rejected', reason: 'duplicate_refund', processorTransactionId },
+        );
+        return { verified: true, eventType: 'refund_success', outcome: 'already_refunded', processorTransactionId };
+      }
     }
     logger.info('[TranzilaWebhookService] refund_success processed', { processorTransactionId });
     return { verified: true, eventType: 'refund_success', outcome: 'refunded', processorTransactionId };

@@ -46,6 +46,7 @@ import {
   TRANZILA_DOCUMENT_INGESTION_ENABLED,
   TRANZILA_CHARGEBACK_ALERTS_ENABLED,
   TRANZILA_SETTLEMENT_RECONCILIATION_ENABLED,
+  isTranzilaWebhookSecured,
 } from '../../lib/payment-flags';
 
 const router = Router();
@@ -387,6 +388,9 @@ router.get('/status', async (_req, res) => {
     hasAllowedIPs &&
     !bypassActive;
 
+  // The deployment webhook-security gate (mirrors _isTranzilaWebhookSecured in payment-flags.ts)
+  const webhookGateOpen = isTranzilaWebhookSecured();
+
   res.json({
     integration: 'tranzila',
     // ── Webhook readiness checklist ──────────────────────────────────────────
@@ -395,6 +399,8 @@ router.get('/status', async (_req, res) => {
       allowedIPsSet:     hasAllowedIPs     ? 'YES' : 'NO — set TRANZILA_ALLOWED_IPS',
       bypassFlagActive:  bypassActive      ? 'YES — INSECURE, disable in non-dev' : 'no',
       productionSafe:    productionSafe    ? 'YES' : 'NO — see itemsBlocking',
+      // Deployment gate: all live charge flags are blocked when this is false
+      deploymentGate:    webhookGateOpen   ? 'OPEN — live flags may be enabled' : 'CLOSED — live charge flags are blocked',
     },
     credentials: {
       TRANZILA_TERMINAL_NAME:     hasTerminalName  ? 'set' : 'MISSING',
@@ -418,6 +424,7 @@ router.get('/status', async (_req, res) => {
       !hasAllowedIPs    && 'TRANZILA_ALLOWED_IPS not set — required in production/staging',
       (bypassActive && isRestrictedEnv) && 'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true in ' + env + ' — FATAL on boot',
       (bypassActive && !isRestrictedEnv) && 'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true — remove before deploying to staging/production',
+      !webhookGateOpen && 'Deployment webhook-security gate CLOSED — all live Tranzila charge flags are blocked',
     ].filter(Boolean),
     itemsWaitingOnCpaLegal: [
       !TRANZILA_DOCUMENT_INGESTION_ENABLED &&
