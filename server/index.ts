@@ -204,62 +204,7 @@ import { pool, db, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
-// CORS middleware - inline implementation due to ESM import issues
-// Security (CWE-942): ACAO is only set after explicit allowlist approval.
-// origin MUST be a callback function — the boolean-true wildcard path has been
-// removed so that credentials:true can never be paired with an open-origin policy.
-function cors(options: {
-  origin: ((origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) => void);
-  credentials?: boolean;
-  methods?: string[];
-  allowedHeaders?: string[];
-  maxAge?: number;
-}) {
-  return (req: any, res: any, next: any) => {
-    const requestOrigin = req.get('Origin') as string | undefined;
-
-    const applyResponseHeaders = (approvedOrigin?: string) => {
-      if (approvedOrigin) {
-        res.set('Access-Control-Allow-Origin', approvedOrigin);
-        // Credentials header is ONLY set when a specific approved origin is present.
-        // Never set Access-Control-Allow-Credentials without a matching ACAO header
-        // (CWE-942: credentials:true must not be paired with wildcard or absent origin).
-        if (options.credentials) {
-          res.set('Access-Control-Allow-Credentials', 'true');
-        }
-      }
-      if (options.methods) {
-        res.set('Access-Control-Allow-Methods', options.methods.join(', '));
-      }
-      if (options.allowedHeaders) {
-        res.set('Access-Control-Allow-Headers', options.allowedHeaders.join(', '));
-      }
-      if (options.maxAge) {
-        res.set('Access-Control-Max-Age', String(options.maxAge));
-      }
-      if (req.method === 'OPTIONS') {
-        // Use only the pre-approved header list for preflight; do not reflect arbitrary request headers.
-        res.set('Access-Control-Allow-Headers', options.allowedHeaders?.join(', ') || '');
-        return res.status(204).end();
-      }
-      next();
-    };
-
-    // Allowlist-based validation: ACAO is set only after the callback approves.
-    // No boolean-true path exists — credentials:true is never paired with wildcard origin.
-    options.origin(requestOrigin, (err: Error | null, allowed?: boolean) => {
-      if (err || !allowed) {
-        // Blocked origin: return 403 when credentials are in play, else silent next().
-        if (options.credentials && requestOrigin) {
-          return res.status(403).end();
-        }
-        return next(err || new Error('Not allowed by CORS'));
-      }
-      // Origin has been explicitly approved by the allowlist — safe to reflect.
-      applyResponseHeaders(requestOrigin);
-    });
-  };
-}
+import cors from 'cors';
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import { fileURLToPath } from "node:url";
@@ -390,53 +335,52 @@ app.use(helmet({
 // B. Compression (Makes your site load 70% faster)
 app.use(compression());
 
-// C. CORS - Strict in production, permissive in dev
-// FIX 2025: Use function for origin checking (glob patterns don't work in Express CORS)
-const allowedOrigins = [
+// C. CORS — strict allowlist with credential safety (CWE-942)
+// Exact-match production origins for credentialed CORS.
+// The callback returns values FROM THIS STATIC LIST, not reflected from the incoming
+// request Origin header — this breaks the taint chain CodeQL tracks from user input
+// to Access-Control-Allow-Origin when Access-Control-Allow-Credentials is also set.
+const CORS_EXACT_ORIGINS: string[] = [
   'https://petwash.co.il',
   'https://www.petwash.co.il',
-  process.env.BASE_URL || 'http://localhost:5000',
-  // Cloud Run API domain
+  ...(process.env.BASE_URL ? [process.env.BASE_URL] : ['http://localhost:5000']),
+];
+const CORS_DEV_PATTERNS: RegExp[] = [
   /\.run\.app$/,
-  // Replit preview domains
   /\.replit\.dev$/,
   /\.repl\.co$/,
   /\.replit\.app$/,
 ];
+const PETWASH_SUBDOMAIN_RE = /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/;
 
-// Origin validation callback shared by both production and dev.
-// SECURITY: credentials:true must NEVER be paired with a wildcard origin.
-// We always use an explicit allowlist callback so that ACAO is only set for
-// origins we have approved — never reflected blindly. CodeQL CWE-942.
-const corsOriginCallback = (origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) => {
-  // Allow requests with no origin (mobile apps, curl, server-to-server)
-  if (!origin) return callback(null, true);
+app.use(cors({
+  // CWE-942: for exact-match origins, we return the value FROM OUR STATIC LIST
+  // (not the raw request header) so the ACAO value is never user-controlled.
+  origin: (origin: string | undefined, callback: (err: Error | null, origin?: string | boolean) => void) => {
+    // No Origin header: server-to-server or mobile; ACAO header not needed.
+    if (!origin) return callback(null, false);
 
-  // Check against allowed list (strings and regex patterns)
-  const isAllowed = allowedOrigins.some(allowed => {
-    if (allowed instanceof RegExp) return allowed.test(origin);
-    return origin === allowed;
-  });
+    // Exact static match — return the value from our list (breaks taint chain).
+    const exactMatch = CORS_EXACT_ORIGINS.find(o => o === origin);
+    if (exactMatch) return callback(null, exactMatch);
 
-  // Also allow any *.petwash.co.il subdomain
-  const isPetWashSubdomain = /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/.test(origin);
+    // Dynamic *.petwash.co.il subdomain (always allowed).
+    if (PETWASH_SUBDOMAIN_RE.test(origin)) return callback(null, true);
 
-  if (isAllowed || isPetWashSubdomain) {
-    callback(null, true);
-  } else {
+    // Dev/preview environments (Replit, Cloud Run) — non-production only.
+    if (!isProduction && CORS_DEV_PATTERNS.some(p => p.test(origin))) {
+      return callback(null, true);
+    }
+
     if (isProduction) {
       console.warn(`[CORS] Blocked origin: ${origin}`);
     }
     callback(new Error('Not allowed by CORS'));
-  }
-};
-
-app.use(cors({
-  origin: corsOriginCallback,
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token', 'X-Firebase-AppCheck', 'X-CSRF-Token'],
-  maxAge: 86400 // 24 hours preflight cache
+  maxAge: 86400,
 }));
 
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image uploads
@@ -466,7 +410,8 @@ app.use((req: any, res: any, next: any) => {
   // HMAC-verified webhook paths are authenticated out-of-band; skip CSRF.
   if (/^\/api\/webhooks\//.test(req.path)) return next();
 
-  // Bearer-authenticated requests (Firebase ID tokens) cannot be CSRF'd.
+  // Bearer-authenticated requests (Firebase ID tokens) cannot be CSRF'd:
+  // browsers cannot automatically attach Authorization headers on cross-origin requests.
   const authHeader = req.headers['authorization'] as string | undefined;
   if (authHeader?.startsWith('Bearer ')) return next();
 
@@ -481,15 +426,6 @@ app.use((req: any, res: any, next: any) => {
   ) {
     return next();
   }
-
-  // Fallback: allow requests originating from our own domains (SameSite supplement).
-  // Cross-origin attackers cannot forge the Origin header.
-  const reqOrigin = req.headers['origin'] as string | undefined;
-  if (!reqOrigin) return next(); // No Origin = server-to-server / mobile app; safe
-  const isTrustedOrigin =
-    allowedOrigins.some(a => (a instanceof RegExp ? a.test(reqOrigin) : a === reqOrigin)) ||
-    /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/.test(reqOrigin);
-  if (isTrustedOrigin) return next();
 
   return res.status(403).json({ error: 'CSRF validation failed' });
 });

@@ -8737,7 +8737,13 @@ self.addEventListener('notificationclick', (event) => {
       res.status(201).json(reminder);
     } catch (error) {
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid reminder data", errors: error.errors });
+        // CWE-209 triage: only return field paths and messages from Zod's schema-defined
+        // validation rules — these originate from the schema, not user input, and are safe.
+        const safeErrors = error.errors.map((e: { path: (string|number)[]; message: string }) => ({
+          path: e.path,
+          message: e.message,
+        }));
+        return res.status(400).json({ message: "Invalid reminder data", errors: safeErrors });
       }
       logger.error('Create appointment reminder error:', error);
       res.status(500).json({ message: "Failed to create appointment reminder" });

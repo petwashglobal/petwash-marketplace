@@ -16,15 +16,27 @@ import assert from 'node:assert/strict';
 // ---------------------------------------------------------------------------
 function stripHtml(html) {
   if (typeof html !== 'string') return '';
-  return html
+  // Normalise <br> variants and closing <p> first (literal replacements; no backtracking)
+  let s = html
     .replaceAll('<br>', '\n')
     .replaceAll('<BR>', '\n')
     .replaceAll('<br/>', '\n')
     .replaceAll('<BR/>', '\n')
     .replaceAll('<br />', '\n')
     .replaceAll('<BR />', '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+    .replace(/<\/p>/gi, '\n');
+
+  // Remove HTML tags iteratively until the string stops changing.
+  // A single pass of /<[^>]*>/g can leave artifacts when a `>` appears inside an
+  // attribute value (e.g. <img src=">">); looping until stable eliminates those
+  // remnants and satisfies CodeQL CWE-116 (incomplete multi-character sanitization).
+  let prev;
+  do {
+    prev = s;
+    s = s.replace(/<[^>]*>/g, '');
+  } while (s !== prev);
+
+  return s
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&[a-zA-Z]{1,10};/g, '')
