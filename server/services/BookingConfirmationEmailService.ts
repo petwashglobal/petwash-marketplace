@@ -10,6 +10,7 @@ import { bookings, users, pets, bookingPets, providers } from '@shared/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_URL } from '@shared/support-contact';
 import type { UnifiedBooking } from './unified-booking/types';
 import type { CreditBreakdown } from './unified-booking/types';
 import { FinancialDocumentService } from './FinancialDocumentService';
@@ -20,7 +21,6 @@ import {
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = 'Pet Wash™';
-const SUPPORT_EMAIL = 'support@petwash.co.il';
 const SITE_URL = 'https://petwash.co.il';
 const ISRAEL_VAT_RATE = 0.18;
 const COMPANY_NAME_HE = 'פט וואש בע"מ';
@@ -47,7 +47,7 @@ const SOCIAL_BUTTONS = `
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:9px 15px;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #333;">♪ TikTok</a>
       </td>
       <td style="padding:0 5px;">
-        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:9px 15px;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;">💬 WhatsApp</a>
+        <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:9px 15px;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;">💬 WhatsApp</a>
       </td>
     </tr>
   </table>`;

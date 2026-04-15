@@ -17,6 +17,7 @@ import { WalletTelemetryService } from '../services/WalletTelemetryService';
 import sgMail from '../lib/sendgrid';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = express.Router();
 
@@ -959,7 +960,7 @@ router.post('/admin-send', async (req, res) => {
             </table>
             <p style="color:#555;font-size:11px;text-align:center;margin:16px 0 0;">Links expire in 2 hours · Valid on iPhone with iOS 15+</p>
           </div>
-          <p style="color:#333;font-size:11px;text-align:center;margin:0;">PetWash™ Ltd · support@petwash.co.il · petwash.co.il</p>
+          <p style="color:#333;font-size:11px;text-align:center;margin:0;">PetWash™ Ltd · ${CANONICAL_SUPPORT_EMAIL} · petwash.co.il</p>
         </div>
       </body></html>`,
     });

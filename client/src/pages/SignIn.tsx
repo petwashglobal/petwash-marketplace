@@ -143,8 +143,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     language,
     enabled: !user && !switchingAccount && passkeyAvailable && !forcePasswordMode && !isDeviceTrusted(),
     onSuccess: () => {
-      logger.info("Auto Face ID: Login successful, redirecting to dashboard");
+      logger.info("Auto Face ID: Login successful, navigating via post-login role decider");
     },
+    onNavigate: () => navigatePostLogin(),
     onFailure: (error) => {
       logger.info("Auto Face ID: Login failed, showing manual form", { error });
       setShowFallbackHint(true);

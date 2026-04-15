@@ -26,6 +26,7 @@ import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { FinancialDocumentService } from './FinancialDocumentService';
 import {
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
   dispatchNotifications,
   buildProviderApprovedSms,
   buildProviderRejectedSms,
@@ -517,7 +518,7 @@ class AdminProviderReviewService {
   <tr><td style="padding:8px;color:#555;">תאריך אישור</td><td style="padding:8px;">${new Date().toLocaleDateString('he-IL')}</td></tr>
 </table>
 <p style="margin-top:16px;"><a href="https://petwash.co.il/provider/onboarding" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">התחל/י כספק</a></p>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il</p>
 </body></html>`;
 
               await FinancialDocumentService.create({
@@ -676,10 +677,10 @@ class AdminProviderReviewService {
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${platform}</td></tr>
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סיבת הדחייה</td><td style="padding:8px;border-bottom:1px solid #eee;">${rejectionReason}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">השלב הבא</td><td style="padding:8px;border-bottom:1px solid #eee;">צור/י קשר עם support@petwash.co.il לבירורים</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">השלב הבא</td><td style="padding:8px;border-bottom:1px solid #eee;">צור/י קשר עם ${CANONICAL_SUPPORT_EMAIL} לבירורים</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
           const docRef = await FinancialDocumentService.create({
@@ -692,7 +693,7 @@ class AdminProviderReviewService {
               platform,
               rejectionReason,
               reviewerId,
-              nextStep: 'Contact support@petwash.co.il',
+              nextStep: `Contact ${CANONICAL_SUPPORT_EMAIL}`,
             },
             renderedHtml: rejectionHtml,
             idempotencyKey: `provider_rejection_notice:${applicationId}:${firebaseUid}`,

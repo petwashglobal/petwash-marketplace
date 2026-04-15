@@ -8,6 +8,7 @@ import { notificationTemplates } from '@shared/schema';
 import type { InsertNotificationTemplate } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { eq } from 'drizzle-orm';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const defaultTemplates: InsertNotificationTemplate[] = [
   // 1. INCIDENT REPORTED
@@ -427,7 +428,7 @@ const defaultTemplates: InsertNotificationTemplate[] = [
             <p><strong>סיבה:</strong> {{reason}}</p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
             <p style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px; margin: 20px 0;">
-              אם יש לך שאלות, אנא פנה לתמיכה שלנו בכתובת support@petwash.co.il
+              אם יש לך שאלות, אנא פנה לתמיכה שלנו בכתובת ${CANONICAL_SUPPORT_EMAIL}
             </p>
             <p style="color: #6c757d; font-size: 12px; margin-top: 20px;">{{timestamp}}</p>
           </div>

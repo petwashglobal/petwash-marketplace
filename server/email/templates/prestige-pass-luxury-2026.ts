@@ -5,6 +5,7 @@
  */
 
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../../shared/support-contact';
 
 export interface PrestigePassEmailParams {
   firstName: string;
@@ -550,7 +551,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
       <p style="margin:0 0 8px;font-size:11px;color:#aaaaaa;">
         <a href="https://petwash.co.il" style="color:#C6A35B;text-decoration:none;">petwash.co.il</a>
         &nbsp;·&nbsp;
-        <a href="mailto:support@petwash.co.il" style="color:#C6A35B;text-decoration:none;">support@petwash.co.il</a>
+        <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#C6A35B;text-decoration:none;">${CANONICAL_SUPPORT_EMAIL}</a>
       </p>
       <p style="margin:0;font-size:10px;color:#cccccc;line-height:1.7;">
         ${isHe

@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../../shared/support-contact';
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
 import { TIER_CONFIGS, type LoyaltyTier } from '../../../shared/schema-loyalty';
 
@@ -291,7 +292,7 @@ export function generateLuxuryClubEmail(params: LuxuryClubEmailParams): { subjec
 
   const brandName = 'Pet Wash\u2122';
   const programName = 'Privilege Club';
-  const supportEmail = 'support@petwash.co.il';
+  const supportEmail = CANONICAL_SUPPORT_EMAIL;
   const unsubscribeUrl = 'https://petwash.co.il/unsubscribe';
   const viewInBrowserUrl = 'https://petwash.co.il/app/loyalty';
   const footerLine1 = lang === 'he'

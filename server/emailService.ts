@@ -583,7 +583,7 @@ export class EmailService {
         
         <div class="footer">
             <p>⁦Pet Wash™⁩ - Premium Organic Pet Care</p>
-            <p>Support@PetWash.co.il | +972549833355</p>
+            <p>Support@PetWash.co.il | ${CANONICAL_SUPPORT_PHONE}</p>
         </div>
     </div>
 </body>
@@ -1204,7 +1204,7 @@ export class EmailService {
     
     <div class="footer">
       <p><strong>Pet Wash™</strong> | פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033</p>
-      <p>www.petwash.co.il | support@petwash.co.il</p>
+      <p>www.petwash.co.il | ${CANONICAL_SUPPORT_EMAIL}</p>
       <p style="margin-top: 15px;">
         This sample demonstrates the format of VAT declarations submitted to the Israeli Tax Authority.<br>
         The system automatically calculates Output VAT (collected) - Input VAT (paid) and determines refund eligibility.
@@ -1417,8 +1417,8 @@ export class EmailService {
         </p>
         <p style="font-size:13px;color:#888;line-height:1.7;
           margin:0;font-family:${DESIGN.fontStack};">
-          Questions? <a href="mailto:support@petwash.co.il"
-            style="color:${DESIGN.gold};text-decoration:none;">support@petwash.co.il</a>
+          Questions? <a href="mailto:${CANONICAL_SUPPORT_EMAIL}"
+            style="color:${DESIGN.gold};text-decoration:none;">${CANONICAL_SUPPORT_EMAIL}</a>
         </p>
       `;
 
@@ -2371,7 +2371,7 @@ export class EmailService {
           </a>
           <p style="font-size:13px;color:#6b7280;line-height:1.8;">
             שאלות? אנחנו כאן בשבילך —
-            <a href="mailto:support@petwash.co.il" style="color:#1a1a1a;font-weight:600;">support@petwash.co.il</a>
+            <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#1a1a1a;font-weight:600;">${CANONICAL_SUPPORT_EMAIL}</a>
           </p>
         </td></tr>
         <!-- Footer -->
@@ -2382,10 +2382,7 @@ export class EmailService {
               ח.פ. / Company No. 517145033<br>
               <a href="https://petwash.co.il" style="color:#bbb;text-decoration:none;">petwash.co.il</a>
               &nbsp;·&nbsp;
-              <a href="mailto:support@petwash.co.il" style="color:#bbb;text-decoration:none;">support@petwash.co.il</a>
-            </td></tr>
-            <tr><td style="padding:0 0 8px;font-size:10px;color:#bbb;">
-              <a href="https://petwash.co.il/accessibility" style="color:#bbb;text-decoration:none;">נגישות</a>
+              <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#bbb;text-decoration:none;">${CANONICAL_SUPPORT_EMAIL}</a>
               &nbsp;·&nbsp;
               <a href="https://petwash.co.il/privacy" style="color:#bbb;text-decoration:none;">פרטיות</a>
               &nbsp;·&nbsp;
@@ -2458,7 +2455,7 @@ export class EmailService {
           </a>
           <p style="font-size:13px;color:#6b7280;line-height:1.8;">
             Questions? We're here —
-            <a href="mailto:support@petwash.co.il" style="color:#1a1a1a;font-weight:600;">support@petwash.co.il</a>
+            <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#1a1a1a;font-weight:600;">${CANONICAL_SUPPORT_EMAIL}</a>
           </p>
         </td></tr>
         <!-- Footer -->
@@ -2469,10 +2466,7 @@ export class EmailService {
               ח.פ. / Company No. 517145033<br>
               <a href="https://petwash.co.il" style="color:#bbb;text-decoration:none;">petwash.co.il</a>
               &nbsp;·&nbsp;
-              <a href="mailto:support@petwash.co.il" style="color:#bbb;text-decoration:none;">support@petwash.co.il</a>
-            </td></tr>
-            <tr><td style="padding:0 0 8px;font-size:10px;color:#bbb;">
-              <a href="https://petwash.co.il/accessibility" style="color:#bbb;text-decoration:none;">Accessibility</a>
+              <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#bbb;text-decoration:none;">${CANONICAL_SUPPORT_EMAIL}</a>
               &nbsp;·&nbsp;
               <a href="https://petwash.co.il/privacy" style="color:#bbb;text-decoration:none;">Privacy</a>
               &nbsp;·&nbsp;
@@ -2659,8 +2653,8 @@ export class EmailService {
         צריכים עזרה? צוות התמיכה שלנו כאן בשבילכם 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:support@petwash.co.il" style="color: #667eea; text-decoration: none;">support@petwash.co.il</a> | 
-        📱 <a href="tel:+972549833355" style="color: #667eea; text-decoration: none;">+972-54-983-3355</a>
+        📧 <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color: #667eea; text-decoration: none;">${CANONICAL_SUPPORT_EMAIL}</a> | 
+        📱 <a href="tel:${CANONICAL_SUPPORT_PHONE}" style="color: #667eea; text-decoration: none;">${CANONICAL_SUPPORT_PHONE}</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
         © ${new Date().getFullYear()} פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033
@@ -2740,8 +2734,8 @@ export class EmailService {
         Need help? Our support team is here for you 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:support@petwash.co.il" style="color: #667eea; text-decoration: none;">support@petwash.co.il</a> | 
-        📱 <a href="tel:+972549833355" style="color: #667eea; text-decoration: none;">+972-54-983-3355</a>
+        📧 <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color: #667eea; text-decoration: none;">${CANONICAL_SUPPORT_EMAIL}</a> | 
+        📱 <a href="tel:${CANONICAL_SUPPORT_PHONE}" style="color: #667eea; text-decoration: none;">${CANONICAL_SUPPORT_PHONE}</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
         © ${new Date().getFullYear()} PET WASH LTD | Company No. 517145033
@@ -2835,8 +2829,8 @@ export class EmailService {
         שאלות? אנחנו כאן בשבילך 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:support@petwash.co.il" style="color: #10b981; text-decoration: none;">support@petwash.co.il</a> | 
-        📱 <a href="tel:+972549833355" style="color: #10b981; text-decoration: none;">+972-54-983-3355</a>
+        📧 <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color: #10b981; text-decoration: none;">${CANONICAL_SUPPORT_EMAIL}</a> | 
+        📱 <a href="tel:${CANONICAL_SUPPORT_PHONE}" style="color: #10b981; text-decoration: none;">${CANONICAL_SUPPORT_PHONE}</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
         © ${new Date().getFullYear()} פט וואש בע"מ / PET WASH LTD | ח.פ. 517145033
@@ -2892,8 +2886,8 @@ export class EmailService {
         Questions? We're here for you 24/7
       </p>
       <p style="margin: 0; color: #666; font-size: 14px;">
-        📧 <a href="mailto:support@petwash.co.il" style="color: #10b981; text-decoration: none;">support@petwash.co.il</a> | 
-        📱 <a href="tel:+972549833355" style="color: #10b981; text-decoration: none;">+972-54-983-3355</a>
+        📧 <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color: #10b981; text-decoration: none;">${CANONICAL_SUPPORT_EMAIL}</a> | 
+        📱 <a href="tel:${CANONICAL_SUPPORT_PHONE}" style="color: #10b981; text-decoration: none;">${CANONICAL_SUPPORT_PHONE}</a>
       </p>
       <p style="margin: 15px 0 0 0; color: #999; font-size: 12px;">
         © ${new Date().getFullYear()} PET WASH LTD | Company No. 517145033

@@ -10,6 +10,7 @@ import {
   buildBookingCancelledSms,
   buildRefundIssuedSms,
 } from '../services/PetWashNotificationEngine';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = Router();
 
@@ -1199,7 +1200,7 @@ router.post(
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סיבה</td><td style="padding:8px;border-bottom:1px solid #eee;">${reason}</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
           const cancellationDocRef = await FinancialDocumentService.create({
@@ -1254,7 +1255,7 @@ router.post(
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עיבוד זיכוי</td><td style="padding:8px;border-bottom:1px solid #eee;">5-7 ימי עסקים</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
             const refundDocRef = await FinancialDocumentService.create({

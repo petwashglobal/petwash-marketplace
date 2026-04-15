@@ -53,6 +53,7 @@ import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { eventBus } from '../services/EventBus';
 import { recomputeCustomerProfile, advanceJourneyState } from '../services/CustomerIntelligenceService';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -903,7 +904,7 @@ router.post('/:requestId/respond', async (req, res) => {
   <tr><td style="padding:8px;">סכום</td><td style="padding:8px;font-weight:bold;">${amountStr}</td></tr>
 </table>
 <p><a href="${confirmUrl}" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">פתח/י את ההזמנה</a></p>
-<p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+<p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il</p>
 </body></html>`;
             await dispatchNotification({
               uid: booking.ownerId,
@@ -1803,7 +1804,7 @@ router.post('/:requestId/confirm', async (req, res) => {
               </div>
             </div>
             <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="color: #9ca3af; font-size: 12px; margin: 0;">Pet Wash™ Ltd | support@petwash.co.il</p>
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">Pet Wash™ Ltd | ${CANONICAL_SUPPORT_EMAIL}</p>
               <p style="color: #9ca3af; font-size: 11px; margin: 4px 0 0;">This is an automated receipt. Please keep for your records.</p>
             </div>
           </div>`;

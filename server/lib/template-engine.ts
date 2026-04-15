@@ -6,6 +6,7 @@
  */
 
 import { logger } from './logger';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '../../shared/support-contact';
 
 export interface TemplateContext {
   // Customer Data
@@ -157,8 +158,8 @@ export function replaceTemplates(
     currentTime: formatTime(now, locale),
     currentYear: now.getFullYear().toString(),
     companyName: '⁦Pet Wash™⁩',
-    supportEmail: 'Support@PetWash.co.il',
-    supportPhone: '+972549833355',
+    supportEmail: CANONICAL_SUPPORT_EMAIL,
+    supportPhone: CANONICAL_SUPPORT_PHONE,
     websiteUrl: 'https://petwash.co.il',
   };
   
