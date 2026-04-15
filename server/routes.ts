@@ -51,6 +51,8 @@ import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
 import nayaxPaymentsRoutes from "./routes/nayax-payments";
+import tranzilaWebhookRoutes from "./routes/tranzila-webhooks";
+import tranzilaAdminRoutes from "./routes/finance/tranzila-admin";
 import thankYouRoutes from "./routes/send-thank-you";
 import platformCopyEmailRoutes from "./routes/platform-copy-email";
 import ceoWalletRoutes from "./routes/ceo-wallet";
@@ -10211,6 +10213,13 @@ self.addEventListener('notificationclick', (event) => {
 
   // Nayax Spark API (real payment processing with Nayax Spark/Lynx)
   app.use('/api/payments/nayax', apiLimiter, nayaxPaymentsRoutes);
+
+  // Tranzila Webhook (digital purchase rail: e-gift, wallet top-up, marketplace, payment requests, chargebacks)
+  // NO rate limiting on webhook path — Tranzila retries may burst legitimately
+  app.use('/api/payments/tranzila/webhook', tranzilaWebhookRoutes);
+
+  // Tranzila Admin (read-only processor monitoring, settlement import)
+  app.use('/api/admin/finance/tranzila', adminLimiter, tranzilaAdminRoutes);
   
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
