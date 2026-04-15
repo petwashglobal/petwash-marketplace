@@ -69,12 +69,18 @@ const PATH_TO_EVENT: Record<string, TranzilaWebhookEventType> = {
 
 function isIpAllowed(ip: string): boolean {
   if (!TRANZILA_ALLOWED_IPS_RAW) {
-    if (process.env.NODE_ENV !== 'production') {
-      logger.warn('[TranzilaEventWebhook] TRANZILA_ALLOWED_IPS not set — allowing all IPs in non-production');
-      return true;
+    const env = (process.env.NODE_ENV || '').toLowerCase();
+    const isRestrictedEnv = env === 'production' || env === 'staging';
+    if (isRestrictedEnv) {
+      logger.error('[TranzilaEventWebhook] TRANZILA_ALLOWED_IPS not set in ' + env + ' — blocking webhook', {
+        audit: 'webhook_rejected',
+        reason: 'ip_not_allowed',
+        clientIp: ip,
+      });
+      return false;
     }
-    logger.error('[TranzilaEventWebhook] TRANZILA_ALLOWED_IPS not set in production — blocking');
-    return false;
+    logger.warn('[TranzilaEventWebhook] TRANZILA_ALLOWED_IPS not set — allowing all IPs in ' + (env || 'development'));
+    return true;
   }
   const allowed = TRANZILA_ALLOWED_IPS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
   return allowed.includes(ip);
@@ -127,7 +133,12 @@ function makeHandler(eventType: TranzilaWebhookEventType) {
 
     // IP check
     if (!isIpAllowed(clientIp)) {
-      logger.warn('[TranzilaEventWebhook] Non-allowed IP — rejected', { eventType, clientIp });
+      logger.warn('[TranzilaEventWebhook] Non-allowed IP — rejected', {
+        audit: 'webhook_rejected',
+        reason: 'ip_not_allowed',
+        eventType,
+        clientIp,
+      });
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
@@ -135,9 +146,14 @@ function makeHandler(eventType: TranzilaWebhookEventType) {
     // Signature check
     const signatureHeader = req.headers['x-tranzila-signature'] as string | undefined;
     const rawBody: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
-    const verified = TranzilaWebhookService.verifySignature(rawBody, signatureHeader);
-    if (!verified) {
-      logger.warn('[TranzilaEventWebhook] Signature verification failed — rejected', { eventType, clientIp });
+    const sigResult = TranzilaWebhookService.verifySignature(rawBody, signatureHeader);
+    if (!sigResult.ok) {
+      logger.warn('[TranzilaEventWebhook] Signature check failed — 401', {
+        audit: 'webhook_rejected',
+        reason: sigResult.rejectReason,
+        eventType,
+        clientIp,
+      });
       res.status(401).json({ error: 'Invalid signature' });
       return;
     }
@@ -160,7 +176,12 @@ function makeHandler(eventType: TranzilaWebhookEventType) {
     // Dedup
     const dedupKey = buildDedupKey(eventType, payload);
     if (await isDuplicate(dedupKey)) {
-      logger.info('[TranzilaEventWebhook] Duplicate webhook — ignoring', { eventType, dedupKey });
+      logger.info('[TranzilaEventWebhook] Duplicate webhook — ignoring', {
+        audit: 'webhook_rejected',
+        reason: 'duplicate_event',
+        eventType,
+        dedupKey,
+      });
       res.status(200).json({ status: 'duplicate' });
       return;
     }

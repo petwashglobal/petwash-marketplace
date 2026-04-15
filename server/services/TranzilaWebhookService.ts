@@ -30,8 +30,8 @@
  * SIGNATURE VERIFICATION:
  *   TODO (before production): implement HMAC-SHA256 using TRANZILA_WEBHOOK_SECRET.
  *   Current state: fails closed (rejects all) when secret is missing.
- *   When secret IS set, temporarily accepts in non-production to allow testing.
- *   Remove the NODE_ENV bypass before any production deployment.
+ *   Signature bypass is opt-in via TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true.
+ *   That flag is FORBIDDEN in production and staging (startup guard in index.ts).
  */
 
 import crypto from 'crypto';
@@ -116,31 +116,34 @@ export class TranzilaWebhookService {
    * TODO: implement and validate against Tranzila's actual signing scheme
    * before enabling any Tranzila flag in production.
    */
-  static verifySignature(rawBody: string | Buffer, signatureHeader: string | undefined): boolean {
+  static verifySignature(rawBody: string | Buffer, signatureHeader: string | undefined): { ok: boolean; rejectReason?: string } {
     if (!WEBHOOK_SECRET) {
-      logger.error(
-        '[TranzilaWebhookService] TRANZILA_WEBHOOK_SECRET not set — ' +
-        'rejecting all webhooks (fail-closed)',
-      );
-      return false;
+      logger.error('[TranzilaWebhookService] TRANZILA_WEBHOOK_SECRET not set — ' +
+        'rejecting all webhooks (fail-closed)', {
+        audit: 'webhook_rejected',
+        reason: 'missing_secret',
+      });
+      return { ok: false, rejectReason: 'missing_secret' };
     }
 
     if (!signatureHeader) {
-      logger.warn('[TranzilaWebhookService] Missing X-Tranzila-Signature header — rejecting');
-      return false;
+      logger.warn('[TranzilaWebhookService] Missing X-Tranzila-Signature header — rejecting', {
+        audit: 'webhook_rejected',
+        reason: 'missing_signature',
+      });
+      return { ok: false, rejectReason: 'missing_signature' };
     }
 
-    // TODO: confirm exact header format with Tranzila (e.g. "sha256=<hex>")
     // Bypass is OPT-IN via explicit env flag — never opt-out based on NODE_ENV.
-    // Set TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true ONLY in isolated dev/test environments
-    // that are NOT network-reachable from the internet.
-    // NEVER set this flag in staging or production.
+    // Set TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true ONLY in isolated local dev.
+    // FORBIDDEN in production and staging (startup guard in server/index.ts).
     if (process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true') {
       logger.warn(
         '[TranzilaWebhookService] ⚠️  TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true: ' +
         'signature verification bypassed. MUST NOT be set in staging or production.',
+        { audit: 'webhook_bypass_active' },
       );
-      return true;
+      return { ok: true };
     }
 
     try {
@@ -149,13 +152,28 @@ export class TranzilaWebhookService {
         .update(rawBody)
         .digest('hex');
       const expected = `sha256=${expectedDigest}`;
-      return crypto.timingSafeEqual(
-        Buffer.from(signatureHeader),
-        Buffer.from(expected),
-      );
+
+      // Pad both sides to equal length before timingSafeEqual to avoid
+      // throwing on length mismatch (which itself would be a timing oracle).
+      const sig = Buffer.alloc(expected.length, 0);
+      Buffer.from(signatureHeader).copy(sig);
+      const exp = Buffer.from(expected);
+
+      const match = sig.length === exp.length && crypto.timingSafeEqual(sig, exp);
+      if (!match) {
+        logger.warn('[TranzilaWebhookService] X-Tranzila-Signature does not match — rejecting', {
+          audit: 'webhook_rejected',
+          reason: 'invalid_signature',
+        });
+        return { ok: false, rejectReason: 'invalid_signature' };
+      }
+      return { ok: true };
     } catch {
-      logger.error('[TranzilaWebhookService] Signature comparison failed');
-      return false;
+      logger.error('[TranzilaWebhookService] Signature comparison threw — rejecting', {
+        audit: 'webhook_rejected',
+        reason: 'signature_error',
+      });
+      return { ok: false, rejectReason: 'signature_error' };
     }
   }
 

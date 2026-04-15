@@ -174,6 +174,29 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   }
 })();
 
+// ── Tranzila webhook bypass guard ─────────────────────────────────────────────
+// TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is allowed ONLY in isolated local dev.
+// If it is set in production or staging the server MUST refuse to start.
+// This prevents an operator from accidentally deploying with signature verification
+// disabled, turning the webhook endpoint into an unauthenticated write path.
+(function assertNoTranzilaBypassInProdOrStaging() {
+  const env = (process.env.NODE_ENV || '').toLowerCase();
+  const bypassSet = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';
+  if (bypassSet && (env === 'production' || env === 'staging')) {
+    const msg =
+      '\n🚨 [startup] FATAL: TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is set in ' +
+      env.toUpperCase() + '.\n' +
+      '   This disables HMAC signature verification on all Tranzila webhooks.\n' +
+      '   Any caller can forge webhook events and manipulate payment state.\n' +
+      '   Remove TRANZILA_WEBHOOK_BYPASS_SIGNATURE from your ' + env + ' environment\n' +
+      '   and restart the server.\n';
+    console.error(msg);
+    throw new Error(
+      'Startup aborted: TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is forbidden in ' + env,
+    );
+  }
+})();
+
 import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";

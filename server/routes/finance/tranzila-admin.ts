@@ -374,9 +374,28 @@ router.get('/status', async (_req, res) => {
   const hasTerminalName  = !!process.env.TRANZILA_TERMINAL_NAME;
   const hasTerminalPass  = !!process.env.TRANZILA_TERMINAL_PASSWORD;
   const hasWebhookSecret = !!process.env.TRANZILA_WEBHOOK_SECRET;
+  const hasAllowedIPs    = !!(process.env.TRANZILA_ALLOWED_IPS || '').trim();
+  const bypassActive     = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';
+  const env              = (process.env.NODE_ENV || 'development').toLowerCase();
+  const isRestrictedEnv  = env === 'production' || env === 'staging';
+
+  // Production-safe = all required config present AND bypass not active
+  const productionSafe =
+    hasTerminalName &&
+    hasTerminalPass &&
+    hasWebhookSecret &&
+    hasAllowedIPs &&
+    !bypassActive;
 
   res.json({
     integration: 'tranzila',
+    // ── Webhook readiness checklist ──────────────────────────────────────────
+    webhookReadiness: {
+      webhookSecretSet:  hasWebhookSecret  ? 'YES' : 'NO — set TRANZILA_WEBHOOK_SECRET',
+      allowedIPsSet:     hasAllowedIPs     ? 'YES' : 'NO — set TRANZILA_ALLOWED_IPS',
+      bypassFlagActive:  bypassActive      ? 'YES — INSECURE, disable in non-dev' : 'no',
+      productionSafe:    productionSafe    ? 'YES' : 'NO — see itemsBlocking',
+    },
     credentials: {
       TRANZILA_TERMINAL_NAME:     hasTerminalName  ? 'set' : 'MISSING',
       TRANZILA_TERMINAL_PASSWORD: hasTerminalPass  ? 'set' : 'MISSING',
@@ -391,15 +410,14 @@ router.get('/status', async (_req, res) => {
       TRANZILA_CHARGEBACK_ALERTS_ENABLED,
       TRANZILA_SETTLEMENT_RECONCILIATION_ENABLED,
     },
-    readyForProduction:
-      hasTerminalName &&
-      hasTerminalPass &&
-      hasWebhookSecret &&
-      process.env.NODE_ENV === 'production',
-    itemsWaitingOnCredentials: [
-      !hasTerminalName  && 'TRANZILA_TERMINAL_NAME',
-      !hasTerminalPass  && 'TRANZILA_TERMINAL_PASSWORD',
-      !hasWebhookSecret && 'TRANZILA_WEBHOOK_SECRET',
+    productionSafe,
+    itemsBlocking: [
+      !hasTerminalName  && 'TRANZILA_TERMINAL_NAME not set',
+      !hasTerminalPass  && 'TRANZILA_TERMINAL_PASSWORD not set',
+      !hasWebhookSecret && 'TRANZILA_WEBHOOK_SECRET not set',
+      !hasAllowedIPs    && 'TRANZILA_ALLOWED_IPS not set — required in production/staging',
+      (bypassActive && isRestrictedEnv) && 'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true in ' + env + ' — FATAL on boot',
+      (bypassActive && !isRestrictedEnv) && 'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true — remove before deploying to staging/production',
     ].filter(Boolean),
     itemsWaitingOnCpaLegal: [
       !TRANZILA_DOCUMENT_INGESTION_ENABLED &&

@@ -6,7 +6,7 @@
  * Security:
  *   - Raw body capture (must run before express.json)
  *   - HMAC-SHA256 signature verification (fail-closed when secret missing)
- *   - IP allowlist (configurable via TRANZILA_ALLOWED_IPS env var)
+ *   - IP allowlist (configurable via TRANZILA_ALLOWED_IPS env var; required in production+staging)
  *   - Redis-backed idempotency deduplication (TTL 24h)
  *   - Rate limiter applied at mount point in routes.ts
  *
@@ -16,8 +16,7 @@
  * TODO (before enabling any Tranzila flag in production):
  *   1. Set TRANZILA_WEBHOOK_SECRET from Tranzila console.
  *   2. Set TRANZILA_ALLOWED_IPS to real Tranzila server IP ranges.
- *   3. Remove the NODE_ENV !== 'production' signature bypass in TranzilaWebhookService.
- *   4. Register this webhook URL with Tranzila: POST /api/payments/tranzila/webhook
+ *   3. Register this webhook URL with Tranzila: POST /api/payments/tranzila/webhook
  */
 
 import express, { Request, Response, NextFunction } from 'express';
@@ -48,17 +47,21 @@ const captureRawBody = express.raw({
 
 function isIpAllowed(ip: string): boolean {
   if (!TRANZILA_ALLOWED_IPS_RAW) {
-    // No allowlist configured — warn and allow in non-production only
-    if (process.env.NODE_ENV !== 'production') {
-      logger.warn('[TranzilaWebhook] TRANZILA_ALLOWED_IPS not set — allowing all IPs in non-production');
-      return true;
+    const env = (process.env.NODE_ENV || '').toLowerCase();
+    const isRestrictedEnv = env === 'production' || env === 'staging';
+    if (isRestrictedEnv) {
+      logger.error('[TranzilaWebhook] TRANZILA_ALLOWED_IPS not set in ' + env + ' — blocking webhook', {
+        audit: 'webhook_rejected',
+        reason: 'ip_not_allowed',
+        clientIp: ip,
+      });
+      return false;
     }
-    logger.error('[TranzilaWebhook] TRANZILA_ALLOWED_IPS not set in production — blocking webhook');
-    return false;
+    logger.warn('[TranzilaWebhook] TRANZILA_ALLOWED_IPS not set — allowing all IPs in ' + (env || 'development'));
+    return true;
   }
 
   const allowed = TRANZILA_ALLOWED_IPS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
-  // Exact IP match only for now — extend to CIDR if Tranzila provides ranges
   return allowed.includes(ip);
 }
 
@@ -108,7 +111,11 @@ router.post(
 
     // ── IP Allowlist check ───────────────────────────────────────────────────
     if (!isIpAllowed(clientIp)) {
-      logger.warn('[TranzilaWebhook] Request from non-allowed IP — rejected', { clientIp });
+      logger.warn('[TranzilaWebhook] Request from non-allowed IP — rejected', {
+        audit: 'webhook_rejected',
+        reason: 'ip_not_allowed',
+        clientIp,
+      });
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
@@ -117,9 +124,14 @@ router.post(
     const signatureHeader = req.headers['x-tranzila-signature'] as string | undefined;
     const rawBody: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
 
-    const verified = TranzilaWebhookService.verifySignature(rawBody, signatureHeader);
-    if (!verified) {
-      logger.warn('[TranzilaWebhook] Signature verification failed — rejected', { clientIp });
+    const sigResult = TranzilaWebhookService.verifySignature(rawBody, signatureHeader);
+    if (!sigResult.ok) {
+      // Reason already logged by verifySignature; add route-level context here.
+      logger.warn('[TranzilaWebhook] Signature check failed — 401', {
+        audit: 'webhook_rejected',
+        reason: sigResult.rejectReason,
+        clientIp,
+      });
       res.status(401).json({ error: 'Invalid signature' });
       return;
     }
@@ -145,6 +157,8 @@ router.post(
     const duplicate = await isDuplicate(dedupKey);
     if (duplicate) {
       logger.info('[TranzilaWebhook] Duplicate webhook — ignoring', {
+        audit: 'webhook_rejected',
+        reason: 'duplicate_event',
         event: payload.event,
         dedupKey,
       });
