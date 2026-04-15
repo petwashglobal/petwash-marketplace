@@ -46,6 +46,11 @@ const AUTO_DISMISS_MS = 3000;
 // localStorage key stores the timestamp of last display; skip if < 24 h ago
 const SUPPRESS_DURATION_MS = 24 * 60 * 60 * 1000;
 
+/** Returns the sessionStorage key for a given popup id. */
+function sessionKey(id: string) {
+  return `promo-session-seen-${id}`;
+}
+
 export function PromoAdPopup({ 
   config = DEFAULT_PROMO, 
   showOnce = true,
@@ -56,9 +61,12 @@ export function PromoAdPopup({
   const isHebrew = language === 'he';
   const prefersReducedMotion = useReducedMotion();
 
-  // Decide whether to show based on 24 h localStorage suppression
+  // Decide whether to show based on session suppression + 24 h localStorage suppression
   useEffect(() => {
     if (!config.enabled) return;
+
+    // Never show twice in the same tab session
+    if (sessionStorage.getItem(sessionKey(config.id))) return;
 
     const storageKey = `promo-last-seen-${config.id}`;
     if (showOnce) {
@@ -75,6 +83,9 @@ export function PromoAdPopup({
 
   const handleClose = useCallback(() => {
     setIsVisible(false);
+    // Always suppress for the rest of this tab session
+    sessionStorage.setItem(sessionKey(config.id), '1');
+    // Also stamp localStorage so it won't show again for 24 h in any tab
     if (showOnce) {
       localStorage.setItem(`promo-last-seen-${config.id}`, String(Date.now()));
     }
