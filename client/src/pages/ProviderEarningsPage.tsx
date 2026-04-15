@@ -153,7 +153,7 @@ export default function ProviderEarningsPage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate("/provider/dashboard")}
+            onClick={() => navigate("/provider-os")}
             className="p-2 rounded-full hover:bg-white dark:hover:bg-white transition-colors"
             aria-label="Back"
           >

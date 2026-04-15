@@ -1,6 +1,7 @@
 import { Shield, Home, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from "@/lib/support-contact";
 
 export default function AdminAccessDenied() {
   return (
@@ -42,7 +43,7 @@ export default function AdminAccessDenied() {
           
           <Button 
             className="w-full luxury-btn-secondary"
-            onClick={() => window.location.href = 'mailto:support@petwash.co.il'}
+            onClick={() => window.location.href = SUPPORT_MAILTO_URL}
             data-testid="button-contact-support"
           >
             <Mail className="w-4 h-4 mr-2" />
@@ -52,8 +53,8 @@ export default function AdminAccessDenied() {
 
         <p className="text-sm text-gray-500">
           If you believe you should have access, please contact{" "}
-          <a href="mailto:support@petwash.co.il" className="text-black underline">
-            support@petwash.co.il
+          <a href={SUPPORT_MAILTO_URL} className="text-black underline">
+            {SUPPORT_EMAIL}
           </a>
         </p>
       </div>

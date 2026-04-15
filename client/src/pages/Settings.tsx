@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { useWhoami } from "@/auth/useWhoami";
 import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -306,9 +307,17 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
 
 export default function Settings() {
   const { user: firebaseUser, loading: authLoading } = useFirebaseAuth();
+  const { role: serverRole, isLoading: whoamiLoading } = useWhoami();
   const { language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+
+  // Providers manage their settings inside ProviderOS — never the customer settings page
+  useEffect(() => {
+    if (!whoamiLoading && serverRole === 'provider') {
+      navigate('/provider-os');
+    }
+  }, [whoamiLoading, serverRole, navigate]);
 
   const [devices, setDevices] = useState<PasskeyDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(true);

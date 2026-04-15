@@ -138,9 +138,18 @@ export function GoogleOneTap({
       if (onSuccess) {
         onSuccess();
       } else {
-        // Redirect to dashboard
-        setTimeout(() => {
-          navigate('/dashboard');
+        // Use post-login decider so providers go to /provider-os, staff to /admin/dashboard, etc.
+        setTimeout(async () => {
+          try {
+            const res = await fetch(getApiUrl('/api/auth/post-login'), {
+              method: 'POST',
+              credentials: 'include',
+            });
+            const data = await res.json();
+            navigate(data.nextUrl || data.redirectTo || '/home');
+          } catch {
+            navigate('/home');
+          }
         }, 500);
       }
     } catch (error: any) {

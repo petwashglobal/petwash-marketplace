@@ -2,6 +2,7 @@ import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { SUPPORT_WHATSAPP_URL } from '@/lib/support-contact';
 
 
 interface FooterProps {
@@ -113,7 +114,7 @@ export function Footer({ language }: FooterProps) {
                   <span className="text-sm">Email</span>
                 </a>
                 <a 
-                  href="https://wa.me/972549833355" 
+                  href={SUPPORT_WHATSAPP_URL} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-600 hover:text-black transition-colors flex items-center space-x-2"

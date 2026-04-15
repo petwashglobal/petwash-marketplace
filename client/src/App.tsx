@@ -1167,15 +1167,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        <Route path="/walk-my-pet/walker/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <WalkerDashboardPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* Walk My Pet — provider (walker) surface consolidated into ProviderOS */}
+        <Route path="/walk-my-pet/walker/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* ⁦Walk My Pet™⁩ - Owner Dashboard (Track walks, view history, manage bookings) */}
         <Route path="/walk-my-pet/owner/dashboard">
@@ -1380,16 +1373,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦The Sitter Suite™⁩ - Luxury Sitter Dashboard (7-Star Hotel Aesthetic) */}
-        <Route path="/sitter-suite/sitter/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <SitterDashboardPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* The Sitter Suite — sitter (provider) surface consolidated into ProviderOS */}
+        <Route path="/sitter-suite/sitter/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* ⁦The Sitter Suite™⁩ - Sitter Edit Profile (with Photo Upload) */}
         <Route path="/sitter-suite/sitter/edit-profile">
@@ -1440,16 +1425,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Contractor Dashboard - Trust Scores, Earnings, Reviews, Badges (2026 Lifecycle) */}
-        <Route path="/contractor/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <ContractorDashboard />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* Contractor Dashboard — consolidated into ProviderOS */}
+        <Route path="/contractor/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* Grooming Marketplace - Specific routes BEFORE general routes */}
         {/* Grooming Marketplace - Book Grooming Session */}
@@ -1474,16 +1451,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Grooming Marketplace - Provider Dashboard */}
-        <Route path="/groomers/provider/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <GroomersProviderDashboard language={language} />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
+        {/* Grooming Marketplace - Provider Dashboard — consolidated into ProviderOS */}
+        <Route path="/groomers/provider/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* Grooming Marketplace - Platform Overview (Marketing/Gateway) */}
         <Route path="/groomers">
