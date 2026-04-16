@@ -28,6 +28,7 @@ import { couponService } from './CouponService';
 import { dispatchNotifications } from './PetWashNotificationEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -167,7 +168,7 @@ function buildEmailHtml(campaignType: CampaignType, couponCode: string, discount
     <p style="font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;margin-top:24px">
       קיבלת הודעה זו מכיוון שנתת הסכמה לקבל הצעות שיווקיות מ-PetWash.<br>
       להסרה מרשימת תפוצה: <a href="https://petwash.co.il/unsubscribe" style="color:#999">לחץ כאן</a><br><br>
-      פט וואש בע&quot;מ / PET WASH LTD | ח.פ. 517145033 | support@petwash.co.il
+      פט וואש בע&quot;מ / PET WASH LTD | ח.פ. 517145033 | ${CANONICAL_SUPPORT_EMAIL}
     </p>
   </div>
 </div>

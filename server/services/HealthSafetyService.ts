@@ -104,7 +104,7 @@ export class HealthSafetyService {
       });
 
       // Validate photo count
-      if (photos && photos.length > 10) {
+      if (photos && (Array.isArray(photos) ? photos.length > 10 : true)) {
         throw new Error('Maximum 10 photos allowed per incident');
       }
 

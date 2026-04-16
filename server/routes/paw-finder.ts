@@ -25,8 +25,16 @@ const router = Router();
    IMAGE UPLOAD — multer → disk → sha256 hash → sharp compress
 ----------------------------------------------------------------------- */
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'paw-finder');
+const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'paw-finder');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+function assertSafeUploadPath(filePath: string): void {
+  const resolved = path.resolve(filePath);
+  const prefix = UPLOAD_DIR + path.sep;
+  if (resolved !== UPLOAD_DIR && !resolved.startsWith(prefix)) {
+    throw new Error('Invalid file path: outside upload directory');
+  }
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -47,6 +55,7 @@ const upload = multer({
 
 function sha256File(filePath: string): string {
   try {
+    assertSafeUploadPath(filePath);
     const buf = fs.readFileSync(filePath);
     return crypto.createHash('sha256').update(buf).digest('hex');
   } catch {
@@ -56,6 +65,7 @@ function sha256File(filePath: string): string {
 
 async function compressIfNeeded(filePath: string): Promise<void> {
   try {
+    assertSafeUploadPath(filePath);
     const sharp = (await import('sharp')).default;
     const info = await sharp(filePath).metadata();
     const width = info.width ?? 0;
@@ -151,6 +161,7 @@ router.post('/upload', requireAuth, upload.single('photo'), async (req: any, res
 
     const hash     = sha256File(req.file.path);
     const filePath = `/uploads/paw-finder/${req.file.filename}`;
+    assertSafeUploadPath(req.file.path);
     const fileSize = fs.statSync(req.file.path).size;
 
     // Duplicate image detection across all posts

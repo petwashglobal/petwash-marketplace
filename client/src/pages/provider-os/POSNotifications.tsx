@@ -1,10 +1,23 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Bell, Briefcase, CreditCard, FileText, Settings,
-  CheckCheck, Trash2, Check, ChevronRight, Info,
+  CheckCheck, Trash2, ChevronRight, Loader2,
 } from 'lucide-react';
 
 type NotifType = 'job' | 'payment' | 'document' | 'system' | 'chat';
+
+interface ApiNotification {
+  id: number;
+  templateKey: string;
+  channel: string;
+  title: string | null;
+  body: string | null;
+  isRead: boolean;
+  createdAt: string;
+  deepLink: string | null;
+  eventType: string | null;
+}
 
 interface Notification {
   id: string;
@@ -14,6 +27,7 @@ interface Notification {
   time: string;
   read: boolean;
   action?: string;
+  deepLink?: string | null;
 }
 
 const TYPE_STYLES: Record<NotifType, { icon: React.ComponentType<any>; color: string; bg: string }> = {
@@ -24,16 +38,38 @@ const TYPE_STYLES: Record<NotifType, { icon: React.ComponentType<any>; color: st
   chat: { icon: Bell, color: 'text-teal-600', bg: 'bg-teal-50' },
 };
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: '1', type: 'job', title: 'New booking request', body: 'Yael Cohen wants to book a PetSitter for Max (Golden Retriever) on March 15.', time: '2 min ago', read: false, action: 'View Request' },
-  { id: '2', type: 'payment', title: 'Payment released', body: '₪87.50 from booking #PW-2847 has been released to your available balance.', time: '1 hour ago', read: false, action: 'View Wallet' },
-  { id: '3', type: 'document', title: 'Document expires soon', body: 'Your Insurance Certificate expires in 14 days. Upload a renewed copy to stay active.', time: '3 hours ago', read: false, action: 'Upload Now' },
-  { id: '4', type: 'job', title: 'Job confirmed', body: 'Your booking with David Levi for Walk My Pet on March 12 has been confirmed.', time: 'Yesterday', read: true },
-  { id: '5', type: 'system', title: 'Profile verification approved', body: 'Your identity has been verified. Your "Verified Provider" badge is now active.', time: 'Yesterday', read: true },
-  { id: '6', type: 'payment', title: 'Payout processing', body: 'Your payout request of ₪320.00 is being processed. Expected: 3 business days.', time: '2 days ago', read: true },
-  { id: '7', type: 'job', title: 'Client left a review', body: 'Sarah K. left a 5-star review: "Amazing care for our Labrador! Highly recommend."', time: '3 days ago', read: true },
-  { id: '8', type: 'chat', title: 'Message from Orna M.', body: 'Hi! Can I check if you\'re available for an extra session next week?', time: '3 days ago', read: true },
-];
+function eventTypeToNotifType(eventType: string | null, templateKey: string): NotifType {
+  const key = (eventType || templateKey || '').toLowerCase();
+  if (key.includes('booking') || key.includes('job') || key.includes('review')) return 'job';
+  if (key.includes('payment') || key.includes('payout') || key.includes('wallet') || key.includes('egift')) return 'payment';
+  if (key.includes('document') || key.includes('kyc') || key.includes('kyb') || key.includes('compliance')) return 'document';
+  if (key.includes('chat') || key.includes('message')) return 'chat';
+  return 'system';
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
+
+function toNotification(n: ApiNotification): Notification {
+  return {
+    id: String(n.id),
+    type: eventTypeToNotifType(n.eventType, n.templateKey),
+    title: n.title || n.templateKey,
+    body: n.body || '',
+    time: n.createdAt ? relativeTime(n.createdAt) : '',
+    read: n.isRead,
+    deepLink: n.deepLink,
+  };
+}
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -45,8 +81,28 @@ const TABS = [
 ];
 
 export default function POSNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const [activeTab, setActiveTab] = useState('all');
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery<{ notifications: ApiNotification[] }>({
+    queryKey: ['/api/notifications'],
+    queryFn: () => fetch('/api/notifications', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 30_000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/api/notifications/${id}/read`, { method: 'POST', credentials: 'include' }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/notifications'] }),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () =>
+      fetch('/api/notifications/read-all', { method: 'POST', credentials: 'include' }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/notifications'] }),
+  });
+
+  const notifications: Notification[] = (data?.notifications || []).map(toNotification);
 
   const filtered = notifications.filter(n => {
     if (activeTab === 'all') return true;
@@ -56,16 +112,10 @@ export default function POSNotifications() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
   const markRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const deleteNotif = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (!notifications.find(n => n.id === id)?.read) {
+      markReadMutation.mutate(id);
+    }
   };
 
   return (
@@ -78,7 +128,8 @@ export default function POSNotifications() {
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <button onClick={markAllRead}
+            <button onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
               className="flex items-center gap-1.5 text-xs text-amber-600 font-medium hover:text-amber-700 transition-colors">
               <CheckCheck className="w-3.5 h-3.5" /> Mark all read
             </button>
@@ -104,7 +155,11 @@ export default function POSNotifications() {
       </div>
 
       {/* Notification list */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
           <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-sm text-gray-500">No notifications here</p>
@@ -117,7 +172,7 @@ export default function POSNotifications() {
             return (
               <div
                 key={notif.id}
-                className={`bg-white border rounded-xl p-4 transition-colors ${!notif.read ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'}`}
+                className={`bg-white border rounded-xl p-4 transition-colors cursor-pointer ${!notif.read ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'}`}
                 onClick={() => markRead(notif.id)}
               >
                 <div className="flex items-start gap-3">
@@ -130,20 +185,15 @@ export default function POSNotifications() {
                         {!notif.read && <span className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />}
                         <p className={`text-sm font-medium ${!notif.read ? 'text-gray-900' : 'text-gray-700'}`}>{notif.title}</p>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteNotif(notif.id); }}
-                        className="p-1 text-gray-300 hover:text-gray-500 transition-colors shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{notif.body}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="text-[10px] text-gray-400">{notif.time}</span>
-                      {notif.action && (
-                        <button className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5 hover:text-amber-700 transition-colors">
-                          {notif.action} <ChevronRight className="w-3 h-3" />
-                        </button>
+                      {notif.deepLink && (
+                        <a href={notif.deepLink} onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5 hover:text-amber-700 transition-colors">
+                          View <ChevronRight className="w-3 h-3" />
+                        </a>
                       )}
                     </div>
                   </div>

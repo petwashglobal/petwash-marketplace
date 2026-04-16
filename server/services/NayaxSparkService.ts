@@ -550,7 +550,11 @@ export class NayaxSparkService {
     if (!NAYAX_API_KEY) {
       throw new Error('Nayax API key not configured');
     }
-    
+
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(terminalId)) {
+      throw new Error('Invalid terminalId format');
+    }
+
     const response = await fetch(`${NAYAX_API_URL}/device/status/${terminalId}`, {
       headers: {
         'Authorization': `Bearer ${NAYAX_API_KEY}`,

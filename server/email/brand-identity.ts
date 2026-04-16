@@ -16,6 +16,8 @@
  *   - Accessibility Regulations 5768-2008
  */
 
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
+
 // ─── Legal entity ─────────────────────────────────────────────────────────────
 
 /** Registered Hebrew name — exact legal form as in ח.פ. registry */
@@ -48,31 +50,31 @@ export const SENDERS = {
   transactional: {
     email: 'noreply@petwash.co.il',
     name: 'Pet Wash™',
-    replyTo: 'support@petwash.co.il',
+    replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Finance/tax documents (invoices, VAT, wallet statements) */
   finance: {
     email: 'noreply@petwash.co.il',
     name: 'Pet Wash™ Finance',
-    replyTo: 'support@petwash.co.il',
+    replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Provider/partner onboarding and workflow */
   provider: {
     email: 'noreply@petwash.co.il',
     name: 'Pet Wash™ Providers',
-    replyTo: 'support@petwash.co.il',
+    replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Support-initiated messages (admin to applicant) */
   support: {
     email: 'noreply@petwash.co.il',
     name: 'Pet Wash™ Support',
-    replyTo: 'support@petwash.co.il',
+    replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Marketing / loyalty / club (requires unsubscribe) */
   marketing: {
     email: 'noreply@petwash.co.il',
     name: 'Pet Wash™',
-    replyTo: 'support@petwash.co.il',
+    replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Internal ops / reports (no customer involvement) */
   internal: {
@@ -86,10 +88,10 @@ export type SenderStream = keyof typeof SENDERS;
 
 /** Known internal recipient addresses */
 export const INTERNAL_RECIPIENTS = {
-  support: 'support@petwash.co.il',
+  support: CANONICAL_SUPPORT_EMAIL,
   ceo: 'nir.h@petwash.co.il',
   nod: 'ido.s@petwash.co.il', // National Operations Director
-  reports: process.env.REPORTS_EMAIL_TO ?? 'support@petwash.co.il',
+  reports: process.env.REPORTS_EMAIL_TO ?? CANONICAL_SUPPORT_EMAIL,
 } as const;
 
 // ─── Unsubscribe policy ───────────────────────────────────────────────────────
@@ -175,7 +177,7 @@ export interface LegalFooterOptions {
 }
 
 const SITE = 'https://petwash.co.il';
-const SUPPORT_EMAIL = 'support@petwash.co.il';
+const SUPPORT_EMAIL = CANONICAL_SUPPORT_EMAIL;
 
 /**
  * Builds a legally-compliant bilingual footer block.

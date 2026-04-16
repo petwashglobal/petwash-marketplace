@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -42,7 +42,8 @@ import {
   Camera,
   Upload,
   Loader2,
-  X
+  X,
+  Save
 } from 'lucide-react';
 
 // Form validation schema
@@ -139,6 +140,7 @@ export default function BecomeProvider() {
   const [galleryPhotos, setGalleryPhotos] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const [membershipNumber, setMembershipNumber] = useState<string | null>(null);
+  const [isDraftSaving, setIsDraftSaving] = useState(false);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -285,6 +287,83 @@ export default function BecomeProvider() {
       });
     },
   });
+
+  // ── Load existing draft on mount ──────────────────────────────────────────
+  useEffect(() => {
+    if (!firebaseUser) return;
+    (async () => {
+      try {
+        const token = await (firebaseUser as any).getIdToken?.();
+        const res = await fetch('/api/provider-applications/my', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.application?.status === 'draft') {
+          const d = data.application;
+          const patch: Partial<ApplicationFormData> = {};
+          if (d.firstName)    patch.firstName = d.firstName;
+          if (d.lastName)     patch.lastName  = d.lastName;
+          if (d.email)        patch.email     = d.email;
+          if (d.phoneNumber)  patch.phoneNumber = d.phoneNumber;
+          if (d.dateOfBirth)  patch.dateOfBirth = d.dateOfBirth;
+          if (d.streetAddress) patch.streetAddress = d.streetAddress;
+          if (d.city)         patch.city = d.city;
+          if (d.biography)    patch.biography = d.biography;
+          if (d.yearsExperience !== undefined) patch.yearsExperience = d.yearsExperience;
+          if (d.serviceTypes?.length) {
+            setSelectedPlatforms(d.serviceTypes);
+          }
+          if (Object.keys(patch).length > 0) {
+            form.reset({ ...form.getValues(), ...patch });
+          }
+        }
+      } catch {
+        // Non-fatal — draft load failure should not block the form
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser]);
+
+  // ── Save progress as draft ────────────────────────────────────────────────
+  const saveDraft = async () => {
+    if (!firebaseUser || isDraftSaving) return;
+    setIsDraftSaving(true);
+    try {
+      const values = form.getValues();
+      const token = await (firebaseUser as any).getIdToken?.();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/provider-applications/draft', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          ...values,
+          serviceTypes: selectedPlatforms,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        // If user already has a non-draft application, don't show error (they just continue)
+        if (body?.status && body.status !== 'draft') return;
+        throw new Error(body?.error || 'Failed to save draft');
+      }
+      toast({
+        title: isHebrew ? '✅ ההתקדמות נשמרה' : '✅ Progress saved',
+        description: isHebrew ? 'תוכל להמשיך מאוחר יותר' : 'You can continue later',
+      });
+    } catch (err: any) {
+      toast({
+        title: isHebrew ? 'שגיאה בשמירה' : 'Save failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDraftSaving(false);
+    }
+  };
 
   const stepFields: Record<number, (keyof ApplicationFormData)[]> = {
     1: ['firstName', 'lastName', 'email', 'phoneNumber', 'dateOfBirth', 'streetAddress', 'city'],
@@ -1416,6 +1495,21 @@ export default function BecomeProvider() {
                 >
                   <ChevronLeft className="w-5 h-5" />
                   {isHebrew ? 'הקודם' : 'Previous'}
+                </Button>
+
+                {/* Save Progress — available from step 1 onwards */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={saveDraft}
+                  disabled={isDraftSaving}
+                  className="flex items-center gap-2 px-5 py-5 rounded-xl border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-40"
+                  data-testid="button-save-draft"
+                >
+                  {isDraftSaving
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Save className="w-4 h-4" />}
+                  {isHebrew ? 'שמור התקדמות' : 'Save Progress'}
                 </Button>
 
                 {currentStep < 6 ? (

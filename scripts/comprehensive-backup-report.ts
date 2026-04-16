@@ -9,11 +9,11 @@ import { Storage } from '@google-cloud/storage';
 import { db } from '../server/lib/firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as crypto from 'crypto';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const CODE_BUCKET = process.env.GCS_CODE_BUCKET || 'petwash-code-backups';
 const FIRESTORE_BUCKET = process.env.GCS_FIRESTORE_BUCKET || 'petwash-firestore-backups';
@@ -109,20 +109,20 @@ async function backupCode(): Promise<BackupReport['codeBackup']> {
   console.log(`   Found ${fileCount} files to backup`);
   
   // Create comprehensive tar.gz backup
+  // Use execFile (not exec) to avoid shell injection from environment-derived path values
   console.log('🗜️  Creating compressed archive...');
-  await execAsync(
-    `tar -czf ${localPath} \
-      --exclude='node_modules' \
-      --exclude='.git' \
-      --exclude='dist' \
-      --exclude='.cache' \
-      --exclude='*.log' \
-      --exclude='petwash-backup-*.tar.gz' \
-      --exclude='gcs-service-account.json' \
-      --exclude='/tmp' \
-      -C ${process.cwd()} .`,
-    { maxBuffer: 1024 * 1024 * 200 } // 200MB buffer
-  );
+  await execFileAsync('tar', [
+    '-czf', localPath,
+    '--exclude=node_modules',
+    '--exclude=.git',
+    '--exclude=dist',
+    '--exclude=.cache',
+    '--exclude=*.log',
+    '--exclude=petwash-backup-*.tar.gz',
+    '--exclude=gcs-service-account.json',
+    '--exclude=/tmp',
+    '-C', process.cwd(), '.',
+  ], { maxBuffer: 1024 * 1024 * 200 });
   
   const stats = fs.statSync(localPath);
   const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);

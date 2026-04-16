@@ -59,7 +59,7 @@ Nayax will provide the following credentials:
 | `NAYAX_BASE_URL` | Production API endpoint | `https://api.nayax.com/spark/v1` | Nayax Docs |
 | `NAYAX_MERCHANT_ID` | Pet Wash Ltd merchant ID | `MERCH_IL_PWASH_001` | Nayax Onboarding |
 | `NAYAX_TERMINAL_ID` | Primary terminal/station ID | `TERM_001_TLV` | Nayax Portal |
-| `NAYAX_SECRET` | Webhook signature verification | `whsec_xxxxxxxxxx` | Nayax Dashboard |
+| `NAYAX_SECRET` | Webhook signature verification | `YOUR_NAYAX_WEBHOOK_SECRET` | Nayax Dashboard |
 
 ### Optional Secrets (for multi-location)
 
@@ -114,7 +114,7 @@ NAYAX_API_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
 NAYAX_BASE_URL=https://api.nayax.com/spark/v1
 NAYAX_MERCHANT_ID=MERCH_IL_PWASH_001
 NAYAX_TERMINAL_ID=TERM_001_TLV
-NAYAX_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxx
+NAYAX_SECRET=YOUR_NAYAX_WEBHOOK_SECRET
 
 # Optional: Demo mode (REMOVE for production)
 # NAYAX_DEMO_MODE=false

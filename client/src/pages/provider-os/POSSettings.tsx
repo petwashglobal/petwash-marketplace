@@ -1,14 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import {
   Settings, Bell, Shield, Dog, Power, Zap, Moon, Sun,
   UserCheck, UserX, Navigation, Clock, Phone, MessageSquare,
-  CreditCard, FileText, Save,
+  CreditCard, FileText, Save, Loader2,
 } from 'lucide-react';
+
+interface ProviderOpSettings {
+  autoAccept: boolean;
+  instantBooking: boolean;
+  requireApproval: boolean;
+  weekendJobs: boolean;
+  nightJobs: boolean;
+  newCustomerRequests: boolean;
+  repeatCustomersOnly: boolean;
+  travelRadiusKm: number;
+  bufferMinutes: number;
+  notifPush: boolean;
+  notifEmail: boolean;
+  notifSmsEmergency: boolean;
+  notifInApp: boolean;
+  maxJobsPerDay: number;
+}
 
 export default function POSSettings() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'operational' | 'notifications' | 'privacy' | 'pets'>('operational');
 
   // Operational
@@ -42,9 +61,69 @@ export default function POSSettings() {
   const [noAggressive, setNoAggressive] = useState(true);
   const [maxPets, setMaxPets] = useState('3');
 
+  // Load persisted settings
+  const { data: savedSettings, isLoading } = useQuery<ProviderOpSettings>({
+    queryKey: ['/api/provider-console/settings'],
+    queryFn: () => fetch('/api/provider-console/settings', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!savedSettings) return;
+    setAutoAccept(savedSettings.autoAccept ?? false);
+    setManualApproval(savedSettings.requireApproval ?? true);
+    setInstantBooking(savedSettings.instantBooking ?? true);
+    setWeekendJobs(savedSettings.weekendJobs ?? false);
+    setNightJobs(savedSettings.nightJobs ?? false);
+    setNewClients(savedSettings.newCustomerRequests ?? true);
+    setReturningOnly(savedSettings.repeatCustomersOnly ?? false);
+    setMaxDistance(savedSettings.travelRadiusKm ?? 15);
+    setPushNotifs(savedSettings.notifPush ?? true);
+    setEmailNotifs(savedSettings.notifEmail ?? true);
+    setSmsEmergency(savedSettings.notifSmsEmergency ?? true);
+  }, [savedSettings]);
+
+  const saveMutation = useMutation({
+    mutationFn: (body: Partial<ProviderOpSettings>) =>
+      fetch('/api/provider-console/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-console/settings'] });
+      toast({ title: 'Settings saved', description: 'All preferences have been updated.' });
+    },
+    onError: () => {
+      toast({ title: 'Save failed', description: 'Could not save settings. Please try again.', variant: 'destructive' });
+    },
+  });
+
   const handleSave = () => {
-    toast({ title: 'Settings saved', description: 'All preferences have been updated.' });
+    saveMutation.mutate({
+      autoAccept,
+      requireApproval: manualApproval,
+      instantBooking,
+      weekendJobs,
+      nightJobs,
+      newCustomerRequests: newClients,
+      repeatCustomersOnly: returningOnly,
+      travelRadiusKm: maxDistance,
+      notifPush: pushNotifs,
+      notifEmail: emailNotifs,
+      notifSmsEmergency: smsEmergency,
+      notifInApp: chatNotifs,
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -231,8 +310,10 @@ export default function POSSettings() {
       )}
 
       <button onClick={handleSave}
-        className="w-full py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2">
-        <Save className="w-4 h-4" /> Save Settings
+        disabled={saveMutation.isPending}
+        className="w-full py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+        {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {saveMutation.isPending ? 'Saving...' : 'Save Settings'}
       </button>
     </div>
   );

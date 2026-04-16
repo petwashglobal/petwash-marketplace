@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta name="data-test-build" content="BUILD_2026_MAR08_PERF_OPT">
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <!-- iOS Web App Configuration -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pet Wash™">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="/android-chrome-192x192.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="/android-chrome-512x512.png" sizes="512x512">
+    <link rel="mask-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" color="#2c5282">
+
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileColor" content="#ffffff">
+
+    <title>Pet Wash™ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Israel's #1 premium pet care super-app — grooming, daycare, walking, K9000 smart wash stations. Flash deals up to 40% off. AI-powered booking · Apple/Google Wallet · Hebrew/English · שירות חיות מחמד פרימיום בישראל עם מבצעי פלאש, חישוב מחיר חכם ועוד.">
+    <meta name="keywords" content="pet wash israel, dog grooming tel aviv, cat daycare, dog walking GPS, K9000 pet wash, flash deals pets, daycare calculator pets, pet care app israel, שטיפת כלבים, גרומינג לכלבים, בית יום לחיות מחמד, הליכות כלבים ישראל, פלאש דילס חיות מחמד">
+    <meta name="author" content="Pet Wash™">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <meta name="rating" content="general">
+    <meta name="language" content="Hebrew, English">
+    <meta name="geo.region" content="IL">
+    <meta name="geo.placename" content="Tel Aviv, Israel">
+    <meta name="geo.position" content="32.0853;34.7818">
+    <meta name="ICBM" content="32.0853, 34.7818">
+
+    <!-- OpenGraph 2026 -->
+    <meta property="og:title" content="Pet Wash™ - Israel's Premium Pet Care Super-App">
+    <meta property="og:description" content="Flash deals up to 40% off · Grooming, daycare, walking, K9000 smart wash · AI calculator · Apple/Google Wallet passes · Hebrew & English · Book now.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://petwash.co.il">
+    <meta property="og:site_name" content="Pet Wash™ Israel">
+    <meta property="og:image" content="https://petwash.co.il/IMG_7114_1751624638881.jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Pet Wash™ — Premium organic pet care in Israel">
+    <meta property="og:locale" content="he_IL">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="og:locale:alternate" content="ar_IL">
+    <meta property="business:contact_data:street_address" content="Israel">
+    <meta property="business:contact_data:locality" content="Tel Aviv">
+    <meta property="business:contact_data:country_name" content="Israel">
+
+    <!-- Twitter Card 2026 -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@petwashltd">
+    <meta name="twitter:creator" content="@petwashltd">
+    <meta name="twitter:title" content="Pet Wash™ — Flash Deals · Daycare Calculator · Smart Booking">
+    <meta name="twitter:description" content="Israel's #1 pet care super-app. Flash deals up to 40% off. Book grooming, daycare &amp; walking with AI pricing. Hebrew &amp; English.">
+    <meta name="twitter:image" content="https://petwash.co.il/IMG_7114_1751624638881.jpeg">
+    <meta name="twitter:image:alt" content="Pet Wash™ app showing flash deals and daycare calculator">
+
+    <!-- Canonical + Hreflang -->
+    <link rel="canonical" href="https://petwash.co.il/">
+    <link rel="alternate" hreflang="he" href="https://petwash.co.il/?lang=he">
+    <link rel="alternate" hreflang="en" href="https://petwash.co.il/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://petwash.co.il/">
+
+    <!-- LCP Image Preload — critical for first paint score -->
+    <link rel="preload" as="image" href="/IMG_7114_1751624638881.jpeg" fetchpriority="high">
+
+    <!-- Font Loading — preconnect first, then load with display=swap (non-blocking) -->
+    <!-- Reduced from 5 families to 3 (removed Noto Serif Arabic, Playfair Display) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Noto+Serif+Hebrew:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Noto+Serif+Hebrew:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
+
+    <!-- Leaflet CSS: loaded on-demand by JS, NOT here (was render-blocking from unpkg CDN) -->
+
+    <!-- reCAPTCHA preconnect -->
+    <link rel="preconnect" href="https://www.recaptcha.net">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.google.com">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <style>
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top);
+        --safe-area-inset-right: env(safe-area-inset-right);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom);
+        --safe-area-inset-left: env(safe-area-inset-left);
+      }
+
+      html, body {
+        background-color: #ffffff;
+        background: #ffffff;
+      }
+
+      body {
+        padding-top: var(--safe-area-inset-top);
+        padding-right: var(--safe-area-inset-right);
+        padding-bottom: var(--safe-area-inset-bottom);
+        padding-left: var(--safe-area-inset-left);
+      }
+
+      * {
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button, a, [role="button"] {
+        -webkit-touch-callout: default;
+        -webkit-tap-highlight-color: rgba(0, 122, 255, 0.1);
+      }
+
+      .needs-js { display: none !important; }
+      .no-js-warning {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: linear-gradient(135deg, #2c5282 0%, #1a365d 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 9999;
+      }
+      .no-js-warning h2 { margin: 0 0 10px 0; font-size: 24px; font-weight: 600; }
+      .no-js-warning p { margin: 0 0 15px 0; font-size: 16px; line-height: 1.5; }
+      .no-js-warning .instructions { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 15px auto; max-width: 600px; }
+      .no-js-warning .contact { font-size: 14px; opacity: 0.9; }
+      .no-js-list { text-align: left; max-width: 500px; margin: 10px auto; line-height: 1.8; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-BQAhiwhs.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-i18n-BnqEsHlA.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-DHcQPewY.js">
+    <link rel="stylesheet" crossorigin href="/assets/vendor-react-DpsRipQV.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-DnBT6dvz.css">
+  </head>
+  <body>
+    <noscript>
+      <div class="no-js-warning">
+        <h2>🐾 JavaScript Required | נדרש JavaScript</h2>
+        <p>
+          <strong>English:</strong> Pet Wash™ requires JavaScript to provide the best experience.<br>
+          Please enable JavaScript in your browser settings to continue.
+        </p>
+        <p>
+          <strong>עברית:</strong> Pet Wash™ דורש JavaScript כדי לספק את החוויה הטובה ביותר.<br>
+          אנא הפעל JavaScript בהגדרות הדפדפן שלך כדי להמשיך.
+        </p>
+        <div class="instructions">
+          <p><strong>How to enable JavaScript:</strong></p>
+          <ul class="no-js-list">
+            <li><strong>Chrome/Edge:</strong> Settings &rarr; Privacy &amp; Security &rarr; Site Settings &rarr; JavaScript &rarr; Allowed</li>
+            <li><strong>Firefox:</strong> about:config &rarr; javascript.enabled &rarr; true</li>
+            <li><strong>Safari:</strong> Preferences &rarr; Security &rarr; Enable JavaScript</li>
+          </ul>
+        </div>
+        <p class="contact">
+          Need help? Contact us: <strong>Support@PetWash.co.il</strong> | <strong>+972-54-983-3355</strong>
+        </p>
+      </div>
+    </noscript>
+
+    <div id="root"></div>
+
+    <!-- Firebase Runtime Config: fetched in parallel with JS download.
+         main.tsx races this against a 400ms timeout — app never stalls waiting for this. -->
+    <script>
+      window.__FIREBASE_CONFIG_READY__ = (async function initFirebaseConfig() {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const response = await fetch('/api/config/firebase', { signal: controller.signal });
+          clearTimeout(timeout);
+          if (response.ok) {
+            window.__FIREBASE_CONFIG__ = await response.json();
+            console.log('[Firebase Runtime Config] ✅ Loaded successfully', {
+              hasApiKey: !!window.__FIREBASE_CONFIG__.apiKey,
+              projectId: window.__FIREBASE_CONFIG__.projectId,
+              authDomain: window.__FIREBASE_CONFIG__.authDomain
+            });
+          } else {
+            console.error('[Firebase Runtime Config] ❌ HTTP', response.status, '- using env var fallback');
+            window.__FIREBASE_CONFIG__ = null;
+          }
+        } catch (error) {
+          console.error('[Firebase Runtime Config] ❌ Failed - using env var fallback');
+          window.__FIREBASE_CONFIG__ = null;
+        }
+        return true;
+      })();
+    </script>
+
+    <!-- Leaflet CSS loaded on-demand (inject only when maps are needed) -->
+    <script>
+      window.__loadLeafletCSS = function() {
+        if (!window.__leafletCSSLoaded) {
+          window.__leafletCSSLoaded = true;
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+          link.crossOrigin = 'anonymous';
+          document.head.appendChild(link);
+        }
+      };
+    </script>
+
+
+    <!-- Google Analytics 4 — lazy loaded after first user interaction or 3 seconds.
+         Measurement ID: G-B30RXHEX6R (signinpetwash Firebase project — petwash.co.il)
+         NOTE: G-B5W5GHJ5EN was the old property (previous project). Do NOT add it back. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-B30RXHEX6R', { send_page_view: false });
+
+      var ga4Loaded = false;
+      function loadGA4() {
+        if (!ga4Loaded) {
+          ga4Loaded = true;
+          var s = document.createElement('script');
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B30RXHEX6R';
+          s.async = true;
+          document.head.appendChild(s);
+        }
+      }
+
+      ['mousedown', 'touchstart', 'scroll', 'keydown'].forEach(function(ev) {
+        window.addEventListener(ev, loadGA4, { once: true, passive: true });
+      });
+      setTimeout(loadGA4, 3000);
+    </script>
+
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://petwash.co.il/#organization",
+          "name": "Pet Wash™",
+          "alternateName": ["Pet Wash Israel", "פט ווש", "PetWash"],
+          "description": "Israel's #1 premium pet care super-app — grooming, daycare, dog walking, and K9000 smart wash stations with flash deals, AI pricing, and Apple/Google Wallet passes.",
+          "url": "https://petwash.co.il",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://petwash.co.il/brand/petwash-logo-official.png",
+            "width": 200,
+            "height": 60
+          },
+          "image": "https://petwash.co.il/IMG_7114_1751624638881.jpeg",
+          "email": "Support@PetWash.co.il",
+          "foundingDate": "2024",
+          "vatID": "516788400",
+          "leiCode": "IL-516788400",
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IL",
+            "addressLocality": "Tel Aviv",
+            "addressRegion": "Tel Aviv District"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 32.0853,
+            "longitude": 34.7818
+          },
+          "sameAs": [
+            "https://www.facebook.com/petwashltd",
+            "https://www.instagram.com/petwashltd",
+            "https://www.tiktok.com/@petwashltd"
+          ],
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "reviewCount": "312",
+            "bestRating": "5",
+            "worstRating": "1"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://petwash.co.il/#website",
+          "url": "https://petwash.co.il",
+          "name": "Pet Wash™",
+          "publisher": { "@id": "https://petwash.co.il/#organization" },
+          "inLanguage": ["he", "en", "ar"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://petwash.co.il/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "LocalBusiness",
+          "@id": "https://petwash.co.il/#localbusiness",
+          "name": "Pet Wash™ Israel",
+          "image": "https://petwash.co.il/IMG_7114_1751624638881.jpeg",
+          "url": "https://petwash.co.il",
+          "telephone": "",
+          "priceRange": "₪₪₪",
+          "currenciesAccepted": "ILS",
+          "paymentAccepted": "Credit Card, Apple Pay, Google Pay, Bit",
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Sunday"],
+              "opens": "08:00",
+              "closes": "20:00"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": "Friday",
+              "opens": "08:00",
+              "closes": "15:00"
+            }
+          ],
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IL",
+            "addressLocality": "Tel Aviv"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 32.0853,
+            "longitude": 34.7818
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "reviewCount": "312",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Pet Care Services",
+            "itemListElement": [
+              { "@type": "Offer", "name": "Dog Grooming", "description": "Premium mobile dog grooming service", "priceCurrency": "ILS", "eligibleRegion": "IL" },
+              { "@type": "Offer", "name": "Dog Walking", "description": "GPS-tracked dog walking service", "priceCurrency": "ILS", "eligibleRegion": "IL" },
+              { "@type": "Offer", "name": "Pet Daycare", "description": "Full-day pet daycare for dogs and cats", "priceCurrency": "ILS", "eligibleRegion": "IL" },
+              { "@type": "Offer", "name": "K9000 Smart Wash", "description": "Self-service smart pet wash stations", "priceCurrency": "ILS", "eligibleRegion": "IL" }
+            ]
+          }
+        },
+        {
+          "@type": "MobileApplication",
+          "name": "Pet Wash™",
+          "operatingSystem": "iOS, Android",
+          "applicationCategory": "LifestyleApplication",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ILS" },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "312"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://petwash.co.il/daycare-calculator#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How does the daycare price calculator work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Our AI-powered daycare calculator computes the exact price for multiple pets (dogs and cats) over any number of days, applying multi-pet discounts, weekly discounts, and Israeli VAT (18%). The final price is always determined by our fixed business rules — AI is used only to generate a friendly explanation of the breakdown."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I book daycare for 2 dogs and 1 cat for a week?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. PetWash™ supports multi-pet weekly bookings. Add each pet with their type and size, set 7 days, and the calculator applies all discounts automatically: 14% multi-pet discount for 3 pets, 12% weekly discount, plus VAT at 18%."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is the price I see here guaranteed?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "The calculator uses fixed daily rates and discount rules. The price shown is deterministic — identical inputs always produce the same result. The actual booking price may vary if your chosen provider has a different pricing tier."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What discounts are applied?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "2 pets: 8% multi-pet discount · 3 pets: 14% · 4 or more: 18%. Bookings of 7 or more days receive an additional 12% weekly discount. All prices include Israeli VAT at 18%."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What if the AI explanation is missing?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "The AI explanation is an optional summary powered by Gemini. If it is unavailable, the full price breakdown is still shown with all discounts and VAT listed line by line. The AI has no effect on the final price."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
+    <!-- HubSpot Tracking -->
+    <script id="hs-script-loader" async defer src="https://js.hs-scripts.com/46822710.js"></script>
+  </body>
+</html>

@@ -358,6 +358,31 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       return res.status(400).json({ error: availability.message });
     }
 
+    // SLOT HOLD: prevent double-booking race between availability check and INSERT
+    const now = new Date();
+    // Purge expired holds (lazy cleanup)
+    await db.delete(walkSlotHolds).where(lt(walkSlotHolds.expiresAt, now));
+    // Check if this walker already has an active hold for overlapping time
+    const [activeHold] = await db
+      .select()
+      .from(walkSlotHolds)
+      .where(and(eq(walkSlotHolds.walkerId, walkerId), gte(walkSlotHolds.expiresAt, now)))
+      .limit(1);
+    if (activeHold) {
+      return res.status(409).json({ error: 'Walker slot is currently being booked. Please try again in a moment.' });
+    }
+    // Acquire slot hold for the duration of this request
+    const holdId = `HOLD-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const holdTtlMs = 5 * 60 * 1000; // 5-minute TTL to cover the booking transaction
+    const holdExpiresAt = new Date(Date.now() + holdTtlMs);
+    await db.insert(walkSlotHolds).values({
+      holdId,
+      slotId: `${walkerId}-${scheduledDate}T${scheduledStartTime}`,
+      walkerId,
+      estimatedAmount: '0',
+      expiresAt: holdExpiresAt,
+    });
+
     // STEP 2: Get pricing quote using LUXURY ENGINE (with loyalty discounts!)
     const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
                      req.socket.remoteAddress || 
@@ -566,7 +591,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           walker.userId
         );
       } catch (escrowErr: any) {
-        console.error(`[Walk My Pet] Escrow confirmation failed for ${bookingId}`, escrowErr);
+        console.error('[Walk My Pet] Escrow confirmation failed for bookingId:', bookingId, escrowErr);
       }
 
       await db
@@ -1035,8 +1060,9 @@ router.post('/walks/:bookingId/start', async (req, res) => {
 // =================== GPS TRACKING ===================
 
 // Upload GPS point (walker's device streams location)
-router.post('/walks/:bookingId/gps', async (req, res) => {
+router.post('/walks/:bookingId/gps', requireAuth, async (req, res) => {
   try {
+    const callerId = (req as any).user?.uid;
     const { bookingId } = req.params;
     const { latitude, longitude, accuracy, speed, heading, batteryLevel } = req.body;
 
@@ -1048,6 +1074,10 @@ router.post('/walks/:bookingId/gps', async (req, res) => {
 
     if (!booking || booking.status !== 'in_progress') {
       return res.status(400).json({ error: 'Walk not in progress' });
+    }
+
+    if (booking.walkerId !== callerId) {
+      return res.status(403).json({ error: 'Forbidden: you are not the walker for this booking' });
     }
 
     // Calculate distance from geofence center
@@ -1136,8 +1166,9 @@ router.get('/walks/:bookingId/gps/live', async (req, res) => {
 // =================== WALK COMPLETION ===================
 
 // Complete walk
-router.post('/walks/:bookingId/complete', async (req, res) => {
+router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
   try {
+    const callerId = (req as any).user?.uid;
     const { bookingId } = req.params;
     const { completionNotes, healthData } = req.body;
 
@@ -1149,6 +1180,10 @@ router.post('/walks/:bookingId/complete', async (req, res) => {
 
     if (!booking || booking.status !== 'in_progress') {
       return res.status(400).json({ error: 'Walk not in progress' });
+    }
+
+    if (booking.walkerId !== callerId) {
+      return res.status(403).json({ error: 'Forbidden: you are not the walker for this booking' });
     }
 
     const actualDuration = booking.actualStartTime 

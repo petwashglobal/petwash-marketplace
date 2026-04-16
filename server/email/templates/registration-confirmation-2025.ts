@@ -7,6 +7,7 @@
  */
 
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { SUPPORT_WHATSAPP_URL } from '../../../shared/support-contact';
 
 const BRAND_COLORS = {
   primary: '#7C3AED', // Purple
@@ -148,7 +149,7 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
         <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
         <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
-        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
+        <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
       </div>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
       <p style="font-size: 11px; margin-top: 10px;">
@@ -260,7 +261,7 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
         <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
         <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
-        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
+        <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
       </div>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
       <p style="font-size: 11px; margin-top: 10px;">
@@ -373,7 +374,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
         <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
         <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
-        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
+        <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
       </div>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
       <p style="font-size: 11px; margin-top: 10px;">

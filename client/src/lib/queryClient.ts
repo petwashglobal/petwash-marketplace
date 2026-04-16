@@ -96,6 +96,15 @@ async function fetchWithRetry(
   options: RequestInit,
   retries = 1,
 ): Promise<Response> {
+  // Allow only relative URLs or same-origin absolute URLs to prevent SSRF.
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    if (typeof window !== 'undefined') {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.origin !== window.location.origin) {
+        throw new Error(`Blocked request to disallowed external URL: ${parsedUrl.origin}`);
+      }
+    }
+  }
   const res = await fetch(url, options);
   if (res.status === 503 && retries > 0) {
     await new Promise(r => setTimeout(r, 800));

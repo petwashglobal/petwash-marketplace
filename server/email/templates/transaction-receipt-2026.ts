@@ -18,6 +18,8 @@
  *   ✓ Table-based layout only
  */
 
+import { SUPPORT_EMAIL, SUPPORT_PHONE as SUPPORT_PHONE_CONST, SUPPORT_WHATSAPP_URL } from '../../../shared/support-contact';
+
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const GOLD       = '#B8941F';   // readable on white AND dark
 const GOLD_HERO  = '#C6A35B';   // large display amounts
@@ -39,8 +41,6 @@ const VAT_RATE      = 0.18;
 const BUSINESS_REG  = '515895671';
 const BUSINESS_HE   = 'פט ווש בע"מ';
 const BUSINESS_EN   = 'Pet Wash Ltd';
-const SUPPORT_EMAIL = 'support@petwash.co.il';
-const SUPPORT_PHONE = '03-000-0000';
 
 function vatBreakdown(gross: number) {
   const net = +(gross / (1 + VAT_RATE)).toFixed(2);
@@ -169,7 +169,7 @@ ${preheader}&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nb
               <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:8px;
                 letter-spacing:2px;color:${TEXT_DIM};text-transform:uppercase;">יצירת קשר</p>
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
-                color:${TEXT_SEC};line-height:1.8;">${SUPPORT_EMAIL}<br>${SUPPORT_PHONE}<br>
+                color:${TEXT_SEC};line-height:1.8;">${SUPPORT_EMAIL}<br>${SUPPORT_PHONE_CONST}<br>
                 <a href="https://petwash.co.il" style="color:${GOLD};text-decoration:none;">petwash.co.il</a>
               </p>
             </td>
@@ -180,14 +180,14 @@ ${preheader}&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nb
           <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">📷 Instagram</a>
           <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">f Facebook</a>
           <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;border:1px solid #333;">♪ TikTok</a>
-          <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">💬 WhatsApp</a>
+          <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">💬 WhatsApp</a>
         </p>
         <p style="margin:8px 0 10px;text-align:center;">
           <a href="https://petwash.co.il/privacy" style="color:${TEXT_DIM};text-decoration:none;font-family:Arial,sans-serif;font-size:9px;margin:0 6px;">Privacy / פרטיות</a>
           <span style="color:${TEXT_DIM};font-size:9px;">·</span>
           <a href="https://petwash.co.il/terms" style="color:${TEXT_DIM};text-decoration:none;font-family:Arial,sans-serif;font-size:9px;margin:0 6px;">Terms / תנאי שימוש</a>
           <span style="color:${TEXT_DIM};font-size:9px;">·</span>
-          <a href="mailto:support@petwash.co.il" style="color:${TEXT_DIM};text-decoration:none;font-family:Arial,sans-serif;font-size:9px;margin:0 6px;">Contact / צור קשר</a>
+          <a href="mailto:${SUPPORT_EMAIL}" style="color:${TEXT_DIM};text-decoration:none;font-family:Arial,sans-serif;font-size:9px;margin:0 6px;">Contact / צור קשר</a>
         </p>
         <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:8.5px;
           color:${TEXT_DIM};line-height:1.7;text-align:center;">

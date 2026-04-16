@@ -3,8 +3,20 @@
 
 const express = require('express');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
+
+// General rate limiter for all routes in this static server (200 req/15min per IP)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.',
+});
+
+app.use(generalLimiter);
 
 // Trust proxy for Replit reverse proxy (required for secure cookies and proper IPs)
 app.set('trust proxy', 1);

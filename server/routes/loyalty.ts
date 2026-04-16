@@ -51,6 +51,7 @@ import {
   buildMembershipCancelledSms,
 } from '../services/PetWashNotificationEngine';
 import { z } from 'zod';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = Router();
 
@@ -271,7 +272,7 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">נקודות פתיחה</td><td style="padding:8px;border-bottom:1px solid #eee;">${welcomePoints}</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${new Date().toLocaleDateString('he-IL')}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il</p>
 </body></html>`;
 
       const [userRow] = await db.select({ phone: users.phone })
@@ -896,7 +897,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תוקף</td><td style="padding:8px;border-bottom:1px solid #eee;">30 יום</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il/prestige</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il/prestige</p>
 </body></html>`;
 
         const docRef = await FinancialDocumentService.create({
@@ -1184,7 +1185,7 @@ router.post('/membership/renew', requireAdmin, async (req: AuthenticatedRequest,
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תקף עד</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">${renewedUntilStr}</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך חידוש</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il/prestige</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il/prestige</p>
 </body></html>`;
 
         const docRef = await FinancialDocumentService.create({
@@ -1288,7 +1289,7 @@ router.post('/membership/cancel', requireAdmin, async (req: AuthenticatedRequest
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תוקף הטבות עד</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${effectiveDateStr}</td></tr>
   <tr><td style="padding:8px;color:#555;">להצטרפות מחדש</td><td style="padding:8px;"><a href="https://petwash.co.il/prestige">petwash.co.il/prestige</a></td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
         const docRef = await FinancialDocumentService.create({

@@ -31,6 +31,8 @@ interface UseAutoFaceIDOptions {
   enabled?: boolean;
   onSuccess?: () => void;
   onFailure?: (error?: string) => void;
+  /** Called instead of the default navigate('/dashboard') after successful biometric auth. */
+  onNavigate?: () => void | Promise<void>;
 }
 
 const STORAGE_KEY = 'lastPasskeyEmail';
@@ -191,7 +193,7 @@ export function shouldSkipAutoFaceID(): boolean {
  * Automatic Face ID hook for banking-level UX
  */
 export function useAutoFaceID(options: UseAutoFaceIDOptions): UseAutoFaceIDResult {
-  const { language, enabled = true, onSuccess, onFailure } = options;
+  const { language, enabled = true, onSuccess, onFailure, onNavigate } = options;
   const [state, setState] = useState<AutoFaceIDState>('idle');
   const [error, setError] = useState<string | undefined>();
   const [, navigate] = useLocation();
@@ -266,7 +268,11 @@ export function useAutoFaceID(options: UseAutoFaceIDOptions): UseAutoFaceIDResul
           setTimeout(() => {
             if (mountedRef.current) {
               window.scrollTo(0, 0);
-              navigate('/dashboard');
+              if (onNavigate) {
+                onNavigate();
+              } else {
+                navigate('/dashboard');
+              }
             }
           }, 500);
         } else {

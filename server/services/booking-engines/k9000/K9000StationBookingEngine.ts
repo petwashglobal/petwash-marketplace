@@ -2,15 +2,43 @@
  * K9000™ STATION BOOKING ENGINE
  * ==============================
  * IoT-integrated self-service wash station booking
- * 
+ *
+ * ⚠️  ARCHITECTURE SAFETY FENCE — READ BEFORE MODIFYING ⚠️
+ * ----------------------------------------------------------
+ * K9000 is a SELF-SERVICE IoT wash station. It does NOT use the
+ * marketplace booking system.
+ *
+ * LIVE K9000 flows (do not add booking/escrow logic here):
+ *   POST /api/k9000/start-session   — public terminal wash via Nayax
+ *   POST /api/k9000/end-session     — ends terminal wash session
+ *   POST /api/k9000/generate-qr    — member QR token for wash redemption
+ *   POST /api/k9000/redeem-wash    — kiosk scans member QR
+ *
+ * THIS ENGINE (K9000StationBookingEngine) provides:
+ *   - Station availability checks (IoT heartbeat, status)
+ *   - findNearestStation() for map/location features
+ *   - PostConfirmationStrategy stub (IoT unlock — NOT YET WIRED)
+ *
+ * RULES — enforce forever:
+ *   ✗ No booking rows created for K9000 washes
+ *   ✗ No escrow / payout_status for K9000 washes
+ *   ✗ No provider payout logic for K9000 washes
+ *   ✗ No appointment/scheduler logic for K9000 washes
+ *   ✓ K9000 public terminal = Nayax payment + Firestore session
+ *   ✓ K9000 member redeem = QR token + wash_package_credits decrement
+ *
+ * POST /api/platforms/k9000/bookings is BLOCKED at the route layer.
+ * Do NOT remove that block or re-wire this engine to escrow paths.
+ * ------------------------------------------------------------------
+ *
  * Features:
  * - Real-time station availability monitoring
  * - Station health check integration
- * - Automatic IoT unlock on booking confirmation
+ * - Automatic IoT unlock on booking confirmation (stub — see PostConfirmationStrategy)
  * - Heartbeat validation before booking
  * - Maintenance mode detection
- * 
- * Uses existing: stationsService (1689 lines of IoT control)
+ *
+ * Uses existing: stationsService (IoT control)
  */
 
 import crypto from 'crypto';

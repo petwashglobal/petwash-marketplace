@@ -209,8 +209,19 @@ export function setupCustom404Handler(app: Express) {
   });
 }
 
+function htmlEncode(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Generate custom 404 HTML page
 function generateCustom404HTML(requestPath: string, host: string): string {
+  const safeRequestPath = htmlEncode(requestPath);
+  const safeHost = htmlEncode(host);
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -358,7 +369,7 @@ function generateCustom404HTML(requestPath: string, host: string): string {
         <a href="/contact" class="btn btn-secondary">📞 Get Help</a>
         
         <p style="margin-top: 2rem; color: #999; font-size: 0.9rem;">
-            Requested: <code>${requestPath}</code><br>
+            Requested: <code>${safeRequestPath}</code><br>
             If you believe this is an error, please <a href="/contact" style="color: #667eea;">contact our support team</a>.
         </p>
     </div>
@@ -367,7 +378,7 @@ function generateCustom404HTML(requestPath: string, host: string): string {
         // Track 404 for analytics
         if (typeof gtag !== 'undefined') {
             gtag('event', 'page_not_found', {
-                'page_path': '${requestPath}',
+                'page_path': '${safeRequestPath}',
                 'page_referrer': document.referrer
             });
         }
@@ -383,7 +394,7 @@ function generateCustom404HTML(requestPath: string, host: string): string {
             '/abou': '/about'
         };
         
-        const currentPath = '${requestPath}';
+        const currentPath = '${safeRequestPath}';
         if (autoRedirects[currentPath]) {
             setTimeout(() => {
                 window.location.href = autoRedirects[currentPath];

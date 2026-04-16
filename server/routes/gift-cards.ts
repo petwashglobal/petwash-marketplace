@@ -21,6 +21,7 @@ import {
 } from '../lib/walletPassToken';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 // Wallet pass download rate limiter (prevents brute-force token guessing)
 const walletPassLimiter = rateLimit({
@@ -68,7 +69,7 @@ function generateVoucherCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars (0, O, I, 1)
   let code = '';
   for (let i = 0; i < 16; i++) {
-    code += chars[crypto.randomBytes(1)[0] % chars.length];
+    code += chars[crypto.randomInt(chars.length)];
     if ((i + 1) % 4 === 0 && i !== 15) code += '-'; // Add dashes every 4 chars
   }
   return code;
@@ -623,7 +624,7 @@ function walletErrorPage(opts: {
     <br/>פשוט פתח את מייל קבלת הכרטיס ושמור את ה-QR.
   </div>
   <a class="btn" href="https://petwash.co.il/my-wallet">הארנק שלי</a>
-  <div class="support">שאלות? <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></div>
+  <div class="support">שאלות? <a href="mailto:${CANONICAL_SUPPORT_EMAIL}">${CANONICAL_SUPPORT_EMAIL}</a></div>
 </div>
 </body>
 </html>`;

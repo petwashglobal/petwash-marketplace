@@ -130,15 +130,20 @@ function getClosedReasonFromBookingStatus(status: string): string | null {
 }
 
 // Section 7: Detect phone, email, URL, and @social handles
-const contactInfoPattern = /(\+?[\d\s\-\(\)]{7,})|([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})|(https?:\/\/[^\s]+)|(www\.[^\s]+)|(@[a-zA-Z0-9_]{2,})/i;
+// Bounded quantifiers prevent ReDoS on untrusted input
+const contactInfoPattern = /(\+?[\d\s\-\(\)]{7,20})|([a-zA-Z0-9._%+\-]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+)|(https?:\/\/[^\s]{1,2000})|(www\.[^\s]{1,2000})|(@[a-zA-Z0-9_]{2,50})/i;
 
-// Section 6: Strip HTML/XSS from message content before storing
+// Section 6: Encode HTML special characters to prevent XSS before storing
 function sanitizeMessageContent(raw: string): string {
+  if (typeof raw !== 'string') return '';
   return raw
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-    .trim();
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .trim()
+    .slice(0, 2000);
 }
 
 /**

@@ -21,8 +21,8 @@ export default function BookingUnified() {
     {
       icon: Droplets,
       name: "K9000™",
-      href: "/k9000/booking",
-      desc: "Book a self-service wash station",
+      href: "/k9000",
+      desc: "Self-service wash station",
     },
     {
       icon: Home,

@@ -115,8 +115,8 @@ router.get('/my-applications', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email is required' });
     }
     
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Validate email format (bounded character classes prevent ReDoS)
+    if (!/^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
     

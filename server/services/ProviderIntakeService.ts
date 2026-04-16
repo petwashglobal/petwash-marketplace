@@ -4,6 +4,7 @@ import { db } from '../db';
 import { providerIntakeQueue, providerInviteCodes } from '@shared/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 /**
  * Provider Intake Service
@@ -357,7 +358,7 @@ export class ProviderIntakeService {
             `PetWash™ - בקשתך לא אושרה\n` +
             `שלום ${intake.firstName},\n` +
             `לצערנו לא ניתן לאשר את בקשתך בשלב זה.\n` +
-            `לפרטים ולערעור: support@petwash.co.il`;
+            `לפרטים ולערעור: ${CANONICAL_SUPPORT_EMAIL}`;
           if (intake.phoneNumber) {
             await smsService.sendSMS(intake.phoneNumber, message);
             logger.info('[ProviderIntake] ✅ Rejection SMS sent', { intakeId, phone: '***' });

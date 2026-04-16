@@ -187,10 +187,8 @@ export class EncryptionService {
       : '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     
     let code = '';
-    const randomBytes = crypto.randomBytes(length);
-    
     for (let i = 0; i < length; i++) {
-      code += chars[randomBytes[i] % chars.length];
+      code += chars[crypto.randomInt(chars.length)];
     }
     
     return code;

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { db } from '../db';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from '@shared/support-contact';
 import { 
   providerApplicants, 
   providerDocuments, 
@@ -470,7 +471,7 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
           </div>
         </div>`;
       await sendLuxuryEmail({
-        to: process.env.SUPPORT_EMAIL || 'support@petwash.co.il',
+        to: process.env.SUPPORT_EMAIL || SUPPORT_EMAIL,
         subject: `[Pet Wash™] New Provider Application #${application.id} — ${formData.firstName} ${formData.lastName}`,
         html: adminHtml,
         from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
@@ -510,6 +511,132 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     const traceId = req.traceId || '';
     logger.error('[ProviderApplication] Submit error', { error, traceId });
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to submit application', traceId });
+  }
+});
+
+
+// POST /api/provider-applications/draft
+// ──────────────────────────────────────
+// Upserts a draft application so the provider can leave and return later.
+// Accepts the same JSON fields as the main submit endpoint but requires only
+// the step-1 fields.  Text fields only — no files.  Creates the row with
+// status='draft' if none exists; updates it if a draft already exists.
+//
+// The GET /my endpoint returns the draft so the frontend can pre-populate.
+router.post('/draft', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const draftSchema = z.object({
+      firstName:              z.string().min(1).optional(),
+      lastName:               z.string().min(1).optional(),
+      email:                  z.string().email().optional(),
+      phoneNumber:            z.string().min(7).optional(),
+      dateOfBirth:            z.string().optional(),
+      streetAddress:          z.string().optional(),
+      city:                   z.string().optional(),
+      postalCode:             z.string().optional(),
+      serviceTypes:           z.array(z.string()).optional(),
+      biography:              z.string().optional(),
+      yearsExperience:        z.number().int().min(0).max(50).optional(),
+      languages:              z.array(z.string()).optional(),
+      serviceRadius:          z.number().int().min(1).max(200).optional(),
+      maxPetsAtOnce:          z.number().int().min(1).max(20).optional(),
+      petTypesAccepted:       z.array(z.string()).optional(),
+      hasOwnVehicle:          z.boolean().optional(),
+      hasHomeSpace:           z.boolean().optional(),
+      emergencyContactName:   z.string().optional(),
+      emergencyContactPhone:  z.string().optional(),
+      emergencyContactRelation: z.string().optional(),
+    });
+
+    const parsed = draftSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid draft data', details: parsed.error.flatten() });
+    }
+    const data = parsed.data;
+
+    // Check if the user already has a non-draft application
+    const [existing] = await db.select({ id: providerApplicants.id, status: providerApplicants.status })
+      .from(providerApplicants)
+      .where(eq(providerApplicants.userId, userId))
+      .limit(1);
+
+    if (existing && existing.status !== 'draft') {
+      return res.status(409).json({
+        error: 'Cannot save draft — you already have an active application',
+        status: existing.status,
+        applicationId: existing.id,
+      });
+    }
+
+    if (existing) {
+      // Update the existing draft
+      await db.update(providerApplicants)
+        .set({
+          ...(data.firstName       && { firstName: data.firstName }),
+          ...(data.lastName        && { lastName: data.lastName }),
+          ...(data.email           && { email: data.email }),
+          ...(data.phoneNumber     && { phoneNumber: data.phoneNumber }),
+          ...(data.dateOfBirth     && { dateOfBirth: data.dateOfBirth as any }),
+          ...(data.streetAddress   && { streetAddress: data.streetAddress }),
+          ...(data.city            && { city: data.city }),
+          ...(data.postalCode      && { postalCode: data.postalCode }),
+          ...(data.serviceTypes    && { serviceTypes: data.serviceTypes }),
+          ...(data.biography       !== undefined && { biography: data.biography }),
+          ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
+          ...(data.languages       && { languages: data.languages }),
+          ...(data.serviceRadius   !== undefined && { serviceRadius: data.serviceRadius }),
+          ...(data.maxPetsAtOnce   !== undefined && { maxPetsAtOnce: data.maxPetsAtOnce }),
+          ...(data.petTypesAccepted && { petTypesAccepted: data.petTypesAccepted }),
+          ...(data.hasOwnVehicle   !== undefined && { hasOwnVehicle: data.hasOwnVehicle }),
+          ...(data.hasHomeSpace    !== undefined && { hasHomeSpace: data.hasHomeSpace }),
+          ...(data.emergencyContactName     && { emergencyContactName: data.emergencyContactName }),
+          ...(data.emergencyContactPhone    && { emergencyContactPhone: data.emergencyContactPhone }),
+          ...(data.emergencyContactRelation && { emergencyContactRelation: data.emergencyContactRelation }),
+          updatedAt: new Date(),
+        })
+        .where(eq(providerApplicants.userId, userId));
+
+      return res.json({ ok: true, action: 'updated', applicationId: existing.id });
+    }
+
+    // Create a new draft row — required NOT NULL fields get placeholder values
+    // that the provider must complete before final submit.
+    const [draft] = await db.insert(providerApplicants).values({
+      userId,
+      email:           data.email          || '',
+      firstName:       data.firstName      || '',
+      lastName:        data.lastName       || '',
+      phoneNumber:     data.phoneNumber    || '',
+      // dateOfBirth is NOT NULL in schema; drafts may not have it yet.
+      // The placeholder '0001-01-01' is an out-of-range sentinel that the
+      // final submission validator will reject, forcing the user to fill it in.
+      dateOfBirth:     (data.dateOfBirth   || '0001-01-01') as any,
+      streetAddress:   data.streetAddress  || '',
+      city:            data.city           || '',
+      serviceTypes:    data.serviceTypes   || [],
+      status:          'draft',
+      stage:           'draft',
+      ...(data.postalCode      && { postalCode: data.postalCode }),
+      ...(data.biography       && { biography: data.biography }),
+      ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
+      ...(data.languages       && { languages: data.languages }),
+      ...(data.serviceRadius   !== undefined && { serviceRadius: data.serviceRadius }),
+      ...(data.maxPetsAtOnce   !== undefined && { maxPetsAtOnce: data.maxPetsAtOnce }),
+      ...(data.petTypesAccepted && { petTypesAccepted: data.petTypesAccepted }),
+      ...(data.hasOwnVehicle   !== undefined && { hasOwnVehicle: data.hasOwnVehicle }),
+      ...(data.hasHomeSpace    !== undefined && { hasHomeSpace: data.hasHomeSpace }),
+      ...(data.emergencyContactName     && { emergencyContactName: data.emergencyContactName }),
+      ...(data.emergencyContactPhone    && { emergencyContactPhone: data.emergencyContactPhone }),
+      ...(data.emergencyContactRelation && { emergencyContactRelation: data.emergencyContactRelation }),
+    }).returning({ id: providerApplicants.id });
+
+    return res.json({ ok: true, action: 'created', applicationId: draft?.id });
+  } catch (err: any) {
+    logger.error('[ProviderApplications] Draft save error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to save draft' });
   }
 });
 
@@ -1290,13 +1417,13 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
                   : 'If you have questions or wish to appeal this decision, please contact our support team.'}
               </p>
               <div style="margin-top:24px;text-align:center">
-                <a href="mailto:support@petwash.co.il" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">
+                <a href="${SUPPORT_MAILTO_URL}" style="display:inline-block;background:#c9a96e;color:#1a1a1a;padding:12px 28px;border-radius:4px;font-weight:bold;text-decoration:none;font-size:14px">
                   ${isHebrew ? 'צור קשר עם תמיכה' : 'Contact Support'}
                 </a>
               </div>
             </div>
             <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af">
-              Pet Wash™ · support@petwash.co.il
+              Pet Wash™ · ${SUPPORT_EMAIL}
             </div>
           </div>`;
         await sendLuxuryEmail({

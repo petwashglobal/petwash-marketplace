@@ -270,10 +270,10 @@ export function SmartReceiptViewer() {
 
           <Button 
             className="luxury-btn-secondary w-full"
-            onClick={() => window.open(`/?package=${receipt.packageId}`, '_blank')}
+            onClick={() => window.open(`/k9000`, '_blank')}
           >
             <Gift className="h-4 w-4 mr-2" />
-            Book Next Wash
+            Wash Now
           </Button>
 
           {receipt.userId && (

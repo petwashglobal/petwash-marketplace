@@ -83,7 +83,9 @@ function getOSName(): string {
  * Generate unique device ID
  */
 function generateDeviceId(): string {
-  return `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  const randomBytes = new Uint32Array(1);
+  crypto.getRandomValues(randomBytes);
+  return `device_${Date.now()}_${randomBytes[0].toString(36)}`;
 }
 
 /**
@@ -109,6 +111,10 @@ export function trustDevice(userId: string, email: string): boolean {
       },
     };
     
+    // Intentional: persists a device-trust record (device fingerprint, deviceId, userId,
+    // email, and expiry) so the user isn't re-prompted for MFA on a trusted device for 30 days.
+    // localStorage is accessible via JS on the same origin; no auth tokens or passwords are
+    // stored here. The email is used solely to scope the trust record to the correct account.
     localStorage.setItem(DEVICE_TRUST_KEY, JSON.stringify(trustedDevice));
     
     logger.info('Device trusted for 30 days', {
@@ -241,6 +247,8 @@ export function extendDeviceTrust(): boolean {
     const now = Date.now();
     device.expiresAt = now + TRUST_DURATION_MS;
     
+    // Intentional: updates the expiry on the existing device-trust record (see trustDevice).
+    // Only device metadata and expiry timestamps are persisted; no auth tokens or secrets.
     localStorage.setItem(DEVICE_TRUST_KEY, JSON.stringify(device));
     
     logger.info('Device trust extended', {

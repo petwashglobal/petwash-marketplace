@@ -143,8 +143,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     language,
     enabled: !user && !switchingAccount && passkeyAvailable && !forcePasswordMode && !isDeviceTrusted(),
     onSuccess: () => {
-      logger.info("Auto Face ID: Login successful, redirecting to dashboard");
+      logger.info("Auto Face ID: Login successful, navigating via post-login role decider");
     },
+    onNavigate: () => navigatePostLogin(),
     onFailure: (error) => {
       logger.info("Auto Face ID: Login failed, showing manual form", { error });
       setShowFallbackHint(true);
@@ -176,7 +177,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       // completes sign-in, and arrives back at the booking page — not a generic home screen.
       const urlParams = new URLSearchParams(window.location.search);
       const returnUrl = urlParams.get('from');
-      const isTerminalPath = ['/home', '/provider/dashboard', '/admin/dashboard', '/franchise/dashboard'].some(
+      const isTerminalPath = ['/home', '/provider-os', '/provider/dashboard', '/admin/dashboard', '/franchise/dashboard'].some(
         p => postLoginPath === p || postLoginPath.startsWith(p)
       );
       if (returnUrl && isTerminalPath) {

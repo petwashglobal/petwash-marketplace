@@ -122,7 +122,7 @@ function validateNayaxSignature(
         ip: req.ip,
         providedSignature: providedSignature.substring(0, 16) + '...',
         expectedSignature: expectedSignature.substring(0, 16) + '...',
-        bodyLength: rawBody.length,
+        bodyLength: (Buffer.isBuffer(rawBody) || typeof rawBody === 'string') ? rawBody.length : 0,
       });
       return res.status(401).json({ error: 'Invalid webhook signature' });
     }

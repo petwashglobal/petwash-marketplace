@@ -136,7 +136,7 @@ SENDGRID_API_KEY=your_api_key
 REPORTS_EMAIL_TO=admin@petwash.co.il
 
 # Slack Alerts (optional)
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+SLACK_WEBHOOK_URL=YOUR_SLACK_WEBHOOK_URL
 ```
 
 ### Alert Recipients

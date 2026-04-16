@@ -179,7 +179,7 @@ router.post(
             biometricHint: biometricHint || null,
             biometricVerified: false,
             approvedCountry: isApprovedCountry,
-            uploadedFileCount: files.length,
+            uploadedFileCount: Array.isArray(files) ? files.length : 0,
           },
         })
         .returning();

@@ -30,6 +30,7 @@ import {
   COMPANY_TAX_ID,
   BRAND_NAME,
 } from '../brand-identity';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../../shared/support-contact';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -90,8 +91,8 @@ function supportLine(language: 'he' | 'en' = 'he'): string {
     : 'Questions? Contact us at';
   return `<p style="font-size:13px;color:${DESIGN.grey};margin:16px 0 0;
     font-family:${DESIGN.fontStack};">
-    ${text} <a href="mailto:support@petwash.co.il"
-    style="color:${DESIGN.grey};">support@petwash.co.il</a>
+    ${text} <a href="mailto:${CANONICAL_SUPPORT_EMAIL}"
+    style="color:${DESIGN.grey};">${CANONICAL_SUPPORT_EMAIL}</a>
   </p>`;
 }
 

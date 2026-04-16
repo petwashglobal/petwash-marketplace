@@ -157,7 +157,7 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
     const { email, language = 'he' } = req.body;
     const isHebrew = language === 'he';
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email || !/^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/.test(email)) {
       return res.status(400).json({ success: false, message: 'Invalid email address' });
     }
 

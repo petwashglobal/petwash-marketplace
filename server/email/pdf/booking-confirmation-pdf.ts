@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../../shared/support-contact';
 import PDFDocument from 'pdfkit';
 
 export interface BookingPdfParams {
@@ -99,7 +100,7 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
        .text('www.petwash.co.il', 0, y, { width: W, align: 'center' });
     y += 13;
     doc.font('Helvetica').fontSize(9).fillColor(MUTED)
-       .text('support@petwash.co.il', 0, y, { width: W, align: 'center' });
+       .text(CANONICAL_SUPPORT_EMAIL, 0, y, { width: W, align: 'center' });
     y += 20;
 
     // Horizontal rule
@@ -329,7 +330,7 @@ export function generateBookingConfirmationPDF(params: BookingPdfParams): Promis
       'PetWash Ltd. operates as a technological intermediary platform that connects clients with independent service providers. PetWash Ltd. is not a party to the service agreement and is not responsible for the actual performance, quality, outcome of the service, or any damages incurred.',
       'Full responsibility for service execution rests solely with the service provider.',
       'The payment amounts shown include an estimated VAT component of 18%. The official tax invoice, issued through the authorized accounting system, is the binding tax document for VAT deduction purposes.',
-      'In case of dispute, contact customer service within 24 hours of service completion: support@petwash.co.il',
+      `In case of dispute, contact customer service within 24 hours of service completion: ${CANONICAL_SUPPORT_EMAIL}`,
     ];
 
     doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK).text('Legal Disclaimer:', M, y);

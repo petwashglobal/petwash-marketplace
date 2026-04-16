@@ -68,10 +68,10 @@ router.post("/create", requireAuth, async (req, res) => {
       endDate.setDate(endDate.getDate() + booking.duration);
     }
 
-    // Check provider availability - look for conflicting confirmed bookings
+    // Check provider availability - look for conflicting confirmed or pending bookings
     const existingBookings = await db.collection("bookings")
       .where("providerId", "==", booking.providerId)
-      .where("status", "in", ["confirmed", "in_progress"])
+      .where("status", "in", ["confirmed", "in_progress", "pending_provider", "pending_customer"])
       .get();
 
     const hasConflict = existingBookings.docs.some((doc: any) => {
@@ -184,7 +184,7 @@ router.post("/create", requireAuth, async (req, res) => {
           FROM bookings
           WHERE start_time >= NOW()
             AND start_time < NOW() + INTERVAL '7 days'
-            AND status IN ('accepted','confirmed','started','pending')
+            AND status IN ('accepted','confirmed','started','pending','pending_provider','pending_customer')
           GROUP BY station_id
         ) bc ON bc.station_id = s.id
         LEFT JOIN (
@@ -704,8 +704,33 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
     const netRefundILS = Math.max(0, cancellationResult.refundAmount);
     const netRefundCents = Math.round(netRefundILS * 100);
 
-    // 5. Mark booking as cancelled in Firestore
+    // 5. Escrow refund FIRST — processor confirmation must precede status change.
+    // RISK: writing "cancelled" before the processor confirms means the customer
+    // sees "refunded" even if the actual money never moved.  By running escrow
+    // first and treating any failure as a hard error, the booking remains in its
+    // pre-cancellation state until the processor succeeds.
     const cancelledBy: "customer" | "provider" | "admin" = admin ? "admin" : isProvider ? "provider" : "customer";
+    try {
+      const escrows = await EscrowService.getEscrowsByBooking(bookingId);
+      for (const escrow of escrows) {
+        if (escrow.status === "held") {
+          await EscrowService.refundEscrowPayment(escrow.id, reason || "cancellation", userId);
+        }
+      }
+    } catch (escrowErr: any) {
+      // Processor refund failed — do NOT advance the booking to "cancelled".
+      // The booking stays in its current state so ops can retry / investigate.
+      logger.error("[Bookings] Escrow refund failed — booking status NOT changed", {
+        bookingId,
+        error: escrowErr.message,
+      });
+      return res.status(502).json({
+        error: "Refund could not be processed by the payment processor. Please try again or contact support.",
+        code: "PROCESSOR_REFUND_FAILED",
+      });
+    }
+
+    // 6. Mark booking as cancelled ONLY after processor confirms the refund.
     await db.collection("bookings").doc(bookingId).update({
       status: "cancelled",
       cancelledAt: new Date(),
@@ -715,19 +740,7 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       refundPolicy: cancellationResult.policyTier,
     });
 
-    // 6. Escrow refund (all platforms, not just sitter-suite)
-    try {
-      const escrows = await EscrowService.getEscrowsByBooking(bookingId);
-      for (const escrow of escrows) {
-        if (escrow.status === "held") {
-          await EscrowService.refundEscrowPayment(escrow.id, reason || "cancellation", userId);
-        }
-      }
-    } catch (escrowErr: any) {
-      logger.warn("[Bookings] Escrow refund failed (non-blocking)", { bookingId, error: escrowErr.message });
-    }
-
-    // 7. Credit wallet for non-escrow refund (pet-wash-hub and walk-my-pet cash payments)
+    // 7. Credit wallet for non-escrow refund (pet-wash-hub and walk-my-pet cash payments — runs only after processor confirmed above)
     if (netRefundCents > 0 && booking.platform !== "sitter-suite") {
       const customerId: string | null = booking.userId ?? booking.customerId ?? null;
       if (customerId) {

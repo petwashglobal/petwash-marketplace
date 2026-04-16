@@ -196,7 +196,11 @@ export function WashPackages({ language }: WashPackagesProps) {
           <p className="text-sm sm:text-[15px] text-[#888] max-w-md mx-auto mb-3 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
             {t('packages.subtitle', language)}
           </p>
-          
+
+          <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-semibold text-[#c9a96e] mb-1">
+            {t('packages.k9000Only', language)}
+          </p>
+
           <p className="text-[11px] sm:text-xs text-[#b5a088] tracking-wide">
             {organicText[language] || organicText.en}
           </p>
@@ -281,6 +285,18 @@ export function WashPackages({ language }: WashPackagesProps) {
                     </div>
 
                     <div className="border-t border-[#eee] pt-2 space-y-1 text-[#888] mb-3">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <span className="text-[10px] sm:text-[11px] font-medium" style={{ color: '#c9a96e' }}>
+                          {t('packages.k9000Only', language)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <span className="text-[10px] sm:text-[11px]">
+                          {t('packages.noBookingNeeded', language)}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
                         <span className="text-[10px] sm:text-[11px]">
@@ -392,6 +408,12 @@ export function WashPackages({ language }: WashPackagesProps) {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-8 sm:mt-10 max-w-2xl mx-auto px-4 py-4 border border-[#e8e0d5] rounded-sm bg-[#faf8f5]">
+          <p className="text-[10px] sm:text-[11px] text-[#888] leading-relaxed text-center" style={{ fontFamily: "'Inter', sans-serif" }}>
+            {t('packages.k9000Disclaimer', language)}
+          </p>
         </div>
       </div>
 

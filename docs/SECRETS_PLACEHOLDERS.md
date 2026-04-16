@@ -23,7 +23,7 @@ SENTRY_ENV=production
 
 ### Alert System (Slack)
 ```bash
-ALERTS_SLACK_WEBHOOK=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+ALERTS_SLACK_WEBHOOK=YOUR_SLACK_WEBHOOK_URL
 ```
 **Where to get**:
 1. Go to https://api.slack.com/apps
@@ -45,7 +45,7 @@ SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### Firebase (Already configured)
 ```bash
-VITE_FIREBASE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+VITE_FIREBASE_API_KEY=YOUR_FIREBASE_WEB_API_KEY
 VITE_FIREBASE_APP_ID=1:000000000000:web:xxxxxxxxxxxxxxxx
 FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 ```
@@ -116,7 +116,7 @@ NAYAX_BASE_URL=https://api.nayax.com
 NAYAX_MERCHANT_ID=12345678
 NAYAX_TERMINAL_ID=terminal_123
 NAYAX_SECRET=xxxxxxxxxxxxxxxxxxxx
-NAYAX_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+NAYAX_WEBHOOK_SECRET=YOUR_NAYAX_WEBHOOK_SECRET
 NAYAX_MERCHANT_FEE_RATE=0.025
 ```
 **Status**: ✅ Already configured (if in production)
@@ -159,8 +159,8 @@ VOUCHER_SALT=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### Google OAuth
 ```bash
-GOOGLE_CLIENT_ID=000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 ```
 
 ### Facebook OAuth

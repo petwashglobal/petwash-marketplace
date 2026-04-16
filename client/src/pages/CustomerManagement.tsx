@@ -910,9 +910,9 @@ export default function CustomerManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="schedule-appointment">
+                      <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="view-bay-status">
                         <Calendar className="w-6 h-6" />
-                        <span>Schedule Wash</span>
+                        <span>Bay Status</span>
                       </Button>
                       <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="send-email">
                         <Mail className="w-6 h-6" />

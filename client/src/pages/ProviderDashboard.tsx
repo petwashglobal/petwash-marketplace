@@ -30,7 +30,7 @@ import {
   Shield,
   CircleDot,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, sanitizeUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -875,12 +875,12 @@ export default function ProviderDashboard() {
                     </select>
                     {statementBatchId && (
                       <a
-                        href={`/api/prestige-pass/provider/wallet/payout-statement?batchId=${statementBatchId}&format=csv`}
+                        href={sanitizeUrl(`/api/prestige-pass/provider/wallet/payout-statement?batchId=${encodeURIComponent(statementBatchId)}&format=csv`)}
                         className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-500 flex items-center gap-1"
                         style={{ borderRadius: '2px' }}
                         onClick={async (e) => {
                           e.preventDefault();
-                          const res = await fetch(`/api/prestige-pass/provider/wallet/payout-statement${statementBatchId ? `?batchId=${statementBatchId}` : ''}`, { credentials: 'include' });
+                          const res = await fetch(`/api/prestige-pass/provider/wallet/payout-statement${statementBatchId ? `?batchId=${encodeURIComponent(statementBatchId)}` : ''}`, { credentials: 'include' });
                           const data = await res.json();
                           const BOM = '\uFEFF';
                           const header = 'division_code,booking_id,gross_ils,commission_ils,net_ils,paid_at';

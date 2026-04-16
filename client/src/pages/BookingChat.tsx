@@ -43,6 +43,7 @@ import {
   Globe, Languages
 } from "lucide-react";
 import { formatDistance } from "date-fns";
+import { sanitizeUrl } from "@/lib/utils";
 
 // ─── Platform labels ──────────────────────────────────────────────────────────
 const PLATFORM_LABELS: Record<string, string> = {
@@ -92,7 +93,7 @@ function ImageViewer({ url, onClose }: { url: string; onClose: () => void }) {
         <X className="w-7 h-7" />
       </button>
       <img
-        src={url}
+        src={sanitizeUrl(url)}
         className="rounded-lg object-contain"
         style={{ maxWidth: "92vw", maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}
@@ -372,7 +373,7 @@ function WaveformPlayer({ audioUrl, transcript, isMe }: { audioUrl: string; tran
 
   return (
     <div className="w-52 select-none">
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <audio ref={audioRef} src={sanitizeUrl(audioUrl)} preload="metadata" />
       <div className="flex items-center gap-2">
         <button onClick={toggle}
           className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${isMe ? "bg-white/20 hover:bg-white/30" : "bg-blue-50 hover:bg-blue-100"}`}>
@@ -1298,14 +1299,14 @@ export default function BookingChat() {
                       <span className="italic text-sm opacity-60">[Message removed]</span>
                     ) : msg.messageType === "voice_message" && (msg.metadata as any)?.audioUrl ? (
                       <WaveformPlayer
-                        audioUrl={(msg.metadata as any).audioUrl}
+                        audioUrl={sanitizeUrl((msg.metadata as any).audioUrl)}
                         transcript={(msg.metadata as any).transcript}
                         isMe={isMe}
                       />
                     ) : isSessionPhoto ? (
                       <div className="rounded-xl overflow-hidden -mx-1">
-                        <button onClick={() => setViewingImage((msg.metadata as any).imageUrl)} className="block w-full">
-                          <img src={(msg.metadata as any).imageUrl} className="w-full object-cover" style={{ maxHeight: 240 }} alt="Session photo" />
+                        <button onClick={() => setViewingImage(sanitizeUrl((msg.metadata as any).imageUrl))} className="block w-full">
+                          <img src={sanitizeUrl((msg.metadata as any).imageUrl)} className="w-full object-cover" style={{ maxHeight: 240 }} alt="Session photo" />
                         </button>
                         {(msg.metadata as any).caption && (
                           <div className={`px-2 py-1.5 text-xs leading-snug ${isMe ? "text-white/85" : "text-gray-600"}`}>
@@ -1314,8 +1315,8 @@ export default function BookingChat() {
                         )}
                       </div>
                     ) : isImage ? (
-                      <button onClick={() => setViewingImage((msg.metadata as any).imageUrl)} className="block rounded-lg overflow-hidden">
-                        <img src={(msg.metadata as any).imageUrl} className="max-w-full rounded-lg" style={{ maxHeight: 220, objectFit: "cover" }} alt="Chat image" />
+                      <button onClick={() => setViewingImage(sanitizeUrl((msg.metadata as any).imageUrl))} className="block rounded-lg overflow-hidden">
+                        <img src={sanitizeUrl((msg.metadata as any).imageUrl)} className="max-w-full rounded-lg" style={{ maxHeight: 220, objectFit: "cover" }} alt="Chat image" />
                       </button>
                     ) : (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -1559,7 +1560,7 @@ export default function BookingChat() {
             style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
             {/* Image preview */}
             <div className="relative">
-              <img src={pendingPhoto.imageUrl} className="w-full object-cover" style={{ maxHeight: 220 }} alt="Preview" />
+              <img src={sanitizeUrl(pendingPhoto.imageUrl)} className="w-full object-cover" style={{ maxHeight: 220 }} alt="Preview" />
               <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1.5">
                 <Camera className="w-3 h-3 text-white" />
                 <span className="text-white text-[10px] font-semibold">Session Photo</span>

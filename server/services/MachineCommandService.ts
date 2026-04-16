@@ -267,6 +267,22 @@ async function _sendToMachine(cmd: MachineCommand): Promise<void> {
   }
 
   const url = `http://${cmd.machineClientIp}/api/command`;
+
+  // SSRF guard: block fetches to loopback, link-local, and RFC-1918 ranges.
+  // IPv6 loopback (::1) is checked separately to avoid regex anchor ambiguity.
+  const blockedIpv4Pattern = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|169\.254\.|0\.0\.0\.0)/;
+  const isBlockedIp = blockedIpv4Pattern.test(cmd.machineClientIp) || cmd.machineClientIp === '::1';
+  if (isBlockedIp) {
+    logger.warn('[MachineCmd] SSRF guard: blocked fetch to private/reserved IP', {
+      commandId: cmd.commandId,
+      machineClientIp: cmd.machineClientIp,
+    });
+    await db.update(machineCommands)
+      .set({ status: 'failed', updatedAt: new Date() })
+      .where(eq(machineCommands.id, cmd.id));
+    return;
+  }
+
   try {
     const resp = await fetch(url, {
       method:  'POST',
@@ -460,6 +476,25 @@ async function _handleTimeout(cmd: MachineCommand): Promise<void> {
         },
       ).catch((e: any) => {
         logger.warn('[MachineCmd] wash.failed event publish failed', { error: e?.message });
+      });
+    }
+
+    // ── Auto-compensation: if a wallet-funded session timed out, restore credit ─
+    // Use dynamic import to avoid circular dependencies.
+    if (needsCompensation && cmd.sessionId) {
+      import('./K9000RedemptionService').then(({ autoCompensateSession }) => {
+        return autoCompensateSession(cmd.sessionId!);
+      }).then(() => {
+        logger.info('[MachineCmd] Auto-compensation completed', {
+          commandId: cmd.commandId,
+          sessionId: cmd.sessionId,
+        });
+      }).catch((e: any) => {
+        logger.error('[MachineCmd] Auto-compensation failed — manual review required', {
+          commandId:  cmd.commandId,
+          sessionId:  cmd.sessionId,
+          error:      e?.message,
+        });
       });
     }
   }

@@ -294,12 +294,12 @@ const hubText: Record<string, Record<string, string>> = {
     es: 'Regalos digitales para seres queridos',
   },
   washStationBooking: {
-    en: 'Wash Station Booking',
-    he: 'הזמנת תחנת שטיפה',
-    ar: 'حجز محطة غسيل',
-    ru: 'Бронирование станции',
-    fr: 'Réservation station de lavage',
-    es: 'Reserva de estación de lavado',
+    en: 'K9000 Wash Session',
+    he: 'שטיפה ב-K9000',
+    ar: 'جلسة غسيل K9000',
+    ru: 'Сеанс мойки K9000',
+    fr: 'Session de lavage K9000',
+    es: 'Sesión de lavado K9000',
   },
   telAvivMarina: {
     en: 'Tel Aviv Marina - Station #5',

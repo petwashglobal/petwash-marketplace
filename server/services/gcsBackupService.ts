@@ -8,12 +8,12 @@ import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as crypto from 'crypto';
 import sgMail from '../lib/sendgrid';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Environment-driven bucket names (no hardcoding)
 const CODE_BUCKET = process.env.GCS_CODE_BUCKET || 'petwash-code-backups';
@@ -72,19 +72,19 @@ export async function performWeeklyCodeBackup(): Promise<{
     }
     
     // Create tar.gz backup
+    // Use execFile (not exec) to avoid shell injection from environment-derived path values
     logger.info('[GCS] Creating compressed backup...');
-    await execAsync(
-      `tar -czf ${localPath} \
-        --exclude='node_modules' \
-        --exclude='.git' \
-        --exclude='dist' \
-        --exclude='.cache' \
-        --exclude='*.log' \
-        --exclude='petwash-backup-*.tar.gz' \
-        --exclude='gcs-service-account.json' \
-        -C ${process.cwd()} .`,
-      { maxBuffer: 1024 * 1024 * 100 } // 100MB buffer
-    );
+    await execFileAsync('tar', [
+      '-czf', localPath,
+      '--exclude=node_modules',
+      '--exclude=.git',
+      '--exclude=dist',
+      '--exclude=.cache',
+      '--exclude=*.log',
+      '--exclude=petwash-backup-*.tar.gz',
+      '--exclude=gcs-service-account.json',
+      '-C', process.cwd(), '.',
+    ], { maxBuffer: 1024 * 1024 * 100 });
     
     // Get file size and calculate hash
     const stats = fs.statSync(localPath);
