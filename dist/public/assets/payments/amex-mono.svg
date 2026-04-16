@@ -1,3 +1,4 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:86edd42ba7693378ec2ab9a37235d2e602b8bd3221dccb6888ca815265e221e7
-size 296
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 32" fill="none">
+  <rect width="48" height="32" rx="4" fill="white" stroke="black" stroke-width="1"/>
+  <text x="24" y="18" font-family="Arial, sans-serif" font-size="8" font-weight="700" fill="black" text-anchor="middle">AMEX</text>
+</svg>
