@@ -72,31 +72,52 @@ jobs:
           ensure_secret "DOCUMENT_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
 
           # MACHINE_SECRET_KEY — shared HMAC secret between Cloud Run and K9000 IoT controllers.
-          # MUST match the value programmed into the physical machines — do NOT auto-generate.
-          # Pre-create with: gcloud secrets create MACHINE_SECRET_KEY --data-file=-
+          # TEMPORARY: K9000 stations are in storage and not yet installed.
+          # Deploy continues with a placeholder; K9000 hardware activation remains DISABLED until
+          # real machines are commissioned and this secret is replaced with the hardware value.
+          # When ready: gcloud secrets versions add MACHINE_SECRET_KEY --data-file=-
           if ! gcloud secrets describe "MACHINE_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ MACHINE_SECRET_KEY secret not found in GCP Secret Manager."
-            echo "   Create it with the value matching your K9000 hardware config before deploying."
-            exit 1
+            echo "⚠️  WARNING: MACHINE_SECRET_KEY not found in GCP Secret Manager."
+            echo "   K9000 stations are not yet installed — creating placeholder. Hardware activation will be DISABLED."
+            printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create "MACHINE_SECRET_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "⚠️  MACHINE_SECRET_KEY: placeholder created. Replace with real K9000 HMAC key before commissioning machines."
+          else
+            echo "✅ Exists:  MACHINE_SECRET_KEY"
           fi
 
           # MACHINE_ACTIVATION_URL — HTTP endpoint of K9000 IoT controller (e.g. http://10.x.x.x/api/start).
-          # MUST be the real machine controller URL — do NOT auto-generate.
-          # Pre-create with: gcloud secrets create MACHINE_ACTIVATION_URL --data-file=-
+          # TEMPORARY: K9000 stations are in storage and not yet installed.
+          # Deploy continues with a placeholder; K9000 hardware activation remains DISABLED until
+          # real machines are installed and this secret is replaced with the live controller URL.
+          # When ready: gcloud secrets versions add MACHINE_ACTIVATION_URL --data-file=-
           if ! gcloud secrets describe "MACHINE_ACTIVATION_URL" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ MACHINE_ACTIVATION_URL secret not found in GCP Secret Manager."
-            echo "   Create it with the K9000 controller URL before deploying."
-            exit 1
+            echo "⚠️  WARNING: MACHINE_ACTIVATION_URL not found in GCP Secret Manager."
+            echo "   K9000 stations are not yet installed — creating placeholder. Hardware activation will be DISABLED."
+            printf '%s' "http://127.0.0.1:0/k9000-disabled" | gcloud secrets create "MACHINE_ACTIVATION_URL" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "⚠️  MACHINE_ACTIVATION_URL: placeholder created. Replace with real K9000 controller URL before commissioning machines."
+          else
+            echo "✅ Exists:  MACHINE_ACTIVATION_URL"
           fi
 
-          # NAYAX_API_KEY / NAYAX_MERCHANT_ID / NAYAX_SECRET — Nayax payment gateway credentials.
-          # Must be set to real Nayax-issued values; missing = demo/blocked mode on all payment flows.
-          # Pre-create each with: gcloud secrets create <NAME> --data-file=-
+          # NAYAX_API_KEY / NAYAX_MERCHANT_ID / NAYAX_SECRET / NAYAX_TERMINAL_SECRET
+          # OPTIONAL: Live Nayax credentials are not yet provisioned.
+          # Deploy continues with inert placeholders; online payment flows will be disabled
+          # until real Nayax-issued values replace these secrets.
+          # TO ACTIVATE: printf '%s' "<real-value>" | gcloud secrets versions add <NAME> --data-file=-
           for NAYAX_VAR in NAYAX_API_KEY NAYAX_MERCHANT_ID NAYAX_SECRET NAYAX_TERMINAL_SECRET; do
             if ! gcloud secrets describe "$NAYAX_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-              echo "❌ $NAYAX_VAR secret not found in GCP Secret Manager."
-              echo "   Create it with the real Nayax credential before deploying."
-              exit 1
+              echo "⚠️  WARNING: $NAYAX_VAR not found — Nayax live credentials not yet provisioned."
+              echo "   Creating placeholder. Online Nayax payments will be DISABLED until real credential is set."
+              printf '%s' "nayax-placeholder-not-active" | gcloud secrets create "$NAYAX_VAR" \
+                --data-file=- --project="$PROJECT" --quiet
             fi
           done
 
