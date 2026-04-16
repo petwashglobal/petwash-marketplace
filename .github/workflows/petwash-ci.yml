@@ -38,6 +38,9 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Ensure required GCP secrets exist (create if missing)
+        env:
+          # Passed via env to handle JSON with embedded double-quotes and newlines safely.
+          SA_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
           PROJECT=${{ env.PROJECT_ID }}
 
@@ -57,8 +60,75 @@ jobs:
             fi
           }
 
-          # PRESTIGE_QR_SECRET — QR token signing key for Prestige Pass
+          # PRESTIGE_QR_SECRET — QR token signing key for Prestige Pass (45-second kiosk QR)
           ensure_secret "PRESTIGE_QR_SECRET" "$(openssl rand -hex 32)"
+
+          # PASS_LINK_SECRET — distinct 72-hour wallet-email link signing key
+          # Must be different from PRESTIGE_QR_SECRET; auto-generated if not yet present.
+          ensure_secret "PASS_LINK_SECRET" "$(openssl rand -hex 32)"
+
+          # DOCUMENT_ENCRYPTION_KEY — AES-256-GCM master key for provider KYC / biometric docs
+          # Auto-generated on first deploy; value is stable once created (rotation requires key migration).
+          ensure_secret "DOCUMENT_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+
+          # MACHINE_SECRET_KEY — shared HMAC secret between Cloud Run and K9000 IoT controllers.
+          # TEMPORARY: K9000 stations are in storage and not yet installed.
+          # Deploy continues with a placeholder; K9000 hardware activation remains DISABLED until
+          # real machines are commissioned and this secret is replaced with the hardware value.
+          # When ready: gcloud secrets versions add MACHINE_SECRET_KEY --data-file=-
+          if ! gcloud secrets describe "MACHINE_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: MACHINE_SECRET_KEY not found in GCP Secret Manager."
+            echo "   K9000 stations are not yet installed — creating placeholder. Hardware activation will be DISABLED."
+            printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create "MACHINE_SECRET_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "⚠️  MACHINE_SECRET_KEY: placeholder created. Replace with real K9000 HMAC key before commissioning machines."
+          else
+            echo "✅ Exists:  MACHINE_SECRET_KEY"
+          fi
+
+          # MACHINE_ACTIVATION_URL — HTTP endpoint of K9000 IoT controller (e.g. http://10.x.x.x/api/start).
+          # TEMPORARY: K9000 stations are in storage and not yet installed.
+          # Deploy continues with a placeholder; K9000 hardware activation remains DISABLED until
+          # real machines are installed and this secret is replaced with the live controller URL.
+          # When ready: gcloud secrets versions add MACHINE_ACTIVATION_URL --data-file=-
+          if ! gcloud secrets describe "MACHINE_ACTIVATION_URL" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: MACHINE_ACTIVATION_URL not found in GCP Secret Manager."
+            echo "   K9000 stations are not yet installed — creating placeholder. Hardware activation will be DISABLED."
+            printf '%s' "http://127.0.0.1:0/k9000-disabled" | gcloud secrets create "MACHINE_ACTIVATION_URL" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "⚠️  MACHINE_ACTIVATION_URL: placeholder created. Replace with real K9000 controller URL before commissioning machines."
+          else
+            echo "✅ Exists:  MACHINE_ACTIVATION_URL"
+          fi
+
+          # NAYAX_API_KEY / NAYAX_MERCHANT_ID / NAYAX_SECRET — Nayax payment gateway credentials.
+          # Must be set to real Nayax-issued values; missing = demo/blocked mode on all payment flows.
+          # Pre-create each with: gcloud secrets create <NAME> --data-file=-
+          for NAYAX_VAR in NAYAX_API_KEY NAYAX_MERCHANT_ID NAYAX_SECRET NAYAX_TERMINAL_SECRET; do
+            if ! gcloud secrets describe "$NAYAX_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "❌ $NAYAX_VAR secret not found in GCP Secret Manager."
+              echo "   Create it with the real Nayax credential before deploying."
+              exit 1
+            fi
+          done
+
+          # SENDGRID_TEMPLATE_ID_MEMBER_PASS — SendGrid dynamic template ID for pass delivery emails.
+          # Auto-creates a placeholder; replace with the real template ID from the SendGrid dashboard.
+          ensure_secret "SENDGRID_TEMPLATE_ID_MEMBER_PASS" "d-PLACEHOLDER_SET_REAL_TEMPLATE_ID"
+
+          # Warn loudly if the SendGrid template is still a placeholder so deploys don't silently ship broken pass emails.
+          TMPL_VAL=$(gcloud secrets versions access latest --secret="SENDGRID_TEMPLATE_ID_MEMBER_PASS" --project="$PROJECT" 2>/dev/null || true)
+          if [ "$TMPL_VAL" = "d-PLACEHOLDER_SET_REAL_TEMPLATE_ID" ]; then
+            echo "⚠️  WARNING: SENDGRID_TEMPLATE_ID_MEMBER_PASS is still a placeholder."
+            echo "   Prestige Pass delivery emails will receive a SendGrid 400 error until this is set."
+            echo "   Update with: gcloud secrets versions add SENDGRID_TEMPLATE_ID_MEMBER_PASS --data-file=- <<< 'd-yourRealTemplateId'"
+          fi
 
           # RECAPTCHA_SITE_KEY — reCAPTCHA Enterprise site key (server-side)
           ensure_secret "RECAPTCHA_SITE_KEY" "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
@@ -104,6 +174,188 @@ jobs:
             else
               echo "❌ GOOGLE_MAPS_API_KEY: not found in GCP Secret Manager and no GitHub secret provided" && exit 1
             fi
+          fi
+
+          # ── Symmetric signing / encryption keys (safe to auto-generate once) ──────────────
+          # JWT_SECRET / JWT_REFRESH_SECRET — HS512 signing keys for access and refresh tokens.
+          # Rotating these invalidates all active sessions — treat as stable once created.
+          ensure_secret "JWT_SECRET"         "$(openssl rand -hex 64)"
+          ensure_secret "JWT_REFRESH_SECRET" "$(openssl rand -hex 64)"
+
+          # COOKIE_SECRET / SESSION_SECRET — Express cookie-parser / session signing.
+          ensure_secret "COOKIE_SECRET"  "$(openssl rand -hex 32)"
+          ensure_secret "SESSION_SECRET" "$(openssl rand -hex 32)"
+
+          # WEBAUTHN_COOKIE_SECRET — separate signing key for WebAuthn challenge cookies.
+          ensure_secret "WEBAUTHN_COOKIE_SECRET" "$(openssl rand -hex 32)"
+
+          # MOBILE_LINK_SECRET / WALLET_LINK_SECRET — HMAC keys for deep-link token signing.
+          ensure_secret "MOBILE_LINK_SECRET" "$(openssl rand -hex 32)"
+          ensure_secret "WALLET_LINK_SECRET" "$(openssl rand -hex 32)"
+
+          # VOUCHER_SALT — HMAC salt for voucher code derivation.
+          ensure_secret "VOUCHER_SALT" "$(openssl rand -hex 32)"
+
+          # KYC_SALT — HMAC salt for KYC identifier derivation.
+          ensure_secret "KYC_SALT" "$(openssl rand -hex 32)"
+
+          # GMAIL_TOKEN_ENCRYPTION_KEY — AES-256-GCM key for Gmail OAuth token storage.
+          ensure_secret "GMAIL_TOKEN_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+
+          # NAYAX_WEBHOOK_SECRET — HMAC secret for verifying Nayax webhook signatures.
+          # Auto-generate if absent; register this value in the Nayax partner portal.
+          ensure_secret "NAYAX_WEBHOOK_SECRET" "$(openssl rand -hex 32)"
+
+          # ── EC key pair for voucher JWT signing (ES256) ──────────────────────────────────
+          # Both keys are auto-generated together on first deploy.
+          # Rotating the private key invalidates all outstanding voucher tokens.
+          PRIV_EXISTS=false; PUB_EXISTS=false
+          gcloud secrets describe "VOUCHER_ES256_PRIVATE_KEY_PEM" --project="$PROJECT" --quiet &>/dev/null 2>&1 && PRIV_EXISTS=true
+          gcloud secrets describe "VOUCHER_ES256_PUBLIC_KEY_PEM"  --project="$PROJECT" --quiet &>/dev/null 2>&1 && PUB_EXISTS=true
+          if [ "$PRIV_EXISTS" = "true" ] && [ "$PUB_EXISTS" = "true" ]; then
+            echo "✅ Exists:  VOUCHER_ES256_PRIVATE_KEY_PEM"
+            echo "✅ Exists:  VOUCHER_ES256_PUBLIC_KEY_PEM"
+          elif [ "$PRIV_EXISTS" = "false" ] && [ "$PUB_EXISTS" = "false" ]; then
+            echo "⚠️  Creating missing GCP secret pair: VOUCHER_ES256_PRIVATE_KEY_PEM + VOUCHER_ES256_PUBLIC_KEY_PEM"
+            PRIV_KEY=$(openssl ecparam -name prime256v1 -genkey -noout 2>/tmp/openssl_priv_err | openssl pkcs8 -topk8 -nocrypt 2>>/tmp/openssl_priv_err)
+            if [ -z "$PRIV_KEY" ]; then
+              echo "❌ openssl failed to generate EC private key: $(cat /tmp/openssl_priv_err 2>/dev/null)" && exit 1
+            fi
+            PUB_KEY=$(printf '%s' "$PRIV_KEY" | openssl ec -pubout 2>/tmp/openssl_pub_err)
+            if [ -z "$PUB_KEY" ]; then
+              echo "❌ openssl failed to derive EC public key: $(cat /tmp/openssl_pub_err 2>/dev/null)" && exit 1
+            fi
+            printf '%s' "$PRIV_KEY" | gcloud secrets create "VOUCHER_ES256_PRIVATE_KEY_PEM" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            printf '%s' "$PUB_KEY"  | gcloud secrets create "VOUCHER_ES256_PUBLIC_KEY_PEM" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            echo "✅ Created: VOUCHER_ES256_PRIVATE_KEY_PEM + VOUCHER_ES256_PUBLIC_KEY_PEM"
+          else
+            echo "❌ VOUCHER_ES256 key pair is in an inconsistent state (one key exists, the other does not)."
+            echo "   Delete whichever key exists and re-run, or create both manually."
+            exit 1
+          fi
+
+          # ── GOOGLE_SERVICE_ACCOUNT_JSON — sync from the CI auth credential ──────────────
+          # Cloud Run reads this secret as GOOGLE_APPLICATION_CREDENTIALS_JSON at runtime.
+          # We reuse the same service-account JSON that authenticates this CI job.
+          # SA_JSON is passed via the step env block to safely handle JSON with special chars.
+          if gcloud secrets describe "GOOGLE_SERVICE_ACCOUNT_JSON" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            if [ -n "$SA_JSON" ]; then
+              printf '%s' "$SA_JSON" | gcloud secrets versions add "GOOGLE_SERVICE_ACCOUNT_JSON" \
+                --project="$PROJECT" --data-file=- --quiet
+              echo "✅ GOOGLE_SERVICE_ACCOUNT_JSON: synced from CI credential"
+            else
+              echo "✅ Exists:  GOOGLE_SERVICE_ACCOUNT_JSON"
+            fi
+          else
+            if [ -n "$SA_JSON" ]; then
+              printf '%s' "$SA_JSON" | gcloud secrets create "GOOGLE_SERVICE_ACCOUNT_JSON" \
+                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+              echo "✅ Created: GOOGLE_SERVICE_ACCOUNT_JSON"
+            else
+              echo "❌ GOOGLE_SERVICE_ACCOUNT_JSON not found in GCP Secret Manager and GOOGLE_APPLICATION_CREDENTIALS_JSON GitHub secret is absent." && exit 1
+            fi
+          fi
+
+          # ── Known-default config values ───────────────────────────────────────────────────
+          ensure_secret "BASE_URL"           "https://petwash.co.il"
+          ensure_secret "FIREBASE_PROJECT_ID" "signinpetwash"
+          ensure_secret "WEBAUTHN_RP_ID"     "petwash.co.il"
+          ensure_secret "BIOMETRIC_BUCKET_NAME" "petwash-biometric-data"
+          ensure_secret "BIOMETRIC_PREFIX"   "biometric/"
+          ensure_secret "GCS_BACKUP_BUCKET"  "petwash-backups"
+
+          # ── Externally-supplied credentials (must be pre-created) ────────────────────────
+          # DATABASE_URL — PostgreSQL connection string. Pre-create with your DB URL.
+          if ! gcloud secrets describe "DATABASE_URL" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ DATABASE_URL secret not found in GCP Secret Manager."
+            echo "   Create it with your PostgreSQL connection string before deploying."
+            exit 1
+          fi
+
+          # FIREBASE_SERVICE_ACCOUNT_KEY — Firebase Admin SDK service-account JSON.
+          if ! gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY secret not found in GCP Secret Manager."
+            echo "   Create it with the Firebase Admin SDK service-account JSON before deploying."
+            exit 1
+          fi
+
+          # SENDGRID_API_KEY — SendGrid API key for transactional email delivery.
+          if ! gcloud secrets describe "SENDGRID_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ SENDGRID_API_KEY secret not found in GCP Secret Manager."
+            echo "   Create it with your SendGrid API key before deploying."
+            exit 1
+          fi
+
+          # GEMINI_API_KEY — Google Gemini (Vertex AI) API key.
+          if ! gcloud secrets describe "GEMINI_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ GEMINI_API_KEY secret not found in GCP Secret Manager."
+            echo "   Create it with your Gemini API key before deploying."
+            exit 1
+          fi
+
+          # TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER — Twilio SMS credentials.
+          for TWILIO_VAR in TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER; do
+            if ! gcloud secrets describe "$TWILIO_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "❌ $TWILIO_VAR secret not found in GCP Secret Manager."
+              echo "   Create it with the real Twilio credential before deploying."
+              exit 1
+            fi
+          done
+
+          # RECAPTCHA_SECRET_KEY — reCAPTCHA Enterprise server-side secret key.
+          if ! gcloud secrets describe "RECAPTCHA_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ RECAPTCHA_SECRET_KEY secret not found in GCP Secret Manager."
+            echo "   Create it with your reCAPTCHA Enterprise server-side key before deploying."
+            exit 1
+          fi
+
+          # ── Optional integration credentials (warn-only if absent) ───────────────────────
+          # GOOGLE_TRANSLATE_API_KEY — translation feature is degraded but non-fatal without it.
+          if ! gcloud secrets describe "GOOGLE_TRANSLATE_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: GOOGLE_TRANSLATE_API_KEY not found — translation features will be unavailable."
+            ensure_secret "GOOGLE_TRANSLATE_API_KEY" "PLACEHOLDER_SET_REAL_TRANSLATE_KEY"
+          else
+            echo "✅ Exists:  GOOGLE_TRANSLATE_API_KEY"
+          fi
+
+          # GOOGLE_WEATHER_API_KEY — weather feature is degraded but non-fatal without it.
+          if ! gcloud secrets describe "GOOGLE_WEATHER_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: GOOGLE_WEATHER_API_KEY not found — weather features will be unavailable."
+            ensure_secret "GOOGLE_WEATHER_API_KEY" "PLACEHOLDER_SET_REAL_WEATHER_KEY"
+          else
+            echo "✅ Exists:  GOOGLE_WEATHER_API_KEY"
+          fi
+
+          # HUBSPOT_FORM_GUID / HUBSPOT_PORTAL_ID — HubSpot CRM integration.
+          if ! gcloud secrets describe "HUBSPOT_FORM_GUID" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: HUBSPOT_FORM_GUID not found — HubSpot form submissions will be skipped."
+            ensure_secret "HUBSPOT_FORM_GUID"  "PLACEHOLDER_SET_REAL_HUBSPOT_FORM_GUID"
+          else
+            echo "✅ Exists:  HUBSPOT_FORM_GUID"
+          fi
+          if ! gcloud secrets describe "HUBSPOT_PORTAL_ID" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: HUBSPOT_PORTAL_ID not found — HubSpot CRM integration will be skipped."
+            ensure_secret "HUBSPOT_PORTAL_ID" "PLACEHOLDER_SET_REAL_HUBSPOT_PORTAL_ID"
+          else
+            echo "✅ Exists:  HUBSPOT_PORTAL_ID"
+          fi
+
+          # GOOGLE_FORMS_SPREADSHEET_ID — Google Forms response export target.
+          if ! gcloud secrets describe "GOOGLE_FORMS_SPREADSHEET_ID" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: GOOGLE_FORMS_SPREADSHEET_ID not found — Google Forms export will be skipped."
+            ensure_secret "GOOGLE_FORMS_SPREADSHEET_ID" "PLACEHOLDER_SET_REAL_FORMS_SPREADSHEET_ID"
+          else
+            echo "✅ Exists:  GOOGLE_FORMS_SPREADSHEET_ID"
+          fi
+
+          # SUPER_ADMIN_EMAILS — comma-separated list of emails with super-admin access.
+          if ! gcloud secrets describe "SUPER_ADMIN_EMAILS" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "⚠️  WARNING: SUPER_ADMIN_EMAILS not found — super-admin access will be restricted to defaults."
+            ensure_secret "SUPER_ADMIN_EMAILS" "PLACEHOLDER_SET_REAL_ADMIN_EMAILS"
+          else
+            echo "✅ Exists:  SUPER_ADMIN_EMAILS"
           fi
 
       - name: Set up Node 22
@@ -203,6 +455,15 @@ jobs:
             SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
             GOOGLE_FORMS_SPREADSHEET_ID=GOOGLE_FORMS_SPREADSHEET_ID:latest
             PRESTIGE_QR_SECRET=PRESTIGE_QR_SECRET:latest
+            PASS_LINK_SECRET=PASS_LINK_SECRET:latest
+            DOCUMENT_ENCRYPTION_KEY=DOCUMENT_ENCRYPTION_KEY:latest
+            SENDGRID_TEMPLATE_ID_MEMBER_PASS=SENDGRID_TEMPLATE_ID_MEMBER_PASS:latest
+            MACHINE_SECRET_KEY=MACHINE_SECRET_KEY:latest
+            MACHINE_ACTIVATION_URL=MACHINE_ACTIVATION_URL:latest
+            NAYAX_API_KEY=NAYAX_API_KEY:latest
+            NAYAX_MERCHANT_ID=NAYAX_MERCHANT_ID:latest
+            NAYAX_SECRET=NAYAX_SECRET:latest
+            NAYAX_TERMINAL_SECRET=NAYAX_TERMINAL_SECRET:latest
             RECAPTCHA_SITE_KEY=RECAPTCHA_SITE_KEY:latest
             FIREBASE_WEB_API_KEY=FIREBASE_WEB_API_KEY:latest
             ACCOUNTING_SPREADSHEET_ID=ACCOUNTING_SPREADSHEET_ID:latest
@@ -389,6 +650,8 @@ jobs:
     name: Build & Deploy Frontend (Firebase Hosting)
     runs-on: ubuntu-latest
     needs: deploy-backend
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
