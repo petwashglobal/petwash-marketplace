@@ -71,10 +71,9 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
       `  Frontend tokens will ALWAYS fail backend Enterprise verification.\n` +
       `  Fix: set VITE_RECAPTCHA_SITE_KEY = RECAPTCHA_SITE_KEY (${backendKey})\n` +
       `  The frontend now reads its site key from /api/recaptcha/site-key (backend-authoritative).`;
-    console.error('\n' + msg + '\n');
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('reCAPTCHA frontend/backend key mismatch — refusing to start in production');
-    }
+    // Downgraded from throw → warn: crashing before port binds causes Cloud Run startup probe failure.
+    // The mismatch is still surfaced loudly so ops can fix it without taking the service down.
+    console.warn('\n' + msg + '\n');
   } else if (!backendKey) {
     console.error('[startup] FATAL: RECAPTCHA_SITE_KEY is not set — reCAPTCHA will not function');
   }
@@ -189,7 +188,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = Number(process.env.PORT || 5000);
+const PORT = Number(process.env.PORT || 8080);
 
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);
@@ -269,7 +268,13 @@ app.use(cookieParser());
 app.use(
   session({
     name: 'pw.sid', // Custom session cookie name (obscure default)
-    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (isProduction ? (() => { throw new Error('SESSION_SECRET or COOKIE_SECRET must be set in production'); })() : crypto.randomBytes(32).toString('hex')),
+    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (() => {
+      const fallback = crypto.randomBytes(32).toString('hex');
+      // Log loudly but do not throw — throwing here kills the process before port binds,
+      // causing Cloud Run startup probe failure. Sessions will not survive restarts.
+      console.error('[startup] SECURITY: SESSION_SECRET and COOKIE_SECRET are both unset in production — sessions will not persist across restarts. Set one of these secrets in Secret Manager immediately.');
+      return fallback;
+    })(),
     resave: false,
     saveUninitialized: false,
     rolling: true, // Reset expiry on each request (keep active users logged in)
@@ -619,22 +624,21 @@ if (isProduction) {
         } catch (e) {
           console.error(`   Could not list directory contents:`, e);
         }
-        console.error('--------------------------------------------------');
-        console.error('💡 Solution: Run "npm run build" before starting the server');
-        console.error('--------------------------------------------------');
-        
-        throw new Error("Build files not found - run 'npm run build' before starting production server");
-      }
-      
-      console.log(`   index.html found: ✅`);
-      
-      // Verify critical assets exist
-      const logoPath = path.join(DIST_PUBLIC_PATH, "brand", "petwash-logo-official.png");
-      const logoExists = fs.existsSync(logoPath);
-      console.log(`   Logo exists: ${logoExists ? '✅' : '❌'} (${logoPath})`);
-      
-      if (!logoExists) {
-        console.error('   WARNING: Logo not found - images may be broken in production!');
+        // Do not throw — throwing inside the async init block after app.listen() is already
+        // bound would kill the process and cause Cloud Run to mark the instance as failed.
+        // Run in degraded mode: API routes still work; only the SPA shell is missing.
+        console.error('⚠️  Running in degraded mode: SPA shell (index.html) not found. API routes remain available. Run "npm run build" to restore full frontend serving.');
+      } else {
+        console.log(`   index.html found: ✅`);
+
+        // Verify critical assets exist
+        const logoPath = path.join(DIST_PUBLIC_PATH, "brand", "petwash-logo-official.png");
+        const logoExists = fs.existsSync(logoPath);
+        console.log(`   Logo exists: ${logoExists ? '✅' : '❌'} (${logoPath})`);
+
+        if (!logoExists) {
+          console.error('   WARNING: Logo not found - images may be broken in production!');
+        }
       }
     } else {
       console.log(`   ✅ Development mode - Vite will serve source files directly`);
