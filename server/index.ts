@@ -395,11 +395,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // CSRF protection: double-submit cookie pattern via csrf-csrf (OWASP ASVS 4.0 §4.2.3 / CWE-352)
-// doubleCsrfProtection is a CodeQL-recognisable CSRF middleware (stateless double-submit).
-// A HMAC-signed token is stored in a JS-readable cookie; state-changing requests must echo
-// it back in the X-CSRF-Token request header.  Bearer-authenticated routes and
-// HMAC-verified webhook paths are explicitly exempted — they are not vulnerable to
-// CSRF because browsers cannot auto-attach Authorization headers or forge HMAC sigs.
+// Uses csrf-csrf v4 `skipCsrfCheck` to exempt routes that are not CSRF-vulnerable:
+//   • GET / HEAD / OPTIONS — safe methods that never mutate state.
+//   • /api/webhooks/* — HMAC-verified out-of-band; browsers cannot forge HMAC signatures.
+//   • Bearer-authenticated requests — browsers cannot auto-attach Authorization headers,
+//     so cross-origin requests with Authorization: Bearer <token> are not CSRF-vulnerable.
+// `doubleCsrfProtection` is applied via app.use() directly so CodeQL's
+// js/missing-csrf-middleware query can statically detect the protection.
 const csrfSecret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET ||
   (isProduction
     ? (() => { throw new Error('SESSION_SECRET or COOKIE_SECRET must be set in production'); })()
@@ -411,10 +413,22 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   cookieOptions: {
     sameSite: isProduction ? ('strict' as const) : ('lax' as const),
     secure: isProduction,
-    httpOnly: false, // Must be JS-readable so the frontend can include in X-CSRF-Token
+    httpOnly: false, // Must be JS-readable so the frontend can send it in X-CSRF-Token
   },
   size: 64,
-  getTokenFromRequest: (req: any) => req.headers['x-csrf-token'] as string | undefined,
+  getCsrfTokenFromRequest: (req: any) => req.headers['x-csrf-token'] as string | undefined,
+  // skipCsrfProtection: routes that are inherently CSRF-safe and do not need token validation.
+  skipCsrfProtection: (req: any) => {
+    // Safe HTTP methods never mutate state.
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
+    // HMAC-verified webhooks are authenticated out-of-band; not CSRF-vulnerable.
+    if (/^\/api\/webhooks\//.test(req.path)) return true;
+    // Bearer-authenticated requests: browsers cannot auto-attach Authorization headers
+    // on cross-origin requests, so there is no CSRF attack surface here.
+    const authHeader = req.headers['authorization'] as string | undefined;
+    if (authHeader?.startsWith('Bearer ')) return true;
+    return false;
+  },
 });
 
 // Expose a GET endpoint so the SPA can fetch a fresh CSRF token on load.
@@ -422,24 +436,10 @@ app.get('/api/csrf-token', (req: any, res: any) => {
   res.json({ csrfToken: generateCsrfToken(req, res) });
 });
 
-// Apply doubleCsrfProtection to cookie-authenticated state-changing requests.
-// Bearer-authenticated requests (Firebase ID tokens) and HMAC-verified webhooks
-// are passed through without CSRF validation — they are not CSRF-vulnerable.
-app.use((req: any, res: any, next: any) => {
-  // Safe methods never mutate state; no CSRF check needed.
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-
-  // HMAC-verified webhook paths are authenticated out-of-band; skip CSRF.
-  if (/^\/api\/webhooks\//.test(req.path)) return next();
-
-  // Bearer-authenticated requests (Firebase ID tokens) cannot be CSRF'd:
-  // browsers cannot automatically attach Authorization headers on cross-origin requests.
-  const authHeader = req.headers['authorization'] as string | undefined;
-  if (authHeader?.startsWith('Bearer ')) return next();
-
-  // Apply csrf-csrf double-submit validation for cookie-authenticated routes.
-  doubleCsrfProtection(req, res, next);
-});
+// Apply CSRF middleware globally. Exemptions are declared inside skipCsrfCheck above.
+// Calling app.use(doubleCsrfProtection) directly (not wrapped) lets CodeQL's
+// js/missing-csrf-middleware query recognise the protection on this Express app.
+app.use(doubleCsrfProtection);
 
 // D. Session with ENHANCED security settings
 app.use(
