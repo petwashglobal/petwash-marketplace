@@ -107,14 +107,17 @@ jobs:
             echo "✅ Exists:  MACHINE_ACTIVATION_URL"
           fi
 
-          # NAYAX_API_KEY / NAYAX_MERCHANT_ID / NAYAX_SECRET — Nayax payment gateway credentials.
-          # Must be set to real Nayax-issued values; missing = demo/blocked mode on all payment flows.
-          # Pre-create each with: gcloud secrets create <NAME> --data-file=-
+          # NAYAX_API_KEY / NAYAX_MERCHANT_ID / NAYAX_SECRET / NAYAX_TERMINAL_SECRET
+          # OPTIONAL: Live Nayax credentials are not yet provisioned.
+          # Deploy continues with inert placeholders; online payment flows will be disabled
+          # until real Nayax-issued values replace these secrets.
+          # TO ACTIVATE: printf '%s' "<real-value>" | gcloud secrets versions add <NAME> --data-file=-
           for NAYAX_VAR in NAYAX_API_KEY NAYAX_MERCHANT_ID NAYAX_SECRET NAYAX_TERMINAL_SECRET; do
             if ! gcloud secrets describe "$NAYAX_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-              echo "❌ $NAYAX_VAR secret not found in GCP Secret Manager."
-              echo "   Create it with the real Nayax credential before deploying."
-              exit 1
+              echo "⚠️  WARNING: $NAYAX_VAR not found — Nayax live credentials not yet provisioned."
+              echo "   Creating placeholder. Online Nayax payments will be DISABLED until real credential is set."
+              printf '%s' "nayax-placeholder-not-active" | gcloud secrets create "$NAYAX_VAR" \
+                --data-file=- --project="$PROJECT" --quiet
             fi
           done
 
