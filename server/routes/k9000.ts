@@ -55,7 +55,7 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands } from '@shared/schema';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -297,14 +297,43 @@ router.post('/wash/start_cycle', async (req, res) => {
       if (parsedMachineUrl.protocol !== 'http:' && parsedMachineUrl.protocol !== 'https:') {
         throw new Error('MACHINE_ACTIVATION_URL must use http or https');
       }
-      // Ensure machineId contains no path-traversal characters
+      // SSRF guard: reject private IPs, loopback, and cloud metadata endpoints.
+      // Even though the URL comes from an env var, defense-in-depth requires we
+      // also verify the resolved hostname is not an IMDS / RFC-1918 address.
+      // CodeQL CWE-918: taint flows from req.body.machineId into the fetch URL;
+      // this guard and the machineId regex below break the dangerous taint path.
+      const activationHostname = parsedMachineUrl.hostname.toLowerCase();
+      const isPrivateOrMetadata = (
+        activationHostname === 'localhost' ||
+        activationHostname === '::1' ||
+        // IPv4 loopback
+        /^127\./.test(activationHostname) ||
+        // APIPA / AWS/GCP metadata
+        /^169\.254\./.test(activationHostname) ||
+        // RFC-1918 private ranges
+        /^10\./.test(activationHostname) ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(activationHostname) ||
+        /^192\.168\./.test(activationHostname) ||
+        // Any raw 0.0.0.0
+        activationHostname === '0.0.0.0' ||
+        // IPv6 private prefixes
+        /^fc00:/.test(activationHostname) ||
+        /^fd[0-9a-f]{2}:/i.test(activationHostname)
+      );
+      if (isPrivateOrMetadata) {
+        throw new Error('MACHINE_ACTIVATION_URL hostname is not allowed (blocked private/metadata range)');
+      }
+      // Validate machineId format (alphanumeric + _ -) to prevent injection.
+      // SSRF CWE-918 true fix: user-controlled machineId is validated but is
+      // NEVER included in the outbound fetch URL. The controller is reached at
+      // the exact pre-validated MACHINE_ACTIVATION_URL; machineId is sent only
+      // in the POST body where it cannot alter the HTTP destination.
       if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(machineId))) {
         throw new Error('Invalid machineId format');
       }
       try {
-        // Build the target URL safely using the URL API to avoid path-traversal
-        const activationUrl = new URL(`${String(machineId)}`, parsedMachineUrl.href.replace(/\/?$/, '/'));
-        const machineRes = await fetch(activationUrl.href, {
+        // Fetch the pre-validated base URL with no user-controlled path segments.
+        const machineRes = await fetch(parsedMachineUrl.href, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1253,5 +1282,77 @@ function getEstimatedDuration(washType: string): number {
   
   return durations[washType] || 12;
 }
+
+/**
+ * POST /api/k9000/heartbeat
+ *
+ * IoT heartbeat endpoint — called by the K9000 controller every 30–60 seconds
+ * to signal that the station is alive and to push per-bay status snapshots.
+ *
+ * Auth: machine IP allowlist + HMAC headers (inherits router middleware).
+ *
+ * Body:
+ *   kioskId            string   — matches kioskMachines.kioskId
+ *   bays               array    — [{side: 'left'|'right', status, waterTempC?, shampooLevelPct?}]
+ *   firmwareVersion?   string
+ *
+ * Effect:
+ *   - Updates kioskMachines.lastHeartbeat = NOW(), isOnline = true
+ *   - Updates stationBays snapshot fields per bay (status NOT overwritten if
+ *     controller says 'busy' — that is owned by the session lifecycle)
+ */
+router.post('/heartbeat', async (req, res) => {
+  const correlationId = nanoid(10);
+  try {
+    const { kioskId, bays = [], firmwareVersion } = req.body as {
+      kioskId: string;
+      bays?: { side: string; status?: string; waterTempC?: number; shampooLevelPct?: number }[];
+      firmwareVersion?: string;
+    };
+
+    if (!kioskId) {
+      return res.status(400).json({ ok: false, error: 'kioskId required' });
+    }
+
+    const now = new Date();
+
+    // Update machine last_heartbeat + mark online
+    await db
+      .update(kioskMachines)
+      .set({
+        lastHeartbeat: now,
+        isOnline:      true,
+        updatedAt:     now,
+      } as any)
+      .where(eq(kioskMachines.kioskId, kioskId));
+
+    // Update per-bay telemetry snapshots.
+    // We only update telemetry fields — session-owned fields (status, currentSessionId)
+    // are managed by the session lifecycle and must not be overwritten here.
+    for (const bay of bays) {
+      if (!bay.side) continue;
+      const updatePayload: Record<string, any> = {
+        lastHeartbeat: now,
+        updatedAt:     now,
+      };
+      if (typeof bay.waterTempC === 'number') {
+        updatePayload.waterTempC = String(bay.waterTempC);
+      }
+      if (typeof bay.shampooLevelPct === 'number') {
+        updatePayload.shampooLevelPct = bay.shampooLevelPct;
+      }
+      await db
+        .update(stationBays)
+        .set(updatePayload)
+        .where(and(eq(stationBays.stationId, kioskId), eq(stationBays.side, bay.side)));
+    }
+
+    logger.debug('[K9000 Heartbeat] Received', { kioskId, bayCount: bays.length, firmwareVersion, correlationId });
+    return res.json({ ok: true, serverTime: now.toISOString() });
+  } catch (error: any) {
+    logger.error('[K9000 Heartbeat] Failed', { error: error.message, correlationId });
+    return res.status(500).json({ ok: false, error: 'Heartbeat processing failed', correlationId });
+  }
+});
 
 export default router;

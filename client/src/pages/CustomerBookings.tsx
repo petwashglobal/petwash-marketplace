@@ -109,7 +109,7 @@ const STATUS_LABELS: Record<string, { he: string; en: string }> = {
 };
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
-  k9000_wash:  '/k9000/booking',
+  k9000_wash:  '/k9000',
   pet_sitting: '/sitter-suite',
   dog_walking: '/walk-my-pet',
   grooming:    '/groomers',
@@ -119,7 +119,6 @@ const SERVICE_TO_ROUTE: Record<string, string> = {
 };
 
 interface Booking {
-  requestId: string;
   status: string;
   serviceType: string;
   startDate: string;

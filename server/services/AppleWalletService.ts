@@ -21,6 +21,7 @@ import path from 'path';
 import { PKPass } from 'passkit-generator';
 import { buildQrRedeemToken } from '../lib/passTokens';
 import { logger } from '../lib/logger';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const PASS_TYPE_IDENTIFIER  = process.env.APPLE_PASS_TYPE_IDENTIFIER  || 'pass.il.petwash.prestige';
 const TEAM_IDENTIFIER       = process.env.APPLE_TEAM_IDENTIFIER;
@@ -133,7 +134,7 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
   pass.backFields.push({
     key:   'support',
     label: 'Support',
-    value: 'support@petwash.co.il',
+    value: CANONICAL_SUPPORT_EMAIL,
   } as any);
 
   // Barcode — 45-second signed QR redeem token (never the raw passId or userId)

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Phone, Clock, Calendar } from "lucide-react";
+import { MapPin, Navigation, Phone, Clock, Waves } from "lucide-react";
 
 interface Station {
   id: string;
@@ -163,10 +163,10 @@ export default function Locations() {
                     <Button
                       className="luxury-btn-primary luxury-shadow-xl"
                       onClick={() => setRouterLocation(`/k9000/booking/${station.id}`)}
-                      data-testid={`button-book-${station.id}`}
+                      data-testid={`button-wash-${station.id}`}
                     >
-                      <Calendar className="w-5 h-5 mr-2" />
-                      Book Wash Now
+                      <Waves className="w-5 h-5 mr-2" />
+                      Wash Now
                     </Button>
                     <Button
                       className="luxury-btn-outline"

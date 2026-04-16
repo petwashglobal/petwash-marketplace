@@ -51,6 +51,9 @@ import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
 import nayaxPaymentsRoutes from "./routes/nayax-payments";
+import tranzilaWebhookRoutes from "./routes/tranzila-webhooks";
+import tranzilaEventWebhookRoutes from "./routes/tranzila-event-webhooks";
+import tranzilaAdminRoutes from "./routes/finance/tranzila-admin";
 import thankYouRoutes from "./routes/send-thank-you";
 import platformCopyEmailRoutes from "./routes/platform-copy-email";
 import ceoWalletRoutes from "./routes/ceo-wallet";
@@ -279,7 +282,10 @@ import {
   hrDocuments,
   washHistory,
   customerPets,
-  users
+  users,
+  stationBays,
+  baySessions,
+  kioskMachines
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -297,6 +303,7 @@ import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -3225,6 +3232,14 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // GET /api/auth/tiktok/callback - Handle TikTok OAuth callback
+  // CodeQL CWE-598 triage: the `code` query param is an OAuth authorization code
+  // delivered by TikTok per RFC 6749 §4.1.2. This is the ONLY compliant delivery
+  // method for browser-based OAuth flows. Mitigations already in place:
+  //   - `code` is never logged (see logger.info calls below — state prefix only)
+  //   - `code` is one-time-use; immediately exchanged for tokens then discarded
+  //   - `state` CSRF token is verified against session to prevent code injection
+  //   - After token exchange, browser is redirected to a clean URL without the code
+  // False positive: no sensitive data persisted or reflected via GET params here.
   app.get('/api/auth/tiktok/callback', async (req, res) => {
     try {
       // OAuth 2.0 requires the authorization code to be delivered via GET query
@@ -8722,7 +8737,13 @@ self.addEventListener('notificationclick', (event) => {
       res.status(201).json(reminder);
     } catch (error) {
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid reminder data", errors: error.errors });
+        // CWE-209 triage: only return field paths and messages from Zod's schema-defined
+        // validation rules — these originate from the schema, not user input, and are safe.
+        const safeErrors = error.errors.map((e: { path: (string|number)[]; message: string }) => ({
+          path: e.path,
+          message: e.message,
+        }));
+        return res.status(400).json({ message: "Invalid reminder data", errors: safeErrors });
       }
       logger.error('Create appointment reminder error:', error);
       res.status(500).json({ message: "Failed to create appointment reminder" });
@@ -8730,6 +8751,10 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Get appointment reminders with filtering
+  // CodeQL CWE-598 triage: query params here are non-sensitive admin filter fields
+  // (customerId integer, status enum, reminderType enum, pagination). None are
+  // secrets, tokens, or PII credentials. Route is admin-only (requireAdmin guard).
+  // False positive: no sensitive data exposed via GET params on this route.
   app.get('/api/crm/communications/appointment-reminders', requireAdmin, async (req: any, res) => {
     try {
       const {
@@ -9807,6 +9832,143 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   /**
+   * GET /api/k9000/stations/:stationId/bay-status
+   *
+   * Public customer-facing endpoint — no auth required.
+   * Returns live bay availability (spec-required shape) so the customer UI can
+   * show "Bay 1 Available / Bay 2 In Use" without needing admin-level detail.
+   * Registered BEFORE IoT routes so it bypasses machine IP/HMAC middleware.
+   *
+   * Response shape (public contract — do not add internal fields here):
+   *   station_id, station_online, bay_1_status, bay_2_status,
+   *   bay_1_ready, bay_2_ready, maintenance_mode, estimated_wait_minutes
+   */
+  app.get('/api/k9000/stations/:stationId/bay-status', apiLimiter, async (req, res) => {
+    try {
+      const { stationId } = req.params;
+
+      // Heartbeat freshness window: machine is considered online only if it sent
+      // a heartbeat within this window. 120 seconds allows for a missed beat at
+      // a 60-second cadence without false-offline flaps.
+      const HEARTBEAT_WINDOW_MS = 120_000;
+
+      // Fetch bays, machine record, and active sessions in parallel
+      const [bays, machines, activeSessions, recentCompleted] = await Promise.all([
+        db
+          .select({
+            side:     stationBays.side,
+            status:   stationBays.status,
+            isActive: stationBays.isActive,
+          })
+          .from(stationBays)
+          .where(eq(stationBays.stationId, stationId)),
+        db
+          .select({
+            status:        kioskMachines.status,
+            isOnline:      kioskMachines.isOnline,
+            lastHeartbeat: kioskMachines.lastHeartbeat,
+          })
+          .from(kioskMachines)
+          .where(eq(kioskMachines.kioskId, stationId))
+          .limit(1),
+        // Active sessions — used to compute dynamic estimated wait time
+        db
+          .select({
+            side:        baySessions.side,
+            activatedAt: baySessions.activatedAt,
+            startedAt:   baySessions.startedAt,
+          })
+          .from(baySessions)
+          .where(and(eq(baySessions.stationId, stationId), eq(baySessions.status, 'active'))),
+        // Recent completed sessions — used to compute average wash duration
+        db
+          .select({ actualDurationSeconds: baySessions.actualDurationSeconds })
+          .from(baySessions)
+          .where(
+            and(
+              eq(baySessions.stationId, stationId),
+              eq(baySessions.status, 'completed'),
+              gte(baySessions.endedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+            ),
+          )
+          .limit(50),
+      ]);
+
+      const machine = machines[0];
+      const maintenanceMode = machine?.status === 'maintenance' || machine?.status === 'offline';
+
+      // station_online: derived from live heartbeat freshness, not static DB flag.
+      // If no heartbeat has ever been received (lastHeartbeat is null), or the last
+      // heartbeat is older than HEARTBEAT_WINDOW_MS, station is considered offline
+      // regardless of the isOnline flag.
+      const heartbeatAge = machine?.lastHeartbeat
+        ? Date.now() - machine.lastHeartbeat.getTime()
+        : Infinity;
+      const stationOnline =
+        machine?.status === 'active' &&
+        heartbeatAge < HEARTBEAT_WINDOW_MS;
+
+      // Map left/right bays to bay_1 (left) and bay_2 (right)
+      const left  = bays.find((b) => b.side === 'left');
+      const right = bays.find((b) => b.side === 'right');
+
+      const bay1Status  = left?.status  ?? 'unknown';
+      const bay2Status  = right?.status ?? 'unknown';
+      const bay1Ready   = bay1Status === 'ready' && !!left?.isActive  && !maintenanceMode && stationOnline;
+      const bay2Ready   = bay2Status === 'ready' && !!right?.isActive && !maintenanceMode && stationOnline;
+
+      // ── Dynamic estimated wait ────────────────────────────────────────────
+      // Compute from: active session elapsed time + recent average wash duration.
+      let estimatedWaitMinutes: number | null = null;
+
+      if (!bay1Ready && !bay2Ready && (bay1Status === 'busy' || bay2Status === 'busy')) {
+        // Average wash duration from recent completed sessions (excluding outliers)
+        const validDurations = recentCompleted
+          .map((s) => s.actualDurationSeconds)
+          .filter((d): d is number => typeof d === 'number' && d > 60 && d < 1800); // 1 min – 30 min sanity range
+
+        const avgDurationSeconds = validDurations.length > 0
+          ? validDurations.reduce((a, b) => a + b, 0) / validDurations.length
+          : 12 * 60; // default 12 minutes if no history
+
+        // Find the active session that started most recently (highest chance of finishing first)
+        // activatedAt is the IoT-confirmed start; fall back to startedAt if not yet confirmed
+        const busySessionTimes = activeSessions.map((s) => {
+          const startMs = (s.activatedAt ?? s.startedAt)?.getTime() ?? Date.now();
+          return startMs;
+        });
+
+        if (busySessionTimes.length > 0) {
+          // Pick the session that has been running longest (closest to completion)
+          const oldestStartMs = Math.min(...busySessionTimes);
+          const elapsedSeconds = (Date.now() - oldestStartMs) / 1000;
+          const remainingSeconds = Math.max(0, avgDurationSeconds - elapsedSeconds);
+          // Add 30 s cleanup window
+          const totalWaitSeconds = remainingSeconds + 30;
+          estimatedWaitMinutes = Math.max(1, Math.ceil(totalWaitSeconds / 60));
+        } else {
+          // No active session data — fall back to average duration
+          estimatedWaitMinutes = Math.ceil(avgDurationSeconds / 60);
+        }
+      }
+
+      res.json({
+        station_id:               stationId,
+        station_online:           stationOnline,
+        bay_1_status:             bay1Status,
+        bay_2_status:             bay2Status,
+        bay_1_ready:              bay1Ready,
+        bay_2_ready:              bay2Ready,
+        maintenance_mode:         maintenanceMode,
+        estimated_wait_minutes:   estimatedWaitMinutes,
+      });
+    } catch (error) {
+      logger.error('[K9000 BayStatus] Failed', { error });
+      res.status(500).json({ error: 'Failed to fetch bay status' });
+    }
+  });
+
+  /**
    * POST /api/k9000/generate-qr
    *
    * User-facing endpoint (Firebase auth required, NOT machine-secret auth).
@@ -10071,6 +10233,18 @@ self.addEventListener('notificationclick', (event) => {
 
   // Nayax Spark API (real payment processing with Nayax Spark/Lynx)
   app.use('/api/payments/nayax', apiLimiter, nayaxPaymentsRoutes);
+
+  // Tranzila Webhook (digital purchase rail: e-gift, wallet top-up, marketplace, payment requests, chargebacks)
+  // NO rate limiting on webhook path — Tranzila retries may burst legitimately
+  app.use('/api/payments/tranzila/webhook', tranzilaWebhookRoutes);
+
+  // Tranzila per-event webhook aliases at /api/webhooks/tranzila/<event>
+  // Same security pipeline — allows Tranzila to be configured with individual event URLs
+  // NO rate limiting — same reason as above
+  app.use('/api/webhooks/tranzila', tranzilaEventWebhookRoutes);
+
+  // Tranzila Admin (read-only processor monitoring, settlement import)
+  app.use('/api/admin/finance/tranzila', adminLimiter, tranzilaAdminRoutes);
   
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
@@ -12044,7 +12218,7 @@ self.addEventListener('notificationclick', (event) => {
     }
     // SECURITY (T07): Admin contact loaded from env var — not hardcoded
     const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@petwash.co.il';
-    const ADMIN_PHONE  = '+972549833355';
+    const ADMIN_PHONE  = CANONICAL_SUPPORT_PHONE;
     const ADMIN_NAME   = 'ניר הדד';
 
     const now    = new Date();
@@ -12061,7 +12235,7 @@ self.addEventListener('notificationclick', (event) => {
         serviceType: 'עיצוב ושמפו מלא',
         providerName: 'רינת כהן — גרומינג VIP',
         providerAddress: 'רחוב דיזנגוף 100, תל אביב',
-        customerPhone: '+972549833355',
+        customerPhone: CANONICAL_SUPPORT_PHONE,
         petName: 'בוקסר',
         totalAmountCents: 32000,
         loyaltyDiscountCents: 1500,
@@ -12075,7 +12249,7 @@ self.addEventListener('notificationclick', (event) => {
         serviceType: 'טיפול ספא פרמיום',
         providerName: 'משה לוי — PetSpa Elite',
         providerAddress: 'שדרות רוטשילד 45, תל אביב',
-        customerPhone: '+972549833355',
+        customerPhone: CANONICAL_SUPPORT_PHONE,
         petName: 'לונה',
         totalAmountCents: 54900,
         loyaltyDiscountCents: 0,
@@ -13609,7 +13783,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       <p style="font-weight: 600; color: #1e293b; margin-bottom: 10px;">🐾 Pet Wash Ltd</p>
       <p>Premium Organic Pet Care Services</p>
       <p>Production Domain: <a href="https://petwash.co.il">petwash.co.il</a></p>
-      <p>Support: <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a> | Phone: +972549833355</p>
+      <p>Support: <a href="mailto:${CANONICAL_SUPPORT_EMAIL}">${CANONICAL_SUPPORT_EMAIL}</a> | Phone: ${CANONICAL_SUPPORT_PHONE}</p>
       <p style="margin-top: 15px; font-size: 12px; color: #94a3b8;">
         This report was automatically generated by Replit AI Agent<br>
         Hosted on Replit Platform • Israel 2025

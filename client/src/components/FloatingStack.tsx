@@ -3,6 +3,7 @@ import { Accessibility } from 'lucide-react';
 import { AccessibilityMenu } from './AccessibilityMenu';
 import { Language, t } from '@/lib/i18n';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { whatsappUrl, SUPPORT_WHATSAPP_URL } from '@/lib/support-contact';
 
 interface FloatingStackProps {
   language: Language;
@@ -17,14 +18,10 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
   const handleWhatsAppClick = useCallback(() => {
     try {
       trackWhatsAppClick(language);
-      
       const message = t('whatsapp.initialMessage', language);
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/972549833355?text=${encodedMessage}`;
-      
-      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      window.open(whatsappUrl(message), '_blank', 'noopener,noreferrer');
     } catch (error) {
-      window.location.href = `https://wa.me/972549833355`;
+      window.location.href = SUPPORT_WHATSAPP_URL;
     }
   }, [language, trackWhatsAppClick]);
 

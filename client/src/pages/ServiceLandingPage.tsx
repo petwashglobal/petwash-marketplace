@@ -91,7 +91,7 @@ const SERVICE_MAP: Record<string, {
       { q: 'How much does K9000 wash cost?', a: 'Starting from ₪35 for a basic wash.' },
       { q: 'What is included?', a: 'Shampoo, conditioner, towels, professional dryer, gloves, and drainage system.' },
     ],
-    cta: '/k9000/booking',
+    cta: '/k9000',
   },
   'pet-taxi': {
     slug: 'pet_taxi', emoji: '🚗',

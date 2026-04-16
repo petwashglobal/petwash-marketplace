@@ -38,3 +38,11 @@
 *.ttf filter=lfs diff=lfs merge=lfs -text
 *.otf filter=lfs diff=lfs merge=lfs -text
 *.eot filter=lfs diff=lfs merge=lfs -text
+
+# attached_assets/ contains documentation screenshots only — excluded from LFS.
+# This override MUST come after all wildcard rules so last-match-wins works correctly.
+# -text prevents CRLF normalisation of binary content.
+attached_assets/** -filter -diff -merge -text
+
+# artifacts/mockup-sandbox/ contains small UI assets — excluded from LFS.
+artifacts/mockup-sandbox/** -filter -diff -merge -text

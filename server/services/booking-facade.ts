@@ -43,6 +43,11 @@ export class UnifiedLuxuryBookingFacade {
     // Register vertical engines
     this.engines.set('walk_my_pet', walkEliteBookingEngine);
     this.engines.set('pettrek', petTrekChauffeurBookingEngine);
+    // ⚠️  K9000 SAFETY FENCE — engine registered for findNearestStation()
+    // and availability checks only. POST /api/platforms/k9000/bookings is
+    // HARD-BLOCKED at the route layer (super-app-bookings.ts). Do NOT route
+    // any escrow / payout / booking-row creation through this engine.
+    // Live K9000 wash flows use /api/k9000/start-session and /api/k9000/redeem-wash.
     this.engines.set('k9000', k9000StationBookingEngine);
     
     // TODO: Register sitter engine after refactoring

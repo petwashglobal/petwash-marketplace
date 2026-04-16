@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Waves, 
   MapPin, 
-  Calendar, 
+  Activity,
   History, 
   Gift, 
   HelpCircle, 
@@ -35,9 +35,9 @@ export default function K9000Overview() {
       color: "bg-blue-50 dark:bg-blue-950"
     },
     {
-      icon: <Calendar className="h-8 w-8 text-green-600" />,
-      title: t('k9000.bookWash'),
-      description: t('k9000.findStationDesc'),
+      icon: <Activity className="h-8 w-8 text-green-600" />,
+      title: t('k9000.bayStatus'),
+      description: t('k9000.checkingBayStatus').replace('...', ''),
       link: "/k9000/booking",
       color: "bg-green-50 dark:bg-green-950"
     },
@@ -108,9 +108,9 @@ export default function K9000Overview() {
               </p>
               <div className="flex flex-col sm:flex-row gap-5 justify-center">
                 <Link href="/k9000/booking">
-                  <Button className="luxury-btn-primary luxury-shadow-xl px-10" data-testid="button-book-wash">
+                  <Button className="luxury-btn-primary luxury-shadow-xl px-10" data-testid="button-wash-now">
                     <Waves className="h-5 w-5 mr-2" />
-                    {t('k9000.bookWash')}
+                    {t('k9000.washNow')}
                   </Button>
                 </Link>
                 <Link href="/k9000/explore">

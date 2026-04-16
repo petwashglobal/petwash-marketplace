@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 
 type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'elite-gold';
@@ -41,6 +41,16 @@ interface PromoAdPopupProps {
   delayMs?: number;
 }
 
+// How long until auto-dismiss (ms)
+const AUTO_DISMISS_MS = 3000;
+// localStorage key stores the timestamp of last display; skip if < 24 h ago
+const SUPPRESS_DURATION_MS = 24 * 60 * 60 * 1000;
+
+/** Returns the sessionStorage key for a given popup id. */
+function sessionKey(id: string) {
+  return `promo-session-seen-${id}`;
+}
+
 export function PromoAdPopup({ 
   config = DEFAULT_PROMO, 
   showOnce = true,
@@ -49,14 +59,20 @@ export function PromoAdPopup({
   const [isVisible, setIsVisible] = useState(false);
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  const prefersReducedMotion = useReducedMotion();
 
+  // Decide whether to show based on session suppression + 24 h localStorage suppression
   useEffect(() => {
     if (!config.enabled) return;
 
-    const storageKey = `promo-seen-${config.id}`;
-    const hasSeenPromo = sessionStorage.getItem(storageKey);
+    // Never show twice in the same tab session
+    if (sessionStorage.getItem(sessionKey(config.id))) return;
 
-    if (showOnce && hasSeenPromo) return;
+    const storageKey = `promo-last-seen-${config.id}`;
+    if (showOnce) {
+      const lastSeen = localStorage.getItem(storageKey);
+      if (lastSeen && Date.now() - parseInt(lastSeen, 10) < SUPPRESS_DURATION_MS) return;
+    }
 
     const timer = setTimeout(() => {
       setIsVisible(true);
@@ -65,12 +81,42 @@ export function PromoAdPopup({
     return () => clearTimeout(timer);
   }, [config.id, config.enabled, showOnce, delayMs]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsVisible(false);
+    // Always suppress for the rest of this tab session
+    sessionStorage.setItem(sessionKey(config.id), '1');
+    // Also stamp localStorage so it won't show again for 24 h in any tab
     if (showOnce) {
-      sessionStorage.setItem(`promo-seen-${config.id}`, 'true');
+      localStorage.setItem(`promo-last-seen-${config.id}`, String(Date.now()));
     }
-  };
+  }, [config.id, showOnce]);
+
+  // Escape key, auto-dismiss, scroll lock — all active while popup is visible
+  useEffect(() => {
+    if (!isVisible) return;
+
+    // Prevent page scroll while popup is open
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    // Auto-dismiss
+    const autoDismiss = setTimeout(handleClose, AUTO_DISMISS_MS);
+
+    // Keyboard escape
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+      clearTimeout(autoDismiss);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isVisible, handleClose]);
 
   const handleCtaClick = () => {
     handleClose();
@@ -96,33 +142,57 @@ export function PromoAdPopup({
     }
   };
 
+  // Framer motion variants — softer when reduced motion is preferred
+  const backdropVariants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+  const cardVariants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : { initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.95, opacity: 0 } };
+  const transitionDuration = prefersReducedMotion ? 0.15 : 0.3;
+  const cardTransitionDelay = prefersReducedMotion ? 0 : 0.08;
+
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          {...backdropVariants}
+          transition={{ duration: transitionDuration }}
+          // Use inset-0 + fixed for true full-screen on all browsers/devices.
+          // 100dvh is set inline to properly handle Safari dynamic toolbar.
           className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
           data-testid="promo-ad-popup"
+          aria-modal="true"
+          role="dialog"
+          aria-label="PetWash welcome"
         >
+          {/* Backdrop — tap to close */}
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={handleClose}
           />
           
+          {/* Card — full-screen on mobile, floating card on md+ */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="relative w-full h-full md:w-[95%] md:max-w-4xl md:h-auto md:max-h-[90vh] md:rounded-3xl overflow-hidden shadow-2xl"
+            {...cardVariants}
+            transition={{ duration: transitionDuration, delay: cardTransitionDelay }}
+            // On mobile: fill the entire visual viewport.
+            // On md+: float as a rounded card.
+            // overflow-y-auto ensures content is reachable in landscape without clipping.
+            className="relative w-full h-full md:w-[95%] md:max-w-4xl md:rounded-3xl overflow-y-auto overflow-x-hidden shadow-2xl"
+            style={{ maxHeight: '100dvh' }}
           >
+            {/* Close button — safe-area aware so it's always tappable */}
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition-all"
+              className="absolute z-20 w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition-all"
+              style={{
+                top: 'max(1rem, env(safe-area-inset-top, 1rem))',
+                right: 'max(1rem, env(safe-area-inset-right, 1rem))',
+              }}
               data-testid="button-close-promo"
+              aria-label="Close"
             >
               <X className="w-6 h-6" />
             </button>
@@ -341,7 +411,10 @@ function EliteGoldTemplate({ config, title, subtitle, ctaText, onCta }: Template
   ];
 
   return (
-    <div className="w-full h-full min-h-[70vh] md:min-h-[600px] flex flex-col items-center justify-center p-8 text-center bg-white relative overflow-hidden">
+    <div
+      className="w-full h-full flex flex-col items-center justify-center text-center bg-white relative overflow-y-auto overscroll-contain"
+      style={{ paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))', paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 2rem))', paddingLeft: 'max(2rem, env(safe-area-inset-left, 2rem))', paddingRight: 'max(2rem, env(safe-area-inset-right, 2rem))' }}
+    >
       <div 
         className="absolute inset-[15px] pointer-events-none opacity-30"
         style={{ border: '1px solid #C5A059' }}

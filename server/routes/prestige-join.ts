@@ -35,6 +35,7 @@ import { z } from 'zod';
 import { auth as fbAdminAuth, firestoreDb } from '../lib/firebase-admin';
 import { authService } from '../services/AuthService';
 import { EmailService } from '../emailService';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = Router();
 
@@ -207,7 +208,7 @@ router.post('/join', async (req: Request, res: Response) => {
 <div style="margin-top:24px;text-align:center;">
   <a href="${appBaseUrl}/prestige-pass/wallet" style="display:inline-block;background:#111;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:600;">פתח ארנק Prestige</a>
 </div>
-<p style="margin-top:32px;font-size:12px;color:#aaa;text-align:center;">PetWash Ltd. | support@petwash.co.il | ${appBaseUrl}</p>
+<p style="margin-top:32px;font-size:12px;color:#aaa;text-align:center;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | ${appBaseUrl}</p>
 </div></body></html>`;
 
       emailSent = await EmailService.send({

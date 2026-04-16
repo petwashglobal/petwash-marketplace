@@ -81,8 +81,8 @@ export function generateProactiveAlerts(
         userId,
         type: 'service_due',
         title: 'Time for a wash? 🐕',
-        message: `It's been ${daysSinceWash} days since your last wash. You usually wash every ${userActivity.averageWashInterval} days. Book now?`,
-        actionUrl: '/book-wash',
+        message: `It's been ${daysSinceWash} days since your last wash. You usually wash every ${userActivity.averageWashInterval} days. Wash Now at your nearest K9000 station!`,
+        actionUrl: '/k9000',
         priority: 'info',
         expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days
       });

@@ -16,6 +16,7 @@ import { logger } from '../lib/logger';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
 import { isSuperAdmin } from '../middleware/rbac';
+import { SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 
 const router = Router();
 
@@ -964,7 +965,7 @@ const requireCEO = (req: any, res: any, next: any) => {
 };
 
 // CEO mobile number for 2FA
-const CEO_MOBILE = '+972549833355';
+const CEO_MOBILE = CANONICAL_SUPPORT_PHONE;
 
 /**
  * POST /api/admin/ceo/request-voucher

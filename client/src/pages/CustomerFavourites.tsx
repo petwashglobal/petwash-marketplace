@@ -27,7 +27,7 @@ const PLATFORM_META: Record<string, { he: string; en: string; emoji: string }> =
 };
 
 const SERVICE_META: Record<string, { he: string; en: string; emoji: string; route: string }> = {
-  k9000_wash:  { he: 'שטיפה K9000',  en: 'K9000 Wash',  emoji: '🚿', route: '/k9000/booking'  },
+  k9000_wash:  { he: 'שטיפה K9000',  en: 'K9000 Wash',  emoji: '🚿', route: '/k9000'  },
   pet_sitting: { he: 'ישיבה לחיות',  en: 'Pet Sitting', emoji: '🏠', route: '/sitter-suite'   },
   dog_walking: { he: 'הליכה עם כלב', en: 'Dog Walking', emoji: '🦮', route: '/walk-my-pet'    },
   grooming:    { he: 'טיפוח',        en: 'Grooming',    emoji: '✂️', route: '/groomers'        },

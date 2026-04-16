@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../../shared/support-contact';
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
 
 type EmailVariant = 'customer' | 'provider' | 'staff';
@@ -232,8 +233,8 @@ export function generateLuxuryWelcomeEmail(data: LuxuryWelcomeEmailData): { subj
     : `By using PetWash you agree to our <a href="${termsUrl}" style="color:#7a7a86;text-decoration:underline;">Terms</a> and <a href="${privacyUrl}" style="color:#7a7a86;text-decoration:underline;">Privacy Policy</a>.`;
 
   const footerHelp = isHebrew
-    ? `\u05E6\u05E8\u05D9\u05DB\u05D9\u05DD \u05E2\u05D6\u05E8\u05D4? \u05E9\u05DC\u05D7\u05D5 \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC \u05DC-<a href="mailto:support@petwash.co.il" style="color:#7a7a86;text-decoration:underline;">support@petwash.co.il</a>`
-    : `Need help? Email <a href="mailto:support@petwash.co.il" style="color:#7a7a86;text-decoration:underline;">support@petwash.co.il</a>`;
+    ? `\u05E6\u05E8\u05D9\u05DB\u05D9\u05DD \u05E2\u05D6\u05E8\u05D4? \u05E9\u05DC\u05D7\u05D5 \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC \u05DC-<a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#7a7a86;text-decoration:underline;">${CANONICAL_SUPPORT_EMAIL}</a>`
+    : `Need help? Email <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#7a7a86;text-decoration:underline;">${CANONICAL_SUPPORT_EMAIL}</a>`;
 
   const openSettings = isHebrew ? '\u05E4\u05EA\u05D7 \u05D4\u05D2\u05D3\u05E8\u05D5\u05EA' : 'Open settings';
   const supportCenter = isHebrew ? '\u05DE\u05E8\u05DB\u05D6 \u05EA\u05DE\u05D9\u05DB\u05D4' : 'Support center';

@@ -4,6 +4,8 @@
  * Pure white, editorial spacing, prestige typography.
  */
 
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../shared/support-contact';
+
 export interface ActivationEmailParams {
   firstName: string;
   activationUrl: string;
@@ -29,7 +31,7 @@ export function buildActivationEmail(params: ActivationEmailParams): {
         cta: 'הפעילו את חשבוני',
         agreementLine: 'בלחיצה על הכפתור, אתם מאשרים את תנאי השירות ומדיניות הפרטיות של PetWash™.',
         footerNote: 'לא ביקשתם חשבון? התעלמו מהודעה זו.',
-        supportLine: 'לתמיכה: support@petwash.co.il',
+        supportLine: `לתמיכה: ${CANONICAL_SUPPORT_EMAIL}`,
         expiryNote: 'הקישור תקף ל-24 שעות.',
       }
     : {
@@ -41,7 +43,7 @@ export function buildActivationEmail(params: ActivationEmailParams): {
         cta: 'Activate My Account',
         agreementLine: 'By activating, you confirm acceptance of the PetWash™ Terms of Service and Privacy Policy.',
         footerNote: "Didn't request an account? You can safely ignore this email.",
-        supportLine: 'Support: support@petwash.co.il',
+        supportLine: `Support: ${CANONICAL_SUPPORT_EMAIL}`,
         expiryNote: 'This link is valid for 24 hours.',
       };
 

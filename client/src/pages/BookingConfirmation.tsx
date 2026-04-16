@@ -23,7 +23,7 @@ import { BookingFinancialSummary } from '@/components/wallet/BookingFinancialSum
 
 /* ── Service route map ────────────────────────────────────────────────── */
 const SERVICE_TO_ROUTE: Record<string, string> = {
-  k9000_wash:  '/k9000/booking',
+  k9000_wash:  '/k9000',
   pet_sitting: '/sitter-suite',
   dog_walking: '/walk-my-pet',
   grooming:    '/groomers',

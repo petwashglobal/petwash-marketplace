@@ -27,11 +27,20 @@ jobs:
   copilot-setup-steps:
     runs-on: ubuntu-latest
 
-    # Minimal permissions — setup steps only.  The Copilot agent receives its
-    # own separate token scoped to its actual operations.
+    # Permissions for the setup job token.
+    # pull-requests: write  — required so the Copilot agent's report_progress
+    #   mechanism can update the PR description after committing changes.
+    # contents: write — required for the agent to push commits to the branch.
+    #
+    # FIREWALL NOTE: The Copilot agent calls api.individual.githubcopilot.com
+    # at runtime to generate PR descriptions.  If that host is not in the repo's
+    # Copilot agent firewall allowlist, the PR-description step will fail with
+    # "Invalid response from PR description request: {}".
+    # Fix: Settings → Copilot → Agent → Firewall config → add
+    #   api.individual.githubcopilot.com
     permissions:
-      contents: read
-      pull-requests: read
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout

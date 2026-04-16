@@ -10,6 +10,7 @@ import {
   buildBookingCancelledSms,
   buildRefundIssuedSms,
 } from '../services/PetWashNotificationEngine';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = Router();
 
@@ -99,6 +100,28 @@ router.post(
 
       // SECURITY: Use platformId from route params (verified by middleware)
       const platformId = req.platformContext.platformId;
+
+      // ============================================================
+      // K9000 SAFETY FENCE — DO NOT REMOVE
+      // K9000 is a self-service IoT wash station. It NEVER creates
+      // booking rows, NEVER uses escrow, and NEVER triggers provider
+      // payout. K9000 live flows use /api/k9000/start-session,
+      // /api/k9000/end-session, and /api/k9000/generate-qr instead.
+      // Allowing a booking row here would contaminate K9000 with
+      // marketplace-booking escrow and payout logic.
+      // ============================================================
+      if (platformId === 'k9000') {
+        logger.warn('[K9000 Safety Fence] Blocked booking-row creation attempt on K9000 platform', {
+          userId,
+          platformId,
+        });
+        return res.status(403).json({
+          error: 'k9000_booking_not_allowed',
+          message:
+            'K9000 self-service washes do not use the booking system. ' +
+            'Use /api/k9000/generate-qr for member QR redeem or /api/k9000/start-session for terminal wash.',
+        });
+      }
 
       // Create booking
       const booking = await bookingService.createBooking({
@@ -1177,7 +1200,7 @@ router.post(
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סיבה</td><td style="padding:8px;border-bottom:1px solid #eee;">${reason}</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
           const cancellationDocRef = await FinancialDocumentService.create({
@@ -1232,7 +1255,7 @@ router.post(
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עיבוד זיכוי</td><td style="padding:8px;border-bottom:1px solid #eee;">5-7 ימי עסקים</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
             const refundDocRef = await FinancialDocumentService.create({

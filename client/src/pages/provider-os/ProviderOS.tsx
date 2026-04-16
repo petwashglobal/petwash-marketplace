@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,6 +9,7 @@ import {
   Bell, Settings, FileText, Shield, Bot,
   Menu, X, ChevronRight, Power, LogOut,
   Dog, MapPin, Scissors, GraduationCap, Star,
+  DollarSign, ClipboardList, ShieldCheck, ThumbsUp, TrendingUp,
 } from 'lucide-react';
 import POSDashboard from './POSDashboard';
 import POSJobs from './POSJobs';
@@ -53,6 +55,15 @@ const SIDEBAR_ITEMS = [
   { id: 'assistant' as Module, label: 'AI Assistant', labelHe: 'עוזר AI', icon: Bot },
 ];
 
+/** Links to full standalone pages that are already built but were previously hidden */
+const SIDEBAR_LINKS = [
+  { href: '/provider/tasks',      label: 'Task Inbox',   labelHe: 'תיבת משימות', icon: ClipboardList },
+  { href: '/provider/earnings',   label: 'Earnings',     labelHe: 'הכנסות',      icon: DollarSign },
+  { href: '/provider-compliance', label: 'Compliance',   labelHe: 'ציות',        icon: ShieldCheck },
+  { href: '/provider/feedback',   label: 'Feedback',     labelHe: 'משוב',        icon: ThumbsUp },
+  { href: '/provider/ranking',    label: 'My Ranking',   labelHe: 'דירוג שלי',   icon: TrendingUp },
+];
+
 const MODULE_LABELS: Record<Module, string> = {
   dashboard: 'Dashboard', jobs: 'Jobs & Bookings', calendar: 'Calendar & Availability',
   wallet: 'Wallet & Payouts', profile: 'Provider Profile', services: 'Services & Add-ons',
@@ -66,8 +77,16 @@ export default function ProviderOS() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
-  const [unreadCount] = useState(3);
   const { user } = useFirebaseAuth();
+
+  // Real unread notification count from API
+  const { data: notifications } = useQuery<any[]>({
+    queryKey: ['/api/notifications'],
+    queryFn: () => fetch('/api/notifications', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 30_000,
+    select: (data: any) => (Array.isArray(data?.notifications) ? data.notifications : Array.isArray(data) ? data : []),
+  });
+  const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
 
   const navigate = (mod: Module) => {
     setActiveModule(mod);
@@ -178,6 +197,21 @@ export default function ProviderOS() {
                 </button>
               );
             })}
+            {/* Hidden-gem pages — already built, now surfaced */}
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Analytics</p>
+              {SIDEBAR_LINKS.map(link => {
+                const Icon = link.icon;
+                return (
+                  <Link key={link.href} href={link.href}>
+                    <a className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-gray-900 transition-all mb-0.5">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{link.label}</span>
+                    </a>
+                  </Link>
+                );
+              })}
+            </div>
           </nav>
           <div className="px-4 py-3 border-t border-gray-100">
             <Link href="/">
@@ -225,6 +259,24 @@ export default function ProviderOS() {
                     </button>
                   );
                 })}
+                {/* Hidden-gem pages — already built, now surfaced */}
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Analytics</p>
+                  {SIDEBAR_LINKS.map(link => {
+                    const Icon = link.icon;
+                    return (
+                      <Link key={link.href} href={link.href}>
+                        <a
+                          onClick={() => setSidebarOpen(false)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-white transition-all mb-0.5"
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          {link.label}
+                        </a>
+                      </Link>
+                    );
+                  })}
+                </div>
               </nav>
               <div className="px-4 py-3 border-t border-gray-100">
                 <Link href="/">

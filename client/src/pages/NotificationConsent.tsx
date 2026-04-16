@@ -3,6 +3,8 @@ import { useLocation } from 'wouter';
 import { Bell, BellOff, Sparkles } from 'lucide-react';
 import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useWhoami } from '@/auth/useWhoami';
+import { getApiUrl } from '@/lib/apiConfig';
 import type { Language } from '@/lib/i18n';
 
 interface NotificationConsentProps {
@@ -12,10 +14,29 @@ interface NotificationConsentProps {
 export default function NotificationConsent({ language = 'he' }: NotificationConsentProps) {
   const [, navigate] = useLocation();
   const { user } = useFirebaseAuth();
+  const { role: serverRole } = useWhoami();
   const { supported, vapidConfigured, loading, requestPermission } = useFCMNotifications(false);
   const [enabling, setEnabling] = useState(false);
   const [done, setDone] = useState(false);
 
+  const goNext = async () => {
+    localStorage.setItem('petwash_notification_consent_shown', 'true');
+    // Route providers to their workspace, others to home
+    if (serverRole === 'provider') {
+      navigate('/provider-os');
+      return;
+    }
+    try {
+      const res = await fetch(getApiUrl('/api/auth/post-login'), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      navigate(data.nextUrl || data.redirectTo || '/home');
+    } catch {
+      navigate('/home');
+    }
+  };
   const isRTL = language === 'he' || language === 'ar';
 
   const text = {
@@ -51,11 +72,6 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
 
   const t = text[language === 'he' ? 'he' : 'en'];
 
-  const goNext = () => {
-    localStorage.setItem('petwash_notification_consent_shown', 'true');
-    navigate('/dashboard');
-  };
-
   const handleEnable = async () => {
     if (!supported || !vapidConfigured || !user) {
       goNext();
@@ -72,9 +88,8 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
   };
 
   const handleNotNow = () => {
-    localStorage.setItem('petwash_notification_consent_shown', 'true');
     localStorage.setItem('notification_prompt_dismissed', Date.now().toString());
-    navigate('/dashboard');
+    goNext();
   };
 
   return (

@@ -23,6 +23,7 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Printer, AlertTriangle } from 'lucide-react';
+import { SUPPORT_EMAIL } from '@/lib/support-contact';
 
 export interface InvoiceLineItem {
   description: string;
@@ -334,7 +335,7 @@ export function buildInvoiceFromTransaction(
     supplierAddress:   'Israel',
     supplierAddressHe: 'ישראל',
     supplierPhone:     '*2637',
-    supplierEmail:     'support@petwash.co.il',
+    supplierEmail:     SUPPORT_EMAIL,
 
     customerName,
     customerPhone,

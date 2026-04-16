@@ -15,6 +15,7 @@
  */
 
 import { logger } from '../lib/logger';
+import { SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 
 interface WhatsAppTextMessage {
   messaging_product: 'whatsapp';
@@ -48,7 +49,7 @@ export class WhatsAppMetaService {
   private static getCredentials() {
     const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
     const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-    const businessPhone = process.env.META_WHATSAPP_BUSINESS_PHONE || '+972549833355';
+    const businessPhone = process.env.META_WHATSAPP_BUSINESS_PHONE || CANONICAL_SUPPORT_PHONE;
 
     if (!accessToken || !phoneNumberId) {
       throw new Error(
@@ -318,7 +319,7 @@ _PetWash Ltd - Where Innovation Meets Pet Care_ 🐕
 
 ---
 לפרטים נוספים: www.petwash.co.il
-מוקד תמיכה: +972549833355
+מוקד תמיכה: ${CANONICAL_SUPPORT_PHONE}
     `.trim();
 
     const messageEnglish = `
@@ -348,7 +349,7 @@ _PetWash Ltd - Where Innovation Meets Pet Care_ 🐕
 
 ---
 For more info: www.petwash.co.il
-Support Center: +972549833355
+Support Center: ${CANONICAL_SUPPORT_PHONE}
     `.trim();
 
     const message = lang === 'en' ? messageEnglish : messageHebrew;

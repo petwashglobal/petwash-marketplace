@@ -109,6 +109,7 @@ import { dispatchAcademySms } from '../services/academySmsHelper';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { isValidAdminSecret } from '../lib/admin-secret';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = Router();
 
@@ -808,7 +809,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
         ],
         backFields: [
           { key: 'terms',   label: 'Terms',   value: 'Not redeemable for cash. Valid at PetWash stations only.' },
-          { key: 'support', label: 'Support',  value: 'support@petwash.co.il' },
+          { key: 'support', label: 'Support',  value: CANONICAL_SUPPORT_EMAIL },
           { key: 'site',    label: 'Website',  value: 'www.petwash.co.il' },
         ],
       },

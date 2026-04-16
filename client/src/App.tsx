@@ -35,6 +35,7 @@ import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ActivationBanner } from "@/components/ActivationBanner";
+import { PromoAdPopup } from "@/components/PromoAdPopup";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -313,7 +314,7 @@ const MobileManagementDashboard = lazy(() => import("@/pages/MobileManagementDas
 
 // K9000 Wash Stations - Self-Service Organic Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
-const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
+const K9000BayStatus = lazy(() => import("@/pages/k9000/BayStatus"));
 
 const GroomingFeedback = lazy(() => import("@/pages/GroomingFeedback"));
 const GroomingReviews = lazy(() => import("@/pages/GroomingReviews"));
@@ -480,7 +481,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (newLanguage !== language) {
       trackLanguageChange(language, newLanguage);
       onLanguageChange(newLanguage);
-      localStorage.setItem('language', newLanguage);
+      localStorage.setItem('pw_lang', newLanguage);
     }
   };
 
@@ -1166,15 +1167,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        <Route path="/walk-my-pet/walker/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <WalkerDashboardPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* Walk My Pet — provider (walker) surface consolidated into ProviderOS */}
+        <Route path="/walk-my-pet/walker/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* ⁦Walk My Pet™⁩ - Owner Dashboard (Track walks, view history, manage bookings) */}
         <Route path="/walk-my-pet/owner/dashboard">
@@ -1284,37 +1278,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
         
-        {/* Unified Provider Dashboard (Pet Wash™ style) */}
-        <Route path="/provider/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <UnifiedProviderDashboard />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
-
-        <Route path="/provider/timeline">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <ProviderTimeline />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
-
-        {/* Provider Operations Console 2026 */}
-        <Route path="/provider/console">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <ProviderConsole />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
+        {/* Legacy provider routes — all redirect to /provider-os (canonical provider surface) */}
+        <Route path="/provider/dashboard">{() => <Redirect to="/provider-os" />}</Route>
+        <Route path="/provider/timeline">{() => <Redirect to="/provider-os" />}</Route>
+        <Route path="/provider/console">{() => <Redirect to="/provider-os" />}</Route>
 
         {/* Provider OS — Full Operating System */}
         <Route path="/provider-os">
@@ -1406,16 +1373,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦The Sitter Suite™⁩ - Luxury Sitter Dashboard (7-Star Hotel Aesthetic) */}
-        <Route path="/sitter-suite/sitter/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <SitterDashboardPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* The Sitter Suite — sitter (provider) surface consolidated into ProviderOS */}
+        <Route path="/sitter-suite/sitter/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* ⁦The Sitter Suite™⁩ - Sitter Edit Profile (with Photo Upload) */}
         <Route path="/sitter-suite/sitter/edit-profile">
@@ -1466,16 +1425,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Contractor Dashboard - Trust Scores, Earnings, Reviews, Badges (2026 Lifecycle) */}
-        <Route path="/contractor/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <ContractorDashboard />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* Contractor Dashboard — consolidated into ProviderOS */}
+        <Route path="/contractor/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* Grooming Marketplace - Specific routes BEFORE general routes */}
         {/* Grooming Marketplace - Book Grooming Session */}
@@ -1500,16 +1451,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Grooming Marketplace - Provider Dashboard */}
-        <Route path="/groomers/provider/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <GroomersProviderDashboard language={language} />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
+        {/* Grooming Marketplace - Provider Dashboard — consolidated into ProviderOS */}
+        <Route path="/groomers/provider/dashboard">{() => <Redirect to="/provider-os" />}</Route>
         
         {/* Grooming Marketplace - Platform Overview (Marketing/Gateway) */}
         <Route path="/groomers">
@@ -1550,12 +1493,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* K9000 Wash Stations - Specific routes BEFORE general routes */}
-        {/* K9000 Wash Stations - Booking Flow (3-step wizard: station, datetime, review) */}
+        {/* K9000 Wash Stations - Self-Service Bay Status + Wash Start (real-time, no booking) */}
         <Route path="/k9000/booking/:stationId?">
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
-                <K9000BookingFlow />
+                <K9000BayStatus />
               </Suspense>
             </RequireAuth>
           )}
@@ -1570,7 +1513,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* K9000 Wash Stations - Browse/Explore Stations (future - for now redirect to booking) */}
+        {/* K9000 Wash Stations - Browse/Explore Stations (future - for now redirect to overview) */}
         <Route path="/k9000/explore">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1579,12 +1522,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* K9000 Wash Stations - Unified Hub (placeholder - routes to booking for now) */}
+        {/* K9000 Wash Stations - Bay Status hub (same view as /k9000/booking) */}
         <Route path="/k9000/hub">
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
-                <K9000BookingFlow />
+                <K9000BayStatus />
               </Suspense>
             </RequireAuth>
           )}
@@ -2986,17 +2929,23 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Use consistent key 'petwash_lang' - default to Hebrew for Israeli market
-    const savedLanguage = (localStorage.getItem('petwash_lang') || localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
+    // Read canonical key (pw_lang) with one-time migration from legacy keys
+    let savedLanguage = localStorage.getItem('pw_lang') as Language;
+    if (!savedLanguage || !['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(savedLanguage)) {
+      const legacy = (localStorage.getItem('petwash_lang') || localStorage.getItem('language')) as Language;
+      if (legacy && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(legacy)) {
+        localStorage.setItem('pw_lang', legacy);
+        savedLanguage = legacy;
+      }
+    }
     if (savedLanguage && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(savedLanguage)) {
       setCurrentLanguage(savedLanguage);
       document.documentElement.dir = isRTL(savedLanguage) ? 'rtl' : 'ltr';
       document.documentElement.lang = savedLanguage;
       setIsLanguageInitialized(true);
     } else {
-      // Default to Hebrew for Israeli market
+      // No saved preference — show Hebrew temporarily while geo detects
       setCurrentLanguage('he');
-      localStorage.setItem('petwash_lang', 'he');
       document.documentElement.dir = 'rtl';
       document.documentElement.lang = 'he';
       setIsLanguageInitialized(true);
@@ -3005,12 +2954,14 @@ function App() {
     async function detectLanguageInBackground() {
       try {
         const defaultLanguage = await getDefaultLanguageByLocation();
-        const currentSaved = localStorage.getItem('petwash_lang') as Language;
+        // getDefaultLanguageByLocation already returns the saved preference when one
+        // exists, so this guard is purely a race-condition safety net.
+        const currentSaved = localStorage.getItem('pw_lang') as Language;
         
         // Only update if no saved preference exists
-        if (!currentSaved) {
+        if (!currentSaved || !['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(currentSaved)) {
           setCurrentLanguage(defaultLanguage);
-          localStorage.setItem('petwash_lang', defaultLanguage);
+          localStorage.setItem('pw_lang', defaultLanguage);
           document.documentElement.dir = isRTL(defaultLanguage) ? 'rtl' : 'ltr';
           document.documentElement.lang = defaultLanguage;
           
@@ -3088,8 +3039,6 @@ console.log("Build: 1769350182889");
               <ActivationBanner />
               <Router language={currentLanguage} onLanguageChange={(newLang) => {
                 setCurrentLanguage(newLang);
-                localStorage.setItem('language', newLang);
-                localStorage.setItem('petwash_lang', newLang);
                 localStorage.setItem('pw_lang', newLang);
                 document.documentElement.dir = isRTL(newLang) ? 'rtl' : 'ltr';
                 document.documentElement.lang = newLang;
@@ -3111,6 +3060,9 @@ console.log("Build: 1769350182889");
             isOpen={isConsentManagerOpen}
             onClose={() => setIsConsentManagerOpen(false)}
           />
+
+          {/* Luxury entry popup — single global instance, z-[9999] sits above all overlays */}
+          <PromoAdPopup />
           
         </TooltipProvider>
       </LanguageProvider>

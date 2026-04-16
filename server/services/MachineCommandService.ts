@@ -478,6 +478,25 @@ async function _handleTimeout(cmd: MachineCommand): Promise<void> {
         logger.warn('[MachineCmd] wash.failed event publish failed', { error: e?.message });
       });
     }
+
+    // ── Auto-compensation: if a wallet-funded session timed out, restore credit ─
+    // Use dynamic import to avoid circular dependencies.
+    if (needsCompensation && cmd.sessionId) {
+      import('./K9000RedemptionService').then(({ autoCompensateSession }) => {
+        return autoCompensateSession(cmd.sessionId!);
+      }).then(() => {
+        logger.info('[MachineCmd] Auto-compensation completed', {
+          commandId: cmd.commandId,
+          sessionId: cmd.sessionId,
+        });
+      }).catch((e: any) => {
+        logger.error('[MachineCmd] Auto-compensation failed — manual review required', {
+          commandId:  cmd.commandId,
+          sessionId:  cmd.sessionId,
+          error:      e?.message,
+        });
+      });
+    }
   }
 }
 

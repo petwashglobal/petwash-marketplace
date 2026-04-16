@@ -50,6 +50,7 @@ import {
   buildEgiftPurchasedSms,
   buildEgiftRedeemedSms,
 } from "../services/PetWashNotificationEngine";
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from "@shared/support-contact";
 const router = Router();
 
 const PLATFORM_FEE_RATE = 0.15;
@@ -778,7 +779,7 @@ router.post("/v1/brain/redeem", async (req: Request, res: Response) => {
   ${body.stationId ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמדה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.stationId}</td></tr>` : ''}
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
           const docRef = await FinancialDocumentService.create({
@@ -925,7 +926,7 @@ router.post("/v1/egift/purchase", async (req: Request, res: Response) => {
   ${body.recipientName ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מקבל המתנה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.recipientName}</td></tr>` : ''}
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${new Date().toLocaleDateString('he-IL')}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il</p>
 </body></html>`;
 
           const docRef = await FinancialDocumentService.create({

@@ -34,6 +34,7 @@ import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import { appendFormSubmission } from './googleSheetsIntegration';
 import { allocateTaxSequenceNumber } from './TaxSequenceService';
 import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
+import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_WHATSAPP_URL } from '@shared/support-contact';
 
 const ISRAELI_VAT_RATE = 0.18;
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
@@ -565,7 +566,7 @@ export class IsraeliDigitalReceiptService {
             </td>
             <!-- WhatsApp -->
             <td style="padding:0 6px;">
-              <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;text-decoration:none;">
+              <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="background:#25D366;border-radius:10px;padding:10px 16px;">
@@ -585,7 +586,7 @@ export class IsraeliDigitalReceiptService {
       <td style="padding:14px 40px;text-align:center;background:#fafafa;">
         <a href="https://petwash.co.il/privacy" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Privacy Policy / פרטיות</a>
         <span style="color:#ddd;font-size:11px;">|</span>
-        <a href="mailto:support@petwash.co.il" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Contact / צור קשר</a>
+        <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Contact / צור קשר</a>
         <span style="color:#ddd;font-size:11px;">|</span>
         <a href="https://petwash.co.il/terms" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Terms / תנאי שימוש</a>
       </td>
@@ -598,7 +599,7 @@ export class IsraeliDigitalReceiptService {
         <p style="margin:6px 0 0;color:#666666;font-size:11px;font-family:Arial,sans-serif;">
           <a href="https://petwash.co.il" style="color:#888;text-decoration:none;">petwash.co.il</a>
           &nbsp;·&nbsp;
-          <a href="mailto:support@petwash.co.il" style="color:#888;text-decoration:none;">support@petwash.co.il</a>
+          <a href="mailto:${CANONICAL_SUPPORT_EMAIL}" style="color:#888;text-decoration:none;">${CANONICAL_SUPPORT_EMAIL}</a>
         </p>
         <p style="margin:6px 0 0;color:#444444;font-size:10px;font-family:Arial,sans-serif;">© ${new Date().getFullYear()} ${COMPANY_NAME_HE}. All rights reserved.</p>
       </td>
