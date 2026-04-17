@@ -1,0 +1,8 @@
+name: PetWash CodeQL config
+
+# Exclude compiled build artifacts and vendor bundles from CodeQL scanning.
+# dist/ contains minified third-party vendor files (Firebase SDK, etc.) that
+# are committed for Cloud Run deployment. CodeQL alerts on those files are
+# false positives in third-party code that cannot be patched by this project.
+paths-ignore:
+  - dist
