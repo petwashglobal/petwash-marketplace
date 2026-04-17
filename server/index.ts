@@ -1118,6 +1118,9 @@ if (isProduction) {
     import('./services/providerMonitoring').then(m => m.startProviderMonitoringWatchdog()).catch((e) => console.error('[ProviderWatchdog] Failed to initialize:', e));
     import('./jobs/exception-email').then(m => m.startExceptionEmailJob()).catch((e) => console.error('[ExceptionEmail] Failed to initialize:', e));
     import('./jobs/daily-close-reminder').then(m => m.startDailyCloseReminder()).catch((e) => console.error('[DailyCloseReminder] Failed to initialize:', e));
+    // K9000 wash token expiry sweeper — marks pending→expired every 60 s so all
+    // four token states are actively maintained in the DB (not just implied by TTL).
+    import('./jobs/k9000-token-expiry').then(m => m.startK9000TokenExpirySweeper()).catch((e) => console.error('[K9000TokenExpiry] Failed to start sweeper:', e));
 
     // Email Spend Guard — wire alarm callback so budget alerts reach nir.h@petwash.co.il
     import('./services/EmailSpendGuard').then(async ({ emailSpendGuard }) => {
