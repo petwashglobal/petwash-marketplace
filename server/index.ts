@@ -81,6 +81,21 @@ const _startupSecurityViolations: string[] = [];
       hint: 'Must be at least one valid email address',
       fatalInProd: false,
     },
+    {
+      // Google Service Account JSON — single credential powering 10+ services.
+      // If missing, ALL of the following degrade silently at call-time:
+      //   Calendar, Sheets, Gmail fallback, Google Wallet, Cloud Storage,
+      //   Cloud Translation, Dialogflow CX, Vision API, Cloud Messaging,
+      //   Business Profile API.
+      // This is the highest single-point-of-failure in the Google integration layer.
+      key: 'GOOGLE_SERVICE_ACCOUNT_JSON',
+      pattern: /^\{/, // Must be a JSON object literal
+      hint: 'JSON service account key from Google Cloud Console → IAM → Service Accounts → Keys. ' +
+            'CRITICAL: 10 Google services (Calendar, Sheets, Gmail fallback, Wallet, Cloud Storage, ' +
+            'Translation, Dialogflow, Vision, Cloud Messaging, Business Profile) ALL depend on this ' +
+            'single secret. A rotation without updating this value silently breaks half the platform.',
+      fatalInProd: false,
+    },
   ];
 
   // Placeholder values that operators copy from documentation but never replace.

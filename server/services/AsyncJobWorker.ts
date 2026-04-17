@@ -153,10 +153,36 @@ async function executeJob(job: AsyncJob): Promise<boolean> {
     }
 
     case 'CREATE_CALENDAR_EVENT': {
-      logger.info('[AsyncJobWorker] CREATE_CALENDAR_EVENT — not yet implemented, marking done', {
-        jobId: job.id, entityId: job.entity_id,
-      });
-      return true;
+      try {
+        const { calendarIntegrationService, type: _t } = await import('./CalendarIntegrationService') as any;
+        const available = await calendarIntegrationService.isAvailable();
+        if (!available) {
+          logger.warn('[AsyncJobWorker] CREATE_CALENDAR_EVENT — Google Calendar not available (missing Replit connector or service account); skipping', {
+            jobId: job.id, entityId: job.entity_id,
+          });
+          // Return true so the job is not retried indefinitely when Calendar is unconfigured.
+          // When Calendar becomes available, new bookings will queue new jobs.
+          return true;
+        }
+        const p = job.payload;
+        await calendarIntegrationService.createBookingEvent({
+          platform:     String(p.platform     || 'petwash'),
+          bookingId:    String(p.bookingId    || job.entity_id),
+          title:        String(p.title        || 'Pet Wash Booking'),
+          description:  String(p.description  || ''),
+          startTime:    new Date(p.startTime  as string),
+          endTime:      new Date(p.endTime    as string),
+          location:     p.location     ? String(p.location)     : undefined,
+          customerName: p.customerName ? String(p.customerName) : undefined,
+          providerName: p.providerName ? String(p.providerName) : undefined,
+          petName:      p.petName      ? String(p.petName)      : undefined,
+        });
+        logger.info('[AsyncJobWorker] CREATE_CALENDAR_EVENT succeeded', { jobId: job.id, entityId: job.entity_id });
+        return true;
+      } catch (err: any) {
+        logger.error('[AsyncJobWorker] CREATE_CALENDAR_EVENT failed', { err: err.message, jobId: job.id });
+        return false;
+      }
     }
 
     case 'SEND_GMAIL_FALLBACK': {
