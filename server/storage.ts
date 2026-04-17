@@ -316,10 +316,10 @@ export interface IStorage {
   
   // Legacy gift card methods (for backward compatibility)
   createGiftCard(giftCard: InsertGiftCard): Promise<GiftCard>;
-  getGiftCard(codeHash: string): Promise<GiftCard | undefined>;
+  getGiftCard(codePlain: string): Promise<GiftCard | undefined>;
   getGiftCardById(id: string): Promise<GiftCard | undefined>;
   getAllGiftCards(options?: { limit?: number; cursor?: string }): Promise<{ giftCards: GiftCard[]; hasMore: boolean; nextCursor?: string }>;
-  redeemGiftCard(codeHash: string, userId: string): Promise<GiftCard | null>;
+  redeemGiftCard(codePlain: string, userId: string): Promise<GiftCard | null>;
   
   // Wash history
   createWashHistory(history: InsertWashHistory): Promise<WashHistory>;
@@ -1766,12 +1766,16 @@ export class DatabaseStorage implements IStorage {
     return await this.createEVoucher(giftCard as InsertEVoucher);
   }
 
-  async getGiftCard(codeHash: string): Promise<GiftCard | undefined> {
+  async getGiftCard(codePlain: string): Promise<GiftCard | undefined> {
+    const { hashVoucherCode } = await import('./utils/voucherCodes');
+    const codeHash = hashVoucherCode(codePlain);
     return await this.getEVoucherByCodeHash(codeHash);
   }
 
-  async redeemGiftCard(codeHash: string, userId: string): Promise<GiftCard | null> {
-    return await this.claimVoucher(codeHash, userId);
+  async redeemGiftCard(codePlain: string, userId: string): Promise<GiftCard | null> {
+    const result = await this.claimVoucher({ codePlain, ownerUid: userId });
+    if (!result.success || !result.voucher) return null;
+    return result.voucher as unknown as GiftCard;
   }
 
   async getGiftCardById(id: string): Promise<GiftCard | undefined> {
