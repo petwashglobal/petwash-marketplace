@@ -418,23 +418,24 @@ jobs:
             "${{ env.IMAGE }}:${{ github.sha }}"
 
           SUCCESS=false
-          for i in $(seq 1 18); do
+          MAX_ATTEMPTS=18          # 18 × 5 s = 90 s max wait
+          for i in $(seq 1 $MAX_ATTEMPTS); do
             sleep 5
             HTTP=$(curl -s -o /tmp/smoke_health.json -w "%{http_code}" \
               --max-time 10 http://localhost:18080/health 2>/dev/null || echo "000")
-            echo "  Attempt $i/18: HTTP $HTTP"
+            echo "  Attempt $i/$MAX_ATTEMPTS: HTTP $HTTP"
             if [ "$HTTP" = "200" ]; then
               SUCCESS=true
               echo "  Response: $(cat /tmp/smoke_health.json 2>/dev/null || echo '(empty)')"
               break
             fi
             # Print recent container output on every failed attempt for fast diagnosis
-            docker logs petwash-smoke 2>&1 | tail -15
+            docker logs petwash-smoke 2>&1 | tail -20
           done
 
           echo ""
-          echo "--- Full container logs ---"
-          docker logs petwash-smoke 2>&1 | tail -80
+          echo "--- Full container logs (last 100 lines) ---"
+          docker logs petwash-smoke 2>&1 | tail -100
           docker stop petwash-smoke || true
           docker rm   petwash-smoke || true
 

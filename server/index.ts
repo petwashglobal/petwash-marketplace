@@ -149,11 +149,15 @@ const _startupConfigErrors: string[] = [];
     } else if (WEAK_ADMIN_SECRETS.has(val.toLowerCase())) {
       const msg = `[startup] CRITICAL SECURITY: ${key} is set to a known-weak value — rotate immediately!`;
       // Do NOT throw before app.listen() — a pre-bind crash causes Cloud Run startup probe failure.
+      // Record in _startupConfigErrors so the issue surfaces in /health monitoring.
       console.error(msg);
+      _startupConfigErrors.push(msg);
     } else if (val.length < MIN_ADMIN_SECRET_LENGTH) {
       const msg = `[startup] SECURITY: ${key} is shorter than ${MIN_ADMIN_SECRET_LENGTH} characters — use a longer secret`;
       // Do NOT throw before app.listen() — a pre-bind crash causes Cloud Run startup probe failure.
+      // Record in _startupConfigErrors so the issue surfaces in /health monitoring.
       console.error(msg);
+      _startupConfigErrors.push(msg);
     }
   }
 
