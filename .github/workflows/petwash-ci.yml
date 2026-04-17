@@ -425,9 +425,11 @@ jobs:
 
           # ── Phase 1: wait for /health to return 200 ──────────────────────────
           BOOT_OK=false
-          MAX_ATTEMPTS=18          # 18 × 5 s = 90 s max wait
+          MAX_WAIT_SECONDS=90
+          POLL_INTERVAL=5
+          MAX_ATTEMPTS=$((MAX_WAIT_SECONDS / POLL_INTERVAL))
           for i in $(seq 1 $MAX_ATTEMPTS); do
-            sleep 5
+            sleep $POLL_INTERVAL
             HTTP=$(curl -s -o /tmp/smoke_health.json -w "%{http_code}" \
               --max-time 10 http://localhost:18080/health 2>/dev/null || echo "000")
             echo "  [Phase 1] Attempt $i/$MAX_ATTEMPTS: /health → HTTP $HTTP"

@@ -596,7 +596,7 @@ app.get('/health/strict', (_req, res) => {
   const timestamp = new Date().toISOString();
   if (_startupConfigErrors.length > 0) {
     return res.status(503).json({
-      status: 'MISCONFIGURED',
+      status: 'DEGRADED',
       timestamp,
       bootTs: healthState.bootTs,
       checks: {
