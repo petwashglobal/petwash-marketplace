@@ -112,40 +112,83 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [smsConsent, setSmsConsent] = useState(false);
   const [termsConsent, setTermsConsent] = useState(false);
 
-  const goToAuth = () => {
+  const goToAuth = (method: 'mobile' | 'email' | 'google' | 'apple' | 'passkey') => {
     localStorage.setItem('signup_intent', 'loyalty');
-    setLocation('/signin?redirect=/privilege');
+    setLocation(`/signin?redirect=/privilege&authMethod=${method}`);
+  };
+
+  const authLabels: Record<'mobile' | 'email' | 'google' | 'apple' | 'passkey', Record<Language, string>> = {
+    mobile: {
+      en: 'Sign in with Mobile (SMS)',
+      he: 'התחבר עם טלפון (SMS)',
+      ar: 'سجّل الدخول عبر الجوال (SMS)',
+      ru: 'Войти по телефону (SMS)',
+      fr: 'Se connecter avec mobile (SMS)',
+      es: 'Iniciar sesión con móvil (SMS)',
+    },
+    email: {
+      en: 'Sign in with Email',
+      he: 'התחבר עם אימייל',
+      ar: 'سجّل الدخول عبر البريد الإلكتروني',
+      ru: 'Войти по email',
+      fr: 'Se connecter avec e-mail',
+      es: 'Iniciar sesión con correo',
+    },
+    google: {
+      en: 'Sign in with Google',
+      he: 'התחבר עם Google',
+      ar: 'سجّل الدخول عبر Google',
+      ru: 'Войти через Google',
+      fr: 'Se connecter avec Google',
+      es: 'Iniciar sesión con Google',
+    },
+    apple: {
+      en: 'Sign in with Apple',
+      he: 'התחבר עם Apple',
+      ar: 'سجّل الدخول عبر Apple',
+      ru: 'Войти через Apple',
+      fr: 'Se connecter avec Apple',
+      es: 'Iniciar sesión con Apple',
+    },
+    passkey: {
+      en: 'Sign in with Passkey / Face ID',
+      he: 'התחבר עם Passkey / Face ID',
+      ar: 'سجّل الدخول عبر Passkey / Face ID',
+      ru: 'Войти с Passkey / Face ID',
+      fr: 'Se connecter avec Passkey / Face ID',
+      es: 'Iniciar sesión con Passkey / Face ID',
+    },
   };
 
   const authOptions = [
     {
       key: 'mobile',
-      label: language === 'he' ? 'התחבר עם טלפון (SMS)' : 'Sign in with Mobile (SMS)',
-      ariaLabel: language === 'he' ? 'התחבר עם טלפון' : 'Sign in with mobile',
+      label: authLabels.mobile[language],
+      ariaLabel: authLabels.mobile[language],
       icon: <Smartphone className="w-4 h-4 text-gray-500" />,
     },
     {
       key: 'email',
-      label: language === 'he' ? 'התחבר עם אימייל' : 'Sign in with Email',
-      ariaLabel: language === 'he' ? 'התחבר עם אימייל' : 'Sign in with email',
+      label: authLabels.email[language],
+      ariaLabel: authLabels.email[language],
       icon: <Mail className="w-4 h-4 text-gray-500" />,
     },
     {
       key: 'google',
-      label: language === 'he' ? 'התחבר עם Google' : 'Sign in with Google',
-      ariaLabel: language === 'he' ? 'התחבר עם Google' : 'Sign in with Google',
+      label: authLabels.google[language],
+      ariaLabel: authLabels.google[language],
       icon: <SiGoogle className="w-4 h-4 text-gray-500" />,
     },
     {
       key: 'apple',
-      label: language === 'he' ? 'התחבר עם Apple' : 'Sign in with Apple',
-      ariaLabel: language === 'he' ? 'התחבר עם Apple' : 'Sign in with Apple',
+      label: authLabels.apple[language],
+      ariaLabel: authLabels.apple[language],
       icon: <SiApple className="w-4 h-4 text-gray-500" />,
     },
     {
       key: 'passkey',
-      label: language === 'he' ? 'התחבר עם Passkey / Face ID' : 'Sign in with Passkey / Face ID',
-      ariaLabel: language === 'he' ? 'התחבר עם Passkey או Face ID' : 'Sign in with passkey or Face ID',
+      label: authLabels.passkey[language],
+      ariaLabel: authLabels.passkey[language],
       icon: <ScanFace className="w-4 h-4 text-gray-500" />,
     },
   ];
@@ -688,7 +731,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                       {authOptions.map((option) => (
                         <button
                           key={option.key}
-                          onClick={goToAuth}
+                          onClick={() => goToAuth(option.key as 'mobile' | 'email' | 'google' | 'apple' | 'passkey')}
                           aria-label={option.ariaLabel}
                           className={authOptionButtonClass}
                           style={authOptionButtonStyle}

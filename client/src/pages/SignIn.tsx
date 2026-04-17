@@ -123,7 +123,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     password: "",
   });
   const [rememberDevice, setRememberDevice] = useState(false);
-  const customRedirect = new URLSearchParams(window.location.search).get('redirect') || '';
+  const urlParams = new URLSearchParams(window.location.search);
+  const customRedirect = urlParams.get('redirect') || '';
+  const authMethod = urlParams.get('authMethod') || '';
   const [passwordFailureCount, setPasswordFailureCount] = useState(0);
   const [magicLinkResendCountdown, setMagicLinkResendCountdown] = useState(0);
   const [showFallbackHint, setShowFallbackHint] = useState(false);
@@ -138,6 +140,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [selectedIntent, setSelectedIntent] = useState<string | null>(
     localStorage.getItem('signup_intent') || null
   );
+  const [preferredAuthHandled, setPreferredAuthHandled] = useState(false);
   
   const autoFaceID = useAutoFaceID({
     language,
@@ -223,6 +226,31 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!authMethod || preferredAuthHandled) return;
+    if (!selectedIntent) {
+      localStorage.setItem('signup_intent', 'loyalty');
+      setSelectedIntent('loyalty');
+    }
+    setPreferredAuthHandled(true);
+    if (authMethod === 'mobile') {
+      setPhoneMode(true);
+      return;
+    }
+    if (authMethod === 'google') {
+      handleSocialLogin('google');
+      return;
+    }
+    if (authMethod === 'apple') {
+      handleSocialLogin('apple');
+      return;
+    }
+    if (authMethod === 'passkey' && passkeyAvailable) {
+      handlePasskeySignIn();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authMethod, preferredAuthHandled, selectedIntent, passkeyAvailable]);
   
   useEffect(() => {
     if (magicLinkResendCountdown > 0) {
