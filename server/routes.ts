@@ -333,6 +333,14 @@ export async function registerRoutes(app: Express): Promise<void> {
     }));
   }
 
+  // Serve user-uploaded files (paw-finder pet photos, etc.)
+  app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads'), {
+    maxAge: '7d',
+    setHeaders: (res) => {
+      res.set('Cache-Control', 'public, max-age=604800');
+    },
+  }));
+
   // Serve attached assets (images, files, etc.) - PRIORITY FIRST
   app.use('/attached_assets', express.static('attached_assets', {
     maxAge: '7d', // Cache images for 7 days
