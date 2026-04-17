@@ -255,10 +255,7 @@ const TrainerDetail = lazy(() => import("@/pages/academy/TrainerDetail"));
 const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
 const TrainerBookings = lazy(() => import("@/pages/academy/TrainerBookings"));
 
-// Provider Join Flows — platform-specific application forms
-const JoinAsWalker = lazy(() => import("@/pages/join/JoinAsWalker"));
-const JoinAsSitter = lazy(() => import("@/pages/join/JoinAsSitter"));
-const JoinAsTrainer = lazy(() => import("@/pages/join/JoinAsTrainer"));
+// Provider Join Flows — legacy files kept but routes redirect to canonical /become-provider funnel
 
 // Contractor Dashboard - 2026 Lifecycle Management
 const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
@@ -359,6 +356,7 @@ const Optimizer = lazy(() => import("@/pages/Optimizer"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
+// ProviderApplicationForm kept as internal fallback; routes redirect to /become-provider
 const ProviderApplicationForm = lazy(() => import("@/pages/ProviderApplicationForm"));
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
 const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
@@ -1114,27 +1112,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* Provider Join Flows — dedicated platform-specific application forms */}
+        {/* Provider Join Flows — all redirect to the canonical /become-provider funnel */}
         <Route path="/join/walker">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <JoinAsWalker />
-            </Suspense>
-          )}
+          {() => <Redirect to="/become-provider?type=walker" />}
         </Route>
         <Route path="/join/sitter">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <JoinAsSitter />
-            </Suspense>
-          )}
+          {() => <Redirect to="/become-provider?type=sitter" />}
         </Route>
         <Route path="/join/trainer">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <JoinAsTrainer />
-            </Suspense>
-          )}
+          {() => <Redirect to="/become-provider?type=trainer" />}
         </Route>
 
         {/* Provider Matching Flow — luxury real-time matching experience */}
@@ -2100,18 +2086,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/apply-provider">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
-          )}
+          {() => <Redirect to="/become-provider" />}
         </Route>
         <Route path="/join-team">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
-          )}
+          {() => <Redirect to="/become-provider" />}
         </Route>
         <Route path="/providers">
           {() => (

@@ -223,7 +223,7 @@ export default function SitterSuite() {
                     <Heart className="w-5 h-5" />
                   </Button>
                   
-                  <Link href="/join/sitter">
+                  <Link href="/become-provider?type=sitter">
                     <Button 
                       className="luxury-btn-secondary flex items-center gap-3"
                       data-testid="button-become-sitter"
@@ -866,7 +866,7 @@ export default function SitterSuite() {
                     ? 'אנחנו מגייסים שמרטפים מאומתים לפלטפורמה. רוצים להיות הראשונים לדעת כשנשיק?' 
                     : 'We are recruiting verified sitters to our platform. Want to be the first to know when we launch?'}
                 </p>
-                <Link href="/join/sitter">
+                <Link href="/become-provider?type=sitter">
                   <Button className="luxury-btn-primary" data-testid="button-become-sitter">
                     {isHebrew ? 'הפוך לשמרטף' : 'Become a Sitter'}
                   </Button>
@@ -1003,7 +1003,7 @@ export default function SitterSuite() {
                 <Search className="w-6 h-6" />
                 {isHebrew ? 'מצא שמרטף עכשיו' : 'Find a Sitter Now'}
               </Button>
-              <Link href="/join/sitter">
+              <Link href="/become-provider?type=sitter">
                 <Button 
                   className="luxury-btn-secondary flex items-center gap-2"
                 >

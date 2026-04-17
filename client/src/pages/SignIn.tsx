@@ -230,8 +230,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   useEffect(() => {
     if (!authMethod || preferredAuthHandled) return;
     if (!selectedIntent) {
-      localStorage.setItem('signup_intent', 'loyalty');
-      setSelectedIntent('loyalty');
+      // Infer intent from the redirect target; authMethod is primarily used by loyalty flows,
+      // but guard against it overwriting a provider intent if both happen to be present.
+      const inferredIntent = customRedirect.includes('provider-onboarding') ? 'provider' : 'loyalty';
+      localStorage.setItem('signup_intent', inferredIntent);
+      setSelectedIntent(inferredIntent);
     }
     setPreferredAuthHandled(true);
     if (authMethod === 'mobile') {

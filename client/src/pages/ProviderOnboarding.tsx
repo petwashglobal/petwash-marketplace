@@ -47,6 +47,17 @@ export default function ProviderOnboarding() {
   // Form state
   const [step, setStep] = useState(1);
   const [providerTypes, setProviderTypes] = useState<Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>>([]);
+
+  // Pre-select provider type from URL param passed through /become-provider?type=X
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const typeParam = params.get('type');
+    const validTypes = ['walker', 'sitter', 'station_operator', 'driver', 'trainer'] as const;
+    if (typeParam && (validTypes as readonly string[]).includes(typeParam)) {
+      setProviderTypes([typeParam as 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer']);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Toggle a provider type in the multi-select list
   const toggleProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => {

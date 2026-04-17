@@ -35,13 +35,13 @@ export default function ProviderRegistrationBanner({
   const isRTL = dir === "rtl";
   
   const dedicatedJoinRoutes: Record<string, string> = {
-    sitter: '/join/sitter',
-    walker: '/join/walker',
-    trainer: '/join/trainer',
+    sitter: '/become-provider?type=sitter',
+    walker: '/become-provider?type=walker',
+    trainer: '/become-provider?type=trainer',
     driver: '/become-provider?type=pet_trek',
-    sitter_suite: '/join/sitter',
-    walk_my_pet: '/join/walker',
-    training_academy: '/join/trainer',
+    sitter_suite: '/become-provider?type=sitter',
+    walk_my_pet: '/become-provider?type=walker',
+    training_academy: '/become-provider?type=trainer',
     pet_trek: '/become-provider?type=pet_trek',
   };
 
