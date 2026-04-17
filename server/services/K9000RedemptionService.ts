@@ -50,6 +50,7 @@ import {
   stationBays,
   baySessions,
   bayEvents,
+  k9000WashTokens,
 } from '@shared/schema';
 import { eq, and, gt, gte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -1140,6 +1141,22 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
       .set({ status: 'timed_out', updatedAt: now } as any)
       .where(eq(baySessions.id, sessionId));
   });
+
+  // ── Mark the wash token as failed_compensated ─────────────────────────────
+  // The token row is linked via session_id.  This makes the token lifecycle
+  // explicit and queryable: the token that triggered this session now reflects
+  // the outcome — credit was restored because the machine never started.
+  try {
+    await db
+      .update(k9000WashTokens)
+      .set({ status: 'failed_compensated', compensatedAt: now })
+      .where(eq(k9000WashTokens.sessionId, sessionId));
+  } catch (tokenErr: any) {
+    // Non-fatal — compensation already succeeded; token state update is audit-only
+    logger.warn('[AutoCompensation] Failed to update wash token state (non-fatal)', {
+      sessionId, error: tokenErr?.message,
+    });
+  }
 
   logger.info('[AutoCompensation] ✅ Credit auto-restored', {
     sessionId,

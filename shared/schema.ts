@@ -11457,6 +11457,56 @@ export const redemptionSessions = pgTable("redemption_sessions", {
   index("idx_redeem_session_expires").on(table.expiresAt),
 ]);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// K9000 WASH TOKENS — server-side DB token lifecycle (crash-safe single-use)
+//
+// One row per QR token generated for a K9000 wash redemption.
+// Nonce is the primary key — matches the nonce embedded in the HMAC-signed QR.
+// This table is the authoritative, persistent single-use gate.
+//
+// Lifecycle:
+//   pending           → QR generated, not yet scanned
+//   consumed          → Machine accepted QR and session started
+//   expired           → Token TTL elapsed without being scanned
+//   failed_compensated → Machine never ACKed START_PUMP; credit was auto-restored
+//
+// Normal:  pending → consumed
+// Timeout: pending → expired  (set by background sweep or on next generate-qr for same user)
+// Failure: consumed → failed_compensated  (MachineCommandService ACK timeout → autoCompensate)
+// ─────────────────────────────────────────────────────────────────────────────
+export const k9000WashTokens = pgTable("k9000_wash_tokens", {
+  // The nonce is the unique, unguessable identifier from the HMAC payload.
+  // Using it as PK guarantees a single DB row per token — no race window.
+  nonce: varchar("nonce", { length: 64 }).primaryKey(),
+
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  passSerial: varchar("pass_serial", { length: 128 }).notNull(),
+  kioskId: varchar("kiosk_id", { length: 100 }),           // null = any station
+  redemptionType: varchar("redemption_type", { length: 30 }).notNull(),
+
+  // Explicit lifecycle state — the 4 required states from the spec
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  // pending | consumed | expired | failed_compensated
+
+  // Set when token is consumed (machine accepted QR)
+  sessionId: varchar("session_id", { length: 128 }),       // FK → bay_sessions.id
+
+  expiresAt: timestamp("expires_at").notNull(),             // generatedAt + 45 s
+  generatedAt: timestamp("generated_at").defaultNow(),
+  consumedAt: timestamp("consumed_at"),
+  compensatedAt: timestamp("compensated_at"),
+
+  correlationId: varchar("correlation_id", { length: 64 }),
+}, (table) => [
+  index("idx_wash_token_user").on(table.userId),
+  index("idx_wash_token_status").on(table.status),
+  index("idx_wash_token_expires").on(table.expiresAt),
+  index("idx_wash_token_session").on(table.sessionId),
+]);
+
+export type K9000WashToken = typeof k9000WashTokens.$inferSelect;
+export type InsertK9000WashToken = typeof k9000WashTokens.$inferInsert;
+
 // Zod schemas for wallet system
 export const insertWalletAccountSchema = createInsertSchema(walletAccounts).omit({
   id: true,

@@ -55,7 +55,7 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines } from '@shared/schema';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines, k9000WashTokens } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -920,6 +920,53 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
       }
     }
 
+    // ── DB-level single-use gate (crash-safe, survives process restart) ─────
+    // Atomically transition the token row from pending → consumed.
+    // nonce is PRIMARY KEY — the WHERE + UPDATE is a single atomic operation.
+    //
+    // Three outcomes:
+    //   rowsUpdated = 1  → token consumed for the first time ✅
+    //   rowsUpdated = 0 AND row exists with status ≠ 'pending'  → replay ❌
+    //   rowsUpdated = 0 AND no row                               → old token
+    //       (generated before migration was deployed) → warn + allow (backward compat)
+    const dbConsumeResult = await db
+      .update(k9000WashTokens)
+      .set({ status: 'consumed', consumedAt: new Date() })
+      .where(
+        and(
+          eq(k9000WashTokens.nonce, nonce),
+          eq(k9000WashTokens.status, 'pending'),
+          gt(k9000WashTokens.expiresAt, new Date()),
+        ),
+      )
+      .returning({ nonce: k9000WashTokens.nonce });
+
+    if (dbConsumeResult.length === 0) {
+      // Check if a row exists but is not in pending state
+      const [existingToken] = await db
+        .select({ status: k9000WashTokens.status })
+        .from(k9000WashTokens)
+        .where(eq(k9000WashTokens.nonce, nonce))
+        .limit(1);
+
+      if (existingToken) {
+        // Row exists but status is consumed/expired/failed_compensated → replay
+        logger.warn('[K9000 Redeem] DB token replay blocked', {
+          nonce, userId, tokenStatus: existingToken.status, correlationId,
+        });
+        return res.status(409).json({
+          error: 'קוד זה כבר שומש. הצג קוד חדש.',
+          errorEn: 'QR code already used. Please generate a new one.',
+          status: 'REPLAYED',
+          correlationId,
+        });
+      }
+      // No row found — token predates migration; warn and allow for backward compat
+      logger.warn('[K9000 Redeem] Token nonce not found in DB — proceeding (backward compat, no DB row)', {
+        nonce, userId, correlationId,
+      });
+    }
+
     // ── Steps 2-8: Delegate to K9000RedemptionService ──────────────────────
     // This service enforces wallet ownership, balance check, machine eligibility,
     // station ready status, velocity anti-fraud, atomic debit, and full audit log.
@@ -952,6 +999,20 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
     }
 
     const { washId, bayId, sessionId, side: authorisedSide, remainingBalance, remainingUnit } = authorization;
+
+    // ── Update DB token with the bay session ID ─────────────────────────────
+    // Now that we have the sessionId from authorizeRedemption(), link it to the
+    // token row so autoCompensateSession can find and update the token state
+    // if the machine never ACKs START_PUMP.
+    db.update(k9000WashTokens)
+      .set({ sessionId })
+      .where(eq(k9000WashTokens.nonce, nonce))
+      .execute()
+      .catch((e: Error) => {
+        logger.warn('[K9000 Redeem] Failed to link sessionId to wash token (non-fatal)', {
+          nonce, sessionId, error: e.message,
+        });
+      });
 
     // ── Step 9: Dispatch START_PUMP via machine command reliability layer ──
     // authorizeRedemption() already committed the debit.  We now create a

@@ -10093,8 +10093,7 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/k9000/generate-qr', apiLimiter, requireAuth, async (req: any, res) => {
     try {
       const { generateSignedRedeemToken } = await import('./lib/signedRedeemToken');
-      const { walletAccounts: walletAccountsTable } = await import('@shared/schema');
-      const { redemptionSessions } = await import('@shared/schema');
+      const { walletAccounts: walletAccountsTable, redemptionSessions, k9000WashTokens } = await import('@shared/schema');
 
       const userId = req.firebaseUser?.uid;
       if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -10131,6 +10130,19 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
+      // Extract the nonce from the generated token payload so we can persist it
+      // for crash-safe, DB-level single-use enforcement.
+      // Token format: base64url(JSON_payload).HMAC_sig
+      let tokenNonce: string | null = null;
+      try {
+        const payloadB64 = qrToken.split('.')[0];
+        const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+        tokenNonce = payload.nonce ?? null;
+      } catch {
+        // Non-fatal — HMAC+Redis protection still active
+        logger.warn('[K9000 GenerateQR] Failed to decode nonce from token (non-fatal)', { userId });
+      }
+
       // Create a redemption session record so the polling endpoint works
       const sessionId = `K9-${Date.now().toString(36).toUpperCase()}-${userId.slice(-6).toUpperCase()}`;
       const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
@@ -10150,6 +10162,28 @@ self.addEventListener('notificationclick', (event) => {
       } catch (dbErr: any) {
         // Non-fatal — session row missing just breaks status polling, not the wash itself
         logger.warn('[K9000 GenerateQR] Failed to create redemption session (non-fatal)', { error: dbErr?.message, sessionId });
+      }
+
+      // Persist token lifecycle row — this is the DB-level single-use gate.
+      // nonce is PRIMARY KEY: a second INSERT with the same nonce would conflict
+      // and be rejected atomically, giving us crash-safe replay protection even
+      // if Redis + in-process nonce blacklist are lost on restart.
+      if (tokenNonce) {
+        try {
+          await db.insert(k9000WashTokens).values({
+            nonce: tokenNonce,
+            userId,
+            passSerial,
+            kioskId: req.body?.kioskId ?? null,
+            redemptionType,
+            status: 'pending',
+            expiresAt,
+            correlationId: sessionId,
+          });
+        } catch (dbErr: any) {
+          // Non-fatal — HMAC+Redis layers still enforce single-use
+          logger.warn('[K9000 GenerateQR] Failed to persist wash token row (non-fatal)', { error: dbErr?.message, tokenNonce });
+        }
       }
 
       return res.json({
