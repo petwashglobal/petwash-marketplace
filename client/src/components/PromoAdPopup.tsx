@@ -3,6 +3,14 @@ import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 
+// Routes on which the promo popup must never appear (auth, onboarding, loyalty-specific flows)
+const SUPPRESSED_PATH_PREFIXES = [
+  '/sign-in', '/signin', '/login', '/signup', '/sign-up', '/register',
+  '/become-provider', '/provider-onboarding', '/provider/pending', '/provider/rejected',
+  '/privilege', '/loyalty/join', '/vito', '/choose-role', '/complete-profile',
+  '/welcome-consent', '/verify-email', '/activate-account', '/blocked',
+];
+
 type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'elite-gold';
 
 interface PromoAdConfig {
@@ -64,6 +72,10 @@ export function PromoAdPopup({
   // Decide whether to show based on session suppression + 24 h localStorage suppression
   useEffect(() => {
     if (!config.enabled) return;
+
+    // Never show on auth, onboarding, or loyalty-specific signup pages
+    const path = window.location.pathname;
+    if (SUPPRESSED_PATH_PREFIXES.some(prefix => path.startsWith(prefix))) return;
 
     // Never show twice in the same tab session
     if (sessionStorage.getItem(sessionKey(config.id))) return;

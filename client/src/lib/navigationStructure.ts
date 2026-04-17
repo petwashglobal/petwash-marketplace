@@ -393,7 +393,7 @@ export const navigationTree: MenuItem[] = [
         label: 'Become a Host',
         labelHe: 'הפוך למארח',
         icon: Star,
-        path: '/provider-onboarding?platform=sitter',
+        path: '/become-provider?type=sitter',
         userRoles: ['provider', 'admin'],
       },
     ],

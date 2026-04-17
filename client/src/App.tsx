@@ -356,8 +356,7 @@ const Optimizer = lazy(() => import("@/pages/Optimizer"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
-// ProviderApplicationForm kept as internal fallback; routes redirect to /become-provider
-const ProviderApplicationForm = lazy(() => import("@/pages/ProviderApplicationForm"));
+// ProviderApplicationForm: legacy file kept on disk, no active route — do not re-import until needed
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
 const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
