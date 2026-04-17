@@ -5,7 +5,7 @@ import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt, createHash } from 'crypto';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
-import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue, walkerProfiles, sitterProfiles } from '@shared/schema';
+import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue, walkerProfiles, sitterProfiles, trainers } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
@@ -1513,6 +1513,33 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
               verificationBadges: ['identity_verified'],
             });
             logger.info('[Provider Onboarding] sitterProfiles row created on approval', { userId: application.userId, providerId });
+          }
+        } else if (application.providerType === 'trainer') {
+          // Check if profile already exists (idempotent)
+          const existingTrainer = await db
+            .select({ id: trainers.id })
+            .from(trainers)
+            .where(eq(trainers.userId, application.userId))
+            .limit(1);
+
+          if (existingTrainer.length === 0) {
+            const trainerPrefix = 'TR';
+            const trainerRandomId = randomBytes(5).toString('hex').toUpperCase();
+            const trainerId = `${trainerPrefix}-${trainerRandomId}`;
+            await db.insert(trainers).values({
+              trainerId,
+              userId: application.userId,
+              firstName: application.firstName,
+              lastName: application.lastName,
+              email: application.email || '',
+              phone: application.phoneNumber || '',
+              hourlyRate: '150.00', // Placeholder ₪150/hr — provider sets their own rate
+              verificationStatus: 'approved',
+              verifiedAt: new Date(),
+              verifiedBy: 'admin',
+              isActive: true,
+            });
+            logger.info('[Provider Onboarding] trainers row created on approval', { userId: application.userId, trainerId });
           }
         }
       } catch (profileErr: any) {

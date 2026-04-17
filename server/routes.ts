@@ -11334,7 +11334,8 @@ self.addEventListener('notificationclick', (event) => {
         consentTextHash,
         captchaToken,
         turnstileToken: createProfileTurnstileToken,
-        traceId
+        traceId,
+        initialPet,  // { name: string; species: string } | undefined — required at sign-up
       } = req.body;
 
       logger.info('[CreateProfile] Processing', { traceId, uid, email });
@@ -11562,6 +11563,24 @@ self.addEventListener('notificationclick', (event) => {
         const { geminiPlatformMonitor } = await import('./services/GeminiPlatformSecurityMonitor');
         geminiPlatformMonitor.recordRegistration('prestige');
       } catch { /* non-fatal — never block registration */ }
+
+      // ── Initial pet registration (best-effort — non-blocking) ─────────────────────────────
+      // At least one pet should be captured at sign-up per the product spec.
+      // Failures here are non-fatal so they never block account creation.
+      if (initialPet?.name && initialPet?.species) {
+        try {
+          const { db: pgDb } = await import('./db');
+          const { pets } = await import('@shared/schema');
+          await pgDb.insert(pets).values({
+            userId: uid,
+            name: String(initialPet.name).trim().substring(0, 60),
+            species: String(initialPet.species).trim().substring(0, 30),
+          });
+          logger.info('[CreateProfile] Initial pet created', { traceId, uid, petName: initialPet.name, species: initialPet.species });
+        } catch (petErr: any) {
+          logger.warn('[CreateProfile] Initial pet creation failed (non-blocking)', { traceId, uid, error: petErr?.message });
+        }
+      }
 
       res.json({ success: true, uid, userId: uid, profileId: uid });
       

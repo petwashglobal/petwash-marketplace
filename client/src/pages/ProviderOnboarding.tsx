@@ -37,10 +37,16 @@ export default function ProviderOnboarding() {
   const [, navigate] = useLocation();
   const isHebrew = language === 'he';
 
-  // Redirect to sign-in if not authenticated
+  // Redirect to sign-in if not authenticated, preserving the ?type= param so the
+  // onboarding form pre-selects the correct service type after the user signs in.
   useEffect(() => {
     if (user === null) {
-      navigate('/sign-in?redirect=/provider-onboarding');
+      const currentParams = new URLSearchParams(window.location.search);
+      const typeParam = currentParams.get('type');
+      const onboardingPath = typeParam
+        ? `/provider-onboarding?type=${encodeURIComponent(typeParam)}`
+        : '/provider-onboarding';
+      navigate(`/sign-in?redirect=${encodeURIComponent(onboardingPath)}`);
     }
   }, [user, navigate]);
 
@@ -164,7 +170,47 @@ export default function ProviderOnboarding() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ── Phone OTP Verification Handlers ──────────────────────────────────
+  // ── Draft save / restore (localStorage) ─────────────────────────────────
+  // Files cannot be stored in localStorage; only text fields are persisted.
+  // The draft is keyed per Firebase UID so multiple users on the same device don't conflict.
+  const DRAFT_KEY = user ? `pw_provider_draft_${user.uid}` : null;
+
+  // Restore draft on mount (after user is known)
+  useEffect(() => {
+    if (!DRAFT_KEY) return;
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (!saved) return;
+      const draft = JSON.parse(saved);
+      if (draft.firstName && !firstName) setFirstName(draft.firstName);
+      if (draft.lastName && !lastName) setLastName(draft.lastName);
+      if (draft.city && !city) setCity(draft.city);
+      if (draft.country && country === 'IL') setCountry(draft.country);
+      if (draft.idNumber && !idNumber) setIdNumber(draft.idNumber);
+      if (draft.providerTypes?.length && providerTypes.length === 0) setProviderTypes(draft.providerTypes);
+      if (draft.petFirstAidNumber && !petFirstAidNumber) setPetFirstAidNumber(draft.petFirstAidNumber);
+      if (draft.petFirstAidExpiry && !petFirstAidExpiry) setPetFirstAidExpiry(draft.petFirstAidExpiry);
+    } catch {
+      // Corrupt draft — silently ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [DRAFT_KEY]);
+
+  // Auto-save draft whenever key fields change
+  useEffect(() => {
+    if (!DRAFT_KEY) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        firstName, lastName, city, country, idNumber,
+        providerTypes, petFirstAidNumber, petFirstAidExpiry,
+        savedAt: new Date().toISOString(),
+      }));
+    } catch {
+      // Storage quota exceeded — non-fatal
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstName, lastName, city, country, idNumber, providerTypes, petFirstAidNumber, petFirstAidExpiry]);
+
   const COUNTRY_CODES = [
     { code: '+972', label: '🇮🇱 +972', name: 'Israel' },
     { code: '+1',   label: '🇺🇸 +1',   name: 'USA / Canada' },
@@ -451,6 +497,8 @@ export default function ProviderOnboarding() {
       if (response.ok) {
         setApplicationSubmitted(true);
         setBiometricScore(data.biometricMatchScore);
+        // Clear draft on successful submission so form starts fresh if user applies again
+        if (DRAFT_KEY) { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
         toast({
           title: t.applicationSuccess,
           description: t.successMessage
@@ -622,6 +670,13 @@ export default function ProviderOnboarding() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-2">
+            {/* Draft restored indicator */}
+            {DRAFT_KEY && (firstName || city || idNumber) && (
+              <div className="mb-4 flex items-center gap-2 text-xs text-teal-700 bg-teal-50 border border-teal-200 px-3 py-2 rounded-lg">
+                <span>💾</span>
+                <span>{isHebrew ? 'הטופס שוחזר מהטיוטה שנשמרה' : 'Form restored from saved draft'}</span>
+              </div>
+            )}
             {/* Step 1: Platform Selection & Personal Information */}
             {step === 1 && (
               <div className="space-y-6">

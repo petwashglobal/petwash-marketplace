@@ -117,8 +117,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     pushNotifications: false,
     acceptedTerms: false,
   });
-  
-  logger.debug("SignUp component rendered", { acceptedTerms: formData.acceptedTerms });
+
+  // Pet registration — required at sign-up (at least one pet: name + species)
+  const [petName, setPetName] = useState("");
+  const [petSpecies, setPetSpecies] = useState("");
 
   // Pre-warm reCAPTCHA on page mount so script is already loaded when user submits
   useEffect(() => { preloadReCaptcha(); }, []);
@@ -494,7 +496,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           consentTextHash,
           captchaToken,
           ...(turnstileToken ? { turnstileToken } : {}),
-          traceId
+          traceId,
+          // Pet registration — at least one required at sign-up
+          initialPet: petName.trim() ? { name: petName.trim(), species: petSpecies } : undefined,
         })
       });
 
@@ -650,6 +654,24 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         variant: "destructive",
         title: t('signUp.pleaseAcceptTerms', language),
         description: t('signUp.mustAcceptTermsDesc', language)
+      });
+      return;
+    }
+
+    // Validate at least one pet (name + species required — PetWash is a pet platform)
+    if (!petName.trim()) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'נדרש שם חיית המחמד' : "Pet name required",
+        description: language === 'he' ? 'אנא הכנס את שם חיית המחמד שלך' : "Please enter your pet's name to complete sign-up",
+      });
+      return;
+    }
+    if (!petSpecies) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'נדרש סוג חיית המחמד' : "Pet species required",
+        description: language === 'he' ? 'אנא בחר את סוג חיית המחמד שלך' : "Please select your pet's species to complete sign-up",
       });
       return;
     }
@@ -1124,6 +1146,51 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 minYear={new Date().getFullYear() - 120}
                 maxYear={new Date().getFullYear() - 13}
               />
+            </div>
+
+            {/* Pet registration — at least one pet required (PetWash is a pet platform) */}
+            <div className="space-y-3 bg-teal-50/60 p-4 rounded-2xl border border-teal-100">
+              <p className="text-sm font-semibold text-teal-800 flex items-center gap-2">
+                🐾 {language === 'he' ? 'ספר לנו על חיית המחמד שלך' : "Tell us about your pet"}
+              </p>
+              <p className="text-xs text-teal-600">
+                {language === 'he' ? 'לפחות חיית מחמד אחת נדרשת — אפשר להוסיף עוד לאחר ההרשמה' : "At least one pet is required — you can add more after sign-up"}
+              </p>
+              <div data-testid="input-pet-name">
+                <Label htmlFor="petName" className="text-gray-700 font-medium">
+                  {language === 'he' ? 'שם חיית המחמד *' : "Pet's name *"}
+                </Label>
+                <Input
+                  id="petName"
+                  type="text"
+                  required
+                  value={petName}
+                  onChange={(e) => setPetName(e.target.value)}
+                  placeholder={language === 'he' ? 'לדוגמה: מקס, בלה, לונה' : 'e.g. Max, Bella, Luna'}
+                  className="luxury-glass-minimal mt-1"
+                  maxLength={60}
+                />
+              </div>
+              <div data-testid="input-pet-species">
+                <Label htmlFor="petSpecies" className="text-gray-700 font-medium">
+                  {language === 'he' ? 'סוג חיית המחמד *' : "Pet species *"}
+                </Label>
+                <Select value={petSpecies} onValueChange={setPetSpecies}>
+                  <SelectTrigger className="h-10 mt-1" id="petSpecies">
+                    <SelectValue placeholder={language === 'he' ? 'בחר סוג...' : 'Select species...'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dog">{language === 'he' ? '🐕 כלב' : '🐕 Dog'}</SelectItem>
+                    <SelectItem value="cat">{language === 'he' ? '🐈 חתול' : '🐈 Cat'}</SelectItem>
+                    <SelectItem value="rabbit">{language === 'he' ? '🐇 ארנב' : '🐇 Rabbit'}</SelectItem>
+                    <SelectItem value="bird">{language === 'he' ? '🦜 ציפור' : '🦜 Bird'}</SelectItem>
+                    <SelectItem value="hamster">{language === 'he' ? '🐹 אוגר' : '🐹 Hamster'}</SelectItem>
+                    <SelectItem value="guinea_pig">{language === 'he' ? '🐾 חזיר שדה' : '🐾 Guinea pig'}</SelectItem>
+                    <SelectItem value="reptile">{language === 'he' ? '🦎 זוחל' : '🦎 Reptile'}</SelectItem>
+                    <SelectItem value="other">{language === 'he' ? '🐾 אחר' : '🐾 Other'}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
