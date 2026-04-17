@@ -1,6 +1,6 @@
 # EXECUTION_SCOREBOARD.md
-> Branch: copilot/fix-loyalty-flow-issues (HEAD: 9a6e5dc1)  
-> Last updated: 2026-04-17 (session 2 — deliverables added)  
+> Branch: copilot/fix-loyalty-flow-issues (HEAD: 0f321bb0)  
+> Last updated: 2026-04-17 (session 3 — business impact notes added to all PRs)  
 > Source documents: BOOKING_VERIFICATION_MATRIX.md, MESSAGING_TRUTH_MAP.md, MESSAGING_ACCEPTANCE_MATRIX.md, DATA_TRUTH_MASTER.md, AUTH_ROLE_TRUTH_MAP.md, INTEGRATION_HEALTH_MASTER.md, CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md, POPUP_CONSENT_MAP.md, PROVIDER_DEPRECATION_PLAN.md, LOYALTY_TRUTH_MAP.md, IDENTITY_TRUTH_MAP.md
 
 ---
@@ -42,6 +42,11 @@
 - ✅ Walker dashboard shows active walk and completed history
 - ⚠️ Marketplace bookings: NOT yet wired (separate PR 4)
 
+**Business impact:**
+- **User problem reduced:** Pet parents who booked dog walks or sitter stays could not see those bookings in their history — the app showed only self-service wash station bookings. After PR1, all booking types appear in one unified history. Walker and sitter providers can now also see their active jobs and completed history, which were previously unreachable.
+- **Risk still remaining:** The 30-day telemetry window must confirm actual real-world mismatches (`previouslyMissing > 0`). If `[BOOKING_MISMATCH_REPAIRED]` logs show zero in production, the read unification had no business impact and was a code-only improvement.
+- **Not solved yet:** Marketplace bookings (PR4 decision gate) are still disconnected. A customer who books via the marketplace flow still cannot see those bookings in their history. The write-side does not yet guarantee all booking types land in the same table.
+
 ---
 
 ## PR 2 — Messaging Deduplication
@@ -80,6 +85,11 @@ booking_requests POST /create
 - ✅ Email + SMS not lost (moved to event handler)
 
 **What was deliberately not changed:** Walk/sitter owner notifications (dispatchNotification in walk-my-pet.ts, sitter-suite.ts) are on separate paths and were not touched. No changes to NotificationService, PetWashNotificationEngine, or TwilioSMSService.
+
+**Business impact:**
+- **User problem reduced:** Providers were receiving the same "new booking request" notification 2–5 times per event (e.g., two in-app banners within seconds of each other). This made the platform feel broken and untrustworthy. After PR2, a provider receives exactly one push, one in-app, one email, and one SMS per booking event.
+- **Risk still remaining:** The `booking_completed` and `booking_accepted` events still run through multiple parallel notification paths (direct `dispatchNotification` + event bus). A customer confirming a completed booking or a provider accepting a request may still see duplicate inbox notifications. This is documented in MESSAGING_ACCEPTANCE_MATRIX.md.
+- **Not solved yet:** The notification architecture still has three parallel dispatch systems (`dispatchNotification`, `PetWashNotificationEngine`, `NotificationEventHandlers`). PR2 fixed the `booking_created` path only. Stage C must consolidate all events — especially `booking_completed` — into a single path before messaging can be called fully clean.
 
 ---
 
@@ -123,6 +133,11 @@ Customer asks "who am I?" →
 
 **What was deliberately not changed:** No writes to users or customers. No column altered or dropped. All existing endpoints left intact. Legacy `/api/customers/me` unchanged. No data migration.
 
+**Business impact:**
+- **User problem reduced:** Support staff or admins calling different identity endpoints for the same user could get different names, loyalty tiers, or wallet balances — depending on which table was last written. This caused confusing support experiences and silent data inconsistencies. The new `/api/auth/identity` endpoint gives one consistent read regardless of which table holds the freshest data.
+- **Risk still remaining:** The write split is completely untouched. If a user updates their phone number via the Firebase flow, the `customers` table is not updated. If a legacy action updates `customers.loyaltyTier`, the `users` table is not updated. The next read from `/api/auth/identity` will return the `users` value — but the `[IDENTITY_SPLIT_WRITE]` telemetry will fire, signaling divergence. The inconsistency is now visible, but not yet healed.
+- **Not solved yet:** All 30+ frontend screens still call the old identity endpoints (`/api/auth/user`, `/api/simple-auth/me`, etc.). Until Wave 2 migration is complete, the clean unified endpoint exists but is not used by any production screen. The frontend migration plan is in IDENTITY_TRUTH_MAP.md Stage 2. Write-side mirroring (Stage 3) has not started.
+
 ---
 
 ## PR 4 — Marketplace Booking Wire-Up (PENDING)
@@ -137,6 +152,11 @@ If write volume = 0 in production → formal deprecation PR (unmount routes, add
 If write volume > 0 → minimal activation PR (add frontend query key + CustomerBookings list)
 
 **What must NOT change:** Backend routes (do not remove without proof). Table schema.
+
+**Business impact:**
+- **User problem reduced:** None yet — PR4 has not been executed.
+- **Risk still remaining:** Two fully-built booking backends (`marketplace-bookings.ts`, `super-app-bookings.ts`) exist with zero production consumers. Every month they are not removed or wired adds dead code maintenance cost and the risk someone accidentally activates them without a frontend.
+- **Not solved yet:** The decision gate (check write volume in production logs) has not been run. Until that check proves zero writes, neither the removal nor the activation path can proceed safely.
 
 ---
 
@@ -184,6 +204,44 @@ if (!IS_REPLIT) { return null; } // never throws
 
 **What was deliberately not changed:** HubSpot and Spotify functionality on Replit is untouched. The Replit connector auth flow is identical. setInterval retry queue unchanged. No callers were modified.
 
+**Business impact:**
+- **User problem reduced:** Cloud Run deployments were generating error-level log noise from HubSpot and Spotify token failures on every startup and on every request that touched those integrations. DevOps and on-call engineers were investigating these as crashes when they were actually expected gaps. Alert fatigue was masking real problems. After PR5, Cloud Run startup is clean — two predictable `DEGRADED` warn lines, no error noise.
+- **Risk still remaining:** HubSpot CRM contacts are not created or updated from Cloud Run. Any user who registers, joins loyalty, or triggers a tracked event on the Cloud Run deployment will not appear in HubSpot until either a Replit sync or a long-lived HubSpot token is provisioned. This is a CRM data gap, not a product gap.
+- **Not solved yet:** This PR creates a safe degraded mode — it is not a fix. HubSpot and Spotify will never work on Cloud Run without a proper long-lived token solution. The runbook (`CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md`) describes the recovery path when a permanent solution is ready.
+
+---
+
+## PR 6 — Popup / Consent Suppression
+
+**Root cause:** `PromoAdPopup` fired on `/consent-onboarding` and `/notification-consent`, interrupting the post-signup consent flow chain.
+
+**Business impact:**
+- **User problem reduced:** New users going through the required post-signup consent screens (notification permissions, terms) were hit with marketing popups mid-flow. This caused some users to abandon consent, skip required steps, or complete them out of sequence. After PR6, the consent flow runs uninterrupted on these paths.
+- **Risk still remaining:** Four dead popup components (`KenzoWelcomePopup`, `LoyaltyWelcomeModal`, `VIPLoyaltyPopup`, `TierUpgradeModal`) remain in the codebase. They can be imported and activated by mistake in a future feature branch.
+- **Not solved yet:** The 30-day zero-use verification window has not completed. Cleanup PR to delete the four components has not been executed.
+
+---
+
+## PR 7 — Provider Deprecation
+
+**Root cause:** Two competing provider application submit endpoints existed: `/api/provider-onboarding/apply` (canonical) and `/api/provider-applications` (deprecated).
+
+**Business impact:**
+- **User problem reduced:** Providers submitting applications via the deprecated endpoint received a response, but their application data was routed to a different table or code path than the canonical one. This created split application state and inconsistent review flows. The deprecated endpoint now returns RFC 8594 deprecation headers and logs all calls, making the problem visible.
+- **Risk still remaining:** The deprecated endpoint is still live and still processes requests. If any mobile app version, third-party integration, or old link is still calling it, data continues to split. Zero-caller proof has not yet been achieved.
+- **Not solved yet:** The deprecated endpoint has not been removed. Removal requires 30 days of zero caller logs. That window is currently running.
+
+---
+
+## PR 8 — Loyalty Flow Isolation
+
+**Root cause:** Investigation confirmed no cross-contamination in loyalty enrollment. Prestige join is atomic. No wrong-price bug.
+
+**Business impact:**
+- **User problem reduced:** The investigation confirmed that loyalty enrollment is not broken. Users joining prestige correctly receive the expected tier and benefits. No incorrect charges were found (enrollment is free).
+- **Risk still remaining:** Dead loyalty modal components remain in the codebase and can confuse future developers or be accidentally re-activated.
+- **Not solved yet:** Loyalty does not send an email confirmation on join. Notifications rely on Firestore client-side reads, not push or email. This is a known gap documented in MESSAGING_ACCEPTANCE_MATRIX.md. Cleanup PR for dead modals has not been executed.
+
 ---
 
 ## Current Status and Next Stage (Updated 2026-04-17 Session 2)
@@ -201,14 +259,15 @@ if (!IS_REPLIT) { return null; } // never throws
 
 ---
 
-## Deliverables Completed (Session 2)
+## Deliverables Completed
 
-| Deliverable | File | Status |
-|---|---|---|
-| PR2 event-by-event proof | `docs/architecture/MESSAGING_ACCEPTANCE_MATRIX.md` | ✅ Created |
-| PR3 frontend migration plan | `docs/architecture/IDENTITY_TRUTH_MAP.md` — Stage 2 section | ✅ Added |
-| PR5 operations runbook | `docs/architecture/CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md` | ✅ Created |
-| Scoreboard update | This file | ✅ Updated |
+| Deliverable | File | Session | Status |
+|---|---|---|---|
+| PR2 event-by-event proof | `docs/architecture/MESSAGING_ACCEPTANCE_MATRIX.md` | 2 | ✅ Created |
+| PR3 frontend migration plan | `docs/architecture/IDENTITY_TRUTH_MAP.md` — Stage 2 section | 2 | ✅ Added |
+| PR5 operations runbook | `docs/architecture/CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md` | 2 | ✅ Created |
+| Scoreboard PR2/PR3/PR5 marked done | This file | 2 | ✅ Updated |
+| Business impact notes — all 8 PRs | This file — each PR section | 3 | ✅ Added |
 
 ---
 
