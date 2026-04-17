@@ -28,6 +28,9 @@ import {
   winbackQueue,
   experimentEvents,
   providerProfiles,
+  walkBookings,
+  sitterBookings,
+  trainerBookings,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -594,8 +597,180 @@ router.get('/', async (req, res) => {
       });
     }
 
-    res.json({
-      bookings: bookings.map(b => ({
+    // ── Stage B: Unified read — also fetch walk/sitter/trainer bookings ────────
+    // These are written to separate Postgres tables by their own routes.
+    // The customer history endpoint previously only returned booking_requests.
+    // This is the fix. No writes are changed. See BOOKING_READ_REPAIR.md.
+
+    let walkRows: typeof walkBookings.$inferSelect[] = [];
+    let sitterRows: typeof sitterBookings.$inferSelect[] = [];
+    let trainerRows: typeof trainerBookings.$inferSelect[] = [];
+
+    if (role !== 'provider') {
+      // Customer view: pull all booking types for this owner
+      [walkRows, sitterRows, trainerRows] = await Promise.all([
+        db.select().from(walkBookings).where(eq(walkBookings.ownerId, userId)).orderBy(desc(walkBookings.createdAt)).limit(50),
+        db.select().from(sitterBookings).where(eq(sitterBookings.ownerId, userId)).orderBy(desc(sitterBookings.createdAt)).limit(50),
+        db.select().from(trainerBookings).where(eq(trainerBookings.userId, userId)).orderBy(desc(trainerBookings.createdAt)).limit(50),
+      ]);
+    }
+
+    // Status normalization helpers — map each system's statuses to booking_requests enum
+    const normalizeWalkStatus = (s: string): string => {
+      if (s === 'in_progress') return 'in_progress';
+      if (s === 'confirmed')   return 'confirmed';
+      if (s === 'completed')   return 'completed';
+      if (s === 'cancelled')   return 'cancelled';
+      return 'pending';
+    };
+    const normalizeSitterStatus = (s: string): string => {
+      if (s === 'pending_provider') return 'pending';
+      if (s === 'in_progress')      return 'in_progress';
+      if (s === 'confirmed')        return 'confirmed';
+      if (s === 'completed')        return 'completed';
+      if (s === 'cancelled')        return 'cancelled';
+      return 'pending';
+    };
+    const normalizeTrainerStatus = (s: string): string => {
+      if (s === 'confirmed')  return 'confirmed';
+      if (s === 'completed')  return 'completed';
+      if (s === 'cancelled')  return 'cancelled';
+      return 'pending';
+    };
+
+    // Resolve provider names for walk/sitter/trainer in batch
+    let walkerNameMap: Record<string, string> = {};
+    let sitterNameMap: Record<number, string> = {};
+    let trainerNameMap: Record<string, string> = {};
+
+    if (walkRows.length > 0) {
+      const walkerIds = [...new Set(walkRows.map(w => w.walkerId))];
+      const walkerData = await db.select({ walkerId: walkerProfiles.walkerId, firstName: walkerProfiles.firstName, lastName: walkerProfiles.lastName, displayName: walkerProfiles.displayName })
+        .from(walkerProfiles).where(inArray(walkerProfiles.walkerId, walkerIds));
+      walkerData.forEach(w => {
+        walkerNameMap[w.walkerId] = w.displayName || [w.firstName, w.lastName].filter(Boolean).join(' ') || 'Walker';
+      });
+    }
+    if (sitterRows.length > 0) {
+      const sitterIds = [...new Set(sitterRows.map(s => s.sitterId))];
+      const sitterData = await db.select({ id: sitterProfiles.id, firstName: sitterProfiles.firstName, lastName: sitterProfiles.lastName })
+        .from(sitterProfiles).where(inArray(sitterProfiles.id, sitterIds));
+      sitterData.forEach(s => {
+        sitterNameMap[s.id] = [s.firstName, s.lastName].filter(Boolean).join(' ') || 'Sitter';
+      });
+    }
+    if (trainerRows.length > 0) {
+      const trainerUids = [...new Set(trainerRows.map(t => t.trainerUserId))];
+      const trainerData = await db.select({ userId: trainers.userId, firstName: trainers.firstName, lastName: trainers.lastName })
+        .from(trainers).where(inArray(trainers.userId, trainerUids));
+      trainerData.forEach(t => {
+        trainerNameMap[t.userId] = [t.firstName, t.lastName].filter(Boolean).join(' ') || 'Trainer';
+      });
+    }
+
+    // Normalize each source to the unified booking shape
+    const normalizedWalks = walkRows.map(w => ({
+      requestId: w.bookingId,
+      status: normalizeWalkStatus(w.status || 'pending'),
+      serviceType: 'dog_walking',
+      startDate: w.scheduledDate ? new Date(`${w.scheduledDate}T${w.scheduledStartTime || '00:00'}`).toISOString() : null,
+      endDate: w.scheduledDate ? new Date(`${w.scheduledDate}T${w.scheduledStartTime || '00:00'}`).toISOString() : null,
+      petCount: 1,
+      subtotalCents: w.totalCost ? Math.round(parseFloat(String(w.totalCost)) * 100) : 0,
+      serviceFeeCents: w.platformFeeOwner ? Math.round(parseFloat(String(w.platformFeeOwner)) * 100) : 0,
+      totalCents: w.totalCost ? Math.round(parseFloat(String(w.totalCost)) * 100) : 0,
+      currency: w.currency || 'ILS',
+      ownerMessage: null,
+      providerResponse: null,
+      meetGreetDate: null,
+      meetGreetLocation: null,
+      meetGreetNotes: null,
+      cancellationReason: w.cancellationReason || null,
+      cancelledBy: w.cancelledBy || null,
+      refundCents: w.refundAmount ? Math.round(parseFloat(String(w.refundAmount)) * 100) : 0,
+      statusHistory: [],
+      createdAt: w.createdAt,
+      providerId: w.walkerId,
+      providerName: walkerNameMap[w.walkerId] || null,
+      financeState: 'none',
+      walletHoldCents: 0,
+      walletDebitedCents: 0,
+      walletRefundedCents: 0,
+      loyaltyRedeemedCents: 0,
+      petIds: w.petId ? [w.petId] : [],
+      addonCodes: [],
+      _source: 'walk_bookings',
+    }));
+
+    const normalizedSitters = sitterRows.map(s => ({
+      requestId: s.bookingId,
+      status: normalizeSitterStatus(s.status || 'pending'),
+      serviceType: 'pet_sitting',
+      startDate: s.startDate ? s.startDate.toISOString() : null,
+      endDate: s.endDate ? s.endDate.toISOString() : null,
+      petCount: 1,
+      subtotalCents: s.basePriceCents || 0,
+      serviceFeeCents: s.platformServiceFeeCents || 0,
+      totalCents: s.totalChargeCents || 0,
+      currency: 'ILS',
+      ownerMessage: s.specialInstructions || null,
+      providerResponse: null,
+      meetGreetDate: null,
+      meetGreetLocation: null,
+      meetGreetNotes: null,
+      cancellationReason: s.cancellationReason || null,
+      cancelledBy: null,
+      refundCents: 0,
+      statusHistory: [],
+      createdAt: s.createdAt,
+      providerId: String(s.sitterId),
+      providerName: sitterNameMap[s.sitterId] || null,
+      financeState: 'none',
+      walletHoldCents: 0,
+      walletDebitedCents: 0,
+      walletRefundedCents: 0,
+      loyaltyRedeemedCents: 0,
+      petIds: s.petId ? [String(s.petId)] : [],
+      addonCodes: [],
+      _source: 'sitter_bookings',
+    }));
+
+    const normalizedTrainers = trainerRows.map(t => ({
+      requestId: t.bookingId,
+      status: normalizeTrainerStatus(t.bookingStatus || 'pending'),
+      serviceType: 'training',
+      startDate: t.sessionDate ? t.sessionDate.toISOString() : null,
+      endDate: t.sessionDate ? t.sessionDate.toISOString() : null,
+      petCount: 1,
+      subtotalCents: t.totalAmount ? Math.round(parseFloat(String(t.totalAmount)) * 100) : 0,
+      serviceFeeCents: t.platformFee ? Math.round(parseFloat(String(t.platformFee)) * 100) : 0,
+      totalCents: t.totalAmount ? Math.round(parseFloat(String(t.totalAmount)) * 100) : 0,
+      currency: t.currency || 'ILS',
+      ownerMessage: t.customerNotes || null,
+      providerResponse: t.trainerNotes || null,
+      meetGreetDate: null,
+      meetGreetLocation: null,
+      meetGreetNotes: null,
+      cancellationReason: t.cancellationReason || null,
+      cancelledBy: t.cancelledBy || null,
+      refundCents: 0,
+      statusHistory: [],
+      createdAt: t.createdAt,
+      providerId: t.trainerUserId,
+      providerName: trainerNameMap[t.trainerUserId] || null,
+      financeState: t.financeState || 'none',
+      walletHoldCents: t.walletHoldCents || 0,
+      walletDebitedCents: t.walletDebitedCents || 0,
+      walletRefundedCents: t.walletRefundedCents || 0,
+      loyaltyRedeemedCents: 0,
+      petIds: [],
+      addonCodes: [],
+      _source: 'trainer_bookings',
+    }));
+
+    // Merge all sources, sort by date desc
+    const allBookings = [
+      ...bookings.map(b => ({
         requestId: b.requestId,
         status: b.status,
         serviceType: b.serviceType,
@@ -618,26 +793,48 @@ router.get('/', async (req, res) => {
         createdAt: b.createdAt,
         providerId: b.providerId,
         providerName: providerNameMap[b.providerId] || null,
-        // Wallet lifecycle fields
         financeState: b.financeState || 'none',
         walletHoldCents: b.walletHoldCents || 0,
         walletDebitedCents: b.walletDebitedCents || 0,
         walletRefundedCents: b.walletRefundedCents || 0,
         loyaltyRedeemedCents: b.loyaltyRedeemedCents || 0,
-        // Rebook prefill fields
         petIds: (b.petIds as string[] | null) || [],
         addonCodes: (b.id ? addonCodeMap[b.id] : null) || [],
+        _source: 'booking_requests',
       })),
-      total: bookings.length,
+      ...normalizedWalks,
+      ...normalizedSitters,
+      ...normalizedTrainers,
+    ].sort((a, b) => {
+      const aDate = a.createdAt ? new Date(a.createdAt as any).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt as any).getTime() : 0;
+      return bDate - aDate;
     });
 
-    // Stage A telemetry — booking-request read audit (BOOKING_TRUTH_MAP.md Stage A2)
-    logger.info('[BOOKING_READ] booking_requests_postgres', {
+    res.json({
+      bookings: allBookings,
+      total: allBookings.length,
+    });
+
+    // Stage B telemetry — unified read (BOOKING_READ_REPAIR.md)
+    logger.info('[BOOKING_UNIFIED_READ]', {
       userId,
       role: role || 'owner',
-      resultCount: bookings.length,
-      store: 'postgres_booking_requests',
+      bookingRequestsCount: bookings.length,
+      walkBookingsCount: walkRows.length,
+      sitterBookingsCount: sitterRows.length,
+      trainerBookingsCount: trainerRows.length,
+      totalReturned: allBookings.length,
+      previouslyMissing: walkRows.length + sitterRows.length + trainerRows.length,
     });
+    if (walkRows.length + sitterRows.length + trainerRows.length > 0) {
+      logger.info('[BOOKING_MISMATCH_REPAIRED] Bookings now visible that were previously hidden from customer history', {
+        userId,
+        walkCount: walkRows.length,
+        sitterCount: sitterRows.length,
+        trainerCount: trainerRows.length,
+      });
+    }
   } catch (error: any) {
     logger.error('[BookingRequests] Error fetching bookings', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch bookings' });

@@ -13,7 +13,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { bookingRequests, providers, superAppNotifications } from '@shared/schema';
+import { bookingRequests, providers, superAppNotifications, walkBookings, sitterBookings, walkerProfiles, sitterProfiles } from '@shared/schema';
 import { eq, sql, count, desc, inArray, and, gte, lte } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
@@ -176,17 +176,109 @@ router.get('/bookings', async (req: Request, res: Response) => {
 
     const rows = result.rows.map(toV1Shape);
 
+    // ── Stage B: also include walk_bookings and sitter_bookings for this provider ─
+    // Walk/Sitter bookings are created via separate platform routes (walk-my-pet, sitter-suite)
+    // and written to separate tables. They were previously invisible in the provider OS.
+
+    // Look up walker profile for this provider (if they are a walker)
+    const [walkerProfile] = await db.select({ walkerId: walkerProfiles.walkerId })
+      .from(walkerProfiles).where(eq(walkerProfiles.userId, user.uid)).limit(1);
+
+    // Look up sitter profile for this provider (if they are a sitter)
+    const [sitterProfile] = await db.select({ id: sitterProfiles.id })
+      .from(sitterProfiles).where(eq(sitterProfiles.userId, user.uid)).limit(1);
+
+    const walkerRows = walkerProfile
+      ? await db.select().from(walkBookings)
+          .where(eq(walkBookings.walkerId, walkerProfile.walkerId))
+          .orderBy(desc(walkBookings.createdAt)).limit(limitNum)
+      : [];
+
+    const sitterRows = sitterProfile
+      ? await db.select().from(sitterBookings)
+          .where(eq(sitterBookings.sitterId, sitterProfile.id))
+          .orderBy(desc(sitterBookings.createdAt)).limit(limitNum)
+      : [];
+
+    const normalizeWalkStatus = (s: string) => {
+      if (s === 'in_progress') return 'in_progress';
+      if (s === 'confirmed')   return 'confirmed';
+      if (s === 'completed')   return 'completed';
+      if (s === 'cancelled')   return 'cancelled';
+      return 'pending';
+    };
+    const normalizeSitterStatus = (s: string) => {
+      if (s === 'pending_provider') return 'pending';
+      if (s === 'in_progress')      return 'in_progress';
+      if (s === 'confirmed')        return 'confirmed';
+      if (s === 'completed')        return 'completed';
+      if (s === 'cancelled')        return 'cancelled';
+      return 'pending';
+    };
+
+    const extraWalkRows = walkerRows.map(w => ({
+      id: w.bookingId,
+      requestId: w.bookingId,
+      ownerId: w.ownerId,
+      providerId: w.walkerId,
+      status: normalizeWalkStatus(w.status || 'pending'),
+      serviceType: 'dog_walking',
+      startDate: w.scheduledDate ? new Date(`${w.scheduledDate}T${w.scheduledStartTime || '00:00'}`).toISOString() : null,
+      endDate: w.scheduledDate ? new Date(`${w.scheduledDate}T${w.scheduledStartTime || '00:00'}`).toISOString() : null,
+      totalCents: w.totalCost ? Math.round(parseFloat(String(w.totalCost)) * 100) : 0,
+      subtotalCents: w.totalCost ? Math.round(parseFloat(String(w.totalCost)) * 100) : 0,
+      platformFeeOwner: w.platformFeeOwner,
+      walkerPayout: w.walkerPayout,
+      petCount: 1,
+      currency: w.currency || 'ILS',
+      createdAt: w.createdAt,
+      cancellationReason: w.cancellationReason || null,
+      _source: 'walk_bookings',
+    }));
+
+    const extraSitterRows = sitterRows.map(s => ({
+      id: s.bookingId,
+      requestId: s.bookingId,
+      ownerId: s.ownerId,
+      providerId: String(s.sitterId),
+      status: normalizeSitterStatus(s.status || 'pending'),
+      serviceType: 'pet_sitting',
+      startDate: s.startDate ? s.startDate.toISOString() : null,
+      endDate: s.endDate ? s.endDate.toISOString() : null,
+      totalCents: s.totalChargeCents || 0,
+      subtotalCents: s.basePriceCents || 0,
+      sitterPayoutCents: s.sitterPayoutCents,
+      petCount: 1,
+      currency: 'ILS',
+      createdAt: s.createdAt,
+      cancellationReason: s.cancellationReason || null,
+      _source: 'sitter_bookings',
+    }));
+
+    // Apply status filter to extra rows if requested
+    const filteredWalkRows = resolvedStatuses && resolvedStatuses.length > 0
+      ? extraWalkRows.filter(w => resolvedStatuses.includes(w.status))
+      : extraWalkRows;
+    const filteredSitterRows = resolvedStatuses && resolvedStatuses.length > 0
+      ? extraSitterRows.filter(s => resolvedStatuses.includes(s.status))
+      : extraSitterRows;
+
+    const allRows = [...rows, ...filteredWalkRows, ...filteredSitterRows]
+      .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
     logger.info('[ProviderDashboardV2] GET /bookings', {
       uid: user.uid, total, page: pageNum, status: status ?? 'all',
+      walkBookingsIncluded: filteredWalkRows.length,
+      sitterBookingsIncluded: filteredSitterRows.length,
     });
 
     res.json({
       success: true,
-      bookings: rows,
-      total,
+      bookings: allRows,
+      total: total + filteredWalkRows.length + filteredSitterRows.length,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
-      _source: 'booking_requests',
+      _source: 'booking_requests+walk_bookings+sitter_bookings',
     });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /bookings error', error);
@@ -259,8 +351,43 @@ router.get('/booking-counts', async (req: Request, res: Response) => {
 
     // Group counts for UI tab badges
     const groupCount = (keys: string[]) => keys.reduce((s, k) => s + (raw[k] ?? 0), 0);
+    // Stage B: also count walk/sitter bookings for this provider
+    const [walkerProfileForCount] = await db.select({ walkerId: walkerProfiles.walkerId })
+      .from(walkerProfiles).where(eq(walkerProfiles.userId, user.uid)).limit(1);
+    const [sitterProfileForCount] = await db.select({ id: sitterProfiles.id })
+      .from(sitterProfiles).where(eq(sitterProfiles.userId, user.uid)).limit(1);
+
+    const walkCountResult = walkerProfileForCount
+      ? await pool.query(`SELECT status, COUNT(*)::int AS n FROM walk_bookings WHERE walker_id = $1 GROUP BY status`, [walkerProfileForCount.walkerId])
+      : { rows: [] };
+    const sitterCountResult = sitterProfileForCount
+      ? await pool.query(`SELECT status, COUNT(*)::int AS n FROM sitter_bookings WHERE sitter_id = $1 GROUP BY status`, [sitterProfileForCount.id])
+      : { rows: [] };
+
+    // Merge walk booking counts into the raw map (normalize statuses)
+    for (const row of walkCountResult.rows) {
+      const normalizedStatus = row.status === 'in_progress' ? 'in_progress'
+        : row.status === 'confirmed' ? 'confirmed'
+        : row.status === 'completed' ? 'completed'
+        : row.status === 'cancelled' ? 'cancelled' : 'pending';
+      raw[normalizedStatus] = (raw[normalizedStatus] ?? 0) + row.n;
+    }
+    // Merge sitter booking counts
+    for (const row of sitterCountResult.rows) {
+      const normalizedStatus = row.status === 'pending_provider' ? 'pending'
+        : row.status === 'in_progress' ? 'in_progress'
+        : row.status === 'confirmed' ? 'confirmed'
+        : row.status === 'completed' ? 'completed'
+        : row.status === 'cancelled' ? 'cancelled' : 'pending';
+      raw[normalizedStatus] = (raw[normalizedStatus] ?? 0) + row.n;
+    }
+
+    const walkTotal = walkCountResult.rows.reduce((s: number, r: any) => s + r.n, 0);
+    const sitterTotal = sitterCountResult.rows.reduce((s: number, r: any) => s + r.n, 0);
+
+    const allTotal = result.rows.reduce((s: number, r: any) => s + r.n, 0) + walkTotal + sitterTotal;
     const counts = {
-      all:          result.rows.reduce((s, r) => s + r.n, 0),
+      all:          allTotal,
       new_request:  groupCount(STATUS_GROUP_MAP.new_request),
       active:       groupCount(STATUS_GROUP_MAP.active),
       completed:    groupCount(STATUS_GROUP_MAP.completed),
@@ -269,9 +396,13 @@ router.get('/booking-counts', async (req: Request, res: Response) => {
       ...raw,
     };
 
-    logger.info('[ProviderDashboardV2] GET /booking-counts', { uid: user.uid, counts });
+    logger.info('[ProviderDashboardV2] GET /booking-counts', {
+      uid: user.uid, counts,
+      walkBookingsIncluded: walkTotal,
+      sitterBookingsIncluded: sitterTotal,
+    });
 
-    res.json({ success: true, counts, _source: 'booking_requests' });
+    res.json({ success: true, counts, _source: 'booking_requests+walk_bookings+sitter_bookings' });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /booking-counts error', error);
     res.status(500).json({ error: 'Failed to load booking counts (v2)' });

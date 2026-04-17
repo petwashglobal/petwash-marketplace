@@ -119,7 +119,11 @@ export default function SitterBooking() {
         title: t('sitter.bookingRequest'),
         description: t('sitter.requestDesc'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/bookings/my-bookings'] });
+      // Stage B cache fix (BOOKING_READ_REPAIR.md Change 3):
+      // Sitter bookings are in Postgres sitter_bookings — invalidate the correct endpoint.
+      // Also invalidate /api/booking-requests since it now includes sitter bookings in the unified read.
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
       setLocation('/dashboard');
     },
     onError: (error: any) => {

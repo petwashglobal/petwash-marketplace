@@ -76,10 +76,13 @@ export default function OwnerDashboard() {
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
   const { data: bookingsData } = useQuery({
-    queryKey: ['/api/bookings/my-bookings', { platform: 'sitter-suite' }],
+    // Stage B fix (BOOKING_READ_REPAIR.md Change 2):
+    // Previously called /api/bookings/my-bookings?platform=sitter-suite which reads Firestore
+    // and always returns zero sitter bookings. Sitter bookings are in Postgres sitter_bookings table.
+    queryKey: ['/api/sitter-suite/bookings', { role: 'owner' }],
   });
 
-  const bookings: Booking[] = bookingsData?.bookings || [];
+  const bookings: Booking[] = bookingsData || [];
 
   const { data: petsData } = useQuery({
     queryKey: ['/api/pets'],

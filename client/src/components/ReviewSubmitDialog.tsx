@@ -50,7 +50,10 @@ export function ReviewSubmitDialog({
         title: 'Review Submitted',
         description: 'Thank you for your feedback!',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/bookings/my-bookings'] });
+      // Stage B cache fix (BOOKING_READ_REPAIR.md Change 4):
+      // CustomerBookings.tsx reads /api/booking-requests (not /api/bookings/my-bookings).
+      // Invalidate the correct endpoint so the review status updates in the history view.
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
       onOpenChange(false);
       resetForm();
     },
