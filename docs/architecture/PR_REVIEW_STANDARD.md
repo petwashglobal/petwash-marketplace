@@ -125,6 +125,17 @@ A PR that says "this path is dead" without one of the above is making an unverif
 
 This trigger applies to: API routes, Cloud Functions, Cloud Run handlers, Firebase callable functions, client-side navigation paths, feature flags that gate functional code, and any service method that is exposed across module boundaries.
 
+**Required inline evidence block** — every PR that invokes Trigger 5 must include the following four fields directly in section 1 (Technical Root Cause). Reviewers must not accept a vague prose description as a substitute:
+
+| Field | What to provide |
+|-------|----------------|
+| Telemetry tag | The exact tag name used to measure callers (e.g. `[PROVIDER_LEGACY_READ]`) |
+| Observation window | Start date → end date; minimum 30 days; zero-caller result stated explicitly |
+| Truth map document | Link to the route truth document that confirms the path is unreachable (e.g. `docs/architecture/PROVIDER_ROUTE_TRUTH.md §DEAD_PATHS`) |
+| Exact path removed | The full path identifier being removed (e.g. `GET /api/provider/legacy-profile`, function `getLegacyProviderProfile`) |
+
+If telemetry was not instrumented before the observation window, the window cannot be counted retroactively. The engineer must add instrumentation, wait the minimum window, then submit the removal PR.
+
 ---
 
 ## Compliance Map — Existing PRs
@@ -180,3 +191,4 @@ No new work outside this list until the above items advance.
 | 2026-04-17 | 4 | Document created; 6-point standard formalized; `.github/PULL_REQUEST_TEMPLATE.md` created; compliance map added for PRs 1–8 |
 | 2026-04-17 | 5 | Enforcement section added with four explicit rejection triggers; PR template updated with rejection reminder block |
 | 2026-04-17 | 6 | Trigger 5 added — no live-path deprecation or removal without telemetry evidence or route truth proof; PR template updated |
+| 2026-04-17 | 7 | Trigger 5 evidence checklist formalized — four required inline fields (telemetry tag, observation window, truth map, exact path); PR template updated with conditional evidence block |

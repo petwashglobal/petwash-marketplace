@@ -82,6 +82,20 @@
 
 ---
 
+## Trigger 5 Evidence (complete only if this PR removes or deprecates a live path)
+
+> Skip this section if this PR does not remove, deprecate, gate, or redirect any existing path.
+> If it does, all four fields are required. Incomplete evidence blocks will cause rejection.
+
+- **Telemetry tag:** <!-- exact tag name, e.g. [PROVIDER_LEGACY_READ] -->
+- **Observation window:** <!-- start date → end date; state zero-caller result explicitly -->
+- **Truth map document:** <!-- link to route truth doc and section, e.g. docs/architecture/PROVIDER_ROUTE_TRUTH.md §DEAD_PATHS -->
+- **Exact path removed:** <!-- full path identifier, e.g. GET /api/provider/legacy-profile -->
+
+> Standard: `docs/architecture/PR_REVIEW_STANDARD.md` § Trigger 5
+
+---
+
 > **Standard:** `docs/architecture/PR_REVIEW_STANDARD.md`  
 > Every PR on this platform must complete all six sections above before merge.  
 > Incomplete sections block review — they are not optional.
