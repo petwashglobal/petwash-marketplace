@@ -78,6 +78,19 @@ export default function WalkerDashboard() {
   });
   const pendingBookings: WalkBooking[] = pendingData?.bookings || [];
 
+  // Active (confirmed / in_progress) walk — returns { booking } | null
+  const { data: activeData } = useQuery<{ booking: WalkBooking | null }>({
+    queryKey: ['/api/walk-my-pet/walker/active'],
+    refetchInterval: 30000, // poll every 30s while dashboard is open
+  });
+  const activeWalk: WalkBooking | null = activeData?.booking ?? null;
+
+  // Completed walks history — returns { bookings: [], total: N }
+  const { data: completedData } = useQuery<{ bookings: WalkBooking[]; total: number }>({
+    queryKey: ['/api/walk-my-pet/walker/completed'],
+  });
+  const completedWalks: WalkBooking[] = completedData?.bookings || [];
+
   // Earnings summary
   const { data: earnings } = useQuery<Earnings>({
     queryKey: ['/api/walk-my-pet/walker/earnings'],
@@ -282,6 +295,67 @@ export default function WalkerDashboard() {
               </div>
             )}
           </div>
+
+          {/* Active Walk — wired to /walker/active (BOOKING_VERIFICATION_MATRIX.md fix) */}
+          {activeWalk && (
+            <div>
+              <h2 className="luxury-heading-md mb-4 flex items-center gap-2">
+                <span className="luxury-badge-gold px-2 py-1">LIVE</span>
+                Active Walk / טיול פעיל
+              </h2>
+              <Card className="luxury-glass-minimal luxury-hover-lift border-2 border-green-400">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="luxury-heading-sm">{activeWalk.petName || 'Pet'} — #{activeWalk.bookingId}</span>
+                    <Badge className="luxury-badge-success">{activeWalk.status}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {activeWalk.scheduledDate && (
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-4 w-4 text-green-600" />
+                      <span className="luxury-text-body">{new Date(activeWalk.scheduledDate).toLocaleString('he-IL')}</span>
+                    </div>
+                  )}
+                  <Button
+                    className="luxury-btn-primary w-full"
+                    onClick={() => setLocation(`/walks/track/${activeWalk.bookingId}`)}
+                  >
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Track Live / עקוב חי
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Completed Walks History — wired to /walker/completed (BOOKING_VERIFICATION_MATRIX.md fix) */}
+          {completedWalks.length > 0 && (
+            <div>
+              <h2 className="luxury-heading-md mb-4 flex items-center gap-2">
+                <span className="luxury-badge px-2 py-1">{completedWalks.length}</span>
+                Completed Walks / טיולים שהושלמו
+              </h2>
+              <div className="grid gap-4">
+                {completedWalks.slice(0, 10).map((walk) => (
+                  <Card key={walk.bookingId} className="luxury-glass-minimal">
+                    <CardContent className="pt-4 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        <div>
+                          <p className="luxury-text-body font-medium">{walk.petName || 'Pet'}</p>
+                          <p className="text-sm text-gray-500">{walk.scheduledDate ? new Date(walk.scheduledDate).toLocaleDateString('he-IL') : ''}</p>
+                        </div>
+                      </div>
+                      <span className="luxury-heading-sm luxury-text-gradient">
+                        ₪{parseFloat(walk.walkerPayout || walk.totalCost || '0').toFixed(0)}
+                      </span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </LuxuryPageWrapper>

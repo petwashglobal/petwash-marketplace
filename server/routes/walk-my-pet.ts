@@ -39,6 +39,7 @@ import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { dispatchNotifications, buildBookingCancelledSms } from '../services/PetWashNotificationEngine';
+import { dispatchNotification } from '../lib/notificationDispatcher';
 
 const router = Router();
 
@@ -522,6 +523,19 @@ router.post('/walks/book', requireAuth, async (req, res) => {
         console.warn('[Walk My Pet] Walker notification failed (non-blocking)', notifErr);
       }
     })();
+
+    // Notify owner (customer) — walk request confirmed as pending (MESSAGING_TRUTH_MAP.md fix)
+    // Previously: zero owner notification on walk_booking creation. Owner had no receipt.
+    dispatchNotification({
+      uid: ownerId,
+      type: 'booking_request',
+      title: 'Walk Request Sent / בקשת טיול נשלחה',
+      titleHe: 'בקשת טיול נשלחה',
+      body: `Your walk request for ${scheduledDate} at ${scheduledStartTime} has been sent to the walker. You will be notified when they accept.`,
+      bodyHe: `בקשת הטיול ל-${scheduledDate} בשעה ${scheduledStartTime} נשלחה למטייל/ת. תקבל/י עדכון עם האישור.`,
+      channels: ['in_app'],
+      relatedId: newBooking.bookingId,
+    }).catch((err: any) => logger.warn('[Walk My Pet] Owner in-app notification failed (non-blocking)', err));
 
     // Generate navigation links for pickup location
     const navigationLinks = buildAllNavigationLinks({

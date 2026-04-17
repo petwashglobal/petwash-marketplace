@@ -45,6 +45,7 @@ import multer from 'multer';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { storage, auth } from '../lib/firebase-admin';
+import { dispatchNotification } from '../lib/notificationDispatcher';
 
 const router = Router();
 
@@ -825,6 +826,19 @@ router.post('/bookings', requireAuth, async (req, res) => {
       }
     })();
     
+    // Notify owner (customer) — booking request acknowledged (MESSAGING_TRUTH_MAP.md fix)
+    // Previously: zero owner notification on sitter_booking creation. Owner had no receipt.
+    dispatchNotification({
+      uid: ownerId,
+      type: 'booking_request',
+      title: 'Sitting Request Sent / בקשת ישיבה נשלחה',
+      titleHe: 'בקשת ישיבה נשלחה',
+      body: `Your sitting request has been sent to the sitter. You will be notified when they accept. Total: ₪${pricing.totalPrice.toFixed(0)}`,
+      bodyHe: `בקשת הישיבה נשלחה לשמרטף/ית. תקבל/י עדכון עם האישור. סה"כ: ₪${pricing.totalPrice.toFixed(0)}`,
+      channels: ['in_app'],
+      relatedId: newBooking.bookingId,
+    }).catch((err: any) => logger.warn('[Sitter Suite] Owner in-app notification failed (non-blocking)', err));
+
     res.status(201).json({
       booking: newBooking,
       status: 'pending_provider',

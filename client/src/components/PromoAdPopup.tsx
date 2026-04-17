@@ -9,6 +9,8 @@ const SUPPRESSED_PATH_PREFIXES = [
   '/become-provider', '/provider-onboarding', '/provider/pending', '/provider/rejected',
   '/privilege', '/loyalty/join', '/vito', '/choose-role', '/complete-profile',
   '/welcome-consent', '/verify-email', '/activate-account', '/blocked',
+  // Consent onboarding chain — popup must not interrupt these flows (POPUP_CONSENT_MAP.md)
+  '/consent-onboarding', '/notification-consent',
 ];
 
 type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'elite-gold';
