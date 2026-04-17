@@ -408,7 +408,13 @@ jobs:
         # This catches process crashes (missing file, bad import, pre-bind throw)
         # BEFORE wasting a Cloud Run deploy attempt.  All real secrets are absent
         # intentionally — the fixed code must not throw when secrets are missing.
-        # The /health endpoint always returns 200 regardless of secret presence.
+        #
+        # Two-phase check:
+        #   Phase 1 — /health (always 200): confirms the container bound the port and is alive.
+        #   Phase 2 — /health/strict (200 = clean, 503 = security misconfiguration detected):
+        #     returns non-200 when _startupConfigErrors contains dangerous entries
+        #     (weak admin secret, forbidden bypass flags, missing required secrets).
+        #     This is the deployment gate — a MISCONFIGURED container must not be promoted.
         run: |
           echo "🔍 Starting container smoke test (no real secrets — testing boot only)..."
           docker run -d --name petwash-smoke \
@@ -417,21 +423,44 @@ jobs:
             -e NODE_ENV=production \
             "${{ env.IMAGE }}:${{ github.sha }}"
 
-          SUCCESS=false
+          # ── Phase 1: wait for /health to return 200 ──────────────────────────
+          BOOT_OK=false
           MAX_ATTEMPTS=18          # 18 × 5 s = 90 s max wait
           for i in $(seq 1 $MAX_ATTEMPTS); do
             sleep 5
             HTTP=$(curl -s -o /tmp/smoke_health.json -w "%{http_code}" \
               --max-time 10 http://localhost:18080/health 2>/dev/null || echo "000")
-            echo "  Attempt $i/$MAX_ATTEMPTS: HTTP $HTTP"
+            echo "  [Phase 1] Attempt $i/$MAX_ATTEMPTS: /health → HTTP $HTTP"
             if [ "$HTTP" = "200" ]; then
-              SUCCESS=true
-              echo "  Response: $(cat /tmp/smoke_health.json 2>/dev/null || echo '(empty)')"
+              BOOT_OK=true
+              echo "  /health response: $(cat /tmp/smoke_health.json 2>/dev/null || echo '(empty)')"
               break
             fi
             # Print recent container output on every failed attempt for fast diagnosis
             docker logs petwash-smoke 2>&1 | tail -20
           done
+
+          if [ "$BOOT_OK" != "true" ]; then
+            echo ""
+            echo "--- Full container logs (last 100 lines) ---"
+            docker logs petwash-smoke 2>&1 | tail -100
+            docker stop petwash-smoke || true
+            docker rm   petwash-smoke || true
+            echo ""
+            echo "❌ Container smoke test FAILED (Phase 1) — container did not bind port 8080 within 90 s."
+            echo "   Root cause is in the container logs above."
+            echo "   Fix the container startup error before re-running to avoid Cloud Run probe failures."
+            exit 1
+          fi
+
+          # ── Phase 2: /health/strict — security/config gate ───────────────────
+          # Returns 503 when _startupConfigErrors is non-empty (weak secrets, bypass flags, etc.)
+          STRICT_HTTP=$(curl -s -o /tmp/smoke_strict.json -w "%{http_code}" \
+            --max-time 10 http://localhost:18080/health/strict 2>/dev/null || echo "000")
+          STRICT_BODY=$(cat /tmp/smoke_strict.json 2>/dev/null || echo "")
+          echo ""
+          echo "  [Phase 2] /health/strict → HTTP $STRICT_HTTP"
+          echo "  /health/strict response: $STRICT_BODY"
 
           echo ""
           echo "--- Full container logs (last 100 lines) ---"
@@ -439,14 +468,15 @@ jobs:
           docker stop petwash-smoke || true
           docker rm   petwash-smoke || true
 
-          if [ "$SUCCESS" != "true" ]; then
+          if [ "$STRICT_HTTP" != "200" ]; then
             echo ""
-            echo "❌ Container smoke test FAILED — container did not bind port 8080 within 90 s."
-            echo "   Root cause is in the container logs above."
-            echo "   Fix the container startup error before re-running to avoid Cloud Run probe failures."
+            echo "❌ Container smoke test FAILED (Phase 2) — /health/strict returned HTTP $STRICT_HTTP."
+            echo "   The container started but has critical configuration errors (see response above)."
+            echo "   Fix the errors listed in checks.configErrors and redeploy."
+            echo "   A misconfigured container must NOT be promoted to Cloud Run traffic."
             exit 1
           fi
-          echo "✅ Container smoke test passed — proceeding to Cloud Run deploy."
+          echo "✅ Container smoke test passed (both phases) — proceeding to Cloud Run deploy."
 
       - name: Deploy to Cloud Run
         id: deploy

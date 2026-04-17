@@ -586,6 +586,41 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// /health/strict — deployment gate.
+// Returns 503 when startup collected security-critical config errors (missing required
+// secrets, weak admin credentials, forbidden bypass flags).  The CI smoke test checks
+// this endpoint AFTER /health returns 200 to prevent a misconfigured container from
+// being promoted to Cloud Run traffic.  Regular health checks should use /health.
+app.get('/health/strict', (_req, res) => {
+  res.set('X-Octopus-Source', 'petwash-backend-global');
+  const timestamp = new Date().toISOString();
+  if (_startupConfigErrors.length > 0) {
+    return res.status(503).json({
+      status: 'MISCONFIGURED',
+      timestamp,
+      bootTs: healthState.bootTs,
+      checks: {
+        process: true,
+        env: process.env.NODE_ENV || 'unknown',
+        configErrors: _startupConfigErrors,
+      },
+      message:
+        'Container started but has critical configuration errors. ' +
+        'Fix the errors listed in checks.configErrors and redeploy.',
+    });
+  }
+  return res.status(200).json({
+    status: 'OK',
+    timestamp,
+    bootTs: healthState.bootTs,
+    checks: {
+      process: true,
+      env: process.env.NODE_ENV || 'unknown',
+      configErrors: [],
+    },
+  });
+});
+
 app.get('/api/health', async (_req, res) => {
   const db = await checkDbOnce();
   const status = db.ok ? 'OK' : 'DEGRADED';
@@ -666,7 +701,7 @@ app.get('/api/google/places-health', async (req, res) => {
 
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
-  if (req.path === '/health' || req.path.startsWith('/api/health')) {
+  if (req.path === '/health' || req.path === '/health/strict' || req.path.startsWith('/api/health')) {
     return next();
   }
   
