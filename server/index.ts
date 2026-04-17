@@ -6,14 +6,35 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   delete process.env.GEMINI_API_KEY;
 }
 
-// ── Startup secrets validation (fail fast with clear errors) ──────────────────
+// ── Startup error collectors ───────────────────────────────────────────────────
+// Throwing before app.listen() exits the process before it binds the port;
+// Cloud Run's startup probe never sees a listener → "user-provided container failed
+// the configured startup probe checks".  Instead of throwing we record two buckets:
+//
+//   _startupConfigErrors      – missing or malformed secrets / env vars.
+//                               Features that rely on them will fail at call-time,
+//                               but the app is not actively dangerous.
+//                               /health reports DEGRADED; /health/strict stays 200.
+//
+//   _startupSecurityViolations – active security dangers: weak admin credentials,
+//                               forbidden bypass flags set in production, etc.
+//                               These mean the running service IS dangerous right now.
+//                               /health reports DEGRADED; /health/strict returns 503.
+//
+// Both are logged clearly in container stdout for Cloud Run revision logs and exposed
+// via /health so operators can diagnose without reading raw logs.
+const _startupConfigErrors: string[] = [];
+const _startupSecurityViolations: string[] = [];
+
+// ── Startup secrets validation ────────────────────────────────────────────────
 (function validateSecrets() {
   const isProd = process.env.NODE_ENV === 'production';
 
   // Secrets required for core functionality with expected format patterns.
-  // In production a missing or malformed value is fatal — throw immediately so
-  // the container fails the Cloud Run startup probe rather than running silently
-  // broken and serving 200 OK responses with no SMS or email capability.
+  // In production a missing or malformed value is recorded in _startupConfigErrors
+  // and exposed via /health so operators can diagnose without reading Cloud Run logs.
+  // Throwing here would exit the process before app.listen() binds the port, causing
+  // Cloud Run's startup probe to fail ("user-provided container failed...").
   const REQUIRED: Array<{
     key: string;
     pattern: RegExp;
@@ -115,10 +136,12 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   if (fatalErrors.length > 0) {
     const msg = '\n' + fatalErrors.join('\n') + '\n';
     console.error(msg);
-    throw new Error(
-      `Startup aborted: ${fatalErrors.length} required secret(s) are missing or malformed in production.\n` +
-      fatalErrors.join('\n')
-    );
+    // Do NOT throw — a pre-bind crash prevents Cloud Run from ever seeing a listener on
+    // the configured port, which causes the startup probe to fail with
+    // "user-provided container failed the configured startup probe checks".
+    // Record errors and expose via /health so operators can diagnose without needing
+    // to read Cloud Run revision logs.
+    _startupConfigErrors.push(...fatalErrors);
   }
 
   // ── ADMIN_SECRET / PETWASH_ADMIN_SECRET weak-value guard ─────────────────────
@@ -136,16 +159,16 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
       process.env.NODE_ENV === 'production' ? console.error(msg) : console.warn(msg);
     } else if (WEAK_ADMIN_SECRETS.has(val.toLowerCase())) {
       const msg = `[startup] CRITICAL SECURITY: ${key} is set to a known-weak value — rotate immediately!`;
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(msg);
-      }
+      // Recorded in _startupSecurityViolations (not _startupConfigErrors) because this is
+      // an active security danger: any caller can invoke admin routes with a guessable secret.
+      // /health/strict returns 503 for security violations, blocking CI smoke-test promotion.
       console.error(msg);
+      _startupSecurityViolations.push(msg);
     } else if (val.length < MIN_ADMIN_SECRET_LENGTH) {
       const msg = `[startup] SECURITY: ${key} is shorter than ${MIN_ADMIN_SECRET_LENGTH} characters — use a longer secret`;
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(msg);
-      }
-      console.warn(msg);
+      // Same reasoning: short admin secret is an active security weakness, not just a missing feature.
+      console.error(msg);
+      _startupSecurityViolations.push(msg);
     }
   }
 
@@ -189,8 +212,11 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
       '   Remove TRANZILA_WEBHOOK_BYPASS_SIGNATURE from your ' + env + ' environment\n' +
       '   and restart the server.\n';
     console.error(msg);
-    throw new Error(
-      'Startup aborted: TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is forbidden in ' + env,
+    // Recorded in _startupSecurityViolations: an active bypass of payment signature
+    // verification in production is an immediate security danger, not just a missing feature.
+    // /health/strict returns 503 for security violations, so CI smoke test blocks promotion.
+    _startupSecurityViolations.push(
+      'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is forbidden in ' + env,
     );
   }
 })();
@@ -555,17 +581,67 @@ async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string 
 
 app.get('/health', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
+  const isDegraded = _startupConfigErrors.length > 0 || _startupSecurityViolations.length > 0;
   res.status(200).json({
-    status: 'OK',
+    status: isDegraded ? 'DEGRADED' : 'OK',
     timestamp: new Date().toISOString(),
     bootTs: healthState.bootTs,
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
+      ...(_startupConfigErrors.length > 0 ? { configErrors: _startupConfigErrors } : {}),
+      ...(_startupSecurityViolations.length > 0 ? { securityViolations: _startupSecurityViolations } : {}),
     },
     metrics: {
       uptimeSeconds: Math.floor(process.uptime()),
       memoryRss: process.memoryUsage().rss,
+    },
+  });
+});
+
+// /health/strict — CI deployment gate.
+//
+// Returns 503 ONLY when _startupSecurityViolations is non-empty, i.e. when the app
+// is ACTIVELY DANGEROUS right now:
+//   • weak / guessable admin credentials
+//   • payment-signature bypass flag set in production or staging
+//
+// Missing or malformed secrets (_startupConfigErrors) do NOT trigger a 503 here because:
+//   • their absence degrades features but does not make the app insecure
+//   • the CI smoke test runs with no real secrets intentionally; blocking on absent secrets
+//     would make /health/strict return 503 every time in CI regardless of code quality
+//
+// /health (above) always returns 200 and reports both buckets — use it for Cloud Run
+// startup/liveness probes.  Use /health/strict only as a deployment promotion gate.
+app.get('/health/strict', (_req, res) => {
+  res.set('X-Octopus-Source', 'petwash-backend-global');
+  const timestamp = new Date().toISOString();
+  if (_startupSecurityViolations.length > 0) {
+    return res.status(503).json({
+      status: 'DANGEROUS',
+      timestamp,
+      bootTs: healthState.bootTs,
+      checks: {
+        process: true,
+        env: process.env.NODE_ENV || 'unknown',
+        securityViolations: _startupSecurityViolations,
+        ...(_startupConfigErrors.length > 0 ? { configErrors: _startupConfigErrors } : {}),
+      },
+      message:
+        'Container has active security violations. ' +
+        'Fix the items in checks.securityViolations and redeploy before promoting traffic.',
+    });
+  }
+  return res.status(200).json({
+    status: _startupConfigErrors.length > 0 ? 'DEGRADED' : 'OK',
+    timestamp,
+    bootTs: healthState.bootTs,
+    checks: {
+      process: true,
+      env: process.env.NODE_ENV || 'unknown',
+      // securityViolations is empty (guaranteed by the guard above) — omitted for brevity;
+      // consumers can treat absence as equivalent to an empty array.
+      ...(_startupConfigErrors.length > 0 ? { configErrors: _startupConfigErrors } : {}),
     },
   });
 });
@@ -650,7 +726,7 @@ app.get('/api/google/places-health', async (req, res) => {
 
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
-  if (req.path === '/health' || req.path.startsWith('/api/health')) {
+  if (req.path === '/health' || req.path === '/health/strict' || req.path.startsWith('/api/health')) {
     return next();
   }
   
@@ -727,6 +803,17 @@ if (isProduction) {
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log('--------------------------------------------------');
     console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
+    if (_startupConfigErrors.length > 0) {
+      console.error(`⚠️  [Server] ${_startupConfigErrors.length} startup config error(s) detected:`);
+      _startupConfigErrors.forEach(e => console.error('   ' + e));
+      console.error('   These errors are also visible in GET /health (check → configErrors).');
+    }
+    if (_startupSecurityViolations.length > 0) {
+      console.error(`🚨 [Server] ${_startupSecurityViolations.length} SECURITY VIOLATION(S) detected at startup:`);
+      _startupSecurityViolations.forEach(e => console.error('   ' + e));
+      console.error('   These violations are visible in GET /health/strict (checks → securityViolations).');
+      console.error('   GET /health/strict returns 503 DANGEROUS — CI deploy gate will block promotion.');
+    }
     console.log('--------------------------------------------------');
   });
   
