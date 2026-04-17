@@ -1,3 +1,31 @@
+// =============================================================================
+// DEPRECATION NOTICE — POST /api/provider-applications (and sub-routes)
+// =============================================================================
+// Route truth confirmed on branch HEAD (copilot/deprecate-provider-applications-endpoint):
+//
+//   /become-provider      → <Redirect to="/sign-in?redirect=/provider-onboarding">
+//                           Never renders BecomeProvider.tsx. Pure redirect.
+//
+//   /provider-onboarding  → <RequireAuth><ProviderOnboarding /></RequireAuth>
+//                           Calls POST /api/provider-onboarding/apply
+//                           Writes to: providerApplications (shared/schema.ts)
+//
+//   /join/walker|sitter|trainer → <Redirect to="/become-provider?type=X"> → same chain above
+//   /apply-provider, /join-team → <Redirect to="/become-provider"> → same chain above
+//
+//   BecomeProvider.tsx       — lazy-imported in App.tsx but NEVER mounted by any route.
+//   ProviderApplicationForm.tsx — no import, no route, no mount. Dead file on disk.
+//
+// Therefore:
+//   • POST /api/provider-applications (this file) — has NO live callers from the client.
+//   • POST /api/provider-onboarding/apply         — is the ONLY live provider submit path.
+//   • providerApplicants (schema-enterprise)      — written only by this dead endpoint.
+//   • providerApplications (shared/schema)        — written by the live endpoint.
+//
+// This endpoint is DEPRECATED pending zero-call confirmation from telemetry logs below.
+// Do NOT remove files until logs confirm zero traffic.  See logDeprecatedCall() below.
+// =============================================================================
+
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { db } from '../db';
@@ -39,6 +67,34 @@ function checkSubmissionRate(ip: string): boolean {
   }
   entry.count++;
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Deprecation telemetry — call at the top of every public (non-admin) handler.
+// Logs a structured DEPRECATED_ENDPOINT entry so we can confirm zero traffic
+// before proceeding with file removal in a later PR.
+// ---------------------------------------------------------------------------
+function logDeprecatedCall(req: Request, handlerLabel: string): void {
+  const userId = (req as any).firebaseUser?.uid ?? 'unauthenticated';
+  const clientIp = ((req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown').slice(0, 8) + '***';
+  logger.warn('[DEPRECATED_ENDPOINT] /api/provider-applications called — this endpoint has no live client callers; deprecation in progress', {
+    handler: handlerLabel,
+    method: req.method,
+    path: req.path,
+    userId,
+    ip: clientIp,
+    userAgent: (req.headers['user-agent'] || '').slice(0, 80),
+    referer: (req.headers['referer'] || '').slice(0, 120),
+    traceId: req.traceId || '',
+    deprecationTarget: 'POST /api/provider-onboarding/apply is the live replacement',
+  });
+}
+
+// Adds RFC 8594-style deprecation headers to every response from public handlers.
+function setDeprecationHeaders(res: Response): void {
+  res.setHeader('Deprecation', 'true');
+  res.setHeader('Sunset', 'Sat, 31 May 2025 00:00:00 GMT');
+  res.setHeader('Link', '</api/provider-onboarding/apply>; rel="successor-version"');
 }
 
 const upload = multer({
@@ -212,6 +268,8 @@ async function recordStageTransition(
 
 // POST /api/provider-applications - Submit new application
 router.post('/', uploadFields, async (req: Request, res: Response) => {
+  logDeprecatedCall(req, 'POST /');
+  setDeprecationHeaders(res);
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
@@ -524,6 +582,8 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
 //
 // The GET /my endpoint returns the draft so the frontend can pre-populate.
 router.post('/draft', async (req: Request, res: Response) => {
+  logDeprecatedCall(req, 'POST /draft');
+  setDeprecationHeaders(res);
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
@@ -642,6 +702,8 @@ router.post('/draft', async (req: Request, res: Response) => {
 
 // GET /api/provider-applications/my - Get current user's application
 router.get('/my', async (req: Request, res: Response) => {
+  logDeprecatedCall(req, 'GET /my');
+  setDeprecationHeaders(res);
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
@@ -733,6 +795,8 @@ const uploadComplianceDoc = multer({
 }).single('document');
 
 router.post('/my/documents', (req: Request, res: Response) => {
+  logDeprecatedCall(req, 'POST /my/documents');
+  setDeprecationHeaders(res);
   uploadComplianceDoc(req, res, async (multerErr) => {
     try {
       if (multerErr) {
@@ -873,7 +937,9 @@ router.post('/my/documents', (req: Request, res: Response) => {
 });
 
 // GET /api/provider-applications/stages - Get all stage information
-router.get('/stages', (_req: Request, res: Response) => {
+router.get('/stages', (req: Request, res: Response) => {
+  logDeprecatedCall(req, 'GET /stages');
+  setDeprecationHeaders(res);
   const stages = [
     {
       id: 'application_submitted',
@@ -946,6 +1012,8 @@ router.get('/stages', (_req: Request, res: Response) => {
 
 // POST /api/provider-applications/withdraw - Withdraw application
 router.post('/withdraw', async (req: Request, res: Response) => {
+  logDeprecatedCall(req, 'POST /withdraw');
+  setDeprecationHeaders(res);
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
