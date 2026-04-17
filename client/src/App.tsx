@@ -2078,11 +2078,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/become-provider">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
-          )}
+          {() => {
+            const search = typeof window !== "undefined" ? window.location.search : "";
+            const redirectTarget = `/provider-onboarding${search}`;
+            return <Redirect to={`/sign-in?redirect=${encodeURIComponent(redirectTarget)}`} />;
+          }}
         </Route>
         <Route path="/provider-onboarding">
           {() => (
