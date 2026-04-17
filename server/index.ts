@@ -639,7 +639,8 @@ app.get('/health/strict', (_req, res) => {
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
-      securityViolations: [],
+      // securityViolations is empty (guaranteed by the guard above) — omitted for brevity;
+      // consumers can treat absence as equivalent to an empty array.
       ...(_startupConfigErrors.length > 0 ? { configErrors: _startupConfigErrors } : {}),
     },
   });
@@ -806,6 +807,12 @@ if (isProduction) {
       console.error(`⚠️  [Server] ${_startupConfigErrors.length} startup config error(s) detected:`);
       _startupConfigErrors.forEach(e => console.error('   ' + e));
       console.error('   These errors are also visible in GET /health (check → configErrors).');
+    }
+    if (_startupSecurityViolations.length > 0) {
+      console.error(`🚨 [Server] ${_startupSecurityViolations.length} SECURITY VIOLATION(S) detected at startup:`);
+      _startupSecurityViolations.forEach(e => console.error('   ' + e));
+      console.error('   These violations are visible in GET /health/strict (checks → securityViolations).');
+      console.error('   GET /health/strict returns 503 DANGEROUS — CI deploy gate will block promotion.');
     }
     console.log('--------------------------------------------------');
   });
