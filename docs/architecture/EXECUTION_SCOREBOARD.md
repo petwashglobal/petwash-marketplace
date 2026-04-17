@@ -1,6 +1,6 @@
 # EXECUTION_SCOREBOARD.md
 > Branch: copilot/fix-loyalty-flow-issues (HEAD: 3dedd735)  
-> Last updated: 2026-04-17 (session 5 — enforcement/rejection rules added to PR standard)  
+> Last updated: 2026-04-17 (session 6 — Trigger 5 added: no live-path removal without telemetry evidence)  
 > Source documents: BOOKING_VERIFICATION_MATRIX.md, MESSAGING_TRUTH_MAP.md, MESSAGING_ACCEPTANCE_MATRIX.md, DATA_TRUTH_MASTER.md, AUTH_ROLE_TRUTH_MAP.md, INTEGRATION_HEALTH_MASTER.md, CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md, POPUP_CONSENT_MAP.md, PROVIDER_DEPRECATION_PLAN.md, LOYALTY_TRUTH_MAP.md, IDENTITY_TRUTH_MAP.md, PR_REVIEW_STANDARD.md  
 >
 > **PR Standard (MANDATORY):** Every PR on this platform must include all six sections defined in `docs/architecture/PR_REVIEW_STANDARD.md` and use the template at `.github/PULL_REQUEST_TEMPLATE.md`.  
@@ -274,7 +274,7 @@ if (!IS_REPLIT) { return null; } // never throws
 | Mandatory 6-point PR checklist template | `.github/PULL_REQUEST_TEMPLATE.md` | 4 | ✅ Created |
 | PR review standard reference document | `docs/architecture/PR_REVIEW_STANDARD.md` | 4 | ✅ Created |
 | Enforcement/rejection rules — PR standard | `docs/architecture/PR_REVIEW_STANDARD.md` — Enforcement section | 5 | ✅ Added |
-| Rejection reminder block — PR template | `.github/PULL_REQUEST_TEMPLATE.md` — top of file | 5 | ✅ Added |
+| Trigger 5 — live-path removal rule | `docs/architecture/PR_REVIEW_STANDARD.md` — Trigger 5; `.github/PULL_REQUEST_TEMPLATE.md` | 6 | ✅ Added |
 
 ---
 

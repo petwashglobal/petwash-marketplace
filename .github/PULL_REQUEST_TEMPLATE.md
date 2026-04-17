@@ -7,6 +7,8 @@
   2. A problem is described as "fixed" or "done" without a ✅ PASSED acceptance criterion
   3. Section 5 (Remaining Risk) is blank, says "N/A" without proof, or is vague
   4. This PR touches more than one domain without a scoreboard reference for each domain
+  5. This PR removes, deprecates, gates, or redirects any live path without telemetry evidence
+     (named tag + zero-caller window) or a linked route truth proof document
 
   These rules are defined in: docs/architecture/PR_REVIEW_STANDARD.md § Enforcement
 -->

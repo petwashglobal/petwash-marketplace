@@ -94,7 +94,7 @@ PRs that do not touch the scoreboard must explain why (e.g., "hotfix — no scor
 
 ---
 
-## Enforcement — Four Rejection Triggers
+## Enforcement — Five Rejection Triggers
 
 These rules are active. Reviewers must reject PRs that violate any of them. There are no exceptions and no grace period.
 
@@ -113,6 +113,17 @@ A PR that leaves section 5 blank, writes "N/A" without evidence, or describes ri
 ### Trigger 4 — Domain mixing without scoreboard reference
 
 A PR that touches more than one domain (e.g., booking + messaging, identity + provider) without a scoreboard reference for each domain is creating invisible debt. Cross-domain changes must either be split into separate PRs or must include one scoreboard reference per domain affected, with explicit justification for why they were combined. A PR that mixes domains and references only one scoreboard item must be returned for correction.
+
+### Trigger 5 — Live-path removal without telemetry evidence
+
+A PR that deprecates, removes, gates, or redirects any endpoint, route, function, or service path that may still have active callers must provide one of the following before merge:
+
+1. **Telemetry evidence** — a named telemetry tag showing zero callers over a defined observation window (minimum 30 days unless the path was introduced in the same release cycle), or
+2. **Route truth proof** — a truth map showing the path is unreachable under all known client versions and traffic sources, with the evidence document linked directly in section 1 of the PR.
+
+A PR that says "this path is dead" without one of the above is making an unverifiable claim. Dead-path claims have been a significant source of production incidents on this platform. The reviewer must request evidence before approving removal. "I believe no one uses it" and "the old code looks unused" are not evidence.
+
+This trigger applies to: API routes, Cloud Functions, Cloud Run handlers, Firebase callable functions, client-side navigation paths, feature flags that gate functional code, and any service method that is exposed across module boundaries.
 
 ---
 
@@ -168,3 +179,4 @@ No new work outside this list until the above items advance.
 |------|---------|--------|
 | 2026-04-17 | 4 | Document created; 6-point standard formalized; `.github/PULL_REQUEST_TEMPLATE.md` created; compliance map added for PRs 1–8 |
 | 2026-04-17 | 5 | Enforcement section added with four explicit rejection triggers; PR template updated with rejection reminder block |
+| 2026-04-17 | 6 | Trigger 5 added — no live-path deprecation or removal without telemetry evidence or route truth proof; PR template updated |
