@@ -73,6 +73,8 @@ const PLATFORMS = [
 ];
 
 const gold = '#85C4CE';
+const authOptionButtonClass = "w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700";
+const authOptionButtonStyle = { borderRadius: '2px' } as const;
 
 export default function PrivilegeSignup({ language, onLanguageChange }: PrivilegeSignupProps) {
   const { toast } = useToast();
@@ -113,6 +115,39 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
     localStorage.setItem('signup_intent', 'loyalty');
     setLocation('/signin?redirect=/privilege');
   };
+
+  const authOptions = [
+    {
+      key: 'mobile',
+      label: language === 'he' ? 'התחבר עם טלפון (SMS)' : 'Sign in with Mobile (SMS)',
+      ariaLabel: language === 'he' ? 'התחבר עם טלפון' : 'Sign in with mobile',
+      icon: <Smartphone className="w-4 h-4 text-gray-500" />,
+    },
+    {
+      key: 'email',
+      label: language === 'he' ? 'התחבר עם אימייל' : 'Sign in with Email',
+      ariaLabel: language === 'he' ? 'התחבר עם אימייל' : 'Sign in with email',
+      icon: <Mail className="w-4 h-4 text-gray-500" />,
+    },
+    {
+      key: 'google',
+      label: language === 'he' ? 'התחבר עם Google' : 'Sign in with Google',
+      ariaLabel: language === 'he' ? 'התחבר עם Google' : 'Sign in with Google',
+      icon: <ArrowRight className="w-4 h-4 text-gray-500" />,
+    },
+    {
+      key: 'apple',
+      label: language === 'he' ? 'התחבר עם Apple' : 'Sign in with Apple',
+      ariaLabel: language === 'he' ? 'התחבר עם Apple' : 'Sign in with Apple',
+      icon: <ArrowRight className="w-4 h-4 text-gray-500" />,
+    },
+    {
+      key: 'passkey',
+      label: language === 'he' ? 'התחבר עם Passkey / Face ID' : 'Sign in with Passkey / Face ID',
+      ariaLabel: language === 'he' ? 'התחבר עם Passkey או Face ID' : 'Sign in with passkey or Face ID',
+      icon: <ScanFace className="w-4 h-4 text-gray-500" />,
+    },
+  ];
 
   useEffect(() => {
     if (user) {
@@ -649,26 +684,18 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     </motion.button>
                   ) : (
                     <div className="space-y-2">
-                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
-                        <span>{language === 'he' ? 'כניסה עם טלפון (SMS)' : 'Sign in with Mobile (SMS)'}</span>
-                        <Smartphone className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
-                        <span>{language === 'he' ? 'כניסה עם אימייל' : 'Sign in with Email'}</span>
-                        <Mail className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
-                        <span>{language === 'he' ? 'המשך עם Google' : 'Continue with Google'}</span>
-                        <ArrowRight className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
-                        <span>{language === 'he' ? 'המשך עם Apple' : 'Continue with Apple'}</span>
-                        <ArrowRight className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
-                        <span>{language === 'he' ? 'כניסה עם Passkey / Face ID' : 'Sign in with Passkey / Face ID'}</span>
-                        <ScanFace className="w-4 h-4 text-gray-500" />
-                      </button>
+                      {authOptions.map((option) => (
+                        <button
+                          key={option.key}
+                          onClick={goToAuth}
+                          aria-label={option.ariaLabel}
+                          className={authOptionButtonClass}
+                          style={authOptionButtonStyle}
+                        >
+                          <span>{option.label}</span>
+                          {option.icon}
+                        </button>
+                      ))}
                     </div>
                   )}
 
