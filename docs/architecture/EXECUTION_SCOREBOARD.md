@@ -1,7 +1,7 @@
 # EXECUTION_SCOREBOARD.md
-> Branch: copilot/fix-loyalty-flow-issues (HEAD: c34bbe6f)  
-> Last updated: 2026-04-17  
-> Source documents: BOOKING_VERIFICATION_MATRIX.md, MESSAGING_TRUTH_MAP.md, DATA_TRUTH_MASTER.md, AUTH_ROLE_TRUTH_MAP.md, INTEGRATION_HEALTH_MASTER.md, POPUP_CONSENT_MAP.md, PROVIDER_DEPRECATION_PLAN.md, LOYALTY_TRUTH_MAP.md
+> Branch: copilot/fix-loyalty-flow-issues (HEAD: 9a6e5dc1)  
+> Last updated: 2026-04-17 (session 2 — deliverables added)  
+> Source documents: BOOKING_VERIFICATION_MATRIX.md, MESSAGING_TRUTH_MAP.md, MESSAGING_ACCEPTANCE_MATRIX.md, DATA_TRUTH_MASTER.md, AUTH_ROLE_TRUTH_MAP.md, INTEGRATION_HEALTH_MASTER.md, CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md, POPUP_CONSENT_MAP.md, PROVIDER_DEPRECATION_PLAN.md, LOYALTY_TRUTH_MAP.md, IDENTITY_TRUTH_MAP.md
 
 ---
 
@@ -180,7 +180,52 @@ if (!IS_REPLIT) { return null; } // never throws
 - ✅ syncUserToHubSpot/trackHubSpotEvent return `{ degraded: true }` on Cloud Run — callers' `.catch()` never triggered
 - ✅ On Replit: IS_REPLIT=true, behavior unchanged
 
+**Runbook:** See `docs/architecture/CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md`
+
 **What was deliberately not changed:** HubSpot and Spotify functionality on Replit is untouched. The Replit connector auth flow is identical. setInterval retry queue unchanged. No callers were modified.
+
+---
+
+## Current Status and Next Stage (Updated 2026-04-17 Session 2)
+
+| PR | Status | Next Required Action | Owner | When |
+|---|---|---|---|---|
+| PR 1 — Booking reads | ✅ DONE | Monitor `[BOOKING_UNIFIED_READ]` telemetry 30 days. Then: expose marketplace `bookings` table read | Telemetry team | 30-day window |
+| PR 2 — Messaging dedup | ✅ DONE | Monitor `notificationLogs` for duplicate deliveries 30 days. Then Stage C: consolidate BOOKING_COMPLETED to single path | Engineering | 30-day window |
+| PR 3 — Identity reads | ✅ READ-SIDE DONE | Wave 1 frontend: SecuritySettings.tsx + AuthHealthCheck migrate first. Then Wave 2: useIdentity() adaptor hook. See IDENTITY_TRUTH_MAP.md Stage 2 | Frontend | Next sprint |
+| PR 4 — Marketplace wire-up | ❌ BLOCKED | Run decision gate: check write volume in prod logs before any code | Product | Before next sprint |
+| PR 5 — Cloud Run | ✅ DONE | Monitor Cloud Run logs for `[HUBSPOT_DEGRADED]` + `[SPOTIFY_DEGRADED]` 30 days | DevOps | 30-day window |
+| PR 6 — Popup suppression | ✅ DONE | 30-day zero-use window → PR to remove 4 dead popup components | Engineering | 30-day window |
+| PR 7 — Provider deprecation | ⏳ TELEMETRY RUNNING | Zero-caller window must complete before code removal | Engineering | 30-day window |
+| PR 8 — Loyalty isolation | ✅ DONE | Remove dead loyalty modals in same PR as PR 6 cleanup | Engineering | After PR 6 window |
+
+---
+
+## Deliverables Completed (Session 2)
+
+| Deliverable | File | Status |
+|---|---|---|
+| PR2 event-by-event proof | `docs/architecture/MESSAGING_ACCEPTANCE_MATRIX.md` | ✅ Created |
+| PR3 frontend migration plan | `docs/architecture/IDENTITY_TRUTH_MAP.md` — Stage 2 section | ✅ Added |
+| PR5 operations runbook | `docs/architecture/CLOUD_RUN_DEGRADED_MODE_RUNBOOK.md` | ✅ Created |
+| Scoreboard update | This file | ✅ Updated |
+
+---
+
+## Architecture Work Priority Order
+
+**DO NOT start new feature work before these are stable:**
+
+1. ✅ `stabilize` — PR5 Cloud Run infra stable (done)
+2. ✅ `deduplicate` — PR2 messaging dedup (done)
+3. ✅ `unify reads` — PR3 identity read unification (done)
+4. ⏳ `observe` — 30-day telemetry window active for PR1, PR2, PR5, PR7
+5. ❌ `remove legacy` — do not remove any legacy code until telemetry window complete
+
+**What MUST NOT happen:**
+- Writes to `customers` are not yet mirrored to `users`. PR3 is read-side only. Write split-truth still exists.
+- Do not remove `/api/auth/user`, `/api/simple-auth/me`, or `/api/customers/me` until zero-caller proven.
+- Do not remove dead provider code (`/api/provider-applications`) until PR7 telemetry window is complete.
 
 ---
 
@@ -188,8 +233,9 @@ if (!IS_REPLIT) { return null; } // never throws
 
 1. ✅ **Observability and truth** — BOOKING_VERIFICATION_MATRIX.md + 7 other truth maps (done)
 2. ✅ **Unified reads** — Stage B booking read unification (done)
-3. ⏳ **Verification** — Monitor telemetry for 30 days before next step
-4. ⏳ **Deduplication** — PR 2 (messaging), PR 3 (identity reads)
-5. ⏳ **Deprecation with telemetry** — provider-applications after 30-day zero-caller proof
-6. ❌ **Removal after proof** — Not yet
-7. ❌ **Migrations or deeper consolidation** — Not yet
+3. ✅ **Deduplication** — PR 2 (messaging), PR 3 (identity reads), PR 5 (infra) (done)
+4. ⏳ **Verification** — Monitor telemetry for 30 days before next step
+5. ⏳ **Frontend migration** — PR3 Wave 1+2 (next sprint, after observation window started)
+6. ❌ **Deprecation with telemetry** — provider-applications after 30-day zero-caller proof
+7. ❌ **Removal after proof** — Not yet
+8. ❌ **Migrations or deeper consolidation** — Not yet

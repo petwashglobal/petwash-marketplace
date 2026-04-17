@@ -181,6 +181,70 @@ Both `users.loyaltyBalanceCents` and `users.loyaltyPoints` are cached copies —
 
 ---
 
+## Stage 2: Frontend Migration Plan
+
+### Current Frontend Identity Endpoints
+
+| Endpoint | Hook / File | What It Returns | Used By |
+|---|---|---|---|
+| `GET /api/auth/user` | `useAuth.ts:5` — `useQuery(['/api/auth/user'])` | `customers` row (legacy session cookie) | VoucherWallet, ProviderProfilePage, ProviderBrowseGrid, AppleWalletButton, MyWalletCards, Dashboard, Hub, walk-my-pet/OwnerDashboard, ReportProblemPage, TeamInbox, ClaimVoucher, AdminVouchers, HQManagementPortal, MarketplaceIntelligenceDashboard, contractor/Dashboard |
+| `GET /api/session/whoami` | `useWhoami.ts:40` — `useQuery(['/api/session/whoami'])` | Firebase claims + role/dashboards/MFA/KYC | AdminRouteGuard, RoleProtectedRoute, Dashboard, Settings, NotificationConsent |
+| `GET /api/simple-auth/me` | `useSimpleAuth.tsx:41` — `fetch('/api/simple-auth/me')` | Firebase session cookie → Firestore users doc | SignIn (session validation), Dashboard |
+| `GET /api/auth/me` | `AuthHealthCheck.tsx:97`, `Packages.tsx:131` | Mobile JWT `users` row | AuthHealthCheck component, Packages (invalidate only) |
+| `GET /api/admin/auth/me` | `useAdminAuth.ts:30` | Admin-specific claims | Admin panel auth |
+| `GET /api/me/role` | `SecuritySettings.tsx:64` | `users.role` | SecuritySettings page |
+
+### Why Migration Must Be Ordered
+
+`/api/auth/user` and `/api/auth/identity` return different shapes. A direct swap without refactoring will break any consumer that reads `customer.password`, `customer.loyaltyProgram`, or uses the legacy `id` (serial integer vs Firebase UID string).
+
+Risk matrix:
+
+| Consumer | Risk If Migrated Too Early | Safe? |
+|---|---|---|
+| `useAuth.ts` → 30+ screens | Returns `id` as varchar Firebase UID, not serial integer. Any code that uses `user.id` as number will break | ⚠️ HIGH — must update all consumers before switching |
+| `useWhoami.ts` | Already uses `/api/session/whoami` which reads Firebase claims. No migration needed | ✅ SAFE — leave as-is |
+| `useSimpleAuth.tsx` | Reads session cookie, falls back to Firestore. Should migrate to `/api/auth/identity` but needs cookie or bearer support | 🟡 MEDIUM — only after testing |
+| `useAdminAuth.ts` | Admin-specific endpoint — do not migrate | ✅ Leave as-is |
+| `SecuritySettings.tsx` | Only reads `role` — migrate to `useWhoami` instead | ✅ Safe quick win |
+
+### Recommended Migration Order
+
+#### Wave 1 — Safe, no shape change (do now)
+
+1. **`SecuritySettings.tsx`** — change `queryKey: ['/api/me/role']` to use `useWhoami()` which already has role. Zero risk.
+2. **`AuthHealthCheck.tsx`** — change `GET /api/auth/me` to `GET /api/auth/identity`. Shape is compatible (both return id, email, role). Test admin flow only.
+
+#### Wave 2 — Requires adaptor hook (next PR)
+
+3. **Create `useIdentity()` hook** in `client/src/hooks/useIdentity.ts` that calls `GET /api/auth/identity` and maps response to same shape as current `useAuth()` (cast id to string, map loyalty fields). This is the bridge.
+4. **Migrate `useAuth.ts`** — swap query from `/api/auth/user` to `/api/auth/identity` using the new `useIdentity()` adaptor.
+5. **Test screens one by one**: Start with read-only screens (Dashboard, Hub, MarketplaceIntelligenceDashboard) before write-action screens (Booking, Wallet).
+
+#### Wave 3 — Legacy endpoints (after Wave 2 stable for 30 days)
+
+6. **Deprecate `/api/auth/user`** — add `Deprecation: true` and `Sunset: <date>` response headers. Keep endpoint live.
+7. **Deprecate `/api/simple-auth/me`** — same treatment.
+8. **Monitor** for zero-call window. Then remove.
+
+### What Can Break If Migrated in Wrong Order
+
+| Wrong Order | Breakage |
+|---|---|
+| Migrate `useAuth.ts` before updating consumers to use string UID | Any code doing `parseInt(user.id)` returns NaN → booking and wallet flow breaks |
+| Migrate before `useIdentity()` adaptor handles `loyaltyPoints` as number (not decimal string) | Loyalty display shows NaN or wrong value |
+| Remove `/api/auth/user` before zero-caller verified | Any screen still calling it returns 404 → silent auth failure |
+| Replace `useWhoami` with `/api/auth/identity` | `/api/auth/identity` does not return role dashboard list, MFA required status, or KYC status. Those come only from `/api/session/whoami` via Firebase claims |
+
+### The One Thing That Must NOT Happen
+
+`/api/auth/identity` must never replace `/api/session/whoami`.  
+`/api/session/whoami` is for authorization: role, dashboards, MFA, KYC.  
+`/api/auth/identity` is for profile data: name, phone, loyalty, balance.  
+They serve different concerns.
+
+---
+
 ## What Was Deliberately NOT Changed
 
 - No writes to `users` or `customers` were modified
