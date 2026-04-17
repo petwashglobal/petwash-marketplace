@@ -703,12 +703,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/privilege">
           {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
+        {/* Canonical redirect — all loyalty join traffic goes to /privilege for unified analytics */}
         <Route path="/loyalty/join">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to="/privilege" />}
         </Route>
-        {/* Backward compatibility - old /vito URL redirects */}
+        {/* Backward compatibility - old /vito URL redirects to canonical /privilege */}
         <Route path="/vito">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to="/privilege" />}
         </Route>
 
         {/* Loyalty Program - Public landing + member dashboard */}

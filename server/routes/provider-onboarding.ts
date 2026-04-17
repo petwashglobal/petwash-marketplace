@@ -5,7 +5,7 @@ import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt, createHash } from 'crypto';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
-import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue } from '@shared/schema';
+import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue, walkerProfiles, sitterProfiles } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
@@ -1451,6 +1451,80 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       }
     }
 
+    // ── Auto-create provider profile row so the provider can receive bookings immediately ──
+    // PROVIDER_DEPRECATION_PLAN.md Phase 3: profile must exist before first booking.
+    // This is fire-and-forget (non-fatal) so an unexpected profile DB error never blocks approval.
+    if (application.userId) {
+      try {
+        if (application.providerType === 'walker') {
+          // Check if profile already exists (idempotent)
+          const existingWalker = await db
+            .select({ id: walkerProfiles.id })
+            .from(walkerProfiles)
+            .where(eq(walkerProfiles.userId, application.userId))
+            .limit(1);
+
+          if (existingWalker.length === 0) {
+            await db.insert(walkerProfiles).values({
+              walkerId: providerId,
+              userId: application.userId,
+              firstName: application.firstName,
+              lastName: application.lastName,
+              city: application.city,
+              country: application.country || 'IL',
+              verificationStatus: 'verified',
+              kycCompleted: true,
+              backgroundCheckStatus: 'passed',
+              backgroundCheckDate: new Date(),
+              selfiePhotoUrl: application.selfiePhotoUrl || null,
+              governmentIdUrl: application.governmentIdUrl || null,
+              biometricMatchScore: application.biometricMatchScore ? String(application.biometricMatchScore) : null,
+              biometricVerifiedAt: application.biometricVerifiedAt || null,
+              baseHourlyRate: '100.00', // Placeholder — provider sets their own rate on first login
+              isAvailable: true,
+              isActive: true,
+            });
+            logger.info('[Provider Onboarding] walkerProfiles row created on approval', { userId: application.userId, providerId });
+          }
+        } else if (application.providerType === 'sitter') {
+          // Check if profile already exists (idempotent)
+          const existingSitter = await db
+            .select({ id: sitterProfiles.id })
+            .from(sitterProfiles)
+            .where(eq(sitterProfiles.userId, application.userId))
+            .limit(1);
+
+          if (existingSitter.length === 0) {
+            await db.insert(sitterProfiles).values({
+              userId: application.userId,
+              firstName: application.firstName,
+              lastName: application.lastName,
+              dateOfBirth: '1990-01-01', // Placeholder — provider completes on profile setup
+              email: application.email,
+              phone: application.phoneNumber,
+              streetAddress: application.city, // Placeholder — provider completes on profile setup
+              city: application.city,
+              stateProvince: application.city,
+              postalCode: '00000', // Placeholder — provider completes on profile setup
+              country: application.country || 'Israel',
+              yearsOfExperience: 0,
+              pricePerDayCents: 15000, // Placeholder ₪150/day — provider sets their own rate
+              verificationLevel: 'bronze',
+              verificationBadges: ['identity_verified'],
+            });
+            logger.info('[Provider Onboarding] sitterProfiles row created on approval', { userId: application.userId, providerId });
+          }
+        }
+      } catch (profileErr: any) {
+        // Non-fatal: log but do not block the approval response
+        logger.warn('[Provider Onboarding] Profile auto-creation failed (non-fatal)', {
+          error: profileErr?.message,
+          userId: application.userId,
+          providerType: application.providerType,
+        });
+      }
+    }
+
     // Email applicant
     if (isSendGridConfigured() && application.email) {
       try {
@@ -1472,8 +1546,6 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         logger.warn('[Provider Onboarding] Approval email failed (non-fatal)', { error: emailErr?.message });
       }
     }
-
-    logger.info(`[Provider Onboarding] Application approved: ${applicationId} by admin ${adminUid}`);
 
     res.json({ 
       success: true, 

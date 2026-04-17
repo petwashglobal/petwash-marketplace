@@ -12,7 +12,7 @@ import { logger } from "../lib/logger";
 import { BookingLockService } from "../services/BookingLockService";
 import { isSuperAdmin } from "../middleware/rbac";
 import { computeAndPersistSettlement } from "../services/SettlementEngine";
-import { stations } from "@shared/schema";
+import { stations, walkBookings, sitterBookings, sitterProfiles, trainerBookings } from "@shared/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
 import { resolveStationRole } from "../middleware/stationAuth";
 import { bookingLimiter } from "../middleware/rateLimiter";
@@ -370,44 +370,196 @@ router.get("/my-bookings", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const { role, platform } = req.query;
+    const isProvider = role === "provider";
 
-    const queryField = role === "provider" ? "providerId" : "customerId";
-    let query = db
+    // ── 1. Firestore marketplace bookings ────────────────────────────────────
+    const queryField = isProvider ? "providerId" : "customerId";
+    let fsQuery = db
       .collection("bookings")
       .where(queryField, "==", userId);
-    
-    if (platform) {
-      query = query.where("platform", "==", platform);
+
+    if (platform && platform !== "walk-my-pet" && platform !== "sitter-suite" && platform !== "academy") {
+      // Only filter by platform for Firestore if it's not a vertical-specific platform
+      // (those live in Postgres, not Firestore)
+      fsQuery = fsQuery.where("platform", "==", platform);
     }
-    
-    const snapshot = await query
+
+    const snapshot = await fsQuery
       .orderBy("createdAt", "desc")
       .limit(50)
       .get();
 
-    // Convert Firestore Timestamps to ISO strings for frontend
-    const bookings = snapshot.docs.map((doc) => {
+    const firestoreBookings = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
-        ...data,
+        id: doc.id,
+        source: "marketplace" as const,
+        platform: data.platform || "marketplace",
+        status: data.status,
         serviceDate: data.serviceDate?.toDate ? data.serviceDate.toDate().toISOString() : data.serviceDate,
         startDate: data.startDate || (data.serviceDate?.toDate ? data.serviceDate.toDate().toISOString() : data.serviceDate),
         endDate: data.endDate || (data.serviceDate?.toDate ? data.serviceDate.toDate().toISOString() : data.serviceDate),
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+        providerId: data.providerId,
+        customerId: data.customerId,
+        totalAmount: data.totalAmount ?? data.baseAmount,
+        currency: data.currency || "ILS",
+        ...data,
       };
     });
-    
-    res.json({ bookings });
 
-    // Stage A telemetry — booking read audit (BOOKING_TRUTH_MAP.md Stage A2 + A3)
-    logger.info('[BOOKING_READ] firestore_only', {
+    // ── 2. PostgreSQL walk_bookings ───────────────────────────────────────────
+    let walkRows: any[] = [];
+    if (!platform || platform === "walk-my-pet") {
+      try {
+        const whereClause = isProvider
+          ? eq(walkBookings.walkerId, userId)
+          : eq(walkBookings.ownerId, userId);
+
+        walkRows = await pgDb
+          .select()
+          .from(walkBookings)
+          .where(whereClause)
+          .orderBy(walkBookings.createdAt)
+          .limit(50);
+      } catch (pgErr: any) {
+        logger.warn("[BOOKING_READ] walk_bookings query failed (non-fatal)", { error: pgErr?.message });
+      }
+    }
+
+    const walkMapped = walkRows.map((r) => ({
+      id: r.bookingId,
+      source: "walk-my-pet" as const,
+      platform: "walk-my-pet",
+      status: r.status,
+      serviceDate: r.scheduledDate,
+      startDate: r.scheduledDate,
+      endDate: r.scheduledDate,
+      createdAt: r.createdAt?.toISOString ? r.createdAt.toISOString() : r.createdAt,
+      providerId: r.walkerId,
+      customerId: r.ownerId,
+      totalAmount: r.totalCost,
+      currency: r.currency || "ILS",
+      petName: r.petName,
+      durationMinutes: r.durationMinutes,
+      pickupAddress: r.pickupAddress,
+      confirmationCode: r.confirmationCode,
+    }));
+
+    // ── 3. PostgreSQL sitter_bookings ─────────────────────────────────────────
+    let sitterRows: any[] = [];
+    if (!platform || platform === "sitter-suite") {
+      try {
+        if (isProvider) {
+          // sitter_bookings.sitter_id is a numeric FK to sitter_profiles.id, not a Firebase UID.
+          // Look up the sitter's numeric id first, then filter bookings.
+          const sitterIdRows = await pgDb
+            .select({ id: sitterProfiles.id })
+            .from(sitterProfiles)
+            .where(eq(sitterProfiles.userId, userId))
+            .limit(1);
+
+          if (sitterIdRows.length > 0) {
+            sitterRows = await pgDb
+              .select()
+              .from(sitterBookings)
+              .where(eq(sitterBookings.sitterId, sitterIdRows[0].id))
+              .orderBy(sitterBookings.createdAt)
+              .limit(50);
+          }
+        } else {
+          sitterRows = await pgDb
+            .select()
+            .from(sitterBookings)
+            .where(eq(sitterBookings.ownerId, userId))
+            .orderBy(sitterBookings.createdAt)
+            .limit(50);
+        }
+      } catch (pgErr: any) {
+        logger.warn("[BOOKING_READ] sitter_bookings query failed (non-fatal)", { error: pgErr?.message });
+      }
+    }
+
+    const sitterMapped = sitterRows.map((r) => ({
+      id: r.bookingId,
+      source: "sitter-suite" as const,
+      platform: "sitter-suite",
+      status: r.status,
+      serviceDate: r.startDate?.toISOString ? r.startDate.toISOString() : r.startDate,
+      startDate: r.startDate?.toISOString ? r.startDate.toISOString() : r.startDate,
+      endDate: r.endDate?.toISOString ? r.endDate.toISOString() : r.endDate,
+      createdAt: r.createdAt?.toISOString ? r.createdAt.toISOString() : r.createdAt,
+      providerId: String(r.sitterId),
+      customerId: r.ownerId,
+      totalAmount: r.totalChargeCents ? r.totalChargeCents / 100 : null,
+      currency: "ILS",
+      totalDays: r.totalDays,
+      specialInstructions: r.specialInstructions,
+    }));
+
+    // ── 4. PostgreSQL trainer_bookings ────────────────────────────────────────
+    let trainerRows: any[] = [];
+    if (!platform || platform === "academy") {
+      try {
+        const whereClause = isProvider
+          ? eq(trainerBookings.trainerUserId, userId)
+          : eq(trainerBookings.userId, userId);
+
+        trainerRows = await pgDb
+          .select()
+          .from(trainerBookings)
+          .where(whereClause)
+          .orderBy(trainerBookings.createdAt)
+          .limit(50);
+      } catch (pgErr: any) {
+        logger.warn("[BOOKING_READ] trainer_bookings query failed (non-fatal)", { error: pgErr?.message });
+      }
+    }
+
+    const trainerMapped = trainerRows.map((r) => ({
+      id: r.bookingId,
+      source: "academy" as const,
+      platform: "academy",
+      status: r.bookingStatus,
+      serviceDate: r.sessionDate?.toISOString ? r.sessionDate.toISOString() : r.sessionDate,
+      startDate: r.sessionDate?.toISOString ? r.sessionDate.toISOString() : r.sessionDate,
+      endDate: r.sessionDate?.toISOString ? r.sessionDate.toISOString() : r.sessionDate,
+      createdAt: r.createdAt?.toISOString ? r.createdAt.toISOString() : r.createdAt,
+      providerId: r.trainerUserId,
+      customerId: r.userId,
+      totalAmount: r.totalAmount,
+      currency: r.currency || "ILS",
+      petName: r.petName,
+      sessionDuration: r.sessionDuration,
+      sessionType: r.sessionType,
+    }));
+
+    // ── 5. Merge and sort all sources by serviceDate descending ───────────────
+    const allBookings = [
+      ...firestoreBookings,
+      ...walkMapped,
+      ...sitterMapped,
+      ...trainerMapped,
+    ].sort((a, b) => {
+      const dateA = new Date(a.serviceDate || a.createdAt || 0).getTime();
+      const dateB = new Date(b.serviceDate || b.createdAt || 0).getTime();
+      return dateB - dateA; // newest first
+    });
+
+    logger.info('[BOOKING_READ] unified', {
       userId,
       role: role || 'customer',
-      platform: platform || null,
-      resultCount: bookings.length,
-      store: 'firestore',
-      warning: 'walk_bookings, sitter_bookings, trainer_bookings NOT included in this response',
+      platform: platform || 'all',
+      sources: {
+        firestore: firestoreBookings.length,
+        walk: walkMapped.length,
+        sitter: sitterMapped.length,
+        trainer: trainerMapped.length,
+      },
+      totalCount: allBookings.length,
     });
+
+    res.json({ bookings: allBookings });
   } catch (error: any) {
     console.error("[Bookings] Error fetching:", error);
     res.status(500).json({ error: error.message });
