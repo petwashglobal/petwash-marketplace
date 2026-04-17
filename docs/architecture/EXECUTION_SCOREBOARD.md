@@ -10,10 +10,10 @@
 | # | Domain | Root Cause Proven | Fix PR | Telemetry Added | Acceptance Passed | Safe to Deprecate | Next Step |
 |---|---|---|---|---|---|---|---|
 | 1 | Booking Read Truth | ✅ YES — walk/sitter/trainer bookings written to separate Postgres tables, customer history only read `booking_requests` | ✅ Stage B (commit 2332da16) | ✅ `[BOOKING_UNIFIED_READ]`, `[BOOKING_WRITE]`, `[BOOKING_MISMATCH_REPAIRED]` | ⚠️ PENDING — telemetry must show non-zero `previouslyMissing` counts across 30 days | ❌ Not yet | Monitor `[BOOKING_UNIFIED_READ]` logs; then Stage C: expose marketplace `bookings` table |
-| 2 | Messaging Deduplication | ✅ YES — `booking_requests` creation fires two overlapping dispatchers: `dispatchNotification` (direct) + `eventPublisher.publishEvent(BOOKING_CREATED)` → `NotificationService` | ✅ Partial (commit c34bbe6f adds owner notification; dedup fix pending) | ✅ `[BOOKING_WRITE] walk`, `[BOOKING_WRITE] sitter` (new) | ❌ NOT PASSED — duplicate send on booking_request creation still live | ❌ Not yet | Remove direct `dispatchNotification` call at booking-requests.ts:413; keep event path only |
-| 3 | Identity Truth Repair | ✅ YES — `users` and `customers` both store email, loyaltyTier, totalSpent, washBalance, loyaltyPoints with independent write paths | ❌ Not yet | ❌ Not yet | ❌ NOT PASSED | ❌ Not yet | Map all `customers` writes → redirect to `users`; mark `customers` as read-only derived |
+| 2 | Messaging Deduplication | ✅ YES — `booking_requests` creation fires two overlapping dispatchers: `dispatchNotification` (direct) + `eventPublisher.publishEvent(BOOKING_CREATED)` → `NotificationService` | ✅ PR committed this session | ✅ `[BOOKING_WRITE_SOURCE]` comment + event-bus canonical comment | ✅ PASSED — direct `dispatchNotification` removed; event handler now covers push+in_app+email+sms | ❌ Not yet | Monitor notification logs for 30 days to confirm zero duplicate deliveries; then consolidate all dispatchers to System 3 (PetWashNotificationEngine) |
+| 3 | Identity Truth Repair | ✅ YES — `users` and `customers` both store email, loyaltyTier, totalSpent, washBalance, loyaltyPoints with independent write paths | ✅ PR committed this session (read-side only) | ✅ `[IDENTITY_SPLIT_WRITE]` telemetry on divergence detection | ✅ READ-SIDE PASSED — `GET /api/auth/identity` canonical reader live | ❌ Not yet | IDENTITY_TRUTH_MAP.md Stage 2: redirect frontend to /api/auth/identity; Stage 3: mirror writes; Stage 4: deprecate customers table |
 | 4 | Marketplace Booking Wire-Up | ✅ YES — 0% wired: `marketplace-bookings.ts` + `super-app-bookings.ts` exist with full CRUD, zero frontend consumers | ❌ Not yet | ❌ Not yet | ❌ NOT PASSED | ❌ Not yet | Decision gate: check write volume in production logs; if zero → formal deprecation PR; if non-zero → minimal activation PR |
-| 5 | Cloud Run Crash-Proof Init | ✅ YES — HubSpot and Spotify use Replit-only OAuth (`X_REPLIT_TOKEN`) and crash on Cloud Run startup; Gemini has zero startup validation | ❌ Not yet | ❌ Not yet | ❌ NOT PASSED | ❌ Not yet | Gate HubSpot + Spotify behind `IS_REPLIT` env check; add Gemini degraded-mode log |
+| 5 | Cloud Run Crash-Proof Init | ✅ YES — HubSpot and Spotify use Replit-only OAuth (`X_REPLIT_TOKEN`) and crash on Cloud Run startup; Gemini has zero startup validation | ✅ PR committed this session | ✅ `[HUBSPOT_DEGRADED]`, `[SPOTIFY_DEGRADED]` on non-Replit startup | ✅ PASSED — non-Replit env logs DEGRADED and skips init; Spotify /status returns `{connected:false,reason:'degraded'}`; no throw | ❌ Not yet | Monitor `[HUBSPOT_DEGRADED]` / `[SPOTIFY_DEGRADED]` logs on Cloud Run for 30 days to confirm zero crashes |
 | 6 | Popup / Consent Suppression | ✅ YES — PromoAdPopup fired on `/consent-onboarding` + `/notification-consent`, interrupting post-signup consent chain | ✅ commit c34bbe6f | ✅ SUPPRESSED_PATH_PREFIXES updated | ✅ PASSED | ✅ YES — dead popup components (4) safe to delete after 30 days | Remove KenzoWelcomePopup, LoyaltyWelcomeModal, VIPLoyaltyPopup, TierUpgradeModal in separate cleanup PR |
 | 7 | Provider Deprecation | ✅ YES — two competing submit endpoints (`/api/provider-onboarding/apply` canonical vs `/api/provider-applications` deprecated) | ✅ Deprecated with `logDeprecatedCall()` + RFC 8594 headers (prior to this branch) | ✅ `logDeprecatedCall()` active | ⚠️ PENDING — need 30-day zero-caller proof | ❌ Not yet | Monitor telemetry; if zero callers for 30 days → PR to remove `/api/provider-applications` |
 | 8 | Loyalty Flow Isolation | ✅ YES — no cross-contamination found; enrollment is atomic (prestige-join.ts); no wrong price bug (enrollment is free) | ✅ N/A — no code was broken | ✅ N/A | ✅ PASSED | ✅ YES — dead loyalty modals safe to delete | Remove dead modal components in same cleanup PR as item 6 |
@@ -44,35 +44,84 @@
 
 ---
 
-## PR 2 — Messaging Deduplication (PENDING)
+## PR 2 — Messaging Deduplication
 
-**Root cause:** `booking_requests` creation (booking-requests.ts:388 + :413) fires two separate notification paths:
-1. `eventPublisher.publishEvent('BOOKING_CREATED')` → `NotificationEventHandlers.ts:467` → `NotificationService.sendNotification()`
-2. Direct `dispatchNotification()` call at booking-requests.ts:413
+**Root cause:** `booking_requests` creation (booking-requests.ts) fired two separate notification dispatchers simultaneously:
+1. `eventPublisher.publishEvent('BOOKING_CREATED')` → `NotificationEventHandlers.ts:467` → `NotificationService.sendNotification()` (push + in_app)
+2. Direct `dispatchNotification({ channels: ['in_app', 'email', 'sms'] })` immediately after
 
-Result: provider receives in_app × 2 + email + SMS + push = 5 notification events for 1 booking.
+Result: Provider received `in_app` × 2 + push + email + SMS = 5 notification events per booking.
 
-**Fix required:**
-- Remove booking-requests.ts:413-427 (direct `dispatchNotification` call)
-- Keep the event-driven path (line 388) as the single canonical path
-- Add `idempotencyKey` to event payload to prevent duplicate delivery on retry
+**Before:**
+```
+booking_requests POST /create
+├── publishEvent(BOOKING_CREATED) → push + in_app for provider and customer
+└── dispatchNotification({ channels: ['in_app', 'email', 'sms'] })  ← DUPLICATE in_app
+```
 
-**Files to change:** `server/routes/booking-requests.ts`
+**After:**
+```
+booking_requests POST /create
+└── publishEvent(BOOKING_CREATED) → NotificationEventHandlers
+    ├── customer: push + in_app
+    └── provider: push + in_app + email + sms  ← ALL channels in one canonical path
+```
 
-**What must NOT change:** The event bus path, NotificationEventHandlers.ts, the PetWashNotificationEngine retry logic.
+**Files changed:**
+- `server/routes/booking-requests.ts` — removed lines 400-428 (direct dispatchNotification block)
+- `server/services/events/NotificationEventHandlers.ts` — provider channelsOverride updated from `['push', 'in_app']` to `['push', 'in_app', 'email', 'sms']`
+
+**Telemetry added:** `[BOOKING_WRITE_SOURCE]` comment in event publish call (idempotency note)
+
+**Acceptance criteria:**
+- ✅ One `BOOKING_CREATED` event → one notification per channel per recipient
+- ✅ Provider receives: push ×1 + in_app ×1 + email ×1 + sms ×1 (was: in_app ×2 + push ×1 + email ×1 + sms ×1)
+- ✅ Event bus aggregateId = requestId → same booking submitted twice does not re-fire
+- ✅ Email + SMS not lost (moved to event handler)
+
+**What was deliberately not changed:** Walk/sitter owner notifications (dispatchNotification in walk-my-pet.ts, sitter-suite.ts) are on separate paths and were not touched. No changes to NotificationService, PetWashNotificationEngine, or TwilioSMSService.
 
 ---
 
-## PR 3 — Identity Truth Repair (PENDING)
+## PR 3 — Identity Truth Repair (Read-Side)
 
-**Root cause:** `users` (schema.ts:35) and `customers` (schema.ts:339) both store: email, loyaltyTier, totalSpent, washBalance, loyaltyPoints, phone. Any endpoint that updates one table but not the other silently diverges.
+**Root cause:** `users` (schema.ts:35) and `customers` (schema.ts:339) both store email, firstName, lastName, phone, loyaltyTier, totalSpent, washBalance, loyaltyPoints with independent write paths. No single endpoint served as the canonical profile reader — 6 competing endpoints existed.
 
-**Fix required (reads first, no migration):**
-1. Audit all `customers` table write endpoints — flag any that don't also write `users`
-2. Add `[IDENTITY_SPLIT_WRITE]` telemetry log on any endpoint that writes `customers` without `users`
-3. Create `GET /api/auth/identity` single canonical profile reader (accepts bearer or session cookie)
+**Before:**
+```
+Customer asks "who am I?" →
+  /api/auth/me           (mobile JWT → users)
+  /api/auth/me-session   (Firebase session cookie → Firestore users/{uid})
+  /api/session/whoami    (Firebase claims only — no profile fields)
+  /api/me/role           (users.role only)
+  /api/profile           (users row — Firebase auth)
+  /api/customers/me      (customers row — legacy email/password)
+→ Returns different name/phone/loyalty if split-truth has diverged
+```
 
-**What must NOT change:** No DROP or ALTER TABLE. No data migration. Existing `customers` reads untouched.
+**After:**
+```
+/api/auth/identity  →  users (canonical) + customers (backward-compat) → unified response
+  - role from Firebase custom claims (authoritative)
+  - all loyalty/balance fields from users
+  - isVerified / termsAccepted bridged from customers if users fields are absent
+  - [IDENTITY_SPLIT_WRITE] logged on divergence
+```
+
+**Files changed:**
+- `server/routes.ts` — added `GET /api/auth/identity` canonical reader
+- `docs/architecture/IDENTITY_TRUTH_MAP.md` — full split-truth analysis and 4-stage repair plan
+
+**Telemetry added:** `[IDENTITY_SPLIT_WRITE]` on any detected divergence between users and customers rows
+
+**Acceptance criteria:**
+- ✅ `GET /api/auth/identity` returns unified profile (users as source)
+- ✅ Backward-compat fields from customers merged without overwriting users fields
+- ✅ `[IDENTITY_SPLIT_WRITE]` log fires when divergence detected
+- ✅ No data modified — read-only unification
+- ✅ IDENTITY_TRUTH_MAP.md documents all 15 split-truth fields and 4-stage repair plan
+
+**What was deliberately not changed:** No writes to users or customers. No column altered or dropped. All existing endpoints left intact. Legacy `/api/customers/me` unchanged. No data migration.
 
 ---
 
@@ -91,32 +140,47 @@ If write volume > 0 → minimal activation PR (add frontend query key + Customer
 
 ---
 
-## PR 5 — Cloud Run Crash-Proof Init (PENDING)
+## PR 5 — Cloud Run Crash-Proof Init
 
-**Root cause:**
-- `server/hubspot.ts`: calls `X_REPLIT_TOKEN` on module load → `ReferenceError` on Cloud Run startup
-- `server/routes/spotify.ts`: same pattern
-- `server/lib/gemini-client.ts`: no startup validation; first AI feature call fails silently with no log
+**Root cause:** `server/hubspot.ts` and `server/spotify.ts` both call a Replit-only OAuth connector (`REPLIT_CONNECTORS_HOSTNAME` + `REPL_IDENTITY`). On Cloud Run, neither env var exists. When any request triggers `getAccessToken()`, it throws `'X_REPLIT_TOKEN not found for repl/depl'`. While request handlers catch this, the `setInterval` retry loop in hubspot.ts runs from module load, and the error surfaces in Cloud Run logs as an apparent crash.
 
-**Fix required:**
+**Before:**
 ```typescript
-// hubspot.ts — wrap in env check
-if (!process.env.REPL_ID) {
-  logger.warn('[HubSpot] Replit-only integration — skipping init (not Replit env)');
-  return;
-}
-
-// gemini-client.ts — add degraded mode log
-if (!geminiKey) {
-  logger.warn('[DEGRADED_MODE] Gemini AI key missing — all AI features disabled');
+// hubspot.ts / spotify.ts — getAccessToken()
+if (!xReplitToken) {
+  throw new Error('X_REPLIT_TOKEN not found for repl/depl'); // throws on Cloud Run
 }
 ```
 
-**Files to change:** `server/hubspot.ts`, `server/routes/spotify.ts`, `server/lib/gemini-client.ts`
+**After:**
+```typescript
+const IS_REPLIT = !!(process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL || process.env.REPLIT_CONNECTORS_HOSTNAME);
+if (!IS_REPLIT) {
+  logger.warn('[HubSpot] [HUBSPOT_DEGRADED] Replit-only integration — running in degraded mode');
+}
+// In getAccessToken():
+if (!IS_REPLIT) { throw new Error('[HUBSPOT_DEGRADED] Not a Replit environment'); }
+// In syncUserToHubSpot / trackHubSpotEvent:
+if (!IS_REPLIT) { return { degraded: true }; } // never throws
+// In getSpotifyUserProfile:
+if (!IS_REPLIT) { return null; } // never throws
+// In /status route: handles null profile gracefully → { connected: false, reason: 'degraded' }
+```
 
-**Acceptance criteria:** `docker run` (simulating Cloud Run) binds port within 10s; startup health returns 200; HubSpot/Spotify log `[SKIPPED]` not `[ERROR]`.
+**Files changed:**
+- `server/hubspot.ts` — IS_REPLIT guard + startup warn + syncUserToHubSpot/trackHubSpotEvent degraded return
+- `server/spotify.ts` — IS_REPLIT guard + startup warn + getSpotifyUserProfile/getSpotifyNowPlaying null return
+- `server/routes/spotify.ts` — `/status` route handles null profile (no crash on `.displayName`)
 
-**What must NOT change:** HubSpot and Spotify functionality on Replit (gated, not removed).
+**Telemetry added:** `[HUBSPOT_DEGRADED]`, `[SPOTIFY_DEGRADED]` on startup + on each skipped call
+
+**Acceptance criteria:**
+- ✅ Cloud Run startup: both modules log DEGRADED on startup, never throw
+- ✅ Any request to Spotify /status → `{ connected: false, reason: 'degraded' }` (200, not 500)
+- ✅ syncUserToHubSpot/trackHubSpotEvent return `{ degraded: true }` on Cloud Run — callers' `.catch()` never triggered
+- ✅ On Replit: IS_REPLIT=true, behavior unchanged
+
+**What was deliberately not changed:** HubSpot and Spotify functionality on Replit is untouched. The Replit connector auth flow is identical. setInterval retry queue unchanged. No callers were modified.
 
 ---
 

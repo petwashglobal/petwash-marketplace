@@ -481,7 +481,7 @@ export function registerNotificationEventHandlers() {
         timestamp: new Date().toLocaleString('he-IL'),
       };
 
-      // Notify customer: booking request submitted
+      // Notify customer: booking request submitted (push + in_app)
       if (event.userId) {
         await NotificationService.sendNotification({
           templateKey: 'booking_requested',
@@ -494,12 +494,14 @@ export function registerNotificationEventHandlers() {
         });
       }
 
-      // Notify provider: new booking arrived → deep link to Task Inbox
+      // Notify provider: new booking arrived → all channels (canonical path; direct dispatch removed)
+      // [BOOKING_WRITE_SOURCE] This is the single canonical notification for BOOKING_CREATED.
+      // Email and SMS are handled here so no separate dispatchNotification call is needed.
       if (event.data.providerId) {
         await NotificationService.sendNotification({
           templateKey: 'provider_new_booking',
           userId: event.data.providerId,
-          channelsOverride: ['push', 'in_app'],
+          channelsOverride: ['push', 'in_app', 'email', 'sms'],
           variables: {
             ...bookingVars,
             customer: {

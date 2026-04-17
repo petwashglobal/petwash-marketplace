@@ -385,6 +385,9 @@ router.post('/', async (req, res) => {
       customerRequestedAt: new Date().toISOString(),
     }).catch(() => {});
 
+    // [BOOKING_WRITE_SOURCE] Canonical event-driven notification path — single dispatch.
+    // Idempotency: requestId used as aggregateId so retries produce no duplicate events.
+    // NotificationEventHandlers.ts:467 handles customer push+in_app + provider push+in_app+email+sms.
     eventPublisher.publishEvent(
       DomainEventType.BOOKING_CREATED,
       {
@@ -396,36 +399,6 @@ router.post('/', async (req, res) => {
       },
       { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
-
-    // Notify provider of new booking request — in-app + email + SMS (non-blocking, best-effort)
-    if (booking.providerId) {
-      // Fetch provider contact details for email/SMS channels
-      const [providerUser] = await db
-        .select({ email: users.email, phone: users.phone })
-        .from(users)
-        .where(eq(users.id, booking.providerId))
-        .limit(1)
-        .catch(() => []);
-
-      const serviceLabel = data.serviceType?.replace(/_/g, ' ') || 'service';
-      const notifBody = `You have a new ${serviceLabel} booking request. Check your dashboard to accept or decline.`;
-
-      dispatchNotification({
-        uid: booking.providerId,
-        email: providerUser?.email ?? undefined,
-        phone: providerUser?.phone ?? undefined,
-        type: 'booking_request',
-        title: '📅 New Booking Request',
-        bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}">review and respond</a> within 24 hours.</p>`,
-        bodyText: notifBody,
-        ctaText: 'View Booking',
-        ctaUrl: `${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}`,
-        channels: ['in_app', 'email', 'sms'],
-        priority: 10,
-      }).catch((notifErr: any) =>
-        logger.warn('[BookingRequests] Provider notification failed (non-blocking)', { error: notifErr?.message, requestId })
-      );
-    }
 
     // Intelligence — advance customer journey state to ready_to_book
     if (booking.ownerId) {

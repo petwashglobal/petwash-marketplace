@@ -37,6 +37,9 @@ router.get("/now-playing", async (req, res) => {
 router.get("/status", async (req, res) => {
   try {
     const profile = await getSpotifyUserProfile();
+    if (!profile) {
+      return res.json({ success: true, connected: false, reason: 'degraded' });
+    }
     res.json({ 
       success: true, 
       connected: true,

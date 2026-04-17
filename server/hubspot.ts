@@ -1,11 +1,28 @@
 import { Client } from '@hubspot/api-client';
 import { logger, generateCorrelationId } from './lib/logger';
 
+// ─── Replit-only integration guard ────────────────────────────────────────────
+// HubSpot uses the Replit OAuth connector which is unavailable on Cloud Run.
+// IS_REPLIT is true only when Replit environment variables are present.
+const IS_REPLIT = !!(
+  process.env.REPL_IDENTITY ||
+  process.env.WEB_REPL_RENEWAL ||
+  process.env.REPLIT_CONNECTORS_HOSTNAME
+);
+
+if (!IS_REPLIT) {
+  logger.warn('[HubSpot] [HUBSPOT_DEGRADED] Replit-only integration — running in degraded mode (Cloud Run / non-Replit env). All HubSpot calls will be silently skipped.');
+}
+
 let connectionSettings: any;
 
 async function getAccessToken() {
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
+  }
+
+  if (!IS_REPLIT) {
+    throw new Error('[HUBSPOT_DEGRADED] Not a Replit environment — HubSpot connector unavailable');
   }
   
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
@@ -122,6 +139,11 @@ export async function syncUserToHubSpot(data: {
   petAge?: string;
   petWeight?: string;
 }) {
+  if (!IS_REPLIT) {
+    logger.warn('[HubSpot] [HUBSPOT_DEGRADED] syncUserToHubSpot skipped — not a Replit environment', { uid: data.uid });
+    return { degraded: true };
+  }
+
   const correlationId = `sync-${data.uid}-${Date.now()}`;
   
   const syncTask = async () => {
@@ -242,6 +264,11 @@ export async function trackHubSpotEvent(
   eventName: string, 
   properties?: Record<string, any>
 ) {
+  if (!IS_REPLIT) {
+    logger.warn('[HubSpot] [HUBSPOT_DEGRADED] trackHubSpotEvent skipped — not a Replit environment', { email, eventName });
+    return { degraded: true };
+  }
+
   const correlationId = `event-${email}-${eventName}-${Date.now()}`;
   
   const trackTask = async () => {

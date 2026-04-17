@@ -5,11 +5,27 @@
 
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 
+// ─── Replit-only integration guard ────────────────────────────────────────────
+// Spotify uses the Replit OAuth connector which is unavailable on Cloud Run.
+const IS_REPLIT = !!(
+  process.env.REPL_IDENTITY ||
+  process.env.WEB_REPL_RENEWAL ||
+  process.env.REPLIT_CONNECTORS_HOSTNAME
+);
+
+if (!IS_REPLIT) {
+  console.warn('[Spotify] [SPOTIFY_DEGRADED] Replit-only integration — running in degraded mode (Cloud Run / non-Replit env). All Spotify calls will return null.');
+}
+
 let connectionSettings: any;
 
 async function getAccessToken() {
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
+  }
+
+  if (!IS_REPLIT) {
+    throw new Error('[SPOTIFY_DEGRADED] Not a Replit environment — Spotify connector unavailable');
   }
   
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
@@ -59,6 +75,10 @@ export async function getSpotifyClient() {
 }
 
 export async function getSpotifyUserProfile() {
+  if (!IS_REPLIT) {
+    console.warn('[Spotify] [SPOTIFY_DEGRADED] getSpotifyUserProfile skipped — not a Replit environment');
+    return null;
+  }
   try {
     const spotify = await getSpotifyClient();
     const profile = await spotify.currentUser.profile();
@@ -78,6 +98,9 @@ export async function getSpotifyUserProfile() {
 }
 
 export async function getSpotifyNowPlaying() {
+  if (!IS_REPLIT) {
+    return null;
+  }
   try {
     const spotify = await getSpotifyClient();
     const playback = await spotify.player.getCurrentlyPlayingTrack();

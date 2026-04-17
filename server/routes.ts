@@ -2151,6 +2151,108 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // ========================================================================
+  // GET /api/auth/identity — Canonical identity reader (PR3: Identity truth repair)
+  // Single source of truth: users table (Postgres) is canonical.
+  // customers table is read only for backward-compat fields not yet in users.
+  // Returns unified profile with no split-truth: one name, one phone, one role.
+  // Accepts: Firebase session cookie (pw_session) or Bearer ID token.
+  // ========================================================================
+  app.get('/api/auth/identity', async (req, res) => {
+    try {
+      const token = req.cookies?.pw_session;
+      const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.split('Bearer ')[1]
+        : null;
+
+      if (!token && !bearerToken) {
+        return res.status(401).json({ ok: false, error: 'no-session' });
+      }
+
+      let decoded: any;
+      try {
+        if (token) {
+          decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
+        } else if (bearerToken) {
+          decoded = await firebaseAdmin.auth().verifyIdToken(bearerToken, true);
+        }
+      } catch {
+        return res.status(401).json({ ok: false, error: 'invalid-session' });
+      }
+
+      const uid = decoded.uid;
+
+      // ── users table is canonical (Postgres) ─────────────────────────────
+      const [pgUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, uid))
+        .limit(1)
+        .catch(() => []);
+
+      if (!pgUser) {
+        logger.warn('[IDENTITY] [IDENTITY_SPLIT_WRITE] users row missing for uid', { uid });
+        return res.status(404).json({ ok: false, error: 'user-not-found' });
+      }
+
+      // ── Firebase custom claims: authoritative for role ────────────────────
+      const claims = decoded;
+      const claimsRole: string = claims.role || claims['custom:role'] || '';
+
+      // ── Resolve canonical role: Firebase claims > users.role > fallback ──
+      const canonicalRole = claimsRole || pgUser.role || 'customer';
+
+      // ── Read customers row for onboarding/verification fields not yet in users ──
+      const [legacyCustomer] = await db
+        .select({
+          isVerified: customers.isVerified,
+          termsAccepted: customers.termsAccepted,
+          authProvider: customers.authProvider,
+        })
+        .from(customers)
+        .where(eq(customers.email, pgUser.email || ''))
+        .limit(1)
+        .catch(() => []);
+
+      // Log if split-truth exists (field differs between users and customers)
+      if (legacyCustomer) {
+        if (legacyCustomer.isVerified !== undefined && pgUser.idVerificationStatus === 'none') {
+          logger.info('[IDENTITY] [IDENTITY_SPLIT_WRITE] verification state differs: users.idVerificationStatus=none, customers.isVerified=' + legacyCustomer.isVerified, { uid });
+        }
+      }
+
+      return res.json({
+        ok: true,
+        source: 'users',           // canonical source
+        identity: {
+          id:                 pgUser.id,
+          email:              pgUser.email,
+          firstName:          pgUser.firstName,
+          lastName:           pgUser.lastName,
+          phone:              pgUser.phone,
+          role:               canonicalRole,
+          userStatus:         pgUser.userStatus,
+          loyaltyTier:        pgUser.loyaltyTier,
+          washBalance:        pgUser.washBalance,
+          loyaltyPoints:      pgUser.loyaltyPoints,
+          loyaltyBalanceCents: pgUser.loyaltyBalanceCents,
+          idVerificationStatus: pgUser.idVerificationStatus,
+          isClubMember:       pgUser.isClubMember,
+          profileImageUrl:    pgUser.profileImageUrl,
+          // onboarding status from users table
+          profileCompletedAt: pgUser.profileCompletedAt,
+          termsAcceptedAt:    pgUser.termsAcceptedAt,
+          // backward-compat fields from customers if not yet in users
+          isVerified:         legacyCustomer?.isVerified ?? (pgUser.idVerificationStatus === 'approved'),
+          termsAccepted:      legacyCustomer?.termsAccepted ?? !!(pgUser.termsAcceptedAt),
+        },
+      });
+    } catch (error) {
+      logger.error('[IDENTITY] Unexpected error in /api/auth/identity', error);
+      res.status(500).json({ ok: false, error: 'internal-error' });
+    }
+  });
+
+  // ========================================================================
   // GET /api/session/whoami - Server-authoritative identity resolution
   // Returns role, dashboards, MFA requirement, KYC status, session metadata
   // Custom claims are the ONLY source of truth for role (not Firestore fields)
