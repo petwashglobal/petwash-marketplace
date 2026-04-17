@@ -93,7 +93,7 @@ function logDeprecatedCall(req: Request, handlerLabel: string): void {
 // Adds RFC 8594-style deprecation headers to every response from public handlers.
 function setDeprecationHeaders(res: Response): void {
   res.setHeader('Deprecation', 'true');
-  res.setHeader('Sunset', 'Sat, 31 May 2025 00:00:00 GMT');
+  res.setHeader('Sunset', 'Sun, 31 Aug 2025 00:00:00 GMT');
   res.setHeader('Link', '</api/provider-onboarding/apply>; rel="successor-version"');
 }
 
