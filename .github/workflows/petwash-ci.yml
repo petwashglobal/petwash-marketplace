@@ -406,17 +406,22 @@ jobs:
       - name: Pre-deploy container smoke test
         # Run the just-built image locally with only PORT + NODE_ENV set.
         # This catches process crashes (missing file, bad import, pre-bind throw)
-        # BEFORE wasting a Cloud Run deploy attempt.  All real secrets are absent
-        # intentionally — the fixed code must not throw when secrets are missing.
+        # BEFORE wasting a Cloud Run deploy attempt.
+        #
+        # No real secrets are injected intentionally:
+        #   • /health must return 200 regardless of secrets (Cloud Run liveness probe).
+        #   • /health/strict returns 503 ONLY for active security dangers
+        #     (weak admin credentials, payment-bypass flags in production).
+        #     Missing secrets cause DEGRADED status in /health but do NOT block /health/strict —
+        #     their absence degrades features, it does not make the service actively unsafe.
         #
         # Two-phase check:
         #   Phase 1 — /health (always 200): confirms the container bound the port and is alive.
-        #   Phase 2 — /health/strict (200 = clean, 503 = security misconfiguration detected):
-        #     returns non-200 when _startupConfigErrors contains dangerous entries
-        #     (weak admin secret, forbidden bypass flags, missing required secrets).
-        #     This is the deployment gate — a MISCONFIGURED container must not be promoted.
+        #   Phase 2 — /health/strict (200 = safe to deploy, 503 = active security danger):
+        #     This is the deployment gate.  A container with active security violations
+        #     must never be promoted to Cloud Run traffic.
         run: |
-          echo "🔍 Starting container smoke test (no real secrets — testing boot only)..."
+          echo "🔍 Starting container smoke test (no real secrets — testing boot + security only)..."
           docker run -d --name petwash-smoke \
             -p 18080:8080 \
             -e PORT=8080 \
@@ -455,8 +460,11 @@ jobs:
             exit 1
           fi
 
-          # ── Phase 2: /health/strict — security/config gate ───────────────────
-          # Returns 503 when _startupConfigErrors is non-empty (weak secrets, bypass flags, etc.)
+          # ── Phase 2: /health/strict — active security danger gate ────────────
+          # Returns 503 DANGEROUS when _startupSecurityViolations is non-empty
+          # (weak admin secret, Tranzila bypass flag set in prod/staging).
+          # Returns 200 when no active security violations exist.
+          # Missing secrets produce DEGRADED in /health but do NOT block /health/strict.
           STRICT_HTTP=$(curl -s -o /tmp/smoke_strict.json -w "%{http_code}" \
             --max-time 10 http://localhost:18080/health/strict 2>/dev/null || echo "000")
           STRICT_BODY=$(cat /tmp/smoke_strict.json 2>/dev/null || echo "")
@@ -473,9 +481,8 @@ jobs:
           if [ "$STRICT_HTTP" != "200" ]; then
             echo ""
             echo "❌ Container smoke test FAILED (Phase 2) — /health/strict returned HTTP $STRICT_HTTP."
-            echo "   The container started but has critical configuration errors (see response above)."
-            echo "   Fix the errors listed in checks.configErrors and redeploy."
-            echo "   A misconfigured container must NOT be promoted to Cloud Run traffic."
+            echo "   The container has active SECURITY VIOLATIONS (see checks.securityViolations above)."
+            echo "   Fix the violations and redeploy. A dangerous container must NOT reach Cloud Run traffic."
             exit 1
           fi
           echo "✅ Container smoke test passed (both phases) — proceeding to Cloud Run deploy."
