@@ -94,6 +94,28 @@ PRs that do not touch the scoreboard must explain why (e.g., "hotfix — no scor
 
 ---
 
+## Enforcement — Four Rejection Triggers
+
+These rules are active. Reviewers must reject PRs that violate any of them. There are no exceptions and no grace period.
+
+### Trigger 1 — Missing section
+
+A PR that omits any of the six required sections is not ready for review. The reviewer must request changes immediately, without reading the rest of the PR. "I forgot" and "it was obvious" are not valid responses. The template exists precisely to prevent this.
+
+### Trigger 2 — "Fixed" without acceptance proof
+
+A PR that describes a problem as "fixed", "resolved", or "done" without a corresponding acceptance criterion marked ✅ PASSED is making an unverified claim. Unverified claims are the origin of fake progress. The reviewer must request the missing proof before approving. If the proof requires a 30-day observation window, the criterion must be listed as ⚠️ PENDING with the window and owner named — that is acceptable. Silence is not.
+
+### Trigger 3 — Hidden remaining risk
+
+A PR that leaves section 5 blank, writes "N/A" without evidence, or describes risk only in vague terms ("may have edge cases") is hiding information. Risk that is not named cannot be tracked, mitigated, or handed off. The reviewer must request a specific statement covering data risk, operational risk, and user risk before approving.
+
+### Trigger 4 — Domain mixing without scoreboard reference
+
+A PR that touches more than one domain (e.g., booking + messaging, identity + provider) without a scoreboard reference for each domain is creating invisible debt. Cross-domain changes must either be split into separate PRs or must include one scoreboard reference per domain affected, with explicit justification for why they were combined. A PR that mixes domains and references only one scoreboard item must be returned for correction.
+
+---
+
 ## Compliance Map — Existing PRs
 
 The eight completed PRs have been retroactively mapped to this standard. Each section is confirmed present in EXECUTION_SCOREBOARD.md.
@@ -145,3 +167,4 @@ No new work outside this list until the above items advance.
 | Date | Session | Change |
 |------|---------|--------|
 | 2026-04-17 | 4 | Document created; 6-point standard formalized; `.github/PULL_REQUEST_TEMPLATE.md` created; compliance map added for PRs 1–8 |
+| 2026-04-17 | 5 | Enforcement section added with four explicit rejection triggers; PR template updated with rejection reminder block |

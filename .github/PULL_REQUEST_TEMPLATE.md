@@ -1,3 +1,16 @@
+<!--
+  ⛔ REVIEW REJECTION TRIGGERS — read before submitting ⛔
+
+  This PR will be returned without review if any of the following apply:
+
+  1. Any of the 6 sections below is missing or empty
+  2. A problem is described as "fixed" or "done" without a ✅ PASSED acceptance criterion
+  3. Section 5 (Remaining Risk) is blank, says "N/A" without proof, or is vague
+  4. This PR touches more than one domain without a scoreboard reference for each domain
+
+  These rules are defined in: docs/architecture/PR_REVIEW_STANDARD.md § Enforcement
+-->
+
 ## 1. Technical Root Cause
 
 > What was actually broken, and how was it proven? Link the truth map or scoreboard entry.
