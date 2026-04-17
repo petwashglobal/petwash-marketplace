@@ -17,6 +17,7 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { Link, useLocation } from "wouter";
 import { getPrivilegeEnrollmentLabel } from "@/lib/privilegeMembership";
 import privilegeCardCream from "@assets/IMG_3257_1771244654511.png";
+import { SiGoogle, SiApple } from "react-icons/si";
 import {
   Crown, Shield, Star, Sparkles, Upload, FileCheck, ArrowRight, ArrowLeft,
   Plus, X, Check, Lock, Users, Gift, Calendar, Heart, Zap, TrendingUp,
@@ -133,13 +134,13 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       key: 'google',
       label: language === 'he' ? 'התחבר עם Google' : 'Sign in with Google',
       ariaLabel: language === 'he' ? 'התחבר עם Google' : 'Sign in with Google',
-      icon: <ArrowRight className="w-4 h-4 text-gray-500" />,
+      icon: <SiGoogle className="w-4 h-4 text-gray-500" />,
     },
     {
       key: 'apple',
       label: language === 'he' ? 'התחבר עם Apple' : 'Sign in with Apple',
       ariaLabel: language === 'he' ? 'התחבר עם Apple' : 'Sign in with Apple',
-      icon: <ArrowRight className="w-4 h-4 text-gray-500" />,
+      icon: <SiApple className="w-4 h-4 text-gray-500" />,
     },
     {
       key: 'passkey',

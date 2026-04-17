@@ -1,7 +1,6 @@
 import type { Language } from "@/lib/i18n";
 
 export const PRIVILEGE_MEMBERSHIP_CONFIG = {
-  enrollmentFeeIls: null as number | null,
   enrollmentLabel: {
     en: "Complimentary",
     he: "ללא עלות",
