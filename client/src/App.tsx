@@ -2079,8 +2079,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/become-provider">
           {() => {
-            const search = typeof window !== "undefined" ? window.location.search : "";
-            const redirectTarget = `/provider-onboarding${search}`;
+            const allowedTypes = new Set(["walker", "sitter", "driver", "trainer", "station_operator", "pet_trek"]);
+            const rawType = typeof window !== "undefined"
+              ? new URLSearchParams(window.location.search).get("type")
+              : null;
+            const safeType = rawType && allowedTypes.has(rawType) ? rawType : null;
+            const redirectTarget = safeType
+              ? `/provider-onboarding?type=${encodeURIComponent(safeType)}`
+              : "/provider-onboarding";
             return <Redirect to={`/sign-in?redirect=${encodeURIComponent(redirectTarget)}`} />;
           }}
         </Route>
