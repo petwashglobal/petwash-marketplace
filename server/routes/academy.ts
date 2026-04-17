@@ -277,6 +277,15 @@ router.post('/bookings', requireAuth, async (req, res) => {
       walletHoldCents: newBooking.walletHoldCents,
       financeState: newBooking.financeState,
     });
+
+    // Stage A telemetry — trainer booking write audit (BOOKING_TRUTH_MAP.md Stage A1)
+    logger.info('[BOOKING_WRITE] trainer', {
+      bookingId: newBooking.bookingId,
+      userId: req.user.uid,
+      trainerId: trainer.id,
+      sessionDate: validatedData.sessionDate,
+      store: 'postgres_trainer_bookings',
+    });
     
     // Generate navigation links to trainer's location
     let navigationLinks = undefined;
@@ -351,6 +360,13 @@ router.get('/bookings', async (req, res) => {
     );
     
     res.json(bookingsWithTrainers);
+
+    // Stage A telemetry — trainer booking read audit (BOOKING_TRUTH_MAP.md Stage A2)
+    logger.info('[BOOKING_READ] trainer_postgres', {
+      userId: req.user.uid,
+      resultCount: bookingsWithTrainers.length,
+      store: 'postgres_trainer_bookings',
+    });
   } catch (error) {
     logger.error('[Academy] Error fetching bookings', error);
     res.status(500).json({ error: 'Failed to fetch bookings' });

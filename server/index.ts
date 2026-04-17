@@ -1,9 +1,14 @@
-// When both GOOGLE_API_KEY (Maps/Places) and GEMINI_API_KEY (Replit integration) are injected,
-// the Google AI SDK prints "Both GOOGLE_API_KEY and GEMINI_API_KEY are set" for every client
-// instantiation (43+ times at startup). The SDK already uses GOOGLE_API_KEY in this case,
-// so GEMINI_API_KEY is redundant. Delete it from the runtime env to suppress the noise.
+// GOOGLE_API_KEY (Maps/Places) and GEMINI_API_KEY (Gemini AI) are intentionally separate.
+// GOOGLE_API_KEY powers map tiles, geocoding, and places autocomplete.
+// GEMINI_API_KEY powers KYC AI analysis, spam guard, booking AI triage, weather AI,
+// platform security monitor, rewards messaging, and all other generative AI features.
+// Deleting GEMINI_API_KEY silently disables all AI features without any UI error.
+// If the Google AI SDK logs a "both keys set" warning, rename the Gemini env var to
+// AI_INTEGRATIONS_GEMINI_API_KEY in deployment config and update gemini-client.ts accordingly.
+// DO NOT delete either key at startup.
 if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
-  delete process.env.GEMINI_API_KEY;
+  // Both keys present — this is expected and correct. Log once to confirm.
+  console.log('[Startup] ✅ Both GOOGLE_API_KEY (Maps) and GEMINI_API_KEY (Gemini AI) are set. AI features enabled.');
 }
 
 // ── Startup error collectors ───────────────────────────────────────────────────

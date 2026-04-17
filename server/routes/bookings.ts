@@ -50,7 +50,6 @@ router.post("/create", requireAuth, async (req, res) => {
         message: 'PetTrek™ bookings are not available — service pending licensing in Israel.',
       });
     }
-
     // Validate service date is not in the past (Israel timezone)
     const serviceDate = new Date(booking.serviceDate);
     if (isNaN(serviceDate.getTime())) {
@@ -287,7 +286,14 @@ router.post("/create", requireAuth, async (req, res) => {
 
     await bookingRef.set(bookingData);
 
-    // Phase 10 T25: Increment current_day_bookings on the assigned station when the
+    // Stage A telemetry — booking write audit (BOOKING_TRUTH_MAP.md Stage A1)
+    logger.info('[BOOKING_WRITE] general', {
+      bookingId: bookingRef.id,
+      customerId,
+      platform: (booking as any).platform || 'general',
+      serviceDate: bookingData.serviceDate,
+      store: 'firestore',
+    });
     // service date falls on today (Israel timezone).  Fire-and-forget; the live
     // count from liveBookingCountToday() remains the authoritative source.
     if (resolvedStationId != null) {
@@ -392,6 +398,16 @@ router.get("/my-bookings", requireAuth, async (req, res) => {
     });
     
     res.json({ bookings });
+
+    // Stage A telemetry — booking read audit (BOOKING_TRUTH_MAP.md Stage A2 + A3)
+    logger.info('[BOOKING_READ] firestore_only', {
+      userId,
+      role: role || 'customer',
+      platform: platform || null,
+      resultCount: bookings.length,
+      store: 'firestore',
+      warning: 'walk_bookings, sitter_bookings, trainer_bookings NOT included in this response',
+    });
   } catch (error: any) {
     console.error("[Bookings] Error fetching:", error);
     res.status(500).json({ error: error.message });

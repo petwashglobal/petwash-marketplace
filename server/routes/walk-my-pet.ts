@@ -447,6 +447,15 @@ router.post('/walks/book', requireAuth, async (req, res) => {
 
     const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
 
+    // Stage A telemetry — walk booking write audit (BOOKING_TRUTH_MAP.md Stage A1)
+    logger.info('[BOOKING_WRITE] walk', {
+      bookingId,
+      ownerId,
+      walkerId,
+      scheduledDate: bookingData.scheduledDate,
+      store: 'postgres_walk_bookings',
+    });
+
     // Record in Octopus Brain ledger (financial audit trail)
     const octopusId = `OB-WALK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     const priceCents = Math.round(pricing.totalPrice * 100);
@@ -1396,6 +1405,14 @@ router.get('/users/:userId/walks', async (req, res) => {
     const bookings = await query;
 
     res.json({ success: true, bookings });
+
+    // Stage A telemetry — walk booking read audit (BOOKING_TRUTH_MAP.md Stage A2)
+    logger.info('[BOOKING_READ] walk_postgres', {
+      userId,
+      status: status || null,
+      resultCount: bookings.length,
+      store: 'postgres_walk_bookings',
+    });
   } catch (error: any) {
     console.error('[Walk My Pet] Get user bookings error:', error);
     res.status(500).json({ error: 'Failed to fetch bookings' });

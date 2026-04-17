@@ -369,6 +369,15 @@ router.post('/', async (req, res) => {
       usedQuoteEngine: !!(fq?.success),
     });
 
+    // Stage A telemetry — booking-request write audit (BOOKING_TRUTH_MAP.md Stage A1)
+    logger.info('[BOOKING_WRITE] booking_request', {
+      requestId,
+      ownerId: userId,
+      providerId: data.providerId,
+      serviceType: data.serviceType,
+      store: 'postgres_booking_requests',
+    });
+
     logBookingEvent('created', buildEventPayload(booking), {
       customerRequestedAt: new Date().toISOString(),
     }).catch(() => {});
@@ -620,6 +629,14 @@ router.get('/', async (req, res) => {
         addonCodes: (b.id ? addonCodeMap[b.id] : null) || [],
       })),
       total: bookings.length,
+    });
+
+    // Stage A telemetry — booking-request read audit (BOOKING_TRUTH_MAP.md Stage A2)
+    logger.info('[BOOKING_READ] booking_requests_postgres', {
+      userId,
+      role: role || 'owner',
+      resultCount: bookings.length,
+      store: 'postgres_booking_requests',
     });
   } catch (error: any) {
     logger.error('[BookingRequests] Error fetching bookings', { error: error.message });

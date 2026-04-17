@@ -793,6 +793,16 @@ router.post('/bookings', requireAuth, async (req, res) => {
       totalPrice: pricing.totalPrice,
     });
 
+    // Stage A telemetry — sitter booking write audit (BOOKING_TRUTH_MAP.md Stage A1)
+    logger.info('[BOOKING_WRITE] sitter', {
+      bookingId,
+      ownerId,
+      sitterId,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      store: 'postgres_sitter_bookings',
+    });
+
     // NOTIFY PROVIDER via SMS/WhatsApp (fire-and-forget)
     (async () => {
       try {
@@ -1158,6 +1168,14 @@ router.get('/bookings', requireAuth, async (req, res) => {
     }
     
     res.json(bookings);
+
+    // Stage A telemetry — sitter booking read audit (BOOKING_TRUTH_MAP.md Stage A2)
+    logger.info('[BOOKING_READ] sitter_postgres', {
+      userId,
+      role,
+      resultCount: bookings.length,
+      store: 'postgres_sitter_bookings',
+    });
   } catch (error) {
     logger.error('[Sitter Suite] Error fetching bookings', error);
     res.status(500).json({ error: 'Failed to fetch bookings' });
