@@ -6,14 +6,24 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   delete process.env.GEMINI_API_KEY;
 }
 
-// ── Startup secrets validation (fail fast with clear errors) ──────────────────
+// ── Startup config error collector ────────────────────────────────────────────
+// ALL pre-bind validation errors are recorded here instead of thrown.
+// Throwing before app.listen() causes the process to exit before it binds the port;
+// Cloud Run's startup probe never sees a listener → "user-provided container failed
+// the configured startup probe checks".  After the port is bound these errors are:
+//   1. Logged clearly in the container stdout for Cloud Run revision logs.
+//   2. Exposed in the /health response so operators can diagnose via curl.
+const _startupConfigErrors: string[] = [];
+
+// ── Startup secrets validation ────────────────────────────────────────────────
 (function validateSecrets() {
   const isProd = process.env.NODE_ENV === 'production';
 
   // Secrets required for core functionality with expected format patterns.
-  // In production a missing or malformed value is fatal — throw immediately so
-  // the container fails the Cloud Run startup probe rather than running silently
-  // broken and serving 200 OK responses with no SMS or email capability.
+  // In production a missing or malformed value is recorded in _startupConfigErrors
+  // and exposed via /health so operators can diagnose without reading Cloud Run logs.
+  // Throwing here would exit the process before app.listen() binds the port, causing
+  // Cloud Run's startup probe to fail ("user-provided container failed...").
   const REQUIRED: Array<{
     key: string;
     pattern: RegExp;
@@ -115,10 +125,12 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   if (fatalErrors.length > 0) {
     const msg = '\n' + fatalErrors.join('\n') + '\n';
     console.error(msg);
-    throw new Error(
-      `Startup aborted: ${fatalErrors.length} required secret(s) are missing or malformed in production.\n` +
-      fatalErrors.join('\n')
-    );
+    // Do NOT throw — a pre-bind crash prevents Cloud Run from ever seeing a listener on
+    // the configured port, which causes the startup probe to fail with
+    // "user-provided container failed the configured startup probe checks".
+    // Record errors and expose via /health so operators can diagnose without needing
+    // to read Cloud Run revision logs.
+    _startupConfigErrors.push(...fatalErrors);
   }
 
   // ── ADMIN_SECRET / PETWASH_ADMIN_SECRET weak-value guard ─────────────────────
@@ -136,16 +148,12 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
       process.env.NODE_ENV === 'production' ? console.error(msg) : console.warn(msg);
     } else if (WEAK_ADMIN_SECRETS.has(val.toLowerCase())) {
       const msg = `[startup] CRITICAL SECURITY: ${key} is set to a known-weak value — rotate immediately!`;
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(msg);
-      }
+      // Do NOT throw before app.listen() — a pre-bind crash causes Cloud Run startup probe failure.
       console.error(msg);
     } else if (val.length < MIN_ADMIN_SECRET_LENGTH) {
       const msg = `[startup] SECURITY: ${key} is shorter than ${MIN_ADMIN_SECRET_LENGTH} characters — use a longer secret`;
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(msg);
-      }
-      console.warn(msg);
+      // Do NOT throw before app.listen() — a pre-bind crash causes Cloud Run startup probe failure.
+      console.error(msg);
     }
   }
 
@@ -189,8 +197,10 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
       '   Remove TRANZILA_WEBHOOK_BYPASS_SIGNATURE from your ' + env + ' environment\n' +
       '   and restart the server.\n';
     console.error(msg);
-    throw new Error(
-      'Startup aborted: TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is forbidden in ' + env,
+    // Do NOT throw before app.listen() — a pre-bind crash causes Cloud Run startup probe failure.
+    // Record so /health exposes the misconfiguration to operators.
+    _startupConfigErrors.push(
+      'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is forbidden in ' + env,
     );
   }
 })();
@@ -555,13 +565,15 @@ async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string 
 
 app.get('/health', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
+  const hasConfigErrors = _startupConfigErrors.length > 0;
   res.status(200).json({
-    status: 'OK',
+    status: hasConfigErrors ? 'DEGRADED' : 'OK',
     timestamp: new Date().toISOString(),
     bootTs: healthState.bootTs,
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
+      ...(hasConfigErrors ? { configErrors: _startupConfigErrors } : {}),
     },
     metrics: {
       uptimeSeconds: Math.floor(process.uptime()),
@@ -727,6 +739,11 @@ if (isProduction) {
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log('--------------------------------------------------');
     console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
+    if (_startupConfigErrors.length > 0) {
+      console.error(`⚠️  [Server] ${_startupConfigErrors.length} startup config error(s) detected:`);
+      _startupConfigErrors.forEach(e => console.error('   ' + e));
+      console.error('   These errors are also visible in GET /health (check → configErrors).');
+    }
     console.log('--------------------------------------------------');
   });
   

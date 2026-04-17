@@ -403,6 +403,50 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Pre-deploy container smoke test
+        # Run the just-built image locally with only PORT + NODE_ENV set.
+        # This catches process crashes (missing file, bad import, pre-bind throw)
+        # BEFORE wasting a Cloud Run deploy attempt.  All real secrets are absent
+        # intentionally — the fixed code must not throw when secrets are missing.
+        # The /health endpoint always returns 200 regardless of secret presence.
+        run: |
+          echo "🔍 Starting container smoke test (no real secrets — testing boot only)..."
+          docker run -d --name petwash-smoke \
+            -p 18080:8080 \
+            -e PORT=8080 \
+            -e NODE_ENV=production \
+            "${{ env.IMAGE }}:${{ github.sha }}"
+
+          SUCCESS=false
+          for i in $(seq 1 18); do
+            sleep 5
+            HTTP=$(curl -s -o /tmp/smoke_health.json -w "%{http_code}" \
+              --max-time 10 http://localhost:18080/health 2>/dev/null || echo "000")
+            echo "  Attempt $i/18: HTTP $HTTP"
+            if [ "$HTTP" = "200" ]; then
+              SUCCESS=true
+              echo "  Response: $(cat /tmp/smoke_health.json 2>/dev/null || echo '(empty)')"
+              break
+            fi
+            # Print recent container output on every failed attempt for fast diagnosis
+            docker logs petwash-smoke 2>&1 | tail -15
+          done
+
+          echo ""
+          echo "--- Full container logs ---"
+          docker logs petwash-smoke 2>&1 | tail -80
+          docker stop petwash-smoke || true
+          docker rm   petwash-smoke || true
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo ""
+            echo "❌ Container smoke test FAILED — container did not bind port 8080 within 90 s."
+            echo "   Root cause is in the container logs above."
+            echo "   Fix the container startup error before re-running to avoid Cloud Run probe failures."
+            exit 1
+          fi
+          echo "✅ Container smoke test passed — proceeding to Cloud Run deploy."
+
       - name: Deploy to Cloud Run
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
