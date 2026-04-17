@@ -1,7 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { createGoogleProvider, getAuthStrategy } from "@/lib/iosAuthHandler";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
@@ -17,13 +14,14 @@ import { executeReCaptcha } from '@/components/ReCaptcha';
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
-import { Link } from "wouter";
-import { SiGoogle } from "react-icons/si";
+import { Link, useLocation } from "wouter";
+import { getPrivilegeEnrollmentLabel } from "@/lib/privilegeMembership";
+import privilegeCardCream from "@assets/IMG_3257_1771244654511.png";
 import {
   Crown, Shield, Star, Sparkles, Upload, FileCheck, ArrowRight, ArrowLeft,
   Plus, X, Check, Lock, Users, Gift, Calendar, Heart, Zap, TrendingUp,
   Award, Diamond, Globe, Clock, MapPin, Briefcase, ChevronDown, Activity,
-  Dog, Cat, Gem, Trophy, Wallet, CreditCard, QrCode, Loader2
+  Dog, Cat, Gem, Trophy, Wallet, CreditCard, QrCode, Mail, Smartphone, ScanFace
 } from "lucide-react";
 
 interface PrivilegeSignupProps {
@@ -78,13 +76,14 @@ const gold = '#85C4CE';
 
 export default function PrivilegeSignup({ language, onLanguageChange }: PrivilegeSignupProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const isRTL = language === 'he' || language === 'ar';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const { user } = useFirebaseAuth();
   const [showForm, setShowForm] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showAuthOptions, setShowAuthOptions] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -110,44 +109,10 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [smsConsent, setSmsConsent] = useState(false);
   const [termsConsent, setTermsConsent] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      const provider = createGoogleProvider();
-      const strategy = getAuthStrategy();
-      if (strategy === 'redirect') {
-        // iPhone Safari: popup windows are blocked — use redirect flow instead
-        await signInWithRedirect(auth, provider);
-        // Page will reload; result is handled by getRedirectResult in useEffect below
-        return;
-      }
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        toast({
-          variant: 'destructive',
-          title: language === 'he' ? 'שגיאת התחברות' : 'Sign-in failed',
-          description: err?.message || (language === 'he' ? 'אנא נסה שוב' : 'Please try again'),
-        });
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
+  const goToAuth = () => {
+    localStorage.setItem('signup_intent', 'loyalty');
+    setLocation('/signin?redirect=/privilege');
   };
-
-  // Handle Google redirect result (iPhone Safari returns here after sign-in)
-  useEffect(() => {
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) {
-        const displayName = result.user.displayName || '';
-        const nameParts = displayName.trim().split(' ');
-        if (nameParts[0]) setFirstName(nameParts[0]);
-        if (nameParts.slice(1).join(' ')) setLastName(nameParts.slice(1).join(' '));
-        if (result.user.email) setEmail(result.user.email);
-        setShowForm(true);
-      }
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -366,40 +331,42 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 {t('privilege.heroSubtitle', language)}
               </p>
 
-              {/* Floating Privilege Card - Dark metallic on white */}
+              {/* Floating Privilege Card - Approved cream bordered visual */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.7 }}
                 whileHover={{ y: -5, scale: 1.02 }}
-                className="relative mx-auto max-w-sm p-6 text-white overflow-hidden"
+                className="relative mx-auto w-full max-w-sm overflow-hidden"
                 style={{
-                  background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(133,196,206,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
-                  borderRadius: '2px',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 25px 60px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.12)'
+                  borderRadius: '16px',
+                  border: '1px solid rgba(212, 175, 55, 0.35)',
+                  boxShadow: '0 20px 45px rgba(111, 87, 31, 0.18), 0 8px 20px rgba(111, 87, 31, 0.12)'
                 }}
               >
-                <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-white/5 blur-3xl" />
-                <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-3xl" style={{ background: `${gold}08` }} />
-                <div className="relative z-10">
+                <img
+                  src={privilegeCardCream}
+                  alt="PetWash Privilege card"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+                />
+                <div className="relative z-10 p-6 text-white bg-gradient-to-b from-black/10 via-black/25 to-black/55">
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">⁦Pet Wash™⁩</div>
-                      <div className="text-[10px] tracking-[0.15em] uppercase mt-0.5" style={{ color: gold }}>PRIVILEGE CARD</div>
+                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/70">⁦Pet Wash™⁩</div>
+                      <div className="text-[10px] tracking-[0.15em] uppercase mt-0.5 text-white/85">PRIVILEGE CARD</div>
                     </div>
-                    <div className="w-8 h-8 flex items-center justify-center" style={{ background: `${gold}15`, borderRadius: '2px' }}>
-                      <Crown className="w-4 h-4" style={{ color: gold }} />
+                    <div className="w-8 h-8 flex items-center justify-center" style={{ background: 'rgba(255, 255, 255, 0.24)', borderRadius: '2px' }}>
+                      <Crown className="w-4 h-4 text-white" />
                     </div>
                   </div>
                   <div className="text-4xl font-bold mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                    ₪325
+                    {getPrivilegeEnrollmentLabel(language)}
                   </div>
                   <div className="flex items-center gap-3 mb-5">
-                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/80" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
+                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/95" style={{ background: 'rgba(255,255,255,0.22)', borderRadius: '2px' }}>
                       Signature Member
                     </span>
-                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider" style={{ background: `${gold}15`, color: gold, borderRadius: '2px' }}>
+                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/95" style={{ background: 'rgba(255,255,255,0.22)', borderRadius: '2px' }}>
                       7 stamps
                     </span>
                   </div>
@@ -669,19 +636,41 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 <p className="text-gray-400 max-w-md mx-auto text-sm">{t('privilege.joinFormSubtitle', language)}</p>
 
                 <div className="max-w-sm mx-auto space-y-3 pt-2">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleGoogleSignIn}
-                    disabled={googleLoading}
-                    className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-white transition-all duration-200 font-semibold text-gray-700 shadow-sm"
-                    style={{ borderRadius: '2px' }}
-                  >
-                    {googleLoading
-                      ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                      : <SiGoogle className="w-5 h-5 text-[#4285F4]" />}
-                    {language === 'he' ? 'הצטרף עם Gmail' : 'Join with Gmail'}
-                  </motion.button>
+                  {!showAuthOptions ? (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowAuthOptions(true)}
+                      className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-white transition-all duration-200 font-semibold text-gray-700 shadow-sm"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {language === 'he' ? 'המשך להזדהות' : 'Continue to Sign In'}
+                      <ArrowRight className="w-4 h-4" />
+                    </motion.button>
+                  ) : (
+                    <div className="space-y-2">
+                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
+                        <span>{language === 'he' ? 'כניסה עם טלפון (SMS)' : 'Sign in with Mobile (SMS)'}</span>
+                        <Smartphone className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
+                        <span>{language === 'he' ? 'כניסה עם אימייל' : 'Sign in with Email'}</span>
+                        <Mail className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
+                        <span>{language === 'he' ? 'המשך עם Google' : 'Continue with Google'}</span>
+                        <ArrowRight className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
+                        <span>{language === 'he' ? 'המשך עם Apple' : 'Continue with Apple'}</span>
+                        <ArrowRight className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button onClick={goToAuth} className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 text-sm font-medium text-gray-700" style={{ borderRadius: '2px' }}>
+                        <span>{language === 'he' ? 'כניסה עם Passkey / Face ID' : 'Sign in with Passkey / Face ID'}</span>
+                        <ScanFace className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-white" />

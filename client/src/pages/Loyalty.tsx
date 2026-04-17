@@ -21,7 +21,6 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { logger } from "@/lib/logger";
 import { useLocation, Link } from "wouter";
 import diamondLogo from "@assets/IMG_3257_1771244654511.png";
-import diamondLogoBlack from "@assets/IMG_3269_1771249415226.png";
 
 const gold = '#85C4CE';
 
@@ -127,18 +126,18 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             className="relative mx-auto mt-14 mb-12 w-full px-4"
             style={{ maxWidth: '520px' }}
           >
-            <div
-              className="relative overflow-hidden w-full"
-              style={{
-                borderRadius: 'clamp(12px, 3.5vw, 18px)',
-                border: '1px solid rgba(133,196,206,0.22)',
-                boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30)',
-                aspectRatio: '1.586 / 1',
-              }}
-            >
+              <div
+                className="relative overflow-hidden w-full"
+                style={{
+                  borderRadius: 'clamp(12px, 3.5vw, 18px)',
+                  border: '1px solid rgba(212,175,55,0.35)',
+                  boxShadow: '0 30px 70px rgba(111,87,31,0.20), 0 15px 30px rgba(111,87,31,0.14)',
+                  aspectRatio: '1.586 / 1',
+                }}
+              >
               {/* Full-bleed logo image as card background — covers entire card */}
               <img
-                src={diamondLogoBlack}
+                src={diamondLogo}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
                 style={{ borderRadius: 'clamp(12px, 3.5vw, 18px)' }}
