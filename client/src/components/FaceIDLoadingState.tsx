@@ -95,7 +95,7 @@ export function FaceIDLoadingState({
             {(state === 'checking' || state === 'authenticating') && (
               <p className="text-sm text-muted-foreground" data-testid="faceid-consent-notice">
                 {language === 'he'
-                  ? 'אתה הסכמת לזה כשהגדרת את ה-Face ID בחשבונך'
+                  ? 'הסכמת לכך כשהגדרת את ה-Face ID בחשבונך'
                   : 'You consented to this when you set up Face ID on your account'}
               </p>
             )}
