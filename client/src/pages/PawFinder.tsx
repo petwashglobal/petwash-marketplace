@@ -54,6 +54,166 @@ interface PawFinderProps {
 }
 
 /* -------------------------------------------------------------------------
+   DEMO / FEATURED POSTS — always visible, seeded from the owner's images
+------------------------------------------------------------------------- */
+
+const DEMO_PETS: PawPost[] = [
+  {
+    id: -1,
+    post_key: 'demo-dog-1',
+    post_type: 'lost',
+    pet_type: 'dog',
+    pet_name: 'לוקי',
+    breed: 'Golden Retriever',
+    color_primary: 'זהוב',
+    size_category: 'large',
+    sex: 'male',
+    city: 'תל אביב',
+    area: 'הצפון הישן',
+    description: 'לוקי — גולדן רטריבר זהוב, גיל 3. נעלם מאזור הצפון הישן תל אביב. מגיב לשמו בעברית ובאנגלית. חובש קולר כחול כהה. אוהב אנשים ומגיע לקריאה. אם ראיתם אותו — אנא צרו קשר מיד. תגמול נדיב למוצא.',
+    reward_amount: '1000',
+    event_date: '2026-04-10',
+    status: 'published',
+    matched_post_count: 0,
+    latitude: '32.09',
+    longitude: '34.78',
+    primary_media: '/uploads/paw-finder/demo-dog.jpg',
+    published_at: '2026-04-10T18:00:00.000Z',
+  },
+  {
+    id: -2,
+    post_key: 'demo-cat-1',
+    post_type: 'lost',
+    pet_type: 'cat',
+    pet_name: 'מישי',
+    breed: 'British Shorthair',
+    color_primary: 'אפור',
+    size_category: 'medium',
+    sex: 'female',
+    city: 'רמת גן',
+    area: 'שכונת כצנלסון',
+    description: 'מישי — חתולה פרסית אפורה עם עיניים ענבריות זהובות. נעלמה מהבית ברמת גן. מסורסת, ללא קולר. ביישנית עם זרים אך תגיע למי שקורא לה בשמה ומחזיק מזון. אנא עזרו לנו להחזיר אותה הביתה!',
+    reward_amount: '500',
+    event_date: '2026-04-12',
+    status: 'published',
+    matched_post_count: 0,
+    latitude: '32.08',
+    longitude: '34.82',
+    primary_media: '/uploads/paw-finder/demo-cat.jpg',
+    published_at: '2026-04-12T10:00:00.000Z',
+  },
+  {
+    id: -3,
+    post_key: 'demo-bird-1',
+    post_type: 'lost',
+    pet_type: 'bird',
+    pet_name: 'ריו',
+    breed: 'African Grey',
+    color_primary: 'אפור',
+    size_category: null as unknown as string,
+    sex: 'male',
+    city: 'הרצליה',
+    area: 'הרצליה פיתוח',
+    description: 'ריו — תוכי אפור אפריקאי בגיל 7 שנים. עף מהמרפסת בהרצליה פיתוח. מדבר ומחקה קולות בעברית ובאנגלית. צבעו אפור כהה עם זנב אדום. אם שמעת ציפור מדברת בסביבתך — זה יכול להיות ריו! תגמול ₪2,000 למוצא.',
+    reward_amount: '2000',
+    event_date: '2026-04-08',
+    status: 'published',
+    matched_post_count: 0,
+    latitude: '32.16',
+    longitude: '34.84',
+    primary_media: '/uploads/paw-finder/demo-bird.jpg',
+    published_at: '2026-04-08T09:00:00.000Z',
+  },
+];
+
+/* -------------------------------------------------------------------------
+   FEATURED PET CARD — large visual card for pinned/demo posts
+------------------------------------------------------------------------- */
+
+function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?: () => void; user: any }) {
+  const petEmoji: Record<string, string> = { dog: '🐕', cat: '🐈', bird: '🦜', other: '🐾' };
+  const rewardNum = post.reward_amount ? Number(post.reward_amount) : 0;
+
+  return (
+    <div className="group relative overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col">
+      {/* Photo */}
+      <div className="relative h-52 overflow-hidden bg-slate-100">
+        {post.primary_media ? (
+          <img
+            src={post.primary_media}
+            alt={post.pet_name || ''}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-5xl bg-rose-50">
+            {petEmoji[post.pet_type] ?? '🐾'}
+          </div>
+        )}
+        {/* Status badge over photo */}
+        <div className="absolute top-3 right-3">
+          <span className="bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow flex items-center gap-1">
+            🔴 אבוד
+          </span>
+        </div>
+        {/* Reward badge */}
+        {rewardNum > 0 && (
+          <div className="absolute bottom-3 left-3">
+            <span className="bg-amber-400 text-amber-900 text-xs font-extrabold px-3 py-1.5 rounded-full shadow flex items-center gap-1">
+              🏆 גמול ₪{rewardNum.toLocaleString('he-IL')}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900 leading-tight">
+              {petEmoji[post.pet_type] ?? '🐾'} {post.pet_name}
+            </h3>
+            {post.breed && (
+              <p className="text-sm text-slate-500 font-medium">{post.breed}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1 mb-3">
+          <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-rose-400" />
+          <span className="font-medium text-slate-700">{post.city}</span>
+          {post.area && <span>· {post.area}</span>}
+          <span className="mx-1 text-slate-200">·</span>
+          <Clock className="w-3 h-3 flex-shrink-0" />
+          <span>{formatDate(post.event_date)}</span>
+        </div>
+
+        <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 flex-1">
+          {post.description}
+        </p>
+
+        <div className="mt-4">
+          {user ? (
+            <button
+              onClick={onContact}
+              className="w-full py-2.5 rounded-2xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Phone className="w-3.5 h-3.5" /> צור קשר עם הבעלים
+            </button>
+          ) : (
+            <button
+              onClick={() => window.location.href = '/sign-in?redirect=/paw-finder'}
+              className="w-full py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+            >
+              <AlertCircle className="w-3.5 h-3.5" /> התחבר כדי ליצור קשר
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------
    HELPERS
 ------------------------------------------------------------------------- */
 
@@ -196,16 +356,9 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
   showResolve?: boolean;
 }) {
   const isLost = post.post_type === 'lost';
-  const isDemo = post.post_key?.startsWith('demo-');
 
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow ${isLost ? 'border-rose-100' : 'border-emerald-100'} ${isDemo ? 'ring-2 ring-amber-300 ring-offset-1' : ''}`}>
-      {isDemo && (
-        <div className="bg-amber-50 border-b border-amber-200 px-3 py-1 flex items-center gap-1.5 text-xs text-amber-700 font-medium">
-          <span>⚠️</span>
-          <span>דוגמה להמחשה בלבד — DEMO ONLY</span>
-        </div>
-      )}
+    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow ${isLost ? 'border-rose-100' : 'border-emerald-100'}`}>
       <div className="flex gap-0">
         <div className="w-[120px] flex-shrink-0">
           {post.primary_media ? (
@@ -1184,6 +1337,42 @@ export default function PawFinder({ language }: PawFinderProps) {
         {/* -------- BROWSE TAB -------- */}
         {tab === 'browse' && (
           <>
+            {/* ═══ FEATURED MISSING PETS ═══ */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                    🚨 חיות אבודות — דרושה עזרה!
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    שלוש חיות מחמד אלו נעלמו לאחרונה — כל מידע יכול לעזור להחזיר אותן הביתה
+                  </p>
+                </div>
+                <span className="hidden sm:flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-full px-3 py-1.5">
+                  🆓 פרסום חינמי
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {DEMO_PETS.map(pet => (
+                  <FeaturedPetCard
+                    key={pet.post_key}
+                    post={pet}
+                    user={user}
+                    onContact={user ? () => setContactPost(pet) : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                כל הפוסטים הפעילים בקהילה
+              </span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
             {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-5">
               <div className="flex rounded-2xl border border-slate-200 bg-white overflow-hidden">
