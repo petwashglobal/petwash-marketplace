@@ -1083,6 +1083,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
                 className="luxury-glass-minimal"
@@ -1108,6 +1109,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 type="password"
                 required
                 minLength={6}
+                autoComplete="new-password"
                 value={formData.password}
                 onChange={handleChange}
                 className="luxury-glass-minimal"

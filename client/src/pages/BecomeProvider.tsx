@@ -294,7 +294,7 @@ export default function BecomeProvider() {
     (async () => {
       try {
         const token = await (firebaseUser as any).getIdToken?.();
-        const res = await fetch('/api/provider-applications/my', {
+        const res = await fetch(getApiUrl('/api/provider-applications/my'), {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
@@ -335,7 +335,7 @@ export default function BecomeProvider() {
       const token = await (firebaseUser as any).getIdToken?.();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('/api/provider-applications/draft', {
+      const res = await fetch(getApiUrl('/api/provider-applications/draft'), {
         method: 'POST',
         headers,
         credentials: 'include',

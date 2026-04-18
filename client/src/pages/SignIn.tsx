@@ -2140,24 +2140,28 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </Button>
 
             <div className="flex gap-2">
-              <button
-                disabled
-                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border border-neutral-200 bg-white text-neutral-400 rounded-none tracking-wider uppercase cursor-not-allowed"
-                data-testid="button-tiktok-coming-soon"
+              <Button
+                type="button"
+                onClick={() => handleExternalOAuth('tiktok')}
+                disabled={!!socialLoading}
+                variant="outline"
+                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border border-neutral-200 bg-black hover:bg-neutral-900 text-white rounded-none tracking-wider uppercase transition-all"
+                data-testid="button-tiktok-signin"
               >
-                <SiTiktok className="w-3.5 h-3.5" />
+                {socialLoading === 'tiktok' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SiTiktok className="w-3.5 h-3.5" />}
                 <span>TikTok</span>
-                <span className="text-[9px] bg-neutral-200 text-neutral-500 px-1 py-0.5 rounded">{language === 'he' ? 'בקרוב' : 'Soon'}</span>
-              </button>
-              <button
-                disabled
-                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border border-neutral-200 bg-white text-neutral-400 rounded-none tracking-wider uppercase cursor-not-allowed"
-                data-testid="button-instagram-coming-soon"
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleExternalOAuth('instagram')}
+                disabled={!!socialLoading}
+                variant="outline"
+                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border-0 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 hover:opacity-90 text-white rounded-none tracking-wider uppercase transition-all"
+                data-testid="button-instagram-signin"
               >
-                <SiInstagram className="w-3.5 h-3.5" />
+                {socialLoading === 'instagram' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SiInstagram className="w-3.5 h-3.5" />}
                 <span>Instagram</span>
-                <span className="text-[9px] bg-neutral-200 text-neutral-500 px-1 py-0.5 rounded">{language === 'he' ? 'בקרוב' : 'Soon'}</span>
-              </button>
+              </Button>
             </div>
 
             {passkeyAvailable && (
@@ -2491,7 +2495,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   data-testid="checkbox-remember-device"
                 />
                 <label htmlFor="remember-device" className="text-xs text-neutral-500 cursor-pointer select-none tracking-wide">
-                  {language === 'he' ? 'זכור מכשיר זה ל-30 יום' : 'Remember this device for 30 days'}
+                  {language === 'he' ? 'שמור את הכניסה שלי — זכור מכשיר זה ל-30 יום' : 'Save my login — remember this device for 30 days'}
                 </label>
               </div>
 
