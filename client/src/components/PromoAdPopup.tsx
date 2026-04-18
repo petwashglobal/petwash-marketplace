@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Star, Crown, Gift, Award } from 'lucide-react';
+import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 

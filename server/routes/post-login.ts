@@ -60,7 +60,9 @@ function buildRequiredActions(userStatus: string, role: string, user: any): stri
   return actions;
 }
 
-async function computeUserStatus(user: any, userId: string): Promise<UserStatus> {
+// Accept an already-fetched providerApp to avoid a redundant DB query when the caller
+// has already loaded the application record (which is the case for postLoginDecider).
+async function computeUserStatus(user: any, userId: string, cachedProviderApp?: any): Promise<UserStatus> {
   const role = user.role || 'customer';
 
   if (!user.role || user.role === 'new') {
@@ -72,12 +74,18 @@ async function computeUserStatus(user: any, userId: string): Promise<UserStatus>
     return 'profile_incomplete';
   }
 
-  const providerApp = await storage.getProviderApplicationByUser(userId);
+  // Use the cached record if provided; otherwise query the DB (e.g. standalone callers).
+  const providerApp = cachedProviderApp !== undefined
+    ? cachedProviderApp
+    : await storage.getProviderApplicationByUser(userId);
   if (providerApp) {
     if (providerApp.status === 'approved') {
       return 'provider_active';
     }
     if (providerApp.status === 'pending' || providerApp.status === 'pending_review' || providerApp.status === 'under_review') {
+      return 'provider_pending_approval';
+    }
+    if (providerApp.status === 'pending_resubmission') {
       return 'provider_pending_approval';
     }
     if (providerApp.status === 'draft') {
@@ -135,6 +143,9 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
     }
     if (providerApp.status === 'pending' || providerApp.status === 'pending_review' || providerApp.status === 'under_review') {
       return { nextUrl: '/provider/pending', reason: 'PROVIDER_APPROVAL_REQUIRED', profileStatus: 'pending_review', role, userStatus };
+    }
+    if (providerApp.status === 'pending_resubmission') {
+      return { nextUrl: '/provider-application/status', reason: 'RESUBMISSION_REQUIRED', profileStatus: 'pending_review', role, userStatus };
     }
     if (providerApp.status === 'rejected') {
       return { nextUrl: '/provider/rejected', reason: 'PROVIDER_REJECTED', profileStatus: 'rejected', role, userStatus };
@@ -473,7 +484,7 @@ export async function postLoginDecider(req: Request, res: Response) {
       }
     }
 
-    const userStatus = await computeUserStatus(u, userId);
+    const userStatus = await computeUserStatus(u, userId, providerApp);
     const updates: Record<string, any> = {
       userStatus,
       lastLoginAt: new Date(),
