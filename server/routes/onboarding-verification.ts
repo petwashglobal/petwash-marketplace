@@ -101,16 +101,30 @@ async function getEmailCode(email: string): Promise<EmailVerificationCode | null
 }
 
 async function setEmailCode(email: string, entry: EmailVerificationCode): Promise<void> {
-  const ttlSec = Math.max(1, Math.ceil((entry.expiresAt.getTime() - Date.now()) / 1000));
-  await redis.set(K_EMAIL_CODE(email), entry, ttlSec).catch(() => {});
+  const ttlSec = Math.ceil((entry.expiresAt.getTime() - Date.now()) / 1000);
+  if (ttlSec <= 0) {
+    // Entry has already expired — do not write it to Redis
+    return;
+  }
+  const ok = await redis.set(K_EMAIL_CODE(email), entry, ttlSec).catch((err) => {
+    logger.warn('[Verification] Redis set email code failed — using memory fallback', { email: email.slice(0, 3) + '***', error: String(err) });
+    return false;
+  });
+  if (!ok) {
+    logger.debug('[Verification] Redis unavailable — email code stored in memory only');
+  }
   _memEmailCodes.set(email, entry); // memory fallback mirror
 }
 
 async function deleteEmailCode(email: string, linkToken?: string): Promise<void> {
-  await redis.del(K_EMAIL_CODE(email)).catch(() => {});
+  await redis.del(K_EMAIL_CODE(email)).catch((err) => {
+    logger.warn('[Verification] Redis del email code failed', { email: email.slice(0, 3) + '***', error: String(err) });
+  });
   _memEmailCodes.delete(email);
   if (linkToken) {
-    await redis.del(K_LINK_TOKEN(linkToken)).catch(() => {});
+    await redis.del(K_LINK_TOKEN(linkToken)).catch((err) => {
+      logger.warn('[Verification] Redis del link token failed', { error: String(err) });
+    });
     _memLinkTokens.delete(linkToken);
   }
 }
@@ -122,12 +136,16 @@ async function getLinkEmail(linkToken: string): Promise<string | null> {
 }
 
 async function setLinkToken(linkToken: string, email: string, ttlSec: number): Promise<void> {
-  await redis.setRaw(K_LINK_TOKEN(linkToken), email, ttlSec).catch(() => {});
+  await redis.setRaw(K_LINK_TOKEN(linkToken), email, ttlSec).catch((err) => {
+    logger.warn('[Verification] Redis set link token failed — using memory fallback', { error: String(err) });
+  });
   _memLinkTokens.set(linkToken, email);
 }
 
 async function deleteLinkToken(linkToken: string): Promise<void> {
-  await redis.del(K_LINK_TOKEN(linkToken)).catch(() => {});
+  await redis.del(K_LINK_TOKEN(linkToken)).catch((err) => {
+    logger.warn('[Verification] Redis del link token failed', { error: String(err) });
+  });
   _memLinkTokens.delete(linkToken);
 }
 
@@ -140,7 +158,9 @@ async function getEmailLockout(email: string): Promise<number | null> {
 }
 
 async function setEmailLockout(email: string): Promise<void> {
-  await redis.setRaw(K_EMAIL_LOCKOUT(email), '1', EMAIL_LOCKOUT_DURATION_SEC).catch(() => {});
+  await redis.setRaw(K_EMAIL_LOCKOUT(email), '1', EMAIL_LOCKOUT_DURATION_SEC).catch((err) => {
+    logger.warn('[Verification] Redis set email lockout failed — using memory fallback', { email: email.slice(0, 3) + '***', error: String(err) });
+  });
   _memEmailLockouts.set(email, Date.now() + EMAIL_LOCKOUT_DURATION_MS);
 }
 
@@ -341,8 +361,14 @@ router.get('/verify-email-link', async (req: Request, res: Response) => {
         : 'Link expired. Request a new code.', isHebrew));
     }
 
+    // Mark verified and clean up: delete the link token and the code entry.
+    // The linkVerified flag is only needed for the polling path (/check-email-link-status).
+    // We set it in a short-lived temp record so the poll can pick it up, then delete.
+    // This prevents the same link from being used twice.
     stored.linkVerified = true;
-    await setEmailCode(email, stored);
+    // Write back briefly so the polling endpoint can confirm within its next interval,
+    // then schedule deletion after 30 seconds to cover the polling window.
+    await setEmailCode(email, { ...stored, expiresAt: new Date(Date.now() + 30_000) });
     await deleteLinkToken(token);
 
     logger.info('[Verification] Email verified via link', { email: email.slice(0, 3) + '***' });

@@ -62,7 +62,9 @@ function buildRequiredActions(userStatus: string, role: string, user: any): stri
 
 // Accept an already-fetched providerApp to avoid a redundant DB query when the caller
 // has already loaded the application record (which is the case for postLoginDecider).
-async function computeUserStatus(user: any, userId: string, cachedProviderApp?: any): Promise<UserStatus> {
+// Pass `null` to indicate the DB was already checked and no record exists (skips re-query).
+// Pass `undefined` (or omit the argument) to have this function perform the DB lookup itself.
+async function computeUserStatus(user: any, userId: string, cachedProviderApp?: any | null): Promise<UserStatus> {
   const role = user.role || 'customer';
 
   if (!user.role || user.role === 'new') {
