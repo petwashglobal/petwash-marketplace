@@ -12,7 +12,6 @@ import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
-import { SimpleAuthProvider } from "@/hooks/useSimpleAuth";
 import RequireAuth from "@/auth/RequireAuth";
 import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
@@ -3042,7 +3041,6 @@ console.log("Build: 1769350182889");
           />
           
           <AuthProvider>
-            <SimpleAuthProvider>
               <ActivationBanner />
               <Router language={currentLanguage} onLanguageChange={(newLang) => {
                 setCurrentLanguage(newLang);
@@ -3052,7 +3050,6 @@ console.log("Build: 1769350182889");
               }} />
               <NotificationPermissionPrompt />
               <MobileBottomNav />
-            </SimpleAuthProvider>
           </AuthProvider>
           
           {/* PWA Install Prompt disabled by user preference */}

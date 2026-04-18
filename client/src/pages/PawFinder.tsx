@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
+import { Layout } from '@/components/Layout';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -1215,6 +1216,7 @@ export default function PawFinder({ language }: PawFinderProps) {
   ];
 
   return (
+    <Layout language={language}>
     <div className="min-h-screen bg-slate-50" dir={isHe ? 'rtl' : 'ltr'}>
       {contactPost && <ContactModal post={contactPost} onClose={() => setContactPost(null)} />}
 
@@ -1320,7 +1322,7 @@ export default function PawFinder({ language }: PawFinderProps) {
       </div>
 
       {/* ===================== TABS BAR ===================== */}
-      <div className="bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
+      <div className="bg-white border-b border-slate-100 sticky top-20 md:top-24 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto">
             {TAB_ITEMS.map(({ key, label, icon: Icon }) => (
@@ -1614,5 +1616,6 @@ export default function PawFinder({ language }: PawFinderProps) {
         )}
       </div>
     </div>
+    </Layout>
   );
 }
