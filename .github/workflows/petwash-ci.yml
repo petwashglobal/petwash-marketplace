@@ -136,10 +136,27 @@ jobs:
           # RECAPTCHA_SITE_KEY — reCAPTCHA Enterprise site key (server-side)
           ensure_secret "RECAPTCHA_SITE_KEY" "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
 
-          # FIREBASE_WEB_API_KEY — Firebase client-side API key. Must be set as a GCP Secret before running.
-          # Value must be supplied manually (gcloud secrets create FIREBASE_WEB_API_KEY --data-file=-).
-          if ! gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ FIREBASE_WEB_API_KEY secret not found in GCP Secret Manager. Create it before running CI." && exit 1
+          # FIREBASE_WEB_API_KEY — Firebase client-side API key used by the backend (identity-service, routes).
+          # GitHub secret is stored as VITE_FIREBASE_API_KEY (the VITE_* prefix is for the frontend build).
+          # The backend reads FIREBASE_WEB_API_KEY, so we sync the GitHub secret value under that GCP name.
+          FIREBASE_WEB_API_KEY_VAL="${{ secrets.VITE_FIREBASE_API_KEY }}"
+          if [ -n "$FIREBASE_WEB_API_KEY_VAL" ]; then
+            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets create "FIREBASE_WEB_API_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "✅ FIREBASE_WEB_API_KEY: synced from VITE_FIREBASE_API_KEY GitHub secret (${#FIREBASE_WEB_API_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ FIREBASE_WEB_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ FIREBASE_WEB_API_KEY: not found in GCP Secret Manager and VITE_FIREBASE_API_KEY GitHub secret is absent." && exit 1
+            fi
           fi
 
           # ACCOUNTING_SPREADSHEET_ID — BookingExportService accounting exports
@@ -278,10 +295,26 @@ jobs:
           fi
 
           # FIREBASE_SERVICE_ACCOUNT_KEY — Firebase Admin SDK service-account JSON.
-          if ! gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY secret not found in GCP Secret Manager."
-            echo "   Create it with the Firebase Admin SDK service-account JSON before deploying."
-            exit 1
+          # GitHub secret is stored as FIREBASE_SERVICE_ACCOUNT (no _KEY suffix).
+          # The backend reads FIREBASE_SERVICE_ACCOUNT_KEY, so we sync the GitHub secret value under that GCP name.
+          FIREBASE_SA_KEY_VAL="${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          if [ -n "$FIREBASE_SA_KEY_VAL" ]; then
+            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets versions add "FIREBASE_SERVICE_ACCOUNT_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets create "FIREBASE_SERVICE_ACCOUNT_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: synced from FIREBASE_SERVICE_ACCOUNT GitHub secret (${#FIREBASE_SA_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY: not found in GCP Secret Manager and FIREBASE_SERVICE_ACCOUNT GitHub secret is absent." && exit 1
+            fi
           fi
 
           # SENDGRID_API_KEY — SendGrid API key for transactional email delivery.
