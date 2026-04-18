@@ -479,9 +479,10 @@ export async function postLoginDecider(req: Request, res: Response) {
       staffReq = await storage.getStaffAccessRequestByUser(userId);
     }
 
-    if (effectiveRole === 'customer' && !providerApp && !staffReq) {
+    if (effectiveRole === 'customer' && !providerApp) {
       providerApp = await storage.getProviderApplicationByUser(userId);
-      if (!providerApp) {
+      // Only fetch staffReq here if it hasn't been fetched yet AND no provider app exists.
+      if (!staffReq && !providerApp) {
         staffReq = await storage.getStaffAccessRequestByUser(userId);
       }
     }
