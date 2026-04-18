@@ -25,8 +25,8 @@ import { eq, and, desc, sql, or, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { FinancialDocumentService } from './FinancialDocumentService';
-import {
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+import {
   dispatchNotifications,
   buildProviderApprovedSms,
   buildProviderRejectedSms,

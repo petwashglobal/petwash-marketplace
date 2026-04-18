@@ -879,13 +879,17 @@ publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
     const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
 
     if (!captchaToken) {
-      logger.warn('[PublicAuth] OTP send blocked — no captchaToken', { phone: phone.slice(-4) });
-      return res.status(400).json({ error: 'CAPTCHA_REQUIRED', message: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required' });
-    }
-    const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_otp');
-    if (!captchaResult.valid) {
-      logger.warn('[PublicAuth] OTP send blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
-      return res.status(403).json({ error: 'CAPTCHA_FAILED', message: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
+      // Non-blocking: phone OTP itself is the authentication factor.
+      // Security is enforced by rate limiting + phone lockout + daily SMS cap.
+      // Hard-blocking on missing captcha permanently locks out users when
+      // reCAPTCHA credentials are not configured in production.
+      logger.warn('[PublicAuth] OTP send — no captchaToken (reCAPTCHA unavailable), proceeding with rate-limit protection', { phone: phone.slice(-4) });
+    } else {
+      const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_otp');
+      if (!captchaResult.valid) {
+        logger.warn('[PublicAuth] OTP send blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
+        return res.status(403).json({ error: 'CAPTCHA_FAILED', message: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
+      }
     }
 
     const result = await registrationOTPService.sendOTP(phone, userTypeIntent, {

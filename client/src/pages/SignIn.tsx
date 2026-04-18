@@ -1497,12 +1497,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     try {
       setLoading(true);
 
-      const captchaToken = await executeReCaptcha('login');
+      // Best-effort reCAPTCHA — non-blocking.
+      // Security is maintained by Firebase identity verification (server verifies
+      // the ID token) + server-side rate limiting. If reCAPTCHA is unavailable
+      // (missing site key, ad blocker, network issue) we proceed without it rather
+      // than permanently locking out real users. The server accepts a null/missing
+      // captchaToken for authenticated Firebase sessions.
+      const captchaToken = await executeReCaptcha('login').catch(() => null);
       if (!captchaToken) {
-        logger.error('[SignIn] executeReCaptcha returned null — cannot sign in without security token');
-        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
-        setLoading(false);
-        return;
+        logger.warn('[SignIn] executeReCaptcha unavailable — proceeding without captcha token (Firebase auth + rate limiting remain active)');
       }
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       

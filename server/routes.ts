@@ -887,7 +887,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const firebaseConfig = {
         apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '',
-        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com',
+        authDomain: process.env.NODE_ENV === 'production'
+          ? 'petwash.co.il'
+          : (process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com'),
         projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash',
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app',
         messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '136197986889',
@@ -1026,40 +1028,44 @@ self.addEventListener('notificationclick', (event) => {
         const PRIVILEGED_ROLES = ['admin', 'ops', 'management', 'super_admin', 'ceo', 'finance', 'staff', 'hr'];
         const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
-        // reCAPTCHA enforcement: require captchaToken for password sign-in.
+        // reCAPTCHA enforcement: best-effort for password sign-in.
         // sign_in_provider comes from the decoded Firebase token — cannot be spoofed by the client.
         // Super admins (founder / hardcoded list) bypass captchaToken — they use Google SSO or passkey in practice.
         // Users with existing privileged role claims also bypass: their identity was already verified by an admin
         // when those claims were set, so re-gating with reCAPTCHA adds friction without security benefit.
+        // IMPORTANT: captchaToken is now non-blocking. The Firebase ID token is already server-verified
+        // above; blocking on missing captcha would permanently lock out users when the reCAPTCHA
+        // site key is not configured in production or is blocked by an ad blocker.
         const signInProvider = (preDecoded as any).firebase?.sign_in_provider || '';
         const preEmail = (preDecoded.email || '').toLowerCase();
         const { isSuperAdmin: preSuperAdminCheck } = await import('./middleware/rbac');
         const isPreSuperAdmin = preSuperAdminCheck(preEmail);
         if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivileged) {
           if (!captchaToken) {
-            logger.warn('[Session] Email/password sign-in rejected — missing captchaToken', { uid: preDecoded.uid, traceId });
-            return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
-          }
-          const captchaResult = await verifyCaptchaToken(captchaToken, 'login');
-          if (!captchaResult.valid) {
-            logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
-            return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
-          }
-          if (captchaResult.suspicious) {
-            if (turnstileToken) {
-              const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
-              const tsResult = await verifyTurnstileToken(turnstileToken, tip);
-              if (!tsResult.valid) {
-                logger.warn('[Session] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
-                return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+            // Non-blocking: Firebase ID token already verified. Log for monitoring only.
+            logger.warn('[Session] Email/password sign-in — no captchaToken (reCAPTCHA unavailable or not configured)', { uid: preDecoded.uid, traceId });
+          } else {
+            const captchaResult = await verifyCaptchaToken(captchaToken, 'login');
+            if (!captchaResult.valid) {
+              logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
+              return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
+            }
+            if (captchaResult.suspicious) {
+              if (turnstileToken) {
+                const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+                const tsResult = await verifyTurnstileToken(turnstileToken, tip);
+                if (!tsResult.valid) {
+                  logger.warn('[Session] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
+                  return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+                }
+                logger.info('[Session] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score, uid: preDecoded.uid, traceId });
+              } else {
+                // Soft-fail: suspicious reCAPTCHA score but no Turnstile available.
+                // Firebase auth token is already verified above — the user is authenticated.
+                // Blocking here breaks real users on mobile data, VPNs, and corporate proxies.
+                // Log for monitoring only; do NOT hard-block sign-in.
+                logger.warn('[Session] Suspicious reCAPTCHA score on sign-in — allowing (Firebase auth verified)', { score: captchaResult.score, uid: preDecoded.uid, traceId });
               }
-              logger.info('[Session] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score, uid: preDecoded.uid, traceId });
-            } else {
-              // Soft-fail: suspicious reCAPTCHA score but no Turnstile available.
-              // Firebase auth token is already verified above — the user is authenticated.
-              // Blocking here breaks real users on mobile data, VPNs, and corporate proxies.
-              // Log for monitoring only; do NOT hard-block sign-in.
-              logger.warn('[Session] Suspicious reCAPTCHA score on sign-in — allowing (Firebase auth verified)', { score: captchaResult.score, uid: preDecoded.uid, traceId });
             }
           }
         }

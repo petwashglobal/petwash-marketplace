@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
+import { Layout } from '@/components/Layout';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -77,7 +78,7 @@ const DEMO_PETS: PawPost[] = [
     matched_post_count: 0,
     latitude: '32.09',
     longitude: '34.78',
-    primary_media: '/uploads/paw-finder/demo-dog.jpg',
+    primary_media: '/paw-finder/demo-dog.jpg',
     published_at: '2026-04-10T18:00:00.000Z',
   },
   {
@@ -99,7 +100,7 @@ const DEMO_PETS: PawPost[] = [
     matched_post_count: 0,
     latitude: '32.08',
     longitude: '34.82',
-    primary_media: '/uploads/paw-finder/demo-cat.jpg',
+    primary_media: '/paw-finder/demo-cat.jpg',
     published_at: '2026-04-12T10:00:00.000Z',
   },
   {
@@ -121,7 +122,7 @@ const DEMO_PETS: PawPost[] = [
     matched_post_count: 0,
     latitude: '32.16',
     longitude: '34.84',
-    primary_media: '/uploads/paw-finder/demo-bird.jpg',
+    primary_media: '/paw-finder/demo-bird.jpg',
     published_at: '2026-04-08T09:00:00.000Z',
   },
 ];
@@ -133,16 +134,19 @@ const DEMO_PETS: PawPost[] = [
 function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?: () => void; user: any }) {
   const petEmoji: Record<string, string> = { dog: '🐕', cat: '🐈', bird: '🦜', other: '🐾' };
   const rewardNum = post.reward_amount ? Number(post.reward_amount) : 0;
+  const [imageFailed, setImageFailed] = useState(false);
+  const mediaUrl = sanitizeUrl(post.primary_media);
 
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col">
       {/* Photo */}
       <div className="relative h-52 overflow-hidden bg-slate-100">
-        {post.primary_media ? (
+        {mediaUrl && !imageFailed ? (
           <img
-            src={post.primary_media}
+            src={mediaUrl}
             alt={post.pet_name || ''}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl bg-rose-50">
@@ -356,13 +360,20 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
   showResolve?: boolean;
 }) {
   const isLost = post.post_type === 'lost';
+  const [imageFailed, setImageFailed] = useState(false);
+  const mediaUrl = sanitizeUrl(post.primary_media);
 
   return (
     <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow ${isLost ? 'border-rose-100' : 'border-emerald-100'}`}>
       <div className="flex gap-0">
         <div className="w-[120px] flex-shrink-0">
-          {post.primary_media ? (
-            <img src={post.primary_media} alt={post.pet_name || ''} className="w-full h-full object-cover min-h-[120px]" />
+          {mediaUrl && !imageFailed ? (
+            <img
+              src={mediaUrl}
+              alt={post.pet_name || ''}
+              className="w-full h-full object-cover min-h-[120px]"
+              onError={() => setImageFailed(true)}
+            />
           ) : (
             <div className={`w-full min-h-[120px] flex items-center justify-center ${isLost ? 'bg-rose-50' : 'bg-emerald-50'}`}>
               <PetIcon type={post.pet_type} className={`w-8 h-8 ${isLost ? 'text-rose-300' : 'text-emerald-300'}`} />
@@ -1205,14 +1216,15 @@ export default function PawFinder({ language }: PawFinderProps) {
   ];
 
   return (
+    <Layout language={language}>
     <div className="min-h-screen bg-slate-50" dir={isHe ? 'rtl' : 'ltr'}>
       {contactPost && <ContactModal post={contactPost} onClose={() => setContactPost(null)} />}
 
       {/* ===================== HERO ===================== */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #ff8e53 40%, #00C9A7 100%)' }}
-      >
+        <div
+          className="relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #334155 0%, #6366f1 45%, #0ea5e9 100%)' }}
+        >
         {/* decorative paw prints */}
         <div className="absolute inset-0 opacity-10 select-none pointer-events-none overflow-hidden" aria-hidden>
           {['top-4 left-8 text-7xl rotate-12','bottom-6 right-12 text-8xl -rotate-12',
@@ -1273,7 +1285,7 @@ export default function PawFinder({ language }: PawFinderProps) {
               <button
                 onClick={() => setTab('report')}
                 className="w-full py-3 rounded-2xl font-bold text-white text-base shadow-lg hover:opacity-90 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #FF6B6B, #ff8e53)' }}
+                style={{ background: 'linear-gradient(135deg, #6366f1, #0ea5e9)' }}
               >
                 📢 פרסם מודעה עכשיו
               </button>
@@ -1310,7 +1322,7 @@ export default function PawFinder({ language }: PawFinderProps) {
       </div>
 
       {/* ===================== TABS BAR ===================== */}
-      <div className="bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
+      <div className="bg-white border-b border-slate-100 sticky top-20 md:top-24 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto">
             {TAB_ITEMS.map(({ key, label, icon: Icon }) => (
@@ -1604,5 +1616,6 @@ export default function PawFinder({ language }: PawFinderProps) {
         )}
       </div>
     </div>
+    </Layout>
   );
 }

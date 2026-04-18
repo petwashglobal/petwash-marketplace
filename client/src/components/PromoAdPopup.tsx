@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
+import { X, Star, Crown, Gift, Award } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 
-type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'elite-gold';
+type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'poster';
 
 interface PromoAdConfig {
   id: string;
@@ -22,16 +22,16 @@ interface PromoAdConfig {
 }
 
 const DEFAULT_PROMO: PromoAdConfig = {
-  id: 'petwash-elite-2026',
-  template: 'elite-gold',
+  id: 'petwash-platform-2026',
+  template: 'poster',
+  imageUrl: '/brand/petwash-fullscreen-ad.png',
   title: '⁦Pet Wash™⁩',
   titleHe: '⁦Pet Wash™⁩',
-  subtitle: 'Private Membership',
-  subtitleHe: 'חברות פרטית',
-  ctaText: 'Request Access',
-  ctaTextHe: 'בקש גישה',
-  ctaUrl: '/loyalty',
-  backgroundColor: 'from-amber-500 via-orange-500 to-amber-600',
+  subtitle: 'ONE WORLD. EVERY PET.',
+  subtitleHe: 'עולם אחד. כל חיית מחמד.',
+  ctaText: 'Explore Platforms',
+  ctaTextHe: 'גלה את הפלטפורמות',
+  ctaUrl: '/divisions',
   enabled: true,
 };
 
@@ -135,8 +135,8 @@ export function PromoAdPopup({
         return <SplitAppTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
       case 'membership-tiers':
         return <MembershipTiersTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
-      case 'elite-gold':
-        return <EliteGoldTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
+      case 'poster':
+        return <PosterTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
       default:
         return <FullscreenTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
     }
@@ -397,101 +397,62 @@ function MembershipTiersTemplate({ config, title, subtitle, ctaText, onCta }: Te
   );
 }
 
-function EliteGoldTemplate({ config, title, subtitle, ctaText, onCta }: TemplateProps) {
-  const tiers = [
-    { name: 'Member', active: true },
-    { name: 'Elite', active: false },
-    { name: 'Onyx', active: false },
-  ];
-
-  const services = [
-    { en: 'Boutique Wash', he: 'שטיפת בוטיק' },
-    { en: 'Luxury Stay', he: 'אירוח יוקרתי' },
-    { en: 'Chauffeur', he: 'שירות הסעה' },
-  ];
+/**
+ * PosterTemplate — full-bleed approved brand ad image.
+ * Shows the image filling the entire popup area with an optional CTA button
+ * pinned to the bottom. If the image fails to load, falls back to a minimal
+ * branded card so nothing is blank.
+ */
+function PosterTemplate({ config, ctaText, onCta }: TemplateProps) {
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
-    <div
-      className="w-full h-full flex flex-col items-center justify-center text-center bg-white relative overflow-y-auto overscroll-contain"
-      style={{ paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))', paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 2rem))', paddingLeft: 'max(2rem, env(safe-area-inset-left, 2rem))', paddingRight: 'max(2rem, env(safe-area-inset-right, 2rem))' }}
-    >
-      <div 
-        className="absolute inset-[15px] pointer-events-none opacity-30"
-        style={{ border: '1px solid #C5A059' }}
-      />
-      
-      <div 
-        className="w-20 h-20 rounded-full flex items-center justify-center mb-8 shadow-xl"
-        style={{ 
-          background: 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
-          boxShadow: '0 10px 30px rgba(170, 119, 28, 0.3)'
-        }}
-      >
-        <Sparkles className="w-10 h-10 text-white drop-shadow" />
-      </div>
-
-      {config.logoUrl ? (
-        <img src={config.logoUrl} alt="" className="h-12 object-contain mb-2" />
+    <div className="relative w-full h-full flex flex-col bg-white">
+      {/* Full-bleed poster image */}
+      {config.imageUrl && !imgFailed ? (
+        <img
+          src={config.imageUrl}
+          alt="Pet Wash™"
+          className="w-full flex-1 object-contain"
+          style={{ minHeight: 0 }}
+          onError={() => setImgFailed(true)}
+        />
       ) : (
-        <h1 
-          className="text-4xl md:text-5xl font-light mb-2 tracking-tight"
-          style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", color: '#2C2C2C' }}
-        >
-          {title || '⁦Pet Wash™⁩'}
-        </h1>
+        /* Fallback: branded gradient card */
+        <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 via-indigo-700 to-sky-600 p-8 text-white text-center">
+          <img
+            src="/brand/petwash-logo-white-bg.png"
+            alt="Pet Wash™"
+            className="h-16 object-contain mb-6"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+          <h2 className="text-2xl font-bold mb-2">ONE WORLD. EVERY PET.</h2>
+          <p className="text-lg opacity-80 mb-2">⁦Pet Wash™⁩</p>
+          <p className="text-sm opacity-60">www.PetWash.co.il</p>
+        </div>
       )}
-      
-      <span 
-        className="text-xs uppercase tracking-[5px] mb-10 block"
-        style={{ color: '#AA771C' }}
-      >
-        {subtitle || 'Private Membership'}
-      </span>
 
-      <div className="flex justify-center gap-4 mb-10">
-        {services.map((s, i) => (
-          <div 
-            key={i}
-            className="px-4 py-2 text-[10px] uppercase tracking-wider border border-gray-200 rounded"
-            style={{ color: '#666' }}
-          >
-            {s.en}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex justify-center gap-6 mb-10">
-        {tiers.map((tier, i) => (
-          <div key={i} className="flex flex-col items-center gap-2">
-            <div 
-              className={`w-2 h-2 rounded-full transition-all ${tier.active ? 'scale-150' : ''}`}
-              style={{ background: tier.active ? '#C5A059' : '#E0E0E0' }}
-            />
-            <span className="text-[10px] uppercase tracking-wider text-gray-400">{tier.name}</span>
-          </div>
-        ))}
-      </div>
-
+      {/* CTA pinned to bottom, safe-area aware */}
       {ctaText && (
-        <button
-          onClick={onCta}
-          className="w-full max-w-xs py-5 text-white font-semibold uppercase tracking-[3px] text-xs transition-all hover:brightness-110 hover:scale-[1.02]"
-          style={{ 
-            background: 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
-            boxShadow: '0 15px 35px rgba(0,0,0,0.1)'
-          }}
-          data-testid="button-promo-cta"
+        <div
+          className="px-6 py-4 bg-white"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
         >
-          {ctaText}
-        </button>
+          <button
+            onClick={onCta}
+            className="w-full py-4 bg-black text-white font-semibold text-base rounded-2xl tracking-wide hover:bg-gray-900 active:scale-[0.98] transition-all"
+            data-testid="button-promo-cta"
+          >
+            {ctaText}
+          </button>
+          <button
+            onClick={onCta}
+            className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
+          >
+            Continue to Site →
+          </button>
+        </div>
       )}
-
-      <span 
-        className="mt-6 text-[10px] uppercase tracking-[2px] text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
-        onClick={onCta}
-      >
-        Continue to Site →
-      </span>
     </div>
   );
 }

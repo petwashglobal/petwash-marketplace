@@ -136,10 +136,27 @@ jobs:
           # RECAPTCHA_SITE_KEY — reCAPTCHA Enterprise site key (server-side)
           ensure_secret "RECAPTCHA_SITE_KEY" "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
 
-          # FIREBASE_WEB_API_KEY — Firebase client-side API key. Must be set as a GCP Secret before running.
-          # Value must be supplied manually (gcloud secrets create FIREBASE_WEB_API_KEY --data-file=-).
-          if ! gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ FIREBASE_WEB_API_KEY secret not found in GCP Secret Manager. Create it before running CI." && exit 1
+          # FIREBASE_WEB_API_KEY — Firebase client-side API key used by the backend (identity-service, routes).
+          # GitHub secret is stored as VITE_FIREBASE_API_KEY (the VITE_* prefix is for the frontend build).
+          # The backend reads FIREBASE_WEB_API_KEY, so we sync the GitHub secret value under that GCP name.
+          FIREBASE_WEB_API_KEY_VAL="${{ secrets.VITE_FIREBASE_API_KEY }}"
+          if [ -n "$FIREBASE_WEB_API_KEY_VAL" ]; then
+            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets create "FIREBASE_WEB_API_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "✅ FIREBASE_WEB_API_KEY: synced from VITE_FIREBASE_API_KEY GitHub secret (${#FIREBASE_WEB_API_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ FIREBASE_WEB_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ FIREBASE_WEB_API_KEY: not found in GCP Secret Manager and VITE_FIREBASE_API_KEY GitHub secret is absent." && exit 1
+            fi
           fi
 
           # ACCOUNTING_SPREADSHEET_ID — BookingExportService accounting exports
@@ -278,40 +295,103 @@ jobs:
           fi
 
           # FIREBASE_SERVICE_ACCOUNT_KEY — Firebase Admin SDK service-account JSON.
-          if ! gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY secret not found in GCP Secret Manager."
-            echo "   Create it with the Firebase Admin SDK service-account JSON before deploying."
-            exit 1
+          # GitHub secret is stored as FIREBASE_SERVICE_ACCOUNT (no _KEY suffix).
+          # The backend reads FIREBASE_SERVICE_ACCOUNT_KEY, so we sync the GitHub secret value under that GCP name.
+          FIREBASE_SA_KEY_VAL="${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          if [ -n "$FIREBASE_SA_KEY_VAL" ]; then
+            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets versions add "FIREBASE_SERVICE_ACCOUNT_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets create "FIREBASE_SERVICE_ACCOUNT_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: synced from FIREBASE_SERVICE_ACCOUNT GitHub secret (${#FIREBASE_SA_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY: not found in GCP Secret Manager and FIREBASE_SERVICE_ACCOUNT GitHub secret is absent." && exit 1
+            fi
           fi
 
           # SENDGRID_API_KEY — SendGrid API key for transactional email delivery.
-          if ! gcloud secrets describe "SENDGRID_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ SENDGRID_API_KEY secret not found in GCP Secret Manager."
-            echo "   Create it with your SendGrid API key before deploying."
-            exit 1
+          # GitHub secret name matches GCP name exactly — sync on every run.
+          SENDGRID_API_KEY_VAL="${{ secrets.SENDGRID_API_KEY }}"
+          if [ -n "$SENDGRID_API_KEY_VAL" ]; then
+            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets versions add "SENDGRID_API_KEY" \
+              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets create "SENDGRID_API_KEY" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            echo "✅ SENDGRID_API_KEY: synced from GitHub secret (${#SENDGRID_API_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "SENDGRID_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ SENDGRID_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ SENDGRID_API_KEY: not found in GCP Secret Manager and SENDGRID_API_KEY GitHub secret is absent." && exit 1
+            fi
           fi
 
           # GEMINI_API_KEY — Google Gemini (Vertex AI) API key.
-          if ! gcloud secrets describe "GEMINI_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ GEMINI_API_KEY secret not found in GCP Secret Manager."
-            echo "   Create it with your Gemini API key before deploying."
-            exit 1
+          # GitHub secret name matches GCP name exactly — sync on every run.
+          GEMINI_API_KEY_VAL="${{ secrets.GEMINI_API_KEY }}"
+          if [ -n "$GEMINI_API_KEY_VAL" ]; then
+            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets versions add "GEMINI_API_KEY" \
+              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets create "GEMINI_API_KEY" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            echo "✅ GEMINI_API_KEY: synced from GitHub secret (${#GEMINI_API_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "GEMINI_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ GEMINI_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ GEMINI_API_KEY: not found in GCP Secret Manager and GEMINI_API_KEY GitHub secret is absent." && exit 1
+            fi
           fi
 
           # TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER — Twilio SMS credentials.
-          for TWILIO_VAR in TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER; do
-            if ! gcloud secrets describe "$TWILIO_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-              echo "❌ $TWILIO_VAR secret not found in GCP Secret Manager."
-              echo "   Create it with the real Twilio credential before deploying."
-              exit 1
+          # GitHub secret names match GCP names exactly — sync each one on every run.
+          TWILIO_ACCOUNT_SID_VAL="${{ secrets.TWILIO_ACCOUNT_SID }}"
+          TWILIO_AUTH_TOKEN_VAL="${{ secrets.TWILIO_AUTH_TOKEN }}"
+          TWILIO_PHONE_NUMBER_VAL="${{ secrets.TWILIO_PHONE_NUMBER }}"
+          for TWILIO_ENTRY in \
+            "TWILIO_ACCOUNT_SID:$TWILIO_ACCOUNT_SID_VAL" \
+            "TWILIO_AUTH_TOKEN:$TWILIO_AUTH_TOKEN_VAL" \
+            "TWILIO_PHONE_NUMBER:$TWILIO_PHONE_NUMBER_VAL"; do
+            TWILIO_VAR="${TWILIO_ENTRY%%:*}"
+            TWILIO_VAL="${TWILIO_ENTRY#*:}"
+            if [ -n "$TWILIO_VAL" ]; then
+              printf '%s' "$TWILIO_VAL" | gcloud secrets versions add "$TWILIO_VAR" \
+                --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+              printf '%s' "$TWILIO_VAL" | gcloud secrets create "$TWILIO_VAR" \
+                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+              echo "✅ $TWILIO_VAR: synced from GitHub secret (${#TWILIO_VAL} chars)"
+            else
+              if gcloud secrets describe "$TWILIO_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+                echo "✅ $TWILIO_VAR: exists in GCP Secret Manager (no GitHub secret to sync)"
+              else
+                echo "❌ $TWILIO_VAR: not found in GCP Secret Manager and GitHub secret is absent." && exit 1
+              fi
             fi
           done
 
           # RECAPTCHA_SECRET_KEY — reCAPTCHA Enterprise server-side secret key.
-          if ! gcloud secrets describe "RECAPTCHA_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "❌ RECAPTCHA_SECRET_KEY secret not found in GCP Secret Manager."
-            echo "   Create it with your reCAPTCHA Enterprise server-side key before deploying."
-            exit 1
+          # GitHub secret name matches GCP name exactly — sync on every run.
+          RECAPTCHA_SECRET_KEY_VAL="${{ secrets.RECAPTCHA_SECRET_KEY }}"
+          if [ -n "$RECAPTCHA_SECRET_KEY_VAL" ]; then
+            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets versions add "RECAPTCHA_SECRET_KEY" \
+              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets create "RECAPTCHA_SECRET_KEY" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            echo "✅ RECAPTCHA_SECRET_KEY: synced from GitHub secret (${#RECAPTCHA_SECRET_KEY_VAL} chars)"
+          else
+            if gcloud secrets describe "RECAPTCHA_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ RECAPTCHA_SECRET_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ RECAPTCHA_SECRET_KEY: not found in GCP Secret Manager and RECAPTCHA_SECRET_KEY GitHub secret is absent." && exit 1
+            fi
           fi
 
           # ── Optional integration credentials (warn-only if absent) ───────────────────────

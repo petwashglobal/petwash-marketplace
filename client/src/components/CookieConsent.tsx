@@ -19,7 +19,8 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
 
   useEffect(() => {
     if (!hasConsentPreferences()) {
-      setTimeout(() => setIsVisible(true), 1000);
+      // Delay past the entry popup auto-dismiss (3 000 ms) so they never overlap
+      setTimeout(() => setIsVisible(true), 4500);
     }
   }, []);
 
