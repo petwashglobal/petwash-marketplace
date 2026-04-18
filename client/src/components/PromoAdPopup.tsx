@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Star, Crown, Gift, Award } from 'lucide-react';
+import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 
@@ -81,12 +81,13 @@ export function PromoAdPopup({
     return () => clearTimeout(timer);
   }, [config.id, config.enabled, showOnce, delayMs]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback((source: 'user' | 'auto' = 'user') => {
     setIsVisible(false);
-    // Always suppress for the rest of this tab session
+    // Always suppress for the rest of this tab session (prevents re-show on re-render)
     sessionStorage.setItem(sessionKey(config.id), '1');
-    // Also stamp localStorage so it won't show again for 24 h in any tab
-    if (showOnce) {
+    // Only stamp the 24 h localStorage suppression when the USER actively closes the popup.
+    // Auto-dismiss does NOT stamp it — so the popup can still appear in the next tab/session.
+    if (showOnce && source === 'user') {
       localStorage.setItem(`promo-last-seen-${config.id}`, String(Date.now()));
     }
   }, [config.id, showOnce]);
@@ -101,12 +102,12 @@ export function PromoAdPopup({
     document.body.style.overflow = 'hidden';
     document.body.style.touchAction = 'none';
 
-    // Auto-dismiss
-    const autoDismiss = setTimeout(handleClose, AUTO_DISMISS_MS);
+    // Auto-dismiss — passes 'auto' so the 24 h localStorage stamp is NOT set
+    const autoDismiss = setTimeout(() => handleClose('auto'), AUTO_DISMISS_MS);
 
-    // Keyboard escape
+    // Keyboard escape — counts as user dismissal
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') handleClose('user');
     };
     document.addEventListener('keydown', onKeyDown);
 

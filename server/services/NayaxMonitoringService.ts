@@ -212,7 +212,7 @@ Total Transactions: ${stats.total}
     message: string;
     details?: string;
   }): Promise<void> {
-    const SLACK_WEBHOOK = process.env.ALERTS_SLACK_WEBHOOK;
+    const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK;
     
     if (!SLACK_WEBHOOK) {
       logger.warn('[Nayax Monitor] Slack webhook not configured, skipping alert');

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request } from 'express';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { providerIntakeService } from '../services/ProviderIntakeService';
 import { requireAuth } from '../customAuth';
@@ -11,6 +11,11 @@ import { z } from 'zod';
 import { createHash, randomUUID, randomBytes, createCipheriv } from 'crypto';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
+
+/** Extends the Express Request with the userId injected by requireAuth middleware. */
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
 
 const router = Router();
 
@@ -361,9 +366,13 @@ const submitApplicationSchema = z.object({
   captchaToken: z.string().optional(),
 });
 
-router.post('/submit', async (req, res) => {
+router.post('/submit', requireAuth, async (req, res) => {
   try {
     const data = submitApplicationSchema.parse(req.body);
+
+    // Always use the server-verified UID from the auth token — never trust the request body.
+    // requireAuth middleware sets req.userId from the decoded Firebase ID token.
+    const authenticatedUid = (req as AuthenticatedRequest).userId;
     
     const intakeId = `INTAKE-${Date.now()}-${randomUUID().replace(/-/g, '').substring(0, 6).toUpperCase()}`;
     
@@ -425,13 +434,14 @@ router.post('/submit', async (req, res) => {
       geminiPlatformMonitor.recordRegistration('provider');
     } catch {}
 
-    // Create biometric verification record if documents were uploaded
+    // Create biometric verification record if documents were uploaded.
+    // Always use authenticatedUid — the server-verified UID — not the request body.
     let biometricRecordCreated = false;
-    const hasDocuments = data.firebaseUid && data.idDocumentFrontBase64 && data.selfieDocBase64;
+    const hasDocuments = data.idDocumentFrontBase64 && data.selfieDocBase64;
     if (hasDocuments) {
       try {
         await db.insert(biometricCertificateVerifications).values({
-          userId: data.firebaseUid!,
+          userId: authenticatedUid,
           documentType: 'national_id',
           documentCountry: 'IL',
           documentNumber: data.idNumber || undefined,
@@ -445,12 +455,12 @@ router.post('/submit', async (req, res) => {
           userAgent: req.headers['user-agent'] || undefined,
         });
         biometricRecordCreated = true;
-        logger.info('[Provider Intake] Biometric verification record created (encrypted)', { intakeId, firebaseUid: data.firebaseUid });
+        logger.info('[Provider Intake] Biometric verification record created (encrypted)', { intakeId, uid: authenticatedUid });
 
         // Also store driving license as a separate record if provided
         if (data.drivingLicenseBase64) {
           await db.insert(biometricCertificateVerifications).values({
-            userId: data.firebaseUid!,
+            userId: authenticatedUid,
             documentType: 'drivers_license',
             documentCountry: 'IL',
             documentFrontUrl: encryptBase64Doc(data.drivingLicenseBase64),
@@ -544,20 +554,25 @@ router.post('/submit', async (req, res) => {
  */
 const submitDocumentsSchema = z.object({
   intakeId: z.string().optional(),
-  firebaseUid: z.string().min(1, 'Firebase UID required'),
+  // firebaseUid is accepted from legacy clients for backward compatibility but is ignored
+  // by the server — the authenticated UID from the Firebase token is always used instead.
+  firebaseUid: z.string().optional(),
   idDocumentFrontBase64: z.string().min(1, 'ID document front is required'),
   idDocumentBackBase64: z.string().optional(),
   selfieDocBase64: z.string().min(1, 'Selfie is required'),
   drivingLicenseBase64: z.string().optional(),
 });
 
-router.post('/submit-documents', async (req, res) => {
+router.post('/submit-documents', requireAuth, async (req, res) => {
   try {
     const data = submitDocumentsSchema.parse(req.body);
 
+    // Always use the server-verified UID — never the client-supplied firebaseUid.
+    const authenticatedUid = (req as AuthenticatedRequest).userId;
+
     // Create national ID biometric record
     await db.insert(biometricCertificateVerifications).values({
-      userId: data.firebaseUid,
+      userId: authenticatedUid,
       documentType: 'national_id',
       documentCountry: 'IL',
       documentFrontUrl: encryptBase64Doc(data.idDocumentFrontBase64),
@@ -573,7 +588,7 @@ router.post('/submit-documents', async (req, res) => {
     // Create driving license record if provided
     if (data.drivingLicenseBase64) {
       await db.insert(biometricCertificateVerifications).values({
-        userId: data.firebaseUid,
+        userId: authenticatedUid,
         documentType: 'drivers_license',
         documentCountry: 'IL',
         documentFrontUrl: encryptBase64Doc(data.drivingLicenseBase64),
@@ -596,7 +611,7 @@ router.post('/submit-documents', async (req, res) => {
 
     logger.info('[Provider Intake] Documents submitted post-application', {
       intakeId: data.intakeId,
-      firebaseUid: data.firebaseUid,
+      uid: authenticatedUid,
       hasDrivingLicense: !!data.drivingLicenseBase64,
     });
 

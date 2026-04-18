@@ -15,19 +15,53 @@ import {
   getActivationState,
 } from '../services/ActivationService';
 import { buildActivationEmail } from '../lib/luxuryActivationEmail';
+import { redis } from '../services/redis';
 
-const phoneSmsSentAt = new Map<string, number[]>();
+// ── Redis key helpers ────────────────────────────────────────────────────────
+const K_EMAIL_CODE    = (e: string) => `email:verify:code:${e}`;
+const K_LINK_TOKEN    = (t: string) => `email:verify:link:${t}`;
+const K_EMAIL_LOCKOUT = (e: string) => `email:verify:lockout:${e}`;
+const K_PHONE_RATE    = (p: string) => `sms:rate:${p}`;
+
+// ── In-memory fallback Maps — used only when Redis is unavailable ─────────────
+// These ensure the service still works on single-instance deployments without Redis.
+// On multi-instance or after restart they cannot share state — Redis is the source
+// of truth when available.
+const _memEmailCodes    = new Map<string, { code: string; email: string; expiresAt: Date; attempts: number; linkToken: string; linkVerified: boolean }>();
+const _memLinkTokens    = new Map<string, string>(); // linkToken → email
+const _memEmailLockouts = new Map<string, number>();  // email → lockout expiry epoch ms
+const _memPhoneRates    = new Map<string, number[]>(); // phone → send timestamps
+
 const SMS_PER_PHONE_MAX = 3;
 const SMS_PER_PHONE_WINDOW_MS = 60 * 60 * 1000;
 
-function checkPhoneSmsCooldown(phone: string): { blocked: boolean; message: string } {
+async function checkPhoneSmsCooldown(phone: string): Promise<{ blocked: boolean; message: string }> {
   const now = Date.now();
-  const timestamps = (phoneSmsSentAt.get(phone) || []).filter(t => now - t < SMS_PER_PHONE_WINDOW_MS);
+  const windowSec = Math.floor(SMS_PER_PHONE_WINDOW_MS / 1000);
+
+  // Redis primary path: use an incrementing counter per phone per hour window
+  if (redis.isConnected()) {
+    const key = K_PHONE_RATE(phone);
+    const count = await redis.incr(key);
+    if (count === 1) {
+      // First send in window — set expiry
+      await redis.expire(key, windowSec);
+    }
+    if (count > SMS_PER_PHONE_MAX) {
+      const remainSec = await redis.ttl(key).catch(() => windowSec);
+      const remainMin = Math.ceil(Math.max(remainSec, 0) / 60);
+      return { blocked: true, message: `Too many SMS sent to this number. Please wait ${remainMin > 1 ? `${remainMin} minutes` : 'a moment'} before requesting again.` };
+    }
+    return { blocked: false, message: '' };
+  }
+
+  // Memory fallback
+  const timestamps = (_memPhoneRates.get(phone) || []).filter(t => now - t < SMS_PER_PHONE_WINDOW_MS);
   if (timestamps.length >= SMS_PER_PHONE_MAX) {
     return { blocked: true, message: 'Too many SMS sent to this number. Please wait before requesting again.' };
   }
   timestamps.push(now);
-  phoneSmsSentAt.set(phone, timestamps);
+  _memPhoneRates.set(phone, timestamps);
   return { blocked: false, message: '' };
 }
 
@@ -49,15 +83,86 @@ interface EmailVerificationToken {
   used: boolean;
 }
 
-const emailVerificationCodes = new Map<string, EmailVerificationCode>();
-const emailVerificationTokens = new Map<string, EmailVerificationToken>();
-const linkTokenToEmail = new Map<string, string>();
-
 const EMAIL_CODE_EXPIRY_MINUTES = 5;
 const MAX_EMAIL_ATTEMPTS = 5;
 const EMAIL_TOKEN_EXPIRY_MINUTES = 30;
 const EMAIL_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
-const emailLockouts = new Map<string, number>();
+const EMAIL_LOCKOUT_DURATION_SEC = 15 * 60;
+
+// ── Redis-backed email verification helpers ──────────────────────────────────
+
+async function getEmailCode(email: string): Promise<EmailVerificationCode | null> {
+  const redisEntry = await redis.get<EmailVerificationCode>(K_EMAIL_CODE(email)).catch(() => null);
+  if (redisEntry) {
+    return { ...redisEntry, expiresAt: new Date(redisEntry.expiresAt) };
+  }
+  // Memory fallback
+  return _memEmailCodes.get(email) ?? null;
+}
+
+async function setEmailCode(email: string, entry: EmailVerificationCode): Promise<void> {
+  const ttlSec = Math.ceil((entry.expiresAt.getTime() - Date.now()) / 1000);
+  if (ttlSec <= 0) {
+    // Entry has already expired — do not write it to Redis
+    return;
+  }
+  const ok = await redis.set(K_EMAIL_CODE(email), entry, ttlSec).catch((err) => {
+    logger.warn('[Verification] Redis set email code failed — using memory fallback', { email: email.slice(0, 3) + '***', error: String(err) });
+    return false;
+  });
+  if (!ok) {
+    logger.debug('[Verification] Redis unavailable — email code stored in memory only');
+  }
+  _memEmailCodes.set(email, entry); // memory fallback mirror
+}
+
+async function deleteEmailCode(email: string, linkToken?: string): Promise<void> {
+  await redis.del(K_EMAIL_CODE(email)).catch((err) => {
+    logger.warn('[Verification] Redis del email code failed', { email: email.slice(0, 3) + '***', error: String(err) });
+  });
+  _memEmailCodes.delete(email);
+  if (linkToken) {
+    await redis.del(K_LINK_TOKEN(linkToken)).catch((err) => {
+      logger.warn('[Verification] Redis del link token failed', { error: String(err) });
+    });
+    _memLinkTokens.delete(linkToken);
+  }
+}
+
+async function getLinkEmail(linkToken: string): Promise<string | null> {
+  const redisEmail = await redis.getRaw(K_LINK_TOKEN(linkToken)).catch(() => null);
+  if (redisEmail) return redisEmail;
+  return _memLinkTokens.get(linkToken) ?? null;
+}
+
+async function setLinkToken(linkToken: string, email: string, ttlSec: number): Promise<void> {
+  await redis.setRaw(K_LINK_TOKEN(linkToken), email, ttlSec).catch((err) => {
+    logger.warn('[Verification] Redis set link token failed — using memory fallback', { error: String(err) });
+  });
+  _memLinkTokens.set(linkToken, email);
+}
+
+async function deleteLinkToken(linkToken: string): Promise<void> {
+  await redis.del(K_LINK_TOKEN(linkToken)).catch((err) => {
+    logger.warn('[Verification] Redis del link token failed', { error: String(err) });
+  });
+  _memLinkTokens.delete(linkToken);
+}
+
+async function getEmailLockout(email: string): Promise<number | null> {
+  const redisTtl = await redis.ttl(K_EMAIL_LOCKOUT(email)).catch(() => -2);
+  if (redisTtl > 0) return Date.now() + redisTtl * 1000;
+  const memExpiry = _memEmailLockouts.get(email);
+  if (memExpiry && Date.now() < memExpiry) return memExpiry;
+  return null;
+}
+
+async function setEmailLockout(email: string): Promise<void> {
+  await redis.setRaw(K_EMAIL_LOCKOUT(email), '1', EMAIL_LOCKOUT_DURATION_SEC).catch((err) => {
+    logger.warn('[Verification] Redis set email lockout failed — using memory fallback', { email: email.slice(0, 3) + '***', error: String(err) });
+  });
+  _memEmailLockouts.set(email, Date.now() + EMAIL_LOCKOUT_DURATION_MS);
+}
 
 const verificationLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -163,7 +268,7 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    const lockExpiry = emailLockouts.get(normalizedEmail);
+    const lockExpiry = await getEmailLockout(normalizedEmail);
     if (lockExpiry && Date.now() < lockExpiry) {
       const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
       return res.status(429).json({
@@ -177,8 +282,9 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
     const code = generateCode();
     const linkToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + EMAIL_CODE_EXPIRY_MINUTES * 60 * 1000);
+    const ttlSec = EMAIL_CODE_EXPIRY_MINUTES * 60;
 
-    emailVerificationCodes.set(normalizedEmail, {
+    await setEmailCode(normalizedEmail, {
       code,
       email: normalizedEmail,
       expiresAt,
@@ -187,7 +293,7 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
       linkVerified: false,
     });
 
-    linkTokenToEmail.set(linkToken, normalizedEmail);
+    await setLinkToken(linkToken, normalizedEmail, ttlSec);
 
     const baseUrl = getBaseUrl(req);
     const verifyLinkUrl = `${baseUrl}/api/onboarding-verification/verify-email-link?token=${linkToken}&lang=${language}`;
@@ -233,31 +339,33 @@ router.get('/verify-email-link', async (req: Request, res: Response) => {
         : 'Invalid verification link', isHebrew));
     }
 
-    const email = linkTokenToEmail.get(token);
+    const email = await getLinkEmail(token);
     if (!email) {
       return res.status(400).send(renderLinkResultPage(false, isHebrew
         ? 'הקישור פג תוקף או כבר נעשה בו שימוש'
         : 'Link expired or already used', isHebrew));
     }
 
-    const stored = emailVerificationCodes.get(email);
+    const stored = await getEmailCode(email);
     if (!stored || stored.linkToken !== token) {
-      linkTokenToEmail.delete(token);
+      await deleteLinkToken(token);
       return res.status(400).send(renderLinkResultPage(false, isHebrew
         ? 'הקישור פג תוקף או כבר נעשה בו שימוש'
         : 'Link expired or already used', isHebrew));
     }
 
     if (new Date() > stored.expiresAt) {
-      emailVerificationCodes.delete(email);
-      linkTokenToEmail.delete(token);
+      await deleteEmailCode(email, token);
       return res.status(400).send(renderLinkResultPage(false, isHebrew
         ? 'הקישור פג תוקף. בקשו קוד חדש.'
         : 'Link expired. Request a new code.', isHebrew));
     }
 
-    stored.linkVerified = true;
-    linkTokenToEmail.delete(token);
+    // Write back a short-lived (30s) record with linkVerified=true so the polling endpoint
+    // (/check-email-link-status) can confirm within its next poll interval.
+    // Create a new object — do not mutate `stored` — then delete after polling window passes.
+    await setEmailCode(email, { ...stored, linkVerified: true, expiresAt: new Date(Date.now() + 30_000) });
+    await deleteLinkToken(token);
 
     logger.info('[Verification] Email verified via link', { email: email.slice(0, 3) + '***' });
 
@@ -306,14 +414,14 @@ router.post('/check-email-link-status', async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const stored = emailVerificationCodes.get(normalizedEmail);
+    const stored = await getEmailCode(normalizedEmail);
 
     if (!stored) {
       return res.json({ verified: false });
     }
 
     if (stored.linkVerified) {
-      emailVerificationCodes.delete(normalizedEmail);
+      await deleteEmailCode(normalizedEmail, stored.linkToken);
       const verificationToken = issueEmailVerificationToken(normalizedEmail);
 
       logger.info('[Verification] Email link verification confirmed via poll', { email: normalizedEmail.slice(0, 3) + '***' });
@@ -335,7 +443,7 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
   const { email, language = 'he' } = req.body;
   if (email) {
     const normalizedEmail = email.toLowerCase().trim();
-    const lockExpiry = emailLockouts.get(normalizedEmail);
+    const lockExpiry = await getEmailLockout(normalizedEmail);
     if (lockExpiry && Date.now() < lockExpiry) {
       const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
       const isHebrew = language === 'he';
@@ -359,7 +467,7 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
       return res.status(400).json({ success: false, message: 'Email and code required' });
     }
 
-    const stored = emailVerificationCodes.get(normalizedEmail);
+    const stored = await getEmailCode(normalizedEmail);
 
     if (!stored) {
       return res.status(400).json({
@@ -369,8 +477,7 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
     }
 
     if (new Date() > stored.expiresAt) {
-      emailVerificationCodes.delete(normalizedEmail);
-      if (stored.linkToken) linkTokenToEmail.delete(stored.linkToken);
+      await deleteEmailCode(normalizedEmail, stored.linkToken);
       return res.status(400).json({
         success: false,
         message: isHebrew ? 'קוד האימות פג תוקף. בקשו קוד חדש.' : 'Code expired. Request a new one.',
@@ -378,9 +485,8 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
     }
 
     if (stored.attempts >= MAX_EMAIL_ATTEMPTS) {
-      emailVerificationCodes.delete(normalizedEmail);
-      if (stored.linkToken) linkTokenToEmail.delete(stored.linkToken);
-      emailLockouts.set(normalizedEmail, Date.now() + EMAIL_LOCKOUT_DURATION_MS);
+      await deleteEmailCode(normalizedEmail, stored.linkToken);
+      await setEmailLockout(normalizedEmail);
       logger.warn('[Verification] Email max attempts reached, locking for 15min', { email: normalizedEmail.slice(0, 3) + '***' });
       return res.status(429).json({
         success: false,
@@ -393,6 +499,7 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
       crypto.timingSafeEqual(Buffer.from(stored.code), Buffer.from(code));
     if (!codeMatch) {
       stored.attempts++;
+      await setEmailCode(normalizedEmail, stored);
       const remaining = MAX_EMAIL_ATTEMPTS - stored.attempts;
       return res.status(400).json({
         success: false,
@@ -400,8 +507,7 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
       });
     }
 
-    emailVerificationCodes.delete(normalizedEmail);
-    if (stored.linkToken) linkTokenToEmail.delete(stored.linkToken);
+    await deleteEmailCode(normalizedEmail, stored.linkToken);
 
     const verificationToken = issueEmailVerificationToken(normalizedEmail);
 
@@ -437,7 +543,7 @@ router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Res
       return res.status(403).json({ success: false, message: 'Security check failed. Please refresh and try again.' });
     }
 
-    const phoneCooldown = checkPhoneSmsCooldown(phone);
+    const phoneCooldown = await checkPhoneSmsCooldown(phone);
     if (phoneCooldown.blocked) {
       logger.warn('[Verification] SMS blocked — per-phone rate limit', { phone: phone.slice(0, 6) });
       return res.status(429).json({ success: false, message: phoneCooldown.message });
@@ -582,18 +688,19 @@ router.post('/send-activation-email', async (req: Request, res: Response) => {
     const linkToken = crypto.randomBytes(32).toString('hex');
     const verifyUrl = `${baseUrl}/api/onboarding-verification/verify-email-link?token=${linkToken}&lang=${language}`;
 
-    // Store in in-memory map (same mechanism as send-email-code)
+    // Store the email code using the Redis-backed helper (same mechanism as send-email-code).
+    // 24h TTL for activation links.
     const normalizedEmail = email.toLowerCase().trim();
-    const emailCode: Parameters<typeof emailVerificationCodes['set']>[1] = {
+    const emailCode = {
       code: String(Math.floor(100000 + crypto.randomInt(900000))),
       email: normalizedEmail,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h for activation links
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       attempts: 0,
       linkToken,
       linkVerified: false,
     };
-    emailVerificationCodes.set(normalizedEmail, emailCode);
-    linkTokenToEmail.set(linkToken, normalizedEmail);
+    await setEmailCode(normalizedEmail, emailCode);
+    await setLinkToken(linkToken, normalizedEmail, 24 * 60 * 60);
 
     // Update last sent timestamp in DB if userId provided
     if (userId && typeof userId === 'string') {

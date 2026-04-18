@@ -461,6 +461,51 @@ jobs:
             fi
           fi
 
+      - name: Sync optional secrets (REDIS_URL, SLACK_WEBHOOK_URL, TWILIO_MESSAGING_SERVICE_SID, Tranzila)
+        # These are optional — CI does NOT fail if they are absent from GitHub Secrets.
+        # If absent, the feature is gracefully disabled in the running service.
+        # To enable: add the GitHub Secret so this step syncs it to GCP Secret Manager automatically.
+        env:
+          REDIS_URL_VAL: ${{ secrets.REDIS_URL }}
+          SLACK_WEBHOOK_URL_VAL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TWILIO_MESSAGING_SERVICE_SID_VAL: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}
+          TRANZILA_TERMINAL_NAME_VAL: ${{ secrets.TRANZILA_TERMINAL_NAME }}
+          TRANZILA_API_KEY_VAL: ${{ secrets.TRANZILA_API_KEY }}
+          TRANZILA_WEBHOOK_SECRET_VAL: ${{ secrets.TRANZILA_WEBHOOK_SECRET }}
+          TRANZILA_TERMINAL_PASSWORD_VAL: ${{ secrets.TRANZILA_TERMINAL_PASSWORD }}
+          TRANZILA_ALLOWED_IPS_VAL: ${{ secrets.TRANZILA_ALLOWED_IPS }}
+          TRANZILA_MARKETPLACE_ENABLED_VAL: ${{ secrets.TRANZILA_MARKETPLACE_ENABLED }}
+          TRANZILA_WALLET_TOPUP_ENABLED_VAL: ${{ secrets.TRANZILA_WALLET_TOPUP_ENABLED }}
+          TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL: ${{ secrets.TRANZILA_PAYMENT_REQUESTS_ENABLED }}
+        run: |
+          PROJECT="$PROJECT_ID"
+          sync_optional() {
+            local VAR_NAME="$1"
+            local VAR_VAL="$2"
+            if [ -n "$VAR_VAL" ]; then
+              printf '%s' "$VAR_VAL" | gcloud secrets versions add "$VAR_NAME" \
+                --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+              printf '%s' "$VAR_VAL" | gcloud secrets create "$VAR_NAME" \
+                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+              echo "✅ $VAR_NAME: synced from GitHub secret (${#VAR_VAL} chars)"
+            elif gcloud secrets describe "$VAR_NAME" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ $VAR_NAME: exists in GCP Secret Manager (skipping sync)"
+            else
+              echo "⚠️  $VAR_NAME: not set in GitHub or GCP — feature will be gracefully disabled"
+            fi
+          }
+          sync_optional "REDIS_URL"                         "$REDIS_URL_VAL"
+          sync_optional "SLACK_WEBHOOK_URL"                 "$SLACK_WEBHOOK_URL_VAL"
+          sync_optional "TWILIO_MESSAGING_SERVICE_SID"      "$TWILIO_MESSAGING_SERVICE_SID_VAL"
+          sync_optional "TRANZILA_TERMINAL_NAME"            "$TRANZILA_TERMINAL_NAME_VAL"
+          sync_optional "TRANZILA_API_KEY"                  "$TRANZILA_API_KEY_VAL"
+          sync_optional "TRANZILA_WEBHOOK_SECRET"           "$TRANZILA_WEBHOOK_SECRET_VAL"
+          sync_optional "TRANZILA_TERMINAL_PASSWORD"        "$TRANZILA_TERMINAL_PASSWORD_VAL"
+          sync_optional "TRANZILA_ALLOWED_IPS"              "$TRANZILA_ALLOWED_IPS_VAL"
+          sync_optional "TRANZILA_MARKETPLACE_ENABLED"      "$TRANZILA_MARKETPLACE_ENABLED_VAL"
+          sync_optional "TRANZILA_WALLET_TOPUP_ENABLED"     "$TRANZILA_WALLET_TOPUP_ENABLED_VAL"
+          sync_optional "TRANZILA_PAYMENT_REQUESTS_ENABLED" "$TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL"
+
       - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
@@ -663,6 +708,17 @@ jobs:
             GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest
             GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest
             FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest
+            REDIS_URL=REDIS_URL:latest
+            SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest
+            TWILIO_MESSAGING_SERVICE_SID=TWILIO_MESSAGING_SERVICE_SID:latest
+            TRANZILA_TERMINAL_NAME=TRANZILA_TERMINAL_NAME:latest
+            TRANZILA_API_KEY=TRANZILA_API_KEY:latest
+            TRANZILA_WEBHOOK_SECRET=TRANZILA_WEBHOOK_SECRET:latest
+            TRANZILA_TERMINAL_PASSWORD=TRANZILA_TERMINAL_PASSWORD:latest
+            TRANZILA_ALLOWED_IPS=TRANZILA_ALLOWED_IPS:latest
+            TRANZILA_MARKETPLACE_ENABLED=TRANZILA_MARKETPLACE_ENABLED:latest
+            TRANZILA_WALLET_TOPUP_ENABLED=TRANZILA_WALLET_TOPUP_ENABLED:latest
+            TRANZILA_PAYMENT_REQUESTS_ENABLED=TRANZILA_PAYMENT_REQUESTS_ENABLED:latest
 
       - name: Grant public access (allow unauthenticated)
         continue-on-error: true

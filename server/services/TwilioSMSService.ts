@@ -329,26 +329,33 @@ class TwilioSMSService {
     const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MINUTES * 60 * 1000);
     const OTP_TTL = VERIFICATION_CODE_EXPIRY_MINUTES * 60;
 
-    // Store in memory (immediate fallback if Redis is unavailable)
-    verificationCodes.set(formattedPhone, {
-      code,
-      phone: formattedPhone,
-      expiresAt,
-      attempts: 0
-    });
-
-    // ── Primary store: Redis (survives server restarts, shared across instances) ──
-    // Store HMAC of code — never raw code. Key: otp:login:code:{phone}
+    // ── Primary store: Redis (survives restarts, shared across all instances) ──
+    // HMAC of the code is stored — never the raw code.
     const hmacSecret = process.env.APP_SESSION_SECRET || process.env.COOKIE_SECRET || 'petwash-otp-hmac';
     const codeHmac = crypto.createHmac('sha256', hmacSecret).update(code).digest('hex');
-    redis.set(
-      `otp:login:code:${formattedPhone}`,
-      { codeHmac, attempts: 0, expiresAtMs: expiresAt.getTime() },
-      OTP_TTL,
-    ).catch((err: any) =>
-      logger.warn('[TwilioSMS] Redis OTP store failed — memory fallback active', { error: err?.message })
-    );
-    // ─────────────────────────────────────────────────────────────────────────────
+
+    if (redis.isConnected()) {
+      // Redis available: use it as the ONLY store. Do NOT write to memory.
+      // If the Redis write fails, refuse to send the code — a code stored only in
+      // memory would fail silently for any verify request hitting a different instance.
+      const stored = await redis.set(
+        `otp:login:code:${formattedPhone}`,
+        { codeHmac, attempts: 0, expiresAtMs: expiresAt.getTime() },
+        OTP_TTL,
+      ).catch((err: any) => {
+        logger.error('[TwilioSMS] Redis OTP store failed — refusing to send code without durable storage', { error: err?.message });
+        return false;
+      });
+      if (!stored) {
+        return { success: false, message: this.t('sendFailed', language) };
+      }
+    } else {
+      // Redis not configured — single-instance in-memory fallback.
+      // This is only safe in single-process dev environments.
+      // In production (Cloud Run) REDIS_URL must be set.
+      logger.warn('[TwilioSMS] Redis unavailable — storing OTP in-memory (unsafe for multi-instance; set REDIS_URL in production)');
+      verificationCodes.set(formattedPhone, { code, phone: formattedPhone, expiresAt, attempts: 0 });
+    }
 
     const messageBody = this.smsBody(code, language);
 
@@ -585,8 +592,23 @@ class TwilioSMSService {
       verificationCodes.delete(formattedPhone);
 
     } else {
-      // ── Redis miss — fall back to in-memory Map (Redis was down during send) ──
-      logger.warn('[TwilioSMS] Redis miss — using in-memory OTP fallback', { phone: formattedPhone.slice(0, 6) + '****' });
+      // ── Redis miss ────────────────────────────────────────────────────────────
+      if (redis.isConnected()) {
+        // Redis is up but returned no entry. This means:
+        // - the code expired, OR
+        // - it was already used and deleted, OR
+        // - (in a previous deployment) this code was stored in memory on another instance
+        // In all cases: reject — do not fall back to memory (memory is per-instance and unreliable).
+        logger.warn('[TwilioSMS] Redis miss during verify — code expired, already used, or not found', {
+          phone: formattedPhone.slice(0, 6) + '****',
+        });
+        return { success: false, message: this.t('noCode', language) };
+      }
+
+      // Redis not configured — fall back to the in-memory Map (single-instance dev only).
+      logger.warn('[TwilioSMS] Redis not configured — using in-memory OTP verify (single-instance only)', {
+        phone: formattedPhone.slice(0, 6) + '****',
+      });
       const stored = verificationCodes.get(formattedPhone);
 
       if (!stored) {

@@ -349,7 +349,7 @@ class ITAComplianceMonitoringService {
       });
       
       // Send Slack alert if webhook is configured
-      const slackWebhook = process.env.ALERTS_SLACK_WEBHOOK;
+      const slackWebhook = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK;
       if (slackWebhook) {
         await axios.post(slackWebhook, {
           text: '🚨 CRITICAL: Israeli Tax Authority Compliance Updates Detected',
@@ -376,7 +376,7 @@ class ITAComplianceMonitoringService {
     try {
       logger.error('[ITA Compliance] 🔴 SYSTEM ALERT', alert);
       
-      const slackWebhook = process.env.ALERTS_SLACK_WEBHOOK;
+      const slackWebhook = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK;
       if (slackWebhook) {
         await axios.post(slackWebhook, {
           text: `🔴 ${alert.title}`,

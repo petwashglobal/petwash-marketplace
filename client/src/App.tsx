@@ -1758,7 +1758,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 
         {/* Applicant: check own application status */}
         <Route path="/provider-application/status">
-          {() => <ProviderApplicationStatus />}
+          {() => <RequireAuth><ProviderApplicationStatus /></RequireAuth>}
         </Route>
         <Route path="/admin/compliance-control-tower">{() => <Redirect to="/pet-wash-ltd/executive/compliance" />}</Route>
 
@@ -2101,16 +2101,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/apply-provider">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <ProviderApplicationForm />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/join-team">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <ProviderApplicationForm />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/providers">
