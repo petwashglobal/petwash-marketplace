@@ -49,7 +49,11 @@ jobs:
             local VALUE=$2
             if ! gcloud secrets describe "$NAME" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
               echo "⚠️  Creating missing GCP secret: $NAME"
-              printf '%s' "$VALUE" | gcloud secrets create "$NAME"                 --project="$PROJECT"                 --replication-policy=automatic                 --data-file=-                 --quiet
+              printf '%s' "$VALUE" | gcloud secrets create "$NAME" \
+                --project="$PROJECT" \
+                --replication-policy=automatic \
+                --data-file=- \
+                --quiet
               echo "✅ Created: $NAME"
             else
               echo "✅ Exists:  $NAME"
@@ -75,7 +79,11 @@ jobs:
           if ! gcloud secrets describe "MACHINE_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
             echo "⚠️  WARNING: MACHINE_SECRET_KEY not found in GCP Secret Manager."
             echo "   K9000 stations are not yet installed — creating placeholder. Hardware activation will be DISABLED."
-            printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create "MACHINE_SECRET_KEY"               --project="$PROJECT"               --replication-policy=automatic               --data-file=-               --quiet
+            printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create "MACHINE_SECRET_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
             echo "⚠️  MACHINE_SECRET_KEY: placeholder created. Replace with real K9000 HMAC key before commissioning machines."
           else
             echo "✅ Exists:  MACHINE_SECRET_KEY"
@@ -89,7 +97,11 @@ jobs:
           if ! gcloud secrets describe "MACHINE_ACTIVATION_URL" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
             echo "⚠️  WARNING: MACHINE_ACTIVATION_URL not found in GCP Secret Manager."
             echo "   K9000 stations are not yet installed — creating placeholder. Hardware activation will be DISABLED."
-            printf '%s' "http://127.0.0.1:0/k9000-disabled" | gcloud secrets create "MACHINE_ACTIVATION_URL"               --project="$PROJECT"               --replication-policy=automatic               --data-file=-               --quiet
+            printf '%s' "http://127.0.0.1:0/k9000-disabled" | gcloud secrets create "MACHINE_ACTIVATION_URL" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
             echo "⚠️  MACHINE_ACTIVATION_URL: placeholder created. Replace with real K9000 controller URL before commissioning machines."
           else
             echo "✅ Exists:  MACHINE_ACTIVATION_URL"
@@ -104,7 +116,10 @@ jobs:
             if ! gcloud secrets describe "$NAYAX_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
               echo "⚠️  WARNING: $NAYAX_VAR not found — Nayax live credentials not yet provisioned."
               echo "   Creating placeholder. Online Nayax payments will be DISABLED until real credential is set."
-              printf '%s' "nayax-placeholder-not-active" | gcloud secrets create "$NAYAX_VAR"                 --data-file=- --project="$PROJECT" --quiet
+              printf '%s' "nayax-placeholder-not-active" | gcloud secrets create "$NAYAX_VAR" \
+                --data-file=- \
+                --project="$PROJECT" \
+                --quiet
             fi
           done
 
@@ -186,8 +201,10 @@ jobs:
             if [ -z "$PUB_KEY" ]; then
               echo "❌ openssl failed to derive EC public key: $(cat /tmp/openssl_pub_err 2>/dev/null)" && exit 1
             fi
-            printf '%s' "$PRIV_KEY" | gcloud secrets create "VOUCHER_ES256_PRIVATE_KEY_PEM"               --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-            printf '%s' "$PUB_KEY"  | gcloud secrets create "VOUCHER_ES256_PUBLIC_KEY_PEM"               --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            printf '%s' "$PRIV_KEY" | gcloud secrets create "VOUCHER_ES256_PRIVATE_KEY_PEM" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            printf '%s' "$PUB_KEY"  | gcloud secrets create "VOUCHER_ES256_PUBLIC_KEY_PEM" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
             echo "✅ Created: VOUCHER_ES256_PRIVATE_KEY_PEM + VOUCHER_ES256_PUBLIC_KEY_PEM"
           else
             echo "❌ VOUCHER_ES256 key pair is in an inconsistent state (one key exists, the other does not)."
@@ -201,14 +218,16 @@ jobs:
           # SA_JSON is passed via the step env block to safely handle JSON with special chars.
           if gcloud secrets describe "GOOGLE_SERVICE_ACCOUNT_JSON" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
             if [ -n "$SA_JSON" ]; then
-              printf '%s' "$SA_JSON" | gcloud secrets versions add "GOOGLE_SERVICE_ACCOUNT_JSON"                 --project="$PROJECT" --data-file=- --quiet
+              printf '%s' "$SA_JSON" | gcloud secrets versions add "GOOGLE_SERVICE_ACCOUNT_JSON" \
+                --project="$PROJECT" --data-file=- --quiet
               echo "✅ GOOGLE_SERVICE_ACCOUNT_JSON: synced from CI credential"
             else
               echo "✅ Exists:  GOOGLE_SERVICE_ACCOUNT_JSON"
             fi
           else
             if [ -n "$SA_JSON" ]; then
-              printf '%s' "$SA_JSON" | gcloud secrets create "GOOGLE_SERVICE_ACCOUNT_JSON"                 --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+              printf '%s' "$SA_JSON" | gcloud secrets create "GOOGLE_SERVICE_ACCOUNT_JSON" \
+                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
               echo "✅ Created: GOOGLE_SERVICE_ACCOUNT_JSON"
             else
               echo "❌ GOOGLE_SERVICE_ACCOUNT_JSON not found in GCP Secret Manager and GOOGLE_APPLICATION_CREDENTIALS_JSON GitHub secret is absent." && exit 1
@@ -284,7 +303,15 @@ jobs:
         run: |
           PROJECT=${{ env.PROJECT_ID }}
           if [ -n "$FIREBASE_WEB_API_KEY_VAL" ]; then
-            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY"               --project="$PROJECT"               --data-file=-               --quiet 2>/dev/null ||             printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets create "FIREBASE_WEB_API_KEY"               --project="$PROJECT"               --replication-policy=automatic               --data-file=-               --quiet
+            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets create "FIREBASE_WEB_API_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
             echo "✅ FIREBASE_WEB_API_KEY: synced from VITE_FIREBASE_API_KEY GitHub secret (${#FIREBASE_WEB_API_KEY_VAL} chars)"
           else
             if gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -300,7 +327,15 @@ jobs:
         run: |
           PROJECT=${{ env.PROJECT_ID }}
           if [ -n "$MAPS_KEY" ]; then
-            printf '%s' "$MAPS_KEY" | gcloud secrets versions add "GOOGLE_MAPS_API_KEY"               --project="$PROJECT"               --data-file=-               --quiet 2>/dev/null ||             printf '%s' "$MAPS_KEY" | gcloud secrets create "GOOGLE_MAPS_API_KEY"               --project="$PROJECT"               --replication-policy=automatic               --data-file=-               --quiet
+            printf '%s' "$MAPS_KEY" | gcloud secrets versions add "GOOGLE_MAPS_API_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$MAPS_KEY" | gcloud secrets create "GOOGLE_MAPS_API_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
             echo "✅ GOOGLE_MAPS_API_KEY: synced from GitHub secret (${#MAPS_KEY} chars)"
           else
             if gcloud secrets describe "GOOGLE_MAPS_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -316,7 +351,15 @@ jobs:
         run: |
           PROJECT=${{ env.PROJECT_ID }}
           if [ -n "$FIREBASE_SA_KEY_VAL" ]; then
-            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets versions add "FIREBASE_SERVICE_ACCOUNT_KEY"               --project="$PROJECT"               --data-file=-               --quiet 2>/dev/null ||             printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets create "FIREBASE_SERVICE_ACCOUNT_KEY"               --project="$PROJECT"               --replication-policy=automatic               --data-file=-               --quiet
+            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets versions add "FIREBASE_SERVICE_ACCOUNT_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets create "FIREBASE_SERVICE_ACCOUNT_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
             echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: synced from FIREBASE_SERVICE_ACCOUNT GitHub secret (${#FIREBASE_SA_KEY_VAL} chars)"
           else
             if gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -332,7 +375,10 @@ jobs:
         run: |
           PROJECT=${{ env.PROJECT_ID }}
           if [ -n "$SENDGRID_API_KEY_VAL" ]; then
-            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets versions add "SENDGRID_API_KEY"               --project="$PROJECT" --data-file=- --quiet 2>/dev/null ||             printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets create "SENDGRID_API_KEY"               --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets versions add "SENDGRID_API_KEY" \
+              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets create "SENDGRID_API_KEY" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
             echo "✅ SENDGRID_API_KEY: synced from GitHub secret (${#SENDGRID_API_KEY_VAL} chars)"
           else
             if gcloud secrets describe "SENDGRID_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -348,7 +394,10 @@ jobs:
         run: |
           PROJECT=${{ env.PROJECT_ID }}
           if [ -n "$GEMINI_API_KEY_VAL" ]; then
-            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets versions add "GEMINI_API_KEY"               --project="$PROJECT" --data-file=- --quiet 2>/dev/null ||             printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets create "GEMINI_API_KEY"               --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets versions add "GEMINI_API_KEY" \
+              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets create "GEMINI_API_KEY" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
             echo "✅ GEMINI_API_KEY: synced from GitHub secret (${#GEMINI_API_KEY_VAL} chars)"
           else
             if gcloud secrets describe "GEMINI_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -365,11 +414,17 @@ jobs:
           TWILIO_PHONE_NUMBER_VAL: ${{ secrets.TWILIO_PHONE_NUMBER }}
         run: |
           PROJECT=${{ env.PROJECT_ID }}
-          for TWILIO_ENTRY in             "TWILIO_ACCOUNT_SID:$TWILIO_ACCOUNT_SID_VAL"             "TWILIO_AUTH_TOKEN:$TWILIO_AUTH_TOKEN_VAL"             "TWILIO_PHONE_NUMBER:$TWILIO_PHONE_NUMBER_VAL"; do
+          for TWILIO_ENTRY in \
+            "TWILIO_ACCOUNT_SID:$TWILIO_ACCOUNT_SID_VAL" \
+            "TWILIO_AUTH_TOKEN:$TWILIO_AUTH_TOKEN_VAL" \
+            "TWILIO_PHONE_NUMBER:$TWILIO_PHONE_NUMBER_VAL"; do
             TWILIO_VAR="${TWILIO_ENTRY%%:*}"
             TWILIO_VAL="${TWILIO_ENTRY#*:}"
             if [ -n "$TWILIO_VAL" ]; then
-              printf '%s' "$TWILIO_VAL" | gcloud secrets versions add "$TWILIO_VAR"                 --project="$PROJECT" --data-file=- --quiet 2>/dev/null ||               printf '%s' "$TWILIO_VAL" | gcloud secrets create "$TWILIO_VAR"                 --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+              printf '%s' "$TWILIO_VAL" | gcloud secrets versions add "$TWILIO_VAR" \
+                --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+              printf '%s' "$TWILIO_VAL" | gcloud secrets create "$TWILIO_VAR" \
+                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
               echo "✅ $TWILIO_VAR: synced from GitHub secret (${#TWILIO_VAL} chars)"
             else
               if gcloud secrets describe "$TWILIO_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -386,7 +441,10 @@ jobs:
         run: |
           PROJECT=${{ env.PROJECT_ID }}
           if [ -n "$RECAPTCHA_SECRET_KEY_VAL" ]; then
-            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets versions add "RECAPTCHA_SECRET_KEY"               --project="$PROJECT" --data-file=- --quiet 2>/dev/null ||             printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets create "RECAPTCHA_SECRET_KEY"               --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
+            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets versions add "RECAPTCHA_SECRET_KEY" \
+              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
+            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets create "RECAPTCHA_SECRET_KEY" \
+              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
             echo "✅ RECAPTCHA_SECRET_KEY: synced from GitHub secret (${#RECAPTCHA_SECRET_KEY_VAL} chars)"
           else
             if gcloud secrets describe "RECAPTCHA_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
