@@ -40,9 +40,10 @@ jobs:
       - name: Ensure required GCP secrets exist (base + generated)
         env:
           # Passed via env to handle JSON with embedded double-quotes and newlines safely.
-          PROJECT: ${{ env.PROJECT_ID }}
           SA_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           ensure_secret() {
             local NAME=$1
             local VALUE=$2
@@ -298,9 +299,10 @@ jobs:
 
       - name: Sync FIREBASE_WEB_API_KEY from GitHub secret
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           FIREBASE_WEB_API_KEY_VAL: ${{ secrets.VITE_FIREBASE_API_KEY }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           if [ -n "$FIREBASE_WEB_API_KEY_VAL" ]; then
             printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY" \
               --project="$PROJECT" \
@@ -322,9 +324,10 @@ jobs:
 
       - name: Sync GOOGLE_MAPS_API_KEY from GitHub secret
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           MAPS_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           if [ -n "$MAPS_KEY" ]; then
             printf '%s' "$MAPS_KEY" | gcloud secrets versions add "GOOGLE_MAPS_API_KEY" \
               --project="$PROJECT" \
@@ -346,9 +349,10 @@ jobs:
 
       - name: Sync FIREBASE_SERVICE_ACCOUNT_KEY from GitHub secret
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           FIREBASE_SA_KEY_VAL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           if [ -n "$FIREBASE_SA_KEY_VAL" ]; then
             printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets versions add "FIREBASE_SERVICE_ACCOUNT_KEY" \
               --project="$PROJECT" \
@@ -370,9 +374,10 @@ jobs:
 
       - name: Sync SENDGRID_API_KEY from GitHub secret
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           SENDGRID_API_KEY_VAL: ${{ secrets.SENDGRID_API_KEY }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           if [ -n "$SENDGRID_API_KEY_VAL" ]; then
             printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets versions add "SENDGRID_API_KEY" \
               --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
@@ -389,9 +394,10 @@ jobs:
 
       - name: Sync GEMINI_API_KEY from GitHub secret
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           GEMINI_API_KEY_VAL: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           if [ -n "$GEMINI_API_KEY_VAL" ]; then
             printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets versions add "GEMINI_API_KEY" \
               --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
@@ -408,11 +414,12 @@ jobs:
 
       - name: Sync Twilio secrets from GitHub
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           TWILIO_ACCOUNT_SID_VAL: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN_VAL: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_PHONE_NUMBER_VAL: ${{ secrets.TWILIO_PHONE_NUMBER }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           for TWILIO_ENTRY in \
             "TWILIO_ACCOUNT_SID:$TWILIO_ACCOUNT_SID_VAL" \
             "TWILIO_AUTH_TOKEN:$TWILIO_AUTH_TOKEN_VAL" \
@@ -436,9 +443,10 @@ jobs:
 
       - name: Sync RECAPTCHA_SECRET_KEY from GitHub secret
         env:
-          PROJECT: ${{ env.PROJECT_ID }}
           RECAPTCHA_SECRET_KEY_VAL: ${{ secrets.RECAPTCHA_SECRET_KEY }}
         run: |
+          PROJECT="$PROJECT_ID"
+
           if [ -n "$RECAPTCHA_SECRET_KEY_VAL" ]; then
             printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets versions add "RECAPTCHA_SECRET_KEY" \
               --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
