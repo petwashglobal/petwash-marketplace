@@ -2495,7 +2495,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   data-testid="checkbox-remember-device"
                 />
                 <label htmlFor="remember-device" className="text-xs text-neutral-500 cursor-pointer select-none tracking-wide">
-                  {language === 'he' ? 'זכור מכשיר זה ל-30 יום' : 'Remember this device for 30 days'}
+                  {language === 'he' ? 'שמור את הכניסה שלי — זכור מכשיר זה ל-30 יום' : 'Save my login — remember this device for 30 days'}
                 </label>
               </div>
 

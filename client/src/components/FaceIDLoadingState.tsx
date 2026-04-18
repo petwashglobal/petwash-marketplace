@@ -79,7 +79,7 @@ export function FaceIDLoadingState({
 
         {/* Status Message */}
         {message && (
-          <div className="text-center">
+          <div className="text-center space-y-1">
             <p
               className={`
                 text-lg font-medium
@@ -92,6 +92,13 @@ export function FaceIDLoadingState({
             >
               {message}
             </p>
+            {(state === 'checking' || state === 'authenticating') && (
+              <p className="text-sm text-muted-foreground" data-testid="faceid-consent-notice">
+                {language === 'he'
+                  ? 'אתה הסכמת לזה כשהגדרת את ה-Face ID בחשבונך'
+                  : 'You consented to this when you set up Face ID on your account'}
+              </p>
+            )}
           </div>
         )}
 
@@ -115,17 +122,22 @@ export function FaceIDLoadingState({
 
         {/* Manual Fallback Button - Banking UX: Always show option to use password */}
         {(isAnimating || state === 'checking') && onUsePasswordInstead && (
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col items-center gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={onUsePasswordInstead}
-              className="text-muted-foreground hover:text-foreground"
+              className="border-neutral-300 text-neutral-700 hover:text-neutral-900 hover:border-neutral-500 px-6"
               data-testid="button-use-password-instead"
               aria-label={language === 'he' ? 'השתמש בסיסמה במקום' : 'Use password instead'}
             >
-              {language === 'he' ? 'השתמש בסיסמה במקום' : 'Use password instead'}
+              {language === 'he' ? 'השתמש בסיסמה או אימייל במקום' : 'Use password or email instead'}
             </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              {language === 'he'
+                ? 'לא זוכר/ת את ה-Face ID? לחץ כאן'
+                : "Don't want Face ID? Tap above to sign in with your email & password"}
+            </p>
           </div>
         )}
       </div>
