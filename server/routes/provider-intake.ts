@@ -554,7 +554,9 @@ router.post('/submit', requireAuth, async (req, res) => {
  */
 const submitDocumentsSchema = z.object({
   intakeId: z.string().optional(),
-  firebaseUid: z.string().min(1, 'Firebase UID required'),
+  // firebaseUid is accepted from legacy clients for backward compatibility but is ignored
+  // by the server — the authenticated UID from the Firebase token is always used instead.
+  firebaseUid: z.string().optional(),
   idDocumentFrontBase64: z.string().min(1, 'ID document front is required'),
   idDocumentBackBase64: z.string().optional(),
   selfieDocBase64: z.string().min(1, 'Selfie is required'),
