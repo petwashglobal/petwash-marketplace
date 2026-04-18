@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request } from 'express';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { providerIntakeService } from '../services/ProviderIntakeService';
 import { requireAuth } from '../customAuth';
@@ -11,6 +11,11 @@ import { z } from 'zod';
 import { createHash, randomUUID, randomBytes, createCipheriv } from 'crypto';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
+
+/** Extends the Express Request with the userId injected by requireAuth middleware. */
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
 
 const router = Router();
 
@@ -366,8 +371,8 @@ router.post('/submit', requireAuth, async (req, res) => {
     const data = submitApplicationSchema.parse(req.body);
 
     // Always use the server-verified UID from the auth token — never trust the request body.
-    // requireAuth middleware sets (req as any).userId from the decoded Firebase ID token.
-    const authenticatedUid = (req as any).userId as string;
+    // requireAuth middleware sets req.userId from the decoded Firebase ID token.
+    const authenticatedUid = (req as AuthenticatedRequest).userId;
     
     const intakeId = `INTAKE-${Date.now()}-${randomUUID().replace(/-/g, '').substring(0, 6).toUpperCase()}`;
     
@@ -561,7 +566,7 @@ router.post('/submit-documents', requireAuth, async (req, res) => {
     const data = submitDocumentsSchema.parse(req.body);
 
     // Always use the server-verified UID — never the client-supplied firebaseUid.
-    const authenticatedUid = (req as any).userId as string;
+    const authenticatedUid = (req as AuthenticatedRequest).userId;
 
     // Create national ID biometric record
     await db.insert(biometricCertificateVerifications).values({

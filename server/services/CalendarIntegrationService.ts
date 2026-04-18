@@ -34,19 +34,17 @@ async function getAccessTokenReplit(): Promise<string | null> {
 }
 
 /** Build a googleapis auth client using the service account JSON available in Cloud Run. */
-function getServiceAccountAuth(): import('googleapis').Common.OAuth2Client | import('google-auth-library').JWT | null {
+function getServiceAccountAuth(): InstanceType<typeof google.auth.JWT> | null {
   const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   if (!rawJson) return null;
   try {
     const credentials = JSON.parse(rawJson);
-    const { google: { auth: gAuth } } = require('googleapis');
-    const client = new gAuth.JWT(
+    return new google.auth.JWT(
       credentials.client_email,
       undefined,
       credentials.private_key,
       ['https://www.googleapis.com/auth/calendar'],
     );
-    return client;
   } catch (err: any) {
     logger.warn('[CalendarIntegration] Service account JSON parse failed', { error: err?.message });
     return null;

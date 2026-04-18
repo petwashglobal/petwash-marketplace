@@ -361,14 +361,10 @@ router.get('/verify-email-link', async (req: Request, res: Response) => {
         : 'Link expired. Request a new code.', isHebrew));
     }
 
-    // Mark verified and clean up: delete the link token and the code entry.
-    // The linkVerified flag is only needed for the polling path (/check-email-link-status).
-    // We set it in a short-lived temp record so the poll can pick it up, then delete.
-    // This prevents the same link from being used twice.
-    stored.linkVerified = true;
-    // Write back briefly so the polling endpoint can confirm within its next interval,
-    // then schedule deletion after 30 seconds to cover the polling window.
-    await setEmailCode(email, { ...stored, expiresAt: new Date(Date.now() + 30_000) });
+    // Write back a short-lived (30s) record with linkVerified=true so the polling endpoint
+    // (/check-email-link-status) can confirm within its next poll interval.
+    // Create a new object — do not mutate `stored` — then delete after polling window passes.
+    await setEmailCode(email, { ...stored, linkVerified: true, expiresAt: new Date(Date.now() + 30_000) });
     await deleteLinkToken(token);
 
     logger.info('[Verification] Email verified via link', { email: email.slice(0, 3) + '***' });
