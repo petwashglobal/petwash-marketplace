@@ -36,6 +36,7 @@ import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ActivationBanner } from "@/components/ActivationBanner";
 import { PromoAdPopup } from "@/components/PromoAdPopup";
+import { Layout } from "@/components/Layout";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -1972,9 +1973,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/showcase">{() => <PlatformShowcase />}</Route>
         <Route path="/service-status">{() => <ServiceStatus language={language} />}</Route>
         <Route path="/status">{() => <ServiceStatus language={language} />}</Route>
-        <Route path="/paw-finder">{() => <PawFinder language={language} />}</Route>
-        <Route path="/find-pet">{() => <PawFinder language={language} />}</Route>
-        <Route path="/lost-pet">{() => <PawFinder language={language} />}</Route>
+        <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
+        <Route path="/find-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
+        <Route path="/lost-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/franchise">{() => <Franchise language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/franchise-opportunities">{() => <Redirect to="/franchise" />}</Route>
         <Route path="/backend-team">
