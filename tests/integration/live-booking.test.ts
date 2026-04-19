@@ -5,15 +5,18 @@
  *
  * HOW TO RUN:
  *   Against production:
- *     API_URL=https://petwash.co.il TEST_BYPASS_TOKEN=<secret> JWT_SECRET=<secret> npm run test:integration
+ *     API_URL=https://petwash.co.il TEST_BYPASS_TOKEN=<secret> JWT_SECRET_TEST=<test-only-secret> npm run test:integration
  *
  *   Against local dev server (start it first with: npm run dev):
- *     API_URL=http://localhost:5000 TEST_BYPASS_TOKEN=<secret> JWT_SECRET=<secret> npm run test:integration
+ *     API_URL=http://localhost:5000 TEST_BYPASS_TOKEN=<secret> JWT_SECRET_TEST=<test-only-secret> npm run test:integration
  *
  * REQUIRED ENV VARS:
- *   API_URL           - Base URL of the running server (no trailing slash)
- *   TEST_BYPASS_TOKEN - The value you set for TEST_BYPASS_TOKEN on the server
- *   JWT_SECRET        - The JWT secret used by the server (for unified-booking test)
+ *   API_URL            - Base URL of the running server (no trailing slash)
+ *   TEST_BYPASS_TOKEN  - The value you set for TEST_BYPASS_TOKEN on the server
+ *   JWT_SECRET_TEST    - A SEPARATE test-only JWT secret (set this on the server too).
+ *                        NEVER pass the production JWT_SECRET here — use a dedicated
+ *                        test secret that only signs tokens in test/dev environments.
+ *                        The server already reads JWT_SECRET_TEST in generateTestToken()
  *
  * TEST ACCOUNTS (adjust to match real data if needed):
  *   TEST_USER_ID     - Any valid Firebase UID for the signed-in user  (default: "test-integration-uid")
@@ -28,7 +31,7 @@ import * as jwt from 'jsonwebtoken';
 // ─── Config ────────────────────────────────────────────────────────────────────
 const API_URL          = (process.env.API_URL          || 'http://localhost:5000').replace(/\/$/, '');
 const BYPASS_TOKEN     = process.env.TEST_BYPASS_TOKEN || '';
-const JWT_SECRET       = process.env.JWT_SECRET        || '';
+const JWT_SECRET_TEST  = process.env.JWT_SECRET_TEST   || '';  // test-only secret — never the prod JWT_SECRET
 const TEST_USER_ID     = process.env.TEST_USER_ID      || 'test-integration-uid';
 const TEST_SITTER_ID   = Number(process.env.TEST_SITTER_ID  || '1');
 const TEST_PET_ID      = Number(process.env.TEST_PET_ID     || '1');
@@ -58,12 +61,12 @@ function noAuthHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json' };
 }
 
-/** Generate a valid JWT for unified-booking (uses JWT_SECRET). */
+/** Generate a valid JWT for unified-booking (uses JWT_SECRET_TEST — a dedicated test-only secret). */
 function jwtTokenFor(userId: string): string {
-  if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET env var is required for unified-booking test.');
+  if (!JWT_SECRET_TEST) {
+    throw new Error('JWT_SECRET_TEST env var is required for unified-booking test. Set a test-only secret — never the production JWT_SECRET.');
   }
-  return jwt.sign({ sub: userId, roles: ['customer'] }, JWT_SECRET, { expiresIn: '1h' });
+  return jwt.sign({ sub: userId, roles: ['customer'] }, JWT_SECRET_TEST, { expiresIn: '1h' });
 }
 
 /** POST helper — returns { status, body }. */
@@ -302,8 +305,8 @@ describe('PetWash™ Live Integration — Booking + Auth (9 scenarios)', () => {
   // SCENARIO 9 — Unified booking with forged body userId (token UID must win)
   // ───────────────────────────────────────────────────────────────────────────
   it('[9] POST /api/unified-booking/draft — forged body userId — token UID must win', async () => {
-    if (!JWT_SECRET) {
-      console.warn('[9] SKIPPED — JWT_SECRET env var not set. Cannot generate a signed token.');
+    if (!JWT_SECRET_TEST) {
+      console.warn('[9] SKIPPED — JWT_SECRET_TEST env var not set. Set a test-only JWT secret (never the production JWT_SECRET).');
       return;
     }
     // Sign a JWT as the legitimate test user
