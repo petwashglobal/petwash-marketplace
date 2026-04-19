@@ -797,13 +797,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Shop />}
         </Route>
         <Route path="/booking">
-          {() => <BookingUnified />}
+          {() => (
+            <RequireAuth>
+              <BookingUnified />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking/confirmation/:requestId">
-          {() => <BookingConfirmation />}
+          {() => (
+            <RequireAuth>
+              <BookingConfirmation />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking/new/:serviceType/:providerId">
-          {() => <MultiPetBookingWizard />}
+          {() => (
+            <RequireAuth>
+              <MultiPetBookingWizard />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/map">
           {() => <StationMap />}

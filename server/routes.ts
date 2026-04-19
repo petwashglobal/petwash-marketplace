@@ -2674,8 +2674,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/auth/session/test - Test endpoint to verify cookie settings (diagnostic)
-  app.get('/api/auth/session/test', async (req, res) => {
+  // GET /api/auth/session/test - Test endpoint to verify cookie settings (requires auth: leaks cookie name)
+  app.get('/api/auth/session/test', requireAuth, async (req, res) => {
     try {
       const { SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
       const hasCookie = !!req.cookies?.[SESSION_COOKIE_NAME];
@@ -3376,8 +3376,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/auth/firebase-admin-test - Test Firebase Admin SDK capabilities
-  app.get('/api/auth/firebase-admin-test', async (req, res) => {
+  // GET /api/auth/firebase-admin-test - Test Firebase Admin SDK capabilities (admin-only: exposes project internals)
+  app.get('/api/auth/firebase-admin-test', requireAdmin, async (req, res) => {
     try {
       const firebaseAdmin = (await import('./lib/firebase-admin')).default;
       
@@ -3618,8 +3618,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Gift cards
-  app.post('/api/gift-cards', async (req, res) => {
+  // Gift cards (admin-only: raw gift card creation must not be public)
+  app.post('/api/gift-cards', requireAdmin, async (req, res) => {
     try {
       const validatedData = insertGiftCardSchema.parse({
         ...req.body,
@@ -3637,6 +3637,10 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { code } = req.body;
       const customerId = (req.session as any)?.customerId;
+
+      if (!customerId) {
+        return res.status(400).json({ message: "Customer session not found. Please sign out and sign in again." });
+      }
       
       const giftCard = await storage.getGiftCard(code);
       if (!giftCard) {
@@ -4959,8 +4963,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // TEST PURCHASE ENDPOINT - Simulate real purchase flow up to Nayax payment
-  app.post('/api/test-purchase', async (req, res) => {
+  // TEST PURCHASE ENDPOINT - Simulate real purchase flow up to Nayax payment (admin-only)
+  app.post('/api/test-purchase', requireAdmin, async (req, res) => {
     try {
       const { packageId, customerEmail, customerName, phone, isGiftCard } = req.body;
       
@@ -5108,8 +5112,19 @@ self.addEventListener('notificationclick', (event) => {
     eligibleServices: z.array(z.enum(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax', 'all'])).min(1).default(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax'])
   });
 
-  app.post('/api/multi-service-gift', async (req, res) => {
+  app.post('/api/multi-service-gift', requireAuth, paymentLimiter, async (req, res) => {
     try {
+      // SECURITY: Nayax payment must be confirmed before creating any gift card.
+      // Until NAYAX_API_KEY is configured in env, gate this endpoint the same way
+      // /api/gift-cards/purchase does — return 503 so the client surfaces a clear message.
+      const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
+      if (!nayaxEnabled) {
+        return res.status(503).json({
+          success: false,
+          error: 'Payment gateway temporarily unavailable. Please contact support.',
+          developerNote: 'NAYAX_API_KEY and NAYAX_MERCHANT_ID required in environment variables',
+        });
+      }
       const parseResult = multiServiceGiftSchema.safeParse({
         ...req.body,
         value: Number(req.body.value)
@@ -5401,8 +5416,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
   
-  // Create new e-voucher (purchase)
-  app.post('/api/e-vouchers', async (req, res) => {
+  // Create new e-voucher (purchase — requires authentication)
+  app.post('/api/e-vouchers', requireAuth, async (req, res) => {
     try {
       const { packageId, recipientEmail, recipientPhone, senderName, personalMessage, digitalCardTheme } = req.body;
       
@@ -5426,9 +5441,19 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Redeem e-voucher via QR code (Nayax terminal endpoint)
+  // Redeem e-voucher via QR code (K9000 terminal endpoint — requires station credential)
   app.post('/api/e-vouchers/redeem', async (req, res) => {
     try {
+      // SECURITY: Only registered K9000 wash stations may call this endpoint.
+      // Stations must present the shared x-admin-secret header (same mechanism used
+      // by other machine-to-machine endpoints like /api/system/provision-owner).
+      if (!timingSafeAdminSecretMatch(req)) {
+        return res.status(401).json({
+          success: false,
+          message: 'Station credential required',
+        });
+      }
+
       const { qrCodeData, washStationId, userId, washesRequested } = req.body;
       
       if (!qrCodeData || !washStationId) {
@@ -10285,7 +10310,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, platformCopyEmailRoutes);
   app.use('/api', sendInvestorEventEmailRoutes);
 
-  app.post('/api/send-membership-confirmation', async (req, res) => {
+  app.post('/api/send-membership-confirmation', requireAuth, async (req, res) => {
     try {
       const { email, firstName, tier, points, membershipId, language } = req.body;
       if (!email || !firstName) {
@@ -10303,7 +10328,7 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  app.post('/api/send-egift-activation', async (req, res) => {
+  app.post('/api/send-egift-activation', requireAuth, async (req, res) => {
     try {
       const { recipientEmail, recipientName, senderName, giftValue, currency, giftCode, serialNumber, personalMessage, expiresAt, language } = req.body;
       if (!recipientEmail || !recipientName || !senderName) {
@@ -11171,8 +11196,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Redeem birthday voucher (called during checkout)
-  app.post('/api/birthday-voucher/redeem', async (req, res) => {
+  // Redeem birthday voucher (called during checkout — requires auth, owner-only)
+  app.post('/api/birthday-voucher/redeem', requireAuth, async (req: any, res) => {
     try {
       const { code, orderId } = req.body;
       
@@ -11181,6 +11206,17 @@ self.addEventListener('notificationclick', (event) => {
           success: false, 
           error: 'Code and orderId are required' 
         });
+      }
+
+      // Ownership check: voucher uid must match the authenticated caller
+      const callerUid = req.user?.uid || req.firebaseUser?.uid;
+      const { getBirthdayVoucher: fetchVoucher } = await import('./birthdayVoucher');
+      const voucher = await fetchVoucher(code);
+      if (!voucher) {
+        return res.status(404).json({ success: false, error: 'Voucher not found' });
+      }
+      if (voucher.uid !== callerUid) {
+        return res.status(403).json({ success: false, error: 'This voucher does not belong to your account' });
       }
       
       const result = await redeemBirthdayVoucher(code, orderId);
@@ -12364,8 +12400,8 @@ self.addEventListener('notificationclick', (event) => {
     res.json({ ok: true, fired: ['matching.started', 'provider.accepted', 'provider.arriving'] });
   });
 
-  // TEST ENDPOINT: Send tax report and trigger backups (one-time test)
-  app.post('/api/test/send-tax-report-and-backup', async (req, res) => {
+  // TEST ENDPOINT: Send tax report and trigger backups (admin-only)
+  app.post('/api/test/send-tax-report-and-backup', requireAdmin, async (req, res) => {
     try {
       logger.info('[TEST] Tax report and backup test initiated');
       
