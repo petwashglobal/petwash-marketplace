@@ -742,6 +742,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}:${{ github.sha }}
+          secrets_update_strategy: overwrite
           flags: |
             --cpu=2
             --memory=2Gi
