@@ -1065,6 +1065,51 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         .where(eq(sitterBookings.bookingId, bookingId));
       
       await syncChatToBookingStatus(bookingId, 'cancelled', 'sitter_suite');
+
+      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
+      // Even though no payment was captured (payment happens at accept, not request),
+      // we write a CANCELLATION entry for a complete audit trail.
+      try {
+        const [octopusRecord] = await db.select().from(octopusBookings)
+          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
+        if (octopusRecord) {
+          await db.update(octopusBookings)
+            .set({ status: 'CANCELLED', updatedAt: new Date() })
+            .where(eq(octopusBookings.id, octopusRecord.id));
+          await db.insert(octopusLedger).values({
+            id: `OL-${nanoid(8)}`,
+            type: 'CANCELLATION',
+            bookingId: octopusRecord.id,
+            amount: 0, // No funds were captured yet at decline time
+            platform: 'PETSITTER',
+            metadata: {
+              reason: declineReason || 'Provider declined',
+              cancelledBy: 'provider',
+              cancelledAt: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (octopusErr) {
+        logger.warn('[Sitter Suite] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
+      }
+
+      // ── Void any receipts already issued for this booking ─────────────────
+      // In this flow, payment is NOT captured until accept, so customer_payment
+      // receipts should not exist at decline time. But defensively void any
+      // stale records (e.g. from a retry or race condition).
+      try {
+        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
+        for (const r of existingReceipts) {
+          if (!r.isVoided) {
+            await IsraeliDigitalReceiptService.voidReceipt({
+              receiptId: r.id,
+              voidReason: `Booking declined by provider: ${declineReason || 'no reason given'}`,
+            });
+          }
+        }
+      } catch (voidErr) {
+        logger.warn('[Sitter Suite] Receipt void on decline failed (non-blocking)', voidErr);
+      }
       
       logger.info('[Sitter Suite] ❌ Provider DECLINED booking', { bookingId, reason: declineReason });
       
