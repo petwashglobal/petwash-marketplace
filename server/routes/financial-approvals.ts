@@ -24,7 +24,7 @@ function getClientIpFA(req: Request): string {
   return (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || '';
 }
 
-// P0-SEC: getActingRole now throws a 401 error object when neither a valid
+// P0-SEC: getActingRole now throws an Error with { status: 401 } when neither a valid
 // x-admin-secret nor a decoded Firebase token is present on the request.
 // BEFORE: returned 'agent' silently — an unauthenticated caller could reach the
 //         /approve and /payout-release-gate handlers with agent-level authority,
@@ -47,7 +47,7 @@ function getActingRole(req: Request): string {
       const clientIp = getClientIpFA(req);
       if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) {
         // IP not in allowlist — fall through to token auth rather than silently downgrading
-        const err: any = new Error('x-admin-secret IP not in allowlist — use Bearer token');
+        const err: any = new Error('Authentication required');
         err.status = 401;
         throw err;
       }
