@@ -3,7 +3,7 @@
  * Routes under /api/finance
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import {
   computeStationEconomics,
   aggregateNetworkEconomics,
@@ -13,6 +13,34 @@ import {
 } from '../lib/unit-economics';
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// P0-SEC: Per-router role guard (defense-in-depth).
+// Outer mount in routes.ts now requires validateFirebaseToken, so req.firebaseUser
+// is guaranteed to be set here. This guard additionally enforces that only
+// admin, executive, or franchise_owner roles can see financial P&L data.
+// Before: GET /profitability/stations (and all other routes) were publicly readable.
+// After:  Requires authenticated Firebase token + privileged role.
+// ---------------------------------------------------------------------------
+const FINANCE_ALLOWED_ROLES = new Set(['admin', 'executive', 'franchise_owner']);
+
+function requireFinanceRole(req: Request, res: Response, next: NextFunction) {
+  const fbUser = (req as any).firebaseUser;
+  if (!fbUser?.uid) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const role: string = fbUser?.claims?.role ?? fbUser?.role ?? '';
+  if (!FINANCE_ALLOWED_ROLES.has(role)) {
+    return res.status(403).json({
+      error: 'Insufficient role — requires admin, executive, or franchise_owner',
+      userRole: role,
+    });
+  }
+  next();
+}
+
+// Apply to all routes in this module
+router.use(requireFinanceRole);
 
 // Shared computation (all endpoints use the same station economics base)
 // Cached per request cycle — computed once, used by multiple endpoints
