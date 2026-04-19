@@ -9625,12 +9625,18 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/executive', apiLimiter, executiveRoutes.default);
 
   // Phase 12.16 — Financial Governance & Approval Controls
+  // P0-SEC: Added validateFirebaseToken + adminLimiter (was: apiLimiter only — fully unauthenticated).
+  // Before: any caller could POST /matrix to insert approval rules or POST /approve to execute financial actions.
+  // After:  requires valid Firebase ID token; actingRole resolves from verified claims, not anonymous fallback.
   const financialApprovalsRoutes = await import('./routes/financial-approvals');
-  app.use('/api/financial-approvals', apiLimiter, financialApprovalsRoutes.default);
+  app.use('/api/financial-approvals', validateFirebaseToken, adminLimiter, financialApprovalsRoutes.default);
 
   // Phase 12.17 — Cash Reconciliation & Treasury Discipline
+  // P0-SEC: Added validateFirebaseToken + adminLimiter (was: apiLimiter only — fully unauthenticated).
+  // Before: any caller could POST /batches, /batches/:id/mark-paid, /import-bank-transactions etc.
+  // After:  requires valid Firebase ID token; inner requireTreasuryAdmin guard also enforces admin/executive/franchise_owner.
   const treasuryRoutes = await import('./routes/treasury');
-  app.use('/api/treasury', apiLimiter, treasuryRoutes.default);
+  app.use('/api/treasury', validateFirebaseToken, adminLimiter, treasuryRoutes.default);
   treasuryRoutes.startReconciliationScheduler();
 
   // Billing Engine — payment capture / escrow release / refund / dispute
@@ -9638,8 +9644,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/billing', adminLimiter, billingRoutes.default);
 
   // Phase 12.19 — Profitability, Unit Economics & Capital Allocation
+  // P0-SEC: Added validateFirebaseToken (was: apiLimiter only — P&L / unit economics readable by anyone).
+  // Before: GET /profitability/stations, /profitability/network, /capital-signals, /friction-analytics, /summary all public.
+  // After:  requires valid Firebase ID token; inner requireFinanceRole guard also enforces admin/executive/franchise_owner.
   const financeRoutes = await import('./routes/finance');
-  app.use('/api/finance', apiLimiter, financeRoutes.default);
+  app.use('/api/finance', validateFirebaseToken, apiLimiter, financeRoutes.default);
 
   // Phase 12.20 — Expansion Decision & Board Pack
   const expansionRoutes = await import('./routes/expansion');
@@ -10186,12 +10195,11 @@ self.addEventListener('notificationclick', (event) => {
   // Compliance Control Tower - Authority documents, provider licenses, dispute resolution
   app.use('/api/compliance', adminLimiter, complianceRoutes);
   
-  // 🇮🇱 Israeli Contractor Compliance - Tax verification, commission calculation, independence scoring (prevents employee misclassification)
-  // NOTE: Intentionally mounted at same /api/israeli-compliance prefix as israeliCompliance2025Routes above (line 9219).
+  // 🇮🇱 Israeli Contractor Compliance — Tax verification, commission calculation, independence scoring
+  // NOTE: Intentionally mounted at same /api/israeli-compliance prefix as israeliCompliance2025Routes above.
   // Express falls through when paths don't match the first module. Both modules cover non-overlapping sub-paths.
-  // ⚠️ KNOWN RISK: Routes in israeliContractorComplianceRoutes (submit-tax-registration, calculate-independence,
-  // run-monthly-audit) have no token-level auth guard. They rely on providerId in request body for scoping.
-  // TODO: Add internal Bearer token verification to the sensitive write routes in israeli-contractor-compliance.ts
+  // Auth: per-route Firebase token verification is enforced inside israeliContractorComplianceRoutes
+  // (verifyToken / verifyProviderOwnership / verifyAdmin on every handler — previously flagged TODO now resolved).
   app.use('/api/israeli-compliance', apiLimiter, israeliContractorComplianceRoutes);
   
   // Performance Monitoring - Database, API, and system metrics

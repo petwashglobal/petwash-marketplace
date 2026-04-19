@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { reconcileBatch, runReconciliationSweep } from '../lib/reconciliation';
@@ -13,6 +13,27 @@ import {
 } from '../lib/treasury-forecast';
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// P0-SEC: Per-router authentication + role guard (defense-in-depth)
+// The outer mount in routes.ts already applies validateFirebaseToken + adminLimiter.
+// This guard provides a second layer: if the outer chain is ever misconfigured, writes
+// still require a verified Firebase user with admin, executive, or franchise_owner role.
+// ---------------------------------------------------------------------------
+const TREASURY_ALLOWED_ROLES = new Set(['admin', 'executive', 'franchise_owner']);
+
+function requireTreasuryAdmin(req: Request, res: Response, next: NextFunction) {
+  const fbUser = (req as any).firebaseUser;
+  if (!fbUser?.uid) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const role: string = fbUser?.claims?.role ?? fbUser?.role ?? '';
+  if (!TREASURY_ALLOWED_ROLES.has(role)) {
+    return res.status(403).json({ error: 'Insufficient role — requires admin, executive, or franchise_owner', userRole: role });
+  }
+  next();
+}
+
 
 // ---------------------------------------------------------------------------
 // T171 — Payout batch management
@@ -65,7 +86,7 @@ router.get('/batches', async (req: Request, res: Response) => {
 });
 
 // POST /api/treasury/batches  — create a new payout batch
-router.post('/batches', async (req: Request, res: Response) => {
+router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const { owner_scope = 'company', owner_id = null, settlement_ids = [], notes = null } = req.body;
 
@@ -119,7 +140,7 @@ router.post('/batches', async (req: Request, res: Response) => {
 });
 
 // POST /api/treasury/batches/:id/submit
-router.post('/batches/:id/submit', async (req: Request, res: Response) => {
+router.post('/batches/:id/submit', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     const result = await db.execute(sql`
@@ -140,7 +161,7 @@ router.post('/batches/:id/submit', async (req: Request, res: Response) => {
 });
 
 // POST /api/treasury/batches/:id/mark-paid
-router.post('/batches/:id/mark-paid', async (req: Request, res: Response) => {
+router.post('/batches/:id/mark-paid', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     const result = await db.execute(sql`
@@ -167,7 +188,7 @@ router.post('/batches/:id/mark-paid', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/treasury/import-bank-transactions
-router.post('/import-bank-transactions', async (req: Request, res: Response) => {
+router.post('/import-bank-transactions', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const { transactions } = req.body as {
       transactions: Array<{
@@ -273,7 +294,7 @@ router.get('/bank-transactions', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/treasury/reconcile/:batchId
-router.post('/reconcile/:batchId', async (req: Request, res: Response) => {
+router.post('/reconcile/:batchId', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const batchId = parseInt(req.params.batchId, 10);
     const result = await reconcileBatch(batchId);
@@ -284,7 +305,7 @@ router.post('/reconcile/:batchId', async (req: Request, res: Response) => {
 });
 
 // POST /api/treasury/reconcile-sweep  — manual trigger for sweep
-router.post('/reconcile-sweep', async (req: Request, res: Response) => {
+router.post('/reconcile-sweep', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const result = await runReconciliationSweep();
     return res.json(result);
@@ -332,7 +353,7 @@ router.get('/failures', async (req: Request, res: Response) => {
 });
 
 // POST /api/treasury/failures/:id/retry
-router.post('/failures/:id/retry', async (req: Request, res: Response) => {
+router.post('/failures/:id/retry', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     const failure = await db.execute(sql`
@@ -362,7 +383,7 @@ router.post('/failures/:id/retry', async (req: Request, res: Response) => {
 });
 
 // POST /api/treasury/failures/:id/resolve
-router.post('/failures/:id/resolve', async (req: Request, res: Response) => {
+router.post('/failures/:id/resolve', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     await db.execute(sql`UPDATE payout_failures SET resolved = true WHERE id = ${id}`);
