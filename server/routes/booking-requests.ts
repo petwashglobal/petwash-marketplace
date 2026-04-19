@@ -417,7 +417,7 @@ router.post('/', async (req, res) => {
 
     // Intelligence — advance customer journey state to ready_to_book
     if (booking.ownerId) {
-      advanceJourneyState(booking.ownerId, 'ready_to_book').catch(() => {});
+      advanceJourneyState(booking.ownerId, 'ready_to_book').catch(err => logger.warn('[BookingRequests] advanceJourneyState ready_to_book failed', { ownerId: booking.ownerId, err: err?.message }));
     }
 
     // ── Loyalty credit redemption — synchronous debit after booking row exists ──
@@ -967,8 +967,8 @@ router.post('/:requestId/respond', async (req, res) => {
 
       // Advance owner journey state to 'booked' on acceptance
       if (booking.ownerId) {
-        advanceJourneyState(booking.ownerId, 'booked').catch(() => {});
-        recomputeCustomerProfile(booking.ownerId).catch(() => {});
+        advanceJourneyState(booking.ownerId, 'booked').catch(err => logger.warn('[BookingRequests] advanceJourneyState booked failed', { ownerId: booking.ownerId, err: err?.message }));
+        recomputeCustomerProfile(booking.ownerId).catch(err => logger.warn('[BookingRequests] recomputeCustomerProfile failed', { ownerId: booking.ownerId, err: err?.message }));
       }
     }
     

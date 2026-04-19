@@ -1431,10 +1431,10 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       actorUserId: adminUid || 'admin',
       actorRole: 'admin',
       payload: { applicationId, providerId, internalNotes: internalNotes || null },
-    }).catch(() => {});
-    completeQueueItem((application as any).id).catch(() => {});
-    logSystemMessage({ applicationId: (application as any).id, body: `Application approved by admin. Provider ID: ${providerId}`, providerVisible: false }).catch(() => {});
-    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_approved', severity: 'info', payload: { adminUid, providerId } }).catch(() => {});
+    }).catch(err => logger.warn('[ProviderOnboarding] audit log failed on admin_approved', { applicationId, err: err?.message }));
+    completeQueueItem((application as any).id).catch(err => logger.warn('[ProviderOnboarding] completeQueueItem failed on admin_approved', { applicationId, err: err?.message }));
+    logSystemMessage({ applicationId: (application as any).id, body: `Application approved by admin. Provider ID: ${providerId}`, providerVisible: false }).catch(err => logger.warn('[ProviderOnboarding] logSystemMessage failed on admin_approved', { applicationId, err: err?.message }));
+    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_approved', severity: 'info', payload: { adminUid, providerId } }).catch(err => logger.warn('[ProviderOnboarding] emitProviderEvent failed on admin_approved', { applicationId, err: err?.message }));
 
     if (application.userId) {
       try {
@@ -1544,10 +1544,10 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
       actorUserId: adminUid || 'admin',
       actorRole: 'admin',
       payload: { applicationId, rejectionReason, internalNotes: internalNotes || null },
-    }).catch(() => {});
-    completeQueueItem((application as any).id).catch(() => {});
-    logSystemMessage({ applicationId: (application as any).id, body: `Application rejected. Reason: ${rejectionReason}`, providerVisible: false }).catch(() => {});
-    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_rejected', severity: 'warning', payload: { adminUid, rejectionReason } }).catch(() => {});
+    }).catch(err => logger.warn('[ProviderOnboarding] audit log failed on admin_rejected', { applicationId, err: err?.message }));
+    completeQueueItem((application as any).id).catch(err => logger.warn('[ProviderOnboarding] completeQueueItem failed on admin_rejected', { applicationId, err: err?.message }));
+    logSystemMessage({ applicationId: (application as any).id, body: `Application rejected. Reason: ${rejectionReason}`, providerVisible: false }).catch(err => logger.warn('[ProviderOnboarding] logSystemMessage failed on admin_rejected', { applicationId, err: err?.message }));
+    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_rejected', severity: 'warning', payload: { adminUid, rejectionReason } }).catch(err => logger.warn('[ProviderOnboarding] emitProviderEvent failed on admin_rejected', { applicationId, err: err?.message }));
 
     // Email applicant
     if (isSendGridConfigured() && application.email) {

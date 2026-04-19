@@ -107,7 +107,7 @@ router.post('/walkers/register', requireAuth, async (req, res) => {
         priority: 'normal',
       });
     } catch (queueErr) {
-      console.warn('[Walk My Pet] Could not add to approval queue (non-fatal):', queueErr);
+      logger.warn('[Walk My Pet] Could not add to approval queue (non-fatal):', { err: (queueErr as any)?.message });
     }
     
     res.status(201).json({ 
