@@ -416,10 +416,10 @@ CREATE TABLE IF NOT EXISTS "saved_providers" (
   "user_id"     varchar(128) NOT NULL,
   "provider_id" varchar(128) NOT NULL,
   "platform"    varchar(32),
-  "created_at"  timestamp NOT NULL DEFAULT now()
+  "created_at"  timestamp NOT NULL DEFAULT now(),
+  CONSTRAINT "uq_saved_provider_pair" UNIQUE ("user_id", "provider_id")
 );
 CREATE INDEX IF NOT EXISTS "idx_saved_providers_user" ON "saved_providers" ("user_id");
-CREATE INDEX IF NOT EXISTS "idx_saved_providers_pair" ON "saved_providers" ("user_id", "provider_id");
 
 -- ── 16. provider_assets ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "provider_assets" (

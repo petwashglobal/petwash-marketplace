@@ -10361,7 +10361,7 @@ self.addEventListener('notificationclick', (event) => {
   
   
   // ⁦Pet Wash Academy™⁩ - Professional trainer marketplace (2025 unified ecosystem)
-  app.use('/api/academy', apiLimiter, academyRoutes);
+  app.use('/api/academy', optionalFirebaseToken, apiLimiter, academyRoutes);
   
   // 🐙 Unified Platform Routes - Cross-platform services
   app.use('/api/unified', apiLimiter, unifiedPlatformRoutes);

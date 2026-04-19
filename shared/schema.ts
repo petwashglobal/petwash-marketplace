@@ -12336,7 +12336,7 @@ export const savedProviders = pgTable("saved_providers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_saved_providers_user").on(table.userId),
-  index("idx_saved_providers_pair").on(table.userId, table.providerId),
+  uniqueIndex("uq_saved_provider_pair").on(table.userId, table.providerId),
 ]);
 export type SavedProvider = typeof savedProviders.$inferSelect;
 export const insertSavedProviderSchema = createInsertSchema(savedProviders).omit({ id: true, createdAt: true });
