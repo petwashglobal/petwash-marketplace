@@ -266,9 +266,7 @@ router.get('/israel', async (req, res) => {
       const wrlRows = await db
         .select()
         .from(withholdingRemittanceLedger)
-        .where(
-          sql`commission_id = ANY(${sql.raw(`ARRAY[${commissionIds.map(id => `'${id}'`).join(',')}]`)})`,
-        );
+        .where(inArray(withholdingRemittanceLedger.commissionId, commissionIds));
       for (const row of wrlRows) {
         if (!row.commissionId) continue;
         const arr = withholdingByCommission.get(row.commissionId) ?? [];
