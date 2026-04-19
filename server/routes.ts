@@ -10388,8 +10388,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
-  app.use('/api/booking-chat', bookingChatRouter);
-  app.use('/api/onboarding', onboardingRouter);
+  app.use('/api/booking-chat', apiLimiter, bookingChatRouter);
+  app.use('/api/onboarding', apiLimiter, onboardingRouter);
   // /api/provider-console serves as the provider OS (operating console) — auth-gated since Pass 6.
   // Legacy reference to "provider-os" in task history maps to this mount point.
   app.use('/api/provider-console', validateFirebaseToken, providerConsoleRouter);
@@ -10486,7 +10486,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/providers', apiLimiter, providersRoutes);
 
   // Provider Trust Metrics, Browse (filter-backed), Saved Providers
-  app.use('/api', apiLimiter, providerTrustRoutes);
+  app.use('/api', optionalFirebaseToken, apiLimiter, providerTrustRoutes);
 
   // Step 6: Loyalty Credits (ledger, balance, streaks, history)
   app.use('/api/loyalty-credits', apiLimiter, loyaltyCreditsRoutes);
@@ -10569,8 +10569,8 @@ self.addEventListener('notificationclick', (event) => {
   const providerAvailabilityRoutes = (await import('./routes/provider-availability')).default;
   app.use('/api/provider-availability', validateFirebaseToken, apiLimiter, providerAvailabilityRoutes);
 
-  app.use('/api/onboarding-verification', onboardingVerificationRoutes);
-  app.use('/api/registration', completeRegistrationRoutes);
+  app.use('/api/onboarding-verification', apiLimiter, onboardingVerificationRoutes);
+  app.use('/api/registration', apiLimiter, completeRegistrationRoutes);
   // Twilio SMS delivery status callbacks — signature-validated
   // Configure in Twilio console → Messaging → Services → Status Callback URL:
   //   https://petwash.co.il/api/webhooks/twilio/sms-status

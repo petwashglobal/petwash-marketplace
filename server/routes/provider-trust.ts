@@ -51,7 +51,7 @@ const router = Router();
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 function getUid(req: Request): string | null {
-  return (req as any).userId || req.user?.uid || null;
+  return (req as any).firebaseUser?.uid || (req as any).userId || req.user?.uid || null;
 }
 
 // ─── GET /api/providers/stats/:userId ────────────────────────────────────────
