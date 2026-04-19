@@ -1017,22 +1017,6 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         logger.warn('[Sitter Suite] Receipt generation after accept failed (non-blocking)', receiptErr);
       }
 
-      // Record in P&L ledger (VAT accounting - non-blocking)
-      try {
-        await VATCalculatorService.recordTransaction(
-          'sitter-suite',
-          paymentResult.nayaxTransactionId || booking.bookingId,
-          booking.basePriceCents / 100,
-          booking.bookingId,
-          {
-            sitterId: booking.sitterId,
-            totalDays: booking.totalDays,
-          }
-        );
-      } catch (vatErr) {
-        logger.warn('[Sitter Suite] VAT ledger recording after accept failed (non-blocking)', vatErr);
-      }
-
       // Backup financial records to Google Cloud Storage (non-blocking)
       (async () => {
         try {
@@ -1257,16 +1241,17 @@ router.patch('/bookings/:id/complete', async (req, res) => {
     
     await syncChatToBookingStatus(booking.bookingId, 'completed', 'sitter_suite');
     
-    // ── VAT: record marketplace P&L obligation at service completion ─────────
-    // VAT was tentatively recorded at provider acceptance; this definitive entry
-    // uses the actual gross collected (totalChargeCents) so the Firestore P&L ledger
-    // reflects the correct final transaction amount when service is confirmed complete.
+    // ── VAT: single authoritative P&L entry at service completion ───────────
+    // Israeli law מועד החיוב: the taxable supply is complete when the service is
+    // delivered. Acceptance is an operational event only — no P&L entry there.
+    // We use recordTransactionFromGross() with the actual customer-paid gross
+    // (totalChargeCents) so the VAT obligation is calculated correctly.
     // Non-blocking — failure must not abort the completion response.
     try {
-      await VATCalculatorService.recordTransaction(
+      await VATCalculatorService.recordTransactionFromGross(
         'sitter-suite',
         booking.bookingId,
-        booking.sitterPayoutCents / 100,
+        booking.totalChargeCents / 100,
         booking.bookingId,
         { completedAt: new Date().toISOString(), bookingDbId: booking.id }
       );

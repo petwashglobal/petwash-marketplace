@@ -183,6 +183,8 @@ class VATCalculatorService {
 
   // ── Record marketplace provider transaction ────────────────────────────────
   // providerShareILS: the amount the provider is receiving (their net portion before their own VAT)
+  // NOTE: This back-calculates gross from the provider share. Prefer recordTransactionFromGross()
+  // when the actual customer-paid gross is known (service completion path).
   async recordTransaction(
     platform: PLedgerEntry["platform"],
     transactionId: string,
@@ -275,6 +277,111 @@ class VATCalculatorService {
 
     logger.info(
       `[VATCalculator] Marketplace TX recorded: ${platform} — ` +
+      `gross ₪${calc.grossCollectedILS.toFixed(2)}, ` +
+      `platform fee ₪${calc.platformFeeGross.toFixed(2)}, ` +
+      `VAT obligation ₪${calc.vatOnPlatformFee.toFixed(2)}, ` +
+      `provider net ₪${calc.providerNet.toFixed(2)}`
+    );
+
+    return entry;
+  }
+
+  // ── Record marketplace transaction using ACTUAL GROSS (authoritative completion path) ──
+  // grossCollectedILS: the exact amount the customer paid (Nayax charge), including VAT.
+  // Use this at service completion / escrow release when the real gross is known.
+  // This avoids the back-calculation error in recordTransaction() which only approximates
+  // the gross from the provider's share.
+  async recordTransactionFromGross(
+    platform: PLedgerEntry["platform"],
+    transactionId: string,
+    grossCollectedILS: number,
+    bookingId?: string,
+    metadata?: any
+  ): Promise<PLedgerEntry> {
+    const commissionRate = this.getCommissionRate(platform);
+    const calc = this.calculateMarketplaceVAT(grossCollectedILS, commissionRate);
+
+    const entryId = `PL-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
+    const entry: PLedgerEntry = {
+      id: entryId,
+      platform,
+      transactionId,
+      bookingId,
+      date: new Date(),
+      grossCollectedILS: calc.grossCollectedILS,
+      platformFeeGross: calc.platformFeeGross,
+      vatOnPlatformFee: calc.vatOnPlatformFee,
+      platformNetRevenue: calc.platformNetRevenue,
+      providerGross: calc.providerGross,
+      providerNet: calc.providerNet,
+      commissionRate: calc.commissionRate,
+      vatRate: ISRAELI_VAT_RATE,
+      currency: "ILS",
+      status: "completed",
+      requiresProviderTaxInvoice: true,
+      metadata,
+    };
+
+    try {
+      const ledgerRef = this.firestore.collection("profit_loss_ledger").doc(entryId);
+      await ledgerRef.set(entry);
+    } catch (firestoreError: any) {
+      logger.warn('[VATCalculator] Firestore write failed (non-critical)', {
+        platform,
+        transactionId,
+        error: firestoreError.message,
+      });
+    }
+
+    try {
+      const receiptNumber = `PL-${entryId}`;
+      const issuedAt = new Date();
+      const auditHash = createHash('sha256').update(JSON.stringify({
+        receiptNumber,
+        grossCollectedILS: calc.grossCollectedILS,
+        vatOnPlatformFee: calc.vatOnPlatformFee,
+        platformFeeGross: calc.platformFeeGross,
+        issuedAt: issuedAt.toISOString(),
+        companyTaxId: '516788400',
+      })).digest('hex');
+
+      await db.insert(digitalReceipts).values({
+        receiptNumber,
+        receiptType: 'pl_ledger_entry',
+        platform,
+        bookingId: bookingId || transactionId,
+        customerEmail: `platform-${platform}@internal`,
+        customerName: `PetWash ${platform} Platform`,
+        serviceDescription: `P&L ledger entry - ${platform} - Transaction ${transactionId}`,
+        serviceDescriptionHe: `רשומת רווח והפסד - ${platform} - עסקה ${transactionId}`,
+        subtotalAmount: calc.platformNetRevenue.toFixed(2),
+        vatRate: (ISRAELI_VAT_RATE * 100).toFixed(2),
+        vatAmount: calc.vatOnPlatformFee.toFixed(2),
+        platformFeeAmount: calc.platformFeeGross.toFixed(2),
+        totalAmount: calc.grossCollectedILS.toFixed(2),
+        currency: 'ILS',
+        providerPayoutAmount: calc.providerNet.toFixed(2),
+        brokerCommissionAmount: calc.platformFeeGross.toFixed(2),
+        paymentMethod: 'internal_ledger',
+        paymentStatus: 'completed',
+        companyName: 'Pet Wash Ltd',
+        companyTaxId: '516788400',
+        companyAddress: 'ישראל',
+        auditHash,
+        accountingRecorded: true,
+        accountingEntryId: entryId,
+        issuedAt,
+      });
+    } catch (pgError: any) {
+      logger.error('[VATCalculator] PostgreSQL dual-save FAILED — legal compliance gap', {
+        platform,
+        transactionId,
+        error: pgError.message,
+      });
+    }
+
+    logger.info(
+      `[VATCalculator] Marketplace TX recorded (from gross): ${platform} — ` +
       `gross ₪${calc.grossCollectedILS.toFixed(2)}, ` +
       `platform fee ₪${calc.platformFeeGross.toFixed(2)}, ` +
       `VAT obligation ₪${calc.vatOnPlatformFee.toFixed(2)}, ` +

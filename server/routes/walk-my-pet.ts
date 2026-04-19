@@ -690,22 +690,6 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         logger.warn('[Walk My Pet] Receipt generation after accept failed (non-blocking)', receiptErr);
       }
 
-      // Record in P&L ledger for VAT accounting (non-blocking)
-      try {
-        await VATCalculatorService.recordTransaction(
-          'walk-my-pet',
-          booking.bookingId,
-          parseFloat(booking.walkerRate || '0'),
-          booking.bookingId,
-          {
-            walkerId: booking.walkerId,
-            durationMinutes: booking.durationMinutes,
-          }
-        );
-      } catch (vatErr) {
-        logger.warn('[Walk My Pet] VAT ledger recording after accept failed (non-blocking)', vatErr);
-      }
-
       // Add calendar event (non-blocking)
       calendarIntegrationService.createBookingEvent({
         platform: 'walk-my-pet',
@@ -1268,15 +1252,17 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 
     await syncChatToBookingStatus(bookingId, 'completed', 'walk_my_pet');
 
-    // ── VAT: record marketplace P&L obligation at service completion ─────────
-    // VAT was tentatively recorded at provider acceptance; this definitive entry
-    // captures the actual walk amount at the point the service is confirmed done.
+    // ── VAT: single authoritative P&L entry at service completion ───────────
+    // Israeli law מועד החיוב: taxable supply is complete on service delivery.
+    // Acceptance is an operational event only — no P&L entry is made there.
+    // Use recordTransactionFromGross() with totalCost (actual customer payment)
+    // so VAT obligation is calculated on the correct gross amount.
     // Non-blocking — failure must not abort the completion response.
     try {
-      await VATCalculatorService.recordTransaction(
+      await VATCalculatorService.recordTransactionFromGross(
         'walk-my-pet',
         bookingId,
-        parseFloat(booking.walkerPayout || '0'),
+        parseFloat(booking.totalCost || '0'),
         bookingId,
         { completedAt: new Date().toISOString() }
       );
