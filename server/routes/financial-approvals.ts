@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { timingSafeEqual } from 'crypto';
@@ -24,6 +24,12 @@ function getClientIpFA(req: Request): string {
   return (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || '';
 }
 
+// P0-SEC: getActingRole now throws an Error with { status: 401 } when neither a valid
+// x-admin-secret nor a decoded Firebase token is present on the request.
+// BEFORE: returned 'agent' silently — an unauthenticated caller could reach the
+//         /approve and /payout-release-gate handlers with agent-level authority,
+//         and /matrix POST/PATCH/DELETE with no auth check at all.
+// AFTER:  calling code must catch { status: 401 } and return 401 to the client.
 function getActingRole(req: Request): string {
   // P1-FIX: Use timing-safe comparison to prevent timing attacks on admin secret.
   // BEFORE: === comparison leaks timing information about secret length/prefix.
@@ -39,24 +45,59 @@ function getActingRole(req: Request): string {
   if (adminSecretMatch) {
     if (ALLOWED_MACHINE_IPS_FA.length > 0) {
       const clientIp = getClientIpFA(req);
-      if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) return 'agent'; // fall through to token auth
+      if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) {
+        // IP not in allowlist — fall through to token auth rather than silently downgrading
+        const err: any = new Error('Authentication required');
+        err.status = 401;
+        throw err;
+      }
     }
     return 'admin';
   }
-  // Decoded Firebase token roles
-  const decoded = (req as any).decodedToken;
-  if (decoded?.executive) return 'executive';
-  if (decoded?.admin) return 'admin';
-  if (decoded?.franchise_owner) return 'franchise_owner';
-  if (decoded?.manager) return 'manager';
-  if (decoded?.role === 'executive') return 'executive';
-  if (decoded?.role === 'franchise_owner') return 'franchise_owner';
-  if (decoded?.role === 'manager') return 'manager';
+  // Decoded Firebase token roles (set by validateFirebaseToken outer middleware)
+  const decoded = (req as any).decodedToken ?? (req as any).firebaseUser;
+  // P0-SEC: If no token is present, reject immediately rather than silently assigning 'agent'.
+  if (!decoded) {
+    const err: any = new Error('Authentication required');
+    err.status = 401;
+    throw err;
+  }
+  if (decoded?.executive || decoded?.claims?.executive) return 'executive';
+  if (decoded?.admin || decoded?.claims?.admin) return 'admin';
+  if (decoded?.franchise_owner || decoded?.claims?.franchise_owner) return 'franchise_owner';
+  if (decoded?.manager || decoded?.claims?.manager) return 'manager';
+  if (decoded?.role === 'executive' || decoded?.claims?.role === 'executive') return 'executive';
+  if (decoded?.role === 'franchise_owner' || decoded?.claims?.role === 'franchise_owner') return 'franchise_owner';
+  if (decoded?.role === 'manager' || decoded?.claims?.role === 'manager') return 'manager';
+  // Authenticated but insufficient role — still known; let route handlers decide
   return 'agent';
 }
 
 function getActingUid(req: Request): string | null {
-  return (req as any).decodedToken?.uid ?? null;
+  const decoded = (req as any).decodedToken ?? (req as any).firebaseUser;
+  return decoded?.uid ?? null;
+}
+
+// P0-SEC: requireFinancialAdmin — per-route defense-in-depth guard.
+// Applied to all write mutations on the approval matrix and all approval execution routes.
+// The outer mount already requires validateFirebaseToken, but this guard also enforces
+// that the caller holds admin, executive, or franchise_owner — preventing a
+// customer-scoped token from triggering financial mutations.
+const FINANCIAL_ALLOWED_ROLES = new Set(['admin', 'executive', 'franchise_owner']);
+
+function requireFinancialAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const role = getActingRole(req); // throws 401 if no token/secret
+    if (!FINANCIAL_ALLOWED_ROLES.has(role)) {
+      return res.status(403).json({
+        error: 'Insufficient role — requires admin, executive, or franchise_owner',
+        userRole: role,
+      });
+    }
+    next();
+  } catch (err: any) {
+    return res.status(err.status ?? 401).json({ error: err.message ?? 'Authentication required' });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +117,7 @@ router.get('/matrix', async (req: Request, res: Response) => {
 });
 
 // POST /api/financial-approvals/matrix
-router.post('/matrix', async (req: Request, res: Response) => {
+router.post('/matrix', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const {
       case_type, action_type, owner_scope = 'global', owner_id = null,
@@ -104,7 +145,7 @@ router.post('/matrix', async (req: Request, res: Response) => {
 });
 
 // PATCH /api/financial-approvals/matrix/:id
-router.patch('/matrix/:id', async (req: Request, res: Response) => {
+router.patch('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     const {
@@ -132,7 +173,7 @@ router.patch('/matrix/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/financial-approvals/matrix/:id  (soft deactivate)
-router.delete('/matrix/:id', async (req: Request, res: Response) => {
+router.delete('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     await db.execute(sql`UPDATE financial_approval_matrix SET is_active = false WHERE id = ${id}`);
@@ -286,7 +327,7 @@ router.get('/queue', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/financial-approvals/approve
-router.post('/approve', async (req: Request, res: Response) => {
+router.post('/approve', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const {
       case_type, case_ref_id, action_type, amount_cents,
@@ -346,7 +387,7 @@ router.post('/approve', async (req: Request, res: Response) => {
 });
 
 // POST /api/financial-approvals/second-approve/:logId
-router.post('/second-approve/:logId', async (req: Request, res: Response) => {
+router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const logId = parseInt(req.params.logId, 10);
     const actingRole = getActingRole(req);
@@ -395,7 +436,7 @@ router.post('/second-approve/:logId', async (req: Request, res: Response) => {
 });
 
 // POST /api/financial-approvals/reject
-router.post('/reject', async (req: Request, res: Response) => {
+router.post('/reject', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const {
       case_type, case_ref_id, action_type, amount_cents,
@@ -440,7 +481,7 @@ router.post('/reject', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/financial-approvals/payout-release-gate
-router.post('/payout-release-gate', async (req: Request, res: Response) => {
+router.post('/payout-release-gate', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const { settlement_id, amount_cents, owner_scope = 'global', owner_id = null } = req.body;
     if (!settlement_id || amount_cents === undefined) {
@@ -524,7 +565,7 @@ router.post('/payout-release-gate', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/financial-approvals/reserve
-router.post('/reserve', async (req: Request, res: Response) => {
+router.post('/reserve', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const { settlement_id, reason } = req.body;
     if (!settlement_id) return res.status(400).json({ error: 'settlement_id required' });
@@ -543,7 +584,7 @@ router.post('/reserve', async (req: Request, res: Response) => {
 });
 
 // POST /api/financial-approvals/release-reserve
-router.post('/release-reserve', async (req: Request, res: Response) => {
+router.post('/release-reserve', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const { settlement_id } = req.body;
     if (!settlement_id) return res.status(400).json({ error: 'settlement_id required' });

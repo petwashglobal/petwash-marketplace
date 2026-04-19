@@ -573,9 +573,10 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
  * POST /api/academy/trainers/register - Trainer self-registration
  * Public endpoint - trainer applies to join the platform, starts as pending
  */
-router.post('/trainers/register', async (req, res) => {
+router.post('/trainers/register', requireAuth, async (req, res) => {
   try {
-    const userId = req.body.userId || (req as any).user?.uid;
+    // Always derive userId from the verified Firebase token — never trust req.body.
+    const userId = (req as any).user?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }

@@ -93,7 +93,9 @@ router.get('/services', (_req: Request, res: Response) => {
 router.post('/draft', requireAuth, async (req: Request, res: Response) => {
   try {
     const { serviceId, resourceId, resourceType, startTime, endTime, metadata } = req.body;
-    const userId = req.firebaseUser?.uid || req.user?.uid || req.body.userId;
+    // authMiddleware (JWT) sets req.authUserId; Firebase paths set req.firebaseUser/req.user.
+    // Never fall back to req.body.userId — that allows caller to impersonate any user.
+    const userId = req.authUserId || (req as any).firebaseUser?.uid || (req as any).user?.uid;
 
     // PetTrek is legally blocked — no booking creation permitted under any path
     if (serviceId === 'PET_TREK') {
@@ -585,7 +587,9 @@ router.post('/flow', requireAuth, async (req: Request, res: Response) => {
       paymentReference,
       metadata
     } = req.body;
-    const userId = req.firebaseUser?.uid || req.user?.uid || req.body.userId;
+    // authMiddleware (JWT) sets req.authUserId; Firebase paths set req.firebaseUser/req.user.
+    // Never fall back to req.body.userId — that allows caller to impersonate any user.
+    const userId = req.authUserId || (req as any).firebaseUser?.uid || (req as any).user?.uid;
 
     // PetTrek is legally blocked — no booking flow permitted under any path
     if (serviceId === 'PET_TREK') {

@@ -200,8 +200,15 @@ export default function WalkBookingFlow() {
       // Network connectivity check before committing booking
       await assertConnected('he');
 
-      const scheduledDate = selectedDate.toISOString().split('T')[0];
-      const scheduledStartTime = selectedDate.toTimeString().slice(0, 5);
+      // Use local-date extraction to avoid UTC/local timezone mismatch.
+      // toISOString() yields UTC date which can be one day off for Israeli users (UTC+2/+3).
+      const pad2 = (n: number) => String(n).padStart(2, '0');
+      const scheduledDate = `${selectedDate.getFullYear()}-${pad2(selectedDate.getMonth() + 1)}-${pad2(selectedDate.getDate())}`;
+      const scheduledStartTime = `${pad2(selectedDate.getHours())}:${pad2(selectedDate.getMinutes())}`;
+
+      // Resolve actual pet data from the user's pet list so the walker sees real pet info.
+      const selectedPets = pets.filter((p: any) => selectedPetIds.includes(p.id));
+      const primaryPet = selectedPets[0] as any;
 
       const payload = {
         walkerId: walker.walkerId || `WALKER-${walkerIdNumber}`,
@@ -211,10 +218,10 @@ export default function WalkBookingFlow() {
         pickupLatitude: pickupDetails?.lat ?? walker.latitude ?? 32.0853,
         pickupLongitude: pickupDetails?.lng ?? walker.longitude ?? 34.7818,
         pickupAddress: pickupAddress || walker.serviceArea || '',
-        petName: 'My Pet',
-        petBreed: 'Mixed',
-        petWeight: 15,
-        petSpecialNeeds: notes || '',
+        petName: primaryPet?.name ?? primaryPet?.petName ?? 'Pet',
+        petBreed: primaryPet?.breed ?? primaryPet?.petBreed ?? 'Mixed',
+        petWeight: primaryPet?.weight ?? primaryPet?.petWeight ?? 10,
+        petSpecialNeeds: primaryPet?.specialNeeds ?? primaryPet?.medicalNotes ?? notes ?? '',
         notes,
         petIds: selectedPetIds,
         pricing: {
