@@ -45,9 +45,10 @@ const router = Router();
 // =================== WALKER REGISTRATION & PROFILES ===================
 
 // Create walker profile (first step of registration)
-router.post('/walkers/register', async (req, res) => {
+router.post('/walkers/register', requireAuth, async (req, res) => {
   try {
-    const userId = req.body.userId || (req as any).user?.uid;
+    // Always derive userId from the verified Firebase token — never trust req.body.
+    const userId = (req as any).user?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -169,10 +170,10 @@ router.get('/walkers/:walkerId', async (req, res) => {
 });
 
 // Update walker profile
-router.patch('/walkers/:walkerId', async (req, res) => {
+router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
   try {
     const { walkerId } = req.params;
-    const userId = req.body.userId || (req as any).user?.uid;
+    const userId = (req as any).user?.uid;
 
     // Verify ownership
     const [walker] = await db
@@ -305,7 +306,8 @@ router.post('/walkers/search', async (req, res) => {
 // Create walk booking - USING LUXURY ENGINE
 router.post('/walks/book', requireAuth, async (req, res) => {
   try {
-    const ownerId = req.body.ownerId || (req as any).user?.uid;
+    // Always derive ownerId from the verified Firebase token — never trust req.body.
+    const ownerId = (req as any).user?.uid;
     if (!ownerId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -775,7 +777,8 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
 // EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model)
 router.post('/walks/emergency-request', requireAuth, async (req, res) => {
   try {
-    const ownerId = req.body.ownerId || (req as any).user?.uid;
+    // Always derive ownerId from the verified Firebase token — never trust req.body.
+    const ownerId = (req as any).user?.uid;
     if (!ownerId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -1314,10 +1317,10 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 // =================== REVIEWS ===================
 
 // Submit walker review
-router.post('/walkers/:walkerId/review', async (req, res) => {
+router.post('/walkers/:walkerId/review', requireAuth, async (req, res) => {
   try {
     const { walkerId } = req.params;
-    const ownerId = req.body.ownerId || (req as any).user?.uid;
+    const ownerId = (req as any).user?.uid;
     
     const reviewData: InsertWalkerReview = {
       reviewId: `REV-${crypto.randomUUID()}`,

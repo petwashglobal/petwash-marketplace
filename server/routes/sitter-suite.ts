@@ -654,7 +654,8 @@ router.post('/bookings', requireAuth, async (req, res) => {
     } = req.body;
     const resolvedAddressText = addressText ?? addressTextFallback ?? null;
     
-    const ownerId = (req as any).user?.uid || req.body.ownerId;
+    // Always derive ownerId from the verified Firebase token — never trust req.body.
+    const ownerId = (req as any).user?.uid;
     
     const [sitter] = await db
       .select()
