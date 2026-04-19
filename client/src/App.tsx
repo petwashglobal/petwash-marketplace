@@ -1,5 +1,5 @@
 import "./lib/i18next-init"; // Initialize react-i18next before any component imports
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -2888,6 +2888,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 }
 
 function App() {
+  const [location] = useLocation();
   // Default to Hebrew ('he') for Israeli market - PRIMARY language
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('petwash_lang') as Language;
@@ -2896,6 +2897,7 @@ function App() {
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const isPawFinderRoute = /^\/(paw-finder|find-pet|lost-pet)(\/|$)/.test(location);
   
   useKeyboardNavigation();
 
@@ -3032,11 +3034,13 @@ console.log("Build: 1769350182889");
           </svg>
           
           <Toaster />
-          <OnboardingChecklist />
-          <FloatingStack 
-            language={currentLanguage}
-            onAIClick={() => setIsAIChatOpen(true)}
-          />
+          {!isPawFinderRoute && <OnboardingChecklist />}
+          {!isPawFinderRoute && (
+            <FloatingStack 
+              language={currentLanguage}
+              onAIClick={() => setIsAIChatOpen(true)}
+            />
+          )}
           
           {/* Google Dialogflow CX AI Chat Widget - Gemini-powered Kenzo 🤖 */}
           <AiChatWidget 
@@ -3070,7 +3074,7 @@ console.log("Build: 1769350182889");
           />
 
           {/* Luxury entry popup — single global instance, z-[9999] sits above all overlays */}
-          <PromoAdPopup />
+          {!isPawFinderRoute && <PromoAdPopup />}
           
         </TooltipProvider>
       </LanguageProvider>
