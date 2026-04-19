@@ -9140,6 +9140,12 @@ export const providerTaxCompliance = pgTable("provider_tax_compliance", {
   taxRegistrationDocumentUrl: varchar("tax_registration_document_url"), // Uploaded proof
   nationalInsuranceDocumentUrl: varchar("national_insurance_document_url"),
   
+  // Withholding Tax Certificate (טופס 2542 / Form 2542)
+  // The ITA issues a personalised withholding rate certificate that expires 31 Dec each year.
+  // If the certificate has expired the platform MUST fall back to the default rate.
+  withholdingCertExpiryDate: date("withholding_cert_expiry_date"), // Form 2542 expiry (typically Dec 31 of the certificate year)
+  withholdingCertRate: decimal("withholding_cert_rate", { precision: 5, scale: 2 }), // Reduced rate granted by ITA (e.g. 5.00 for 5%)
+
   // Compliance Flags
   isCompliant: boolean("is_compliant").default(false), // Overall compliance status
   riskLevel: varchar("risk_level").default("low"), // "low", "medium", "high" (employee misclassification risk)
@@ -9152,6 +9158,7 @@ export const providerTaxCompliance = pgTable("provider_tax_compliance", {
   index("idx_provider_tax_provider").on(table.providerId),
   index("idx_provider_tax_status").on(table.verificationStatus),
   index("idx_provider_tax_expires").on(table.expiresAt),
+  index("idx_provider_tax_cert_expiry").on(table.withholdingCertExpiryDate),
 ]);
 
 export const providerCommissions = pgTable("provider_commissions", {
@@ -11749,6 +11756,15 @@ export const digitalReceipts = pgTable("digital_receipts", {
   voidedAt: timestamp("voided_at"),
   voidReason: text("void_reason"),
 
+  // Credit note linkage: populated when receiptType = 'credit_note'
+  originalReceiptId: integer("original_receipt_id"), // FK to digital_receipts.id of the original receipt being reversed
+
+  // SHAAM allocation number (מספר הקצאה) — Israeli ITA Digital Invoice Law 2026
+  // Required on tax invoices/credit notes where the ex-VAT amount exceeds:
+  //   ₪10,000 from 1.1.2026 | ₪5,000 from 1.6.2026
+  shaamRequired: boolean("shaam_required").default(false).notNull(),
+  shaamAllocationNumber: varchar("shaam_allocation_number"), // Obtained from ITA SHAAM API once integrated
+
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -12336,7 +12352,7 @@ export const savedProviders = pgTable("saved_providers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_saved_providers_user").on(table.userId),
-  index("idx_saved_providers_pair").on(table.userId, table.providerId),
+  uniqueIndex("uq_saved_provider_pair").on(table.userId, table.providerId),
 ]);
 export type SavedProvider = typeof savedProviders.$inferSelect;
 export const insertSavedProviderSchema = createInsertSchema(savedProviders).omit({ id: true, createdAt: true });
@@ -14993,3 +15009,59 @@ export const pawFinderEvents = pgTable("paw_finder_events", {
 });
 
 export type PawFinderEvent = typeof pawFinderEvents.$inferSelect;
+
+// ============================================================================
+// WITHHOLDING REMITTANCE LEDGER (ניכוי מס במקור — מעקב העברה לרשות המסים)
+// ============================================================================
+// Tracks every withholding amount PetWash holds on behalf of the ITA:
+//   status = 'held'     — deducted from provider payout, sitting in trust
+//   status = 'remitted' — transferred to ITA for the relevant quarter
+//   status = 'reversed' — booking was cancelled after withholding was held
+//
+// Required for quarterly ניכויים מהמקור reporting (Form 856) and for
+// reconciliation between provider_commissions and actual ITA payments.
+// ============================================================================
+
+export const withholdingRemittanceLedger = pgTable("withholding_remittance_ledger", {
+  id: serial("id").primaryKey(),
+
+  bookingId: varchar("booking_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  providerType: varchar("provider_type").notNull(), // "walker" | "sitter" | "driver" | ...
+
+  withholdingAmount: decimal("withholding_amount", { precision: 12, scale: 2 }).notNull(),
+  withholdingRate: decimal("withholding_rate", { precision: 5, scale: 2 }).notNull(), // effective % applied (e.g. 20.00)
+  grossPayoutAmount: decimal("gross_payout_amount", { precision: 12, scale: 2 }).notNull(), // provider gross before withholding
+
+  // Reporting period "YYYY-QN" (e.g. "2026-Q1") — used for quarterly Form 856 aggregation
+  period: varchar("period", { length: 10 }).notNull(),
+
+  status: varchar("status").default("held").notNull(), // "held" | "remitted" | "reversed"
+
+  // Populated when status transitions to 'remitted'
+  remittedAt: timestamp("remitted_at"),
+  itaRemittanceReference: varchar("ita_remittance_reference"), // ITA confirmation number
+
+  // Populated when status transitions to 'reversed' (booking cancellation)
+  reversedAt: timestamp("reversed_at"),
+  reverseReason: text("reverse_reason"),
+
+  osekType: varchar("osek_type"), // "osek_patur" | "osek_murshe" — echoed from provider_commissions
+  commissionId: varchar("commission_id"), // FK to provider_commissions.commission_id
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_wrl_booking").on(table.bookingId),
+  index("idx_wrl_provider").on(table.providerId),
+  index("idx_wrl_period").on(table.period),
+  index("idx_wrl_status").on(table.status),
+]);
+
+export const insertWithholdingRemittanceLedgerSchema = createInsertSchema(withholdingRemittanceLedger).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertWithholdingRemittanceLedger = z.infer<typeof insertWithholdingRemittanceLedgerSchema>;
+export type WithholdingRemittanceLedger = typeof withholdingRemittanceLedger.$inferSelect;

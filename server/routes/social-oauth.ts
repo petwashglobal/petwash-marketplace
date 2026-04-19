@@ -13,7 +13,12 @@ const COOKIE_SECRET: string = process.env.COOKIE_SECRET ?? (() => {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('[social-oauth] COOKIE_SECRET env var must be set in production');
   }
-  return 'dev-only-insecure-placeholder';
+  // Dev/staging: generate a per-process ephemeral secret so it is never a
+  // guessable constant. Sessions won't survive server restarts in dev — that
+  // is acceptable. Set COOKIE_SECRET in your .env to make them persistent.
+  const ephemeral = crypto.randomBytes(32).toString('hex');
+  logger.warn('[social-oauth] COOKIE_SECRET not set — using ephemeral per-process key (dev only). Set COOKIE_SECRET in .env for persistent sessions.');
+  return ephemeral;
 })();
 
 const pendingTokens = new Map<string, { customToken: string; provider: string; isNew: boolean; expiresAt: number }>();

@@ -62,6 +62,7 @@ import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
+import israelComplianceRoutes from "./routes/finance/israel-compliance";
 import adminEscrowReconciliationRoutes, { startEscrowDriftMonitor } from "./routes/admin-escrow-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
@@ -525,12 +526,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         (req as any).firebaseUser = { uid: testUid, email_verified: true };
         return next();
       }
-      // playwright-test bypass — mirrors customAuth.ts dev bypass for routes that
-      // don't go through requireAuth (e.g. admin routes with their own auth chain)
-      if (req.headers['x-test-user-bypass'] === 'playwright-test') {
+      // playwright-test bypass — aligns with customAuth.ts: only active when TEST_BYPASS_TOKEN is set.
+      // Using a static string was a security gap — anyone who knew it could bypass auth in staging.
+      const testBypassToken = process.env.TEST_BYPASS_TOKEN;
+      if (testBypassToken && req.headers['x-test-user-bypass'] === testBypassToken) {
         const testUserId = (req.headers['x-test-user-id'] as string) || 'test-user-default';
         const testEmail  = (req.headers['x-test-user-email'] as string) || `${testUserId}@test.petwash.local`;
-        logger.warn('[RBAC Guard] DEV BYPASS — playwright-test', { testUserId, path });
+        logger.warn('[RBAC Guard] DEV BYPASS — TEST_BYPASS_TOKEN matched', { testUserId, path });
         (req as any).firebaseUser = { uid: testUserId, email: testEmail, email_verified: true };
         (req as any).userId = testUserId;
         (req as any).user   = { uid: testUserId, email: testEmail };
@@ -3437,8 +3439,12 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/firebase-features - Comprehensive Firebase features test
+  // GET /api/firebase-features - Internal Firebase diagnostic (admin only)
   app.get('/api/firebase-features', async (req, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     try {
       const firebaseAdmin = (await import('./lib/firebase-admin')).default;
       const { getFirestore } = await import('firebase-admin/firestore');
@@ -4960,7 +4966,15 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // TEST PURCHASE ENDPOINT - Simulate real purchase flow up to Nayax payment
+  // Restricted to admin-secret holders; blocked in production.
   app.post('/api/test-purchase', async (req, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Not available in production' });
+    }
     try {
       const { packageId, customerEmail, customerName, phone, isGiftCard } = req.body;
       
@@ -10278,6 +10292,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
   app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
   app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
+  app.use('/api/admin/finance/israel-compliance', adminLimiter, israelComplianceRoutes);
   app.use('/api/admin/escrow', adminLimiter, adminEscrowReconciliationRoutes);
   
   // Thank you email route (management use)
@@ -10348,7 +10363,7 @@ self.addEventListener('notificationclick', (event) => {
   
   
   // ⁦Pet Wash Academy™⁩ - Professional trainer marketplace (2025 unified ecosystem)
-  app.use('/api/academy', apiLimiter, academyRoutes);
+  app.use('/api/academy', optionalFirebaseToken, apiLimiter, academyRoutes);
   
   // 🐙 Unified Platform Routes - Cross-platform services
   app.use('/api/unified', apiLimiter, unifiedPlatformRoutes);
@@ -10364,7 +10379,6 @@ self.addEventListener('notificationclick', (event) => {
     });
   });
   app.use('/api/walk-my-pet', apiLimiter, walkMyPetRoutes);
-  app.use('/api', apiLimiter, walkMyPetRoutes);
   
   // ⁦Walk My Pet™⁩ - Session Management (Check-in/Check-out, GPS, Vitals)
   app.use('/api/walk-session', apiLimiter, walkSessionRoutes);
@@ -10376,8 +10390,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
-  app.use('/api/booking-chat', bookingChatRouter);
-  app.use('/api/onboarding', onboardingRouter);
+  app.use('/api/booking-chat', apiLimiter, bookingChatRouter);
+  app.use('/api/onboarding', apiLimiter, onboardingRouter);
   // /api/provider-console serves as the provider OS (operating console) — auth-gated since Pass 6.
   // Legacy reference to "provider-os" in task history maps to this mount point.
   app.use('/api/provider-console', validateFirebaseToken, providerConsoleRouter);
@@ -10474,7 +10488,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/providers', apiLimiter, providersRoutes);
 
   // Provider Trust Metrics, Browse (filter-backed), Saved Providers
-  app.use('/api', apiLimiter, providerTrustRoutes);
+  app.use('/api', optionalFirebaseToken, apiLimiter, providerTrustRoutes);
 
   // Step 6: Loyalty Credits (ledger, balance, streaks, history)
   app.use('/api/loyalty-credits', apiLimiter, loyaltyCreditsRoutes);
@@ -10557,8 +10571,8 @@ self.addEventListener('notificationclick', (event) => {
   const providerAvailabilityRoutes = (await import('./routes/provider-availability')).default;
   app.use('/api/provider-availability', validateFirebaseToken, apiLimiter, providerAvailabilityRoutes);
 
-  app.use('/api/onboarding-verification', onboardingVerificationRoutes);
-  app.use('/api/registration', completeRegistrationRoutes);
+  app.use('/api/onboarding-verification', apiLimiter, onboardingVerificationRoutes);
+  app.use('/api/registration', apiLimiter, completeRegistrationRoutes);
   // Twilio SMS delivery status callbacks — signature-validated
   // Configure in Twilio console → Messaging → Services → Status Callback URL:
   //   https://petwash.co.il/api/webhooks/twilio/sms-status
@@ -12331,9 +12345,13 @@ self.addEventListener('notificationclick', (event) => {
     res.json({ ok: true, summary: results });
   });
 
-  // TEST ENDPOINT: Fire all three live-event types to admin WS feed
-  // No auth required — only pushes synthetic test events to connected WS clients (no data leak).
-  app.post('/api/internal/fire-live-events', async (_req: any, res) => {
+  // INTERNAL ENDPOINT: Fire all three live-event types to admin WS feed
+  // Requires x-admin-secret header (ADMIN_SECRET env var).
+  app.post('/api/internal/fire-live-events', async (req: any, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     const ts = new Date().toISOString();
     eventBus.emit('matching.started', {
       requestId: `test-${Date.now()}`,

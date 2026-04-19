@@ -417,8 +417,11 @@ class EgiftFinancialService {
           userId: input.userId,
           platform: input.platform.toUpperCase(),
           price: input.amountCents,
-          platformFee: Math.round(input.amountCents * PLATFORM_FEE_RATE),
-          providerShare: input.amountCents - Math.round(input.amountCents * PLATFORM_FEE_RATE),
+          // K9000 is a direct PetWash-owned asset (not a marketplace provider).
+          // Applying a provider split would create false P&L outflow on direct revenue.
+          // All other platforms (sitter, walker, academy…) are true marketplace agents at 15%.
+          platformFee: input.platform.toLowerCase() === 'k9000' ? 0 : Math.round(input.amountCents * PLATFORM_FEE_RATE),
+          providerShare: input.platform.toLowerCase() === 'k9000' ? 0 : input.amountCents - Math.round(input.amountCents * PLATFORM_FEE_RATE),
           status: 'CONFIRMED',
           idempotencyKey: `BOOKING:${input.idempotencyKey}`,
         });

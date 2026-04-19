@@ -104,9 +104,11 @@ export default function SitterBookingFlow() {
     enabled: !!sitterId,
   });
 
+  // Must use the sitter-suite pet endpoint which returns petProfilesForSitting (Postgres integer IDs).
+  // /api/pets returns Firestore document IDs (strings) and is incompatible with the booking backend.
   const { data: petsData, isLoading: petsLoading } = useQuery({
-    queryKey: ['/api/pets'],
-    enabled: step === 'details',
+    queryKey: ['/api/sitter-suite/my-pets'],
+    enabled: step === 'details' && !!user?.uid,
   });
 
   const { data: bookingStatus } = useQuery({

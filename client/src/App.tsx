@@ -23,6 +23,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useLocation } from "wouter";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
@@ -2896,7 +2897,21 @@ function App() {
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-  
+
+  // Route-aware suppression: promo popup and floating FABs must not show on
+  // functional/operational pages — only on public marketing pages.
+  const [currentPath] = useLocation();
+
+  // Regex pattern covering all non-marketing route prefixes.
+  // The promo popup must never auto-open on functional, auth, or operational pages.
+  const PROMO_EXCLUDED_PATTERN =
+    /^\/(paw-finder|admin|provider|dashboard|booking|signin|signup|sign-in|sign-up|verify|account-activation|choose-role|complete-profile|provider-pending|provider-rejected|staff-pending|staff-rejected|access-pending|blocked|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|forms|legal-agreement)(\/|$)/;
+
+  const showPromoPopup = !PROMO_EXCLUDED_PATTERN.test(currentPath);
+
+  // Routes where floating FABs must be suppressed (they cover hero content)
+  const showFloatingStack = !/^\/paw-finder(\/|$)/.test(currentPath);
+
   useKeyboardNavigation();
 
   useEffect(() => {
@@ -3033,16 +3048,20 @@ console.log("Build: 1769350182889");
           
           <Toaster />
           <OnboardingChecklist />
+          {showFloatingStack && (
           <FloatingStack 
             language={currentLanguage}
             onAIClick={() => setIsAIChatOpen(true)}
           />
+          )}
           
           {/* Google Dialogflow CX AI Chat Widget - Gemini-powered Kenzo 🤖 */}
+          {showFloatingStack && (
           <AiChatWidget 
             isOpen={isAIChatOpen}
             onClose={() => setIsAIChatOpen(false)}
           />
+          )}
           
           <AuthProvider>
               <ActivationBanner />
@@ -3069,8 +3088,8 @@ console.log("Build: 1769350182889");
             onClose={() => setIsConsentManagerOpen(false)}
           />
 
-          {/* Luxury entry popup — single global instance, z-[9999] sits above all overlays */}
-          <PromoAdPopup />
+          {/* Marketing promo popup — only on public landing pages, never on functional/operational routes */}
+          {showPromoPopup && <PromoAdPopup />}
           
         </TooltipProvider>
       </LanguageProvider>
