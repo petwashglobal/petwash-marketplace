@@ -1257,6 +1257,23 @@ router.patch('/bookings/:id/complete', async (req, res) => {
     
     await syncChatToBookingStatus(booking.bookingId, 'completed', 'sitter_suite');
     
+    // ── VAT: record marketplace P&L obligation at service completion ─────────
+    // VAT was tentatively recorded at provider acceptance; this definitive entry
+    // uses the actual gross collected (totalChargeCents) so the Firestore P&L ledger
+    // reflects the correct final transaction amount when service is confirmed complete.
+    // Non-blocking — failure must not abort the completion response.
+    try {
+      await VATCalculatorService.recordTransaction(
+        'sitter-suite',
+        booking.bookingId,
+        booking.sitterPayoutCents / 100,
+        booking.bookingId,
+        { completedAt: new Date().toISOString(), bookingDbId: booking.id }
+      );
+    } catch (vatCompletionErr: any) {
+      logger.warn('[Sitter Suite] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId: booking.bookingId });
+    }
+    
     logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {
       bookingId: booking.bookingId,
       grossPayoutILS,

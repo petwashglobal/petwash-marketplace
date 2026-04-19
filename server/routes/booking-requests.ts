@@ -54,6 +54,7 @@ import { DomainEventType } from '@shared/events';
 import { eventBus } from '../services/EventBus';
 import { recomputeCustomerProfile, advanceJourneyState } from '../services/CustomerIntelligenceService';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+import VATCalculatorService from '../services/VATCalculatorService';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -1850,6 +1851,30 @@ router.post('/:requestId/confirm', async (req, res) => {
       paymentReleased: booking.subtotalCents,
       platformFee: booking.serviceFeeCents,
     });
+
+    // ── VAT accounting: record marketplace VAT obligation at escrow release ─
+    // Israeli law: מע"מ is owed only when the taxable transaction is completed and
+    // funds are released.  This is the canonical completion point for this flow.
+    // Non-blocking — a failure here must never roll back the confirmed booking.
+    {
+      const vatPlatform = (
+        booking.providerType === 'sitter' ? 'sitter-suite' :
+        booking.providerType === 'walker' ? 'walk-my-pet' :
+        'sitter-suite'
+      ) as 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'pet-wash-hub' | 'paw-finder' | 'plush-lab' | 'enterprise';
+      const providerShareILS = (booking.subtotalCents || 0) / 100;
+      try {
+        await VATCalculatorService.recordTransaction(
+          vatPlatform,
+          requestId,
+          providerShareILS,
+          requestId,
+          { serviceType: booking.serviceType, bookingFlow: 'booking_requests', confirmedAt: new Date().toISOString() }
+        );
+      } catch (vatErr: any) {
+        logger.warn('[BookingRequests] VAT ledger recording failed (non-blocking)', { error: vatErr.message, requestId });
+      }
+    }
 
     logBookingEvent('owner_confirmed', buildEventPayload({ ...booking, status: finalStatus }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),

@@ -1268,6 +1268,22 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 
     await syncChatToBookingStatus(bookingId, 'completed', 'walk_my_pet');
 
+    // ── VAT: record marketplace P&L obligation at service completion ─────────
+    // VAT was tentatively recorded at provider acceptance; this definitive entry
+    // captures the actual walk amount at the point the service is confirmed done.
+    // Non-blocking — failure must not abort the completion response.
+    try {
+      await VATCalculatorService.recordTransaction(
+        'walk-my-pet',
+        bookingId,
+        parseFloat(booking.walkerPayout || '0'),
+        bookingId,
+        { completedAt: new Date().toISOString() }
+      );
+    } catch (vatCompletionErr: any) {
+      logger.warn('[Walk My Pet] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId });
+    }
+
     // Create blockchain audit record
     const previousBlock = await db
       .select()
