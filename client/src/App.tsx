@@ -1,5 +1,5 @@
 import "./lib/i18next-init"; // Initialize react-i18next before any component imports
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -798,13 +798,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Shop />}
         </Route>
         <Route path="/booking">
-          {() => <BookingUnified />}
+          {() => (
+            <RequireAuth>
+              <BookingUnified />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking/confirmation/:requestId">
-          {() => <BookingConfirmation />}
+          {() => (
+            <RequireAuth>
+              <BookingConfirmation />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking/new/:serviceType/:providerId">
-          {() => <MultiPetBookingWizard />}
+          {() => (
+            <RequireAuth>
+              <MultiPetBookingWizard />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/map">
           {() => <StationMap />}
@@ -2889,6 +2901,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 }
 
 function App() {
+  const [location] = useLocation();
   // Default to Hebrew ('he') for Israeli market - PRIMARY language
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('petwash_lang') as Language;
@@ -2911,6 +2924,7 @@ function App() {
 
   // Routes where floating FABs must be suppressed (they cover hero content)
   const showFloatingStack = !/^\/paw-finder(\/|$)/.test(currentPath);
+
 
   useKeyboardNavigation();
 

@@ -807,6 +807,18 @@ export default function EGift() {
 
       const data = await response.json();
 
+      // Payment gateway offline — surface a clear bilingual message instead of a generic error
+      if (response.status === 503) {
+        toast({
+          title: lang === 'he' ? 'מערכת התשלום אינה זמינה כרגע' : 'Payment gateway temporarily unavailable',
+          description: lang === 'he'
+            ? 'אנא צרו קשר עם התמיכה לרכישת כרטיס מתנה.'
+            : 'Please contact support to purchase a gift card.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       if (response.ok && data.success) {
         setPurchasedGift({
           giftCardId: data.giftCardId,
@@ -818,7 +830,7 @@ export default function EGift() {
       } else {
         toast({ 
           title: tx('errorCreating', lang), 
-          description: data.message || tx('tryAgain', lang),
+          description: data.message || data.error || tx('tryAgain', lang),
           variant: "destructive" 
         });
       }
