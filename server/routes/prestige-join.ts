@@ -32,7 +32,7 @@ import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
-import { auth as fbAdminAuth, firestoreDb } from '../lib/firebase-admin';
+import { auth as fbAdminAuth, db as firestoreDb } from '../lib/firebase-admin';
 import { authService } from '../services/AuthService';
 import { EmailService } from '../emailService';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
