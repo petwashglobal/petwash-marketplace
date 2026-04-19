@@ -1853,21 +1853,24 @@ router.post('/:requestId/confirm', async (req, res) => {
     });
 
     // ── VAT accounting: record marketplace VAT obligation at escrow release ─
-    // Israeli law: מע"מ is owed only when the taxable transaction is completed and
-    // funds are released.  This is the canonical completion point for this flow.
+    // Israeli law מועד החיוב: מע"מ is owed when the taxable transaction is
+    // completed and funds are released — this is the canonical accounting event.
+    // Use recordTransactionFromGross() with the actual customer-paid total
+    // (totalCents includes subtotal + service fee) to avoid the back-calculation
+    // understatement in recordTransaction().
     // Non-blocking — a failure here must never roll back the confirmed booking.
     {
       const vatPlatform = (
         booking.providerType === 'sitter' ? 'sitter-suite' :
         booking.providerType === 'walker' ? 'walk-my-pet' :
-        'sitter-suite'
+        'sitter-suite' // default for trainer and other service types
       ) as 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'pet-wash-hub' | 'paw-finder' | 'plush-lab' | 'enterprise';
-      const providerShareILS = (booking.subtotalCents || 0) / 100;
+      const grossCollectedILS = (booking.totalCents || booking.subtotalCents || 0) / 100;
       try {
-        await VATCalculatorService.recordTransaction(
+        await VATCalculatorService.recordTransactionFromGross(
           vatPlatform,
           requestId,
-          providerShareILS,
+          grossCollectedILS,
           requestId,
           { serviceType: booking.serviceType, bookingFlow: 'booking_requests', confirmedAt: new Date().toISOString() }
         );
