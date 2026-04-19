@@ -3437,8 +3437,12 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/firebase-features - Comprehensive Firebase features test
+  // GET /api/firebase-features - Internal Firebase diagnostic (admin only)
   app.get('/api/firebase-features', async (req, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     try {
       const firebaseAdmin = (await import('./lib/firebase-admin')).default;
       const { getFirestore } = await import('firebase-admin/firestore');
@@ -4960,7 +4964,15 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // TEST PURCHASE ENDPOINT - Simulate real purchase flow up to Nayax payment
+  // Restricted to admin-secret holders; blocked in production.
   app.post('/api/test-purchase', async (req, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Not available in production' });
+    }
     try {
       const { packageId, customerEmail, customerName, phone, isGiftCard } = req.body;
       
@@ -12331,9 +12343,13 @@ self.addEventListener('notificationclick', (event) => {
     res.json({ ok: true, summary: results });
   });
 
-  // TEST ENDPOINT: Fire all three live-event types to admin WS feed
-  // No auth required — only pushes synthetic test events to connected WS clients (no data leak).
-  app.post('/api/internal/fire-live-events', async (_req: any, res) => {
+  // INTERNAL ENDPOINT: Fire all three live-event types to admin WS feed
+  // Requires x-admin-secret header (ADMIN_SECRET env var).
+  app.post('/api/internal/fire-live-events', async (req: any, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     const ts = new Date().toISOString();
     eventBus.emit('matching.started', {
       requestId: `test-${Date.now()}`,
