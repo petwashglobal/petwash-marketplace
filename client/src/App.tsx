@@ -2902,32 +2902,15 @@ function App() {
   // functional/operational pages — only on public marketing pages.
   const [currentPath] = useLocation();
 
-  // Routes where the promo popup must be suppressed
-  const PROMO_EXCLUDED_PREFIXES = [
-    '/paw-finder', '/admin', '/provider', '/dashboard', '/booking',
-    '/signin', '/signup', '/sign-in', '/sign-up',
-    '/verify', '/verify-email', '/account-activation',
-    '/choose-role', '/complete-profile',
-    '/provider-pending', '/provider-rejected',
-    '/staff-pending', '/staff-rejected', '/access-pending',
-    '/blocked', '/my-account', '/my-wallet', '/my-bookings',
-    '/marketplace/booking', '/marketplace/review',
-    '/report-problem', '/payment',
-    '/control-panel', '/management', '/accounting',
-    '/receipt', '/ops', '/ceo', '/franchise', '/station',
-    '/forms', '/legal-agreement',
-  ];
+  // Regex pattern covering all non-marketing route prefixes.
+  // The promo popup must never auto-open on functional, auth, or operational pages.
+  const PROMO_EXCLUDED_PATTERN =
+    /^\/(paw-finder|admin|provider|dashboard|booking|signin|signup|sign-in|sign-up|verify|account-activation|choose-role|complete-profile|provider-pending|provider-rejected|staff-pending|staff-rejected|access-pending|blocked|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|forms|legal-agreement)(\/|$)/;
 
-  const showPromoPopup = !PROMO_EXCLUDED_PREFIXES.some(prefix =>
-    currentPath === prefix || currentPath.startsWith(prefix + '/')
-  );
+  const showPromoPopup = !PROMO_EXCLUDED_PATTERN.test(currentPath);
 
   // Routes where floating FABs must be suppressed (they cover hero content)
-  const FAB_EXCLUDED_PREFIXES = ['/paw-finder'];
-
-  const showFloatingStack = !FAB_EXCLUDED_PREFIXES.some(prefix =>
-    currentPath === prefix || currentPath.startsWith(prefix + '/')
-  );
+  const showFloatingStack = !/^\/paw-finder(\/|$)/.test(currentPath);
 
   useKeyboardNavigation();
 

@@ -331,7 +331,7 @@ router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) =
       // Verify the resolved path is inside UPLOAD_DIR before touching the filesystem
       const resolvedDiskPath = path.resolve(diskPath);
       const uploadDirPrefix = UPLOAD_DIR + path.sep;
-      const isSafe = resolvedDiskPath === UPLOAD_DIR || resolvedDiskPath.startsWith(uploadDirPrefix);
+      const isSafe = resolvedDiskPath.startsWith(uploadDirPrefix);
       if (isSafe && fs.existsSync(resolvedDiskPath)) {
         imageHash = sha256File(resolvedDiskPath);
         if (imageHash) {
