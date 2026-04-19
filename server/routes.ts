@@ -10377,7 +10377,6 @@ self.addEventListener('notificationclick', (event) => {
     });
   });
   app.use('/api/walk-my-pet', apiLimiter, walkMyPetRoutes);
-  app.use('/api', apiLimiter, walkMyPetRoutes);
   
   // ⁦Walk My Pet™⁩ - Session Management (Check-in/Check-out, GPS, Vitals)
   app.use('/api/walk-session', apiLimiter, walkSessionRoutes);
