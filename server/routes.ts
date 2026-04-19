@@ -12093,7 +12093,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Unauthorized: No auth token' });
       }
       
-      const { admin, db } = await import('./lib/firebase-admin');
+      const { default: admin, db } = await import('./lib/firebase-admin');
       const idToken = authHeader.split('Bearer ')[1];
       
       let decodedToken;
@@ -12159,7 +12159,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Unauthorized: No auth token' });
       }
       
-      const { admin, db } = await import('./lib/firebase-admin');
+      const { default: admin, db } = await import('./lib/firebase-admin');
       const idToken = authHeader.split('Bearer ')[1];
       
       let decodedToken;
@@ -12220,7 +12220,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Unauthorized: No auth token' });
       }
       
-      const { admin } = await import('./lib/firebase-admin');
+      const { default: admin } = await import('./lib/firebase-admin');
       const idToken = authHeader.split('Bearer ')[1];
       
       let decodedToken;
@@ -14755,7 +14755,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         status: 'scheduled',
       };
 
-      const meetingRef = await admin.firestore().collection('meetings').add(meetingData);
+      const { db: firestoreDb } = await import('./lib/firebase-admin');
+      const meetingRef = await firestoreDb.collection('meetings').add(meetingData);
 
       logger.info('[Meetings] Meeting scheduled', {
         meetingId: meetingRef.id,
@@ -14782,7 +14783,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Get user's scheduled meetings
   app.get('/api/meetings', requireAuth, async (req: any, res) => {
     try {
-      const snapshot = await admin.firestore()
+      const { db: firestoreDb } = await import('./lib/firebase-admin');
+      const snapshot = await firestoreDb
         .collection('meetings')
         .where('organizerId', '==', req.user.uid)
         .orderBy('date', 'desc')
@@ -14831,9 +14833,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   app.get('/api/greeting/personalized', requireAuth, async (req: any, res) => {
     try {
       const { getPersonalizedGreeting } = await import('./services/PersonalizedGreetingService');
+      const { db: firestoreDb } = await import('./lib/firebase-admin');
       
       // Get user profile from Firestore
-      const userDoc = await admin.firestore()
+      const userDoc = await firestoreDb
         .collection('users')
         .doc(req.user.uid)
         .get();
