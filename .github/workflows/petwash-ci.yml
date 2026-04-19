@@ -632,6 +632,109 @@ jobs:
           fi
           echo "✅ Container smoke test passed (both phases) — proceeding to Cloud Run deploy."
 
+      - name: Build Cloud Run secret mappings
+        id: build-cloudrun-secrets
+        run: |
+          PROJECT="$PROJECT_ID"
+          secrets_file="$(mktemp)"
+
+          required_mappings=(
+            "BASE_URL=BASE_URL:latest"
+            "DATABASE_URL=DATABASE_URL:latest"
+            "FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest"
+            "FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
+            "JWT_SECRET=JWT_SECRET:latest"
+            "JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest"
+            "COOKIE_SECRET=COOKIE_SECRET:latest"
+            "SESSION_SECRET=SESSION_SECRET:latest"
+            "SENDGRID_API_KEY=SENDGRID_API_KEY:latest"
+            "GEMINI_API_KEY=GEMINI_API_KEY:latest"
+            "GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest"
+            "GOOGLE_SERVICE_ACCOUNT_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest"
+            "GOOGLE_APPLICATION_CREDENTIALS_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest"
+            "TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest"
+            "TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest"
+            "TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest"
+            "WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest"
+            "WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest"
+            "RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest"
+            "MOBILE_LINK_SECRET=MOBILE_LINK_SECRET:latest"
+            "WALLET_LINK_SECRET=WALLET_LINK_SECRET:latest"
+            "VOUCHER_SALT=VOUCHER_SALT:latest"
+            "VOUCHER_ES256_PRIVATE_KEY_PEM=VOUCHER_ES256_PRIVATE_KEY_PEM:latest"
+            "VOUCHER_ES256_PUBLIC_KEY_PEM=VOUCHER_ES256_PUBLIC_KEY_PEM:latest"
+            "KYC_SALT=KYC_SALT:latest"
+            "GMAIL_TOKEN_ENCRYPTION_KEY=GMAIL_TOKEN_ENCRYPTION_KEY:latest"
+            "BIOMETRIC_BUCKET_NAME=BIOMETRIC_BUCKET_NAME:latest"
+            "BIOMETRIC_PREFIX=BIOMETRIC_PREFIX:latest"
+            "HUBSPOT_FORM_GUID=HUBSPOT_FORM_GUID:latest"
+            "HUBSPOT_PORTAL_ID=HUBSPOT_PORTAL_ID:latest"
+            "NAYAX_WEBHOOK_SECRET=NAYAX_WEBHOOK_SECRET:latest"
+            "GOOGLE_TRANSLATE_API_KEY=GOOGLE_TRANSLATE_API_KEY:latest"
+            "GOOGLE_WEATHER_API_KEY=GOOGLE_WEATHER_API_KEY:latest"
+            "GCS_BACKUP_BUCKET=GCS_BACKUP_BUCKET:latest"
+            "SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest"
+            "GOOGLE_FORMS_SPREADSHEET_ID=GOOGLE_FORMS_SPREADSHEET_ID:latest"
+            "PRESTIGE_QR_SECRET=PRESTIGE_QR_SECRET:latest"
+            "PASS_LINK_SECRET=PASS_LINK_SECRET:latest"
+            "DOCUMENT_ENCRYPTION_KEY=DOCUMENT_ENCRYPTION_KEY:latest"
+            "SENDGRID_TEMPLATE_ID_MEMBER_PASS=SENDGRID_TEMPLATE_ID_MEMBER_PASS:latest"
+            "MACHINE_SECRET_KEY=MACHINE_SECRET_KEY:latest"
+            "MACHINE_ACTIVATION_URL=MACHINE_ACTIVATION_URL:latest"
+            "NAYAX_API_KEY=NAYAX_API_KEY:latest"
+            "NAYAX_MERCHANT_ID=NAYAX_MERCHANT_ID:latest"
+            "NAYAX_SECRET=NAYAX_SECRET:latest"
+            "NAYAX_TERMINAL_SECRET=NAYAX_TERMINAL_SECRET:latest"
+            "RECAPTCHA_SITE_KEY=RECAPTCHA_SITE_KEY:latest"
+            "FIREBASE_WEB_API_KEY=FIREBASE_WEB_API_KEY:latest"
+            "ACCOUNTING_SPREADSHEET_ID=ACCOUNTING_SPREADSHEET_ID:latest"
+            "CONTRACTOR_DOCS_BUCKET=CONTRACTOR_DOCS_BUCKET:latest"
+            "GCS_DOCUMENTS_BUCKET=GCS_DOCUMENTS_BUCKET:latest"
+            "GCS_FINANCIAL_BUCKET=GCS_FINANCIAL_BUCKET:latest"
+            "GCS_LOGS_BUCKET=GCS_LOGS_BUCKET:latest"
+            "GCS_MESSAGE_ATTACHMENTS_BUCKET=GCS_MESSAGE_ATTACHMENTS_BUCKET:latest"
+            "GCS_STAMPS_BUCKET=GCS_STAMPS_BUCKET:latest"
+            "GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest"
+            "GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest"
+            "FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest"
+          )
+
+          optional_mappings=(
+            "REDIS_URL=REDIS_URL:latest"
+            "SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            "TWILIO_MESSAGING_SERVICE_SID=TWILIO_MESSAGING_SERVICE_SID:latest"
+            "TRANZILA_TERMINAL_NAME=TRANZILA_TERMINAL_NAME:latest"
+            "TRANZILA_API_KEY=TRANZILA_API_KEY:latest"
+            "TRANZILA_WEBHOOK_SECRET=TRANZILA_WEBHOOK_SECRET:latest"
+            "TRANZILA_TERMINAL_PASSWORD=TRANZILA_TERMINAL_PASSWORD:latest"
+            "TRANZILA_ALLOWED_IPS=TRANZILA_ALLOWED_IPS:latest"
+            "TRANZILA_MARKETPLACE_ENABLED=TRANZILA_MARKETPLACE_ENABLED:latest"
+            "TRANZILA_WALLET_TOPUP_ENABLED=TRANZILA_WALLET_TOPUP_ENABLED:latest"
+            "TRANZILA_PAYMENT_REQUESTS_ENABLED=TRANZILA_PAYMENT_REQUESTS_ENABLED:latest"
+          )
+
+          for mapping in "${required_mappings[@]}"; do
+            printf '%s\n' "$mapping" >> "$secrets_file"
+          done
+
+          for mapping in "${optional_mappings[@]}"; do
+            secret_ref="${mapping#*=}"
+            secret_name="${secret_ref%%:*}"
+
+            if gcloud secrets describe "$secret_name" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              printf '%s\n' "$mapping" >> "$secrets_file"
+              echo "✅ Optional deploy secret included: $secret_name"
+            else
+              echo "⚠️  Optional deploy secret missing, skipping: $secret_name"
+            fi
+          done
+
+          {
+            echo "secret_mappings<<EOF"
+            cat "$secrets_file"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy to Cloud Run
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -649,76 +752,7 @@ jobs:
             --execution-environment=gen2
             --ingress=all
             --set-env-vars=NODE_ENV=production
-          secrets: |
-            BASE_URL=BASE_URL:latest
-            DATABASE_URL=DATABASE_URL:latest
-            FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest
-            FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest
-            JWT_SECRET=JWT_SECRET:latest
-            JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest
-            COOKIE_SECRET=COOKIE_SECRET:latest
-            SESSION_SECRET=SESSION_SECRET:latest
-            SENDGRID_API_KEY=SENDGRID_API_KEY:latest
-            GEMINI_API_KEY=GEMINI_API_KEY:latest
-            GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest
-            GOOGLE_SERVICE_ACCOUNT_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest
-            GOOGLE_APPLICATION_CREDENTIALS_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest
-            TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest
-            TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest
-            TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest
-            WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest
-            WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest
-            RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest
-            MOBILE_LINK_SECRET=MOBILE_LINK_SECRET:latest
-            WALLET_LINK_SECRET=WALLET_LINK_SECRET:latest
-            VOUCHER_SALT=VOUCHER_SALT:latest
-            VOUCHER_ES256_PRIVATE_KEY_PEM=VOUCHER_ES256_PRIVATE_KEY_PEM:latest
-            VOUCHER_ES256_PUBLIC_KEY_PEM=VOUCHER_ES256_PUBLIC_KEY_PEM:latest
-            KYC_SALT=KYC_SALT:latest
-            GMAIL_TOKEN_ENCRYPTION_KEY=GMAIL_TOKEN_ENCRYPTION_KEY:latest
-            BIOMETRIC_BUCKET_NAME=BIOMETRIC_BUCKET_NAME:latest
-            BIOMETRIC_PREFIX=BIOMETRIC_PREFIX:latest
-            HUBSPOT_FORM_GUID=HUBSPOT_FORM_GUID:latest
-            HUBSPOT_PORTAL_ID=HUBSPOT_PORTAL_ID:latest
-            NAYAX_WEBHOOK_SECRET=NAYAX_WEBHOOK_SECRET:latest
-            GOOGLE_TRANSLATE_API_KEY=GOOGLE_TRANSLATE_API_KEY:latest
-            GOOGLE_WEATHER_API_KEY=GOOGLE_WEATHER_API_KEY:latest
-            GCS_BACKUP_BUCKET=GCS_BACKUP_BUCKET:latest
-            SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
-            GOOGLE_FORMS_SPREADSHEET_ID=GOOGLE_FORMS_SPREADSHEET_ID:latest
-            PRESTIGE_QR_SECRET=PRESTIGE_QR_SECRET:latest
-            PASS_LINK_SECRET=PASS_LINK_SECRET:latest
-            DOCUMENT_ENCRYPTION_KEY=DOCUMENT_ENCRYPTION_KEY:latest
-            SENDGRID_TEMPLATE_ID_MEMBER_PASS=SENDGRID_TEMPLATE_ID_MEMBER_PASS:latest
-            MACHINE_SECRET_KEY=MACHINE_SECRET_KEY:latest
-            MACHINE_ACTIVATION_URL=MACHINE_ACTIVATION_URL:latest
-            NAYAX_API_KEY=NAYAX_API_KEY:latest
-            NAYAX_MERCHANT_ID=NAYAX_MERCHANT_ID:latest
-            NAYAX_SECRET=NAYAX_SECRET:latest
-            NAYAX_TERMINAL_SECRET=NAYAX_TERMINAL_SECRET:latest
-            RECAPTCHA_SITE_KEY=RECAPTCHA_SITE_KEY:latest
-            FIREBASE_WEB_API_KEY=FIREBASE_WEB_API_KEY:latest
-            ACCOUNTING_SPREADSHEET_ID=ACCOUNTING_SPREADSHEET_ID:latest
-            CONTRACTOR_DOCS_BUCKET=CONTRACTOR_DOCS_BUCKET:latest
-            GCS_DOCUMENTS_BUCKET=GCS_DOCUMENTS_BUCKET:latest
-            GCS_FINANCIAL_BUCKET=GCS_FINANCIAL_BUCKET:latest
-            GCS_LOGS_BUCKET=GCS_LOGS_BUCKET:latest
-            GCS_MESSAGE_ATTACHMENTS_BUCKET=GCS_MESSAGE_ATTACHMENTS_BUCKET:latest
-            GCS_STAMPS_BUCKET=GCS_STAMPS_BUCKET:latest
-            GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest
-            GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest
-            FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest
-            REDIS_URL=REDIS_URL:latest
-            SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest
-            TWILIO_MESSAGING_SERVICE_SID=TWILIO_MESSAGING_SERVICE_SID:latest
-            TRANZILA_TERMINAL_NAME=TRANZILA_TERMINAL_NAME:latest
-            TRANZILA_API_KEY=TRANZILA_API_KEY:latest
-            TRANZILA_WEBHOOK_SECRET=TRANZILA_WEBHOOK_SECRET:latest
-            TRANZILA_TERMINAL_PASSWORD=TRANZILA_TERMINAL_PASSWORD:latest
-            TRANZILA_ALLOWED_IPS=TRANZILA_ALLOWED_IPS:latest
-            TRANZILA_MARKETPLACE_ENABLED=TRANZILA_MARKETPLACE_ENABLED:latest
-            TRANZILA_WALLET_TOPUP_ENABLED=TRANZILA_WALLET_TOPUP_ENABLED:latest
-            TRANZILA_PAYMENT_REQUESTS_ENABLED=TRANZILA_PAYMENT_REQUESTS_ENABLED:latest
+          secrets: ${{ steps.build-cloudrun-secrets.outputs.secret_mappings }}
 
       - name: Grant public access (allow unauthenticated)
         continue-on-error: true
