@@ -741,6 +741,49 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         .where(eq(walkBookings.bookingId, bookingId));
       
       await syncChatToBookingStatus(bookingId, 'cancelled', 'walk_my_pet');
+
+      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
+      // Payment has NOT been captured at decline time (capture happens on accept).
+      // We still write a CANCELLATION entry for a complete audit trail.
+      // The octopus_bookings row is found via idempotencyKey = bookingId.
+      try {
+        const [octopusRecord] = await db.select().from(octopusBookings)
+          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
+        if (octopusRecord) {
+          await db.update(octopusBookings)
+            .set({ status: 'CANCELLED', updatedAt: new Date() })
+            .where(eq(octopusBookings.id, octopusRecord.id));
+          await db.insert(octopusLedger).values({
+            id: `OL-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+            type: 'CANCELLATION',
+            bookingId: octopusRecord.id,
+            amount: 0,
+            platform: 'PETTREK',
+            metadata: {
+              reason: declineReason || 'Walker declined',
+              cancelledBy: 'provider',
+              cancelledAt: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (octopusErr) {
+        logger.warn('[Walk My Pet] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
+      }
+
+      // ── Void any stale receipts for this booking ───────────────────────────
+      try {
+        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
+        for (const r of existingReceipts) {
+          if (!r.isVoided) {
+            await IsraeliDigitalReceiptService.voidReceipt({
+              receiptId: r.id,
+              voidReason: `Walk declined by walker: ${declineReason || 'no reason given'}`,
+            });
+          }
+        }
+      } catch (voidErr) {
+        logger.warn('[Walk My Pet] Receipt void on decline failed (non-blocking)', voidErr);
+      }
       
       logger.info(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
       

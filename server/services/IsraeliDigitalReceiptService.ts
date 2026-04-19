@@ -36,23 +36,25 @@ import { allocateTaxSequenceNumber } from './TaxSequenceService';
 import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_WHATSAPP_URL } from '@shared/support-contact';
 
-const ISRAELI_VAT_RATE = 0.18;
+import {
+  ISRAEL_VAT_RATE as ISRAELI_VAT_RATE,
+  WITHHOLDING_RATE_POLICY,
+  COMPANY_TAX_ID as CONFIG_COMPANY_TAX_ID,
+  COMPANY_NAME_EN as CONFIG_COMPANY_NAME,
+  COMPANY_NAME_HE as CONFIG_COMPANY_NAME_HE,
+  resolveWithholdingRate,
+  getWithholdingPeriod,
+  isShaamAllocationRequired,
+} from '@shared/israel-compliance-config';
+
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
-const DEFAULT_WITHHOLDING_TAX_RATE = 0.20;
-const COMPANY_NAME = 'PET WASH LTD';
-const COMPANY_NAME_HE = 'פט וואש בע"מ';
-const COMPANY_TAX_ID = '517145033';
+const DEFAULT_WITHHOLDING_TAX_RATE = WITHHOLDING_RATE_POLICY.defaultRate;
+const COMPANY_NAME = CONFIG_COMPANY_NAME;
+const COMPANY_NAME_HE = CONFIG_COMPANY_NAME_HE;
+const COMPANY_TAX_ID = CONFIG_COMPANY_TAX_ID;
 const COMPANY_ADDRESS = 'ישראל';
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = '⁦Pet Wash™⁩';
-
-// SHAAM allocation-number thresholds (ITA Digital Invoice Law 2026)
-// Required on tax invoices and credit notes where the ex-VAT amount exceeds:
-//   ₪10,000 from 1.1.2026  |  ₪5,000 from 1.6.2026
-const SHAAM_PHASE1_DATE = new Date('2026-01-01'); // ₪10,000 threshold starts
-const SHAAM_PHASE2_DATE = new Date('2026-06-01'); // ₪5,000 threshold starts
-const SHAAM_THRESHOLD_PHASE1 = 10000; // ex-VAT ILS
-const SHAAM_THRESHOLD_PHASE2 = 5000;  // ex-VAT ILS
 
 export interface ReceiptGenerationParams {
   platform: string;
@@ -125,13 +127,7 @@ export class IsraeliDigitalReceiptService {
    *   Phase 2 (1.6.2026): required when ex-VAT amount > ₪5,000
    */
   static isShaamRequired(exVatAmount: number, invoiceDate: Date = new Date()): boolean {
-    if (invoiceDate >= SHAAM_PHASE2_DATE) {
-      return exVatAmount > SHAAM_THRESHOLD_PHASE2;
-    }
-    if (invoiceDate >= SHAAM_PHASE1_DATE) {
-      return exVatAmount > SHAAM_THRESHOLD_PHASE1;
-    }
-    return false;
+    return isShaamAllocationRequired(exVatAmount, invoiceDate);
   }
 
   /**
@@ -139,9 +135,7 @@ export class IsraeliDigitalReceiptService {
    * Used as the period key in the withholding_remittance_ledger.
    */
   static getReportingPeriod(date: Date = new Date()): string {
-    const year = date.getFullYear();
-    const quarter = Math.ceil((date.getMonth() + 1) / 3);
-    return `${year}-Q${quarter}`;
+    return getWithholdingPeriod(date);
   }
 
   /**
@@ -211,12 +205,12 @@ export class IsraeliDigitalReceiptService {
     } = params;
 
     // ── Osek Patur / Osek Murshe differentiation (Israeli 2026 rules) ──────────
-    // Osek Patur (עוסק פטור, < ₪120,000/year):
+    // Osek Patur (עוסק פטור, < ₪122,833/year in 2026):
     //   • NOT VAT-registered → does NOT charge VAT on their services
     //   • Platform's broker commission does NOT carry a provider-side VAT obligation
-    //   • Withholding tax (ניכוי מס במקור) STILL applies at 20% or individual rate
+    //   • Withholding tax (ניכוי מס במקור) STILL applies at policy default or individual rate
     //
-    // Osek Murshe (עוסק מורשה, ≥ ₪120,000/year):
+    // Osek Murshe (עוסק מורשה, ≥ ₪122,833/year in 2026):
     //   • IS VAT-registered → charges VAT on their services
     //   • Platform's broker commission invoice to the Osek Murshe carries 18% VAT
     //   • Withholding tax STILL applies; however the net-payout is from the pre-VAT base
@@ -227,29 +221,21 @@ export class IsraeliDigitalReceiptService {
       osekType === 'osek_patur' ? false :
       isVatRegistered;
 
-    // ── Form 2542 expiry check ──────────────────────────────────────────────────
-    // The ITA issues personalised withholding rate certificates (Form 2542) that
-    // typically expire on 31 December of the certificate year.
-    // If the certificate has lapsed we MUST fall back to DEFAULT_WITHHOLDING_TAX_RATE.
-    const certIsValid =
-      withholdingCertExpiryDate != null &&
-      withholdingCertRate != null &&
-      new Date() <= withholdingCertExpiryDate;
+    // ── Form 2542 expiry check via shared config ─────────────────────────────────
+    // resolveWithholdingRate() checks cert validity against today's date.
+    // If the certificate has lapsed we MUST fall back to the policy default rate.
+    const wh = resolveWithholdingRate(withholdingCertExpiryDate, withholdingCertRate);
 
-    let baseRate: number;
-    if (certIsValid) {
-      // Use the ITA-certified reduced rate (withholdingCertRate is guaranteed non-null by certIsValid)
-      baseRate = withholdingCertRate! / 100;
-    } else if (providerWithholdingRate !== undefined) {
-      baseRate = providerWithholdingRate / 100;
-    } else {
-      baseRate = DEFAULT_WITHHOLDING_TAX_RATE;
+    let effectiveRate = wh.rate;
+
+    // Legacy manual override (providerWithholdingRate) — only used when there is no cert
+    if (wh.source === 'policy_default' && providerWithholdingRate !== undefined) {
+      effectiveRate = providerWithholdingRate / 100;
     }
 
     // Legacy exemption logic — only applies when certificate is NOT being used
-    let effectiveRate = baseRate;
-    if (!certIsValid && hasWithholdingExemption && exemptionPercentage > 0) {
-      effectiveRate = baseRate * (1 - exemptionPercentage / 100);
+    if (wh.source === 'policy_default' && hasWithholdingExemption && exemptionPercentage > 0) {
+      effectiveRate = effectiveRate * (1 - exemptionPercentage / 100);
     }
 
     const withholdingTaxAmount = parseFloat((grossPayoutAmount * effectiveRate).toFixed(2));
@@ -259,7 +245,7 @@ export class IsraeliDigitalReceiptService {
     // Only Osek Murshe providers result in a VAT-carrying invoice for the broker commission.
     // Osek Patur providers are VAT-exempt — the platform does not owe VAT on their behalf.
     const vatOnCommission = resolvedIsVatRegistered
-      ? parseFloat((brokerCommission * 18 / 118).toFixed(2))
+      ? parseFloat((brokerCommission * ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)).toFixed(2))
       : 0;
 
     const commissionId = `COMM-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
