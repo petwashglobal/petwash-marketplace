@@ -42,6 +42,10 @@ import { dispatchNotifications, buildBookingCancelledSms } from '../services/Pet
 
 const router = Router();
 
+// Booking grace period: allow bookings up to 5 minutes in the past to handle
+// clock skew between client and server (same constant used in sitter-suite.ts).
+const BOOKING_GRACE_PERIOD_MS = 5 * 60 * 1000;
+
 // =================== WALKER REGISTRATION & PROFILES ===================
 
 // Create walker profile (first step of registration)
@@ -332,13 +336,42 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Missing required booking information' });
     }
 
+    // Validate duration is a positive number
+    const durationNum = Number(durationMinutes);
+    if (!Number.isFinite(durationNum) || durationNum <= 0) {
+      return res.status(400).json({ error: 'durationMinutes must be a positive number' });
+    }
+
     // Parse dates for luxury engine
     const startDateTime = new Date(`${scheduledDate}T${scheduledStartTime}`);
-    const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60000);
+    if (isNaN(startDateTime.getTime())) {
+      return res.status(400).json({ error: 'Invalid scheduledDate or scheduledStartTime' });
+    }
+    // Reject bookings for past dates/times (use a small grace window of 5 minutes)
+    if (startDateTime.getTime() < Date.now() - BOOKING_GRACE_PERIOD_MS) {
+      return res.status(400).json({ error: 'Scheduled walk must be in the future' });
+    }
+    const endDateTime = new Date(startDateTime.getTime() + durationNum * 60000);
     const scheduledDateOnly = new Date(scheduledDate); // Keep day-only for queries
 
     // Calculate distance (default 5km for walk radius)
     const distanceKm = 5; // Most walks are local 5km radius
+
+    // Verify walker exists, is active and verified before booking
+    const [walkerProfile] = await db
+      .select({ walkerId: walkerProfiles.walkerId, isActive: walkerProfiles.isActive, verificationStatus: walkerProfiles.verificationStatus })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, walkerId))
+      .limit(1);
+    if (!walkerProfile) {
+      return res.status(404).json({ error: 'Walker not found' });
+    }
+    if (!walkerProfile.isActive) {
+      return res.status(400).json({ error: 'Walker is not currently active' });
+    }
+    if (walkerProfile.verificationStatus !== 'verified') {
+      return res.status(400).json({ error: 'Walker is not verified and cannot accept bookings' });
+    }
 
     // STEP 1: Check availability using LUXURY ENGINE
     const availability = await walkEliteBookingEngine.checkAvailability({

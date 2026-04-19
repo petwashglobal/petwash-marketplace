@@ -48,6 +48,10 @@ import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
 
+// Booking grace period: allow bookings up to 5 minutes in the past to handle
+// clock skew between client and server (same constant used in walk-my-pet.ts).
+const BOOKING_GRACE_PERIOD_MS = 5 * 60 * 1000;
+
 router.get('/', (req, res) => {
   res.json({
     platform: 'Sitter Suite',
@@ -673,6 +677,17 @@ router.post('/bookings', requireAuth, async (req, res) => {
     
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid startDate or endDate' });
+    }
+    if (start >= end) {
+      return res.status(400).json({ error: 'endDate must be after startDate' });
+    }
+    // Reject bookings starting in the past (5-minute grace window)
+    if (start.getTime() < Date.now() - BOOKING_GRACE_PERIOD_MS) {
+      return res.status(400).json({ error: 'Start date must be in the future' });
+    }
     
     const availability = await sitterAdvancedBookingEngine.checkAvailability({
       providerId: sitterId.toString(),
