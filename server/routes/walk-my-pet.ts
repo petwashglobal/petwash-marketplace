@@ -1252,11 +1252,32 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 
     await syncChatToBookingStatus(bookingId, 'completed', 'walk_my_pet');
 
+    // ── Stage 2: provider settlement with withholding tax (ניכוי מס במקור) ──
+    // walkerPayout is the gross amount earned by the walker (before withholding).
+    // We call recordProviderSettlement so withholding is tracked in provider_commissions.
+    // Non-blocking — failure must not abort the completion response.
+    let walkSettlement: any = undefined;
+    try {
+      const walkSettlementResult = await IsraeliDigitalReceiptService.recordProviderSettlement({
+        bookingId,
+        providerId: booking.walkerId,
+        providerType: 'walker',
+        grossPayoutAmount: parseFloat(booking.walkerPayout || '0'),
+        hasWithholdingExemption: false,
+        customerPaidAmount: parseFloat(booking.totalCost || '0'),
+        bookingDbId: booking.id,
+      });
+      if (walkSettlementResult.success && walkSettlementResult.settlement) {
+        walkSettlement = walkSettlementResult.settlement;
+      }
+    } catch (settlementErr: any) {
+      logger.warn('[Walk My Pet] Provider settlement recording failed (non-blocking)', { error: settlementErr.message, bookingId });
+    }
+
     // ── VAT: single authoritative P&L entry at service completion ───────────
     // Israeli law מועד החיוב: taxable supply is complete on service delivery.
     // Acceptance is an operational event only — no P&L entry is made there.
-    // Use recordTransactionFromGross() with totalCost (actual customer payment)
-    // so VAT obligation is calculated on the correct gross amount.
+    // Stage 2: withholding & Osek data are passed so the ledger entry is complete.
     // Non-blocking — failure must not abort the completion response.
     try {
       await VATCalculatorService.recordTransactionFromGross(
@@ -1264,7 +1285,14 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
         bookingId,
         parseFloat(booking.totalCost || '0'),
         bookingId,
-        { completedAt: new Date().toISOString() }
+        { completedAt: new Date().toISOString() },
+        walkSettlement ? {
+          withholdingTaxAmount: walkSettlement.withholdingTaxAmount,
+          withholdingTaxRate: walkSettlement.withholdingTaxRate,
+          netPaymentToProvider: walkSettlement.netPaymentToProvider,
+          commissionId: walkSettlement.commissionId,
+          osekType: walkSettlement.osekType,
+        } : undefined
       );
     } catch (vatCompletionErr: any) {
       logger.warn('[Walk My Pet] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId });

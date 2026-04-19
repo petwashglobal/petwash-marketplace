@@ -1244,8 +1244,8 @@ router.patch('/bookings/:id/complete', async (req, res) => {
     // ── VAT: single authoritative P&L entry at service completion ───────────
     // Israeli law מועד החיוב: the taxable supply is complete when the service is
     // delivered. Acceptance is an operational event only — no P&L entry there.
-    // We use recordTransactionFromGross() with the actual customer-paid gross
-    // (totalChargeCents) so the VAT obligation is calculated correctly.
+    // Stage 2: settlement (withholding, Osek type, commissionId) is passed so the
+    // P&L ledger entry is complete in one write — no second pass required.
     // Non-blocking — failure must not abort the completion response.
     try {
       await VATCalculatorService.recordTransactionFromGross(
@@ -1253,7 +1253,14 @@ router.patch('/bookings/:id/complete', async (req, res) => {
         booking.bookingId,
         booking.totalChargeCents / 100,
         booking.bookingId,
-        { completedAt: new Date().toISOString(), bookingDbId: booking.id }
+        { completedAt: new Date().toISOString(), bookingDbId: booking.id },
+        settlementResult.settlement ? {
+          withholdingTaxAmount: settlementResult.settlement.withholdingTaxAmount,
+          withholdingTaxRate: settlementResult.settlement.withholdingTaxRate,
+          netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
+          commissionId: settlementResult.settlement.commissionId,
+          osekType: settlementResult.settlement.osekType,
+        } : undefined
       );
     } catch (vatCompletionErr: any) {
       logger.warn('[Sitter Suite] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId: booking.bookingId });

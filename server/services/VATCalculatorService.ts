@@ -108,8 +108,15 @@ export interface PLedgerEntry {
   commissionRate: number;
   vatRate: number;
   currency: "ILS" | "USD" | "EUR" | "GBP";
-  status: "pending" | "completed" | "refunded";
+  status: "pending" | "completed" | "refunded" | "voided";
   requiresProviderTaxInvoice: boolean;
+  // ── Stage 2: Israeli provider withholding & Osek classification ────────────
+  withholdingTaxAmount?: number;    // ניכוי מס במקור deducted from provider gross
+  withholdingTaxRate?: number;      // effective rate (0.0 – 1.0)
+  netProviderPayout?: number;       // grossPayout − withholdingTax (actual wire to provider)
+  osekType?: "osek_patur" | "osek_murshe"; // Israeli provider tax classification
+  commissionId?: string;            // COMM-YYYY-XXXXXXXX from provider_commissions table
+  voidReason?: string;              // set when status = 'voided'
   metadata?: any;
 }
 
@@ -289,14 +296,21 @@ class VATCalculatorService {
   // ── Record marketplace transaction using ACTUAL GROSS (authoritative completion path) ──
   // grossCollectedILS: the exact amount the customer paid (Nayax charge), including VAT.
   // Use this at service completion / escrow release when the real gross is known.
-  // This avoids the back-calculation error in recordTransaction() which only approximates
-  // the gross from the provider's share.
+  // settlement: optional withholding + Osek data from IsraeliDigitalReceiptService to
+  //   embed all Stage 2 compliance fields in a single atomic Firestore write.
   async recordTransactionFromGross(
     platform: PLedgerEntry["platform"],
     transactionId: string,
     grossCollectedILS: number,
     bookingId?: string,
-    metadata?: any
+    metadata?: any,
+    settlement?: {
+      withholdingTaxAmount: number;
+      withholdingTaxRate: number;
+      netPaymentToProvider: number;
+      commissionId: string;
+      osekType?: "osek_patur" | "osek_murshe";
+    }
   ): Promise<PLedgerEntry> {
     const commissionRate = this.getCommissionRate(platform);
     const calc = this.calculateMarketplaceVAT(grossCollectedILS, commissionRate);
@@ -319,6 +333,12 @@ class VATCalculatorService {
       currency: "ILS",
       status: "completed",
       requiresProviderTaxInvoice: true,
+      // Stage 2 withholding & Osek fields (populated when settlement is provided)
+      withholdingTaxAmount: settlement?.withholdingTaxAmount,
+      withholdingTaxRate: settlement?.withholdingTaxRate,
+      netProviderPayout: settlement?.netPaymentToProvider,
+      osekType: settlement?.osekType,
+      commissionId: settlement?.commissionId,
       metadata,
     };
 
@@ -360,7 +380,7 @@ class VATCalculatorService {
         platformFeeAmount: calc.platformFeeGross.toFixed(2),
         totalAmount: calc.grossCollectedILS.toFixed(2),
         currency: 'ILS',
-        providerPayoutAmount: calc.providerNet.toFixed(2),
+        providerPayoutAmount: settlement?.netPaymentToProvider?.toFixed(2) ?? calc.providerNet.toFixed(2),
         brokerCommissionAmount: calc.platformFeeGross.toFixed(2),
         paymentMethod: 'internal_ledger',
         paymentStatus: 'completed',
@@ -385,7 +405,8 @@ class VATCalculatorService {
       `gross ₪${calc.grossCollectedILS.toFixed(2)}, ` +
       `platform fee ₪${calc.platformFeeGross.toFixed(2)}, ` +
       `VAT obligation ₪${calc.vatOnPlatformFee.toFixed(2)}, ` +
-      `provider net ₪${calc.providerNet.toFixed(2)}`
+      `provider net ₪${calc.providerNet.toFixed(2)}` +
+      (settlement ? `, withholding ₪${settlement.withholdingTaxAmount.toFixed(2)} (${(settlement.withholdingTaxRate * 100).toFixed(0)}%), osek: ${settlement.osekType ?? 'unknown'}` : '')
     );
 
     return entry;

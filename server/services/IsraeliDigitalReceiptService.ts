@@ -84,6 +84,11 @@ export interface ProviderSettlementParams {
   exemptionPercentage?: number;
   providerWithholdingRate?: number;
   isVatRegistered?: boolean;
+  // ── Stage 2: Osek classification drives VAT and withholding logic ──────────
+  // osek_patur: annual revenue < ₪120,000 — exempt from VAT, withholding applies
+  // osek_murshe: annual revenue ≥ ₪120,000 — VAT registered, commission includes 18% VAT
+  // When undefined the service falls back to legacy behaviour.
+  osekType?: "osek_patur" | "osek_murshe";
 }
 
 export interface ProviderSettlementResult {
@@ -94,6 +99,7 @@ export interface ProviderSettlementResult {
   brokerCommission: number;
   netPaymentToProvider: number;
   commissionId: string;
+  osekType?: "osek_patur" | "osek_murshe"; // echoed back for P&L ledger storage
 }
 
 export class IsraeliDigitalReceiptService {
@@ -159,7 +165,25 @@ export class IsraeliDigitalReceiptService {
       exemptionPercentage = 0,
       providerWithholdingRate,
       isVatRegistered = false,
+      osekType,
     } = params;
+
+    // ── Osek Patur / Osek Murshe differentiation (Israeli 2026 rules) ──────────
+    // Osek Patur (עוסק פטור, < ₪120,000/year):
+    //   • NOT VAT-registered → does NOT charge VAT on their services
+    //   • Platform's broker commission does NOT carry a provider-side VAT obligation
+    //   • Withholding tax (ניכוי מס במקור) STILL applies at 20% or individual rate
+    //
+    // Osek Murshe (עוסק מורשה, ≥ ₪120,000/year):
+    //   • IS VAT-registered → charges VAT on their services
+    //   • Platform's broker commission invoice to the Osek Murshe carries 18% VAT
+    //   • Withholding tax STILL applies; however the net-payout is from the pre-VAT base
+    //
+    // When osekType is undefined we fall back to the legacy isVatRegistered flag.
+    const resolvedIsVatRegistered =
+      osekType === 'osek_murshe' ? true :
+      osekType === 'osek_patur' ? false :
+      isVatRegistered;
 
     const baseRate = providerWithholdingRate !== undefined
       ? providerWithholdingRate / 100
@@ -174,7 +198,9 @@ export class IsraeliDigitalReceiptService {
     const netPaymentToProvider = parseFloat((grossPayoutAmount - withholdingTaxAmount).toFixed(2));
 
     const brokerCommission = parseFloat((grossPayoutAmount * PLATFORM_COMMISSION_RATE / (1 - PLATFORM_COMMISSION_RATE)).toFixed(2));
-    const vatOnCommission = isVatRegistered
+    // Only Osek Murshe providers result in a VAT-carrying invoice for the broker commission.
+    // Osek Patur providers are VAT-exempt — the platform does not owe VAT on their behalf.
+    const vatOnCommission = resolvedIsVatRegistered
       ? parseFloat((brokerCommission * 18 / 118).toFixed(2))
       : 0;
 
@@ -188,6 +214,7 @@ export class IsraeliDigitalReceiptService {
       brokerCommission,
       netPaymentToProvider,
       commissionId,
+      osekType,
     };
   }
 
