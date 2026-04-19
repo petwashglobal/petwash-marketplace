@@ -237,9 +237,9 @@ export class IsraeliDigitalReceiptService {
       new Date() <= withholdingCertExpiryDate;
 
     let baseRate: number;
-    if (certIsValid && withholdingCertRate !== undefined) {
-      // Use the ITA-certified reduced rate
-      baseRate = withholdingCertRate / 100;
+    if (certIsValid) {
+      // Use the ITA-certified reduced rate (withholdingCertRate is guaranteed non-null by certIsValid)
+      baseRate = withholdingCertRate! / 100;
     } else if (providerWithholdingRate !== undefined) {
       baseRate = providerWithholdingRate / 100;
     } else {

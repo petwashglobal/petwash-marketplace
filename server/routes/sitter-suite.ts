@@ -1069,6 +1069,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
       // Even though no payment was captured (payment happens at accept, not request),
       // we write a CANCELLATION entry for a complete audit trail.
+      // The octopus_bookings row is found via idempotencyKey, which is set to the
+      // sitter booking's bookingId (string) when the octopus record is first created.
       try {
         const [octopusRecord] = await db.select().from(octopusBookings)
           .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
