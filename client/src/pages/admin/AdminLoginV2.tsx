@@ -22,6 +22,7 @@ import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
+import { trackAuthError } from "@/lib/authErrorTracker";
 
 const isMobileBrowser = () => {
   const ua = navigator.userAgent;
@@ -154,6 +155,7 @@ export default function AdminLoginV2() {
       const msg = error?.code === 'auth/wrong-password' || error?.code === 'auth/user-not-found'
         ? 'Invalid email or password'
         : extractErrorMessage(error);
+      trackAuthError(error, 'admin_email_password').catch(() => {});
       toast({
         title: "Login Failed",
         description: msg,
@@ -257,6 +259,7 @@ export default function AdminLoginV2() {
       }
     } catch (error: any) {
       setBiometricStatus("error");
+      trackAuthError(error, 'admin_biometric').catch(() => {});
       toast({
         title: "Biometric Authentication Failed",
         description: error.message || error.error || "Please try again or use email/password",
@@ -306,6 +309,7 @@ export default function AdminLoginV2() {
         setIsGoogleLoading(false);
         return;
       }
+      trackAuthError(error, 'admin_google').catch(() => {});
       toast({
         title: "Google Sign-In Failed",
         description: extractErrorMessage(error),
