@@ -15232,6 +15232,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         return res.send(injected);
       }
 
+
       res.sendFile(indexPath, (err) => {
         if (err) {
           logger.error('Failed to send index.html', err);
