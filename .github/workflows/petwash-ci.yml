@@ -778,6 +778,13 @@ jobs:
             "TRANZILA_MARKETPLACE_ENABLED=TRANZILA_MARKETPLACE_ENABLED:latest"
             "TRANZILA_WALLET_TOPUP_ENABLED=TRANZILA_WALLET_TOPUP_ENABLED:latest"
             "TRANZILA_PAYMENT_REQUESTS_ENABLED=TRANZILA_PAYMENT_REQUESTS_ENABLED:latest"
+            # Firebase client config vars — synced from VITE_* GitHub secrets.
+            # Used by buildFirebaseInjectedHtml to inject full config into index.html
+            # so the browser always gets messagingSenderId, appId, measurementId
+            # from the server rather than relying solely on the build-time bake-in.
+            "FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest"
+            "FIREBASE_APP_ID=FIREBASE_APP_ID:latest"
+            "FIREBASE_MEASUREMENT_ID=FIREBASE_MEASUREMENT_ID:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
