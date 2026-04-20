@@ -2677,8 +2677,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/auth/session/test - Test endpoint to verify cookie settings (ADMIN ONLY)
-  app.get('/api/auth/session/test', requireAdmin, async (req, res) => {
+  // GET /api/auth/session/test - Test endpoint to verify cookie settings (requires auth: leaks cookie name)
+  app.get('/api/auth/session/test', requireAuth, async (req, res) => {
     try {
       const { SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
       const hasCookie = !!req.cookies?.[SESSION_COOKIE_NAME];
