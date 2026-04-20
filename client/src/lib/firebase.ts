@@ -20,9 +20,8 @@ if (import.meta.env.DEV) {
 // PRODUCTION FIX: Use runtime config from server in production
 // This solves Vite build-time env var issues in Replit deployments
 function getFirebaseConfig() {
-  // Check if runtime config is available (production deployment)
+  // Check if runtime config is available (injected by server into index.html at serve-time)
   if (typeof window !== 'undefined' && (window as any).__FIREBASE_CONFIG__) {
-    console.log('[Firebase] ✅ Using runtime config from server');
     return (window as any).__FIREBASE_CONFIG__;
   }
   
@@ -63,11 +62,13 @@ function getFirebaseConfig() {
     .map(([, envVar]) => envVar);
   
   if (missingFields.length > 0) {
-    console.warn(
-      `[Firebase] ⚠️ Configuration incomplete (fail-open mode). Missing: ${missingFields.join(', ')}\n` +
-      `Authentication and Firebase features will be disabled until configured.\n` +
-      `Please check your .env file or Replit Secrets configuration.`
-    );
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[Firebase] ⚠️ Configuration incomplete (fail-open mode). Missing: ${missingFields.join(', ')}\n` +
+        `Authentication and Firebase features will be disabled until configured.\n` +
+        `Please check your .env file or Replit Secrets configuration.`
+      );
+    }
     
     // Return safe placeholder config to allow app to render
     // Firebase features will be disabled but UI will load
@@ -81,11 +82,6 @@ function getFirebaseConfig() {
       measurementId: 'G-PLACEHOLDER'
     };
   }
-  
-  console.log('[Firebase] ℹ️ Using build-time config (fallback)', {
-    hasRuntimeConfig: !!(typeof window !== 'undefined' && (window as any).__FIREBASE_CONFIG__),
-    environment: import.meta.env.MODE
-  });
   
   return config;
 }
@@ -108,14 +104,14 @@ if (typeof window !== "undefined" && APP_CHECK_SITE_KEY) {
       isTokenAutoRefreshEnabled: true,
     });
   } catch (error) {
-    console.error('[App Check] Initialization failed:', error);
+    logger.error('[App Check] Initialization failed', error);
   }
 } else if (typeof window !== "undefined") {
-  if (import.meta.env.PROD) {
-    console.error('[App Check] Missing VITE_RECAPTCHA_SITE_KEY in production. App Check NOT initialized.');
-  } else {
-    console.warn('[App Check] Missing VITE_RECAPTCHA_SITE_KEY. Skipping App Check in development.');
+  if (import.meta.env.DEV) {
+    logger.warn('[App Check] Missing VITE_RECAPTCHA_SITE_KEY. Skipping App Check in development.');
   }
+  // In production, App Check is optional — Firebase Auth works without it.
+  // The server validates ID tokens directly; App Check adds an extra layer only.
 }
 
 // Initialize Auth with iOS/Safari-safe persistence
@@ -159,30 +155,6 @@ export async function getAppCheckToken(): Promise<string | null> {
   } catch (error) {
     logger.warn('Failed to get App Check token', error);
     return null;
-  }
-}
-
-// DIAGNOSTIC: Expose runtime config for debugging (visible in browser console)
-if (typeof window !== 'undefined') {
-  const rawProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-  const actualProjectId = firebaseConfig.projectId;
-  
-  (window as any).__PW_FIREBASE_CONFIG__ = {
-    recaptchaSiteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY ? '✅ present' : '❌ missing',
-    appCheckSiteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY ? '✅ present (v3)' : '❌ missing',
-    appCheckEnabled: !!appCheckInstance,
-    authDomain: firebaseConfig.authDomain,
-    projectId: actualProjectId,
-    projectIdRaw: rawProjectId,
-    projectIdFixed: rawProjectId !== actualProjectId ? '✅ CORRECTED' : 'using env var',
-    environment: import.meta.env.DEV ? 'development' : 'production'
-  };
-  console.log('[Firebase] Runtime Config:', (window as any).__PW_FIREBASE_CONFIG__);
-  
-  if (rawProjectId && rawProjectId.startsWith('VITE_')) {
-    if (import.meta.env.DEV) {
-      console.log('[Firebase] ℹ️ INFO: Using fallback Firebase projectId (env var is placeholder)');
-    }
   }
 }
 

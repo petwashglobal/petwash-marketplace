@@ -649,11 +649,22 @@ app.get('/health/strict', (_req, res) => {
 app.get('/api/health', async (_req, res) => {
   const db = await checkDbOnce();
   const status = db.ok ? 'OK' : 'DEGRADED';
+  // Expose only safe, non-sensitive state fields. startupError/startupErrorAt are
+  // intentionally omitted here — they may contain internal paths or error messages
+  // that should not be visible without authentication.
   res.status(200).json({
     status,
     timestamp: new Date().toISOString(),
-    checks: { db },
-    state: healthState,
+    checks: { db: { ok: db.ok, ms: db.ms } },
+    state: {
+      bootTs: healthState.bootTs,
+      app: { ok: healthState.app.ok, routesReady: healthState.app.routesReady },
+      db: {
+        ok: healthState.db.ok,
+        lastOkAt: healthState.db.lastOkAt,
+        lastCheckAt: healthState.db.lastCheckAt,
+      },
+    },
   });
 });
 
@@ -663,15 +674,13 @@ app.get('/api/health/strict', async (_req, res) => {
     return res.status(503).json({
       status: 'DOWN',
       timestamp: new Date().toISOString(),
-      checks: { db },
-      state: healthState,
+      checks: { db: { ok: false, ms: db.ms } },
     });
   }
   return res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    checks: { db },
-    state: healthState,
+    checks: { db: { ok: true, ms: db.ms } },
   });
 });
 
@@ -1182,6 +1191,39 @@ if (isProduction) {
       }
       
       // Serve index.html for all other routes (SPA routing - includes /gallery, /about, /contact, etc.)
+      // In production, inject Firebase client config so auth works even when the build
+      // was compiled without VITE_ environment variables.
+      if (isProduction) {
+        try {
+          const fs = require('fs') as typeof import('fs');
+          const rawHtml = fs.readFileSync(indexPath, 'utf8');
+          const projectId =
+            process.env.FIREBASE_PROJECT_ID ||
+            process.env.VITE_FIREBASE_PROJECT_ID ||
+            'signinpetwash';
+          const apiKey = process.env.FIREBASE_WEB_API_KEY || '';
+          if (apiKey) {
+            const firebaseConfig = {
+              apiKey,
+              authDomain: 'petwash.co.il',
+              projectId,
+              storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${projectId}.firebasestorage.app`,
+              messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
+              appId: process.env.FIREBASE_APP_ID || '',
+              measurementId: process.env.FIREBASE_MEASUREMENT_ID || '',
+            };
+            const injected = rawHtml.replace(
+              '</head>',
+              `<script>window.__FIREBASE_CONFIG__=${JSON.stringify(firebaseConfig)};</script></head>`,
+            );
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            return res.send(injected);
+          }
+        } catch (injectErr) {
+          console.error('[SPA] Firebase config injection failed, falling back to sendFile:', injectErr);
+        }
+      }
       res.sendFile(indexPath, (err) => {
         if (err) {
           console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);

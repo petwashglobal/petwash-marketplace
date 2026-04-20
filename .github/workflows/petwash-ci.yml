@@ -297,11 +297,38 @@ jobs:
             echo "✅ Exists:  SUPER_ADMIN_EMAILS"
           fi
 
-      - name: Sync FIREBASE_WEB_API_KEY from GitHub secret
+      - name: Sync FIREBASE_WEB_API_KEY and Firebase client config from GitHub secrets
         env:
           FIREBASE_WEB_API_KEY_VAL: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          FIREBASE_MESSAGING_SENDER_ID_VAL: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID_VAL: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID_VAL: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          FIREBASE_PROJECT_ID_VAL: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
         run: |
           PROJECT="$PROJECT_ID"
+
+          sync_optional_secret() {
+            local NAME=$1
+            local VALUE=$2
+            if [ -n "$VALUE" ]; then
+              printf '%s' "$VALUE" | gcloud secrets versions add "$NAME" \
+                --project="$PROJECT" \
+                --data-file=- \
+                --quiet 2>/dev/null || \
+              printf '%s' "$VALUE" | gcloud secrets create "$NAME" \
+                --project="$PROJECT" \
+                --replication-policy=automatic \
+                --data-file=- \
+                --quiet
+              echo "✅ $NAME: synced from GitHub secret (${#VALUE} chars)"
+            else
+              if gcloud secrets describe "$NAME" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+                echo "✅ $NAME: exists in GCP Secret Manager (no GitHub secret to sync)"
+              else
+                echo "⚠️  $NAME: not in GCP Secret Manager and no GitHub secret provided — server-side Firebase config injection will be partial"
+              fi
+            fi
+          }
 
           if [ -n "$FIREBASE_WEB_API_KEY_VAL" ]; then
             printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY" \
@@ -321,6 +348,11 @@ jobs:
               echo "❌ FIREBASE_WEB_API_KEY: not found in GCP Secret Manager and VITE_FIREBASE_API_KEY GitHub secret is absent." && exit 1
             fi
           fi
+
+          sync_optional_secret "FIREBASE_PROJECT_ID" "$FIREBASE_PROJECT_ID_VAL"
+          sync_optional_secret "FIREBASE_MESSAGING_SENDER_ID" "$FIREBASE_MESSAGING_SENDER_ID_VAL"
+          sync_optional_secret "FIREBASE_APP_ID" "$FIREBASE_APP_ID_VAL"
+          sync_optional_secret "FIREBASE_MEASUREMENT_ID" "$FIREBASE_MEASUREMENT_ID_VAL"
 
       - name: Sync GOOGLE_MAPS_API_KEY from GitHub secret
         env:
@@ -653,6 +685,9 @@ jobs:
             NAYAX_TERMINAL_SECRET=NAYAX_TERMINAL_SECRET:latest
             RECAPTCHA_SITE_KEY=RECAPTCHA_SITE_KEY:latest
             FIREBASE_WEB_API_KEY=FIREBASE_WEB_API_KEY:latest
+            FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest
+            FIREBASE_APP_ID=FIREBASE_APP_ID:latest
+            FIREBASE_MEASUREMENT_ID=FIREBASE_MEASUREMENT_ID:latest
             ACCOUNTING_SPREADSHEET_ID=ACCOUNTING_SPREADSHEET_ID:latest
             CONTRACTOR_DOCS_BUCKET=CONTRACTOR_DOCS_BUCKET:latest
             GCS_DOCUMENTS_BUCKET=GCS_DOCUMENTS_BUCKET:latest

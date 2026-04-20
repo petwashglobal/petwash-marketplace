@@ -139,6 +139,58 @@ spec:
             secretKeyRef:
               key: latest
               name: MOBILE_LINK_SECRET
+        # ── Firebase client config (server-side injection into SPA HTML) ────────
+        # FIREBASE_WEB_API_KEY is the browser-facing API key (not the service account).
+        # It is synced from the VITE_FIREBASE_API_KEY GitHub secret to GCP Secret Manager
+        # by the CI pipeline. The server injects it into index.html at serve-time so that
+        # Firebase Auth works even when the static build was compiled without VITE_ vars.
+        - name: FIREBASE_WEB_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: FIREBASE_WEB_API_KEY
+        - name: FIREBASE_PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: FIREBASE_PROJECT_ID
+        # ── Super-admin access list ─────────────────────────────────────────────
+        # Comma-separated emails that bypass role-based access control.
+        # Must include nir.h@petwash.co.il and any other owners / operators.
+        - name: SUPER_ADMIN_EMAILS
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: SUPER_ADMIN_EMAILS
+        # ── JWT token refresh ───────────────────────────────────────────────────
+        - name: JWT_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: JWT_REFRESH_SECRET
+        # ── Session signing ─────────────────────────────────────────────────────
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: SESSION_SECRET
+        # ── reCAPTCHA Enterprise ────────────────────────────────────────────────
+        - name: RECAPTCHA_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: RECAPTCHA_SECRET_KEY
+        - name: RECAPTCHA_SITE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: RECAPTCHA_SITE_KEY
+        # ── Google Maps / Places API ────────────────────────────────────────────
+        - name: GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: GOOGLE_MAPS_API_KEY
         startupProbe:
           httpGet:
             path: /health
