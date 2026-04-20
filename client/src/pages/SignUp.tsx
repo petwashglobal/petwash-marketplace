@@ -267,6 +267,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         }
       }
 
+      // Store email for Face ID auto-login on next visit
+      if (result.user.email) {
+        storePasskeyEmail(result.user.email);
+      }
+
       toast({
         title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉',
         description: language === 'he' ? 'החשבון שלך נוצר בהצלחה' : 'Your account has been created successfully',

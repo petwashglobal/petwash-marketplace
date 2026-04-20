@@ -75,8 +75,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // DEV-ONLY: Playwright / curl test bypass — x-test-user-role must be in the required set
-      if (process.env.NODE_ENV === 'development' && req.headers['x-test-user-bypass'] === 'playwright-test') {
+      // DEV-ONLY: Playwright / curl test bypass — x-test-user-role must be in the required set.
+      // Uses TEST_BYPASS_TOKEN env var (no hardcoded string) to prevent timing-attack exploits.
+      const bypassToken = process.env.TEST_BYPASS_TOKEN;
+      if (bypassToken && req.headers['x-test-user-bypass'] === bypassToken) {
         const testRole = ((req.headers['x-test-user-role'] as string) || 'customer').toLowerCase();
         if (roles.includes(testRole)) {
           logger.debug(`[requireRole] DEV bypass: role='${testRole}' accepted for [${roles.join(',')}]`);

@@ -7,6 +7,7 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import crypto from 'crypto';
 import multer from 'multer';
+import { authService } from '../services/AuthService';
 
 const router = Router();
 const photoUpload = multer({
@@ -173,6 +174,10 @@ router.patch('/settings/profile', async (req, res) => {
           profileImageUrl: firebaseUser.photoURL || '',
           language: updates.preferredLanguage || 'he',
         });
+        // Ensure wallet and loyalty profile exist for newly-created user rows.
+        // This is idempotent — silently skips creation if they already exist.
+        authService.ensureWalletAccount(uid).catch((e: any) => logger.warn('[ProfileSettings] ensureWalletAccount failed (non-blocking)', { uid, error: e?.message }));
+        authService.ensureLoyaltyProfile(uid).catch((e: any) => logger.warn('[ProfileSettings] ensureLoyaltyProfile failed (non-blocking)', { uid, error: e?.message }));
       }
     }
 

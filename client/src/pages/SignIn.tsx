@@ -1045,6 +1045,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         trustDevice(userCredential.user.uid, userCredential.user.email);
         logger.info('Device trusted after social login');
       }
+
+      // Store email for Face ID auto-login on next visit
+      if (userCredential.user.email) {
+        storePasskeyEmail(userCredential.user.email);
+      }
       
       storeLastAuthMethod('social');
       
