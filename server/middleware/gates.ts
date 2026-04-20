@@ -76,7 +76,8 @@ export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // DEV-ONLY: Playwright / curl test bypass — x-test-user-role must be in the required set.
-      // Uses TEST_BYPASS_TOKEN env var (no hardcoded string) to prevent timing-attack exploits.
+      // Uses TEST_BYPASS_TOKEN env var so that no secret is hardcoded in source code.
+      // Bypass is completely disabled when the env var is not set (fail-closed).
       const bypassToken = process.env.TEST_BYPASS_TOKEN;
       if (bypassToken && req.headers['x-test-user-bypass'] === bypassToken) {
         const testRole = ((req.headers['x-test-user-role'] as string) || 'customer').toLowerCase();

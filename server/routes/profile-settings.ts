@@ -176,8 +176,8 @@ router.patch('/settings/profile', async (req, res) => {
         });
         // Ensure wallet and loyalty profile exist for newly-created user rows.
         // This is idempotent — silently skips creation if they already exist.
-        authService.ensureWalletAccount(uid).catch((e: any) => logger.warn('[ProfileSettings] ensureWalletAccount failed (non-blocking)', { uid, error: e?.message }));
-        authService.ensureLoyaltyProfile(uid).catch((e: any) => logger.warn('[ProfileSettings] ensureLoyaltyProfile failed (non-blocking)', { uid, error: e?.message }));
+        authService.ensureWalletAccount(uid).catch((e: any) => logger.warn('[ProfileSettings:WalletAccount] ensureWalletAccount failed (non-blocking)', { uid, error: e?.message }));
+        authService.ensureLoyaltyProfile(uid).catch((e: any) => logger.warn('[ProfileSettings:LoyaltyProfile] ensureLoyaltyProfile failed (non-blocking)', { uid, error: e?.message }));
       }
     }
 
