@@ -15182,11 +15182,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         process.env.FIREBASE_PROJECT_ID ||
         process.env.VITE_FIREBASE_PROJECT_ID ||
         'signinpetwash';
-      const apiKey = process.env.FIREBASE_WEB_API_KEY || '';
+      const apiKey = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '';
 
       if (!apiKey) {
         logger.warn(
-          '[SPA] FIREBASE_WEB_API_KEY not set — Firebase config not injected. ' +
+          '[SPA] Neither FIREBASE_WEB_API_KEY nor VITE_FIREBASE_API_KEY is set — Firebase config not injected. ' +
           'Auth will fall back to build-time VITE_ env vars.',
         );
         return null;
