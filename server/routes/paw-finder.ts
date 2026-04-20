@@ -107,7 +107,10 @@ const createPostSchema = z.object({
   longitude: z.number().min(-180).max(180).optional(),
   eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   mediaFiles: z.array(z.object({
-    filePath: z.string().min(1),
+    // filePath must be a server-generated upload path — never accept arbitrary paths
+    filePath: z.string().min(1).regex(/^\/uploads\/paw-finder\//, {
+      message: 'filePath must be a paw-finder upload path',
+    }),
     mimeType: z.string().optional(),
     mediaRole: z.enum(['primary', 'extra']).default('primary'),
   })).min(1).max(8),
@@ -325,8 +328,12 @@ router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) =
     const primaryMedia = parsed.data.mediaFiles.find(m => m.mediaRole === 'primary');
     if (primaryMedia) {
       const diskPath = path.join(process.cwd(), primaryMedia.filePath);
-      if (fs.existsSync(diskPath)) {
-        imageHash = sha256File(diskPath);
+      // Verify the resolved path is inside UPLOAD_DIR before touching the filesystem
+      const resolvedDiskPath = path.resolve(diskPath);
+      const uploadDirPrefix = UPLOAD_DIR + path.sep;
+      const isSafe = resolvedDiskPath.startsWith(uploadDirPrefix);
+      if (isSafe && fs.existsSync(resolvedDiskPath)) {
+        imageHash = sha256File(resolvedDiskPath);
         if (imageHash) {
           const { rows: dupRows } = await pool.query(
             `SELECT id, post_key FROM paw_finder_posts WHERE image_hash = $1 AND user_id = $2 LIMIT 1`,

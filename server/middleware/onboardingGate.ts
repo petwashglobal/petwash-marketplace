@@ -100,7 +100,13 @@ export async function requireOnboardingComplete(req: Request, res: Response, nex
 
     if (role === 'provider') {
       const app = await storage.getProviderApplicationByUser(userId);
-      if (!app || !app.onboardingComplete) {
+      // Allow through if: (a) onboardingComplete flag is set, OR (b) application status is 'approved'.
+      // The onboarding_complete column is set to true during admin approval. Checking status directly
+      // as a fallback ensures approved providers with legacy records (before the column was populated)
+      // are never incorrectly blocked.
+      const isApproved = app?.status === 'approved';
+      const flagSet = !!(app as any)?.onboardingComplete;
+      if (!app || (!isApproved && !flagSet)) {
         return res.status(403).json({
           error: 'ONBOARDING_INCOMPLETE',
           reason: 'PROVIDER_ONBOARDING_REQUIRED',

@@ -54,6 +54,7 @@ import { DomainEventType } from '@shared/events';
 import { eventBus } from '../services/EventBus';
 import { recomputeCustomerProfile, advanceJourneyState } from '../services/CustomerIntelligenceService';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+import VATCalculatorService from '../services/VATCalculatorService';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -417,7 +418,7 @@ router.post('/', async (req, res) => {
 
     // Intelligence — advance customer journey state to ready_to_book
     if (booking.ownerId) {
-      advanceJourneyState(booking.ownerId, 'ready_to_book').catch(() => {});
+      advanceJourneyState(booking.ownerId, 'ready_to_book').catch(err => logger.warn('[BookingRequests] advanceJourneyState ready_to_book failed', { ownerId: booking.ownerId, err: err?.message }));
     }
 
     // ── Loyalty credit redemption — synchronous debit after booking row exists ──
@@ -967,8 +968,8 @@ router.post('/:requestId/respond', async (req, res) => {
 
       // Advance owner journey state to 'booked' on acceptance
       if (booking.ownerId) {
-        advanceJourneyState(booking.ownerId, 'booked').catch(() => {});
-        recomputeCustomerProfile(booking.ownerId).catch(() => {});
+        advanceJourneyState(booking.ownerId, 'booked').catch(err => logger.warn('[BookingRequests] advanceJourneyState booked failed', { ownerId: booking.ownerId, err: err?.message }));
+        recomputeCustomerProfile(booking.ownerId).catch(err => logger.warn('[BookingRequests] recomputeCustomerProfile failed', { ownerId: booking.ownerId, err: err?.message }));
       }
     }
     
@@ -1850,6 +1851,33 @@ router.post('/:requestId/confirm', async (req, res) => {
       paymentReleased: booking.subtotalCents,
       platformFee: booking.serviceFeeCents,
     });
+
+    // ── VAT accounting: record marketplace VAT obligation at escrow release ─
+    // Israeli law מועד החיוב: מע"מ is owed when the taxable transaction is
+    // completed and funds are released — this is the canonical accounting event.
+    // Use recordTransactionFromGross() with the actual customer-paid total
+    // (totalCents includes subtotal + service fee) to avoid the back-calculation
+    // understatement in recordTransaction().
+    // Non-blocking — a failure here must never roll back the confirmed booking.
+    {
+      const vatPlatform = (
+        booking.providerType === 'sitter' ? 'sitter-suite' :
+        booking.providerType === 'walker' ? 'walk-my-pet' :
+        'sitter-suite' // default for trainer and other service types
+      ) as 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'pet-wash-hub' | 'paw-finder' | 'plush-lab' | 'enterprise';
+      const grossCollectedILS = (booking.totalCents || booking.subtotalCents || 0) / 100;
+      try {
+        await VATCalculatorService.recordTransactionFromGross(
+          vatPlatform,
+          requestId,
+          grossCollectedILS,
+          requestId,
+          { serviceType: booking.serviceType, bookingFlow: 'booking_requests', confirmedAt: new Date().toISOString() }
+        );
+      } catch (vatErr: any) {
+        logger.warn('[BookingRequests] VAT ledger recording failed (non-blocking)', { error: vatErr.message, requestId });
+      }
+    }
 
     logBookingEvent('owner_confirmed', buildEventPayload({ ...booking, status: finalStatus }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),

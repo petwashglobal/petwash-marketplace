@@ -133,7 +133,10 @@ export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
 });
 
-export const storage = getStorage(app, 'gs://signinpetwash.firebasestorage.app');
+// Use the configured storage bucket from env var. Fallback to the known production bucket
+// so existing deployments that don't yet have VITE_FIREBASE_STORAGE_BUCKET set continue to work.
+const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app';
+export const storage = getStorage(app, `gs://${storageBucket}`);
 
 // ✅ WebAuthn / Passkey configuration - Dynamically determined based on environment
 // Supports: petwash.co.il (production), Replit preview URLs (development), localhost (dev)

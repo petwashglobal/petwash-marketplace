@@ -190,19 +190,39 @@ export async function requireAuth(req: Request, res: Response, next: any) {
     }
     
     // Firebase session cookie authentication
+    // Also accepts Firebase ID token in the Authorization: Bearer header so that
+    // mobile clients and API callers that don't hold a cookie can reach these routes.
     const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
+    const { auth: fbAdminAuth } = await import('./lib/firebase-admin');
     const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];
-    
-    if (!sessionCookie) {
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+
+    if (!sessionCookie && !bearerToken) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Verify Firebase session cookie
-    let decodedClaims;
-    try {
-      decodedClaims = await verifySessionCookie(sessionCookie, false);
-    } catch (error) {
-      return res.status(401).json({ message: 'Invalid or expired session' });
+    // Verify Firebase session cookie or Bearer ID token
+    let decodedClaims: any;
+    if (sessionCookie) {
+      try {
+        decodedClaims = await verifySessionCookie(sessionCookie, false);
+      } catch {
+        // Session cookie invalid — fall back to Bearer token if present
+        if (!bearerToken) {
+          return res.status(401).json({ message: 'Invalid or expired session' });
+        }
+      }
+    }
+    if (!decodedClaims && bearerToken) {
+      try {
+        decodedClaims = await fbAdminAuth.verifyIdToken(bearerToken, true);
+      } catch {
+        return res.status(401).json({ message: 'Invalid or expired token' });
+      }
+    }
+    if (!decodedClaims) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
     // Attach Firebase user info to request

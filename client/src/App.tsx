@@ -1,5 +1,5 @@
 import "./lib/i18next-init"; // Initialize react-i18next before any component imports
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -23,6 +23,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useLocation } from "wouter";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
@@ -797,13 +798,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Shop />}
         </Route>
         <Route path="/booking">
-          {() => <BookingUnified />}
+          {() => (
+            <RequireAuth>
+              <BookingUnified />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking/confirmation/:requestId">
-          {() => <BookingConfirmation />}
+          {() => (
+            <RequireAuth>
+              <BookingConfirmation />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking/new/:serviceType/:providerId">
-          {() => <MultiPetBookingWizard />}
+          {() => (
+            <RequireAuth>
+              <MultiPetBookingWizard />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/map">
           {() => <StationMap />}
@@ -1758,7 +1771,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 
         {/* Applicant: check own application status */}
         <Route path="/provider-application/status">
-          {() => <ProviderApplicationStatus />}
+          {() => <RequireAuth><ProviderApplicationStatus /></RequireAuth>}
         </Route>
         <Route path="/admin/compliance-control-tower">{() => <Redirect to="/pet-wash-ltd/executive/compliance" />}</Route>
 
@@ -2101,16 +2114,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/apply-provider">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <ProviderApplicationForm />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/join-team">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderApplicationForm />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <ProviderApplicationForm />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/providers">
@@ -2884,6 +2901,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 }
 
 function App() {
+  const [location] = useLocation();
   // Default to Hebrew ('he') for Israeli market - PRIMARY language
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('petwash_lang') as Language;
@@ -2892,7 +2910,22 @@ function App() {
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-  
+
+  // Route-aware suppression: promo popup and floating FABs must not show on
+  // functional/operational pages — only on public marketing pages.
+  const [currentPath] = useLocation();
+
+  // Regex pattern covering all non-marketing route prefixes.
+  // The promo popup must never auto-open on functional, auth, or operational pages.
+  const PROMO_EXCLUDED_PATTERN =
+    /^\/(paw-finder|admin|provider|dashboard|booking|signin|signup|sign-in|sign-up|verify|account-activation|choose-role|complete-profile|provider-pending|provider-rejected|staff-pending|staff-rejected|access-pending|blocked|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|forms|legal-agreement)(\/|$)/;
+
+  const showPromoPopup = !PROMO_EXCLUDED_PATTERN.test(currentPath);
+
+  // Routes where floating FABs must be suppressed (they cover hero content)
+  const showFloatingStack = !/^\/paw-finder(\/|$)/.test(currentPath);
+
+
   useKeyboardNavigation();
 
   useEffect(() => {
@@ -3029,16 +3062,20 @@ console.log("Build: 1769350182889");
           
           <Toaster />
           <OnboardingChecklist />
+          {showFloatingStack && (
           <FloatingStack 
             language={currentLanguage}
             onAIClick={() => setIsAIChatOpen(true)}
           />
+          )}
           
           {/* Google Dialogflow CX AI Chat Widget - Gemini-powered Kenzo 🤖 */}
+          {showFloatingStack && (
           <AiChatWidget 
             isOpen={isAIChatOpen}
             onClose={() => setIsAIChatOpen(false)}
           />
+          )}
           
           <AuthProvider>
               <ActivationBanner />
@@ -3065,8 +3102,8 @@ console.log("Build: 1769350182889");
             onClose={() => setIsConsentManagerOpen(false)}
           />
 
-          {/* Luxury entry popup — single global instance, z-[9999] sits above all overlays */}
-          <PromoAdPopup />
+          {/* Marketing promo popup — only on public landing pages, never on functional/operational routes */}
+          {showPromoPopup && <PromoAdPopup />}
           
         </TooltipProvider>
       </LanguageProvider>

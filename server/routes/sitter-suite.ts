@@ -48,6 +48,10 @@ import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
 
+// Booking grace period: allow bookings up to 5 minutes in the past to handle
+// clock skew between client and server (same constant used in walk-my-pet.ts).
+const BOOKING_GRACE_PERIOD_MS = 5 * 60 * 1000;
+
 router.get('/', (req, res) => {
   res.json({
     platform: 'Sitter Suite',
@@ -654,7 +658,8 @@ router.post('/bookings', requireAuth, async (req, res) => {
     } = req.body;
     const resolvedAddressText = addressText ?? addressTextFallback ?? null;
     
-    const ownerId = (req as any).user?.uid || req.body.ownerId;
+    // Always derive ownerId from the verified Firebase token — never trust req.body.
+    const ownerId = (req as any).user?.uid;
     
     const [sitter] = await db
       .select()
@@ -672,6 +677,17 @@ router.post('/bookings', requireAuth, async (req, res) => {
     
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid startDate or endDate' });
+    }
+    if (start >= end) {
+      return res.status(400).json({ error: 'endDate must be after startDate' });
+    }
+    // Reject bookings starting in the past (5-minute grace window)
+    if (start.getTime() < Date.now() - BOOKING_GRACE_PERIOD_MS) {
+      return res.status(400).json({ error: 'Start date must be in the future' });
+    }
     
     const availability = await sitterAdvancedBookingEngine.checkAvailability({
       providerId: sitterId.toString(),
@@ -1001,22 +1017,6 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         logger.warn('[Sitter Suite] Receipt generation after accept failed (non-blocking)', receiptErr);
       }
 
-      // Record in P&L ledger (VAT accounting - non-blocking)
-      try {
-        await VATCalculatorService.recordTransaction(
-          'sitter-suite',
-          paymentResult.nayaxTransactionId || booking.bookingId,
-          booking.basePriceCents / 100,
-          booking.bookingId,
-          {
-            sitterId: booking.sitterId,
-            totalDays: booking.totalDays,
-          }
-        );
-      } catch (vatErr) {
-        logger.warn('[Sitter Suite] VAT ledger recording after accept failed (non-blocking)', vatErr);
-      }
-
       // Backup financial records to Google Cloud Storage (non-blocking)
       (async () => {
         try {
@@ -1065,6 +1065,53 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         .where(eq(sitterBookings.bookingId, bookingId));
       
       await syncChatToBookingStatus(bookingId, 'cancelled', 'sitter_suite');
+
+      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
+      // Even though no payment was captured (payment happens at accept, not request),
+      // we write a CANCELLATION entry for a complete audit trail.
+      // The octopus_bookings row is found via idempotencyKey, which is set to the
+      // sitter booking's bookingId (string) when the octopus record is first created.
+      try {
+        const [octopusRecord] = await db.select().from(octopusBookings)
+          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
+        if (octopusRecord) {
+          await db.update(octopusBookings)
+            .set({ status: 'CANCELLED', updatedAt: new Date() })
+            .where(eq(octopusBookings.id, octopusRecord.id));
+          await db.insert(octopusLedger).values({
+            id: `OL-${nanoid(8)}`,
+            type: 'CANCELLATION',
+            bookingId: octopusRecord.id,
+            amount: 0, // No funds were captured yet at decline time
+            platform: 'PETSITTER',
+            metadata: {
+              reason: declineReason || 'Provider declined',
+              cancelledBy: 'provider',
+              cancelledAt: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (octopusErr) {
+        logger.warn('[Sitter Suite] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
+      }
+
+      // ── Void any receipts already issued for this booking ─────────────────
+      // In this flow, payment is NOT captured until accept, so customer_payment
+      // receipts should not exist at decline time. But defensively void any
+      // stale records (e.g. from a retry or race condition).
+      try {
+        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
+        for (const r of existingReceipts) {
+          if (!r.isVoided) {
+            await IsraeliDigitalReceiptService.voidReceipt({
+              receiptId: r.id,
+              voidReason: `Booking declined by provider: ${declineReason || 'no reason given'}`,
+            });
+          }
+        }
+      } catch (voidErr) {
+        logger.warn('[Sitter Suite] Receipt void on decline failed (non-blocking)', voidErr);
+      }
       
       logger.info('[Sitter Suite] ❌ Provider DECLINED booking', { bookingId, reason: declineReason });
       
@@ -1240,6 +1287,31 @@ router.patch('/bookings/:id/complete', async (req, res) => {
       .returning();
     
     await syncChatToBookingStatus(booking.bookingId, 'completed', 'sitter_suite');
+    
+    // ── VAT: single authoritative P&L entry at service completion ───────────
+    // Israeli law מועד החיוב: the taxable supply is complete when the service is
+    // delivered. Acceptance is an operational event only — no P&L entry there.
+    // Stage 2: settlement (withholding, Osek type, commissionId) is passed so the
+    // P&L ledger entry is complete in one write — no second pass required.
+    // Non-blocking — failure must not abort the completion response.
+    try {
+      await VATCalculatorService.recordTransactionFromGross(
+        'sitter-suite',
+        booking.bookingId,
+        booking.totalChargeCents / 100,
+        booking.bookingId,
+        { completedAt: new Date().toISOString(), bookingDbId: booking.id },
+        settlementResult.settlement ? {
+          withholdingTaxAmount: settlementResult.settlement.withholdingTaxAmount,
+          withholdingTaxRate: settlementResult.settlement.withholdingTaxRate,
+          netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
+          commissionId: settlementResult.settlement.commissionId,
+          osekType: settlementResult.settlement.osekType,
+        } : undefined
+      );
+    } catch (vatCompletionErr: any) {
+      logger.warn('[Sitter Suite] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId: booking.bookingId });
+    }
     
     logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {
       bookingId: booking.bookingId,

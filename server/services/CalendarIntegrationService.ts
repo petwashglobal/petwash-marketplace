@@ -3,47 +3,73 @@ import { logger } from '../lib/logger';
 
 let connectionSettings: any;
 
-async function getAccessToken() {
+/** Attempt Replit OAuth connector auth (development/Replit only). */
+async function getAccessTokenReplit(): Promise<string | null> {
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
   }
-  
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+  const xReplitToken = process.env.REPL_IDENTITY
+    ? 'repl ' + process.env.REPL_IDENTITY
+    : process.env.WEB_REPL_RENEWAL
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
-  if (!xReplitToken || !hostname) {
-    logger.warn('[CalendarIntegration] Replit connector not available — Google Calendar integration disabled. Configure GOOGLE_SERVICE_ACCOUNT_JSON for Cloud Run.');
-    return null;
-  }
+  if (!xReplitToken || !hostname) return null;
 
   connectionSettings = await fetch(
     'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-calendar',
     {
       headers: {
         'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
+        'X_REPLIT_TOKEN': xReplitToken,
+      },
     }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+  ).then(res => res.json()).then(data => data.items?.[0]).catch(() => null);
 
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
+  return connectionSettings?.settings?.access_token
+    || connectionSettings?.settings?.oauth?.credentials?.access_token
+    || null;
+}
 
-  if (!connectionSettings || !accessToken) {
+/** Build a googleapis auth client using the service account JSON available in Cloud Run. */
+function getServiceAccountAuth(): InstanceType<typeof google.auth.JWT> | null {
+  const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  if (!rawJson) return null;
+  try {
+    const credentials = JSON.parse(rawJson);
+    return new google.auth.JWT(
+      credentials.client_email,
+      undefined,
+      credentials.private_key,
+      ['https://www.googleapis.com/auth/calendar'],
+    );
+  } catch (err: any) {
+    logger.warn('[CalendarIntegration] Service account JSON parse failed', { error: err?.message });
     return null;
   }
-  return accessToken;
 }
 
 async function getCalendarClient() {
-  const accessToken = await getAccessToken();
-  if (!accessToken) return null;
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.calendar({ version: 'v3', auth: oauth2Client });
+  // 1. Try Replit connector (dev / Replit environment)
+  const replitToken = await getAccessTokenReplit().catch(() => null);
+  if (replitToken) {
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: replitToken });
+    return google.calendar({ version: 'v3', auth: oauth2Client });
+  }
+
+  // 2. Try service account (Cloud Run / production — uses GOOGLE_SERVICE_ACCOUNT_JSON)
+  const serviceAuth = getServiceAccountAuth();
+  if (serviceAuth) {
+    return google.calendar({ version: 'v3', auth: serviceAuth as any });
+  }
+
+  logger.warn('[CalendarIntegration] No authentication available — Calendar integration disabled. ' +
+    'Set GOOGLE_SERVICE_ACCOUNT_JSON in Cloud Run secrets to enable. ' +
+    'Grant the service account "Google Calendar API" access in Google Cloud Console.');
+  return null;
 }
 
 export interface BookingCalendarEvent {
@@ -64,8 +90,8 @@ class CalendarIntegrationService {
 
   async isAvailable(): Promise<boolean> {
     try {
-      await getAccessToken();
-      return true;
+      const client = await getCalendarClient();
+      return client !== null;
     } catch {
       return false;
     }

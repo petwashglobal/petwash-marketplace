@@ -42,12 +42,17 @@ import { dispatchNotifications, buildBookingCancelledSms } from '../services/Pet
 
 const router = Router();
 
+// Booking grace period: allow bookings up to 5 minutes in the past to handle
+// clock skew between client and server (same constant used in sitter-suite.ts).
+const BOOKING_GRACE_PERIOD_MS = 5 * 60 * 1000;
+
 // =================== WALKER REGISTRATION & PROFILES ===================
 
 // Create walker profile (first step of registration)
-router.post('/walkers/register', async (req, res) => {
+router.post('/walkers/register', requireAuth, async (req, res) => {
   try {
-    const userId = req.body.userId || (req as any).user?.uid;
+    // Always derive userId from the verified Firebase token — never trust req.body.
+    const userId = (req as any).user?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -102,7 +107,7 @@ router.post('/walkers/register', async (req, res) => {
         priority: 'normal',
       });
     } catch (queueErr) {
-      console.warn('[Walk My Pet] Could not add to approval queue (non-fatal):', queueErr);
+      logger.warn('[Walk My Pet] Could not add to approval queue (non-fatal):', { err: (queueErr as any)?.message });
     }
     
     res.status(201).json({ 
@@ -169,10 +174,10 @@ router.get('/walkers/:walkerId', async (req, res) => {
 });
 
 // Update walker profile
-router.patch('/walkers/:walkerId', async (req, res) => {
+router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
   try {
     const { walkerId } = req.params;
-    const userId = req.body.userId || (req as any).user?.uid;
+    const userId = (req as any).user?.uid;
 
     // Verify ownership
     const [walker] = await db
@@ -305,7 +310,8 @@ router.post('/walkers/search', async (req, res) => {
 // Create walk booking - USING LUXURY ENGINE
 router.post('/walks/book', requireAuth, async (req, res) => {
   try {
-    const ownerId = req.body.ownerId || (req as any).user?.uid;
+    // Always derive ownerId from the verified Firebase token — never trust req.body.
+    const ownerId = (req as any).user?.uid;
     if (!ownerId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -330,13 +336,42 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Missing required booking information' });
     }
 
+    // Validate duration is a positive number
+    const durationNum = Number(durationMinutes);
+    if (!Number.isFinite(durationNum) || durationNum <= 0) {
+      return res.status(400).json({ error: 'durationMinutes must be a positive number' });
+    }
+
     // Parse dates for luxury engine
     const startDateTime = new Date(`${scheduledDate}T${scheduledStartTime}`);
-    const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60000);
+    if (isNaN(startDateTime.getTime())) {
+      return res.status(400).json({ error: 'Invalid scheduledDate or scheduledStartTime' });
+    }
+    // Reject bookings for past dates/times (use a small grace window of 5 minutes)
+    if (startDateTime.getTime() < Date.now() - BOOKING_GRACE_PERIOD_MS) {
+      return res.status(400).json({ error: 'Scheduled walk must be in the future' });
+    }
+    const endDateTime = new Date(startDateTime.getTime() + durationNum * 60000);
     const scheduledDateOnly = new Date(scheduledDate); // Keep day-only for queries
 
     // Calculate distance (default 5km for walk radius)
     const distanceKm = 5; // Most walks are local 5km radius
+
+    // Verify walker exists, is active and verified before booking
+    const [walkerProfile] = await db
+      .select({ walkerId: walkerProfiles.walkerId, isActive: walkerProfiles.isActive, verificationStatus: walkerProfiles.verificationStatus })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, walkerId))
+      .limit(1);
+    if (!walkerProfile) {
+      return res.status(404).json({ error: 'Walker not found' });
+    }
+    if (!walkerProfile.isActive) {
+      return res.status(400).json({ error: 'Walker is not currently active' });
+    }
+    if (walkerProfile.verificationStatus !== 'verified') {
+      return res.status(400).json({ error: 'Walker is not verified and cannot accept bookings' });
+    }
 
     // STEP 1: Check availability using LUXURY ENGINE
     const availability = await walkEliteBookingEngine.checkAvailability({
@@ -655,22 +690,6 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         logger.warn('[Walk My Pet] Receipt generation after accept failed (non-blocking)', receiptErr);
       }
 
-      // Record in P&L ledger for VAT accounting (non-blocking)
-      try {
-        await VATCalculatorService.recordTransaction(
-          'walk-my-pet',
-          booking.bookingId,
-          parseFloat(booking.walkerRate || '0'),
-          booking.bookingId,
-          {
-            walkerId: booking.walkerId,
-            durationMinutes: booking.durationMinutes,
-          }
-        );
-      } catch (vatErr) {
-        logger.warn('[Walk My Pet] VAT ledger recording after accept failed (non-blocking)', vatErr);
-      }
-
       // Add calendar event (non-blocking)
       calendarIntegrationService.createBookingEvent({
         platform: 'walk-my-pet',
@@ -722,6 +741,49 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         .where(eq(walkBookings.bookingId, bookingId));
       
       await syncChatToBookingStatus(bookingId, 'cancelled', 'walk_my_pet');
+
+      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
+      // Payment has NOT been captured at decline time (capture happens on accept).
+      // We still write a CANCELLATION entry for a complete audit trail.
+      // The octopus_bookings row is found via idempotencyKey = bookingId.
+      try {
+        const [octopusRecord] = await db.select().from(octopusBookings)
+          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
+        if (octopusRecord) {
+          await db.update(octopusBookings)
+            .set({ status: 'CANCELLED', updatedAt: new Date() })
+            .where(eq(octopusBookings.id, octopusRecord.id));
+          await db.insert(octopusLedger).values({
+            id: `OL-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+            type: 'CANCELLATION',
+            bookingId: octopusRecord.id,
+            amount: 0,
+            platform: 'PETTREK',
+            metadata: {
+              reason: declineReason || 'Walker declined',
+              cancelledBy: 'provider',
+              cancelledAt: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (octopusErr) {
+        logger.warn('[Walk My Pet] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
+      }
+
+      // ── Void any stale receipts for this booking ───────────────────────────
+      try {
+        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
+        for (const r of existingReceipts) {
+          if (!r.isVoided) {
+            await IsraeliDigitalReceiptService.voidReceipt({
+              receiptId: r.id,
+              voidReason: `Walk declined by walker: ${declineReason || 'no reason given'}`,
+            });
+          }
+        }
+      } catch (voidErr) {
+        logger.warn('[Walk My Pet] Receipt void on decline failed (non-blocking)', voidErr);
+      }
       
       logger.info(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
       
@@ -775,7 +837,8 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
 // EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model)
 router.post('/walks/emergency-request', requireAuth, async (req, res) => {
   try {
-    const ownerId = req.body.ownerId || (req as any).user?.uid;
+    // Always derive ownerId from the verified Firebase token — never trust req.body.
+    const ownerId = (req as any).user?.uid;
     if (!ownerId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -1232,6 +1295,52 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 
     await syncChatToBookingStatus(bookingId, 'completed', 'walk_my_pet');
 
+    // ── Stage 2: provider settlement with withholding tax (ניכוי מס במקור) ──
+    // walkerPayout is the gross amount earned by the walker (before withholding).
+    // We call recordProviderSettlement so withholding is tracked in provider_commissions.
+    // Non-blocking — failure must not abort the completion response.
+    let walkSettlement: any = undefined;
+    try {
+      const walkSettlementResult = await IsraeliDigitalReceiptService.recordProviderSettlement({
+        bookingId,
+        providerId: booking.walkerId,
+        providerType: 'walker',
+        grossPayoutAmount: parseFloat(booking.walkerPayout || '0'),
+        hasWithholdingExemption: false,
+        customerPaidAmount: parseFloat(booking.totalCost || '0'),
+        bookingDbId: booking.id,
+      });
+      if (walkSettlementResult.success && walkSettlementResult.settlement) {
+        walkSettlement = walkSettlementResult.settlement;
+      }
+    } catch (settlementErr: any) {
+      logger.warn('[Walk My Pet] Provider settlement recording failed (non-blocking)', { error: settlementErr.message, bookingId });
+    }
+
+    // ── VAT: single authoritative P&L entry at service completion ───────────
+    // Israeli law מועד החיוב: taxable supply is complete on service delivery.
+    // Acceptance is an operational event only — no P&L entry is made there.
+    // Stage 2: withholding & Osek data are passed so the ledger entry is complete.
+    // Non-blocking — failure must not abort the completion response.
+    try {
+      await VATCalculatorService.recordTransactionFromGross(
+        'walk-my-pet',
+        bookingId,
+        parseFloat(booking.totalCost || '0'),
+        bookingId,
+        { completedAt: new Date().toISOString() },
+        walkSettlement ? {
+          withholdingTaxAmount: walkSettlement.withholdingTaxAmount,
+          withholdingTaxRate: walkSettlement.withholdingTaxRate,
+          netPaymentToProvider: walkSettlement.netPaymentToProvider,
+          commissionId: walkSettlement.commissionId,
+          osekType: walkSettlement.osekType,
+        } : undefined
+      );
+    } catch (vatCompletionErr: any) {
+      logger.warn('[Walk My Pet] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId });
+    }
+
     // Create blockchain audit record
     const previousBlock = await db
       .select()
@@ -1314,10 +1423,10 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 // =================== REVIEWS ===================
 
 // Submit walker review
-router.post('/walkers/:walkerId/review', async (req, res) => {
+router.post('/walkers/:walkerId/review', requireAuth, async (req, res) => {
   try {
     const { walkerId } = req.params;
-    const ownerId = req.body.ownerId || (req as any).user?.uid;
+    const ownerId = (req as any).user?.uid;
     
     const reviewData: InsertWalkerReview = {
       reviewId: `REV-${crypto.randomUUID()}`,

@@ -36,6 +36,13 @@
       "when": 1776081545397,
       "tag": "0008_onboarding_user_unique_index",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1745056000000,
+      "tag": "0010_registration_tables",
+      "breakpoints": true
     }
   ]
 }

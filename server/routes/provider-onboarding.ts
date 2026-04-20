@@ -7,7 +7,7 @@ import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
 import { kycMemoryProcessor, kycAnomalyDetector } from '../services/KYC2026';
@@ -497,14 +497,16 @@ router.post('/apply', upload.fields([
       }
     }
 
-    // Check for existing application
+    // Check for existing application — block if any active/in-progress record exists.
+    // We check all non-terminal statuses so a draft created by the post-login flow does not
+    // produce a duplicate record when the user later fills and submits the full form.
     const existingApp = await db
       .select()
       .from(providerApplications)
       .where(
         and(
           eq(providerApplications.userId, authenticatedUser.uid),
-          eq(providerApplications.status, 'pending')
+          inArray(providerApplications.status, ['pending', 'draft', 'pending_review', 'under_review', 'processing', 'pending_resubmission'])
         )
       )
       .limit(1);
@@ -1403,6 +1405,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
     const approveResult = await pool.query(
       `UPDATE provider_applications
           SET status = 'approved',
+              onboarding_complete = true,
               reviewed_by = $1,
               reviewed_at = NOW(),
               approved_as_provider_id = $2,
@@ -1428,10 +1431,10 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       actorUserId: adminUid || 'admin',
       actorRole: 'admin',
       payload: { applicationId, providerId, internalNotes: internalNotes || null },
-    }).catch(() => {});
-    completeQueueItem((application as any).id).catch(() => {});
-    logSystemMessage({ applicationId: (application as any).id, body: `Application approved by admin. Provider ID: ${providerId}`, providerVisible: false }).catch(() => {});
-    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_approved', severity: 'info', payload: { adminUid, providerId } }).catch(() => {});
+    }).catch(err => logger.warn('[ProviderOnboarding] audit log failed on admin_approved', { applicationId, err: err?.message }));
+    completeQueueItem((application as any).id).catch(err => logger.warn('[ProviderOnboarding] completeQueueItem failed on admin_approved', { applicationId, err: err?.message }));
+    logSystemMessage({ applicationId: (application as any).id, body: `Application approved by admin. Provider ID: ${providerId}`, providerVisible: false }).catch(err => logger.warn('[ProviderOnboarding] logSystemMessage failed on admin_approved', { applicationId, err: err?.message }));
+    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_approved', severity: 'info', payload: { adminUid, providerId } }).catch(err => logger.warn('[ProviderOnboarding] emitProviderEvent failed on admin_approved', { applicationId, err: err?.message }));
 
     if (application.userId) {
       try {
@@ -1541,10 +1544,10 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
       actorUserId: adminUid || 'admin',
       actorRole: 'admin',
       payload: { applicationId, rejectionReason, internalNotes: internalNotes || null },
-    }).catch(() => {});
-    completeQueueItem((application as any).id).catch(() => {});
-    logSystemMessage({ applicationId: (application as any).id, body: `Application rejected. Reason: ${rejectionReason}`, providerVisible: false }).catch(() => {});
-    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_rejected', severity: 'warning', payload: { adminUid, rejectionReason } }).catch(() => {});
+    }).catch(err => logger.warn('[ProviderOnboarding] audit log failed on admin_rejected', { applicationId, err: err?.message }));
+    completeQueueItem((application as any).id).catch(err => logger.warn('[ProviderOnboarding] completeQueueItem failed on admin_rejected', { applicationId, err: err?.message }));
+    logSystemMessage({ applicationId: (application as any).id, body: `Application rejected. Reason: ${rejectionReason}`, providerVisible: false }).catch(err => logger.warn('[ProviderOnboarding] logSystemMessage failed on admin_rejected', { applicationId, err: err?.message }));
+    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_rejected', severity: 'warning', payload: { adminUid, rejectionReason } }).catch(err => logger.warn('[ProviderOnboarding] emitProviderEvent failed on admin_rejected', { applicationId, err: err?.message }));
 
     // Email applicant
     if (isSendGridConfigured() && application.email) {

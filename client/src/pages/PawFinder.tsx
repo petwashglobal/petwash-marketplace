@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
-import { Layout } from '@/components/Layout';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -1216,7 +1215,6 @@ export default function PawFinder({ language }: PawFinderProps) {
   ];
 
   return (
-    <Layout language={language}>
     <div className="min-h-screen bg-slate-50" dir={isHe ? 'rtl' : 'ltr'}>
       {contactPost && <ContactModal post={contactPost} onClose={() => setContactPost(null)} />}
 
@@ -1616,6 +1614,5 @@ export default function PawFinder({ language }: PawFinderProps) {
         )}
       </div>
     </div>
-    </Layout>
   );
 }

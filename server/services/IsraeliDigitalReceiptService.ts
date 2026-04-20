@@ -25,7 +25,7 @@
  */
 
 import { db } from '../db';
-import { digitalReceipts, providerCommissions } from '@shared/schema';
+import { digitalReceipts, providerCommissions, withholdingRemittanceLedger, octopusLedger } from '@shared/schema';
 import { eq, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -36,12 +36,22 @@ import { allocateTaxSequenceNumber } from './TaxSequenceService';
 import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_WHATSAPP_URL } from '@shared/support-contact';
 
-const ISRAELI_VAT_RATE = 0.18;
+import {
+  ISRAEL_VAT_RATE as ISRAELI_VAT_RATE,
+  WITHHOLDING_RATE_POLICY,
+  COMPANY_TAX_ID as CONFIG_COMPANY_TAX_ID,
+  COMPANY_NAME_EN as CONFIG_COMPANY_NAME,
+  COMPANY_NAME_HE as CONFIG_COMPANY_NAME_HE,
+  resolveWithholdingRate,
+  getWithholdingPeriod,
+  isShaamAllocationRequired,
+} from '@shared/israel-compliance-config';
+
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
-const DEFAULT_WITHHOLDING_TAX_RATE = 0.20;
-const COMPANY_NAME = 'PET WASH LTD';
-const COMPANY_NAME_HE = 'פט וואש בע"מ';
-const COMPANY_TAX_ID = '517145033';
+const DEFAULT_WITHHOLDING_TAX_RATE = WITHHOLDING_RATE_POLICY.defaultRate;
+const COMPANY_NAME = CONFIG_COMPANY_NAME;
+const COMPANY_NAME_HE = CONFIG_COMPANY_NAME_HE;
+const COMPANY_TAX_ID = CONFIG_COMPANY_TAX_ID;
 const COMPANY_ADDRESS = 'ישראל';
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = '⁦Pet Wash™⁩';
@@ -84,6 +94,17 @@ export interface ProviderSettlementParams {
   exemptionPercentage?: number;
   providerWithholdingRate?: number;
   isVatRegistered?: boolean;
+  // ── Stage 2: Osek classification drives VAT and withholding logic ──────────
+  // osek_patur: annual revenue < ₪120,000 — exempt from VAT, withholding applies
+  // osek_murshe: annual revenue ≥ ₪120,000 — VAT registered, commission includes 18% VAT
+  // When undefined the service falls back to legacy behaviour.
+  osekType?: "osek_patur" | "osek_murshe";
+  // ── Form 2542: ITA withholding certificate ─────────────────────────────────
+  // withholdingCertExpiryDate: expiry date from providerTaxCompliance table.
+  // If today > expiryDate, the certificate has lapsed and DEFAULT_WITHHOLDING_TAX_RATE applies.
+  // withholdingCertRate: the specific reduced rate (0–100) granted by the ITA certificate.
+  withholdingCertExpiryDate?: Date;
+  withholdingCertRate?: number; // e.g. 5 for 5% — overrides providerWithholdingRate when cert is valid
 }
 
 export interface ProviderSettlementResult {
@@ -94,9 +115,28 @@ export interface ProviderSettlementResult {
   brokerCommission: number;
   netPaymentToProvider: number;
   commissionId: string;
+  osekType?: "osek_patur" | "osek_murshe"; // echoed back for P&L ledger storage
 }
 
 export class IsraeliDigitalReceiptService {
+
+  /**
+   * Determine whether a SHAAM allocation number is required for this invoice.
+   * Israeli ITA Digital Invoice Law 2026:
+   *   Phase 1 (1.1.2026): required when ex-VAT amount > ₪10,000
+   *   Phase 2 (1.6.2026): required when ex-VAT amount > ₪5,000
+   */
+  static isShaamRequired(exVatAmount: number, invoiceDate: Date = new Date()): boolean {
+    return isShaamAllocationRequired(exVatAmount, invoiceDate);
+  }
+
+  /**
+   * Compute the reporting period string "YYYY-QN" for a given date.
+   * Used as the period key in the withholding_remittance_ledger.
+   */
+  static getReportingPeriod(date: Date = new Date()): string {
+    return getWithholdingPeriod(date);
+  }
 
   /**
    * Generate next sequential receipt number — ITA compliant, concurrent-safe.
@@ -159,23 +199,53 @@ export class IsraeliDigitalReceiptService {
       exemptionPercentage = 0,
       providerWithholdingRate,
       isVatRegistered = false,
+      osekType,
+      withholdingCertExpiryDate,
+      withholdingCertRate,
     } = params;
 
-    const baseRate = providerWithholdingRate !== undefined
-      ? providerWithholdingRate / 100
-      : DEFAULT_WITHHOLDING_TAX_RATE;
+    // ── Osek Patur / Osek Murshe differentiation (Israeli 2026 rules) ──────────
+    // Osek Patur (עוסק פטור, < ₪122,833/year in 2026):
+    //   • NOT VAT-registered → does NOT charge VAT on their services
+    //   • Platform's broker commission does NOT carry a provider-side VAT obligation
+    //   • Withholding tax (ניכוי מס במקור) STILL applies at policy default or individual rate
+    //
+    // Osek Murshe (עוסק מורשה, ≥ ₪122,833/year in 2026):
+    //   • IS VAT-registered → charges VAT on their services
+    //   • Platform's broker commission invoice to the Osek Murshe carries 18% VAT
+    //   • Withholding tax STILL applies; however the net-payout is from the pre-VAT base
+    //
+    // When osekType is undefined we fall back to the legacy isVatRegistered flag.
+    const resolvedIsVatRegistered =
+      osekType === 'osek_murshe' ? true :
+      osekType === 'osek_patur' ? false :
+      isVatRegistered;
 
-    let effectiveRate = baseRate;
-    if (hasWithholdingExemption && exemptionPercentage > 0) {
-      effectiveRate = baseRate * (1 - exemptionPercentage / 100);
+    // ── Form 2542 expiry check via shared config ─────────────────────────────────
+    // resolveWithholdingRate() checks cert validity against today's date.
+    // If the certificate has lapsed we MUST fall back to the policy default rate.
+    const wh = resolveWithholdingRate(withholdingCertExpiryDate, withholdingCertRate);
+
+    let effectiveRate = wh.rate;
+
+    // Legacy manual override (providerWithholdingRate) — only used when there is no cert
+    if (wh.source === 'policy_default' && providerWithholdingRate !== undefined) {
+      effectiveRate = providerWithholdingRate / 100;
+    }
+
+    // Legacy exemption logic — only applies when certificate is NOT being used
+    if (wh.source === 'policy_default' && hasWithholdingExemption && exemptionPercentage > 0) {
+      effectiveRate = effectiveRate * (1 - exemptionPercentage / 100);
     }
 
     const withholdingTaxAmount = parseFloat((grossPayoutAmount * effectiveRate).toFixed(2));
     const netPaymentToProvider = parseFloat((grossPayoutAmount - withholdingTaxAmount).toFixed(2));
 
     const brokerCommission = parseFloat((grossPayoutAmount * PLATFORM_COMMISSION_RATE / (1 - PLATFORM_COMMISSION_RATE)).toFixed(2));
-    const vatOnCommission = isVatRegistered
-      ? parseFloat((brokerCommission * 18 / 118).toFixed(2))
+    // Only Osek Murshe providers result in a VAT-carrying invoice for the broker commission.
+    // Osek Patur providers are VAT-exempt — the platform does not owe VAT on their behalf.
+    const vatOnCommission = resolvedIsVatRegistered
+      ? parseFloat((brokerCommission * ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)).toFixed(2))
       : 0;
 
     const commissionId = `COMM-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
@@ -188,6 +258,7 @@ export class IsraeliDigitalReceiptService {
       brokerCommission,
       netPaymentToProvider,
       commissionId,
+      osekType,
     };
   }
 
@@ -201,6 +272,9 @@ export class IsraeliDigitalReceiptService {
       const issuedAt = new Date();
 
       const vatBreakdown = this.calculateVATBreakdown(params.totalAmount);
+
+      // SHAAM allocation number requirement (ITA Digital Invoice Law 2026)
+      const shaamRequired = this.isShaamRequired(vatBreakdown.subtotalBeforeVAT, issuedAt);
 
       const auditHash = this.generateAuditHash({
         receiptNumber,
@@ -238,9 +312,19 @@ export class IsraeliDigitalReceiptService {
         companyTaxId: COMPANY_TAX_ID,
         companyAddress: COMPANY_ADDRESS,
         auditHash,
+        shaamRequired,
+        // shaamAllocationNumber is null until the SHAAM API integration is complete
         issuedAt,
         accountingRecorded: true,
       }).returning();
+
+      if (shaamRequired) {
+        logger.warn('[Digital Receipt] SHAAM allocation number required — pending SHAAM API integration', {
+          receiptNumber,
+          exVatAmount: vatBreakdown.subtotalBeforeVAT,
+          bookingId: params.bookingId,
+        });
+      }
 
       logger.info('[Digital Receipt] Receipt generated', {
         receiptNumber,
@@ -249,6 +333,7 @@ export class IsraeliDigitalReceiptService {
         bookingId: params.bookingId,
         totalAmount: params.totalAmount,
         vatAmount: vatBreakdown.vatAmount,
+        shaamRequired,
       });
 
       let emailSent = false;
@@ -359,9 +444,39 @@ export class IsraeliDigitalReceiptService {
         paymentMethod: 'bank_transfer',
         paymentStatus: 'pending',
         auditHash,
+        shaamRequired: this.isShaamRequired(settlement.grossPayout),
         accountingRecorded: true,
         issuedAt: new Date(),
       });
+
+      // ── Withholding remittance ledger — ITA Form 856 quarterly tracking ───────
+      // Write a 'held' entry so finance can track what is owed to the ITA vs
+      // what has already been remitted. Status transitions:
+      //   held → remitted  (on quarterly ITA payment)
+      //   held → reversed  (on booking cancellation after settlement)
+      if (settlement.withholdingTaxAmount > 0) {
+        try {
+          await db.insert(withholdingRemittanceLedger).values({
+            bookingId: params.bookingId,
+            providerId: params.providerId,
+            providerType: params.providerType,
+            withholdingAmount: settlement.withholdingTaxAmount.toFixed(2),
+            withholdingRate: (settlement.withholdingTaxRate * 100).toFixed(2),
+            grossPayoutAmount: settlement.grossPayout.toFixed(2),
+            period: this.getReportingPeriod(),
+            status: 'held',
+            osekType: settlement.osekType || null,
+            commissionId: settlement.commissionId,
+          });
+        } catch (wrlError: any) {
+          // Non-blocking: failure to write remittance ledger must not abort the settlement
+          logger.error('[Digital Receipt] withholding_remittance_ledger write failed', {
+            bookingId: params.bookingId,
+            providerId: params.providerId,
+            error: wrlError.message,
+          });
+        }
+      }
 
       logger.info('[Digital Receipt] Provider settlement recorded', {
         commissionId: settlement.commissionId,
@@ -683,5 +798,193 @@ export class IsraeliDigitalReceiptService {
         sql`issued_at >= ${startDate} AND issued_at <= ${endDate} AND is_voided = false`
       )
       .orderBy(desc(digitalReceipts.issuedAt));
+  }
+
+  // ── Void & Credit Note ───────────────────────────────────────────────────────
+
+  /**
+   * Void an existing digital receipt.
+   * Called when a booking is cancelled BEFORE a P&L settlement was created.
+   * Marks the receipt as voided — it is kept in the DB for audit purposes
+   * (Israeli law: receipts must not be deleted, only voided).
+   *
+   * If a withholding_remittance_ledger entry exists for this booking it is
+   * also reversed here.
+   */
+  static async voidReceipt(params: {
+    receiptId: number;
+    voidReason: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const [updated] = await db
+        .update(digitalReceipts)
+        .set({
+          isVoided: true,
+          voidedAt: new Date(),
+          voidReason: params.voidReason,
+          paymentStatus: 'voided',
+        })
+        .where(eq(digitalReceipts.id, params.receiptId))
+        .returning();
+
+      if (!updated) {
+        return { success: false, error: `Receipt ${params.receiptId} not found` };
+      }
+
+      logger.info('[Digital Receipt] Receipt voided', {
+        receiptId: params.receiptId,
+        receiptNumber: updated.receiptNumber,
+        voidReason: params.voidReason,
+      });
+
+      // Reverse any withholding_remittance_ledger 'held' entry for this booking
+      if (updated.bookingId) {
+        try {
+          await db
+            .update(withholdingRemittanceLedger)
+            .set({
+              status: 'reversed',
+              reversedAt: new Date(),
+              reverseReason: `Receipt voided: ${params.voidReason}`,
+              updatedAt: new Date(),
+            })
+            .where(
+              sql`booking_id = ${updated.bookingId} AND status = 'held'`
+            );
+        } catch (wrlErr: any) {
+          logger.warn('[Digital Receipt] Failed to reverse withholding_remittance_ledger entry', {
+            bookingId: updated.bookingId,
+            error: wrlErr.message,
+          });
+        }
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      logger.error('[Digital Receipt] voidReceipt failed', { receiptId: params.receiptId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Issue a credit note (הזיכוי) for an existing receipt.
+   * Called when a booking is cancelled AFTER a P&L settlement was recorded
+   * (i.e. a tax invoice was already issued to the customer or the ITA ledger
+   * already has an entry). Israeli law requires an explicit credit note — the
+   * original receipt must NOT be deleted or modified.
+   *
+   * The credit note is a new `digital_receipts` row with:
+   *   receiptType = 'credit_note'
+   *   originalReceiptId = id of the original receipt
+   *   totalAmount = negative of original amount (or the refund amount)
+   *   shaamRequired / shaamAllocationNumber mirrored from original
+   */
+  static async issueCreditNote(params: {
+    originalReceiptId: number;
+    refundAmount: number;
+    reason: string;
+    platform: string;
+    bookingId: string;
+    customerEmail: string;
+  }): Promise<{ success: boolean; creditNoteNumber?: string; creditNoteId?: number; error?: string }> {
+    try {
+      const [original] = await db
+        .select()
+        .from(digitalReceipts)
+        .where(eq(digitalReceipts.id, params.originalReceiptId))
+        .limit(1);
+
+      if (!original) {
+        return { success: false, error: `Original receipt ${params.originalReceiptId} not found` };
+      }
+
+      const creditNoteNumber = await this.generateReceiptNumber();
+      const issuedAt = new Date();
+
+      const refundAmount = Math.abs(params.refundAmount);
+      const vatBreakdown = this.calculateVATBreakdown(refundAmount);
+      const shaamRequired = this.isShaamRequired(vatBreakdown.subtotalBeforeVAT, issuedAt);
+
+      const auditHash = this.generateAuditHash({
+        receiptNumber: creditNoteNumber,
+        totalAmount: -refundAmount,
+        vatAmount: -vatBreakdown.vatAmount,
+        customerEmail: params.customerEmail,
+        issuedAt: issuedAt.toISOString(),
+      });
+
+      const [creditNote] = await db.insert(digitalReceipts).values({
+        receiptNumber: creditNoteNumber,
+        receiptType: 'credit_note',
+        platform: params.platform,
+        bookingId: params.bookingId,
+        customerEmail: params.customerEmail,
+        customerName: original.customerName,
+        serviceDescription: `Credit note for ${original.receiptNumber} — ${params.reason}`,
+        serviceDescriptionHe: `זיכוי על ${original.receiptNumber} — ${params.reason}`,
+        subtotalAmount: (-vatBreakdown.subtotalBeforeVAT).toFixed(2),
+        vatRate: (ISRAELI_VAT_RATE * 100).toFixed(2),
+        vatAmount: (-vatBreakdown.vatAmount).toFixed(2),
+        platformFeeAmount: '0',
+        totalAmount: (-refundAmount).toFixed(2),
+        currency: 'ILS',
+        paymentMethod: original.paymentMethod,
+        paymentStatus: 'refunded',
+        companyName: COMPANY_NAME,
+        companyTaxId: COMPANY_TAX_ID,
+        companyAddress: COMPANY_ADDRESS,
+        auditHash,
+        originalReceiptId: params.originalReceiptId,
+        shaamRequired,
+        issuedAt,
+        accountingRecorded: true,
+      }).returning();
+
+      // Mark the original receipt as voided
+      await db
+        .update(digitalReceipts)
+        .set({
+          isVoided: true,
+          voidedAt: issuedAt,
+          voidReason: `Credit note issued: ${creditNoteNumber} — ${params.reason}`,
+        })
+        .where(eq(digitalReceipts.id, params.originalReceiptId));
+
+      // Reverse any held withholding
+      try {
+        await db
+          .update(withholdingRemittanceLedger)
+          .set({
+            status: 'reversed',
+            reversedAt: issuedAt,
+            reverseReason: `Credit note issued: ${creditNoteNumber}`,
+            updatedAt: issuedAt,
+          })
+          .where(
+            sql`booking_id = ${params.bookingId} AND status = 'held'`
+          );
+      } catch (wrlErr: any) {
+        logger.warn('[Digital Receipt] Failed to reverse withholding_remittance_ledger on credit note', {
+          bookingId: params.bookingId,
+          error: wrlErr.message,
+        });
+      }
+
+      logger.info('[Digital Receipt] Credit note issued', {
+        creditNoteNumber,
+        originalReceiptNumber: original.receiptNumber,
+        refundAmount,
+        shaamRequired,
+      });
+
+      return {
+        success: true,
+        creditNoteNumber,
+        creditNoteId: creditNote.id,
+      };
+    } catch (error: any) {
+      logger.error('[Digital Receipt] issueCreditNote failed', { error: error.message });
+      return { success: false, error: error.message };
+    }
   }
 }

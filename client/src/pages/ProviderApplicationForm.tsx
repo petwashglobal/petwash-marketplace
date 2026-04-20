@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/apiConfig";
 import { 
   Loader2, CheckCircle2, Star, Shield, Heart, 
   Car, Home, Dog, Scissors, GraduationCap,
@@ -179,7 +180,7 @@ function SubmitDocumentsButton({
     try {
       const { getAuth } = await import('firebase/auth');
       const token = await getAuth().currentUser?.getIdToken();
-      const res = await fetch('/api/provider-intake/submit-documents', {
+      const res = await fetch(getApiUrl('/api/provider-intake/submit-documents'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
