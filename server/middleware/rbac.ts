@@ -20,6 +20,15 @@ function loadSuperAdmins(): string[] {
     logger.error('[RBAC] SUPER_ADMIN_EMAILS env var is not set — super-admin gate is CLOSED');
     return [];
   }
+  // Detect unset placeholder created by CI bootstrap — treat as missing.
+  if (raw.toUpperCase().includes('PLACEHOLDER')) {
+    logger.error(
+      '[RBAC] SUPER_ADMIN_EMAILS contains placeholder text — secret was never updated with real emails. ' +
+      'Run: printf \'admin@example.com\' | gcloud secrets versions add SUPER_ADMIN_EMAILS --project=<PROJECT> --data-file=- ' +
+      '— super-admin gate is CLOSED until this is fixed.',
+    );
+    return [];
+  }
   return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 }
 

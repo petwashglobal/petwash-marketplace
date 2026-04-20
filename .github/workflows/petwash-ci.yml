@@ -289,12 +289,45 @@ jobs:
             echo "✅ Exists:  GOOGLE_FORMS_SPREADSHEET_ID"
           fi
 
-          # SUPER_ADMIN_EMAILS — comma-separated list of emails with super-admin access.
-          if ! gcloud secrets describe "SUPER_ADMIN_EMAILS" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            echo "⚠️  WARNING: SUPER_ADMIN_EMAILS not found — super-admin access will be restricted to defaults."
-            ensure_secret "SUPER_ADMIN_EMAILS" "PLACEHOLDER_SET_REAL_ADMIN_EMAILS"
+          # SUPER_ADMIN_EMAILS — checked below in its own dedicated sync step.
+          # The dedicated step (after this one) syncs from the SUPER_ADMIN_EMAILS GitHub Secret
+          # and fails the build if the secret is still a placeholder.
+
+      - name: Sync SUPER_ADMIN_EMAILS from GitHub secret
+        env:
+          SUPER_ADMIN_EMAILS_VAL: ${{ secrets.SUPER_ADMIN_EMAILS }}
+        run: |
+          PROJECT="$PROJECT_ID"
+
+          if [ -n "$SUPER_ADMIN_EMAILS_VAL" ]; then
+            # GitHub Secret is present — sync it to GCP, overwriting any placeholder.
+            printf '%s' "$SUPER_ADMIN_EMAILS_VAL" | gcloud secrets versions add "SUPER_ADMIN_EMAILS" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$SUPER_ADMIN_EMAILS_VAL" | gcloud secrets create "SUPER_ADMIN_EMAILS" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "✅ SUPER_ADMIN_EMAILS: synced from GitHub secret (${#SUPER_ADMIN_EMAILS_VAL} chars)"
           else
-            echo "✅ Exists:  SUPER_ADMIN_EMAILS"
+            # No GitHub Secret provided — check the existing GCP value.
+            if ! gcloud secrets describe "SUPER_ADMIN_EMAILS" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "❌ SUPER_ADMIN_EMAILS secret not found in GCP Secret Manager."
+              echo "   Set the SUPER_ADMIN_EMAILS GitHub Actions Secret (comma-separated admin emails)"
+              echo "   OR run: printf 'admin@example.com' | gcloud secrets create SUPER_ADMIN_EMAILS --project=$PROJECT --replication-policy=automatic --data-file=-"
+              exit 1
+            fi
+            CURRENT_VAL=$(gcloud secrets versions access latest --secret="SUPER_ADMIN_EMAILS" --project="$PROJECT" --quiet 2>/dev/null || true)
+            if echo "$CURRENT_VAL" | grep -qi "PLACEHOLDER"; then
+              echo "❌ SUPER_ADMIN_EMAILS in GCP Secret Manager still contains placeholder text."
+              echo "   Super-admin login will fail until this is updated."
+              echo "   Fix option A — set the SUPER_ADMIN_EMAILS GitHub Actions Secret to a comma-separated list of admin emails and re-run this workflow."
+              echo "   Fix option B — run: printf 'nir.h@petwash.co.il' | gcloud secrets versions add SUPER_ADMIN_EMAILS --project=$PROJECT --data-file=-"
+              exit 1
+            fi
+            echo "✅ SUPER_ADMIN_EMAILS: exists in GCP Secret Manager with real value"
           fi
 
       - name: Sync FIREBASE_WEB_API_KEY and Firebase client config from GitHub secrets
