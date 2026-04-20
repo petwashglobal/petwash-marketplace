@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/auth/passkey";
+import { storePasskeyEmail } from "@/hooks/useAutoFaceID";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -695,26 +696,32 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     // Pre-check reCAPTCHA score BEFORE creating the Firebase user.
     // If the score is suspicious, show Turnstile now so we never have to create and delete
     // a Firebase account as part of the step-up flow.
-    const checkScoreRes = await fetch(getApiUrl('/api/recaptcha/check-score'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ captchaToken: freshCaptchaToken, action: 'register' }),
-    }).then(r => r.json()).catch(() => ({ valid: true, stepUpRequired: false }));
+    // IMPORTANT: Only run this check when we actually have a reCAPTCHA token.
+    // When freshCaptchaToken is null (ad blocker, restrictive mobile browser, missing site key),
+    // skip the pre-check entirely — the Firebase ID token verification in proceedWithRegistration
+    // already proves the user is real, so blocking here would permanently lock out valid users.
+    if (freshCaptchaToken) {
+      const checkScoreRes = await fetch(getApiUrl('/api/recaptcha/check-score'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ captchaToken: freshCaptchaToken, action: 'register' }),
+      }).then(r => r.json()).catch(() => ({ valid: true, stepUpRequired: false }));
 
-    if (!checkScoreRes.valid) {
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'נסה שוב מרשת אחרת.' : 'Please try again from a different network.' });
-      return;
-    }
-
-    if (checkScoreRes.stepUpRequired) {
-      if (TURNSTILE_CONFIGURED) {
-        setPendingCaptchaToken(freshCaptchaToken);
-        setStepUpPending(true);
+      if (!checkScoreRes.valid) {
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'נסה שוב מרשת אחרת.' : 'Please try again from a different network.' });
         return;
       }
-      // Turnstile not configured → show message
-      toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להירשם עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing up with your phone number, or switch to a different network.' });
-      return;
+
+      if (checkScoreRes.stepUpRequired) {
+        if (TURNSTILE_CONFIGURED) {
+          setPendingCaptchaToken(freshCaptchaToken);
+          setStepUpPending(true);
+          return;
+        }
+        // Turnstile not configured → show message
+        toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להירשם עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing up with your phone number, or switch to a different network.' });
+        return;
+      }
     }
 
     await proceedWithRegistration(freshCaptchaToken);
@@ -737,6 +744,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       const result = await registerPasskey(firebaseToken, `${formData.firstName} ${t('signUp.passkeyNickname', language)} ${getBiometricMethodName()}`);
 
       if (result.success) {
+        storePasskeyEmail(formData.email);
         toast({
           title: t('signUp.passkeyCreatedSuccess', language),
           description: t('signUp.useItNextTime', language),
