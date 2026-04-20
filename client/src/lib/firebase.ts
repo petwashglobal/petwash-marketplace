@@ -87,6 +87,7 @@ function getFirebaseConfig() {
     environment: import.meta.env.MODE
   });
   
+
   return config;
 }
 
@@ -165,6 +166,7 @@ export async function getAppCheckToken(): Promise<string | null> {
   }
 }
 
+
 // DIAGNOSTIC: Expose runtime config for debugging (visible in browser console)
 if (typeof window !== 'undefined') {
   const rawProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
@@ -188,6 +190,7 @@ if (typeof window !== 'undefined') {
     }
   }
 }
+
 
 // Initialize heavy Firebase features AFTER first paint (non-blocking)
 const initHeavyFirebaseFeatures = async () => {

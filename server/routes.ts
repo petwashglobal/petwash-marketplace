@@ -1,6 +1,7 @@
 import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express } from "express";
 import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and, or, desc, gte, sql } from "drizzle-orm";
@@ -15157,6 +15158,62 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   if (process.env.NODE_ENV === 'production' || 
       process.env.REPLIT_DEPLOYMENT === '1' || 
       process.env.REPLIT_DEPLOYMENT === 'true') {
+
+    // Cache the Firebase-injected index.html in memory to avoid file I/O on every request.
+    // Cache is valid for 5 minutes; invalidated automatically on restart.
+    let _cachedSpaHtml: string | null = null;
+    let _cachedSpaHtmlAt = 0;
+
+    function buildFirebaseInjectedHtml(indexPath: string): string | null {
+      const now = Date.now();
+      if (_cachedSpaHtml && now - _cachedSpaHtmlAt < 300_000) {
+        return _cachedSpaHtml;
+      }
+
+      if (!fs.existsSync(indexPath)) return null;
+
+      let html = fs.readFileSync(indexPath, 'utf8');
+
+      // Inject Firebase client config at serve-time so the browser always gets the
+      // real config even when the build was compiled without VITE_ env vars.
+      // All values come from server-side environment variables (GCP Secret Manager
+      // via Cloud Run --set-secrets, or Docker environment).
+      const projectId =
+        process.env.FIREBASE_PROJECT_ID ||
+        process.env.VITE_FIREBASE_PROJECT_ID ||
+        'signinpetwash';
+      const apiKey = process.env.FIREBASE_WEB_API_KEY || '';
+
+      if (!apiKey) {
+        logger.warn(
+          '[SPA] FIREBASE_WEB_API_KEY not set — Firebase config not injected. ' +
+          'Auth will fall back to build-time VITE_ env vars.',
+        );
+        return null;
+      }
+
+      const firebaseConfig = {
+        apiKey,
+        authDomain: 'petwash.co.il',
+        projectId,
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${projectId}.firebasestorage.app`,
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
+        appId: process.env.FIREBASE_APP_ID || '',
+        measurementId: process.env.FIREBASE_MEASUREMENT_ID || '',
+      };
+
+      // JSON.stringify produces valid JS; values are API keys / project IDs that
+      // never contain </script>, so embedding inside <script> is safe.
+      const configJson = JSON.stringify(firebaseConfig);
+      html = html.replace(
+        '</head>',
+        `<script>window.__FIREBASE_CONFIG__=${configJson};</script></head>`,
+      );
+
+      _cachedSpaHtml = html;
+      _cachedSpaHtmlAt = now;
+      return html;
+    }
     
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
       // Skip API routes and static assets - let them 404 naturally if not found
@@ -15166,6 +15223,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       
       // Serve index.html from dist/public (production build output)
       const indexPath = path.join(process.cwd(), 'dist', 'public', 'index.html');
+
+      const injected = buildFirebaseInjectedHtml(indexPath);
+      if (injected) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        // Prevent caching of injected HTML so config changes take effect immediately
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return res.send(injected);
+      }
+
+
       res.sendFile(indexPath, (err) => {
         if (err) {
           logger.error('Failed to send index.html', err);
