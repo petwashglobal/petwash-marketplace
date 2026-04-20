@@ -16,7 +16,21 @@ const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  throw new Error("CRITICAL: JWT_SECRET must be configured - refusing to start with predictable tokens");
+  if (process.env.NODE_ENV === 'production') {
+    // Do NOT throw — a module-level throw here causes the entire routes.ts import
+    // to reject, setting serverReady=false permanently and blocking ALL routes
+    // (including /api/auth/session and /api/users/create-profile) not just this module.
+    // Install a poison-pill so only compliance-identity routes degrade; everything else serves normally.
+    // Set JWT_SECRET in Cloud Run env vars immediately.
+    console.error('[compliance-identity] CRITICAL: JWT_SECRET must be configured in production. ' +
+      '/api/compliance-identity/* routes are disabled until this env var is set.');
+    router.use((_req: any, res: any) => res.status(503).json({
+      error: 'SERVICE_MISCONFIGURED',
+      message: 'JWT_SECRET not configured. Contact system administrator.',
+    }));
+  } else {
+    throw new Error("CRITICAL: JWT_SECRET must be configured - refusing to start with predictable tokens");
+  }
 }
 
 // Upload directory for identity documents

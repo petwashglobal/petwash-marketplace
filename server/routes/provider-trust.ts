@@ -34,11 +34,25 @@ import { requireAuth } from '../middleware/gates';
 // Hardcoded Firebase UIDs in source code are a security risk — anyone who reads
 // the repo knows which account to target or can forge requests.
 // Set this in your environment: SUPER_ADMIN_UID=<firebase-uid-of-super-admin>
+
+const router = Router();
+
 const SUPER_ADMIN_UID = (() => {
   const uid = process.env.SUPER_ADMIN_UID;
   if (!uid) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('FATAL: SUPER_ADMIN_UID environment variable is required in production');
+      // Do NOT throw — a module-level throw here causes the entire routes.ts import
+      // to reject, setting serverReady=false permanently and blocking ALL routes
+      // (including /api/auth/session and /api/users/create-profile) not just this module.
+      // Install a poison-pill so only provider-trust routes degrade; everything else serves normally.
+      // Set SUPER_ADMIN_UID in Cloud Run env vars immediately.
+      console.error('[provider-trust] CRITICAL: SUPER_ADMIN_UID is required in production. ' +
+        '/api/providers/* super-admin routes are disabled until this env var is set.');
+      router.use((_req: Request, res: Response) => res.status(503).json({
+        error: 'SERVICE_MISCONFIGURED',
+        message: 'SUPER_ADMIN_UID not configured. Contact system administrator.',
+      }));
+      return '__SUPER_ADMIN_UID_NOT_CONFIGURED__';
     }
     // In non-production: warn loudly and disable super-admin routes entirely
     console.warn('[provider-trust] WARNING: SUPER_ADMIN_UID not set — all super-admin routes will return 403');
@@ -46,8 +60,6 @@ const SUPER_ADMIN_UID = (() => {
   }
   return uid;
 })();
-
-const router = Router();
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 function getUid(req: Request): string | null {

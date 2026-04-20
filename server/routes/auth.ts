@@ -13,7 +13,21 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
 if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
-  throw new Error("CRITICAL: JWT_SECRET and JWT_REFRESH_SECRET must be configured - refusing to start with predictable tokens");
+  if (process.env.NODE_ENV === 'production') {
+    // Do NOT throw — a module-level throw here causes the entire routes.ts import
+    // to reject, setting serverReady=false permanently and blocking ALL routes
+    // (including /api/auth/session and /api/users/create-profile) not just this module.
+    // Install a poison-pill so only /api/auth/* routes degrade; everything else serves normally.
+    // Set JWT_SECRET and JWT_REFRESH_SECRET in Cloud Run env vars immediately.
+    console.error('[auth] CRITICAL: JWT_SECRET and JWT_REFRESH_SECRET must be configured in production. ' +
+      '/api/auth/* routes are disabled until these env vars are set.');
+    router.use((_req: any, res: any) => res.status(503).json({
+      error: 'SERVICE_MISCONFIGURED',
+      message: 'JWT_SECRET and JWT_REFRESH_SECRET not configured. Contact system administrator.',
+    }));
+  } else {
+    throw new Error("CRITICAL: JWT_SECRET and JWT_REFRESH_SECRET must be configured - refusing to start with predictable tokens");
+  }
 }
 
 const ACCESS_TOKEN_EXPIRY = "30m"; // 30 minutes
