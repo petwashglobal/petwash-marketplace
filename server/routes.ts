@@ -1,6 +1,7 @@
 import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express } from "express";
 import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and, or, desc, gte, sql } from "drizzle-orm";
@@ -15112,7 +15113,6 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         return _cachedSpaHtml;
       }
 
-      const fs = require('fs') as typeof import('fs');
       if (!fs.existsSync(indexPath)) return null;
 
       let html = fs.readFileSync(indexPath, 'utf8');

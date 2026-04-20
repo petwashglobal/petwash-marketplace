@@ -223,6 +223,7 @@ const _startupSecurityViolations: string[] = [];
 
 import path from "node:path";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import express from "express";
 import { pool, db, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
@@ -1195,7 +1196,6 @@ if (isProduction) {
       // was compiled without VITE_ environment variables.
       if (isProduction) {
         try {
-          const fs = require('fs') as typeof import('fs');
           const rawHtml = fs.readFileSync(indexPath, 'utf8');
           const projectId =
             process.env.FIREBASE_PROJECT_ID ||
