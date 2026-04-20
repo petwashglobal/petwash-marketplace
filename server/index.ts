@@ -435,6 +435,21 @@ const csrfSecret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET || ((
   return fallback;
 })();
 
+// Auth session / OTP endpoints that are exempt from CSRF token validation.
+// Security on each is enforced by Firebase ID-token verification or Twilio OTP
+// (both server-verified), making a second CSRF layer redundant here.
+// These POSTs originate on the login page before any session cookie exists, so
+// the browser never has a pw.csrf cookie to send — the middleware would reject
+// them all with 403 and break every login method (email, Google, phone, magic-link).
+// NOTE: /api/auth/signout is intentionally NOT exempt: it operates on an existing
+// session, so CSRF protection there prevents a malicious page from force-logging users out.
+const AUTH_CSRF_EXEMPT = new Set([
+  '/api/auth/session',
+  '/api/auth/phone-session',
+  '/api/auth/phone/send-code',
+  '/api/auth/phone/verify-code',
+]);
+
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   getSecret: () => csrfSecret,
   cookieName: 'pw.csrf',
@@ -455,6 +470,8 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // on cross-origin requests, so there is no CSRF attack surface here.
     const authHeader = req.headers['authorization'] as string | undefined;
     if (authHeader?.startsWith('Bearer ')) return true;
+    // Auth session / OTP endpoints (see AUTH_CSRF_EXEMPT above).
+    if (AUTH_CSRF_EXEMPT.has(req.path)) return true;
     return false;
   },
 });
@@ -1201,16 +1218,30 @@ if (isProduction) {
             process.env.FIREBASE_PROJECT_ID ||
             process.env.VITE_FIREBASE_PROJECT_ID ||
             'signinpetwash';
-          const apiKey = process.env.FIREBASE_WEB_API_KEY || '';
+          // Accept either env var name so the config is injected regardless of
+          // which variable was configured in the deployment environment.
+          const apiKey = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '';
           if (apiKey) {
             const firebaseConfig = {
               apiKey,
               authDomain: 'petwash.co.il',
               projectId,
-              storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${projectId}.firebasestorage.app`,
-              messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-              appId: process.env.FIREBASE_APP_ID || '',
-              measurementId: process.env.FIREBASE_MEASUREMENT_ID || '',
+              storageBucket:
+                process.env.FIREBASE_STORAGE_BUCKET ||
+                process.env.VITE_FIREBASE_STORAGE_BUCKET ||
+                `${projectId}.firebasestorage.app`,
+              messagingSenderId:
+                process.env.FIREBASE_MESSAGING_SENDER_ID ||
+                process.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+                '',
+              appId:
+                process.env.FIREBASE_APP_ID ||
+                process.env.VITE_FIREBASE_APP_ID ||
+                '',
+              measurementId:
+                process.env.FIREBASE_MEASUREMENT_ID ||
+                process.env.VITE_FIREBASE_MEASUREMENT_ID ||
+                '',
             };
             const injected = rawHtml.replace(
               '</head>',
