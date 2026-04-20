@@ -1045,6 +1045,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         trustDevice(userCredential.user.uid, userCredential.user.email);
         logger.info('Device trusted after social login');
       }
+
+      // Store email for Face ID auto-login on next visit
+      if (userCredential.user.email) {
+        storePasskeyEmail(userCredential.user.email);
+      }
       
       storeLastAuthMethod('social');
       
@@ -1997,7 +2002,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 onClick={() => { handleSelectIntent('customer'); handleSocialLogin('google'); }}
                 disabled={!!socialLoading}
                 variant="outline"
-                className="w-full h-12 text-sm font-medium border border-neutral-200 bg-white hover:bg-white text-neutral-800 rounded-none tracking-wider uppercase transition-all"
+                className="w-full h-12 text-sm font-medium border border-neutral-200 !bg-white hover:!bg-white !text-neutral-800 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-gmail-signin-quick"
               >
                 {socialLoading === 'google' ? (
@@ -2085,7 +2090,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               onClick={() => handleSocialLogin('google')}
               disabled={!!socialLoading}
               variant="outline"
-              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-white text-neutral-800 rounded-none tracking-wider uppercase transition-all"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 !bg-white hover:!bg-white !text-neutral-800 rounded-none tracking-wider uppercase transition-all"
               data-testid="button-gmail-signin"
             >
               {socialLoading === 'google' ? (
