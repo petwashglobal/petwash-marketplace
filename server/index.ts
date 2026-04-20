@@ -955,7 +955,7 @@ if (isProduction) {
     const fbApiKey = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '';
     if (fbApiKey) {
       console.log('✅ [Firebase] Client config injection ENABLED — browser will receive real API key');
-      console.log(`   authDomain: petwash.co.il | projectId: ${process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash'}`);
+      console.log(`   authDomain: ${process.env.FIREBASE_AUTH_DOMAIN || 'petwash.co.il'} | projectId: ${process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash'}`);
     } else {
       console.error('🚨 [Firebase] NEITHER FIREBASE_WEB_API_KEY NOR VITE_FIREBASE_API_KEY is set in this environment.');
       console.error('   window.__FIREBASE_CONFIG__ will NOT be injected into the SPA HTML.');

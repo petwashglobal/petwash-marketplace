@@ -25,8 +25,8 @@ export async function trackAuthError(error: any, method: string) {
     timestamp: new Date().toISOString(),
     userAgent: navigator.userAgent,
     currentDomain: window.location.origin,
-    authDomain: runtimeConfig?.authDomain || 'unknown-authDomain',
-    projectId: runtimeConfig?.projectId || 'unknown-projectId',
+    authDomain: runtimeConfig?.authDomain || 'MISSING_AUTH_DOMAIN',
+    projectId: runtimeConfig?.projectId || 'MISSING_PROJECT_ID',
     customData: {
       ...(error.customData || {}),
       hasRuntimeConfig: !!runtimeConfig,
