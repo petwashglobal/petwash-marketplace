@@ -59,8 +59,6 @@ window.addEventListener('popstate', trackHubSpotPageView);
     import('./lib/auth-guardian-2025'), // fire-and-forget side effect
   ]);
 
-  console.log('[App] App imported, initializing React...');
-
   createRoot(document.getElementById("root")!).render(
     <AppErrorBoundary>
       <App />

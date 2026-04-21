@@ -9268,9 +9268,10 @@ self.addEventListener('notificationclick', (event) => {
   // ========================================================================
   // 🌐 PUBLIC AUTH ROUTES (Clean Console Mode - No 401 for logged-out users)
   // ========================================================================
-  // Mount BEFORE other routes to handle /api/simple-auth/me and /api/consent
-  app.use(publicAuthRouter);
-  logger.info('[Routes] ✅ Public auth routes registered (clean console mode)');
+  // NOTE: publicAuthRouter is early-mounted in server/index.ts for cold-start
+  // safety (available before registerRoutes() completes). We intentionally skip
+  // re-mounting here to prevent duplicate route handling.
+  logger.info('[Routes] ✅ Public auth routes already mounted (early-mount in index.ts)');
 
   // KYC Verification routes — DPA must be signed before biometric processing
   app.use('/api/kyc', requireDpaAccepted, uploadLimiter, kycRoutes);

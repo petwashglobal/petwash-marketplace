@@ -92,6 +92,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [phoneNameStep, setPhoneNameStep] = useState(false);
   const [phoneFirstName, setPhoneFirstName] = useState('');
   const [phoneLastName, setPhoneLastName] = useState('');
+  const genericAuthFailureMessage = language === 'he'
+    ? 'הפעולה נכשלה. נסה שוב בעוד רגע.'
+    : 'The action failed. Please try again.';
 
   // Detect in-app browsers (Instagram, TikTok) that block OAuth popups
   useEffect(() => {
@@ -206,7 +209,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   // ── OAuth: Google / Apple / Facebook ─────────────────────────────────────
   const performOAuthSignup = async (provider: 'google' | 'apple' | 'facebook') => {
     const traceId = 'REG-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
-    console.log('[Auth Trace]', { traceId, method: provider, device: getDeviceInfo().device, timestamp: new Date().toISOString() });
+    logger.debug('[Auth Trace]', { traceId, method: provider, device: getDeviceInfo().device, timestamp: new Date().toISOString() });
     try {
       setSocialLoading(provider);
 
@@ -339,13 +342,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         body: JSON.stringify({ phone: normalizedPhone, language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
       });
       const result = await res.json();
-      if (!result.ok) throw new Error(result.error || result.message || (language === 'he' ? 'שליחת הקוד נכשלה' : 'Failed to send code'));
+      if (!result.ok) throw new Error(genericAuthFailureMessage);
 
       setConfirmationResult({ phone: normalizedPhone });
       toast({ title: language === 'he' ? 'קוד נשלח! 📲' : 'Code sent! 📲', description: language === 'he' ? `קוד אימות נשלח ל-${normalizedPhone}` : `Verification code sent to ${normalizedPhone}` });
     } catch (err: any) {
       logger.error('[PhoneAuth] Send code failed:', err);
-      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: err.message || (language === 'he' ? 'שליחת הקוד נכשלה. נסה שוב.' : 'Failed to send code. Please try again.') });
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: genericAuthFailureMessage });
     } finally {
       setPhoneLoading(false);
     }
@@ -370,7 +373,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         body: JSON.stringify({ phone: confirmationResult.phone, code, language }),
       });
       const verifyResult = await verifyRes.json();
-      if (!verifyResult.ok) throw new Error(verifyResult.error || (language === 'he' ? 'הקוד שגוי' : 'Invalid code'));
+      if (!verifyResult.ok) throw new Error(genericAuthFailureMessage);
 
       const sessionRes = await fetch(getApiUrl('/api/auth/phone-session'), {
         method: 'POST',
@@ -398,7 +401,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       setPhoneNameStep(true);
     } catch (err: any) {
       logger.error('[PhoneAuth] Verification failed:', err);
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות נכשל' : 'Verification failed', description: err.message || (language === 'he' ? 'הקוד שגוי או פג תוקף. נסה שוב.' : 'Incorrect or expired code. Please try again.') });
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות נכשל' : 'Verification failed', description: genericAuthFailureMessage });
     } finally {
       setPhoneLoading(false);
     }
@@ -633,7 +636,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const traceId = 'REG-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
-    console.log('[Registration Trace]', { traceId, method: 'email', timestamp: new Date().toISOString() });
+    logger.debug('[Registration Trace]', { traceId, method: 'email', timestamp: new Date().toISOString() });
     logger.debug("Form submit triggered");
     logger.debug("Form data", { 
       email: formData.email, 
