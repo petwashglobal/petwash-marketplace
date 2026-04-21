@@ -9,8 +9,8 @@ import { eq, and, gt, isNull } from "drizzle-orm";
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || '';
 
 if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
   if (process.env.NODE_ENV === 'production') {
@@ -28,6 +28,10 @@ if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
   } else {
     throw new Error("CRITICAL: JWT_SECRET and JWT_REFRESH_SECRET must be configured - refusing to start with predictable tokens");
   }
+  // Log at startup but do NOT throw — a module-scope throw prevents route registration
+  // and leaves the server with no API routes bound (every call returns 404).
+  // These JWT routes will return 503 at call-time if the secrets remain unset.
+  console.error('[Auth Router] CRITICAL: JWT_SECRET and/or JWT_REFRESH_SECRET are not set — JWT auth endpoints will return 503 until configured');
 }
 
 const ACCESS_TOKEN_EXPIRY = "30m"; // 30 minutes
@@ -39,6 +43,15 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Helper: Guard — returns true if JWT secrets are missing and responds with 503
+function jwtSecretsUnavailable(res: any): boolean {
+  if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+    res.status(503).json({ error: 'JWT authentication is temporarily unavailable. Use Firebase authentication instead.' });
+    return true;
+  }
+  return false;
+}
 
 // Helper: Generate access token
 function generateAccessToken(user: any): string {

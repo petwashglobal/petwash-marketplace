@@ -6,11 +6,13 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-if (!process.env.JWT_SECRET) {
-  throw new Error("FATAL: JWT_SECRET environment variable is not set. Cannot start server without secure JWT signing key.");
-}
+// JWT_SECRET is loaded lazily — if unset the middleware returns 503 rather than
+// crashing the module on import.  A module-scope throw prevents all route registration.
+const JWT_SECRET = process.env.JWT_SECRET || '';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[Auth Middleware] FATAL: JWT_SECRET environment variable is not set. JWT Bearer verification will return 503.');
+}
 
 declare global {
   namespace Express {
@@ -23,6 +25,10 @@ declare global {
 
 export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
+    if (!JWT_SECRET) {
+      return res.status(503).json({ error: 'JWT authentication is temporarily unavailable. Use Firebase authentication instead.' });
+    }
+
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

@@ -229,6 +229,7 @@ import { pool, db, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
+import { publicAuthRouter } from "./routes/publicAuthRoutes";
 
 import cookieParser from "cookie-parser";
 import session from "express-session";
@@ -441,6 +442,16 @@ const csrfSecret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET || ((
 // These POSTs originate on the login page before any session cookie exists, so
 // the browser never has a pw.csrf cookie to send — the middleware would reject
 // them all with 403 and break every login method (email, Google, phone, magic-link).
+//
+// Post-login auth-flow endpoints are also exempt: they are always called
+// immediately after a successful Firebase sign-in (before the pw.csrf cookie
+// is reliably issued to the new browser session), the frontend has no CSRF-token
+// plumbing, and each endpoint is already protected by Firebase session-cookie
+// verification (requireAuth).  Exempting them here removes a broken CSRF gate
+// that would otherwise silently block all role-routing, onboarding, and admin
+// redirects with a 403 — causing every login to fall back to /home regardless
+// of the user's role.
+//
 // NOTE: /api/auth/signout is intentionally NOT exempt: it operates on an existing
 // session, so CSRF protection there prevents a malicious page from force-logging users out.
 const AUTH_CSRF_EXEMPT = new Set([
@@ -448,6 +459,11 @@ const AUTH_CSRF_EXEMPT = new Set([
   '/api/auth/phone-session',
   '/api/auth/phone/send-code',
   '/api/auth/phone/verify-code',
+  // Post-login role-routing and onboarding steps — all require a valid Firebase
+  // session cookie (requireAuth) which already scopes them to the authenticated user.
+  '/api/auth/post-login',
+  '/api/auth/choose-role',
+  '/api/auth/complete-profile',
 ]);
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
@@ -751,12 +767,20 @@ app.get('/api/google/places-health', async (req, res) => {
   return res.status(200).json(checks);
 });
 
+// --- Early-mount critical auth routes (cold-start safety) ---
+// publicAuthRouter contains phone OTP, session creation, and simple-auth/me.
+// Mounting it here (before registerRoutes) means these endpoints are available
+// immediately on first request — even during the 60-120 s Cloud Run cold-start
+// window where registerRoutes() is still executing.
+// registerRoutes() skips re-mounting this router to prevent duplicate handling.
+app.use(publicAuthRouter);
+
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path === '/health/strict' || req.path.startsWith('/api/health')) {
     return next();
   }
-  
+
   if (isProduction && !serverReady) {
     if (req.path === '/' || req.method === 'HEAD') {
       return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');

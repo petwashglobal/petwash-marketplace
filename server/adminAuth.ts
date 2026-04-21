@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { AdminUser } from "@shared/schema";
 import { logger } from './lib/logger';
 import { isSuperAdmin } from './middleware/rbac';
+import { ADMIN_ROLES, isAdminRole } from '@shared/adminRoles';
 
 // Extend Express Request to include admin user
 declare module "express-session" {
@@ -104,8 +105,7 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
     const { decoded, claims, role, isSuperAdminUser, sessionAge, ip } = auth;
     const userEmail = (decoded.email || '').toLowerCase();
 
-    const adminRoles = ['admin', 'management', 'super_admin'];
-    const hasAdminClaim = isSuperAdminUser || adminRoles.includes(role) || adminRoles.includes(claims.role);
+    const hasAdminClaim = isSuperAdminUser || isAdminRole(role) || isAdminRole(claims.role);
 
     if (!hasAdminClaim) {
       logger.warn(`[Admin Auth] Access denied for ${userEmail} - claims.role=${claims.role}, resolved=${role}`);

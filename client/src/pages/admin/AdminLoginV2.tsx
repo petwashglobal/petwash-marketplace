@@ -23,22 +23,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
 import { trackAuthError } from "@/lib/authErrorTracker";
+import { isAdminRole } from "@shared/adminRoles";
 
 const isMobileBrowser = () => {
   const ua = navigator.userAgent;
   return /iPhone|iPad|iPod|Android/i.test(ua);
-};
-
-// Roles that are allowed to access the admin area.
-// Must stay in sync with AdminRouteGuard and server-side privileged role checks (routes.ts PRIVILEGED_ROLES).
-const ADMIN_ROLES = ['admin', 'ops', 'management', 'super_admin', 'ceo', 'finance', 'staff', 'hr'] as const;
-
-const extractErrorMessage = (error: any): string => {
-  if (error?.body?.error) return error.body.error;
-  if (error?.body?.message) return error.body.message;
-  if (error?.error) return error.error;
-  if (error?.message) return error.message;
-  return "Please try again";
 };
 
 export default function AdminLoginV2() {
@@ -52,6 +41,29 @@ export default function AdminLoginV2() {
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
   
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
+
+  const createServerSession = async (idToken: string) => {
+    const sessionRes = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
+    });
+    if (!sessionRes.ok) {
+      throw new Error('SESSION_CREATION_FAILED');
+    }
+  };
+
+  const assertAdminAccess = async () => {
+    const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
+    if (!whoamiRes.ok) {
+      throw new Error('SESSION_VERIFICATION_FAILED');
+    }
+    const whoami = await whoamiRes.json();
+    if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
+      throw new Error('ACCESS_DENIED');
+    }
+  };
 
   useEffect(() => {
     const checkWebAuthn = async () => {
@@ -72,34 +84,21 @@ export default function AdminLoginV2() {
 
         setIsGoogleLoading(true);
         const idToken = await result.user.getIdToken();
-        const sessionRes = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-        });
-        if (!sessionRes.ok) {
-          const err = await sessionRes.json();
-          throw new Error(err.error || 'Session creation failed');
-        }
-
-        // Verify admin access before redirecting
-        const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
-        if (whoamiRes.ok) {
-          const whoami = await whoamiRes.json();
-          if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
-            throw new Error('This account does not have admin access. Please use the correct login page.');
-          }
-        }
+        await createServerSession(idToken);
+        await assertAdminAccess();
 
         toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
         setLocation("/admin/dashboard");
       } catch (err: any) {
         if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
-        const desc = extractErrorMessage(err);
-        if (desc !== "Please try again") {
-          toast({ title: "Google Sign-In Failed", description: desc, variant: "destructive" });
-        }
+        const isAccessDenied = err?.message === 'ACCESS_DENIED';
+        toast({
+          title: "Google Sign-In Failed",
+          description: isAccessDenied
+            ? "This account does not have admin privileges."
+            : "Google sign-in failed. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsGoogleLoading(false);
       }
@@ -124,26 +123,8 @@ export default function AdminLoginV2() {
 
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await credential.user.getIdToken();
-
-      const sessionRes = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-      });
-      if (!sessionRes.ok) {
-        const err = await sessionRes.json();
-        throw new Error(err.error || 'Session creation failed');
-      }
-
-      // Verify the user actually has admin-level access before redirecting
-      const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
-      if (whoamiRes.ok) {
-        const whoami = await whoamiRes.json();
-        if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
-          throw new Error('This account does not have admin access. Please use the correct login page.');
-        }
-      }
+      await createServerSession(idToken);
+      await assertAdminAccess();
 
       toast({
         title: "Welcome back! ✨",
@@ -152,10 +133,17 @@ export default function AdminLoginV2() {
 
       setLocation("/admin/dashboard");
     } catch (error: any) {
-      const msg = error?.code === 'auth/wrong-password' || error?.code === 'auth/user-not-found'
+      const isFirebaseCredError = error?.code === 'auth/wrong-password'
+        || error?.code === 'auth/user-not-found'
+        || error?.code === 'auth/invalid-credential';
+      const isAccessDenied = error?.message === 'ACCESS_DENIED';
+      const msg = isFirebaseCredError
         ? 'Invalid email or password'
         : extractErrorMessage(error);
       trackAuthError(error, 'admin_email_password').catch(() => {});
+        : isAccessDenied
+          ? 'This account does not have admin privileges.'
+          : 'Session could not be created. Please try again.';
       toast({
         title: "Login Failed",
         description: msg,
@@ -247,6 +235,13 @@ export default function AdminLoginV2() {
       const verifyResponse = await verifyRes.json();
 
       if (verifyResponse.customToken) {
+        const { signInWithCustomToken } = await import("firebase/auth");
+        const { auth: firebaseAuth } = await import("@/lib/firebase");
+        const credential = await signInWithCustomToken(firebaseAuth, verifyResponse.customToken);
+        const idToken = await credential.user.getIdToken(true);
+        await createServerSession(idToken);
+        await assertAdminAccess();
+
         setBiometricStatus("success");
         toast({
           title: "Biometric Authentication Successful! 🎉",
@@ -262,7 +257,7 @@ export default function AdminLoginV2() {
       trackAuthError(error, 'admin_biometric').catch(() => {});
       toast({
         title: "Biometric Authentication Failed",
-        description: error.message || error.error || "Please try again or use email/password",
+        description: "Biometric sign-in failed. Please use email and password.",
         variant: "destructive",
       });
       
@@ -290,17 +285,8 @@ export default function AdminLoginV2() {
       // Desktop: popup flow
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
-
-      const sessionRes = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-      });
-      if (!sessionRes.ok) {
-        const err = await sessionRes.json();
-        throw new Error(err.error || 'Session creation failed');
-      }
+      await createServerSession(idToken);
+      await assertAdminAccess();
 
       toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
       setLocation("/admin/dashboard");
@@ -312,7 +298,7 @@ export default function AdminLoginV2() {
       trackAuthError(error, 'admin_google').catch(() => {});
       toast({
         title: "Google Sign-In Failed",
-        description: extractErrorMessage(error),
+        description: "Google sign-in failed. Please try again.",
         variant: "destructive",
       });
     } finally {

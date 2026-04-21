@@ -2925,8 +2925,10 @@ function App() {
 
   const showPromoPopup = !PROMO_EXCLUDED_PATTERN.test(currentPath);
 
-  // Routes where floating FABs must be suppressed (they cover hero content)
-  const showFloatingStack = !/^\/paw-finder(\/|$)/.test(currentPath);
+  // Routes where floating FABs/widgets must be suppressed (auth/admin critical flows)
+  const FLOATING_WIDGETS_EXCLUDED_PATTERN =
+    /^\/(paw-finder|signin|signup|sign-in|sign-up|login|register|admin|auth\/action|__\/auth\/action)(\/|$)/;
+  const showFloatingStack = !FLOATING_WIDGETS_EXCLUDED_PATTERN.test(currentPath);
 
 
   useKeyboardNavigation();
