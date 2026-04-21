@@ -41,6 +41,29 @@ export default function AdminLoginV2() {
   
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
 
+  const createServerSession = async (idToken: string) => {
+    const sessionRes = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
+    });
+    if (!sessionRes.ok) {
+      throw new Error('SESSION_FAILED');
+    }
+  };
+
+  const assertAdminAccess = async () => {
+    const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
+    if (!whoamiRes.ok) {
+      throw new Error('ACCESS_DENIED');
+    }
+    const whoami = await whoamiRes.json();
+    if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
+      throw new Error('ACCESS_DENIED');
+    }
+  };
+
   useEffect(() => {
     const checkWebAuthn = async () => {
       if (window.PublicKeyCredential) {
@@ -60,25 +83,8 @@ export default function AdminLoginV2() {
 
         setIsGoogleLoading(true);
         const idToken = await result.user.getIdToken();
-        const sessionRes = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-        });
-        if (!sessionRes.ok) {
-          const err = await sessionRes.json();
-          throw new Error(err.error || 'Session creation failed');
-        }
-
-        // Verify admin access before redirecting
-        const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
-        if (whoamiRes.ok) {
-          const whoami = await whoamiRes.json();
-          if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
-            throw new Error('ACCESS_DENIED');
-          }
-        }
+        await createServerSession(idToken);
+        await assertAdminAccess();
 
         toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
         setLocation("/admin/dashboard");
@@ -116,26 +122,8 @@ export default function AdminLoginV2() {
 
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await credential.user.getIdToken();
-
-      const sessionRes = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-      });
-      if (!sessionRes.ok) {
-        const err = await sessionRes.json();
-        throw new Error(err.error || 'Session creation failed');
-      }
-
-      // Verify the user actually has admin-level access before redirecting
-      const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
-      if (whoamiRes.ok) {
-        const whoami = await whoamiRes.json();
-        if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
-          throw new Error('ACCESS_DENIED');
-        }
-      }
+      await createServerSession(idToken);
+      await assertAdminAccess();
 
       toast({
         title: "Welcome back! ✨",
@@ -244,6 +232,13 @@ export default function AdminLoginV2() {
       const verifyResponse = await verifyRes.json();
 
       if (verifyResponse.customToken) {
+        const { signInWithCustomToken } = await import("firebase/auth");
+        const { auth: firebaseAuth } = await import("@/lib/firebase");
+        const credential = await signInWithCustomToken(firebaseAuth, verifyResponse.customToken);
+        const idToken = await credential.user.getIdToken(true);
+        await createServerSession(idToken);
+        await assertAdminAccess();
+
         setBiometricStatus("success");
         toast({
           title: "Biometric Authentication Successful! 🎉",
@@ -286,17 +281,8 @@ export default function AdminLoginV2() {
       // Desktop: popup flow
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
-
-      const sessionRes = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-      });
-      if (!sessionRes.ok) {
-        const err = await sessionRes.json();
-        throw new Error(err.error || 'Session creation failed');
-      }
+      await createServerSession(idToken);
+      await assertAdminAccess();
 
       toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
       setLocation("/admin/dashboard");

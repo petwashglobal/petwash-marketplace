@@ -14,7 +14,7 @@ import type { AppCheck } from 'firebase/app-check';
 
 if (import.meta.env.DEV) {
   setLogLevel('debug');
-  console.log('[Firebase] Debug logging enabled in development mode');
+  logger.debug('[Firebase] Debug logging enabled in development mode');
 }
 
 // PRODUCTION FIX: Use runtime config from server in production
@@ -22,7 +22,7 @@ if (import.meta.env.DEV) {
 function getFirebaseConfig() {
   // Check if runtime config is available (production deployment)
   if (typeof window !== 'undefined' && (window as any).__FIREBASE_CONFIG__) {
-    console.log('[Firebase] ✅ Using runtime config from server');
+    logger.debug('[Firebase] Using runtime config from server');
     return (window as any).__FIREBASE_CONFIG__;
   }
   
@@ -82,10 +82,12 @@ function getFirebaseConfig() {
     };
   }
   
-  console.log('[Firebase] ℹ️ Using build-time config (fallback)', {
-    hasRuntimeConfig: !!(typeof window !== 'undefined' && (window as any).__FIREBASE_CONFIG__),
-    environment: import.meta.env.MODE
-  });
+  if (import.meta.env.DEV) {
+    logger.debug('[Firebase] Using build-time config (fallback)', {
+      hasRuntimeConfig: !!(typeof window !== 'undefined' && (window as any).__FIREBASE_CONFIG__),
+      environment: import.meta.env.MODE
+    });
+  }
   
 
   return config;
@@ -167,8 +169,8 @@ export async function getAppCheckToken(): Promise<string | null> {
 }
 
 
-// DIAGNOSTIC: Expose runtime config for debugging (visible in browser console)
-if (typeof window !== 'undefined') {
+// DIAGNOSTIC: Expose runtime config for debugging in development only
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
   const rawProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
   const actualProjectId = firebaseConfig.projectId;
   
@@ -182,12 +184,10 @@ if (typeof window !== 'undefined') {
     projectIdFixed: rawProjectId !== actualProjectId ? '✅ CORRECTED' : 'using env var',
     environment: import.meta.env.DEV ? 'development' : 'production'
   };
-  console.log('[Firebase] Runtime Config:', (window as any).__PW_FIREBASE_CONFIG__);
-  
+  logger.debug('[Firebase] Runtime Config', (window as any).__PW_FIREBASE_CONFIG__);
+
   if (rawProjectId && rawProjectId.startsWith('VITE_')) {
-    if (import.meta.env.DEV) {
-      console.log('[Firebase] ℹ️ INFO: Using fallback Firebase projectId (env var is placeholder)');
-    }
+    logger.debug('[Firebase] Using fallback Firebase projectId (env var is placeholder)');
   }
 }
 
