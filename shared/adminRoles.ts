@@ -20,6 +20,7 @@ export const ADMIN_ROLES = [
   'staff',
   'hr',
   'finance',
+  'ceo',
 ] as const;
 
 export type AdminRole = (typeof ADMIN_ROLES)[number];
@@ -28,3 +29,10 @@ export type AdminRole = (typeof ADMIN_ROLES)[number];
 export function isAdminRole(role: string): boolean {
   return (ADMIN_ROLES as readonly string[]).includes(role);
 }
+
+/**
+ * Spreads ADMIN_ROLES into a plain mutable string array.
+ * Use this when calling variadic functions that expect `string[]` rather than
+ * `readonly ('admin' | 'ops' | ...)[])` — avoids the `as unknown as string[]` cast.
+ */
+export const ADMIN_ROLES_ARRAY: string[] = [...ADMIN_ROLES];

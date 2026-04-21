@@ -22,22 +22,11 @@ import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
+import { isAdminRole } from "@shared/adminRoles";
 
 const isMobileBrowser = () => {
   const ua = navigator.userAgent;
   return /iPhone|iPad|iPod|Android/i.test(ua);
-};
-
-// Roles that are allowed to access the admin area.
-// Must stay in sync with AdminRouteGuard and server-side privileged role checks (routes.ts PRIVILEGED_ROLES).
-const ADMIN_ROLES = ['admin', 'ops', 'management', 'super_admin', 'ceo', 'finance', 'staff', 'hr'] as const;
-
-const extractErrorMessage = (error: any): string => {
-  if (error?.body?.error) return error.body.error;
-  if (error?.body?.message) return error.body.message;
-  if (error?.error) return error.error;
-  if (error?.message) return error.message;
-  return "Please try again";
 };
 
 export default function AdminLoginV2() {
@@ -86,8 +75,8 @@ export default function AdminLoginV2() {
         const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
         if (whoamiRes.ok) {
           const whoami = await whoamiRes.json();
-          if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
-            throw new Error('This account does not have admin access. Please use the correct login page.');
+          if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
+            throw new Error('ACCESS_DENIED');
           }
         }
 
@@ -95,10 +84,14 @@ export default function AdminLoginV2() {
         setLocation("/admin/dashboard");
       } catch (err: any) {
         if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
-        const desc = extractErrorMessage(err);
-        if (desc !== "Please try again") {
-          toast({ title: "Google Sign-In Failed", description: desc, variant: "destructive" });
-        }
+        const isAccessDenied = err?.message === 'ACCESS_DENIED';
+        toast({
+          title: "Google Sign-In Failed",
+          description: isAccessDenied
+            ? "This account does not have admin privileges."
+            : "Google sign-in failed. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsGoogleLoading(false);
       }
@@ -139,8 +132,8 @@ export default function AdminLoginV2() {
       const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
       if (whoamiRes.ok) {
         const whoami = await whoamiRes.json();
-        if (!whoami.isSuperAdmin && !ADMIN_ROLES.includes(whoami.role)) {
-          throw new Error('This account does not have admin access. Please use the correct login page.');
+        if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
+          throw new Error('ACCESS_DENIED');
         }
       }
 
@@ -151,9 +144,15 @@ export default function AdminLoginV2() {
 
       setLocation("/admin/dashboard");
     } catch (error: any) {
-      const msg = error?.code === 'auth/wrong-password' || error?.code === 'auth/user-not-found'
+      const isFirebaseCredError = error?.code === 'auth/wrong-password'
+        || error?.code === 'auth/user-not-found'
+        || error?.code === 'auth/invalid-credential';
+      const isAccessDenied = error?.message === 'ACCESS_DENIED';
+      const msg = isFirebaseCredError
         ? 'Invalid email or password'
-        : extractErrorMessage(error);
+        : isAccessDenied
+          ? 'This account does not have admin privileges.'
+          : 'Session could not be created. Please try again.';
       toast({
         title: "Login Failed",
         description: msg,
@@ -259,7 +258,7 @@ export default function AdminLoginV2() {
       setBiometricStatus("error");
       toast({
         title: "Biometric Authentication Failed",
-        description: error.message || error.error || "Please try again or use email/password",
+        description: "Biometric sign-in failed. Please use email and password.",
         variant: "destructive",
       });
       
@@ -308,7 +307,7 @@ export default function AdminLoginV2() {
       }
       toast({
         title: "Google Sign-In Failed",
-        description: extractErrorMessage(error),
+        description: "Google sign-in failed. Please try again.",
         variant: "destructive",
       });
     } finally {
