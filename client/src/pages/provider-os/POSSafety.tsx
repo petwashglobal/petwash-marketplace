@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -36,6 +36,22 @@ export default function POSSafety() {
   const [blockSubmitting, setBlockSubmitting] = useState(false);
   const [blockAddress, setBlockAddress] = useState('');
   const [blockedAddresses, setBlockedAddresses] = useState<string[]>([]);
+
+  // Fetch existing blocked clients on mount
+  useEffect(() => {
+    fetch('/api/provider-dashboard/v2/blocked-clients', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data?.blockedClients)) {
+          setBlockedClients(data.blockedClients.map((c: any) => ({
+            name: c.clientIdentifier,
+            reason: c.reason || 'Not specified',
+            date: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+          })));
+        }
+      })
+      .catch(() => {/* non-critical */});
+  }, []);
 
   // Safety settings
   const [verifiedOnly, setVerifiedOnly] = useState(false);

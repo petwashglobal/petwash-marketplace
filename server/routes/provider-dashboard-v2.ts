@@ -1084,6 +1084,28 @@ router.post('/safety-report', async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/provider-dashboard/v2/blocked-clients ───────────────────────────
+// Returns the provider's blocked client list from Firestore.
+router.get('/blocked-clients', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const firestore = getFirestore();
+    const snapshot = await firestore.collection('provider_blocked_clients')
+      .where('providerId', '==', user.uid)
+      .where('status', '==', 'blocked')
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get();
+    const blockedClients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ success: true, blockedClients });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /blocked-clients GET error', error);
+    res.status(500).json({ error: 'Failed to fetch blocked clients' });
+  }
+});
+
 // ── POST /api/provider-dashboard/v2/block-client ──────────────────────────────
 // Provider blocks a client. Stored in Firestore; prevents re-booking from that client.
 router.post('/block-client', async (req: Request, res: Response) => {

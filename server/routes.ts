@@ -4168,7 +4168,7 @@ self.addEventListener('notificationclick', (event) => {
         'latitude', 'longitude', 'profileImageUrl', 'photoURL',
         'addressIsTemporary', 'temporaryAddress', 'temporaryLat', 'temporaryLng', 'temporaryPostal',
         'gender', 'idNumber', 'carPlate', 'carPlate2',
-        'emergencyContactName', 'emergencyContactPhone', 'marketingConsent',
+        'emergencyContactName', 'emergencyContactPhone', 'marketingConsent', 'twoFactorEnabled',
       ]);
 
       const updates: Record<string, any> = {};
