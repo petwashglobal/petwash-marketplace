@@ -102,6 +102,8 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           type="button"
           data-base-bottom="160"
           aria-label={accessibilityLabel}
+          aria-expanded={isAccessibilityMenuOpen}
+          aria-controls="pw-accessibility-menu"
           onClick={handleAccessibilityClick}
           data-testid="fab-accessibility"
         >

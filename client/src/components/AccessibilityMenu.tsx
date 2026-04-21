@@ -465,6 +465,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
     >
       <div
         ref={dialogRef}
+        id="pw-accessibility-menu"
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto"
         style={{
           direction: isRtl ? 'rtl' : 'ltr',

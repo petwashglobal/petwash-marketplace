@@ -250,6 +250,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 4. Clear client-side storage keys.
       localStorage.removeItem('petwash_lang');
+      localStorage.removeItem('pw_admin_pending_email');
+      localStorage.removeItem('emailForSignIn');
+      localStorage.removeItem('signup_intent');
       sessionStorage.clear();
 
       if (userId) {

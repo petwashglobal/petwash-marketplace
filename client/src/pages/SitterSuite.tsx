@@ -617,6 +617,8 @@ export default function SitterSuite() {
               <Button
                 className="luxury-btn-ghost flex items-center gap-2"
                 onClick={() => setShowFilters(!showFilters)}
+                aria-expanded={showFilters}
+                aria-controls="sitter-filters-panel"
                 data-testid="button-toggle-filters"
               >
                 <Filter className="w-4 h-4" />
@@ -626,7 +628,7 @@ export default function SitterSuite() {
 
             {/* Filter Panel */}
             {showFilters && (
-              <div className="luxury-glass-panel luxury-shadow-md p-6 mb-8">
+              <div id="sitter-filters-panel" className="luxury-glass-panel luxury-shadow-md p-6 mb-8">
                 <div className="grid md:grid-cols-3 gap-8">
                   {/* Price Range */}
                   <div>
