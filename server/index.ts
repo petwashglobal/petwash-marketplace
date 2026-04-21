@@ -229,6 +229,7 @@ import { pool, db, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
+import { publicAuthRouter } from "./routes/publicAuthRoutes";
 
 import cookieParser from "cookie-parser";
 import session from "express-session";
@@ -766,12 +767,20 @@ app.get('/api/google/places-health', async (req, res) => {
   return res.status(200).json(checks);
 });
 
+// --- Early-mount critical auth routes (cold-start safety) ---
+// publicAuthRouter contains phone OTP, session creation, and simple-auth/me.
+// Mounting it here (before registerRoutes) means these endpoints are available
+// immediately on first request — even during the 60-120 s Cloud Run cold-start
+// window where registerRoutes() is still executing.
+// registerRoutes() skips re-mounting this router to prevent duplicate handling.
+app.use(publicAuthRouter);
+
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path === '/health/strict' || req.path.startsWith('/api/health')) {
     return next();
   }
-  
+
   if (isProduction && !serverReady) {
     if (req.path === '/' || req.method === 'HEAD') {
       return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
