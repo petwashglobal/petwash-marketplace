@@ -505,7 +505,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               className="pw-burger pw-burger-luxury"
               style={{ touchAction: 'manipulation', cursor: 'pointer' }}
               onClick={() => setIsMobileOpen(true)}
-              aria-label="Open menu"
+              aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={isMobileOpen}
+              aria-controls="pw-mobile-drawer"
               data-testid="button-hamburger"
             >
               <span />
@@ -554,6 +556,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
 
       {/* Mobile drawer */}
       <div 
+        id="pw-mobile-drawer"
         className={`pw-mobile-drawer ${isMobileOpen ? "open" : ""}`}
         aria-hidden={!isMobileOpen}
         role="dialog"

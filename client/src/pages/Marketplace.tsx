@@ -48,6 +48,8 @@ import {
   Crown,
   Award,
   Zap,
+  Filter,
+  X,
 } from 'lucide-react';
 import type { MarketplaceSearchFilters, MarketplacePlatformId } from '@shared/schema';
 
@@ -175,9 +177,24 @@ export default function Marketplace() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Mobile filter toggle */}
+        <div className="lg:hidden mb-4">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white shadow-sm text-sm font-medium"
+            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
+            onClick={() => setShowFilters(v => !v)}
+            aria-expanded={showFilters}
+            aria-controls="marketplace-filters"
+            data-testid="button-toggle-filters-mobile"
+          >
+            {showFilters ? <X className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
+            {showFilters ? 'Hide Filters' : 'Filters'}
+          </button>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
+          <div id="marketplace-filters" className={`lg:col-span-1 ${showFilters ? '' : 'hidden lg:block'}`}>
             <div className="luxury-glass-card luxury-shadow-lg sticky top-4">
               <div className="p-6 border-b border-purple-100/20">
                 <h3 className="text-lg font-bold flex items-center gap-2 luxury-gradient-text">
