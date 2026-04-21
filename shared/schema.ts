@@ -59,6 +59,12 @@ export const users = pgTable("users", {
   temporaryLng: decimal("temporary_lng", { precision: 10, scale: 7 }),
   temporaryPostal: varchar("temporary_postal"),
   gender: varchar("gender"),
+  idNumber: varchar("id_number"),              // Government ID / Teudat Zehut
+  carPlate: varchar("car_plate"),              // Primary vehicle plate (providers)
+  carPlate2: varchar("car_plate_2"),           // Secondary vehicle plate
+  emergencyContactName: varchar("emergency_contact_name"),
+  emergencyContactPhone: varchar("emergency_contact_phone"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false), // User-facing 2FA toggle (UI alias for mfaRequired)
   language: varchar("language").default("en"),
   loyaltyTier: varchar("loyalty_tier").default("bronze"), // 7-tier luxury system: bronze(5%), silver(10%), gold(15%), platinum(20%), diamond(30%), emerald(40%), royal(50%)
   isClubMember: boolean("is_club_member").default(false),

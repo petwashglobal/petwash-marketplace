@@ -21,7 +21,7 @@ export default function OwnerDashboard() {
   });
 
   const { data: messages, isLoading: loadingMessages } = useQuery<any[]>({
-    queryKey: ['/api/sitter-suite/owner/messages'],
+    queryKey: ['/api/booking-chat/inbox'],
     enabled: !!user && activeTab === 'inbox',
   });
 
@@ -30,7 +30,7 @@ export default function OwnerDashboard() {
     setLocation('/');
   };
 
-  const unreadCount = messages?.filter((m: any) => !m.isRead).length || 0;
+  const unreadCount = messages?.filter((m: any) => (m.unreadCount ?? 0) > 0).length || 0;
 
   const mockLoyaltyData = {
     points: 2450,

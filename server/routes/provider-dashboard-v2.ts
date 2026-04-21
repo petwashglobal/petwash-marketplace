@@ -1084,4 +1084,31 @@ router.post('/safety-report', async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/provider-dashboard/v2/block-client ──────────────────────────────
+// Provider blocks a client. Stored in Firestore; prevents re-booking from that client.
+router.post('/block-client', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+    const { clientIdentifier, reason } = req.body;
+    if (!clientIdentifier) {
+      return res.status(400).json({ error: 'clientIdentifier is required' });
+    }
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const firestore = getFirestore();
+    const docRef = await firestore.collection('provider_blocked_clients').add({
+      providerId: user.uid,
+      clientIdentifier: clientIdentifier.trim(),
+      reason: reason?.trim() || null,
+      status: 'blocked',
+      createdAt: new Date().toISOString(),
+    });
+    logger.info('[ProviderDashboardV2] Client blocked', { uid: user.uid, clientIdentifier, blockId: docRef.id });
+    res.json({ success: true, blockId: docRef.id });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /block-client error', error);
+    res.status(500).json({ error: 'Failed to block client' });
+  }
+});
+
 export default router;
