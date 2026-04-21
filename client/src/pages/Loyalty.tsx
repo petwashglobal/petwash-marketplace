@@ -622,6 +622,9 @@ export default function Loyalty() {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!firebaseUser?.uid) {
+        // Clear any previous user's profile data so it cannot be rendered
+        // after logout or before a new user's data loads.
+        setProfileData(null);
         setLoading(false);
         return;
       }

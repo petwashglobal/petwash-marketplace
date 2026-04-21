@@ -13,6 +13,7 @@ import {
 import { trackLogout } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 import { getApiUrl } from "@/lib/apiConfig";
+import { queryClient } from "@/lib/queryClient";
 
 export type UserRole = 'public' | 'provider' | 'franchise_owner' | 'staff' | 'admin' | 'management' | 'super_admin';
 
@@ -221,14 +222,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isDevMode]);
 
   const logout = async () => {
+    // Always clear the React Query cache first, regardless of mode, so no
+    // cached user data survives the logout even if subsequent steps fail.
+    queryClient.clear();
+
+    // Dev-mode: just toggle off the fake user, no server calls or redirect needed.
+    if (isDevMode) {
+      disableDevMode();
+      return;
+    }
+
+    const userId = user?.uid;
     try {
-      const userId = user?.uid;
-      
-      if (isDevMode) {
-        disableDevMode();
-        return;
-      }
-      
+      // 2. Destroy the server-side session cookie.
       try {
         await fetch(getApiUrl('/api/auth/signout'), {
           method: 'POST',
@@ -237,21 +243,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         logger.debug("Server signout call failed (non-blocking)", e);
       }
-      
+
+      // 3. Sign out of Firebase (fires onAuthStateChanged → null).
       await signOut(auth);
       sessionCreatedForUid.current = null;
-      
+
+      // 4. Clear client-side storage keys.
       localStorage.removeItem('petwash_lang');
       sessionStorage.clear();
-      
+
       if (userId) {
         trackLogout(userId);
       }
-      
+
       logger.info("Logout successful", { userId });
     } catch (error) {
       logger.error("Logout failed:", error);
-      throw error;
+      // Ensure the query cache is cleared even when the signout throws.
+      queryClient.clear();
+    } finally {
+      // 5. Hard-redirect to root. Using window.location.replace ensures a full
+      //    page reload that wipes ALL in-memory React state (including any stale
+      //    context/component-local state that survived the cache clear).
+      //    replace() is used instead of assign() so the protected page is removed
+      //    from the browser history — pressing Back cannot return to it.
+      window.location.replace('/');
     }
   };
 
