@@ -739,7 +739,7 @@ function ActiveBookingCard({
             variant="outline"
             className="flex-1"
             disabled
-            title={isHebrew ? 'בקרוב' : 'Coming soon'}
+            aria-label={isHebrew ? 'שלח תמונה — בקרוב' : 'Send Photo Update — coming soon'}
             data-testid={`button-photo-update-${booking.requestId}`}
           >
             <Camera className="h-4 w-4 mr-2" />
