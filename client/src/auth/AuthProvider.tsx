@@ -15,6 +15,14 @@ import { logger } from "@/lib/logger";
 import { getApiUrl } from "@/lib/apiConfig";
 import { queryClient } from "@/lib/queryClient";
 
+/** All localStorage keys that are user-session-specific and must be wiped on logout. */
+export const AUTH_LOCAL_STORAGE_KEYS = [
+  'petwash_lang',
+  'pw_admin_pending_email',
+  'emailForSignIn',
+  'signup_intent',
+] as const;
+
 export type UserRole = 'public' | 'provider' | 'franchise_owner' | 'staff' | 'admin' | 'management' | 'super_admin';
 
 export interface UserClaims {
@@ -249,10 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionCreatedForUid.current = null;
 
       // 4. Clear client-side storage keys.
-      localStorage.removeItem('petwash_lang');
-      localStorage.removeItem('pw_admin_pending_email');
-      localStorage.removeItem('emailForSignIn');
-      localStorage.removeItem('signup_intent');
+      AUTH_LOCAL_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
       sessionStorage.clear();
 
       if (userId) {
