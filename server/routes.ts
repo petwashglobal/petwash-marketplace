@@ -4160,15 +4160,25 @@ self.addEventListener('notificationclick', (event) => {
   app.patch('/api/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user?.uid || req.firebaseUser?.uid;
-      const updates = req.body;
-      
-      // Remove sensitive fields that shouldn't be updated directly
-      delete updates.id;
-      delete updates.createdAt;
-      delete updates.updatedAt;
-      delete updates.totalSpent;
-      delete updates.washBalance;
-      delete updates.giftCardBalance;
+
+      // Strict allowlist — prevents privilege escalation via role/balance fields
+      const ALLOWED_FIELDS = new Set([
+        'firstName', 'lastName', 'phone', 'dateOfBirth', 'language',
+        'address', 'street', 'streetNumber', 'apartment', 'city', 'postalCode', 'country',
+        'latitude', 'longitude', 'profileImageUrl', 'photoURL',
+        'addressIsTemporary', 'temporaryAddress', 'temporaryLat', 'temporaryLng', 'temporaryPostal',
+        'gender', 'idNumber', 'carPlate', 'carPlate2',
+        'emergencyContactName', 'emergencyContactPhone', 'marketingConsent',
+      ]);
+
+      const updates: Record<string, any> = {};
+      for (const [key, value] of Object.entries(req.body)) {
+        if (ALLOWED_FIELDS.has(key)) updates[key] = value;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
 
       const updatedUser = await storage.updateUser(userId, updates);
       res.json(updatedUser);

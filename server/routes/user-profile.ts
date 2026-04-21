@@ -40,6 +40,15 @@ const profileUpdateSchema = z.object({
   email: z.string().email().optional(),
   photoURL: z.string().optional(),
   notificationPreferences: notificationPreferencesSchema,
+  // Additional profile fields
+  gender: z.string().optional(),
+  idNumber: z.string().optional(),
+  carPlate: z.string().optional(),
+  carPlate2: z.string().optional(),
+  emergencyContactName: z.string().optional(),
+  emergencyContactPhone: z.string().optional(),
+  marketingConsent: z.boolean().optional(),
+  twoFactorEnabled: z.boolean().optional(),
 });
 
 const router = Router();
