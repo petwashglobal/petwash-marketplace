@@ -49,14 +49,14 @@ export default function AdminLoginV2() {
       body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
     });
     if (!sessionRes.ok) {
-      throw new Error('SESSION_FAILED');
+      throw new Error('SESSION_CREATION_FAILED');
     }
   };
 
   const assertAdminAccess = async () => {
     const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
     if (!whoamiRes.ok) {
-      throw new Error('ACCESS_DENIED');
+      throw new Error('SESSION_VERIFICATION_FAILED');
     }
     const whoami = await whoamiRes.json();
     if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
