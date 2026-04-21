@@ -3,8 +3,7 @@ import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useWhoami } from "@/auth/useWhoami";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
-
-const ADMIN_ALLOWED_ROLES = ['admin', 'ops', 'super_admin', 'management', 'staff'];
+import { isAdminRole } from "@shared/adminRoles";
 
 interface AdminRouteGuardProps {
   children: React.ReactNode;
@@ -28,9 +27,9 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
     if (isSuperAdmin) return;
 
-    const whoamiHasAccess = whoami && ADMIN_ALLOWED_ROLES.includes(whoamiRole);
-    const adminHasAccess = admin && admin.isActive && ADMIN_ALLOWED_ROLES.includes(admin.role);
-    const claimsHasAccess = claims.role && ADMIN_ALLOWED_ROLES.includes(claims.role);
+    const whoamiHasAccess = whoami && isAdminRole(whoamiRole);
+    const adminHasAccess = admin && admin.isActive && isAdminRole(admin.role);
+    const claimsHasAccess = claims.role && isAdminRole(claims.role);
 
     if (whoamiHasAccess || adminHasAccess || claimsHasAccess) return;
 
@@ -56,9 +55,9 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
   if (isSuperAdmin) return <>{children}</>;
 
-  const whoamiHasAccess = whoami && ADMIN_ALLOWED_ROLES.includes(whoamiRole);
-  const adminHasAccess = admin && admin.isActive && ADMIN_ALLOWED_ROLES.includes(admin.role);
-  const claimsHasAccess = claims.role && ADMIN_ALLOWED_ROLES.includes(claims.role);
+  const whoamiHasAccess = whoami && isAdminRole(whoamiRole);
+  const adminHasAccess = admin && admin.isActive && isAdminRole(admin.role);
+  const claimsHasAccess = claims.role && isAdminRole(claims.role);
 
   if (whoamiHasAccess || adminHasAccess || claimsHasAccess) {
     return <>{children}</>;

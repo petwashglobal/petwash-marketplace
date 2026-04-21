@@ -156,6 +156,7 @@ import platformApiRoutes from "./routes/platform-api";
 import { resolvePlatformMiddleware } from "./middleware/platformContext";
 import { auditMiddleware } from "./middleware/auditLogger";
 import { requireRole, requireStaffApproved, requireProviderActive, requireSuperAdmin, requireMfaEnrolled } from "./middleware/gates";
+import { ADMIN_ROLES, ADMIN_ROLES_ARRAY } from '@shared/adminRoles';
 import { blockDuringIncident } from './middleware/incidentGuard';
 import { activateIncidentMode, deactivateIncidentMode, getIncidentStatus } from './services/incidentMode';
 import { logAuditEvent, auditMiddleware as auditLogMiddleware } from "./middleware/auditLog";
@@ -410,7 +411,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/kyc/', sessionAgeGuard(14400));
 
   // 🔐 P0 FINTECH GATES - Role + status enforcement on admin/staff/provider route groups
-  app.use('/api/admin/', requireRole('admin', 'management', 'staff'), requireStaffApproved, requireMfaEnrolled);
+  // ADMIN_ROLES is the single canonical list — imported from @shared/adminRoles.
+  // requireStaffApproved skips the staff_active status check for elevated roles (admin/management/etc).
+  app.use('/api/admin/', requireRole(...ADMIN_ROLES_ARRAY), requireStaffApproved, requireMfaEnrolled);
   app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================
@@ -2226,6 +2229,10 @@ self.addEventListener('notificationclick', (event) => {
         admin: ['member', 'staff', 'admin'],
         management: ['member', 'staff', 'admin'],
         super_admin: ['member', 'provider', 'staff', 'admin'],
+        ops: ['member', 'staff', 'admin'],
+        hr: ['member', 'staff', 'admin'],
+        finance: ['member', 'staff', 'admin'],
+        ceo: ['member', 'staff', 'admin'],
       };
       dashboardsAllowed.push(...(ROLE_DASHBOARDS[role] || ['member']));
 

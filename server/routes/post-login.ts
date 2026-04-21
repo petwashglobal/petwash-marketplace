@@ -5,6 +5,7 @@ import { ALLOWED_INTENTS, type UserStatus, type UserRole } from "@shared/schema"
 import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin } from "../middleware/rbac";
+import { isAdminRole } from "@shared/adminRoles";
 
 const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL || '';
 if (!process.env.ADMIN_APPROVER_EMAIL) {
@@ -133,9 +134,6 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
   }
 
   if (role === 'loyalty') {
-    if (!user.dateOfBirth) {
-      return { nextUrl: '/complete-profile', reason: 'PROFILE_INCOMPLETE', profileStatus: 'incomplete', role, userStatus, missingFields: ['dateOfBirth'] };
-    }
     return { nextUrl: '/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
   }
 
@@ -180,10 +178,19 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
     return { nextUrl: '/franchise/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
   }
 
-  if (role === 'admin' || role === 'management' || role === 'super_admin' || role === 'staff') {
-    const isApproved = !!(user as any).approvedAt && !!(user as any).approvedBy;
-    if (!isApproved && role !== 'staff') {
-      return { nextUrl: '/access-pending', reason: 'STAFF_APPROVAL_REQUIRED', profileStatus: 'pending_review', role, userStatus };
+  if (isAdminRole(role)) {
+    // super_admin users have implicit approval via the isSuperAdmin() guard.
+    // staff role goes through the staffReq approval flow handled above.
+    // All other admin roles (admin, management, ops, hr, finance, ceo) require
+    // an explicit admin-panel approval (approvedAt + approvedBy in the DB),
+    // unless the user's email is in the SUPER_ADMIN_EMAILS list.
+    const requiresApproval = role !== 'super_admin' && role !== 'staff';
+    if (requiresApproval) {
+      const isApproved = !!(user as any).approvedAt && !!(user as any).approvedBy;
+      const superAdminEmail = (user as any).email ? isSuperAdmin((user as any).email) : false;
+      if (!isApproved && !superAdminEmail) {
+        return { nextUrl: '/access-pending', reason: 'STAFF_APPROVAL_REQUIRED', profileStatus: 'pending_review', role, userStatus };
+      }
     }
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
   }
@@ -386,14 +393,25 @@ export async function postLoginDecider(req: Request, res: Response) {
         if (safeIntent === 'provider') {
           const existingApp = await storage.getProviderApplicationByUser(userId);
           if (!existingApp) {
-            await storage.createProviderApplicationDraft(userId, {
-              email: user?.email || '',
-              firstName: user?.firstName || '',
-              lastName: user?.lastName || '',
-              phoneNumber: user?.phone || '',
-              city: (user as any)?.city || '',
-              country: (user as any)?.country || 'IL',
-            } as any);
+            try {
+              await storage.createProviderApplicationDraft(userId, {
+                email: user?.email || '',
+                firstName: user?.firstName || '',
+                lastName: user?.lastName || '',
+                phoneNumber: user?.phone || '',
+                city: (user as any)?.city || '',
+                country: (user as any)?.country || 'IL',
+              } as any);
+            } catch (draftErr: any) {
+              logger.error('[PostLogin] Failed to create provider application draft', { userId, error: String(draftErr) });
+              // Return a clean error — do NOT fall through to the outer catch which would return 500
+              // and cause the client to silently navigate to /home.
+              return res.status(500).json({
+                error: 'PROVIDER_DRAFT_FAILED',
+                nextUrl: '/provider-onboarding',
+                message: 'Unable to start provider registration. Please try again.',
+              });
+            }
 
             // Send provider welcome email
             const providerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'שותף חדש';

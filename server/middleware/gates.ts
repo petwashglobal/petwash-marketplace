@@ -266,6 +266,15 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
     const userStatus = (user as any).userStatus || 'new';
     const allowedRoles = ['staff', 'management', 'admin'];
 
+    // Elevated admin roles (admin/management/super_admin/ops/hr/finance) go through
+    // a separate Firebase-claims-based approval workflow, not the "staff approval" queue.
+    // They must not be gated behind staff_active — their own requireAdmin / requireRole
+    // check is the enforced gate.
+    const ELEVATED_ADMIN_ROLES = ['admin', 'management', 'super_admin', 'ops', 'hr', 'finance', 'ceo'];
+    if (ELEVATED_ADMIN_ROLES.includes(userRole)) {
+      return next();
+    }
+
     if (!allowedRoles.includes(userRole) || userStatus !== 'staff_active') {
       logger.debug(
         `[requireStaffApproved] User ${userId} is not staff_active (role: ${userRole}, status: ${userStatus})`

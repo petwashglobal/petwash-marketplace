@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from '@/lib/apiConfig';
+import { isAdminRole } from "@shared/adminRoles";
 
 export interface AdminUser {
   id: string;
@@ -37,8 +38,7 @@ export function useAdminAuth() {
   });
 
   const admin = data?.ok && data.user ? data.user : null;
-  const allowedRoles = ['admin', 'ops', 'super_admin', 'management', 'staff'];
-  const hasAdminRole = admin && allowedRoles.includes(admin.role);
+  const hasAdminRole = admin && isAdminRole(admin.role);
 
   return {
     admin,
