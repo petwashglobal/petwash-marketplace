@@ -12,6 +12,7 @@ import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
 import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
 import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import diamondLogo from '@assets/IMG_3257_1771582024352.png';
 import { apiRequest } from '@/lib/queryClient';
@@ -343,10 +344,13 @@ export default function Dashboard() {
   const he = language === 'he';
 
   // Providers must use /provider-os — never the customer dashboard
-  if (!whoamiLoading && serverRole === 'provider') {
-    setLocation('/provider-os');
-    return null;
-  }
+  useEffect(() => {
+    if (!whoamiLoading && serverRole === 'provider') {
+      setLocation('/provider-os');
+    }
+  }, [whoamiLoading, serverRole, setLocation]);
+
+  if (!whoamiLoading && serverRole === 'provider') return null;
 
   const sendWalletEmailMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),

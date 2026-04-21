@@ -54,10 +54,26 @@ export default function POSSafety() {
       toast({ title: 'Please fill in incident type and description', variant: 'destructive' }); return;
     }
     setReportSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setReportSubmitting(false);
-    toast({ title: 'Report submitted', description: 'Our safety team will review your report within 24 hours.' });
-    setReportIncidentType(''); setReportBookingRef(''); setReportDescription('');
+    try {
+      const res = await fetch('/api/provider-dashboard/v2/safety-report', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          incidentType: reportIncidentType,
+          bookingRef: reportBookingRef,
+          description: reportDescription,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Report submission failed');
+      toast({ title: 'Report submitted', description: 'Our safety team will review your report within 24 hours.' });
+      setReportIncidentType(''); setReportBookingRef(''); setReportDescription('');
+    } catch (err: any) {
+      toast({ title: 'Failed to submit report', description: err.message || 'Please try again', variant: 'destructive' });
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
   const handleBlockClient = () => {

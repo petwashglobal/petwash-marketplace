@@ -216,9 +216,18 @@ export default function AdminVouchers() {
         description: `Creating ${bulkCount} vouchers...`
       });
 
-      // Mock bulk generation - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      const response = await fetch(getApiUrl('/api/admin/vouchers/bulk-generate'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: bulkCount }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Bulk generation failed');
+      }
+
       toast({
         title: '✅ Bulk Generation Complete',
         description: `Successfully created ${bulkCount} vouchers`
@@ -294,9 +303,16 @@ export default function AdminVouchers() {
 
   const handleDeactivate = async (voucherId: string) => {
     try {
-      // Mock API call - replace with actual endpoint
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const response = await fetch(getApiUrl(`/api/admin/vouchers/${voucherId}/deactivate`), {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Deactivation failed');
+      }
+
       toast({
         title: '✅ Voucher Deactivated',
         description: 'The voucher has been successfully deactivated'

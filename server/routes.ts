@@ -5991,6 +5991,47 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // Admin: Deactivate (void) a voucher — alias used by AdminVouchers.tsx
+  app.post('/api/admin/vouchers/:id/deactivate', requireAdmin, async (req: any, res) => {
+    try {
+      const voucherId = req.params.id;
+      const voucher = await storage.getEVoucher(voucherId);
+      if (!voucher) return res.status(404).json({ error: 'Voucher not found' });
+      if (voucher.status === 'CANCELLED') return res.status(400).json({ error: 'Voucher already deactivated' });
+      await storage.updateEVoucher(voucherId, { status: 'CANCELLED' });
+      logger.info('Admin: Voucher deactivated', { voucherId, admin: req.adminUser?.email });
+      res.json({ success: true, message: 'Voucher deactivated successfully' });
+    } catch (error) {
+      logger.error('Admin: Error deactivating voucher', error);
+      res.status(500).json({ error: 'Failed to deactivate voucher' });
+    }
+  });
+
+  // Admin: Bulk-generate vouchers
+  app.post('/api/admin/vouchers/bulk-generate', requireAdmin, async (req: any, res) => {
+    try {
+      const { count = 1, amount = 100, expirationDays = 365 } = req.body;
+      const qty = Math.min(Math.max(1, parseInt(count)), 500); // cap at 500
+      const voucherService = new VoucherService();
+      const results = [];
+      for (let i = 0; i < qty; i++) {
+        const r = await voucherService.generateVoucher({
+          amount: parseFloat(amount),
+          currency: 'ILS',
+          recipientEmail: null,
+          purchaserUid: req.adminUser?.id,
+          expirationDays,
+        });
+        results.push(r.voucherId);
+      }
+      logger.info('Admin: Bulk vouchers generated', { count: qty, admin: req.adminUser?.email });
+      res.json({ success: true, generated: qty, voucherIds: results });
+    } catch (error) {
+      logger.error('Admin: Error bulk generating vouchers', error);
+      res.status(500).json({ error: 'Failed to bulk generate vouchers' });
+    }
+  });
+
   // T04: Persistent idempotency dedup for Nayax voucher webhook.
   // In-memory Map with 24-hour TTL; prevents double-processing across rapid retries.
   // For multi-instance deployments, upgrade to a Redis SET or PostgreSQL webhook_events table.

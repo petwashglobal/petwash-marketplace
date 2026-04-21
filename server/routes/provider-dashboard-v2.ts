@@ -1024,4 +1024,64 @@ router.get('/feedback', async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/provider-dashboard/v2/payout-request ───────────────────────────
+// Providers submit a bank payout request. Stored in Firestore for admin review.
+router.post('/payout-request', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+    const { amountIls, iban, bankName } = req.body;
+    if (!amountIls || !iban) {
+      return res.status(400).json({ error: 'amountIls and iban are required' });
+    }
+    const amount = parseFloat(amountIls);
+    if (isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid payout amount' });
+    }
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const firestore = getFirestore();
+    const docRef = await firestore.collection('payout_requests').add({
+      providerId: user.uid,
+      amountIls: amount,
+      iban: iban.trim(),
+      bankName: bankName?.trim() || null,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    });
+    logger.info('[ProviderDashboardV2] Payout request created', { uid: user.uid, amountIls: amount, requestId: docRef.id });
+    res.json({ success: true, requestId: docRef.id, status: 'pending' });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /payout-request error', error);
+    res.status(500).json({ error: 'Failed to submit payout request' });
+  }
+});
+
+// ── POST /api/provider-dashboard/v2/safety-report ────────────────────────────
+// Providers submit a safety incident report. Stored in Firestore for safety team review.
+router.post('/safety-report', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+    const { incidentType, bookingRef, description } = req.body;
+    if (!incidentType || !description) {
+      return res.status(400).json({ error: 'incidentType and description are required' });
+    }
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const firestore = getFirestore();
+    const docRef = await firestore.collection('provider_safety_reports').add({
+      providerId: user.uid,
+      incidentType,
+      bookingRef: bookingRef?.trim() || null,
+      description,
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    });
+    logger.info('[ProviderDashboardV2] Safety report submitted', { uid: user.uid, incidentType, reportId: docRef.id });
+    res.json({ success: true, reportId: docRef.id, status: 'open' });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /safety-report error', error);
+    res.status(500).json({ error: 'Failed to submit safety report' });
+  }
+});
+
 export default router;

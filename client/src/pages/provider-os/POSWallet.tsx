@@ -106,11 +106,27 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
   const handleRequestPayout = async () => {
     if (!payoutAmount || !iban) { toast({ title: 'Fill in all payout fields', variant: 'destructive' }); return; }
+    const amount = parseFloat(payoutAmount);
+    if (isNaN(amount) || amount <= 0) { toast({ title: 'Enter a valid payout amount', variant: 'destructive' }); return; }
     setPayoutLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setPayoutLoading(false);
-    toast({ title: 'Payout request submitted', description: `₪${payoutAmount} will be transferred within 3 business days.` });
-    setPayoutAmount('');
+    try {
+      const res = await fetch('/api/provider-dashboard/v2/payout-request', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountIls: amount, iban, bankName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Payout request failed');
+      toast({ title: 'Payout request submitted', description: `₪${payoutAmount} request received. Processing within 3 business days.` });
+      setPayoutAmount('');
+      setIban('');
+      setBankName('');
+    } catch (err: any) {
+      toast({ title: 'Payout request failed', description: err.message || 'Please try again', variant: 'destructive' });
+    } finally {
+      setPayoutLoading(false);
+    }
   };
 
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];

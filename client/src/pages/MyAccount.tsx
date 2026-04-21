@@ -434,6 +434,9 @@ export default function MyAccount() {
       queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
       toast({ title: isHebrew ? 'חיית המחמד הוסרה' : 'Pet removed' });
     },
+    onError: () => {
+      toast({ title: isHebrew ? 'שגיאה במחיקה' : 'Failed to remove pet', variant: 'destructive' });
+    },
   });
 
   function buildGoogleCalendarUrl(petName: string, vaccine: string, dueDateStr: string): string {
@@ -606,6 +609,10 @@ export default function MyAccount() {
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
       const res = await apiRequest('PATCH', '/api/user/profile', updates);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || body?.message || 'Save failed');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -614,6 +621,13 @@ export default function MyAccount() {
       toast({
         title: isHebrew ? 'הפרופיל עודכן' : 'Profile Updated',
         description: isHebrew ? 'השינויים נשמרו בהצלחה' : 'Your changes have been saved',
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: isHebrew ? 'שגיאה בשמירה' : 'Save Failed',
+        description: err.message || (isHebrew ? 'אנא נסה שנית' : 'Please try again'),
+        variant: 'destructive',
       });
     },
   });
