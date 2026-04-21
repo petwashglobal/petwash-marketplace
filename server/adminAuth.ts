@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { AdminUser } from "@shared/schema";
 import { logger } from './lib/logger';
 import { isSuperAdmin } from './middleware/rbac';
+import { ADMIN_ROLES } from '@shared/adminRoles';
 
 // Extend Express Request to include admin user
 declare module "express-session" {
