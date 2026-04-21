@@ -1211,19 +1211,55 @@ router.post('/:requestId/pay', async (req, res) => {
       }
     });
 
-    try {
-      await calendarIntegrationService.createBookingEvent({
-        platform: booking.providerType || 'pet-care',
-        bookingId: requestId,
-        title: `⁦Pet Wash™⁩ Booking - ${booking.serviceType || booking.providerType}`,
-        description: `Confirmed booking #${requestId}\nPets: ${booking.petCount}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}`,
-        startTime: new Date(booking.startDate),
-        endTime: new Date(booking.endDate),
-        providerName: booking.providerId,
-      });
-    } catch (calErr) {
-      logger.warn('[BookingRequests] Calendar sync non-blocking', { error: (calErr as Error).message });
-    }
+    // ── Both-party Google Calendar sync (blueprint §11) ─────────────────────
+    // Fetch provider and customer emails so both receive a calendar invitation.
+    // The platform creates ONE event and adds both as attendees; Google Calendar
+    // automatically emails them and the event appears on their personal calendars.
+    // Calendar sync is async and non-blocking — never blocks payment confirmation.
+    setImmediate(async () => {
+      try {
+        const [ownerUser, providerUser] = await Promise.all([
+          db.select({ email: users.email, firstName: users.firstName })
+            .from(users).where(eq(users.id, booking.ownerId)).limit(1),
+          db.select({ email: users.email, firstName: users.firstName })
+            .from(users).where(eq(users.id, booking.providerId)).limit(1),
+        ]);
+        const attendeeEmails: string[] = [];
+        if (ownerUser[0]?.email) attendeeEmails.push(ownerUser[0].email);
+        if (providerUser[0]?.email) attendeeEmails.push(providerUser[0].email);
+
+        const petLabel = Array.isArray(booking.petIds) && booking.petIds.length > 0
+          ? `${booking.petCount} pet(s)`
+          : `${booking.petCount || 1} pet(s)`;
+
+        const calResult = await calendarIntegrationService.createBookingEvent({
+          platform: booking.providerType || 'pet-care',
+          bookingId: requestId,
+          title: `🐾 PetWash™ — ${booking.serviceType || booking.providerType} (${petLabel})`,
+          description: `Booking #${requestId}\nService: ${booking.serviceType}\nPets: ${petLabel}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}\n\nView booking: https://petwash.co.il/booking/confirmation/${requestId}`,
+          startTime: new Date(booking.startDate),
+          endTime: new Date(booking.endDate),
+          customerName: ownerUser[0]?.firstName || undefined,
+          providerName: providerUser[0]?.firstName || booking.providerName || undefined,
+          attendeeEmails,
+        });
+
+        if (calResult?.eventId) {
+          await db.update(bookingRequests)
+            .set({
+              platformCalendarEventId: calResult.eventId,
+              calendarAttendeesSynced: attendeeEmails.length > 0,
+              updatedAt: new Date(),
+            } as any)
+            .where(eq(bookingRequests.requestId, requestId));
+          logger.info('[BookingRequests] Calendar event created with attendees', {
+            requestId, eventId: calResult.eventId, attendeeCount: attendeeEmails.length,
+          });
+        }
+      } catch (calErr: any) {
+        logger.warn('[BookingRequests] Calendar sync failed (non-fatal)', { error: calErr.message, requestId });
+      }
+    });
     
     res.json({
       success: true,
@@ -1292,7 +1328,14 @@ router.post('/:requestId/start', async (req, res) => {
 });
 
 /**
- * POST /api/booking-requests/:requestId/complete - Provider completes service
+ /**
+ * POST /api/booking-requests/:requestId/complete - Provider marks service as done
+ *
+ * Dual-approval gate (blueprint §13):
+ *   Step 1 (this endpoint): Provider marks complete → status = provider_marked_complete
+ *   Step 2 (/confirm or /approve-completion): Customer approves → status = completed + escrow released
+ *
+ * Auto-approval: if customer does nothing for 24 h, the cron job auto-approves.
  */
 router.post('/:requestId/complete', async (req, res) => {
   try {
@@ -1309,34 +1352,57 @@ router.post('/:requestId/complete', async (req, res) => {
     }
     
     if (booking.providerId !== userId) {
-      return res.status(403).json({ error: 'Only provider can complete service' });
+      return res.status(403).json({ error: 'Only provider can mark service as complete' });
     }
     
     if (booking.status !== 'in_progress') {
-      return res.status(400).json({ error: `Cannot complete service with status: ${booking.status}` });
+      return res.status(400).json({ error: `Cannot mark complete for booking with status: ${booking.status}` });
     }
     
     const statusHistory = (booking.statusHistory as any[]) || [];
+    const now = new Date();
     statusHistory.push({
-      status: 'completed',
-      timestamp: new Date().toISOString(),
-      note: 'Service completed. Awaiting owner confirmation.',
+      status: 'provider_marked_complete',
+      timestamp: now.toISOString(),
+      actorType: 'provider',
+      actorId: userId,
+      note: 'Provider marked service as done. Awaiting customer approval or 24-hour auto-approval.',
     });
     
     await db.update(bookingRequests)
       .set({
-        status: 'completed',
-        serviceCompletedAt: new Date(),
+        status: 'provider_marked_complete',
+        serviceCompletedAt: now,
+        providerCompletedAt: now,
         statusHistory,
-        updatedAt: new Date(),
-      })
+        updatedAt: now,
+      } as any)
       .where(eq(bookingRequests.requestId, requestId));
 
-    logBookingEvent('service_completed', buildEventPayload({ ...booking, status: 'completed' }), {
-      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+    logBookingEvent('service_completed', buildEventPayload({ ...booking, status: 'provider_marked_complete' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
       serviceStartedAt: booking.serviceStartedAt?.toISOString() || undefined,
-      serviceCompletedAt: new Date().toISOString(),
+      serviceCompletedAt: now.toISOString(),
     }).catch(() => {});
+
+    // Notify owner to approve or dispute within 24 hours
+    try {
+      await db.insert(superAppNotifications).values({
+        userId: booking.ownerId,
+        type: 'booking_completion_approval',
+        title: '✅ השירות הושלם — אשרי את ההזמנה',
+        titleHe: '✅ השירות הושלם — אשרי את ההזמנה',
+        body: `הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.`,
+        bodyHe: `הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.`,
+        actionUrl: `/booking/confirmation/${requestId}`,
+        actionType: 'approve_completion',
+        channels: ['in_app'],
+        isRead: false,
+        createdAt: now,
+      } as any);
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] Completion approval notification failed', { error: notifErr.message });
+    }
 
     // ── Non-blocking: Schedule rebook nudges after service completion ─────────
     if (booking.ownerId) {
@@ -1354,33 +1420,6 @@ router.post('/:requestId/complete', async (req, res) => {
         .catch((e: any) => logger.warn('[RebookScheduler] weekly_rebook schedule failed', { error: e.message }));
     }
 
-    // ── Non-blocking: T006 Wallet nudge — fire if balance drops below ₪100 ──
-    if (booking.ownerId) {
-      setImmediate(async () => {
-        try {
-          const summary = await walletService.getWalletSummary(booking.ownerId);
-          const totalCents = (summary as any)?.totalCreditsValueCents ?? 0;
-          if (totalCents < 10000) {
-            await db.insert(superAppNotifications).values({
-              userId:     booking.ownerId,
-              type:       'wallet_balance_low',
-              title:      'הארנק שלך מתרוקן!',
-              titleHe:    'הארנק שלך מתרוקן!',
-              body:       'הטעינו כעת לאפשרות ההזמנה הבאה.',
-              bodyHe:     'הטעינו כעת לאפשרות ההזמנה הבאה.',
-              actionUrl:  '/my-wallet',
-              actionType: 'open_wallet',
-              channels:   ['in_app'],
-              isRead:     false,
-              createdAt:  new Date(),
-            } as any);
-          }
-        } catch (nudgeErr: any) {
-          logger.warn('[WalletNudge] post-completion balance check failed', { error: nudgeErr.message });
-        }
-      });
-    }
-
     // ── Non-blocking: Refresh provider trust metrics cache ───────────────────
     setImmediate(async () => {
       try {
@@ -1391,23 +1430,23 @@ router.post('/:requestId/complete', async (req, res) => {
       }
     });
 
-    // ── Non-blocking: Google Sheets sync on service completion ────────────────
+    // ── Non-blocking: Google Sheets sync ─────────────────────────────────────
     setImmediate(async () => {
       try {
         const { logSitterBooking } = await import('../services/googleSheetsIntegration');
         await logSitterBooking({
           bookingId: requestId,
-          customerName: `${booking.ownerFirstName || ''} ${booking.ownerLastName || ''}`.trim() || 'Owner',
-          email: booking.ownerEmail || '',
-          phone: booking.ownerPhone || '',
-          petName: booking.petNames || '',
-          petType: booking.petType || 'pet',
+          customerName: `${(booking as any).ownerFirstName || ''} ${(booking as any).ownerLastName || ''}`.trim() || 'Owner',
+          email: (booking as any).ownerEmail || '',
+          phone: (booking as any).ownerPhone || '',
+          petName: (booking as any).petNames || '',
+          petType: (booking as any).petType || 'pet',
           sitterName: booking.providerName || booking.providerId || 'Provider',
           startDate: booking.startDate?.toISOString?.()?.slice(0, 10) || String(booking.startDate),
           endDate: booking.endDate?.toISOString?.()?.slice(0, 10) || String(booking.endDate),
           durationDays: booking.totalDays || 1,
           totalAmount: (booking.totalCents || 0) / 100,
-          status: 'service_completed',
+          status: 'provider_marked_complete',
         });
       } catch (sheetsErr: any) {
         logger.warn(`[BookingRequests] Google Sheets sync failed (complete) bookingId=${requestId} reason=${sheetsErr?.message}`);
@@ -1415,8 +1454,9 @@ router.post('/:requestId/complete', async (req, res) => {
     });
     
     res.json({ 
-      success: true, 
-      message: 'Service marked as completed. Awaiting owner confirmation for payment release.' 
+      success: true,
+      status: 'provider_marked_complete',
+      message: 'Service marked as completed. Customer has 24 hours to approve or open a dispute. Payment will be auto-released if no action is taken.',
     });
   } catch (error: any) {
     logger.error('[BookingRequests] Complete service error', { error: error.message });
@@ -1506,8 +1546,8 @@ router.post('/:requestId/confirm', async (req, res) => {
       return res.status(403).json({ error: 'Only owner can confirm completion' });
     }
     
-    if (booking.status !== 'completed') {
-      return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}` });
+    if (booking.status !== 'provider_marked_complete') {
+      return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}. Provider must mark the service as complete first.` });
     }
     
     // ENTERPRISE: Create earning record via payoutLedger
@@ -1837,12 +1877,13 @@ router.post('/:requestId/confirm', async (req, res) => {
       .set({
         status: finalStatus,
         ownerConfirmedAt: new Date(),
+        customerApprovedAt: new Date(),
         ownerRating: rating?.toString() || null,
         ownerReview: review || null,
         paymentReleasedAt: new Date(), // Release escrow
         statusHistory,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(bookingRequests.requestId, requestId));
     
     logger.info('[BookingRequests] Owner confirmed with enterprise integration', {
@@ -1924,6 +1965,298 @@ router.post('/:requestId/confirm', async (req, res) => {
 });
 
 /**
+ * POST /api/booking-requests/:requestId/approve-completion
+ * Blueprint-aligned alias for /confirm — customer approves completion and releases escrow.
+ * Functionally identical to /confirm; exists so the new API surface matches the blueprint spec.
+ */
+router.post('/:requestId/approve-completion', async (req, res) => {
+  // Delegate to the /confirm handler by forwarding the request path and calling next.
+  // Since express routes are separate, we simply replicate the logic by redirecting internally.
+  req.url = `/${req.params.requestId}/confirm`;
+  return (router as any).handle({ ...req, url: req.url, path: `/${req.params.requestId}/confirm` }, res, () => {
+    res.status(404).json({ error: 'Not found' });
+  });
+});
+
+/**
+ * POST /api/booking-requests/:requestId/dispute
+ * Customer opens a dispute during the 24-hour approval window after provider marks complete.
+ * Freezes escrow — no payout until admin resolves. (blueprint §14)
+ */
+router.post('/:requestId/dispute', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { requestId } = req.params;
+    const rawReason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 1000) : '';
+    if (!rawReason) {
+      return res.status(400).json({ error: 'A dispute reason is required.' });
+    }
+
+    const [booking] = await db.select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.ownerId !== userId) {
+      return res.status(403).json({ error: 'Only the booking owner can open a dispute' });
+    }
+
+    // Dispute is only valid while waiting for customer approval
+    if (booking.status !== 'provider_marked_complete') {
+      return res.status(400).json({
+        error: `Disputes can only be opened when the booking is in the completion approval window (current status: ${booking.status}).`,
+      });
+    }
+
+    const now = new Date();
+    const statusHistory = (booking.statusHistory as any[]) || [];
+    statusHistory.push({
+      status: 'disputed',
+      timestamp: now.toISOString(),
+      actorType: 'owner',
+      actorId: userId,
+      note: `Customer opened dispute: ${rawReason}`,
+    });
+
+    await db.update(bookingRequests)
+      .set({
+        status: 'disputed',
+        disputeOpenedAt: now,
+        disputeOpenedBy: 'owner',
+        disputeReason: rawReason,
+        statusHistory,
+        updatedAt: now,
+      } as any)
+      .where(eq(bookingRequests.requestId, requestId));
+
+    // Notify provider and admin
+    try {
+      await db.insert(superAppNotifications).values({
+        userId: booking.providerId,
+        type: 'booking_disputed',
+        title: '⚠️ לקוח פתח מחלוקת',
+        titleHe: '⚠️ לקוח פתח מחלוקת',
+        body: `הלקוח פתח מחלוקת על הזמנה ${requestId}. התשלום מוקפא עד לפתרון.`,
+        bodyHe: `הלקוח פתח מחלוקת על הזמנה ${requestId}. התשלום מוקפא עד לפתרון.`,
+        actionUrl: `/booking/confirmation/${requestId}`,
+        actionType: 'open_booking',
+        channels: ['in_app'],
+        isRead: false,
+        createdAt: now,
+      } as any);
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] Dispute notification failed', { error: notifErr.message });
+    }
+
+    logBookingEvent('dispute_opened' as any, buildEventPayload({ ...booking, status: 'disputed' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
+      disputeOpenedAt: now.toISOString(),
+    }, { reason: rawReason, openedBy: 'owner' }).catch(() => {});
+
+    logger.info('[BookingRequests] Dispute opened by customer', { requestId, userId });
+    return res.json({
+      success: true,
+      status: 'disputed',
+      message: 'Dispute opened. Escrow is frozen — our team will review within 48 hours.',
+    });
+  } catch (error: any) {
+    logger.error('[BookingRequests] Dispute error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to open dispute' });
+  }
+});
+
+/**
+ * POST /api/booking-requests/:requestId/provider-emergency-cancel
+ *
+ * Emergency cancellation by the provider (sudden illness, force majeure, safety concern).
+ * Blueprint §9: distinguished from a normal cancellation.
+ *
+ * Rules:
+ *   - Customer always receives full refund regardless of timing.
+ *   - 1st emergency in 90 days: logged, no financial penalty.
+ *   - 2nd in 90 days: ₪50 deducted from next provider payout.
+ *   - 3rd in 90 days: booking pause pending admin review.
+ */
+router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { requestId } = req.params;
+    const rawReason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 1000) : '';
+    if (!rawReason) {
+      return res.status(400).json({ error: 'An emergency cancellation reason is required.' });
+    }
+
+    const [booking] = await db.select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.providerId !== userId) {
+      return res.status(403).json({ error: 'Only the assigned provider can submit an emergency cancellation' });
+    }
+
+    const nonCancellableStatuses = ['completed', 'reviewed', 'cancelled', 'disputed', 'refunded_full', 'refunded_partial'];
+    if (nonCancellableStatuses.includes(booking.status)) {
+      return res.status(400).json({ error: `Cannot cancel booking with status: ${booking.status}` });
+    }
+
+    // Count provider emergency cancellations in last 90 days using statusHistory audit trail
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const recentEmergencyBookings = await db
+      .select({ requestId: bookingRequests.requestId })
+      .from(bookingRequests)
+      .where(
+        and(
+          eq(bookingRequests.providerId, userId),
+          eq(bookingRequests.status, 'cancelled'),
+          sql`${bookingRequests.cancellationTier} LIKE 'provider_emergency%'`,
+          sql`${bookingRequests.cancelledAt} > ${ninetyDaysAgo.toISOString()}::timestamp`,
+        )
+      );
+    const offenseCount = recentEmergencyBookings.length; // prior offenses
+
+    // Policy: financial penalty tiers
+    const EMERGENCY_PENALTY_CENTS = 5000; // ₪50
+    let penaltyCents = 0;
+    let accountAction: string;
+    let providerMessage: string;
+
+    if (offenseCount === 0) {
+      // First offense — warning only
+      penaltyCents = 0;
+      accountAction = 'warning_logged';
+      providerMessage = 'Emergency cancellation logged. First offence — no penalty. Please ensure you can commit before accepting future bookings.';
+    } else if (offenseCount === 1) {
+      // Second offense in 90 days — ₪50 penalty from next payout
+      penaltyCents = EMERGENCY_PENALTY_CENTS;
+      accountAction = 'penalty_applied';
+      providerMessage = `Emergency cancellation logged. Second offence in 90 days — ₪${(EMERGENCY_PENALTY_CENTS / 100).toFixed(2)} will be deducted from your next payout.`;
+    } else {
+      // Third+ offense — account review + bookings paused
+      penaltyCents = EMERGENCY_PENALTY_CENTS;
+      accountAction = 'booking_pause_review';
+      providerMessage = 'Emergency cancellation logged. Third offence in 90 days — your account has been flagged for review. New booking requests are paused until resolved.';
+    }
+
+    const now = new Date();
+    const statusHistory = (booking.statusHistory as any[]) || [];
+    statusHistory.push({
+      status: 'cancelled',
+      timestamp: now.toISOString(),
+      actorType: 'provider',
+      actorId: userId,
+      note: `EMERGENCY CANCEL by provider. Reason: ${rawReason}. Offense #${offenseCount + 1} in 90 days. Action: ${accountAction}.`,
+    });
+
+    // Customer always gets full refund on emergency cancel
+    const refundCents = booking.paymentHeldAt ? booking.totalCents : 0;
+
+    await db.update(bookingRequests)
+      .set({
+        status: 'cancelled',
+        cancelledAt: now,
+        cancelledBy: 'provider',
+        cancellationReason: rawReason,
+        cancellationTier: `provider_emergency_offense_${offenseCount + 1}`,
+        cancellationPenaltyCents: penaltyCents,
+        emergencyCancelReason: rawReason,
+        refundCents,
+        refundProcessedAt: refundCents > 0 ? now : null,
+        statusHistory,
+        updatedAt: now,
+      } as any)
+      .where(eq(bookingRequests.requestId, requestId));
+
+    // Wallet/escrow refund to customer (same logic as normal cancel)
+    const financeState = (booking as any).financeState as string | null;
+    const holdCents = Number((booking as any).walletHoldCents) || 0;
+    const debitedCents = Number((booking as any).walletDebitedCents) || 0;
+    if (financeState === 'hold_active' && holdCents > 0) {
+      setImmediate(async () => {
+        try {
+          const r = await walletService.releaseBookingHold({
+            userId: booking.ownerId, amountCents: holdCents, bookingId: requestId,
+            divisionCode: getDivisionCode(booking.serviceType), ipAddress: null,
+          });
+          await db.update(bookingRequests)
+            .set({ walletReleaseKey: r.txnId, financeState: 'released', updatedAt: new Date() })
+            .where(eq(bookingRequests.requestId, requestId));
+        } catch (e: any) {
+          logger.error('[BookingRequests] Wallet release failed on emergency cancel', { requestId, error: e.message });
+        }
+      });
+    } else if (financeState === 'debited' && debitedCents > 0) {
+      setImmediate(async () => {
+        try {
+          const r = await walletService.refundBookingWallet({
+            userId: booking.ownerId, amountCents: debitedCents, bookingId: requestId,
+            divisionCode: getDivisionCode(booking.serviceType),
+            reason: 'provider_emergency_cancel', ipAddress: null,
+          });
+          await db.update(bookingRequests)
+            .set({ walletRefundedCents: debitedCents, walletRefundKey: r.txnId, financeState: 'refunded', updatedAt: new Date() })
+            .where(eq(bookingRequests.requestId, requestId));
+        } catch (e: any) {
+          logger.error('[BookingRequests] Wallet refund failed on emergency cancel', { requestId, error: e.message });
+        }
+      });
+    }
+
+    // Notify customer with full refund message and rebook suggestion
+    try {
+      await db.insert(superAppNotifications).values({
+        userId: booking.ownerId,
+        type: 'booking_cancelled',
+        title: '🚨 הספק ביטל בחירום — החזר מלא',
+        titleHe: '🚨 הספק ביטל בחירום — החזר מלא',
+        body: `הספק דיווח על נסיבות חירום ולא יכול לתת שירות. קיבלת החזר מלא. נוכל לחפש ספק חלופי בשבילך.`,
+        bodyHe: `הספק דיווח על נסיבות חירום ולא יכול לתת שירות. קיבלת החזר מלא. נוכל לחפש ספק חלופי בשבילך.`,
+        actionUrl: `/search`,
+        actionType: 'open_search',
+        channels: ['in_app'],
+        isRead: false,
+        createdAt: now,
+      } as any);
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] Emergency cancel customer notification failed', { error: notifErr.message });
+    }
+
+    // Schedule rebook nudge for customer (1 h later)
+    scheduleRebookTrigger('cancelled_recovery', {
+      userId: booking.ownerId, requestId, providerId: booking.providerId,
+      providerName: booking.providerName || undefined, serviceType: booking.serviceType,
+      serviceDate: booking.startDate ?? undefined, delayMs: 60 * 60 * 1000,
+    }).catch((e: any) => logger.warn('[RebookScheduler] emergency_cancel recovery failed', { error: e.message }));
+
+    logBookingEvent('cancelled' as any, buildEventPayload({ ...booking, status: 'cancelled' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
+      cancelledAt: now.toISOString(),
+    }, { cancelledBy: 'provider', reason: rawReason, emergencyCancel: true, offenseCount: offenseCount + 1, penaltyCents, accountAction }).catch(() => {});
+
+    logger.info('[BookingRequests] Emergency cancel processed', {
+      requestId, userId, offenseCount: offenseCount + 1, penaltyCents, accountAction,
+    });
+
+    return res.json({
+      success: true,
+      status: 'cancelled',
+      refundAmount: refundCents / 100,
+      accountAction,
+      message: providerMessage,
+    });
+  } catch (error: any) {
+    logger.error('[BookingRequests] Emergency cancel error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to process emergency cancellation' });
+  }
+});
+
+/**
  * POST /api/booking-requests/:requestId/cancel - Cancel booking
  */
 router.post('/:requestId/cancel', async (req, res) => {
@@ -1947,29 +2280,67 @@ router.post('/:requestId/cancel', async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to cancel this booking' });
     }
     
-    // Cannot cancel if already completed or cancelled
-    if (['completed', 'reviewed', 'cancelled'].includes(booking.status)) {
+    // Cannot cancel if already in a terminal state
+    if (['completed', 'reviewed', 'cancelled', 'disputed'].includes(booking.status)) {
       return res.status(400).json({ error: `Cannot cancel booking with status: ${booking.status}` });
+    }
+    // If provider_marked_complete, customer should dispute instead of cancel
+    if (booking.status === 'provider_marked_complete' && booking.ownerId === userId) {
+      return res.status(400).json({
+        error: 'The provider has already marked this service as complete. Use /dispute to open a dispute, or /confirm to approve and release payment.',
+      });
     }
     
     const cancelledBy = booking.ownerId === userId ? 'owner' : 'provider';
     const statusHistory = (booking.statusHistory as any[]) || [];
-    
-    // Calculate refund based on status
+
+    // ── Time-based cancellation policy (blueprint §8) ─────────────────────────
+    // Hours until service start (can be negative if service already started or passed)
+    const hoursUntilService = booking.startDate
+      ? (new Date(booking.startDate).getTime() - Date.now()) / (1000 * 60 * 60)
+      : 0;
+
     let refundCents = 0;
+    let cancellationTier = 'no_payment';
+    let cancellationPenaltyCents = 0;
+    const PROVIDER_LATE_CANCEL_PENALTY_CENTS = 5000; // ₪50
+
     if (booking.paymentHeldAt) {
-      // If payment was made, calculate refund
-      if (booking.status === 'confirmed') {
-        refundCents = booking.totalCents; // Full refund before service starts
-      } else if (booking.status === 'in_progress') {
-        refundCents = Math.round(booking.totalCents * 0.5); // 50% refund if cancelled mid-service
+      if (cancelledBy === 'owner') {
+        // Customer cancellation tiers
+        if (hoursUntilService > 72) {
+          refundCents = booking.totalCents;   // Full refund — ample notice
+          cancellationTier = 'customer_72h_plus';
+        } else if (hoursUntilService > 24) {
+          refundCents = Math.round(booking.totalCents * 0.5); // 50% refund — moderate notice
+          cancellationTier = 'customer_24_to_72h';
+        } else if (booking.status === 'in_progress') {
+          refundCents = 0;  // Service already started — no refund
+          cancellationTier = 'customer_in_progress';
+        } else {
+          refundCents = 0;  // Short notice — no refund; provider compensated
+          cancellationTier = 'customer_under_24h';
+        }
+      } else {
+        // Provider cancellation — customer always gets full refund
+        refundCents = booking.totalCents;
+        if (hoursUntilService <= 24) {
+          cancellationPenaltyCents = PROVIDER_LATE_CANCEL_PENALTY_CENTS;
+          cancellationTier = 'provider_under_24h';
+        } else if (hoursUntilService <= 72) {
+          cancellationTier = 'provider_24_to_72h';
+        } else {
+          cancellationTier = 'provider_72h_plus';
+        }
       }
     }
     
     statusHistory.push({
       status: 'cancelled',
       timestamp: new Date().toISOString(),
-      note: `Cancelled by ${cancelledBy}. Reason: ${reason || 'No reason provided'}. Refund: ₪${refundCents / 100}`,
+      actorType: cancelledBy,
+      actorId: userId,
+      note: `Cancelled by ${cancelledBy}. Tier: ${cancellationTier}. Hours until service: ${hoursUntilService.toFixed(1)}. Refund: ₪${(refundCents / 100).toFixed(2)}${cancellationPenaltyCents > 0 ? `. Provider penalty: ₪${(cancellationPenaltyCents / 100).toFixed(2)}` : ''}. Reason: ${reason || 'No reason provided'}`,
     });
     
     await db.update(bookingRequests)
@@ -1978,11 +2349,13 @@ router.post('/:requestId/cancel', async (req, res) => {
         cancelledAt: new Date(),
         cancelledBy,
         cancellationReason: reason || null,
+        cancellationTier,
+        cancellationPenaltyCents,
         refundCents,
         refundProcessedAt: refundCents > 0 ? new Date() : null,
         statusHistory,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(bookingRequests.requestId, requestId));
 
     // ── Domain event: BOOKING_CANCELLED ──────────────────────────────────────
@@ -2116,10 +2489,12 @@ router.post('/:requestId/cancel', async (req, res) => {
     res.json({
       success: true,
       status: 'cancelled',
+      cancellationTier,
       refundAmount: refundCents / 100,
-      message: refundCents > 0 
-        ? `Booking cancelled. Refund of ₪${refundCents / 100} will be processed.`
-        : 'Booking cancelled.',
+      penaltyAmount: cancellationPenaltyCents / 100,
+      message: refundCents > 0
+        ? `Booking cancelled. Refund of ₪${(refundCents / 100).toFixed(2)} will be processed.${cancellationPenaltyCents > 0 ? ` A penalty of ₪${(cancellationPenaltyCents / 100).toFixed(2)} will be deducted from the provider's next payout.` : ''}`
+        : `Booking cancelled. No refund applies (${cancellationTier}).`,
     });
   } catch (error: any) {
     logger.error('[BookingRequests] Cancel error', { error: error.message });

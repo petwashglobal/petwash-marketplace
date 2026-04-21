@@ -10530,18 +10530,19 @@ export type BookingSearchFilters = z.infer<typeof bookingSearchFiltersSchema>;
 // =============================================
 
 export const bookingRequestStatusEnum = pgEnum('booking_request_status', [
-  'pending',           // Initial request sent to provider
-  'accepted',          // Provider accepted, awaiting meet & greet
-  'declined',          // Provider declined the request
-  'meet_greet_scheduled', // Meet & Greet date set
-  'meet_greet_completed', // Meet & Greet done, awaiting payment
-  'payment_pending',   // Awaiting payment from owner
-  'confirmed',         // Payment received, booking confirmed
-  'in_progress',       // Service currently happening
-  'completed',         // Service completed, pending review
-  'reviewed',          // Owner left review
-  'cancelled',         // Cancelled by either party
-  'disputed'           // Payment/service dispute
+  'pending',                  // Initial request sent to provider
+  'accepted',                 // Provider accepted, awaiting meet & greet
+  'declined',                 // Provider declined the request
+  'meet_greet_scheduled',     // Meet & Greet date set
+  'meet_greet_completed',     // Meet & Greet done, awaiting payment
+  'payment_pending',          // Awaiting payment from owner
+  'confirmed',                // Payment received, booking confirmed
+  'in_progress',              // Service currently happening
+  'provider_marked_complete', // Provider says done — awaiting customer approval (dual-approval gate)
+  'completed',                // Both parties confirmed — escrow released
+  'reviewed',                 // Owner left review
+  'cancelled',                // Cancelled by either party
+  'disputed'                  // Payment/service dispute opened during approval window
 ]);
 
 export const bookingRequests = pgTable("booking_requests", {
@@ -10648,6 +10649,27 @@ export const bookingRequests = pgTable("booking_requests", {
   providerPayoutCents: integer("provider_payout_cents"),       // nullable until booking is confirmed
   payoutStatus: varchar("payout_status", { length: 32 }).default("pending"), // pending | released | paid_out | failed
   payoutDate: timestamp("payout_date"),                         // when funds were released to provider
+
+  // Dual-approval completion (blueprint §13: both parties must confirm)
+  providerCompletedAt: timestamp("provider_completed_at"),     // when provider marked complete
+  customerApprovedAt: timestamp("customer_approved_at"),       // when customer explicitly approved
+  autoApprovedAt: timestamp("auto_approved_at"),               // when system auto-approved after 24h silence
+
+  // Cancellation policy tier (blueprint §8)
+  cancellationTier: varchar("cancellation_tier", { length: 32 }),           // 72h_plus | 24_to_72h | under_24h | provider_*
+  cancellationPenaltyCents: integer("cancellation_penalty_cents").default(0), // penalty deducted from provider payout
+
+  // Emergency cancellation (blueprint §9 — provider sudden illness / force majeure)
+  emergencyCancelReason: text("emergency_cancel_reason"),
+
+  // Calendar both-party sync (blueprint §11: both provider & customer receive calendar invitations)
+  platformCalendarEventId: varchar("platform_calendar_event_id", { length: 256 }), // Google Calendar event ID
+  calendarAttendeesSynced: boolean("calendar_attendees_synced").default(false),      // true after attendees invited
+
+  // Dispute tracking (blueprint §14: opened by customer during approval window)
+  disputeOpenedAt: timestamp("dispute_opened_at"),
+  disputeOpenedBy: varchar("dispute_opened_by", { length: 16 }),            // owner | system
+  disputeReason: text("dispute_reason"),
 
   // Metadata
   searchId: varchar("search_id", { length: 24 }), // Link to original search
