@@ -5,8 +5,8 @@
  * Flow:
  * 1. Create 10-minute slot hold (handled in walk-my-pet.ts)
  * 2. Redirect to Nayax payment
- * 3. Webhook confirms payment → creates booking
- * 4. Return URL shows confirmation
+ * 3. Webhook confirms payment → creates booking and stores paymentSessionId
+ * 4. Return URL queries /walks/by-payment/:sessionId for confirmation
  */
 
 import { Router } from 'express';
@@ -136,7 +136,7 @@ router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
 
 /**
  * POST /payments/nayax/webhook - Nayax payment webhook
- * Creates booking ONLY after successful payment
+ * Creates booking ONLY after successful payment and stores paymentSessionId
  * Mount: /api → effective path: /api/payments/nayax/webhook
  * DEV ONLY: disabled in production — production payments arrive at /api/webhooks/nayax/payment
  */
@@ -145,9 +145,9 @@ router.post('/payments/nayax/webhook', async (req, res) => {
     return res.status(404).json({ error: 'Not found' });
   }
   try {
-    const { event, holdId, amount, paymentId } = req.body;
+    const { event, holdId, amount, paymentId, sessionId } = req.body;
 
-    logger.info('[WalkPayment] Webhook received', { event, holdId, paymentId });
+    logger.info('[WalkPayment] Webhook received', { event, holdId, paymentId, sessionId });
 
     if (event === 'payment.succeeded') {
       if (!holdId || !holdId.startsWith('HOLD-')) {
@@ -163,6 +163,23 @@ router.post('/payments/nayax/webhook', async (req, res) => {
         paymentId,
         paymentAmount: amount,
       });
+
+      // Store paymentSessionId on the booking so /walks/by-payment/:sessionId works
+      if (result.bookingId && sessionId) {
+        try {
+          const { db } = await import('../db');
+          const { walkBookings } = await import('@shared/schema');
+          const { eq } = await import('drizzle-orm');
+          await db
+            .update(walkBookings)
+            .set({ paymentSessionId: String(sessionId) } as any)
+            .where(eq(walkBookings.bookingId, result.bookingId));
+          logger.info('[WalkPayment] paymentSessionId stored', { bookingId: result.bookingId, sessionId });
+        } catch (linkErr: any) {
+          // Non-fatal — booking was still created; session lookup will just not work
+          logger.error('[WalkPayment] Failed to store paymentSessionId', { error: linkErr.message });
+        }
+      }
 
       logger.info('[WalkPayment] Booking created after payment', { paymentId, holdId });
 
@@ -200,19 +217,48 @@ router.post('/payments/nayax/webhook-simulate', async (req, res) => {
  * GET /walks/by-payment/:sessionId - Get booking by payment session
  * Mount: /api → effective path: /api/walks/by-payment/:sessionId
  *
- * NOTE: Requires a `payment_session_id` column on the `walk_bookings` table to
- * correlate a Nayax payment session with the booking it created. Until that
- * column is added and the webhook populates it, this endpoint returns 501 so
- * callers know the linkage is not yet wired rather than receiving fake data.
+ * Queries walk_bookings.payment_session_id (added in migration 0013).
+ * The sessionId is stored by the Nayax webhook handler above once a booking is created.
  */
 router.get('/walks/by-payment/:sessionId', async (req, res) => {
-  res.status(501).json({
-    error: 'session_lookup_not_implemented',
-    message:
-      'Payment session lookup is not yet wired. The walk_bookings table needs a ' +
-      'payment_session_id column to correlate Nayax sessions with bookings. ' +
-      'Please check your bookings list at /my-walks instead.',
-  });
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Missing sessionId' });
+    }
+
+    const { db } = await import('../db');
+    const { walkBookings } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const [booking] = await db
+      .select()
+      .from(walkBookings)
+      .where(eq(walkBookings.paymentSessionId as any, sessionId))
+      .limit(1);
+
+    if (!booking) {
+      // sessionId column now exists — no booking was linked to this session yet
+      return res.status(404).json({
+        error: 'booking_not_found',
+        message: 'No booking was found for this payment session. The webhook may still be processing. Please check /my-walks shortly.',
+      });
+    }
+
+    res.json({
+      success: true,
+      booking: {
+        bookingId: booking.bookingId,
+        status: booking.status,
+        message: booking.status === 'confirmed'
+          ? 'Your walk is confirmed! Your walker will arrive shortly.'
+          : `Booking status: ${booking.status}`,
+      },
+    });
+  } catch (error: any) {
+    logger.error('[WalkPayment] by-payment lookup failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch booking' });
+  }
 });
 
 export default router;

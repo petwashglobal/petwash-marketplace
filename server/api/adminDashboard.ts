@@ -296,4 +296,166 @@ router.get('/platform-health', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/bookings
+ * Recent bookings across all platforms — sitters + walks (last 50 combined, newest first).
+ */
+router.get('/bookings', async (req, res) => {
+  try {
+    // Pull last 25 sitter bookings
+    const sitterRows = await db.execute(sql`
+      SELECT
+        sb.booking_id                          AS id,
+        'pet_sitter'                           AS platform_id,
+        u.first_name || ' ' || u.last_name     AS guest_name,
+        pp.pet_name,
+        'Overnight Stay'                       AS service_type,
+        sb.start_date                          AS check_in,
+        sb.end_date                            AS check_out,
+        sb.status,
+        COALESCE(sb.total_charge_cents, 0) / 100.0 AS amount_nis,
+        COALESCE(sp.city, '')                  AS city
+      FROM sitter_bookings sb
+      LEFT JOIN users u ON u.id = sb.owner_id
+      LEFT JOIN pet_profiles_for_sitting pp ON pp.id = sb.pet_id
+      LEFT JOIN sitter_profiles sp ON sp.id = sb.sitter_id
+      ORDER BY sb.created_at DESC
+      LIMIT 25
+    `);
+
+    // Pull last 25 walk bookings
+    const walkRows = await db.execute(sql`
+      SELECT
+        wb.booking_id                          AS id,
+        'walk_my_pet'                          AS platform_id,
+        u.first_name || ' ' || u.last_name     AS guest_name,
+        wb.pet_name,
+        COALESCE(wb.service_type, 'Walk')      AS service_type,
+        wb.scheduled_date                      AS check_in,
+        wb.scheduled_date                      AS check_out,
+        wb.status,
+        COALESCE(wb.total_amount, 0)           AS amount_nis,
+        COALESCE(wb.city, '')                  AS city
+      FROM walk_bookings wb
+      LEFT JOIN users u ON u.id = wb.owner_id
+      ORDER BY wb.created_at DESC
+      LIMIT 25
+    `);
+
+    const sitter = sitterRows.rows ?? (sitterRows as any[]);
+    const walks = walkRows.rows ?? (walkRows as any[]);
+
+    // Merge and sort newest first (cap at 50)
+    const all = [...sitter, ...walks]
+      .sort((a: any, b: any) => new Date(b.check_in ?? 0).getTime() - new Date(a.check_in ?? 0).getTime())
+      .slice(0, 50);
+
+    res.json({ success: true, bookings: all });
+  } catch (error: any) {
+    logger.error('[AdminDashboard] /bookings error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch bookings' });
+  }
+});
+
+/**
+ * GET /api/admin/talent
+ * Approved talent profiles across all platforms (walkers, sitters, trainers).
+ */
+router.get('/talent', async (req, res) => {
+  try {
+    const walkerRows = await db.execute(sql`
+      SELECT
+        wp.walker_id                              AS id,
+        'walker'                                  AS role,
+        wp.first_name || ' ' || wp.last_name      AS full_name,
+        wp.profile_photo_url                      AS avatar_url,
+        COALESCE(wp.average_rating, 4.50)::float  AS rating,
+        COALESCE(wp.total_walks, 0)               AS total_jobs,
+        COALESCE(wp.city, '')                     AS city,
+        COALESCE(wp.bio, '')                      AS bio_short,
+        wp.hourly_rate::float                     AS hourly_from_nis,
+        COALESCE(wp.kyc_completed, false)         AS verified_background
+      FROM walker_profiles wp
+      WHERE wp.verification_status = 'approved' AND wp.is_active = true
+      ORDER BY wp.average_rating DESC NULLS LAST
+      LIMIT 20
+    `);
+
+    const sitterRows = await db.execute(sql`
+      SELECT
+        sp.sitter_id                              AS id,
+        'sitter'                                  AS role,
+        sp.first_name || ' ' || sp.last_name      AS full_name,
+        sp.profile_photo_url                      AS avatar_url,
+        COALESCE(sp.average_rating, 4.50)::float  AS rating,
+        COALESCE(sp.total_bookings, 0)            AS total_jobs,
+        COALESCE(sp.city, '')                     AS city,
+        COALESCE(sp.bio, '')                      AS bio_short,
+        COALESCE(sp.base_rate, 0)::float          AS hourly_from_nis,
+        COALESCE(sp.kyc_verified, false)          AS verified_background
+      FROM sitter_profiles sp
+      WHERE sp.verification_status = 'approved' AND sp.is_active = true
+      ORDER BY sp.average_rating DESC NULLS LAST
+      LIMIT 20
+    `);
+
+    const trainerRows = await db.execute(sql`
+      SELECT
+        t.trainer_id                              AS id,
+        'trainer'                                 AS role,
+        t.first_name || ' ' || t.last_name        AS full_name,
+        t.profile_photo_url                       AS avatar_url,
+        COALESCE(t.average_rating, 4.50)::float   AS rating,
+        COALESCE(t.total_sessions, 0)             AS total_jobs,
+        COALESCE(t.service_area, '')              AS city,
+        COALESCE(t.bio, '')                       AS bio_short,
+        t.hourly_rate::float                      AS hourly_from_nis,
+        t.is_certified                            AS verified_background
+      FROM trainers t
+      WHERE t.verification_status = 'approved' AND t.is_active = true
+      ORDER BY t.average_rating DESC NULLS LAST
+      LIMIT 20
+    `);
+
+    const walkers = walkerRows.rows ?? (walkerRows as any[]);
+    const sitters = sitterRows.rows ?? (sitterRows as any[]);
+    const trainers = trainerRows.rows ?? (trainerRows as any[]);
+
+    res.json({ success: true, talent: [...walkers, ...sitters, ...trainers] });
+  } catch (error: any) {
+    logger.error('[AdminDashboard] /talent error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch talent' });
+  }
+});
+
+/**
+ * GET /api/admin/invoices
+ * Latest 50 payment intents (invoices / payouts) — newest first.
+ */
+router.get('/invoices', async (req, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT
+        pi.id,
+        'customer'                                          AS type,
+        COALESCE(pi.platform_id, 'unknown')                AS label,
+        pi.created_at                                       AS date,
+        COALESCE(pi.amount_cents, 0) / 100.0               AS amount_nis,
+        pi.status,
+        COALESCE(u.first_name || ' ' || u.last_name, 'Customer') AS counterparty
+      FROM payment_intents pi
+      LEFT JOIN users u ON u.id = pi.user_id
+      ORDER BY pi.created_at DESC
+      LIMIT 50
+    `);
+
+    const invoices = rows.rows ?? (rows as any[]);
+
+    res.json({ success: true, invoices });
+  } catch (error: any) {
+    logger.error('[AdminDashboard] /invoices error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch invoices' });
+  }
+});
+
 export default router;

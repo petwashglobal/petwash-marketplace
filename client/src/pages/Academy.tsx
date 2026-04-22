@@ -60,150 +60,6 @@ const SPECIALTY_OPTIONS = [
   'Therapy Dog Training',
 ];
 
-// Mock trainer data (fallback if API returns no data)
-const MOCK_TRAINERS: TrainerProfile[] = [
-  {
-    id: 1,
-    trainerId: 'TR-2025-MOCK1',
-    userId: 'mock-user-1',
-    fullName: 'אריאל כהן',
-    email: 'ariel@example.com',
-    phone: '+972501234567',
-    city: 'Tel Aviv',
-    bio: 'Certified dog trainer with 15 years of experience specializing in obedience and behavioral modification. Former K9 unit trainer with Israeli Police. I use positive reinforcement methods and create customized training plans for each dog.',
-    specialties: ['Obedience Training', 'Behavioral Modification', 'Protection Training'],
-    certifications: ['CPDT-KA', 'CAP2', 'Pet First Aid'],
-    experienceYears: 15,
-    hourlyRate: '250.00',
-    serviceTypes: ['Private Sessions', 'Group Classes', 'Behavior Consultation'],
-    availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    languages: ['Hebrew', 'English'],
-    profilePhotoUrl: null,
-    coverPhotoUrl: null,
-    averageRating: '4.98',
-    totalSessions: 486,
-    isActive: true,
-    isAcceptingBookings: true,
-    isCertified: true,
-    verificationStatus: 'approved',
-    commissionRate: '15.00',
-    responseTime: '< 30min',
-    verified: true,
-  },
-  {
-    id: 2,
-    trainerId: 'TR-2025-MOCK2',
-    userId: 'mock-user-2',
-    fullName: 'נועה לוי',
-    email: 'noa@example.com',
-    phone: '+972521234568',
-    city: 'Jerusalem',
-    bio: 'Puppy specialist and certified dog behavior consultant. I help new puppy owners establish good habits from day one and solve common puppy challenges like house training, chewing, and socialization.',
-    specialties: ['Puppy Training', 'Socialization', 'Obedience Training'],
-    certifications: ['IAABC-ADT', 'Fear Free Certified'],
-    experienceYears: 10,
-    hourlyRate: '220.00',
-    serviceTypes: ['Private Sessions', 'Puppy Classes'],
-    availableDays: ['Sunday', 'Tuesday', 'Thursday', 'Friday'],
-    languages: ['Hebrew', 'English', 'Russian'],
-    profilePhotoUrl: null,
-    coverPhotoUrl: null,
-    averageRating: '4.95',
-    totalSessions: 342,
-    isActive: true,
-    isAcceptingBookings: true,
-    isCertified: true,
-    verificationStatus: 'approved',
-    commissionRate: '15.00',
-    responseTime: '< 1hr',
-    verified: true,
-  },
-  {
-    id: 3,
-    trainerId: 'TR-2025-MOCK3',
-    userId: 'mock-user-3',
-    fullName: 'יוסי מזרחי',
-    email: 'yossi@example.com',
-    phone: '+972541234569',
-    city: 'Haifa',
-    bio: 'Professional agility trainer and competition judge. Train with me to improve your dog\'s speed, accuracy, and confidence. Perfect for active dogs who need mental and physical stimulation!',
-    specialties: ['Agility Training', 'Obedience Training'],
-    certifications: ['AKC CGC Evaluator', 'NADAC Judge'],
-    experienceYears: 12,
-    hourlyRate: '200.00',
-    serviceTypes: ['Private Sessions', 'Competition Prep'],
-    availableDays: ['Sunday', 'Monday', 'Wednesday', 'Saturday'],
-    languages: ['Hebrew', 'English'],
-    profilePhotoUrl: null,
-    coverPhotoUrl: null,
-    averageRating: '4.92',
-    totalSessions: 289,
-    isActive: true,
-    isAcceptingBookings: true,
-    isCertified: true,
-    verificationStatus: 'approved',
-    commissionRate: '15.00',
-    responseTime: '< 2hrs',
-    verified: true,
-  },
-  {
-    id: 4,
-    trainerId: 'TR-2025-MOCK4',
-    userId: 'mock-user-4',
-    fullName: 'שירה גולדשטיין',
-    email: 'shira@example.com',
-    phone: '+972551234570',
-    city: 'Netanya',
-    bio: 'Certified therapy dog trainer helping dogs pass therapy animal evaluations. I also specialize in service dog training and emotional support animal preparation.',
-    specialties: ['Therapy Dog Training', 'Behavioral Modification', 'Socialization'],
-    certifications: ['Pet Partners Therapy Animal Handler', 'CPDT-KA'],
-    experienceYears: 8,
-    hourlyRate: '240.00',
-    serviceTypes: ['Private Sessions', 'Therapy Dog Prep'],
-    availableDays: ['Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    languages: ['Hebrew', 'English'],
-    profilePhotoUrl: null,
-    coverPhotoUrl: null,
-    averageRating: '4.97',
-    totalSessions: 215,
-    isActive: true,
-    isAcceptingBookings: true,
-    isCertified: true,
-    verificationStatus: 'approved',
-    commissionRate: '15.00',
-    responseTime: '< 45min',
-    verified: true,
-  },
-  {
-    id: 5,
-    trainerId: 'TR-2025-MOCK5',
-    userId: 'mock-user-5',
-    fullName: 'דניאל ברקוביץ',
-    email: 'daniel@example.com',
-    phone: '+972561234571',
-    city: 'Tel Aviv',
-    bio: 'Leash reactivity specialist and fear-free certified trainer. I help dogs overcome anxiety, leash aggression, and fear-based behaviors using gentle, science-based methods.',
-    specialties: ['Behavioral Modification', 'Leash Training', 'Socialization'],
-    certifications: ['Fear Free Certified', 'CCPDT'],
-    experienceYears: 7,
-    hourlyRate: '230.00',
-    serviceTypes: ['Private Sessions', 'Behavior Consultation'],
-    availableDays: ['Sunday', 'Monday', 'Tuesday', 'Thursday'],
-    languages: ['Hebrew', 'English', 'French'],
-    profilePhotoUrl: null,
-    coverPhotoUrl: null,
-    averageRating: '4.94',
-    totalSessions: 198,
-    isActive: true,
-    isAcceptingBookings: true,
-    isCertified: true,
-    verificationStatus: 'approved',
-    commissionRate: '15.00',
-    responseTime: '< 1hr',
-    verified: true,
-  },
-];
-
 export default function Academy() {
   const { t } = useLanguage();
   const { user } = useFirebaseAuth();
@@ -214,26 +70,20 @@ export default function Academy() {
   const [minRating, setMinRating] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch trainers from API with fallback to mock data
-  const { data: trainersData, isLoading } = useQuery<TrainerProfile[]>({
+  // Fetch trainers from API — no mock fallback; show empty state on error or empty result
+  const { data: trainersData, isLoading, isError } = useQuery<TrainerProfile[]>({
     queryKey: ['/api/academy/trainers'],
     queryFn: async () => {
-      try {
-        const response = await fetch(getApiUrl('/api/academy/trainers'));
-        if (!response.ok) {
-          return MOCK_TRAINERS;
-        }
-        const data = await response.json();
-        return data.length > 0 ? data : MOCK_TRAINERS;
-      } catch {
-        return MOCK_TRAINERS;
-      }
+      const response = await fetch(getApiUrl('/api/academy/trainers'));
+      if (!response.ok) throw new Error(`Trainer fetch failed: ${response.status}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.trainers ?? []);
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Use mock data if API returns empty or fails
-  const trainers = trainersData && trainersData.length > 0 ? trainersData : MOCK_TRAINERS;
+  // Use empty array if API returns empty or errors — never fake data
+  const trainers: TrainerProfile[] = trainersData ?? [];
 
   // Filter trainers based on search and filters
   const filteredTrainers = trainers.filter((trainer) => {
@@ -527,6 +377,12 @@ export default function Academy() {
                   <div className="h-4 luxury-skeleton rounded" />
                 </div>
               ))}
+            </div>
+          ) : isError ? (
+            <div className="luxury-glass-card luxury-shadow-xl p-12 text-center">
+              <p className="luxury-text-body text-red-600 mb-2">
+                {t('Failed to load trainers. Please try again.')}
+              </p>
             </div>
           ) : filteredTrainers.length === 0 ? (
             <div className="luxury-glass-card luxury-shadow-xl p-12 text-center">

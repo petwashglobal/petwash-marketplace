@@ -4774,6 +4774,10 @@ export const walkBookings = pgTable("walk_bookings", {
   previousProviders: text("previous_providers").array(),           // walkerId[] already attempted
   lastReassignedAt: timestamp("last_reassigned_at"),
 
+  // Payment session linkage — correlates a Nayax payment session with this booking.
+  // Populated by the Nayax webhook once payment is confirmed.
+  paymentSessionId: varchar("payment_session_id", { length: 128 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
