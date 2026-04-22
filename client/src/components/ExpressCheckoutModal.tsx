@@ -78,6 +78,9 @@ const tx = (key: string, lang: string): string => {
   return translations[key]?.[lang] || translations[key]?.en || key;
 };
 
+// Sentinel used to distinguish auth-redirect from genuine checkout errors.
+const ERR_AUTH_REQUIRED = 'ERR_AUTH_REQUIRED';
+
 export function ExpressCheckoutModal({ 
   package: pkg, 
   isOpen, 
@@ -108,18 +111,22 @@ export function ExpressCheckoutModal({
       // Authentication is required – both /api/checkout and /api/gift-cards/purchase
       // enforce requireAuth server-side. Guard here too to give a clear UX message.
       if (!user) {
-        throw new Error('auth_required');
+        throw new Error(ERR_AUTH_REQUIRED);
       }
 
       if (isGiftCard) {
         // ── Gift-card purchase ──
         // Real endpoint: POST /api/gift-cards/purchase (mounted at /api/gift-cards)
         // Requires Nayax API keys; returns 503 until keys are configured.
-        const price = typeof pkg.price === 'string' ? pkg.price : String(pkg.price);
+        const rawPrice = typeof pkg.price === 'string' ? pkg.price : String(pkg.price);
+        const amount = parseFloat(rawPrice);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          throw new Error('Invalid package price — cannot submit a zero-amount gift card purchase.');
+        }
         const body = {
           recipientName: data.recipientName || '',
           recipientEmail: data.recipientEmail || '',
-          amount: parseFloat(price) || 0,
+          amount,
           message: data.personalMessage || undefined,
           address: 'Israel',
           postcode: '00000',
@@ -170,7 +177,7 @@ export function ExpressCheckoutModal({
       }
     },
     onError: (err: Error) => {
-      if (err.message === 'auth_required') {
+      if (err.message === ERR_AUTH_REQUIRED) {
         // User is not signed in – close modal and send to sign-in page
         onClose();
         setLocation('/signin');

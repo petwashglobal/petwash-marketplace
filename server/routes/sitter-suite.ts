@@ -1199,13 +1199,17 @@ router.get('/bookings/:bookingId/status', requireAuth, async (req: any, res) => 
     }
 
     // Security: only the booking owner or the assigned sitter may poll this endpoint.
-    const [sitterProfile] = await db
-      .select({ id: sitterProfiles.id })
-      .from(sitterProfiles)
-      .where(eq(sitterProfiles.userId, uid));
-
+    // Check ownership first — avoids the sitter-profile DB query for the common owner case.
     const isOwner = booking.ownerId === uid;
-    const isSitter = sitterProfile != null && booking.sitterId === sitterProfile.id;
+    let isSitter = false;
+
+    if (!isOwner) {
+      const [sitterProfile] = await db
+        .select({ id: sitterProfiles.id })
+        .from(sitterProfiles)
+        .where(eq(sitterProfiles.userId, uid));
+      isSitter = sitterProfile != null && booking.sitterId === sitterProfile.id;
+    }
 
     if (!isOwner && !isSitter) {
       return res.status(403).json({ error: 'Access denied' });
