@@ -98,7 +98,7 @@ export default function DisputeDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="max-w-xl mx-auto space-y-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-40 rounded-xl" />
@@ -112,7 +112,7 @@ export default function DisputeDetail() {
     return (
       <div
         className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
-        dir={isHebrew ? 'rtl' : 'ltr'}
+        dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
@@ -148,7 +148,7 @@ export default function DisputeDetail() {
   return (
     <div
       className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-6"
-      dir={isHebrew ? 'rtl' : 'ltr'}
+      dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-xl mx-auto">
 

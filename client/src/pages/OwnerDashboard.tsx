@@ -43,7 +43,7 @@ export default function OwnerDashboard() {
   };
 
   return (
-    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       <header className="sticky top-0 z-50 luxury-glass-panel luxury-shadow-lg">
         <div className="luxury-container py-4">
           <div className="flex items-center justify-between">

@@ -50,7 +50,7 @@ export default function SitterDashboard() {
   const upcomingBookings = bookings?.filter((b: any) => b.status === 'confirmed').length || 0;
 
   return (
-    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       {/* 7-STAR LUXURY HEADER */}
       <header className="sticky top-0 z-50 luxury-glass-panel luxury-shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-4">

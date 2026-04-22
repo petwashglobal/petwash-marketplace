@@ -131,7 +131,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         className="max-w-[92vw] sm:max-w-3xl md:max-w-5xl lg:max-w-7xl max-h-[90vh] bg-white p-0 gap-0 overflow-y-auto border-0 shadow-[0_25px_80px_rgba(0,0,0,0.25)] rounded-2xl sm:rounded-3xl"
-        dir={isHebrew ? 'rtl' : 'ltr'}
+        dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{isHebrew ? 'תוכנית נאמנות VIP' : 'VIP Loyalty Program'}</DialogTitle>

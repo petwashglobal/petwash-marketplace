@@ -50,7 +50,7 @@ interface Props {
 export function WalletCheckoutPreview({ subtotalCents, divisionCode, className = "" }: Props) {
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
-  const isHebrew = language === "he";
+  const isRTL = language === "he" || language === "ar";
 
   const debouncedCents = useDebounced(subtotalCents, 375);
 
@@ -70,7 +70,7 @@ export function WalletCheckoutPreview({ subtotalCents, divisionCode, className =
     return (
       <div className={`flex items-center gap-2 text-sm text-gray-400 py-3 ${className}`}>
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>{isHebrew ? "מחשב ארנק..." : "Calculating wallet..."}</span>
+        <span>{isRTL ? "מחשב ארנק..." : "Calculating wallet..."}</span>
       </div>
     );
   }
@@ -78,7 +78,7 @@ export function WalletCheckoutPreview({ subtotalCents, divisionCode, className =
 
   const hasWalletApplied = preview.walletAppliedCents > 0;
 
-  const t = isHebrew
+  const t = isRTL
     ? {
         title: "PetWash Privilege Wallet",
         subtotal: "סכום ביניים",
@@ -105,7 +105,7 @@ export function WalletCheckoutPreview({ subtotalCents, divisionCode, className =
   return (
     <div
       className={`rounded-xl border border-gray-100 bg-white p-4 space-y-2 ${className}`}
-      dir={isHebrew ? "rtl" : "ltr"}
+      dir={isRTL ? "rtl" : "ltr"}
     >
       <div className="flex items-center gap-2 mb-1">
         <Wallet className="w-4 h-4" style={{ color: GOLD }} />
@@ -128,7 +128,7 @@ export function WalletCheckoutPreview({ subtotalCents, divisionCode, className =
             <span>
               {t.applied}
               {preview.cappedByPolicy && (
-                <span className={`text-xs font-normal text-gray-400 ${isHebrew ? "me-1" : "ms-1"}`}>
+                <span className={`text-xs font-normal text-gray-400 ${isRTL ? "me-1" : "ms-1"}`}>
                   ({preview.capRule === "50_percent" ? t.cap50 : "100%"})
                 </span>
               )}

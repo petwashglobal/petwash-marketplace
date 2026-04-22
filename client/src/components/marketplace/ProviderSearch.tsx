@@ -1041,7 +1041,7 @@ export function ProviderSearch({
                     numberOfMonths={2}
                     disabled={{ before: new Date() }}
                     locale={isHebrew ? he : undefined}
-                    dir={isHebrew ? 'rtl' : 'ltr'}
+                    dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
                     fromMonth={new Date()}
                     className="p-4"
                     classNames={{

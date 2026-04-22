@@ -72,7 +72,7 @@ const CONFIGS: Record<string, Config> = {
 
 export function WalletLifecycleMessage({ financeState, amountCents = 0, className = "" }: Props) {
   const { language } = useLanguage();
-  const isHebrew = language === "he";
+  const isRTL = language === "he" || language === "ar";
 
   if (!financeState || financeState === "none") return null;
 
@@ -81,12 +81,12 @@ export function WalletLifecycleMessage({ financeState, amountCents = 0, classNam
 
   const amt = amountCents > 0 ? fmtIls(amountCents) : null;
   const Icon = cfg.icon;
-  const text = isHebrew ? cfg.textHe(amt) : cfg.textEn(amt);
+  const text = isRTL && cfg.textHe ? cfg.textHe(amt) : cfg.textEn(amt);
 
   return (
     <div
       className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 ${cfg.bg} ${cfg.border} ${className}`}
-      dir={isHebrew ? "rtl" : "ltr"}
+      dir={isRTL ? "rtl" : "ltr"}
     >
       <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${cfg.color}`} />
       <p className={`text-sm ${cfg.color}`}>{text}</p>

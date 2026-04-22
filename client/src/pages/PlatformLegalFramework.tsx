@@ -8,7 +8,7 @@ export default function PlatformLegalFramework() {
   const isHebrew = language === 'he';
 
   return (
-    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       <div className="max-w-5xl mx-auto px-4 py-12">
         <Link href="/">
           <Button variant="ghost" className="mb-6 luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">

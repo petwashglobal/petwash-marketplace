@@ -173,7 +173,7 @@ export default function MobileManagementDashboard() {
   });
 
   return (
-    <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-white ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
 
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-[#E8E3D9]">
         <div className="px-4 py-4 flex items-center justify-between">

@@ -955,7 +955,7 @@ export default function MyAccount() {
 
   return (
     <Layout>
-      <div className="pw-account-page min-h-screen py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="pw-account-page min-h-screen py-8 px-4" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="max-w-4xl mx-auto space-y-6">
           
           <div className="text-center mb-6 pt-2">

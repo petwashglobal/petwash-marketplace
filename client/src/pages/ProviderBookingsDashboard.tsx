@@ -117,7 +117,7 @@ export default function ProviderBookingsDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white" dir={isHebrew ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6">
         <div className="max-w-4xl mx-auto">
@@ -416,7 +416,7 @@ function PendingBookingCard({
 
         {/* Accept Modal with Meet & Greet Scheduling */}
         <Dialog open={showAcceptModal} onOpenChange={setShowAcceptModal}>
-          <DialogContent className="sm:max-w-md" dir={isHebrew ? 'rtl' : 'ltr'}>
+          <DialogContent className="sm:max-w-md" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
             <DialogHeader>
               <DialogTitle>
                 {isHebrew ? 'אשר וקבע פגישת היכרות' : 'Accept & Schedule Meet & Greet'}

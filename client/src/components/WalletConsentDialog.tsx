@@ -155,7 +155,7 @@ export function WalletConsentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl">
             <Shield className="w-6 h-6 text-blue-600" />

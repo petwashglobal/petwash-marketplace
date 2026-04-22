@@ -466,7 +466,7 @@ export default function ProviderOnboarding() {
 
   if (applicationSubmitted) {
     return (
-      <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+      <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
         <div className="max-w-2xl mx-auto luxury-animate-fade-in">
           <div className="luxury-glass-card luxury-shadow-xl border-2 border-green-500/30 p-8">
             <div className="text-center mb-6">
@@ -565,7 +565,7 @@ export default function ProviderOnboarding() {
   }
 
   return (
-    <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       {/* Close Button - Top Right */}
       <Button
         onClick={() => navigate('/')}

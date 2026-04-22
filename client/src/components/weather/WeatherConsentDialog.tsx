@@ -195,7 +195,7 @@ export function WeatherConsentDialog({
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="luxury-glass-card max-w-md" dir={isHebrew ? 'rtl' : 'ltr'}>
+        <DialogContent className="luxury-glass-card max-w-md" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
           </div>
@@ -206,7 +206,7 @@ export function WeatherConsentDialog({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="luxury-glass-card max-w-md border-amber-200/50" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <DialogContent className="luxury-glass-card max-w-md border-amber-200/50" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-700">
             <AlertTriangle className="h-5 w-5" />

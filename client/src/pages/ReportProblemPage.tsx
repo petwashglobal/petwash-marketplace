@@ -126,7 +126,7 @@ export default function ReportProblemPage() {
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4"
-      dir={isHebrew ? "rtl" : "ltr"}
+      dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6 pt-6">

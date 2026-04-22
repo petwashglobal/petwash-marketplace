@@ -137,7 +137,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <PawPrint className="w-5 h-5" />

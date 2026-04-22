@@ -250,7 +250,7 @@ export default function StationDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="max-w-3xl mx-auto space-y-4">
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -268,7 +268,7 @@ export default function StationDashboard() {
     return (
       <div
         className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
-        dir={isHebrew ? 'rtl' : 'ltr'}
+        dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
@@ -288,7 +288,7 @@ export default function StationDashboard() {
     return (
       <div
         className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-4"
-        dir={isHebrew ? 'rtl' : 'ltr'}
+        dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
       >
         <Card className="max-w-sm w-full">
           <CardContent className="pt-10 pb-10 text-center">
@@ -314,7 +314,7 @@ export default function StationDashboard() {
   return (
     <div
       className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-6"
-      dir={isHebrew ? 'rtl' : 'ltr'}
+      dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-3xl mx-auto">
 

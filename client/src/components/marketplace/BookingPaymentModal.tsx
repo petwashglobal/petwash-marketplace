@@ -139,7 +139,7 @@ export function BookingPaymentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <DialogContent className="sm:max-w-md" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         {step === 'success' ? (
           <div className="text-center py-8">
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">

@@ -119,7 +119,7 @@ export default function AccountingDashboard() {
   const compliance = summary?.data?.complianceStatus;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800" dir={isHebrew ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
