@@ -9476,112 +9476,21 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Customer registration endpoint (public - no auth required)
-  app.post('/api/customer/register', async (req, res) => {
-    try {
-      const {
-        firstName, lastName, email, phone, password,
-        dateOfBirth, country, gender, petType,
-        loyaltyProgram, reminders, marketing, termsAccepted,
-        captchaToken
-      } = req.body;
-
-      if (captchaToken) {
-        const captchaResult = await verifyCaptchaToken(captchaToken, 'register');
-        if (!captchaResult.valid) {
-          logger.warn('[CustomerRegister] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason, source: captchaResult.source });
-          return res.status(403).json({ message: 'Security verification failed. Please try again.' });
-        }
-      } else {
-        return res.status(400).json({ message: 'Security verification token required.' });
-      }
-
-      if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
-        return res.status(400).json({ message: 'Missing required fields' });
-      }
-
-      const existingCustomer = await storage.getCustomerByEmail(email);
-      if (existingCustomer) {
-        return res.status(400).json({ message: 'Customer with this email already exists' });
-      }
-
-      const { scrypt, randomBytes } = await import('crypto');
-      const { promisify } = await import('util');
-      const scryptAsync = promisify(scrypt);
-      const salt = randomBytes(16).toString('hex');
-      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString('hex')}.${salt}`;
-
-      const customerData: InsertCustomer = {
-        firstName, lastName, email, phone,
-        password: hashedPassword,
-        dateOfBirth: dateOfBirth || null,
-        country: country || 'Israel',
-        gender,
-        petType,
-        loyaltyProgram: loyaltyProgram || false,
-        reminders: reminders || false,
-        marketing: marketing || false,
-        termsAccepted: termsAccepted || false,
-        isVerified: false,
-        loyaltyTier: 'new',
-        totalSpent: '0',
-        washBalance: 0
-      };
-
-      const customer = await storage.createCustomer(customerData);
-
-      try {
-        const { sendLuxuryEmail } = await import('./email/luxury-email-service');
-        const { generateCustomerWelcomeEmail } = await import('./email/templates/welcome-customer-signup-2026');
-        const welcomeEmail = generateCustomerWelcomeEmail({
-          firstName, lastName, email,
-          language: country === 'Israel' ? 'he' : 'en',
-          petType: petType || undefined,
-        });
-        sendLuxuryEmail({
-          to: email,
-          subject: welcomeEmail.subject,
-          html: welcomeEmail.html,
-        }).catch(err => logger.error('[CustomerRegister] Welcome email failed', err));
-      } catch (emailErr) {
-        logger.warn('[CustomerRegister] Email service error', emailErr);
-      }
-
-      try {
-        const { logRegistration } = await import('./services/googleSheetsIntegration');
-        await logRegistration({
-          userId: String(customer.id),
-          firstName, lastName, email,
-          phone,
-          country: country || 'Israel',
-          registrationSource: 'customer-signup-form',
-          profilePhotoUrl: '',
-          language: country === 'Israel' ? 'he' : 'en',
-          petType: petType || '',
-          status: 'Active',
-        });
-        logger.info('[CustomerRegister] Logged to Google Sheets', { email });
-      } catch (sheetsErr) {
-        logger.warn('[CustomerRegister] Google Sheets logging failed (non-blocking)', sheetsErr);
-      }
-
-      logger.info('[CustomerRegister] Customer registered successfully', { email, id: customer.id });
-
-      res.status(201).json({
-        message: 'Registration successful',
-        customer: {
-          id: customer.id,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          email: customer.email,
-          loyaltyTier: customer.loyaltyTier
-        }
-      });
-    } catch (error: any) {
-      logger.error('[CustomerRegister] Registration error', error);
-      res.status(500).json({ message: 'Registration failed' });
-    }
+  // HARD-DEPRECATED: POST /api/customer/register
+  // This endpoint created rows in the `customers` table without Firebase Auth,
+  // producing accounts that have no Firebase UID and cannot authenticate with
+  // the rest of the platform. No current UI calls this path — CustomerSignupModal
+  // redirects to /signup which uses the canonical Firebase flow.
+  // Permanently removed: returns 410 GONE so any stale bookmarks or third-party
+  // integrations receive an unambiguous signal to migrate.
+  // Canonical registration path: Firebase Auth → POST /api/auth/session → POST /api/users/create-profile
+  app.post('/api/customer/register', (_req, res) => {
+    logger.warn('[CustomerRegister] Deprecated endpoint called — returning 410 GONE');
+    res.status(410).json({
+      error: 'ENDPOINT_REMOVED',
+      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    });
   });
 
   // Loyalty & Rewards routes - Protected with Firebase auth
