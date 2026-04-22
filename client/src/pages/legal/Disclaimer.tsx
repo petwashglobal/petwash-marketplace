@@ -8,7 +8,7 @@ export default function Disclaimer() {
   const isHebrew = language === 'he';
 
   return (
-    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       <div className="max-w-4xl mx-auto px-4 py-12">
         <Link href="/sitter-suite">
           <Button variant="ghost" className="mb-6 flex items-center gap-2 luxury-btn-primary">

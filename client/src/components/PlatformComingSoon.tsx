@@ -18,7 +18,7 @@ export function PlatformComingSoon({
 }: PlatformComingSoonProps) {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
-  const dir = isHebrew ? 'rtl' : 'ltr';
+  const dir = (language === 'he' || language === 'ar') ? 'rtl' : 'ltr';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center px-4" dir={dir}>

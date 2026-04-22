@@ -139,7 +139,7 @@ export default function WalletTelemetryDashboard() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="container mx-auto p-6" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="flex items-center justify-center h-64">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
         </div>
@@ -159,7 +159,7 @@ export default function WalletTelemetryDashboard() {
       subtitle={t.description}
       icon={<Wallet className="w-8 h-8 text-blue-600" />}
     >
-      <div className="luxury-container p-6 space-y-8" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="luxury-container p-6 space-y-8" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="flex items-center justify-end gap-3 luxury-animate-fade-in">
         <Button onClick={() => refetch()} className="luxury-btn-secondary">

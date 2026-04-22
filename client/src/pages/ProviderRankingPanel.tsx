@@ -139,7 +139,7 @@ export default function ProviderRankingPanel() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="max-w-2xl mx-auto space-y-4">
           <Skeleton className="h-32 w-full rounded-2xl" />
           <Skeleton className="h-48 w-full rounded-2xl" />
@@ -151,7 +151,7 @@ export default function ProviderRankingPanel() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-950 p-8 flex items-center justify-center" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 p-8 flex items-center justify-center" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <Card className="max-w-sm w-full">
           <CardContent className="pt-8 pb-8 text-center">
             <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
@@ -169,7 +169,7 @@ export default function ProviderRankingPanel() {
   const score = data.rankingScore;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8" dir={isHebrew ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
       <div className="max-w-2xl mx-auto space-y-5">
 
         {/* Header */}

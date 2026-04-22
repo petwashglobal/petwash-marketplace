@@ -235,7 +235,7 @@ export function BiometricConsentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl font-serif">
             <IconComponent className="w-7 h-7 text-black dark:text-black" />

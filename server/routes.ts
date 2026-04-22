@@ -150,6 +150,7 @@ import adminPawFinderRoutes from "./routes/admin-paw-finder";
 import systemEventsAdminRoutes from "./routes/system-events";
 import spamGuardRoutes from "./routes/spam-guard";
 import winbackTrackingRouter from "./routes/winback-tracking";
+import adminDashboardRoutes from "./api/adminDashboard";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import platformApiRoutes from "./routes/platform-api";
@@ -9773,6 +9774,7 @@ self.addEventListener('notificationclick', (event) => {
   // Admin routes
   const adminRoutes = await import('./routes/admin');
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
+  app.use('/api/admin', adminLimiter, requireAdminMfa, adminDashboardRoutes);
   app.use('/api/admin/loyalty', adminLimiter, adminLoyaltyRoutes);
   app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', adminLimiter, adminPawFinderRoutes);

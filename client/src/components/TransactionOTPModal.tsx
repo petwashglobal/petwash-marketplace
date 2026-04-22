@@ -102,7 +102,7 @@ export function TransactionOTPModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="sm:max-w-[440px] bg-white p-0 overflow-hidden" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <DialogContent className="sm:max-w-[440px] bg-white p-0 overflow-hidden" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 px-6 py-5 relative">
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5a3] to-[#c9a96e]" />
           <DialogHeader className="space-y-1.5">

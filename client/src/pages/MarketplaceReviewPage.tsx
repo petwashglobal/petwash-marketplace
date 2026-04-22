@@ -249,7 +249,7 @@ export default function MarketplaceReviewPage() {
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 p-4"
-      dir={isHebrew ? "rtl" : "ltr"}
+      dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6 pt-6">

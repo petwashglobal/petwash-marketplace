@@ -539,7 +539,7 @@ export default function ProviderApplicationForm() {
     const allKeyDocsUploaded = !!(idFrontPhoto && selfieDocPhoto);
 
     return (
-      <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
+      <div className={`min-h-screen bg-white ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
         <div className="py-12 px-4">
           <div className="max-w-2xl mx-auto space-y-6">
 
@@ -850,7 +850,7 @@ export default function ProviderApplicationForm() {
   }
 
   return (
-    <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-white ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       <div className="py-8 px-4">
         <div className="max-w-4xl mx-auto">
         

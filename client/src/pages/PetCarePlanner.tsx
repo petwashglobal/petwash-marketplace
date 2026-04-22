@@ -290,7 +290,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
       subtitle={isHebrew ? 'ניהול חיסונים חכם, תזמון רחצות פרימיום, AI מתקדם + מערכת נאמנות VIP' : 'Smart vaccine management, premium wash scheduling, Advanced AI + VIP Loyalty System'}
       icon={<Sparkles className="w-8 h-8 text-amber-500" />}
     >
-    <div className="container mx-auto px-4 py-8 max-w-7xl" dir={isHebrew ? 'rtl' : 'ltr'}>
+    <div className="container mx-auto px-4 py-8 max-w-7xl" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
 
       {/* 2026 INNOVATIVE HUB: LOYALTY WALLET */}
       <Card className="mb-8 border-metallic-platinum hover-glow-platinum shadow-luxury transition-all duration-300 hover:scale-[1.01]">

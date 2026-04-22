@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 /**
@@ -124,7 +124,8 @@ interface InvoiceSummary {
 }
 
 /* -----------------------------------------------------------
-   3. DUMMY DATA (REPLACE WITH REAL API LATER)
+   3. PLATFORM CONFIG (names, descriptions, status only)
+      KPI values are fetched from real APIs — see PetWashOctopusControlPanel
    ----------------------------------------------------------- */
 
 const PLATFORMS: PetWashPlatform[] = [
@@ -136,9 +137,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "לינה בבית מארח מאושר או בבית הלקוח, כולל עדכוני תמונות וסטורי.",
     status: "live",
     primaryKpiLabel: "Active bookings",
-    primaryKpiValue: "128",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Top rating",
-    secondaryKpiValue: "4.96",
+    secondaryKpiValue: "—",
     iconEmoji: "🏠",
   },
   {
@@ -149,9 +150,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "מטפל מאושר נשאר בבית הלקוח, עם ביטוח וערבות ⁦Pet Wash™⁩.",
     status: "live",
     primaryKpiLabel: "Active stays",
-    primaryKpiValue: "42",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Avg nights",
-    secondaryKpiValue: "3.4",
+    secondaryKpiValue: "—",
     iconEmoji: "🛋️",
   },
   {
@@ -162,9 +163,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "טיולים עם GPS, מעקב חי, תמונות לאחר טיול, וחתימת מסירה.",
     status: "live",
     primaryKpiLabel: "Walks today",
-    primaryKpiValue: "73",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Cities",
-    secondaryKpiValue: "6",
+    secondaryKpiValue: "—",
     iconEmoji: "🐕",
   },
   {
@@ -175,9 +176,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "הסעות לוטרינר, גרומר, שדה תעופה ומלונות, עם מעקב מלא.",
     status: "beta",
     primaryKpiLabel: "Trips today",
-    primaryKpiValue: "19",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Drivers online",
-    secondaryKpiValue: "7",
+    secondaryKpiValue: "—",
     iconEmoji: "🚗",
   },
   {
@@ -188,9 +189,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "מאמנים מוסמכים, שיעורים אישיים וקורסים דיגיטליים.",
     status: "beta",
     primaryKpiLabel: "Sessions booked",
-    primaryKpiValue: "31",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Trainers",
-    secondaryKpiValue: "12",
+    secondaryKpiValue: "—",
     iconEmoji: "🎓",
   },
   {
@@ -201,9 +202,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "עמדת DIY מפנקת עם שמפו, מרכך, שמן עץ התה, מייבש, ונאייקס.",
     status: "live",
     primaryKpiLabel: "Washes today",
-    primaryKpiValue: "54",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Stations online",
-    secondaryKpiValue: "11",
+    secondaryKpiValue: "—",
     iconEmoji: "🚿",
   },
   {
@@ -214,9 +215,9 @@ const PLATFORMS: PetWashPlatform[] = [
       "עמדה פיזית מלאת חיישנים, 24/7, עם ניהול דרך האוקטופוס.",
     status: "live",
     primaryKpiLabel: "Live bays",
-    primaryKpiValue: "2",
-    secondaryKpiLabel: "Next installs",
-    secondaryKpiValue: "5",
+    primaryKpiValue: "—",
+    secondaryKpiLabel: "Total stations",
+    secondaryKpiValue: "—",
     iconEmoji: "💧",
   },
   {
@@ -227,117 +228,10 @@ const PLATFORMS: PetWashPlatform[] = [
       "כל הסיטרים, ווקרז, דרייברים ומאמנים במקום אחד.",
     status: "live",
     primaryKpiLabel: "Approved talent",
-    primaryKpiValue: "214",
+    primaryKpiValue: "—",
     secondaryKpiLabel: "Cities",
-    secondaryKpiValue: "9",
+    secondaryKpiValue: "—",
     iconEmoji: "⭐",
-  },
-];
-
-const MOCK_BOOKINGS: BookingSummary[] = [
-  {
-    id: "BKG-2025-1201",
-    platformId: "pet_sitter",
-    guestName: "Dana Levi",
-    petName: "Luna",
-    serviceType: "Overnight at sitter home",
-    checkIn: "2025-12-13",
-    checkOut: "2025-12-15",
-    status: "confirmed",
-    amountNis: 620,
-    city: "Tel Aviv",
-  },
-  {
-    id: "BKG-2025-1202",
-    platformId: "walk_my_pet",
-    guestName: "Omer Ben",
-    petName: "Rocky",
-    serviceType: "60 min GPS Walk",
-    checkIn: "2025-12-13",
-    checkOut: "2025-12-13",
-    status: "pending",
-    amountNis: 89,
-    city: "Ramat Gan",
-  },
-  {
-    id: "BKG-2025-1203",
-    platformId: "pettrek",
-    guestName: "Shiri Cohen",
-    petName: "Milo",
-    serviceType: "Vet transport - return",
-    checkIn: "2025-12-12",
-    checkOut: "2025-12-12",
-    status: "completed",
-    amountNis: 210,
-    city: "Ra'anana",
-  },
-];
-
-const MOCK_TALENT: TalentProfile[] = [
-  {
-    id: "TAL-001",
-    role: "sitter",
-    fullName: "Ido Shakarzi",
-    rating: 4.98,
-    totalJobs: 213,
-    city: "Rosh HaAyin",
-    bioShort:
-      "מארח ביתי חם עם חצר מגודרת, ניסיון רב עם כלבים רגישים.",
-    badges: ["Top Sitter", "Background Verified", "First Aid"],
-    hourlyFromNis: 55,
-    verifiedBackground: true,
-    petTypes: ["Dogs", "Cats"],
-  },
-  {
-    id: "TAL-002",
-    role: "walker",
-    fullName: "Tom Chen",
-    rating: 4.92,
-    totalJobs: 187,
-    city: "Tel Aviv",
-    bioShort:
-      "טיולים עם GPS, עדכוני וידאו, התמחות בכלבים אנרגטיים.",
-    badges: ["Elite Walker", "GPS Verified"],
-    hourlyFromNis: 45,
-    verifiedBackground: true,
-    petTypes: ["Dogs"],
-  },
-];
-
-const MOCK_LOYALTY: LoyaltySnapshot = {
-  activeMembers: 1294,
-  pointsIssued: 982300,
-  pointsRedeemed: 436200,
-  avgPointsPerUser: 760,
-};
-
-const MOCK_INVOICES: InvoiceSummary[] = [
-  {
-    id: "INV-2025-1201",
-    type: "customer",
-    label: "Single Wash - National Park",
-    date: "2025-12-12",
-    amountNis: 55,
-    status: "paid",
-    counterparty: "Customer",
-  },
-  {
-    id: "INV-2025-1202",
-    type: "customer",
-    label: "3 Wash Package",
-    date: "2025-12-11",
-    amountNis: 150,
-    status: "issued",
-    counterparty: "Customer",
-  },
-  {
-    id: "INV-2025-2001",
-    type: "payout",
-    label: "Payout - Ido (Week 50)",
-    date: "2025-12-13",
-    amountNis: 1820,
-    status: "paid",
-    counterparty: "Ido Shakarzi",
   },
 ];
 
@@ -515,7 +409,8 @@ const PlatformGrid: React.FC<{
   platforms: PetWashPlatform[];
   selectedId: PetWashPlatformId;
   onSelect: (id: PetWashPlatformId) => void;
-}> = ({ platforms, selectedId, onSelect }) => {
+  kpiOverrides?: Partial<Record<PetWashPlatformId, { primaryKpiValue?: string; secondaryKpiValue?: string }>>;
+}> = ({ platforms, selectedId, onSelect, kpiOverrides }) => {
   return (
     <CardShell className="col-span-12 xl:col-span-7">
       <SectionTitle
@@ -526,6 +421,9 @@ const PlatformGrid: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {platforms.map((p) => {
           const selected = p.id === selectedId;
+          const override = kpiOverrides?.[p.id];
+          const displayPrimaryKpi = override?.primaryKpiValue ?? p.primaryKpiValue;
+          const displaySecondaryKpi = override?.secondaryKpiValue ?? p.secondaryKpiValue;
           return (
             <button
               key={p.id}
@@ -583,14 +481,14 @@ const PlatformGrid: React.FC<{
                 <div className="flex flex-col">
                   <span className="text-slate-400">{p.primaryKpiLabel}</span>
                   <span className="font-semibold text-slate-900">
-                    {p.primaryKpiValue}
+                    {displayPrimaryKpi}
                   </span>
                 </div>
                 <div className="h-10 w-px bg-slate-200/70" />
                 <div className="flex flex-col text-right">
                   <span className="text-slate-400">{p.secondaryKpiLabel}</span>
                   <span className="font-semibold text-slate-900">
-                    {p.secondaryKpiValue}
+                    {displaySecondaryKpi}
                   </span>
                 </div>
               </div>
@@ -1251,251 +1149,6 @@ const LocationDashboardPanel: React.FC = () => {
 };
 
 /* -----------------------------------------------------------
-   11. LIVE MULTI-PET BOOKING DEMO PANEL
-       Tel Aviv scenario: Michal, 2 dogs (large + small), 1 week
-   ----------------------------------------------------------- */
-
-type DemoPhase =
-  | 'idle'
-  | 'request_in'
-  | 'matching'
-  | 'providers_notified'
-  | 'race'
-  | 'accepted'
-  | 'confirmed';
-
-interface DemoProvider {
-  id: string;
-  name: string;
-  distanceKm: string;
-  rating: number;
-  responseTimer: number;
-  accepted: boolean;
-  declined: boolean;
-}
-
-const DEMO_PROVIDERS: DemoProvider[] = [
-  { id: 'p1', name: 'דניאל כהן', distanceKm: '1.8', rating: 4.9, responseTimer: 14, accepted: false, declined: false },
-  { id: 'p2', name: 'יפית לוי', distanceKm: '0.6', rating: 4.8, responseTimer: 9, accepted: false, declined: false },
-];
-
-const BOOKING_REQUEST = {
-  customer: 'מיכל אברהם',
-  location: 'תל אביב — רח׳ בן גוריון 42',
-  dates: '2 מרץ — 9 מרץ 2026 (7 לילות)',
-  pets: [
-    { name: 'מקס', size: 'גדול', breed: 'לברדור', pricePerNight: 160 },
-    { name: 'פתית', size: 'קטן', breed: 'בישון פריזה', pricePerNight: 110 },
-  ],
-  totalNights: 7,
-  vatRate: 0.18,
-};
-
-const LiveBookingDemoPanel: React.FC = () => {
-  const [phase, setPhase] = useState<DemoPhase>('idle');
-  const [providers, setProviders] = useState<DemoProvider[]>(DEMO_PROVIDERS.map(p => ({ ...p })));
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const basePrice = BOOKING_REQUEST.pets.reduce((s, p) => s + p.pricePerNight, 0) * BOOKING_REQUEST.totalNights;
-  const vat = Math.round(basePrice * BOOKING_REQUEST.vatRate);
-  const total = basePrice + vat;
-
-  function clearTimer() {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-  }
-
-  function resetDemo() {
-    clearTimer();
-    setPhase('idle');
-    setCountdown(null);
-    setProviders(DEMO_PROVIDERS.map(p => ({ ...p })));
-  }
-
-  function runDemo() {
-    resetDemo();
-    setTimeout(() => setPhase('request_in'), 400);
-    setTimeout(() => setPhase('matching'), 1800);
-    setTimeout(() => setPhase('providers_notified'), 3200);
-
-    // Start countdown race at 4s
-    setTimeout(() => {
-      setPhase('race');
-      let secs = 30;
-      setCountdown(secs);
-      timerRef.current = setInterval(() => {
-        secs -= 1;
-        setCountdown(secs);
-        // Provider p2 (faster, 9s) accepts first
-        if (secs === 30 - 9) {
-          clearTimer();
-          setProviders(prev => prev.map(p =>
-            p.id === 'p2' ? { ...p, accepted: true }
-            : p.id === 'p1' ? { ...p, declined: true }
-            : p
-          ));
-          setPhase('accepted');
-          setTimeout(() => setPhase('confirmed'), 1800);
-        }
-      }, 1000);
-    }, 4000);
-  }
-
-  useEffect(() => () => clearTimer(), []);
-
-  const phaseBadge: Record<DemoPhase, { label: string; color: string }> = {
-    idle: { label: 'Standby', color: 'bg-white text-slate-500' },
-    request_in: { label: '📨 Request In', color: 'bg-blue-100 text-blue-700' },
-    matching: { label: '🔍 Matching Providers', color: 'bg-amber-100 text-amber-700' },
-    providers_notified: { label: '🔔 Providers Notified', color: 'bg-violet-100 text-violet-700' },
-    race: { label: '⚡ Race to Accept', color: 'bg-orange-100 text-orange-700 animate-pulse' },
-    accepted: { label: '✅ Accepted!', color: 'bg-emerald-100 text-emerald-700' },
-    confirmed: { label: '🎉 Booking Confirmed', color: 'bg-emerald-100 text-emerald-700' },
-  };
-
-  const badge = phaseBadge[phase];
-
-  return (
-    <CardShell className="col-span-12 xl:col-span-6">
-      <div className="flex items-start justify-between mb-4">
-        <SectionTitle
-          title="Live Booking Demo"
-          subtitle="Tel Aviv · 2 dogs (large + small) · 1 week — Uber-style matching"
-        />
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 ${badge.color}`}>
-          {badge.label}
-        </span>
-      </div>
-
-      {/* Booking card */}
-      <div className={`rounded-2xl border p-4 mb-4 transition-all duration-500 ${
-        phase === 'idle' ? 'border-slate-200 bg-white/50 opacity-50' : 'border-blue-200 bg-blue-50/40 opacity-100'
-      }`}>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-fuchsia-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold">מ</div>
-          <div>
-            <div className="text-sm font-semibold text-slate-800">{BOOKING_REQUEST.customer}</div>
-            <div className="text-xs text-slate-500">{BOOKING_REQUEST.location}</div>
-          </div>
-          <div className="ms-auto text-xs text-slate-400">{BOOKING_REQUEST.dates}</div>
-        </div>
-
-        {/* Pets */}
-        <div className="flex gap-2 mb-3">
-          {BOOKING_REQUEST.pets.map(pet => (
-            <div key={pet.name} className="flex-1 rounded-xl bg-white border border-slate-200 px-3 py-2">
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-base">{pet.size === 'גדול' ? '🐕' : '🐩'}</span>
-                <span className="text-xs font-semibold text-slate-700">{pet.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                  pet.size === 'גדול'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-sky-100 text-sky-700'
-                }`}>{pet.size}</span>
-              </div>
-              <div className="text-xs text-slate-500">{pet.breed}</div>
-              <div className="text-xs font-semibold text-slate-700 mt-1">
-                ₪{pet.pricePerNight} × {BOOKING_REQUEST.totalNights} = ₪{pet.pricePerNight * BOOKING_REQUEST.totalNights}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Price breakdown */}
-        <div className="bg-white rounded-xl border border-slate-100 px-3 py-2 text-xs space-y-1">
-          {BOOKING_REQUEST.pets.map(p => (
-            <div key={p.name} className="flex justify-between text-slate-600">
-              <span>{p.name} ({p.size}) × {BOOKING_REQUEST.totalNights} לילות</span>
-              <span>₪{p.pricePerNight * BOOKING_REQUEST.totalNights}</span>
-            </div>
-          ))}
-          <div className="flex justify-between text-slate-400 border-t border-slate-100 pt-1 mt-1">
-            <span>מע״מ 18%</span><span>₪{vat}</span>
-          </div>
-          <div className="flex justify-between font-bold text-slate-800 text-sm border-t border-slate-200 pt-1 mt-1">
-            <span>סה״כ לתשלום</span><span>₪{total}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Providers race */}
-      <div className="space-y-2 mb-4">
-        {providers.map(prov => (
-          <div key={prov.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-500 ${
-            prov.accepted
-              ? 'border-emerald-300 bg-emerald-50'
-              : prov.declined
-                ? 'border-red-100 bg-red-50 opacity-50'
-                : phase === 'race' || phase === 'providers_notified'
-                  ? 'border-amber-200 bg-amber-50'
-                  : 'border-slate-200 bg-white'
-          }`}>
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {prov.name.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-800">{prov.name}</span>
-                <span className="text-[10px] text-slate-400">⭐ {prov.rating}</span>
-                <span className="text-[10px] text-slate-400">📍 {prov.distanceKm} ק״מ</span>
-              </div>
-              <div className="text-xs text-slate-400 mt-0.5">
-                {prov.accepted
-                  ? '✅ קיבל את ההזמנה'
-                  : prov.declined
-                    ? '❌ הגיע אחרון'
-                    : (phase === 'race' || phase === 'providers_notified')
-                      ? `⏱ זמן תגובה אנונימי ~${prov.responseTimer}s`
-                      : 'ממתין להזמנה...'}
-              </div>
-            </div>
-            {(phase === 'race') && !prov.accepted && !prov.declined && countdown !== null && (
-              <div className="text-lg font-bold text-orange-500 tabular-nums shrink-0">
-                {countdown}s
-              </div>
-            )}
-            {prov.accepted && <span className="text-xl shrink-0">🏆</span>}
-          </div>
-        ))}
-      </div>
-
-      {/* CTA */}
-      {phase === 'idle' && (
-        <button
-          onClick={runDemo}
-          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 text-white text-sm font-semibold hover:from-slate-700 hover:to-slate-800 transition-all shadow-md"
-        >
-          ▶ הפעל סימולציית הזמנה חיה
-        </button>
-      )}
-      {phase === 'confirmed' && (
-        <div className="space-y-2">
-          <div className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold text-center">
-            🎉 הזמנה אושרה — מיכל + מקס + פתית + יפית
-          </div>
-          <button
-            onClick={resetDemo}
-            className="w-full py-2 rounded-xl border border-slate-200 text-slate-600 text-xs hover:bg-white transition-colors"
-          >
-            🔄 הפעל מחדש
-          </button>
-        </div>
-      )}
-      {phase !== 'idle' && phase !== 'confirmed' && (
-        <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-400">
-          <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-          {phase === 'request_in' && 'מעבד בקשת הזמנה...'}
-          {phase === 'matching' && 'מחפש ספקים קרובים ב-תל אביב...'}
-          {phase === 'providers_notified' && 'מודיע לספקים...'}
-          {phase === 'race' && 'ספקים מגיבים...'}
-          {phase === 'accepted' && 'מאשר הזמנה...'}
-        </div>
-      )}
-    </CardShell>
-  );
-};
-
-/* -----------------------------------------------------------
    12. MAIN OCTOPUS CONTROL PANEL WRAPPER
    ----------------------------------------------------------- */
 
@@ -1505,20 +1158,56 @@ export const PetWashOctopusControlPanel: React.FC = () => {
   
   // Fetch real-time admin metrics from API
   const { data: metricsData, isLoading: metricsLoading } = useAdminMetrics();
-  
-  // Derive loyalty data from API or fallback to mock
+
+  // Fetch real bookings from API
+  const { data: bookingsData, isLoading: bookingsLoading } = useQuery<{ success: boolean; bookings: BookingSummary[] }>({
+    queryKey: ['/api/admin/bookings'],
+    refetchInterval: 60000,
+    staleTime: 30000,
+    retry: 2,
+  });
+
+  // Fetch real talent from API
+  const { data: talentData, isLoading: talentLoading } = useQuery<{ success: boolean; talent: TalentProfile[] }>({
+    queryKey: ['/api/admin/talent'],
+    refetchInterval: 120000,
+    staleTime: 60000,
+    retry: 2,
+  });
+
+  // Fetch real invoices from API
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery<{ success: boolean; invoices: InvoiceSummary[] }>({
+    queryKey: ['/api/admin/invoices'],
+    refetchInterval: 60000,
+    staleTime: 30000,
+    retry: 2,
+  });
+
+  // Fetch real loyalty stats from API
+  const { data: loyaltyStatsData } = useQuery<{
+    period: string;
+    summary: { totalEarnedCents: number; totalRedeemedCents: number; activeUsers: number };
+  }>({
+    queryKey: ['/api/admin/loyalty/stats'],
+    refetchInterval: 120000,
+    staleTime: 60000,
+    retry: 2,
+  });
+
+  const realBookings: BookingSummary[] = bookingsData?.bookings ?? [];
+  const realTalent: TalentProfile[] = talentData?.talent ?? [];
+  const realInvoices: InvoiceSummary[] = invoicesData?.invoices ?? [];
+
+  // Build loyalty snapshot entirely from real API data
   const loyaltyData: LoyaltySnapshot = useMemo(() => {
-    if (metricsData?.success && metricsData.metrics?.loyalty) {
-      const l = metricsData.metrics.loyalty;
-      return {
-        activeMembers: l.totalMembers,
-        pointsIssued: MOCK_LOYALTY.pointsIssued, // Keep mock for now
-        pointsRedeemed: MOCK_LOYALTY.pointsRedeemed,
-        avgPointsPerUser: MOCK_LOYALTY.avgPointsPerUser,
-      };
-    }
-    return MOCK_LOYALTY;
-  }, [metricsData]);
+    const activeMembers = metricsData?.metrics?.loyalty?.totalMembers ?? 0;
+    const summary = loyaltyStatsData?.summary;
+    // Points are stored in agorot (ILS cents) — convert to display points (1 point = 1 agoroth)
+    const pointsIssued = summary?.totalEarnedCents ?? 0;
+    const pointsRedeemed = summary?.totalRedeemedCents ?? 0;
+    const avgPointsPerUser = activeMembers > 0 ? Math.round(pointsIssued / activeMembers) : 0;
+    return { activeMembers, pointsIssued, pointsRedeemed, avgPointsPerUser };
+  }, [metricsData, loyaltyStatsData]);
 
   return (
     <div
@@ -1568,22 +1257,42 @@ export const PetWashOctopusControlPanel: React.FC = () => {
           platforms={PLATFORMS}
           selectedId={selectedPlatformId}
           onSelect={setSelectedPlatformId}
+          kpiOverrides={{
+            k9000: {
+              primaryKpiValue: metricsLoading ? '…' : String(metricsData?.metrics?.stations?.active ?? '—'),
+              secondaryKpiValue: metricsLoading ? '…' : String(metricsData?.metrics?.stations?.total ?? '—'),
+            },
+            talent: {
+              primaryKpiValue: talentLoading ? '…' : String(realTalent.length || '—'),
+            },
+          }}
         />
-        <BookingShell
-          bookings={MOCK_BOOKINGS}
-          selectedPlatformId={selectedPlatformId}
-        />
-        <TalentPanel talent={MOCK_TALENT} />
-        <LoyaltyAndInvoicesPanel
-          loyalty={loyaltyData}
-          invoices={MOCK_INVOICES}
-        />
+        {bookingsLoading ? (
+          <div className="col-span-12 xl:col-span-6 rounded-3xl border border-slate-200/70 p-6 animate-pulse bg-white/50 min-h-[200px]" />
+        ) : (
+          <BookingShell
+            bookings={realBookings}
+            selectedPlatformId={selectedPlatformId}
+          />
+        )}
+        {talentLoading ? (
+          <div className="col-span-12 xl:col-span-6 rounded-3xl border border-slate-200/70 p-6 animate-pulse bg-white/50 min-h-[200px]" />
+        ) : (
+          <TalentPanel talent={realTalent} />
+        )}
+        {invoicesLoading ? (
+          <div className="col-span-12 rounded-3xl border border-slate-200/70 p-6 animate-pulse bg-white/50 min-h-[120px]" />
+        ) : (
+          <LoyaltyAndInvoicesPanel
+            loyalty={loyaltyData}
+            invoices={realInvoices}
+          />
+        )}
         <K9000StatusStripWithData 
           stationData={metricsData?.metrics?.stations}
           isLoading={metricsLoading}
         />
         <LocationDashboardPanel />
-        <LiveBookingDemoPanel />
       </main>
     </div>
   );
@@ -1594,34 +1303,17 @@ export default PetWashOctopusControlPanel;
 /**
  * HOW TO USE - DEV TEAM NOTES
  *
- * 1. Place this file at:
- *    src/modules/octopus/PetWashOctopusControlPanel.tsx
+ * Real API endpoints now wired:
+ *   - /api/admin/metrics   → K9000 station counts, loyalty totals
+ *   - /api/admin/bookings  → Recent sitter + walk bookings
+ *   - /api/admin/talent    → Approved walkers, sitters, trainers
+ *   - /api/admin/invoices  → Recent payment intents
+ *   - /api/admin/loyalty/stats → Points issued / redeemed
  *
- * 2. Wire into routing:
- *    - For example in React Router or Next:
- *      <Route path="/hq" element={<PetWashOctopusControlPanel />} />
+ * Still needs a real per-platform KPI API:
+ *   - Platform cards show "—" for counts that have no real backend query yet.
+ *   - Build /api/admin/platform-kpis to populate them.
  *
- * 3. Replace dummy data with real API calls:
- *    - Use React Query or your internal data hooks.
- *    - Replace MOCK_BOOKINGS, MOCK_TALENT, MOCK_LOYALTY, MOCK_INVOICES
- *      with calls to:
- *        - /api/admin/bookings
- *        - /api/admin/talent
- *        - /api/admin/loyalty
- *        - /api/admin/invoices
- *
- * 4. Keep the visual rules:
- *    - Pure white background
- *    - Metallic gradients only as accents
- *    - Rounded corners only as in this file
- *    - Buttons are always pill or full round, never square
- *    - No heavy borders or dark boxes
- *
- * 5. Extend:
- *    - Add sub pages:
- *      - /hq/platforms/:id
- *      - /hq/talent/:id
- *      - /hq/invoices/:id
- *      - /hq/k9000
- *    - Use the same CardShell and LuxeButton for full brand consistency.
+ * Routing:
+ *   <Route path="/hq" element={<PetWashOctopusControlPanel />} />
  */

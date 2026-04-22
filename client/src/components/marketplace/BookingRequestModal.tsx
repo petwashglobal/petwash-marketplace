@@ -160,7 +160,7 @@ export function BookingRequestModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         {step === 'success' ? (
-          <div className="text-center py-8" dir={isHebrew ? 'rtl' : 'ltr'}>
+          <div className="text-center py-8" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
               <CheckCircle className="w-10 h-10 text-green-600" />
             </div>
@@ -189,13 +189,13 @@ export function BookingRequestModal({
           </div>
         ) : (
           <>
-            <DialogHeader className="pb-2" dir={isHebrew ? 'rtl' : 'ltr'}>
+            <DialogHeader className="pb-2" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
               <DialogTitle className="text-xl font-bold">
                 {isHebrew ? 'שלח בקשת הזמנה' : 'Send Booking Request'}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-6" dir={isHebrew ? 'rtl' : 'ltr'}>
+            <div className="space-y-6" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
               {/* Provider Card */}
               <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl">
                 <div className="w-16 h-16 rounded-full overflow-hidden bg-white shadow-md">
@@ -243,7 +243,7 @@ export function BookingRequestModal({
                       }}
                       placeholder={isHebrew ? 'הזן את הכתובת בה יינתן השירות...' : 'Enter the address where service will be provided...'}
                       className="rounded-xl"
-                      dir={isHebrew ? 'rtl' : 'ltr'}
+                      dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
                       data-testid="input-service-address"
                     />
                     {addressFromProfile && (

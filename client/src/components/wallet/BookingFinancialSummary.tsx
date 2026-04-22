@@ -71,9 +71,9 @@ export function BookingFinancialSummary({
   className = "",
 }: BookingFinancialSummaryProps) {
   const { language } = useLanguage();
-  const isHebrew = language === "he";
+  const isRTL = language === "he" || language === "ar";
 
-  const t = isHebrew
+  const t = isRTL
     ? { subtotal: "סכום ביניים", fee: "דמי שירות", total: "סה״כ", loyalty: "קרדיטים PetWash Privilege", wallet: "ארנק PetWash" }
     : { subtotal: "Subtotal", fee: "Service fee", total: "Total", loyalty: "PetWash Privilege credits", wallet: "PetWash Wallet" };
 
@@ -81,7 +81,7 @@ export function BookingFinancialSummary({
   const hasWalletLifecycle = !!financeState && financeState !== "none";
 
   return (
-    <div className={`space-y-0 ${className}`} dir={isHebrew ? "rtl" : "ltr"}>
+    <div className={`space-y-0 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
       {subtotalCents != null && (
         <Row label={t.subtotal} value={fmtIls(subtotalCents)} />
       )}

@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Scissors, MapPin, Star, Clock, Search, SlidersHorizontal, CheckCircle,
-  Award, Heart, PawPrint, ChevronRight, Phone, Filter,
+  Scissors, MapPin, Star, Clock, Search, CheckCircle,
+  Heart, ChevronRight, Filter, Loader2, AlertCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { useLocation } from 'wouter';
@@ -20,51 +20,23 @@ const SERVICES_FILTER = [
   { key: 'de_shed', label: 'De-Shedding', he: 'הסרת שערות' },
 ];
 
-const PET_FILTER = [
-  { key: 'all', label: 'All Pets', he: 'כל החיות', emoji: '🐾' },
-  { key: 'dog', label: 'Dogs', he: 'כלבים', emoji: '🐕' },
-  { key: 'cat', label: 'Cats', he: 'חתולים', emoji: '🐈' },
-  { key: 'small', label: 'Small Pets', he: 'חיות קטנות', emoji: '🐹' },
-];
-
-const MOCK_GROOMERS = [
-  {
-    id: 'g1', name: 'Shira Katz', city: 'Tel Aviv', rating: 4.9, reviews: 127,
-    services: ['full_groom', 'bath_blow', 'spa_treatment'],
-    priceFrom: 120, petTypes: ['dog', 'cat'], experience: 8,
-    badges: ['Certified', 'Mobile', 'Top Groomer'],
-    bio: 'Professional groomer specializing in breed-specific cuts. Mobile studio comes to you.',
-    availability: 'Today',
-    emoji: '✂️',
-  },
-  {
-    id: 'g2', name: 'Yoav Ben-David', city: 'Tel Aviv', rating: 5.0, reviews: 89,
-    services: ['full_groom', 'bath_blow', 'nail_trim', 'de_shed'],
-    priceFrom: 110, petTypes: ['dog'], experience: 12,
-    badges: ['Certified', 'Insured', '5 Stars'],
-    bio: 'Luxury grooming salon in North Tel Aviv. Specializes in large breeds.',
-    availability: 'Tomorrow',
-    emoji: '🐕',
-  },
-  {
-    id: 'g3', name: 'Noa Friedman', city: 'Ramat Gan', rating: 4.8, reviews: 64,
-    services: ['bath_blow', 'nail_trim', 'ear_cleaning', 'spa_treatment'],
-    priceFrom: 90, petTypes: ['dog', 'cat', 'small'], experience: 5,
-    badges: ['Certified', 'Cat Specialist'],
-    bio: 'Gentle groomer specializing in anxious pets and cats. Stress-free environment.',
-    availability: 'Today',
-    emoji: '🐈',
-  },
-  {
-    id: 'g4', name: 'Amir Cohen', city: 'Petah Tikva', rating: 4.7, reviews: 41,
-    services: ['full_groom', 'bath_blow', 'puppy_groom'],
-    priceFrom: 100, petTypes: ['dog'], experience: 6,
-    badges: ['Certified', 'Puppy Specialist'],
-    bio: 'Puppy specialist with a gentle touch. Perfect for first-time grooms.',
-    availability: 'Next week',
-    emoji: '🐩',
-  },
-];
+interface GroomerResult {
+  id: string | number;
+  odId?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  profilePictureUrl?: string;
+  rating?: string | number;
+  totalBookings?: number;
+  isActive?: boolean;
+  isVerified?: boolean;
+  priceDisplay?: string;
+  city?: string;
+  serviceArea?: string;
+  serviceTypes?: string[];
+}
 
 interface GroomersProps {
   language?: string;
@@ -76,20 +48,38 @@ export default function Groomers({ language: langProp }: GroomersProps) {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [serviceFilter, setServiceFilter] = useState('all');
-  const [petFilter, setPetFilter] = useState('all');
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string | number>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
-  const filteredGroomers = MOCK_GROOMERS.filter(g => {
-    const matchesSearch = !searchQuery ||
-      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.city.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesService = serviceFilter === 'all' || g.services.includes(serviceFilter);
-    const matchesPet = petFilter === 'all' || g.petTypes.includes(petFilter);
-    return matchesSearch && matchesService && matchesPet;
+  const { data, isLoading, isError } = useQuery<{ providers: GroomerResult[]; total: number }>({
+    queryKey: ['groomers'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketplace/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: 'groomers', limit: 50, offset: 0 }),
+      });
+      if (!res.ok) throw new Error(`Groomer search failed: ${res.status}`);
+      return res.json();
+    },
   });
 
-  function toggleFavorite(id: string) {
+  const allGroomers: GroomerResult[] = data?.providers ?? [];
+
+  const filteredGroomers = allGroomers.filter(g => {
+    const fullName = `${g.firstName ?? ''} ${g.lastName ?? ''}`.trim();
+    const location = g.city ?? g.serviceArea ?? '';
+    const matchesSearch =
+      !searchQuery ||
+      fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesService =
+      serviceFilter === 'all' ||
+      (g.serviceTypes ?? []).includes(serviceFilter);
+    return matchesSearch && matchesService;
+  });
+
+  function toggleFavorite(id: string | number) {
     setFavorites(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -116,13 +106,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
           </div>
 
           <div className="flex items-center gap-2 mt-4 flex-wrap">
-            {PET_FILTER.map(p => (
-              <button key={p.key} onClick={() => setPetFilter(p.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${petFilter === p.key ? 'bg-white text-purple-700' : 'bg-white/15 text-white hover:bg-white/25'}`}>
-                {p.emoji} {isHebrew ? p.he : p.label}
-              </button>
-            ))}
-            <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-white/15 text-white hover:bg-white/25 ml-auto">
+            <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-white/15 text-white hover:bg-white/25">
               <Filter className="w-4 h-4" />{isHebrew ? 'פילטרים' : 'Filters'}
             </button>
           </div>
@@ -141,94 +125,128 @@ export default function Groomers({ language: langProp }: GroomersProps) {
       </div>
 
       <div className="luxury-container py-8">
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {filteredGroomers.length} groomer{filteredGroomers.length !== 1 ? 's' : ''} found
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredGroomers.map(groomer => (
-            <Card key={groomer.id} className="luxury-glass-card luxury-shadow-md luxury-hover-lift luxury-animate-fade-in overflow-hidden">
-              <CardContent className="p-0">
-                <div className="bg-gradient-to-br from-pink-400/20 via-purple-300/10 to-transparent h-24 relative">
-                  <div className="absolute bottom-0 left-5 translate-y-1/2 w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-3xl shadow-lg">
-                    {groomer.emoji}
-                  </div>
-                  <button
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors"
-                    onClick={() => toggleFavorite(groomer.id)}
-                  >
-                    <Heart className={`w-4 h-4 ${favorites.has(groomer.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-                  </button>
-                </div>
-
-                <div className="px-5 pt-12 pb-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-bold text-gray-900 dark:text-black text-base">{groomer.name}</h3>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />{groomer.city}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-amber-500">
-                        <Star className="w-4 h-4 fill-current" />
-                        <span className="font-bold text-sm text-gray-800 dark:text-black">{groomer.rating}</span>
-                        <span className="text-xs text-gray-400">({groomer.reviews})</span>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{groomer.experience} yrs exp</p>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{groomer.bio}</p>
-
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {groomer.badges.map(badge => (
-                      <span key={badge} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-white text-purple-700 dark:text-purple-300 text-xs font-medium">
-                        <CheckCircle className="w-3 h-3" />{badge}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {groomer.services.slice(0,3).map(svcKey => {
-                      const svcLabel = SERVICES_FILTER.find(s => s.key === svcKey);
-                      return svcLabel && svcLabel.key !== 'all' ? (
-                        <span key={svcKey} className="text-xs bg-white dark:bg-white text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">{isHebrew ? svcLabel.he : svcLabel.label}</span>
-                      ) : null;
-                    })}
-                    {groomer.services.length > 3 && <span className="text-xs text-gray-400">+{groomer.services.length - 3} more</span>}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-                    <div>
-                      <p className="text-xs text-gray-400">from</p>
-                      <p className="font-bold text-purple-700 dark:text-purple-300">₪{groomer.priceFrom}</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-400 mr-auto ml-3">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span className={groomer.availability === 'Today' ? 'text-green-600 font-medium' : ''}>{groomer.availability}</span>
-                    </div>
-                    <Button className="luxury-btn-primary" size="sm" onClick={() => setLocation(`/groomers/book`)}>
-                      Book<ChevronRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredGroomers.length === 0 && (
-          <div className="luxury-glass-card p-12 text-center">
-            <Scissors className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="luxury-heading-sm text-gray-500">No groomers found</p>
-            <p className="luxury-text-small text-gray-400 mt-1">Try adjusting your filters</p>
-            <Button className="mt-4 luxury-btn-primary" onClick={() => { setSearchQuery(''); setServiceFilter('all'); setPetFilter('all'); }}>
-              Clear Filters
-            </Button>
+        {isLoading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span>{isHebrew ? 'טוען מטפחים...' : 'Loading groomers...'}</span>
           </div>
+        )}
+
+        {isError && (
+          <div className="luxury-glass-card p-12 text-center">
+            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
+            <p className="luxury-heading-sm text-gray-700">
+              {isHebrew ? 'לא ניתן לטעון מטפחים כרגע' : 'Unable to load groomers right now'}
+            </p>
+            <p className="luxury-text-small text-gray-400 mt-1">
+              {isHebrew ? 'אנא נסה שוב מאוחר יותר' : 'Please try again later'}
+            </p>
+          </div>
+        )}
+
+        {!isLoading && !isError && (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {filteredGroomers.length} groomer{filteredGroomers.length !== 1 ? 's' : ''} found
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {filteredGroomers.map(groomer => {
+                const fullName = `${groomer.firstName ?? ''} ${groomer.lastName ?? ''}`.trim();
+                const city = groomer.city ?? groomer.serviceArea ?? '';
+                const rating = parseFloat(String(groomer.rating ?? 0)).toFixed(1);
+                const price = groomer.priceDisplay ?? '';
+                const id = groomer.id;
+
+                return (
+                  <Card key={id} className="luxury-glass-card luxury-shadow-md luxury-hover-lift luxury-animate-fade-in overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="bg-gradient-to-br from-pink-400/20 via-purple-300/10 to-transparent h-24 relative">
+                        <div className="absolute bottom-0 left-5 translate-y-1/2 w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-3xl shadow-lg">
+                          ✂️
+                        </div>
+                        <button
+                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors"
+                          onClick={() => toggleFavorite(id)}
+                        >
+                          <Heart className={`w-4 h-4 ${favorites.has(id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                        </button>
+                      </div>
+
+                      <div className="px-5 pt-12 pb-5">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-bold text-gray-900 dark:text-black text-base">{fullName}</h3>
+                            {city && (
+                              <p className="text-sm text-gray-500 flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5" />{city}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-amber-500">
+                              <Star className="w-4 h-4 fill-current" />
+                              <span className="font-bold text-sm text-gray-800 dark:text-black">{rating}</span>
+                              {groomer.totalBookings != null && (
+                                <span className="text-xs text-gray-400">({groomer.totalBookings})</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {groomer.isVerified && (
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-white text-purple-700 dark:text-purple-300 text-xs font-medium">
+                              <CheckCircle className="w-3 h-3" />Verified
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                          <div>
+                            {price && (
+                              <>
+                                <p className="text-xs text-gray-400">from</p>
+                                <p className="font-bold text-purple-700 dark:text-purple-300">{price}</p>
+                              </>
+                            )}
+                          </div>
+                          <Button className="luxury-btn-primary" size="sm" onClick={() => setLocation(`/groomers/book`)}>
+                            Book<ChevronRight className="w-3.5 h-3.5 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {filteredGroomers.length === 0 && allGroomers.length === 0 && (
+              <div className="luxury-glass-card p-12 text-center">
+                <Scissors className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="luxury-heading-sm text-gray-500">
+                  {isHebrew ? 'לא נמצאו מטפחים באזורך' : 'No groomers available yet'}
+                </p>
+                <p className="luxury-text-small text-gray-400 mt-1">
+                  {isHebrew ? 'שירות הטיפוח יושק בקרוב' : 'Grooming service is coming to your area soon'}
+                </p>
+              </div>
+            )}
+
+            {filteredGroomers.length === 0 && allGroomers.length > 0 && (
+              <div className="luxury-glass-card p-12 text-center">
+                <Scissors className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="luxury-heading-sm text-gray-500">No groomers found</p>
+                <p className="luxury-text-small text-gray-400 mt-1">Try adjusting your filters</p>
+                <Button className="mt-4 luxury-btn-primary" onClick={() => { setSearchQuery(''); setServiceFilter('all'); }}>
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

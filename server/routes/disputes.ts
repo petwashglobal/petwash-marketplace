@@ -21,9 +21,18 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
-// P0-FIX: SUPER_ADMIN_UID must come from environment variable, not source code.
-// Set SUPER_ADMIN_UID env var. If not set, all super-admin routes return 403.
-const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID || '__SUPER_ADMIN_UID_NOT_CONFIGURED__';
+// SUPER_ADMIN_UID must be set as an environment variable in production.
+// If not configured, super-admin dispute routes will return 503 rather than
+// silently accept a non-matching placeholder value.
+const SUPER_ADMIN_UID: string | undefined = process.env.SUPER_ADMIN_UID;
+if (!SUPER_ADMIN_UID) {
+  // Warn loudly at startup — do not throw, as other routes in the same
+  // process still need to serve. The missing-uid is enforced per-request.
+  console.error(
+    '[disputes] FATAL CONFIG: SUPER_ADMIN_UID env var is not set. ' +
+    'All super-admin dispute endpoints will return 503 until configured.'
+  );
+}
 
 async function requireAuth(req: Request, res: Response): Promise<string | null> {
   const authHeader = req.headers.authorization;
@@ -113,6 +122,9 @@ router.get('/my', async (req: Request, res: Response) => {
 // GET /api/disputes/admin
 router.get('/admin', async (req: Request, res: Response) => {
   try {
+    if (!SUPER_ADMIN_UID) {
+      return res.status(503).json({ error: 'Super-admin not configured — set SUPER_ADMIN_UID env var' });
+    }
     const uid = await requireAuth(req, res);
     if (!uid) return;
     if (uid !== SUPER_ADMIN_UID) {
@@ -144,6 +156,9 @@ router.get('/admin', async (req: Request, res: Response) => {
 //   For split: refundAmountCents goes to customer; remainder goes to provider.
 router.patch('/:id/resolve', async (req: Request, res: Response) => {
   try {
+    if (!SUPER_ADMIN_UID) {
+      return res.status(503).json({ error: 'Super-admin not configured — set SUPER_ADMIN_UID env var' });
+    }
     const uid = await requireAuth(req, res);
     if (!uid) return;
     if (uid !== SUPER_ADMIN_UID) {

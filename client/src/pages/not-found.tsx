@@ -25,7 +25,7 @@ export default function NotFound() {
             </div>
           </div>
 
-          <p className="mt-4 luxury-text-body" dir={isHebrew ? 'rtl' : 'ltr'}>
+          <p className="mt-4 luxury-text-body" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
             {isHebrew 
               ? 'הדף שחיפשת לא קיים או הוסר. אנא בדוק את הכתובת או חזור לדף הבית.'
               : 'The page you are looking for does not exist or has been removed. Please check the URL or return to the home page.'}

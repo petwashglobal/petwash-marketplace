@@ -158,7 +158,7 @@ export default function SitterEditProfile() {
   const currentPhoto = profilePhoto || profile?.profilePictureUrl;
 
   return (
-    <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-white ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-white/80 backdrop-blur-xl border-b border-purple-100 dark:border-purple-900/30">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">

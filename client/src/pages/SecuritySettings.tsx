@@ -178,7 +178,9 @@ export default function SecuritySettings() {
   const getTrustBadge = (trustScore?: number, riskLevel?: string) => {
     if (trustScore === undefined) return null;
 
-    const level = riskLevel || (trustScore >= 75 ? 'high' : trustScore >= 50 ? 'medium' : 'low');
+    const VALID_TRUST_LEVELS = ['low', 'medium', 'high'] as const;
+    const rawLevel = riskLevel || (trustScore >= 75 ? 'high' : trustScore >= 50 ? 'medium' : 'low');
+    const level = VALID_TRUST_LEVELS.includes(rawLevel as any) ? rawLevel as 'low' | 'medium' | 'high' : 'low';
     const colors = {
       low: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -186,7 +188,7 @@ export default function SecuritySettings() {
     };
 
     return (
-      <Badge className={colors[level as keyof typeof colors]} data-testid={`trust-badge-${level}`}>
+      <Badge className={colors[level]} data-testid={`trust-badge-${level}`}>
         {t(`devices.${level}Trust`)} ({trustScore})
       </Badge>
     );

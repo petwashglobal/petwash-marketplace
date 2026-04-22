@@ -200,7 +200,7 @@ export default function MarketplaceIntelligenceDashboard() {
   return (
     <div
       className="min-h-screen bg-white dark:bg-gray-950 p-4 md:p-8"
-      dir={isHebrew ? 'rtl' : 'ltr'}
+      dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
