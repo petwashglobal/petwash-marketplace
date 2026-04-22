@@ -121,7 +121,7 @@ export function ExpressCheckoutModal({
         const rawPrice = typeof pkg.price === 'string' ? pkg.price : String(pkg.price);
         const amount = parseFloat(rawPrice);
         if (!Number.isFinite(amount) || amount <= 0) {
-          throw new Error('Invalid package price — cannot submit a zero-amount gift card purchase.');
+          throw new Error('Invalid package price — must be a positive number.');
         }
         const body = {
           recipientName: data.recipientName || '',

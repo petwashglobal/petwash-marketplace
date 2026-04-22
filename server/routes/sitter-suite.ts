@@ -1208,7 +1208,7 @@ router.get('/bookings/:bookingId/status', requireAuth, async (req: any, res) => 
         .select({ id: sitterProfiles.id })
         .from(sitterProfiles)
         .where(eq(sitterProfiles.userId, uid));
-      isSitter = sitterProfile != null && booking.sitterId === sitterProfile.id;
+      isSitter = !!sitterProfile && booking.sitterId === sitterProfile.id;
     }
 
     if (!isOwner && !isSitter) {
