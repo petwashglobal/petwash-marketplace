@@ -44,7 +44,13 @@ export interface DispatchOptions {
   channels?: NotificationChannel[];  // defaults to ['inbox', 'email', 'sms']
 }
 
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'noreply@petwash.co.il';
+// SENDGRID_FROM_EMAIL must be set in production. The fallback is intentionally
+// kept for local development only — sending from an unverified domain in
+// production would cause SendGrid to reject outbound mail silently.
+if (process.env.NODE_ENV === 'production' && !process.env.SENDGRID_FROM_EMAIL) {
+  throw new Error('[notificationDispatcher] SENDGRID_FROM_EMAIL env var is required in production');
+}
+const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'noreply@petwash.co.il';
 const FROM_NAME  = 'PetWash™';
 
 /**

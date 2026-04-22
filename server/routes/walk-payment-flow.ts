@@ -199,21 +199,20 @@ router.post('/payments/nayax/webhook-simulate', async (req, res) => {
 /**
  * GET /walks/by-payment/:sessionId - Get booking by payment session
  * Mount: /api → effective path: /api/walks/by-payment/:sessionId
+ *
+ * NOTE: Requires a `payment_session_id` column on the `walk_bookings` table to
+ * correlate a Nayax payment session with the booking it created. Until that
+ * column is added and the webhook populates it, this endpoint returns 501 so
+ * callers know the linkage is not yet wired rather than receiving fake data.
  */
 router.get('/walks/by-payment/:sessionId', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-    res.json({
-      success: true,
-      booking: {
-        bookingId: `WALK-${Date.now()}`,
-        status: 'confirmed',
-        message: 'Your emergency walk is confirmed! Walker will arrive shortly.',
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to fetch booking' });
-  }
+  res.status(501).json({
+    error: 'session_lookup_not_implemented',
+    message:
+      'Payment session lookup is not yet wired. The walk_bookings table needs a ' +
+      'payment_session_id column to correlate Nayax sessions with bookings. ' +
+      'Please check your bookings list at /my-walks instead.',
+  });
 });
 
 export default router;

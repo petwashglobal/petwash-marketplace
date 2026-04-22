@@ -216,25 +216,26 @@ export class NayaxWalkMarketplaceService {
    */
   private static async callNayaxPaymentAPI(request: NayaxPaymentRequest): Promise<NayaxPaymentResponse> {
     try {
-      // In development, simulate successful payment until API keys are provided
-      if (process.env.NODE_ENV === 'development' || !this.NAYAX_API_KEY) {
-        logger.info('[⁦Walk My Pet™⁩ - DEV MODE] Simulating Nayax payment', {
+      if (!this.NAYAX_API_KEY) {
+        // In production, a missing API key is a hard error — never silently succeed.
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error(
+            '[NayaxWalkMarketplace] FATAL: NAYAX_API_KEY is not configured. ' +
+            'Walk payments cannot be processed. Set NAYAX_API_KEY in production secrets.'
+          );
+        }
+
+        // Development only: log prominently so no one thinks real money moved.
+        logger.warn('[Walk My Pet™ - DEV MODE] NAYAX_API_KEY not set — walk payment SIMULATED. This must never run in production.', {
           amount: request.Amount,
-          amountILS: (request.Amount / 100).toFixed(2),
           currency: request.Currency,
-          gateway: 'Nayax Israel (Simulated)',
         });
         
         return {
           Status: 'SUCCESS',
           TransactionId: `SIM_NAYAX_${nanoid(16)}`,
-          Message: 'Payment successful (development mode - awaiting real Nayax API keys)',
+          Message: 'Payment simulated (development mode only — no real charge)',
         };
-      }
-      
-      // Production: Call actual Nayax Israel API
-      if (!this.NAYAX_API_KEY) {
-        throw new Error('NAYAX_API_KEY not configured - contact PetWash Ltd admin');
       }
       
       const response = await fetch(`${this.NAYAX_API_URL}/payment/authorize`, {

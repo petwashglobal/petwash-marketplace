@@ -18,8 +18,8 @@
 
 import crypto from 'crypto';
 import { db } from '../db';
-import { walkBookings, users } from '@shared/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { walkBookings, walkerProfiles, users } from '@shared/schema';
+import { eq, and, sql, gte, desc, isNotNull } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { calculateWalkFees, type WalkFeeCalculation } from '../utils/walkFeeCalculator';
 
@@ -314,49 +314,75 @@ export class EmergencyWalkService {
       radius: '10km',
     });
 
-    // MOCK DATA for development/testing
-    // Production: Query from walkerProfiles table with geospatial index
-    // Example query:
-    // SELECT * FROM walker_profiles
-    // WHERE is_available = true
-    // AND verification_status = 'verified'
-    // AND ST_Distance(location, ST_MakePoint(lng, lat)) < 10000 (meters)
-    // ORDER BY rating DESC, total_walks DESC
-    
-    const mockWalkers: WalkerMatch[] = [
-      {
-        walkerId: 'walker-001',
-        walkerName: 'David Cohen',
-        walkerEmail: 'david@example.com',
-        walkerPhone: '+972501234567',
-        distanceKm: 1.2,
-        rating: 4.8,
-        completedWalks: 156,
-        estimatedArrivalMinutes: 15,
-      },
-      {
-        walkerId: 'walker-002',
-        walkerName: 'Sarah Levi',
-        walkerEmail: 'sarah@example.com',
-        walkerPhone: '+972507654321',
-        distanceKm: 2.5,
-        rating: 4.9,
-        completedWalks: 203,
-        estimatedArrivalMinutes: 25,
-      },
-      {
-        walkerId: 'walker-003',
-        walkerName: 'Yossi Mizrahi',
-        walkerEmail: 'yossi@example.com',
-        walkerPhone: '+972509876543',
-        distanceKm: 0.8,
-        rating: 4.6,
-        completedWalks: 89,
-        estimatedArrivalMinutes: 10,
-      },
-    ];
+    // Query verified, available walkers who have GPS coordinates set.
+    // Using Haversine formula via raw SQL for distance calculation since
+    // PostGIS may not be available on all deployments.
+    const results = await db
+      .select({
+        walkerId: walkerProfiles.walkerId,
+        userId: walkerProfiles.userId,
+        firstName: walkerProfiles.firstName,
+        lastName: walkerProfiles.lastName,
+        averageRating: walkerProfiles.averageRating,
+        totalWalks: walkerProfiles.totalWalks,
+        currentLatitude: walkerProfiles.currentLatitude,
+        currentLongitude: walkerProfiles.currentLongitude,
+      })
+      .from(walkerProfiles)
+      .where(
+        and(
+          eq(walkerProfiles.verificationStatus, 'verified'),
+          eq(walkerProfiles.kycCompleted, true),
+          isNotNull(walkerProfiles.currentLatitude),
+          isNotNull(walkerProfiles.currentLongitude),
+          gte(walkerProfiles.averageRating, '4.0')
+        )
+      )
+      .orderBy(desc(walkerProfiles.averageRating))
+      .limit(20);
 
-    return mockWalkers.filter(walker => walker.rating >= 4.0);
+    if (results.length === 0) {
+      logger.warn('[Emergency Walk] No verified walkers found in DB with location data', { location });
+      return [];
+    }
+
+    // Calculate distances in-process using Haversine formula
+    const SEARCH_RADIUS_KM = 10;
+    const R = 6371; // Earth radius in km
+
+    const nearby: WalkerMatch[] = results
+      .map(walker => {
+        const lat1 = location.latitude * (Math.PI / 180);
+        const lat2 = parseFloat(String(walker.currentLatitude ?? 0)) * (Math.PI / 180);
+        const dLat = lat2 - lat1;
+        const dLon =
+          (parseFloat(String(walker.currentLongitude ?? 0)) - location.longitude) * (Math.PI / 180);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        const distanceKm = 2 * R * Math.asin(Math.sqrt(a));
+        const estimatedArrivalMinutes = Math.round(distanceKm * 3 + 5); // ~20 km/h city speed + 5 min prep
+
+        return {
+          walkerId: walker.walkerId,
+          walkerName: `${walker.firstName} ${walker.lastName}`,
+          walkerEmail: '',  // Not exposed in emergency match for privacy
+          walkerPhone: '',  // Fetched only after booking confirmed
+          distanceKm: parseFloat(distanceKm.toFixed(2)),
+          rating: parseFloat(String(walker.averageRating ?? '0')),
+          completedWalks: walker.totalWalks ?? 0,
+          estimatedArrivalMinutes,
+        };
+      })
+      .filter(w => w.distanceKm <= SEARCH_RADIUS_KM);
+
+    logger.info('[Emergency Walk] Walkers found within radius', {
+      total: results.length,
+      withinRadius: nearby.length,
+      radiusKm: SEARCH_RADIUS_KM,
+    });
+
+    return nearby;
   }
 
   /**

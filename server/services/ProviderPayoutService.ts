@@ -392,18 +392,15 @@ ${bookingRow}
         };
       }
 
-      const bankTransferReference = `IL_ACH_${Date.now()}_${nanoid(8).toUpperCase()}`;
-
-      logger.info('[ProviderPayout] Israeli bank transfer simulated (STUB)', {
-        bankTransferReference,
-        netAmount: payout.netAmount,
-        providerId: provider.id,
-      });
-
-      return {
-        success: true,
-        bankTransferReference,
-      };
+      // BANK_PAYOUT_LIVE=true is set but the real Israeli bank API has not been
+      // implemented yet.  Returning a fabricated reference here would mark the
+      // payout as "paid_out" in the DB without any real money moving — a
+      // financial fraud risk.  Block the transfer until the real API is wired.
+      throw new Error(
+        '[ProviderPayout] Real Israeli bank transfer API is not yet implemented. ' +
+        'Do not set BANK_PAYOUT_LIVE=true until the bank integration is complete. ' +
+        'Payout blocked to prevent false "paid_out" status.'
+      );
 
       // PRODUCTION CODE (commented out):
       /*
