@@ -14,6 +14,10 @@ interface AuthErrorDetails {
 }
 
 export async function trackAuthError(error: any, method: string) {
+  // Read the actual authDomain and projectId from the runtime-injected Firebase config
+  // (window.__FIREBASE_CONFIG__) when available, so error reports reflect what the browser
+  // is actually using rather than a hardcoded fallback that may be stale.
+  const runtimeConfig = typeof window !== 'undefined' ? (window as any).__FIREBASE_CONFIG__ : null;
   const errorDetails: AuthErrorDetails = {
     errorCode: error.code || 'unknown',
     errorMessage: error.message || 'Unknown error',
@@ -21,9 +25,14 @@ export async function trackAuthError(error: any, method: string) {
     timestamp: new Date().toISOString(),
     userAgent: navigator.userAgent,
     currentDomain: window.location.origin,
-    authDomain: 'signinpetwash.firebaseapp.com',
-    projectId: 'signinpetwash',
-    customData: error.customData || null,
+    authDomain: runtimeConfig?.authDomain || 'MISSING_AUTH_DOMAIN',
+    projectId: runtimeConfig?.projectId || 'MISSING_PROJECT_ID',
+    customData: {
+      ...(error.customData || {}),
+      hasRuntimeConfig: !!runtimeConfig,
+      hasApiKey: !!(runtimeConfig?.apiKey && runtimeConfig.apiKey !== 'placeholder-api-key'),
+      firebaseCode: error.code || null,
+    },
   };
 
   logger.error(`[AUTH ERROR TRACKER] ${method} failed:`, errorDetails);

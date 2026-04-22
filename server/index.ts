@@ -972,6 +972,22 @@ if (isProduction) {
     await registerRoutes(app);
     healthState.app.routesReady = true;
 
+    // Log Firebase client config availability immediately after routes are ready.
+    // This makes it trivial to verify in Cloud Run logs whether the browser will
+    // receive a real Firebase API key or fall back to the placeholder, which is
+    // the #1 reason Google sign-in and email/password auth silently fail in prod.
+    const fbApiKey = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '';
+    if (fbApiKey) {
+      console.log('✅ [Firebase] Client config injection ENABLED — browser will receive real API key');
+      console.log(`   authDomain: ${process.env.FIREBASE_AUTH_DOMAIN || 'petwash.co.il'} | projectId: ${process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash'}`);
+    } else {
+      console.error('🚨 [Firebase] NEITHER FIREBASE_WEB_API_KEY NOR VITE_FIREBASE_API_KEY is set in this environment.');
+      console.error('   window.__FIREBASE_CONFIG__ will NOT be injected into the SPA HTML.');
+      console.error('   The browser will fall back to build-time VITE_ vars (usually empty in Cloud Run).');
+      console.error('   Result: all Firebase auth (Google, email/password, phone) will fail with auth/invalid-credential or similar.');
+      console.error('   Fix: add FIREBASE_WEB_API_KEY to Cloud Run environment variables / GCP Secret Manager.');
+    }
+
     // CRITICAL: Unblock API requests as soon as routes are registered.
     // Everything below (static files, cron jobs, notification handlers) is background
     // work and must NOT delay serverReady — they were already labelled non-blocking

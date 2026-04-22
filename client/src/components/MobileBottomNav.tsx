@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'wouter';
 import { Home, Footprints, CalendarDays, MessageCircle, User } from 'lucide-react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 
 const GOLD = '#C5A55A';
@@ -13,7 +14,7 @@ interface NavItem {
   Icon: React.ElementType;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const CUSTOMER_NAV: NavItem[] = [
   { path: '/home',               labelHe: 'בית',       labelEn: 'Home',      Icon: Home },
   { path: '/paw-finder',         labelHe: 'מציאת חיות', labelEn: 'PawFinder', Icon: Footprints },
   { path: '/bookings',           labelHe: 'הזמנות',    labelEn: 'Bookings',  Icon: CalendarDays },
@@ -21,23 +22,32 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/my-account',         labelHe: 'חשבון',     labelEn: 'Account',   Icon: User },
 ];
 
+const PROVIDER_NAV: NavItem[] = [
+  { path: '/provider-os',                   labelHe: 'בית',    labelEn: 'Home',     Icon: Home },
+  { path: '/provider-os/bookings',          labelHe: 'הזמנות', labelEn: 'Bookings', Icon: CalendarDays },
+  { path: '/provider-os/inbox',             labelHe: 'הודעות', labelEn: 'Messages', Icon: MessageCircle },
+  { path: '/my-account',                    labelHe: 'חשבון',  labelEn: 'Account',  Icon: User },
+];
+
 const HIDDEN_PREFIXES = [
   '/signin', '/sign-in', '/login', '/signup', '/sign-up', '/register',
-  '/admin', '/provider-os', '/provider/dashboard', '/provider/bookings',
-  '/sitter-suite/sitter', '/walk-my-pet/walker', '/pettrek/driver',
-  '/internal', '/blocked', '/access-pending', '/provider/pending', '/provider/rejected',
+  '/admin', '/internal', '/blocked', '/access-pending', '/provider/pending', '/provider/rejected',
 ];
 
 export function MobileBottomNav() {
   const [location] = useLocation();
   const { user, loading } = useFirebaseAuth();
+  const { role, isLoading: roleLoading } = useWhoami();
   const { language } = useLanguage();
   const isRTL = language === 'he' || language === 'ar';
 
-  if (loading || !user) return null;
+  if (loading || roleLoading || !user) return null;
 
   const isHidden = HIDDEN_PREFIXES.some(p => location.startsWith(p));
   if (isHidden) return null;
+
+  const isProvider = role === 'provider';
+  const NAV_ITEMS = isProvider ? PROVIDER_NAV : CUSTOMER_NAV;
 
   return (
     <nav

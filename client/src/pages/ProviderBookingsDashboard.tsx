@@ -12,7 +12,6 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,8 +93,7 @@ export default function ProviderBookingsDashboard() {
   const { data: bookingsData, isLoading, refetch } = useQuery({
     queryKey: ['/api/booking-requests', 'provider'],
     queryFn: async () => {
-      const res = await fetch(getApiUrl('/api/booking-requests?role=provider'));
-      if (!res.ok) throw new Error('Failed to fetch bookings');
+      const res = await apiRequest('/api/booking-requests?role=provider');
       return res.json();
     },
   });
@@ -324,14 +322,7 @@ function PendingBookingCard({
 
   const respondMutation = useMutation({
     mutationFn: async ({ action, data }: { action: 'accept' | 'decline'; data?: any }) => {
-      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/respond`), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action, ...data }),
-      });
-      if (!res.ok) throw new Error('Failed to respond');
+      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/respond`, { action, ...data });
       return res.json();
     },
     onSuccess: (_, { action }) => {
@@ -529,36 +520,29 @@ function UpcomingBookingCard({
 
   const completeMeetGreetMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/meet-greet`), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'complete' }),
-      });
-      if (!res.ok) throw new Error('Failed to complete');
+      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/meet-greet`, { action: 'complete' });
       return res.json();
     },
     onSuccess: () => {
       toast({ title: isHebrew ? 'פגישת היכרות הושלמה!' : 'Meet & Greet completed!' });
       onRefresh();
     },
+    onError: () => {
+      toast({ title: isHebrew ? 'שגיאה' : 'Error', variant: 'destructive' });
+    },
   });
 
   const startServiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/start`), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res.ok) throw new Error('Failed to start');
+      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/start`);
       return res.json();
     },
     onSuccess: () => {
       toast({ title: isHebrew ? 'השירות התחיל!' : 'Service started!' });
       onRefresh();
+    },
+    onError: () => {
+      toast({ title: isHebrew ? 'שגיאה' : 'Error', description: isHebrew ? 'לא ניתן להתחיל את השירות' : 'Failed to start service', variant: 'destructive' });
     },
   });
 
@@ -567,12 +551,7 @@ function UpcomingBookingCard({
 
   const arrivingMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/arriving`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eta: etaMinutes ? `${etaMinutes} דקות` : null }),
-      });
-      if (!res.ok) throw new Error('Failed to notify');
+      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/arriving`, { eta: etaMinutes ? `${etaMinutes} דקות` : null });
       return res.json();
     },
     onSuccess: () => {
@@ -724,18 +703,15 @@ function ActiveBookingCard({
 
   const completeServiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/complete`), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res.ok) throw new Error('Failed to complete');
+      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/complete`);
       return res.json();
     },
     onSuccess: () => {
       toast({ title: isHebrew ? 'השירות הסתיים!' : 'Service completed!' });
       onRefresh();
+    },
+    onError: () => {
+      toast({ title: isHebrew ? 'שגיאה' : 'Error', description: isHebrew ? 'לא ניתן לסיים את השירות' : 'Failed to complete service', variant: 'destructive' });
     },
   });
 
@@ -762,6 +738,8 @@ function ActiveBookingCard({
           <Button
             variant="outline"
             className="flex-1"
+            disabled
+            aria-label={isHebrew ? 'שלח תמונה — בקרוב' : 'Send Photo Update — coming soon'}
             data-testid={`button-photo-update-${booking.requestId}`}
           >
             <Camera className="h-4 w-4 mr-2" />

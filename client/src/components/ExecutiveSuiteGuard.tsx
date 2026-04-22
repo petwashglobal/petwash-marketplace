@@ -1,4 +1,5 @@
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { useWhoami } from "@/auth/useWhoami";
 import { Redirect } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Shield, AlertCircle } from "lucide-react";
@@ -25,9 +26,10 @@ export function ExecutiveSuiteGuard({
   requiredRoles, 
   fallbackPath = "/" 
 }: ExecutiveSuiteGuardProps) {
-  const { user, loading } = useFirebaseAuth();
+  const { user, loading: firebaseLoading } = useFirebaseAuth();
+  const { role: serverRole, isLoading: whoamiLoading } = useWhoami();
 
-  if (loading) {
+  if (firebaseLoading || whoamiLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
         <div className="text-center space-y-4">
@@ -42,7 +44,7 @@ export function ExecutiveSuiteGuard({
     return <Redirect to={`/signin?redirect=${encodeURIComponent(window.location.pathname)}`} />;
   }
 
-  const userRole = (user as any).role || 'user';
+  const userRole = serverRole || 'user';
   const isAdmin = userRole === 'admin' || userRole === 'owner';
   
   if (requiredRoles && requiredRoles.length > 0) {

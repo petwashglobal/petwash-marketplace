@@ -86,7 +86,7 @@ export async function completeEmailLinkSignIn() {
       window.prompt("Please confirm your email for ⁦Pet Wash™⁩ Admin");
     // import { signInWithEmailLink } from "firebase/auth" if you enable this flow
     // await signInWithEmailLink(auth, email!, window.location.href);
-    // window.localStorage.removeItem("pw_admin_pending_email");
+    window.localStorage.removeItem("pw_admin_pending_email");
   }
 }
 

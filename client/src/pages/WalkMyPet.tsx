@@ -809,6 +809,8 @@ export default function WalkMyPet() {
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
+              aria-expanded={showFilters}
+              aria-controls="walk-filters-panel"
               data-testid="button-toggle-filters"
             >
               <Filter className="w-4 h-4 mr-2" />
@@ -817,7 +819,7 @@ export default function WalkMyPet() {
           </div>
 
           {showFilters && (
-            <div className="luxury-glass-panel luxury-shadow-md p-6 mb-8 luxury-animate-slide-up">
+            <div id="walk-filters-panel" className="luxury-glass-panel luxury-shadow-md p-6 mb-8 luxury-animate-slide-up">
               <div className="space-y-6">
                 <div>
                   <Label className="text-lg font-semibold mb-3 block">{t.filters.priceRange}</Label>

@@ -40,6 +40,15 @@ const profileUpdateSchema = z.object({
   email: z.string().email().optional(),
   photoURL: z.string().optional(),
   notificationPreferences: notificationPreferencesSchema,
+  // Additional profile fields
+  gender: z.string().optional(),
+  idNumber: z.string().optional(),
+  carPlate: z.string().optional(),
+  carPlate2: z.string().optional(),
+  emergencyContactName: z.string().optional(),
+  emergencyContactPhone: z.string().optional(),
+  marketingConsent: z.boolean().optional(),
+  twoFactorEnabled: z.boolean().optional(),
 });
 
 const router = Router();
@@ -182,6 +191,8 @@ router.patch('/profile', async (req, res) => {
       address, street, streetNumber, apartment, city, postalCode, country, latitude, longitude,
       addressIsTemporary, temporaryAddress, temporaryLat, temporaryLng, temporaryPostal,
       notificationPreferences,
+      gender, idNumber, carPlate, carPlate2,
+      emergencyContactName, emergencyContactPhone, marketingConsent, twoFactorEnabled,
     } = parseResult.data;
 
     const [existingUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
@@ -212,6 +223,15 @@ router.patch('/profile', async (req, res) => {
     if (temporaryLat !== undefined) updateData.temporaryLat = temporaryLat !== null ? String(temporaryLat) : null;
     if (temporaryLng !== undefined) updateData.temporaryLng = temporaryLng !== null ? String(temporaryLng) : null;
     if (temporaryPostal !== undefined) updateData.temporaryPostal = temporaryPostal;
+    // Extended profile fields
+    if (gender !== undefined) updateData.gender = gender;
+    if (idNumber !== undefined) updateData.idNumber = idNumber;
+    if (carPlate !== undefined) updateData.carPlate = carPlate;
+    if (carPlate2 !== undefined) updateData.carPlate2 = carPlate2;
+    if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
+    if (emergencyContactPhone !== undefined) updateData.emergencyContactPhone = emergencyContactPhone;
+    if (marketingConsent !== undefined) updateData.marketingConsent = marketingConsent;
+    if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = twoFactorEnabled;
 
     if (Object.keys(updateData).length > 0) {
       if (existingUser) {

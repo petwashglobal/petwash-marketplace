@@ -83,6 +83,12 @@ export interface BookingCalendarEvent {
   customerName?: string;
   providerName?: string;
   petName?: string;
+  /** Both-party calendar sync: include provider and customer email as attendees.
+   *  Google Calendar will automatically send invitation emails so the event
+   *  appears on each party's personal calendar when they accept.
+   *  Blueprint §11: "Calendar sync must happen only after confirmed."
+   */
+  attendeeEmails?: string[];
 }
 
 class CalendarIntegrationService {
@@ -114,6 +120,11 @@ class CalendarIntegrationService {
         },
         location: event.location || undefined,
         colorId: this.getPlatformColor(event.platform),
+        // Both-party sync: add provider and customer as attendees so Google Calendar
+        // automatically sends invitation emails and the event appears on their calendars.
+        attendees: event.attendeeEmails && event.attendeeEmails.length > 0
+          ? event.attendeeEmails.filter(Boolean).map(email => ({ email, responseStatus: 'needsAction' }))
+          : undefined,
         reminders: {
           useDefault: false,
           overrides: [
@@ -131,6 +142,8 @@ class CalendarIntegrationService {
 
       const result = await calendar.events.insert({
         calendarId: 'primary',
+        // sendUpdates: 'all' causes Google to email invitations to all attendees
+        sendUpdates: event.attendeeEmails && event.attendeeEmails.length > 0 ? 'all' : 'none',
         requestBody: calendarEvent,
       });
 

@@ -23,7 +23,6 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense } from "react";
-import { useLocation } from "wouter";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
@@ -2216,16 +2215,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/marketplace/review/:bookingId">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <MarketplaceReviewPage />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <MarketplaceReviewPage />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/report-problem/:bookingId">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ReportProblemPage />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <ReportProblemPage />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/provider/earnings">

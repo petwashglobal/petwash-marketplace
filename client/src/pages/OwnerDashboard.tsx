@@ -21,7 +21,7 @@ export default function OwnerDashboard() {
   });
 
   const { data: messages, isLoading: loadingMessages } = useQuery<any[]>({
-    queryKey: ['/api/sitter-suite/owner/messages'],
+    queryKey: ['/api/booking-chat/inbox'],
     enabled: !!user && activeTab === 'inbox',
   });
 
@@ -30,7 +30,7 @@ export default function OwnerDashboard() {
     setLocation('/');
   };
 
-  const unreadCount = messages?.filter((m: any) => !m.isRead).length || 0;
+  const unreadCount = messages?.filter((m: any) => (m.unreadCount ?? 0) > 0).length || 0;
 
   const mockLoyaltyData = {
     points: 2450,
@@ -66,7 +66,9 @@ export default function OwnerDashboard() {
               
               <Button className="relative p-3 hover:bg-white dark:hover:bg-white rounded-xl transition-all" data-testid="button-notifications">
                 <Bell className="h-5 w-5 text-gray-700 dark:text-black" />
-                <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full"></span>
+                )}
               </Button>
               
               <div className="flex items-center gap-3 luxury-glass-minimal px-4 py-2">

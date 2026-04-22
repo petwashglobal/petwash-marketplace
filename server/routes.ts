@@ -4167,15 +4167,25 @@ self.addEventListener('notificationclick', (event) => {
   app.patch('/api/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user?.uid || req.firebaseUser?.uid;
-      const updates = req.body;
-      
-      // Remove sensitive fields that shouldn't be updated directly
-      delete updates.id;
-      delete updates.createdAt;
-      delete updates.updatedAt;
-      delete updates.totalSpent;
-      delete updates.washBalance;
-      delete updates.giftCardBalance;
+
+      // Strict allowlist — prevents privilege escalation via role/balance fields
+      const ALLOWED_FIELDS = new Set([
+        'firstName', 'lastName', 'phone', 'dateOfBirth', 'language',
+        'address', 'street', 'streetNumber', 'apartment', 'city', 'postalCode', 'country',
+        'latitude', 'longitude', 'profileImageUrl', 'photoURL',
+        'addressIsTemporary', 'temporaryAddress', 'temporaryLat', 'temporaryLng', 'temporaryPostal',
+        'gender', 'idNumber', 'carPlate', 'carPlate2',
+        'emergencyContactName', 'emergencyContactPhone', 'marketingConsent', 'twoFactorEnabled',
+      ]);
+
+      const updates: Record<string, any> = {};
+      for (const [key, value] of Object.entries(req.body)) {
+        if (ALLOWED_FIELDS.has(key)) updates[key] = value;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
 
       const updatedUser = await storage.updateUser(userId, updates);
       res.json(updatedUser);
@@ -5985,6 +5995,47 @@ self.addEventListener('notificationclick', (event) => {
     } catch (error) {
       logger.error('Admin: Error voiding voucher', error);
       res.status(500).json({ error: 'Failed to void voucher' });
+    }
+  });
+
+  // Admin: Deactivate (void) a voucher — alias used by AdminVouchers.tsx
+  app.post('/api/admin/vouchers/:id/deactivate', requireAdmin, async (req: any, res) => {
+    try {
+      const voucherId = req.params.id;
+      const voucher = await storage.getEVoucher(voucherId);
+      if (!voucher) return res.status(404).json({ error: 'Voucher not found' });
+      if (voucher.status === 'CANCELLED') return res.status(400).json({ error: 'Voucher already deactivated' });
+      await storage.updateEVoucher(voucherId, { status: 'CANCELLED' });
+      logger.info('Admin: Voucher deactivated', { voucherId, admin: req.adminUser?.email });
+      res.json({ success: true, message: 'Voucher deactivated successfully' });
+    } catch (error) {
+      logger.error('Admin: Error deactivating voucher', error);
+      res.status(500).json({ error: 'Failed to deactivate voucher' });
+    }
+  });
+
+  // Admin: Bulk-generate vouchers
+  app.post('/api/admin/vouchers/bulk-generate', requireAdmin, async (req: any, res) => {
+    try {
+      const { count = 1, amount = 100, expirationDays = 365 } = req.body;
+      const qty = Math.min(Math.max(1, parseInt(count)), 500); // cap at 500
+      const voucherService = new VoucherService();
+      const results = [];
+      for (let i = 0; i < qty; i++) {
+        const r = await voucherService.generateVoucher({
+          amount: parseFloat(amount),
+          currency: 'ILS',
+          recipientEmail: null,
+          purchaserUid: req.adminUser?.id,
+          expirationDays,
+        });
+        results.push(r.voucherId);
+      }
+      logger.info('Admin: Bulk vouchers generated', { count: qty, admin: req.adminUser?.email });
+      res.json({ success: true, generated: qty, voucherIds: results });
+    } catch (error) {
+      logger.error('Admin: Error bulk generating vouchers', error);
+      res.status(500).json({ error: 'Failed to bulk generate vouchers' });
     }
   });
 

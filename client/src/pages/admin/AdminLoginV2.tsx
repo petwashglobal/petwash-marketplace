@@ -22,6 +22,7 @@ import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
+import { trackAuthError } from "@/lib/authErrorTracker";
 import { isAdminRole } from "@shared/adminRoles";
 
 const isMobileBrowser = () => {
@@ -138,6 +139,8 @@ export default function AdminLoginV2() {
       const isAccessDenied = error?.message === 'ACCESS_DENIED';
       const msg = isFirebaseCredError
         ? 'Invalid email or password'
+        : extractErrorMessage(error);
+      trackAuthError(error, 'admin_email_password').catch(() => {});
         : isAccessDenied
           ? 'This account does not have admin privileges.'
           : 'Session could not be created. Please try again.';
@@ -251,6 +254,7 @@ export default function AdminLoginV2() {
       }
     } catch (error: any) {
       setBiometricStatus("error");
+      trackAuthError(error, 'admin_biometric').catch(() => {});
       toast({
         title: "Biometric Authentication Failed",
         description: "Biometric sign-in failed. Please use email and password.",
@@ -291,6 +295,7 @@ export default function AdminLoginV2() {
         setIsGoogleLoading(false);
         return;
       }
+      trackAuthError(error, 'admin_google').catch(() => {});
       toast({
         title: "Google Sign-In Failed",
         description: "Google sign-in failed. Please try again.",

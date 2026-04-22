@@ -10,14 +10,19 @@ const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
 const INSTAGRAM_CLIENT_ID = process.env.INSTAGRAM_CLIENT_ID;
 const INSTAGRAM_CLIENT_SECRET = process.env.INSTAGRAM_CLIENT_SECRET;
 const COOKIE_SECRET: string = process.env.COOKIE_SECRET ?? (() => {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('[social-oauth] COOKIE_SECRET env var must be set in production');
-  }
-  // Dev/staging: generate a per-process ephemeral secret so it is never a
-  // guessable constant. Sessions won't survive server restarts in dev — that
-  // is acceptable. Set COOKIE_SECRET in your .env to make them persistent.
   const ephemeral = crypto.randomBytes(32).toString('hex');
-  logger.warn('[social-oauth] COOKIE_SECRET not set — using ephemeral per-process key (dev only). Set COOKIE_SECRET in .env for persistent sessions.');
+  if (process.env.NODE_ENV === 'production') {
+    // Do NOT throw — a module-level throw here causes the entire routes.ts import
+    // to reject, which sets serverReady=false permanently and blocks ALL routes
+    // (including /api/auth/session and /api/users/create-profile) not just social OAuth.
+    // Use an ephemeral key so the module loads and other routes remain available.
+    // Social OAuth state cookies will not survive process restarts until COOKIE_SECRET
+    // is set — set it immediately in Cloud Run env vars.
+    console.error('[social-oauth] CRITICAL: COOKIE_SECRET is not set in production. ' +
+      'Social OAuth state verification will not survive restarts. Set COOKIE_SECRET immediately.');
+  } else {
+    logger.warn('[social-oauth] COOKIE_SECRET not set — using ephemeral per-process key (dev only). Set COOKIE_SECRET in .env for persistent sessions.');
+  }
   return ephemeral;
 })();
 

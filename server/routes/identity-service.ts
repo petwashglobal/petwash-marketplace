@@ -37,7 +37,20 @@ if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
   logger.error("[Identity] ⚠️  CRITICAL: JWT_SECRET or JWT_REFRESH_SECRET not set in environment!");
   logger.error("[Identity] ⚠️  This is a SECURITY VULNERABILITY in production!");
   logger.error("[Identity] ⚠️  Set JWT_SECRET and JWT_REFRESH_SECRET environment variables immediately");
-  throw new Error("JWT secrets must be configured in production");
+  if (process.env.NODE_ENV !== 'development') {
+    // Do NOT throw — a module-level throw here causes the entire routes.ts import
+    // to reject, setting serverReady=false permanently and blocking ALL routes
+    // (including /api/auth/session and /api/users/create-profile) not just this module.
+    // Install a poison-pill so only identity-service routes degrade; everything else serves normally.
+    // Set JWT_SECRET and JWT_REFRESH_SECRET in Cloud Run env vars immediately.
+    logger.error("[Identity] /api/identity/* routes are disabled until these env vars are set.");
+    router.use((_req: any, res: any) => res.status(503).json({
+      error: 'SERVICE_MISCONFIGURED',
+      message: 'JWT_SECRET and JWT_REFRESH_SECRET not configured. Contact system administrator.',
+    }));
+  } else {
+    throw new Error("JWT secrets must be configured in production");
+  }
 }
 
 if (isDevelopment && (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET)) {

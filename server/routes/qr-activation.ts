@@ -17,10 +17,20 @@ const router = Router();
 
 const APP_SESSION_SECRET = (() => {
   const s = process.env.APP_SESSION_SECRET || process.env.SESSION_SECRET;
-  if (!s && process.env.NODE_ENV === 'production') {
-    throw new Error('FATAL: APP_SESSION_SECRET or SESSION_SECRET must be set in production');
+  if (!s) {
+    if (process.env.NODE_ENV === 'production') {
+      // Do NOT throw — a module-level throw here causes the entire routes.ts import
+      // to reject, setting serverReady=false permanently and blocking ALL routes
+      // (including /api/auth/session and /api/users/create-profile) not just this module.
+      // Use an ephemeral key so the module loads and other routes remain available.
+      // QR activation state tokens will not survive process restarts until the secret is set.
+      // Set APP_SESSION_SECRET in Cloud Run env vars immediately.
+      console.error('[qr-activation] CRITICAL: APP_SESSION_SECRET or SESSION_SECRET is not set in production. ' +
+        'QR activation tokens will not survive restarts. Set APP_SESSION_SECRET immediately.');
+    }
+    return crypto.randomBytes(32).toString('hex'); // ephemeral fallback (dev and misconfigured prod)
   }
-  return s || crypto.randomBytes(32).toString('hex'); // dev-only random fallback
+  return s;
 })();
 const ACTIVATION_TOKEN_TTL_SECONDS = 120;  // 2 min window to tap "Start"
 const QR_MAX_AGE_SECONDS = 90;             // dynamic QR only

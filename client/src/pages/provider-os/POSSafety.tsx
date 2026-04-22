@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -32,11 +32,26 @@ export default function POSSafety() {
   // Block state
   const [blockSearch, setBlockSearch] = useState('');
   const [blockReason, setBlockReason] = useState('');
-  const [blockedClients, setBlockedClients] = useState<{ name: string; reason: string; date: string }[]>([
-    { name: 'Anonymous Client', reason: 'Threatening behavior', date: 'Feb 2026' }
-  ]);
+  const [blockedClients, setBlockedClients] = useState<{ name: string; reason: string; date: string }[]>([]);
+  const [blockSubmitting, setBlockSubmitting] = useState(false);
   const [blockAddress, setBlockAddress] = useState('');
   const [blockedAddresses, setBlockedAddresses] = useState<string[]>([]);
+
+  // Fetch existing blocked clients on mount
+  useEffect(() => {
+    fetch('/api/provider-dashboard/v2/blocked-clients', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data?.blockedClients)) {
+          setBlockedClients(data.blockedClients.map((c: any) => ({
+            name: c.clientIdentifier,
+            reason: c.reason || 'Not specified',
+            date: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+          })));
+        }
+      })
+      .catch(() => {/* non-critical */});
+  }, []);
 
   // Safety settings
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -54,17 +69,48 @@ export default function POSSafety() {
       toast({ title: 'Please fill in incident type and description', variant: 'destructive' }); return;
     }
     setReportSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setReportSubmitting(false);
-    toast({ title: 'Report submitted', description: 'Our safety team will review your report within 24 hours.' });
-    setReportIncidentType(''); setReportBookingRef(''); setReportDescription('');
+    try {
+      const res = await fetch('/api/provider-dashboard/v2/safety-report', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          incidentType: reportIncidentType,
+          bookingRef: reportBookingRef,
+          description: reportDescription,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Report submission failed');
+      toast({ title: 'Report submitted', description: 'Our safety team will review your report within 24 hours.' });
+      setReportIncidentType(''); setReportBookingRef(''); setReportDescription('');
+    } catch (err: any) {
+      toast({ title: 'Failed to submit report', description: err.message || 'Please try again', variant: 'destructive' });
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
-  const handleBlockClient = () => {
+  const handleBlockClient = async () => {
     if (!blockSearch) { toast({ title: 'Enter client name or ID', variant: 'destructive' }); return; }
-    setBlockedClients(prev => [...prev, { name: blockSearch, reason: blockReason || 'Not specified', date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) }]);
-    setBlockSearch(''); setBlockReason('');
-    toast({ title: 'Client blocked', description: 'This client can no longer book with you.' });
+    setBlockSubmitting(true);
+    try {
+      const res = await fetch('/api/provider-dashboard/v2/block-client', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientIdentifier: blockSearch, reason: blockReason || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Block failed');
+      setBlockedClients(prev => [...prev, { name: blockSearch, reason: blockReason || 'Not specified', date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) }]);
+      setBlockSearch(''); setBlockReason('');
+      toast({ title: 'Client blocked', description: 'This client can no longer book with you.' });
+    } catch (err: any) {
+      toast({ title: 'Failed to block client', description: err.message || 'Please try again', variant: 'destructive' });
+    } finally {
+      setBlockSubmitting(false);
+    }
   };
 
   const handleBlockAddress = () => {
@@ -166,8 +212,9 @@ export default function POSSafety() {
               placeholder="Reason (optional)"
               className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
             <button onClick={handleBlockClient}
-              className="w-full py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors">
-              Block Client
+              disabled={blockSubmitting}
+              className="w-full py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60">
+              {blockSubmitting ? 'Blocking...' : 'Block Client'}
             </button>
           </div>
 

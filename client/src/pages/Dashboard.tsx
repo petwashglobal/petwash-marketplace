@@ -5,13 +5,12 @@ import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck } from 'lucide-react';
 import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
 import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
 import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import diamondLogo from '@assets/IMG_3257_1771582024352.png';
 import { apiRequest } from '@/lib/queryClient';
@@ -335,7 +334,7 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
 }
 
 export default function Dashboard() {
-  const { user: firebaseUser, loading } = useFirebaseAuth();
+  const { user: firebaseUser, loading, logout } = useFirebaseAuth();
   const { role: serverRole, isLoading: whoamiLoading } = useWhoami();
   const { language } = useLanguage();
   const [, setLocation] = useLocation();
@@ -343,10 +342,13 @@ export default function Dashboard() {
   const he = language === 'he';
 
   // Providers must use /provider-os — never the customer dashboard
-  if (!whoamiLoading && serverRole === 'provider') {
-    setLocation('/provider-os');
-    return null;
-  }
+  useEffect(() => {
+    if (!whoamiLoading && serverRole === 'provider') {
+      setLocation('/provider-os');
+    }
+  }, [whoamiLoading, serverRole, setLocation]);
+
+  if (!whoamiLoading && serverRole === 'provider') return null;
 
   const sendWalletEmailMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),
@@ -1008,15 +1010,7 @@ export default function Dashboard() {
             className="mb-6"
           >
             <button
-              onClick={async () => {
-                try {
-                  await signOut(auth);
-                  document.cookie = 'pw_session=; Max-Age=0; path=/';
-                  window.location.assign('/');
-                } catch (e) {
-                  window.location.assign('/');
-                }
-              }}
+              onClick={() => logout()}
               className="w-full rounded-xl px-5 py-3.5 flex items-center justify-center gap-2.5 transition-all hover:opacity-80"
               style={{
                 background: '#FFFFFF',
