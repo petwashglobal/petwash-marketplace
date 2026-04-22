@@ -172,7 +172,7 @@ router.post('/payments/nayax/webhook', async (req, res) => {
           const { eq } = await import('drizzle-orm');
           await db
             .update(walkBookings)
-            .set({ paymentSessionId: String(sessionId) } as any)
+            .set({ paymentSessionId: String(sessionId) })
             .where(eq(walkBookings.bookingId, result.bookingId));
           logger.info('[WalkPayment] paymentSessionId stored', { bookingId: result.bookingId, sessionId });
         } catch (linkErr: any) {
@@ -234,7 +234,7 @@ router.get('/walks/by-payment/:sessionId', async (req, res) => {
     const [booking] = await db
       .select()
       .from(walkBookings)
-      .where(eq(walkBookings.paymentSessionId as any, sessionId))
+      .where(eq(walkBookings.paymentSessionId, sessionId))
       .limit(1);
 
     if (!booking) {

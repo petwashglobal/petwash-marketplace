@@ -241,7 +241,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                 <Scissors className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p className="luxury-heading-sm text-gray-500">No groomers found</p>
                 <p className="luxury-text-small text-gray-400 mt-1">Try adjusting your filters</p>
-                <Button className="mt-4 luxury-btn-primary" onClick={() => { setSearchQuery(''); setServiceFilter('all'); setPetFilter('all'); }}>
+                <Button className="mt-4 luxury-btn-primary" onClick={() => { setSearchQuery(''); setServiceFilter('all'); }}>
                   Clear Filters
                 </Button>
               </div>

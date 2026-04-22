@@ -345,9 +345,10 @@ router.get('/bookings', async (req, res) => {
     const sitter = sitterRows.rows ?? (sitterRows as any[]);
     const walks = walkRows.rows ?? (walkRows as any[]);
 
-    // Merge and sort newest first (cap at 50)
+    // Merge, filter out records with no date, and sort newest first (cap at 50)
     const all = [...sitter, ...walks]
-      .sort((a: any, b: any) => new Date(b.check_in ?? 0).getTime() - new Date(a.check_in ?? 0).getTime())
+      .filter((r: any) => r.check_in != null)
+      .sort((a: any, b: any) => new Date(b.check_in).getTime() - new Date(a.check_in).getTime())
       .slice(0, 50);
 
     res.json({ success: true, bookings: all });
