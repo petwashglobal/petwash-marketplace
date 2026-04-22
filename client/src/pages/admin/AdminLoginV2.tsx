@@ -139,11 +139,10 @@ export default function AdminLoginV2() {
       const isAccessDenied = error?.message === 'ACCESS_DENIED';
       const msg = isFirebaseCredError
         ? 'Invalid email or password'
-        : extractErrorMessage(error);
-      trackAuthError(error, 'admin_email_password').catch(() => {});
         : isAccessDenied
           ? 'This account does not have admin privileges.'
-          : 'Session could not be created. Please try again.';
+          : extractErrorMessage(error) || 'Session could not be created. Please try again.';
+      trackAuthError(error, 'admin_email_password').catch(() => {});
       toast({
         title: "Login Failed",
         description: msg,
