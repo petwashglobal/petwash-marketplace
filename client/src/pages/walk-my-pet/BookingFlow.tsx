@@ -269,7 +269,7 @@ export default function WalkBookingFlow() {
         } : {})
       };
 
-      const response = await apiRequest('POST', '/api/walks/book', payload);
+      const response = await apiRequest('POST', '/api/walk-my-pet/walks/book', payload);
       const booking = await response.json();
 
       setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');

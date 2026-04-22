@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { CreditCard, X, Mail, Shield, User, Lock, ChevronRight, Loader2, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 
 import type { WashPackage } from '@shared/schema';
 import type { Language } from '@/lib/i18n';
@@ -98,36 +100,62 @@ export function ExpressCheckoutModal({
   const lang = language || currentLang || 'he';
   const isRtl = ['he', 'ar'].includes(lang);
   const dir = isRtl ? 'rtl' : 'ltr';
+  const { user } = useFirebaseAuth();
+  const [, setLocation] = useLocation();
 
   const expressCheckoutMutation = useMutation({
     mutationFn: async (data: ExpressCheckoutData) => {
-      const endpoint = isGiftCard ? '/api/nayax-checkout' : '/api/express-checkout';
-      const body = isGiftCard ? {
-        packageId: pkg.id,
-        email: data.email,
-        recipientName: data.recipientName,
-        recipientEmail: data.recipientEmail,
-        personalMessage: data.personalMessage,
-        paymentMethod: 'nayax',
-        isGiftCard: true,
-        useFullPrice: true,
-      } : {
-        packageId: pkg.id,
-        email: data.email,
-        paymentMethod: 'nayax',
-        applyMemberDiscount: true,
-      };
-
-      const response = await fetch(getApiUrl(endpoint), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
+      // Authentication is required – both /api/checkout and /api/gift-cards/purchase
+      // enforce requireAuth server-side. Guard here too to give a clear UX message.
+      if (!user) {
+        throw new Error('auth_required');
       }
-      
+
+      if (isGiftCard) {
+        // ── Gift-card purchase ──
+        // Real endpoint: POST /api/gift-cards/purchase (mounted at /api/gift-cards)
+        // Requires Nayax API keys; returns 503 until keys are configured.
+        const price = typeof pkg.price === 'string' ? pkg.price : String(pkg.price);
+        const body = {
+          recipientName: data.recipientName || '',
+          recipientEmail: data.recipientEmail || '',
+          amount: parseFloat(price) || 0,
+          message: data.personalMessage || undefined,
+          address: 'Israel',
+          postcode: '00000',
+          country: 'Israel',
+          deliveryMethod: 'email' as const,
+          senderEmail: data.email || undefined,
+        };
+        const response = await fetch(getApiUrl('/api/gift-cards/purchase'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || err.message || `${response.status}`);
+        }
+        return await response.json();
+      }
+
+      // ── Package checkout ──
+      // Real endpoint: POST /api/checkout (requires Firebase session cookie)
+      // Body: { packageId, paymentMethod }  — email is derived from the auth token server-side.
+      const response = await fetch(getApiUrl('/api/checkout'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageId: pkg.id,
+          paymentMethod: 'credit_card',
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `${response.status}`);
+      }
       return await response.json();
     },
     onSuccess: (data: any) => {
@@ -141,10 +169,16 @@ export function ExpressCheckoutModal({
         onClose();
       }
     },
-    onError: () => {
+    onError: (err: Error) => {
+      if (err.message === 'auth_required') {
+        // User is not signed in – close modal and send to sign-in page
+        onClose();
+        setLocation('/signin');
+        return;
+      }
       toast({
         title: tx('checkoutFailed', lang),
-        description: tx('tryAgain', lang),
+        description: err.message || tx('tryAgain', lang),
         variant: "destructive",
       });
     },
@@ -152,6 +186,12 @@ export function ExpressCheckoutModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      onClose();
+      setLocation('/signin');
+      return;
+    }
     
     if (!termsAccepted) {
       toast({
@@ -161,8 +201,6 @@ export function ExpressCheckoutModal({
       return;
     }
 
-    if (!formData.email.trim()) return;
-    
     expressCheckoutMutation.mutate(formData);
   };
 

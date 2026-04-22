@@ -1163,6 +1163,70 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/sitter-suite/bookings/:bookingId/status
+ * Poll the live status of a single booking by its string bookingId (e.g. SITTER_xxxxxxxxxxxx).
+ * Called every 5 s by BookingFlow.tsx after booking creation so the owner UI can advance
+ * from "pending_match" to "confirmation" the moment the provider accepts.
+ *
+ * Access: authenticated owner OR the assigned sitter (by their sitter profile id).
+ */
+router.get('/bookings/:bookingId/status', requireAuth, async (req: any, res) => {
+  try {
+    const { bookingId } = req.params;
+    const uid: string = req.user?.uid;
+
+    if (!uid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const [booking] = await db
+      .select({
+        bookingId: sitterBookings.bookingId,
+        status: sitterBookings.status,
+        paymentStatus: sitterBookings.paymentStatus,
+        confirmedAt: sitterBookings.confirmedAt,
+        startDate: sitterBookings.startDate,
+        endDate: sitterBookings.endDate,
+        totalChargeCents: sitterBookings.totalChargeCents,
+        ownerId: sitterBookings.ownerId,
+        sitterId: sitterBookings.sitterId,
+      })
+      .from(sitterBookings)
+      .where(eq(sitterBookings.bookingId, bookingId));
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Security: only the booking owner or the assigned sitter may poll this endpoint.
+    const [sitterProfile] = await db
+      .select({ id: sitterProfiles.id })
+      .from(sitterProfiles)
+      .where(eq(sitterProfiles.userId, uid));
+
+    const isOwner = booking.ownerId === uid;
+    const isSitter = sitterProfile != null && booking.sitterId === sitterProfile.id;
+
+    if (!isOwner && !isSitter) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    return res.json({
+      bookingId: booking.bookingId,
+      status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      confirmedAt: booking.confirmedAt,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      totalChargeCents: booking.totalChargeCents,
+    });
+  } catch (error) {
+    logger.error('[Sitter Suite] Error fetching booking status', error);
+    res.status(500).json({ error: 'Failed to fetch booking status' });
+  }
+});
+
+/**
  * GET /api/sitter-suite/bookings - Get user's bookings
  */
 router.get('/bookings', requireAuth, async (req, res) => {
