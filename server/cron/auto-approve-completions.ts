@@ -70,15 +70,14 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         .limit(1);
 
       if (existing.length === 0) {
-        const bookingType: 'sitter' | 'walker' =
-          booking.providerType === 'sitter' ? 'sitter' : 'walker';
-        const contractorType: 'sitter' | 'walker' =
+        // providerType drives both bookingType and contractorType — same mapping rule.
+        const providerRole: 'sitter' | 'walker' =
           booking.providerType === 'sitter' ? 'sitter' : 'walker';
 
         await createEarningRecord({
           contractorId: booking.providerId,
-          contractorType,
-          bookingType,
+          contractorType: providerRole,
+          bookingType: providerRole,
           bookingId: booking.requestId,
           baseAmount: (booking.subtotalCents ?? booking.totalCents) / 100,
           platformFeePercent: 15,
@@ -87,7 +86,7 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         });
       }
 
-      const statusHistory = ((booking.statusHistory as any[]) ?? []);
+      const statusHistory = ((booking.statusHistory as unknown as any[]) ?? []);
       statusHistory.push({
         status: 'completed',
         timestamp: now.toISOString(),
@@ -102,9 +101,9 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           ownerConfirmedAt: now,
           customerApprovedAt: now,
           paymentReleasedAt: now,
-          statusHistory,
+          statusHistory: statusHistory as any, // jsonb column — cast required by Drizzle
           updatedAt: now,
-        } as any)
+        })
         .where(
           and(
             eq(bookingRequests.requestId, booking.requestId),
