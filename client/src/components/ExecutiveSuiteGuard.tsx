@@ -12,6 +12,7 @@ interface ExecutiveSuiteGuardProps {
 }
 
 const ROLE_ACCESS_MAP: Record<string, string[]> = {
+  super_admin: ['admin', 'super_admin', 'owner'],
   ceo: ['admin', 'ceo', 'owner'],
   cfo: ['admin', 'cfo', 'finance', 'owner'],
   finance: ['admin', 'cfo', 'finance', 'owner'],

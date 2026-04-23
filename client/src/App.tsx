@@ -2396,7 +2396,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Phase 12.17 — Cash Reconciliation & Treasury Discipline */}
         <Route path="/treasury">
           {() => (
-            <ExecutiveSuiteGuard>
+            <ExecutiveSuiteGuard requiredRoles={['super_admin', 'finance', 'ceo']}>
               <Suspense fallback={<PageLoader />}>
                 <Treasury />
               </Suspense>
@@ -2407,7 +2407,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Phase 12.18 — Forecasting, Liquidity & Reserve Planning */}
         <Route path="/treasury/forecast">
           {() => (
-            <ExecutiveSuiteGuard>
+            <ExecutiveSuiteGuard requiredRoles={['super_admin', 'finance', 'ceo']}>
               <Suspense fallback={<PageLoader />}>
                 <TreasuryForecast />
               </Suspense>
