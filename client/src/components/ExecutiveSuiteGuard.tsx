@@ -12,14 +12,19 @@ interface ExecutiveSuiteGuardProps {
 }
 
 const ROLE_ACCESS_MAP: Record<string, string[]> = {
-  super_admin: ['admin', 'super_admin', 'owner'],
-  ceo: ['admin', 'ceo', 'owner'],
-  cfo: ['admin', 'cfo', 'finance', 'owner'],
-  finance: ['admin', 'cfo', 'finance', 'owner'],
-  kyc: ['admin', 'kyc_officer', 'compliance', 'owner'],
-  compliance: ['admin', 'compliance_officer', 'compliance', 'owner'],
-  audit: ['admin', 'auditor', 'compliance', 'owner'],
-  enterprise: ['admin', 'executive', 'enterprise_ops', 'owner'],
+  // ── Treasury-sensitive keys: MUST match server/routes/treasury.ts TREASURY_ROLES exactly.
+  // Backend allows ONLY super_admin / finance / ceo — no admin, no owner, no cfo.
+  // Any expansion here beyond those three would let a user past the UI gate but
+  // still get a 403 from the backend, causing a confusing blank page.
+  super_admin: ['super_admin'],
+  finance: ['finance'],
+  ceo: ['ceo'],
+  // ── Other executive sections (not treasury) ──
+  cfo: ['cfo', 'finance'],
+  kyc: ['kyc_officer', 'compliance'],
+  compliance: ['compliance_officer', 'compliance'],
+  audit: ['auditor', 'compliance'],
+  enterprise: ['executive', 'enterprise_ops'],
 };
 
 export function ExecutiveSuiteGuard({ 
@@ -46,15 +51,17 @@ export function ExecutiveSuiteGuard({
   }
 
   const userRole = serverRole || 'user';
-  const isAdmin = userRole === 'admin' || userRole === 'owner';
   
   if (requiredRoles && requiredRoles.length > 0) {
+    // Check role map only — no implicit admin/owner bypass.
+    // For treasury routes the map deliberately lists only the three backend-allowed
+    // roles, so admin/owner/cfo are blocked here AND at the API layer consistently.
     const hasAccess = requiredRoles.some(role => {
       const allowedRoles = ROLE_ACCESS_MAP[role] || [];
       return allowedRoles.includes(userRole);
     });
 
-    if (!hasAccess && !isAdmin) {
+    if (!hasAccess) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black p-4">
           <Card className="max-w-md w-full">

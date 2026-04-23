@@ -7,7 +7,7 @@ import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
 import { kycMemoryProcessor, kycAnomalyDetector } from '../services/KYC2026';
@@ -517,6 +517,29 @@ router.post('/apply', upload.fields([
         error: 'You already have a pending application',
         errorCode: 'APPLICATION_EXISTS'
       });
+    }
+
+    // Shared-email conflict guard: reject if this email is already associated with
+    // a *different* Firebase UID in provider_applications. This catches family/shared
+    // email accounts before the INSERT reaches the DB unique constraint.
+    if (authenticatedUser.email) {
+      const [emailConflict] = await db
+        .select({ userId: providerApplications.userId })
+        .from(providerApplications)
+        .where(
+          and(
+            eq(providerApplications.email, authenticatedUser.email),
+            ne(providerApplications.userId, authenticatedUser.uid)
+          )
+        )
+        .limit(1);
+
+      if (emailConflict) {
+        return res.status(409).json({
+          error: 'This email address is already registered under a different account. Please use a unique email address or contact support.',
+          errorCode: 'EMAIL_CONFLICT',
+        });
+      }
     }
 
     // Upload files to Firebase Storage (use default bucket from initialization — no gs:// prefix)
