@@ -255,6 +255,16 @@ export default function ProviderKycReview() {
     onError: (err: any) => toast({ title: 'Assign failed', description: err.message, variant: 'destructive' }),
   });
 
+  const promoteTraineeMutation = useMutation({
+    mutationFn: () =>
+      apiRequest('POST', `/api/provider-onboarding/admin/applications/${numericId}/promote-trainee`, {}).then(r => r.json()),
+    onSuccess: () => {
+      toast({ title: 'Promoted!', description: 'Trainee has been upgraded to full provider.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-onboarding/admin/applications', applicationId] });
+    },
+    onError: (err: any) => toast({ title: 'Promote failed', description: err.message, variant: 'destructive' }),
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -664,6 +674,27 @@ export default function ProviderKycReview() {
                         <p className="text-muted-foreground mt-1">{app.rejectionReason}</p>
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Trainee → Provider promotion (visible when status=approved) */}
+              {app.status === 'approved' && numericId && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-4 pb-4 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="text-sm text-blue-800 flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 shrink-0" />
+                      <span>If this provider is a <strong>trainee</strong>, you can promote them to a full provider role here.</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-blue-700 hover:bg-blue-800 text-white shrink-0"
+                      onClick={() => promoteTraineeMutation.mutate()}
+                      disabled={promoteTraineeMutation.isPending || promoteTraineeMutation.isSuccess}
+                    >
+                      {promoteTraineeMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
+                      {promoteTraineeMutation.isSuccess ? '✓ Promoted' : 'Promote to Full Provider'}
+                    </Button>
                   </CardContent>
                 </Card>
               )}

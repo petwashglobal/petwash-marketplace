@@ -300,6 +300,31 @@ export const aiChatHourlyLimiter = rateLimit({
   }
 });
 
+// Resubmission upload limiter - token-based upload is IP-throttled to prevent
+// storage abuse. Each distinct IP may attempt at most 10 resubmissions per hour.
+// This is intentionally more generous than the authenticated uploadLimiter because
+// the resubmit endpoint is token-gated (token is single-use), so the real defence
+// is the token atomicity; this limiter stops bulk automated abuse from one origin.
+export const resubmitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const ip = getClientIP(req);
+    return `resubmit:${ip}`;
+  },
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 3600;
+    logger.warn('[Resubmit Rate Limit] Exceeded', { ip: getClientIP(req) });
+    res.status(429).json({
+      error: 'Too many upload attempts',
+      message: 'You have exceeded the resubmission upload limit. Please wait before trying again.',
+      retryAfter,
+    });
+  },
+});
+
 logger.info('Rate limiters initialized');
 logger.info('Rate limits:');
 logger.info(`   - General API: ${isDevelopment ? '1000' : '200'} req/15min per IP (${isDevelopment ? 'dev mode' : 'production'})`);

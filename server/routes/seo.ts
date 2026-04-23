@@ -1,17 +1,54 @@
 import { Router } from 'express';
+import { pool } from '../db';
 import { logger } from '../lib/logger';
 
 const router = Router();
 
+// ── Sitemap helpers ─────────────────────────────────────────────────────────
+
+const LANGUAGES = ['he', 'en', 'ar', 'ru', 'fr', 'es'];
+
+function buildUrlEntry(baseUrl: string, url: string, changefreq: string, priority: string): string {
+  const hreflangs = LANGUAGES
+    .map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}" href="${baseUrl}${url}?lang=${lang}"/>`)
+    .join('\n');
+  return `  <url>
+    <loc>${baseUrl}${url}</loc>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+${hreflangs}
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${url}"/>
+  </url>`;
+}
+
+/** Fetch active station slugs from DB. Never throws — returns [] on any error. */
+async function fetchActiveStationSlugs(): Promise<{ slug: string; name: string }[]> {
+  try {
+    const result = await pool.query(
+      `SELECT
+         COALESCE(slug, 'station-' || id::text) AS slug,
+         name
+       FROM stations
+       WHERE is_active = true
+       ORDER BY name
+       LIMIT 500`
+    );
+    return result.rows;
+  } catch (err: any) {
+    logger.warn('[SEO] Could not fetch active stations for sitemap', { error: err?.message });
+    return [];
+  }
+}
+
 /**
  * GET /sitemap.xml - Dynamic XML sitemap
- * Lists all pages for search engines to crawl
+ * Includes static pages + all active K9000/wash stations so Google can
+ * index every station landing page individually (local SEO boost).
  */
-router.get('/sitemap.xml', (req, res) => {
+router.get('/sitemap.xml', async (req, res) => {
   const baseUrl = process.env.BASE_URL || 'https://petwash.co.il';
-  
-  const languages = ['he', 'en', 'ar', 'ru', 'fr', 'es'];
-  const pages = [
+
+  const staticPages = [
     { url: '/', changefreq: 'daily', priority: '1.0' },
     { url: '/about', changefreq: 'monthly', priority: '0.8' },
     { url: '/contact', changefreq: 'monthly', priority: '0.7' },
@@ -38,22 +75,36 @@ router.get('/sitemap.xml', (req, res) => {
     { url: '/accessibility', changefreq: 'monthly', priority: '0.4' },
   ];
 
+  // Pull active stations from DB so each station gets its own indexable URL
+  const stations = await fetchActiveStationSlugs();
+
+  const staticEntries = staticPages
+    .map(p => buildUrlEntry(baseUrl, p.url, p.changefreq, p.priority))
+    .join('\n');
+
+  const stationEntries = stations
+    .map(s => buildUrlEntry(baseUrl, `/stations/${s.slug}`, 'weekly', '0.7'))
+    .join('\n');
+
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${pages.map(page => `  <url>
-    <loc>${baseUrl}${page.url}</loc>
-    <changefreq>${page.changefreq}</changefreq>
-    <priority>${page.priority}</priority>
-${languages.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}" href="${baseUrl}${page.url}?lang=${lang}"/>`).join('\n')}
-    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${page.url}"/>
-  </url>`).join('\n')}
+${staticEntries}
+${stationEntries}
 </urlset>`;
 
-  res.header('Content-Type', 'application/xml');
+  res.set({
+    'Content-Type': 'application/xml',
+    // Cache for 1 hour — fresh enough for crawlers, avoids DB hit per bot request
+    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+  });
   res.send(sitemap);
-  
-  logger.info('Sitemap served', { userAgent: req.headers['user-agent'] });
+
+  logger.info('Sitemap served', {
+    staticPages: staticPages.length,
+    stationPages: stations.length,
+    userAgent: req.headers['user-agent'],
+  });
 });
 
 /**

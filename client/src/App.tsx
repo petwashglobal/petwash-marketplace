@@ -323,6 +323,7 @@ const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
+const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
@@ -1765,6 +1766,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {(params) => (
             <AdminRouteGuard>
               <ProviderKycReview />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Management KYC analytics dashboard — read-only aggregate metrics */}
+        <Route path="/admin/providers/analytics">
+          {() => (
+            <AdminRouteGuard>
+              <ManagementKycDashboard />
             </AdminRouteGuard>
           )}
         </Route>

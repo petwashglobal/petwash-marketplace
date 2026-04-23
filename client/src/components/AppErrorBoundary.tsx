@@ -13,6 +13,37 @@ interface State {
   errorInfo?: { componentStack: string };
 }
 
+/** Collect lightweight session context without blocking the error boundary. */
+function collectSessionContext() {
+  try {
+    const nav = navigator as any;
+    return {
+      url: typeof window !== "undefined" ? window.location.href : "",
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      // Network information (supported in Chrome/Edge; undefined elsewhere)
+      connectionType: nav?.connection?.effectiveType ?? nav?.connection?.type ?? undefined,
+      // Firebase UID from local storage / session storage (best-effort, no blocking)
+      userId: (() => {
+        try {
+          // Firebase stores user data under keys like `firebase:authUser:*`
+          const key = Object.keys(localStorage).find(k => k.startsWith("firebase:authUser:"));
+          if (!key) return undefined;
+          const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+          return parsed?.uid ?? undefined;
+        } catch {
+          return undefined;
+        }
+      })(),
+      // User role from PetWash localStorage (if stored)
+      userRole: localStorage.getItem("pw_role") ?? undefined,
+      // Language preference
+      language: localStorage.getItem("pw_lang") ?? undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export class AppErrorBoundary extends Component<Props, State> {
   state: State = { error: undefined, errorInfo: undefined };
 
@@ -22,7 +53,9 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
     this.setState({ error, errorInfo });
-    
+
+    const context = collectSessionContext();
+
     // Log to server — /api/errors/log is the correct endpoint
     fetch(getApiUrl("/api/errors/log"), {
       method: "POST",
@@ -32,9 +65,8 @@ export class AppErrorBoundary extends Component<Props, State> {
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
-        url: typeof window !== "undefined" ? window.location.href : "",
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
         timestamp: new Date().toISOString(),
+        ...context,
       }),
     }).catch(() => {
       // Silent fail - don't throw in error boundary
