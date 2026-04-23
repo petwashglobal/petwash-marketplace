@@ -51,7 +51,9 @@ CREATE TABLE IF NOT EXISTS treasury_settings (
   last_modified_by_uid      VARCHAR(128)
 );
 
--- Ensure only one row ever exists
+-- Singleton constraint: only one row may exist in this table.
+-- The partial unique index on the constant expression (true) is a PostgreSQL idiom
+-- that evaluates to a single-value index, effectively preventing a second INSERT.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_treasury_settings_singleton
   ON treasury_settings ((true));
 

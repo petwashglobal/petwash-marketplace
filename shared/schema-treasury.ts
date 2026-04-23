@@ -55,7 +55,7 @@ export const treasurySettings = pgTable('treasury_settings', {
 
   /** Israeli bank name (e.g. 'Mizrahi-Tefahot') */
   bankName: varchar('bank_name', { length: 80 }).notNull(),
-  /** Israeli bank code (3 digits, e.g. '20' for Mizrahi-Tefahot) */
+  /** Israeli bank code (e.g. '20' for Mizrahi-Tefahot; up to 10 chars to accommodate edge cases) */
   bankCode: varchar('bank_code', { length: 10 }).notNull(),
   /** Branch number (e.g. '422') */
   branchNumber: varchar('branch_number', { length: 10 }).notNull(),
