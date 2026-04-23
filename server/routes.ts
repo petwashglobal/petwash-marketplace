@@ -5286,87 +5286,96 @@ self.addEventListener('notificationclick', (event) => {
       const discountAmount = (Number(pkg.price) * discount) / 100;
       const finalPrice = Number(pkg.price) - discountAmount;
 
-      // For now, simulate payment success (integrate with Nayax later)
+      // REAL PAYMENT: Create a pending wash history record, then initiate a Nayax
+      // hosted payment session.  Wash balance is NOT awarded here — it is awarded
+      // only when the Nayax webhook confirms payment at
+      // POST /api/webhooks/nayax/checkout-payment.
       if (paymentMethod === 'credit_card' || paymentMethod === 'nayax') {
-        // Award loyalty points: 1 point per ILS spent (rounded)
-        const pointsEarned = Math.floor(finalPrice);
-        
-        // TRUE ATOMIC: Use SQL-level increments to prevent race conditions
-        // Database performs the addition, not JavaScript (prevents concurrent overwrites)
-        await db
-          .update(users)
-          .set({
-            washBalance: sql`${users.washBalance} + ${pkg.washCount}`, // SQL-level increment
-            totalSpent: sql`CAST(${users.totalSpent} AS DECIMAL) + ${finalPrice}`, // SQL-level increment
-            loyaltyPoints: sql`${users.loyaltyPoints} + ${pointsEarned}`, // SQL-level increment
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, userId));
-
-        // Fetch updated balances for logging
-        const updatedUser = await storage.getUser(userId);
-
-        logger.info(`Package purchased: ${pkg.washCount} washes, ${pointsEarned} loyalty points awarded`, {
-          userId,
-          packageId,
-          finalPrice,
-          pointsEarned,
-          newWashBalance: updatedUser?.washBalance,
-          newPointsBalance: updatedUser?.loyaltyPoints,
-          newTotalSpent: updatedUser?.totalSpent
-        });
-
-        // Record wash history
-        const washHistory = await storage.createWashHistory({
+        // Create pending wash history — status = 'pending' until webhook confirms.
+        const pendingWashHistory = await storage.createWashHistory({
           userId,
           packageId,
           washCount: pkg.washCount,
           originalPrice: pkg.price,
           discountApplied: String(discount),
           finalPrice: String(finalPrice),
-          paymentMethod
+          paymentMethod: paymentMethod || 'credit_card',
+          status: 'pending',
         });
 
-        // Log ALL discount usage to loyalty ledger for audit trail
-        if (discount > 0 && discountAmount > 0) {
-          if (discountType === 'birthday_coupon' && birthdayCoupon.birthdayYear) {
-            // Use birthday coupon specific logging with birthdayYear
-            const { markBirthdayCouponUsed } = await import('./birthday-coupon');
-            await markBirthdayCouponUsed(
-              userId, 
-              washHistory.id.toString(), 
-              discountAmount,
-              Number(pkg.price),
-              finalPrice,
-              packageId,
-              birthdayCoupon.birthdayYear
-            );
-          } else {
-            // Standard discount logging
-            const { db } = await import('./lib/firebase-admin');
-            await db.collection('users').doc(userId).collection('loyalty_ledger').doc(washHistory.id.toString()).set({
-              orderId: washHistory.id.toString(),
-              amount: discountAmount,
-              discountPercent: discount,
-              discountType,
-              kycType: kycDiscount.type || null,
-              timestamp: new Date(),
-              type: 'discount_applied',
-              packageId,
-              originalPrice: Number(pkg.price),
-              finalPrice
-            });
-            logger.info(`Discount logged: ${discountType} (${discount}%) - ₪${discountAmount.toFixed(2)}`);
-          }
+        // Persist discount metadata for the webhook to pick up on confirmation.
+        // Stored in Firestore so the webhook (separate process) can read it.
+        try {
+          const { db: adminDb } = await import('./lib/firebase-admin');
+          await adminDb.collection('checkout_sessions').doc(String(pendingWashHistory.id)).set({
+            userId,
+            packageId,
+            washHistoryId: pendingWashHistory.id,
+            washCount: pkg.washCount,
+            originalPrice: Number(pkg.price),
+            discountAmount,
+            discountPercent: discount,
+            discountType,
+            finalPrice,
+            kycType: kycDiscount.type || null,
+            birthdayYear: birthdayCoupon.birthdayYear || null,
+            hasUsedNewMemberDiscount: (user?.isClubMember && !user?.hasUsedNewMemberDiscount) || false,
+            createdAt: new Date(),
+          });
+        } catch (fsErr: any) {
+          logger.warn('[Checkout] Firestore session metadata write failed (non-blocking)', { error: fsErr.message, userId });
         }
+
+        // Initiate Nayax hosted payment session.
+        const { NayaxOnlinePaymentService } = await import('./services/NayaxOnlinePaymentService');
+        const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+        const sessionResult = await NayaxOnlinePaymentService.createPaymentSession({
+          bookingId: `checkout_${pendingWashHistory.id}`,
+          bookingNumber: `WASH-${pendingWashHistory.id}`,
+          amountCents: Math.round(finalPrice * 100),
+          customerEmail: user?.email || undefined,
+          description: `PetWash™ — ${pkg.washCount} washes package`,
+          returnUrl: `${appUrl}/packages/success?ref=${pendingWashHistory.id}`,
+          cancelUrl: `${appUrl}/packages?cancelled=1`,
+          webhookUrl: `${appUrl}/api/webhooks/nayax/checkout-payment`,
+        });
+
+        if (!sessionResult.success) {
+          // Roll back the pending record so it doesn't orphan.
+          try {
+            const { washHistory: washHistoryTable } = await import('@shared/schema');
+            await db.update(washHistoryTable)
+              .set({ status: 'cancelled' })
+              .where(eq(washHistoryTable.id, pendingWashHistory.id));
+          } catch (_) { /* best-effort rollback */ }
+          logger.error('[Checkout] Payment session creation failed', {
+            userId, packageId, error: sessionResult.error,
+          });
+          return res.status(502).json({
+            message: 'Payment gateway unavailable. Please try again.',
+            messageHe: 'שגיאה בשער התשלום. אנא נסה שוב.',
+            errorCode: 'PAYMENT_SESSION_FAILED',
+          });
+        }
+
+        logger.info('[Checkout] Payment session created — awaiting Nayax confirmation', {
+          userId, packageId, pendingId: pendingWashHistory.id,
+          sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
+        });
 
         res.json({
           success: true,
-          message: "Purchase successful",
-          washesAdded: pkg.washCount,
-          amountPaid: finalPrice,
+          requiresRedirect: true,
+          paymentUrl: sessionResult.paymentUrl,
+          sessionId: sessionResult.sessionId,
+          pendingId: pendingWashHistory.id,
+          demoMode: sessionResult.demoMode,
+          amount: finalPrice,
           discountApplied: discount,
-          discountType
+          discountType,
+          message: sessionResult.demoMode
+            ? 'Demo mode — complete the demo payment to receive your washes.'
+            : 'Redirecting to secure payment page...',
         });
       } else {
         res.status(400).json({ message: "Invalid payment method" });

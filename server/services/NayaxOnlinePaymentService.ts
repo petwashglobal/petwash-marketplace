@@ -59,6 +59,13 @@ export interface NayaxPaymentSessionParams {
   description: string;
   returnUrl?: string;
   cancelUrl?: string;
+  /**
+   * Override the Nayax webhook target URL.
+   * Defaults to ${APP_URL}/api/webhooks/nayax/payment (legacy bookings table).
+   * Use /api/webhooks/nayax/checkout-payment for wash-package purchases.
+   * Use /api/webhooks/nayax/booking-request-payment for booking-requests flows.
+   */
+  webhookUrl?: string;
 }
 
 export interface NayaxPaymentSessionResult {
@@ -123,7 +130,7 @@ export class NayaxOnlinePaymentService {
         customer_name: params.customerName,
         success_url: returnUrl,
         cancel_url: cancelUrl,
-        webhook_url: `${APP_URL}/api/webhooks/nayax/payment`,
+        webhook_url: params.webhookUrl || `${APP_URL}/api/webhooks/nayax/payment`,
         language: 'he',
         metadata: {
           booking_id: params.bookingId,

@@ -29,6 +29,8 @@ import { and, eq, lt, sql, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { createEarningRecord } from '../services/payoutLedger';
 import { dispatchNotification } from '../lib/notificationDispatcher';
+import EscrowService from '../services/EscrowService';
+import { writeBookingLedgerEntries } from '../services/bookingLedgerWriter';
 
 const AUTO_APPROVE_AFTER_MS = 24 * 60 * 60 * 1000; // 24 hours
 const BATCH_SIZE = 50;
@@ -93,6 +95,40 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         actorType: 'system',
         note: 'Auto-approved by platform after 24-hour customer inaction. Payment released to provider.',
       });
+
+      // ── Real escrow release: update Firestore escrow to 'released' ──────────
+      try {
+        const escrows = await EscrowService.getEscrowsByBooking(booking.requestId);
+        for (const escrow of escrows) {
+          if (escrow.status === 'held') {
+            await EscrowService.releaseEscrowPayment(escrow.id, 'system_auto_approve');
+            logger.info('[AutoApprove] Firestore escrow released', { requestId: booking.requestId, escrowId: escrow.id });
+          }
+        }
+      } catch (escrowErr: any) {
+        logger.warn('[AutoApprove] Firestore escrow release failed (non-blocking)', {
+          error: escrowErr.message, requestId: booking.requestId,
+        });
+      }
+
+      // ── Write canonical pw_payments + pw_provider_payouts rows ──────────────
+      try {
+        await writeBookingLedgerEntries({
+          requestId: booking.requestId,
+          ownerId: booking.ownerId,
+          providerId: booking.providerId,
+          providerType: booking.providerType,
+          totalCents: booking.totalCents,
+          subtotalCents: booking.subtotalCents ?? booking.totalCents,
+          serviceFeeCents: booking.serviceFeeCents,
+          paymentTransactionId: booking.paymentTransactionId,
+          paymentMethod: booking.paymentMethod,
+        });
+      } catch (ledgerErr: any) {
+        logger.warn('[AutoApprove] Ledger write failed (non-blocking)', {
+          error: ledgerErr.message, requestId: booking.requestId,
+        });
+      }
 
       await db
         .update(bookingRequests)

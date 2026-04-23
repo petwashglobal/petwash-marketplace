@@ -1121,17 +1121,51 @@ router.post('/:requestId/pay', async (req, res) => {
       });
     }
     
-    const nayaxTransactionId = transactionId || `NAYAX-${nanoid(16)}`;
-    
-    // P2-FIX: Escrow creation is FATAL — if it fails, booking is NOT confirmed.
-    // Never silently continue without an escrow: money would be taken with no protection.
+    // Initiate a real Nayax hosted payment session.
+    // Booking transitions to 'payment_pending' here.
+    // It becomes 'confirmed' ONLY when Nayax calls POST /api/webhooks/nayax/booking-request-payment
+    // with event = 'payment.success'.  No fake transaction IDs are generated.
+    const { NayaxOnlinePaymentService } = await import('../services/NayaxOnlinePaymentService');
+    const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+
+    // Fetch owner email for the payment session (optional — enriches Nayax receipt).
+    const [ownerUser] = await db
+      .select({ email: users.email, firstName: users.firstName })
+      .from(users)
+      .where(eq(users.id, booking.ownerId))
+      .limit(1);
+
+    const sessionResult = await NayaxOnlinePaymentService.createPaymentSession({
+      bookingId: requestId,
+      bookingNumber: requestId,
+      amountCents: booking.totalCents,
+      customerEmail: ownerUser?.email || undefined,
+      customerName: ownerUser?.firstName || undefined,
+      description: `PetWash™ ${booking.serviceType} — ${booking.petCount ?? 1} pet(s)`,
+      returnUrl: `${appUrl}/booking/confirmation/${requestId}?payment=success`,
+      cancelUrl: `${appUrl}/booking/confirmation/${requestId}?payment=cancelled`,
+      webhookUrl: `${appUrl}/api/webhooks/nayax/booking-request-payment`,
+    });
+
+    if (!sessionResult.success) {
+      logger.error('[BookingRequests] Nayax payment session creation failed', {
+        requestId, error: sessionResult.error,
+      });
+      return res.status(502).json({
+        error: 'Payment gateway unavailable. Please try again.',
+        errorCode: 'PAYMENT_SESSION_FAILED',
+      });
+    }
+
+    // Create the Firestore escrow record with the session ID as a placeholder.
+    // The webhook will update it to the real transaction ID on confirmation.
     try {
       const escrow = await EscrowService.createEscrowPayment(
         requestId,
         booking.ownerId,
         booking.providerId,
-        booking.totalCents / 100, // Convert cents to ILS
-        nayaxTransactionId,
+        booking.totalCents / 100,
+        sessionResult.sessionId || `SESSION-${requestId}`, // placeholder until real txId
         {
           serviceType: booking.serviceType,
           providerType: booking.providerType,
@@ -1139,134 +1173,56 @@ router.post('/:requestId/pay', async (req, res) => {
           endDate: booking.endDate,
         }
       );
-      logger.info('[BookingRequests] Escrow created via EscrowService', {
-        requestId,
-        escrowId: escrow.id,
-        amount: booking.totalCents / 100,
-        holdUntil: escrow.holdUntil,
+      logger.info('[BookingRequests] Escrow record created (pending payment confirmation)', {
+        requestId, escrowId: escrow.id, amount: booking.totalCents / 100,
       });
     } catch (escrowError: any) {
-      logger.error('[BookingRequests] Escrow creation FAILED — payment flow aborted, booking NOT confirmed', {
-        error: escrowError.message,
-        requestId,
-        totalCents: booking.totalCents,
-        nayaxTransactionId,
+      logger.error('[BookingRequests] Escrow creation FAILED — aborting payment initiation', {
+        error: escrowError.message, requestId,
       });
       return res.status(500).json({
         error: 'Payment processing failed — escrow could not be established. No charge was made. Please retry.',
         errorCode: 'ESCROW_CREATION_FAILED',
       });
     }
-    
+
+    // Transition booking to payment_pending — NOT confirmed until webhook fires.
     const statusHistory = (booking.statusHistory as any[]) || [];
     statusHistory.push({
-      status: 'confirmed',
+      status: 'payment_pending',
       timestamp: new Date().toISOString(),
-      note: `Payment of ₪${(booking.totalCents / 100).toFixed(2)} received via ${paymentMethod || 'Nayax'}. Held in 72-hour escrow.`,
+      note: `Payment session created via Nayax. Awaiting customer payment of ₪${(booking.totalCents / 100).toFixed(2)}.`,
     });
-    
+
     await db.update(bookingRequests)
       .set({
-        status: 'confirmed',
+        status: 'payment_pending',
         paymentMethod: paymentMethod || 'nayax',
-        paymentTransactionId: nayaxTransactionId,
-        paymentHeldAt: new Date(), // Escrow starts
+        paymentTransactionId: sessionResult.sessionId || null, // session ID stored; real txId comes from webhook
         statusHistory,
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
-    
-    logger.info('[BookingRequests] Payment processed with enterprise integration', {
-      requestId,
-      totalCents: booking.totalCents,
-      paymentMethod,
-      escrowHoldHours: 72,
+
+    logger.info('[BookingRequests] Payment session initiated — awaiting Nayax confirmation', {
+      requestId, sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
     });
 
-    logBookingEvent('payment_held', buildEventPayload({ ...booking, status: 'confirmed' }), {
+    logBookingEvent('payment_initiated', buildEventPayload({ ...booking, status: 'payment_pending' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
-      paymentHeldAt: new Date().toISOString(),
+      paymentInitiatedAt: new Date().toISOString(),
     }).catch(() => {});
 
-    // ── Non-blocking: Google Sheets sync on payment/confirmation ─────────────
-    setImmediate(async () => {
-      try {
-        const { logSitterBooking } = await import('../services/googleSheetsIntegration');
-        await logSitterBooking({
-          bookingId: requestId,
-          customerName: `${booking.ownerFirstName || ''} ${booking.ownerLastName || ''}`.trim() || 'Owner',
-          email: booking.ownerEmail || '',
-          phone: booking.ownerPhone || '',
-          petName: booking.petNames || '',
-          petType: booking.petType || 'pet',
-          sitterName: booking.providerName || booking.providerId || 'Provider',
-          startDate: booking.startDate?.toISOString?.()?.slice(0, 10) || String(booking.startDate),
-          endDate: booking.endDate?.toISOString?.()?.slice(0, 10) || String(booking.endDate),
-          durationDays: booking.totalDays || 1,
-          totalAmount: (booking.totalCents || 0) / 100,
-          status: 'payment_confirmed',
-        });
-      } catch (sheetsErr: any) {
-        logger.warn(`[BookingRequests] Google Sheets sync failed (pay) bookingId=${requestId} reason=${sheetsErr?.message}`);
-      }
-    });
-
-    // ── Both-party Google Calendar sync (blueprint §11) ─────────────────────
-    // Fetch provider and customer emails so both receive a calendar invitation.
-    // The platform creates ONE event and adds both as attendees; Google Calendar
-    // automatically emails them and the event appears on their personal calendars.
-    // Calendar sync is async and non-blocking — never blocks payment confirmation.
-    setImmediate(async () => {
-      try {
-        const [ownerUser, providerUser] = await Promise.all([
-          db.select({ email: users.email, firstName: users.firstName })
-            .from(users).where(eq(users.id, booking.ownerId)).limit(1),
-          db.select({ email: users.email, firstName: users.firstName })
-            .from(users).where(eq(users.id, booking.providerId)).limit(1),
-        ]);
-        const attendeeEmails: string[] = [];
-        if (ownerUser[0]?.email) attendeeEmails.push(ownerUser[0].email);
-        if (providerUser[0]?.email) attendeeEmails.push(providerUser[0].email);
-
-        const petLabel = Array.isArray(booking.petIds) && booking.petIds.length > 0
-          ? `${booking.petCount} pet(s)`
-          : `${booking.petCount || 1} pet(s)`;
-
-        const calResult = await calendarIntegrationService.createBookingEvent({
-          platform: booking.providerType || 'pet-care',
-          bookingId: requestId,
-          title: `🐾 PetWash™ — ${booking.serviceType || booking.providerType} (${petLabel})`,
-          description: `Booking #${requestId}\nService: ${booking.serviceType}\nPets: ${petLabel}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}\n\nView booking: https://petwash.co.il/booking/confirmation/${requestId}`,
-          startTime: new Date(booking.startDate),
-          endTime: new Date(booking.endDate),
-          customerName: ownerUser[0]?.firstName || undefined,
-          providerName: providerUser[0]?.firstName || booking.providerName || undefined,
-          attendeeEmails,
-        });
-
-        if (calResult?.eventId) {
-          await db.update(bookingRequests)
-            .set({
-              platformCalendarEventId: calResult.eventId,
-              calendarAttendeesSynced: attendeeEmails.length > 0,
-              updatedAt: new Date(),
-            } as any)
-            .where(eq(bookingRequests.requestId, requestId));
-          logger.info('[BookingRequests] Calendar event created with attendees', {
-            requestId, eventId: calResult.eventId, attendeeCount: attendeeEmails.length,
-          });
-        }
-      } catch (calErr: any) {
-        logger.warn('[BookingRequests] Calendar sync failed (non-fatal)', { error: calErr.message, requestId });
-      }
-    });
-    
     res.json({
       success: true,
-      status: 'confirmed',
-      escrowHoldHours: 72,
-      timezone: ISRAEL_TIMEZONE,
-      message: 'Payment successful! Your booking is confirmed. Payment held in 72-hour escrow until service completion.',
+      status: 'payment_pending',
+      requiresRedirect: true,
+      paymentUrl: sessionResult.paymentUrl,
+      sessionId: sessionResult.sessionId,
+      demoMode: sessionResult.demoMode,
+      message: sessionResult.demoMode
+        ? 'Demo payment — complete to confirm booking.'
+        : 'Redirecting to secure payment page...',
     });
   } catch (error: any) {
     logger.error('[BookingRequests] Payment error', { error: error.message });
@@ -1872,6 +1828,49 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         ? `Owner confirmed and left ${rating}-star review. Payment of ₪${(booking.subtotalCents / 100).toFixed(2)} released to provider.`
         : `Owner confirmed completion. Payment of ₪${(booking.subtotalCents / 100).toFixed(2)} released to provider.`,
     });
+
+    // ── Real escrow release: update Firestore escrow status to 'released' ────
+    // This keeps Firestore and PostgreSQL in sync.  A DB-only paymentReleasedAt
+    // without the Firestore counterpart would cause admin reconciliation drift.
+    try {
+      const escrows = await EscrowService.getEscrowsByBooking(requestId);
+      for (const escrow of escrows) {
+        if (escrow.status === 'held') {
+          await EscrowService.releaseEscrowPayment(escrow.id, userId);
+          logger.info('[BookingRequests] Firestore escrow released', { requestId, escrowId: escrow.id });
+        }
+      }
+    } catch (escrowReleaseErr: any) {
+      // Non-blocking: DB state is the source of truth; Firestore drift is surfaced
+      // as a 'warn' in admin reconciliation and can be patched by an admin.
+      logger.warn('[BookingRequests] Firestore escrow release failed (non-blocking)', {
+        error: escrowReleaseErr.message, requestId,
+      });
+    }
+
+    // ── Write canonical pw_payments + pw_provider_payouts rows ───────────────
+    // These tables are the financial audit trail.  Without them, the admin
+    // reconciliation report is vacuously clean (no rows = no mismatches).
+    try {
+      const { writeBookingLedgerEntries } = await import('../services/bookingLedgerWriter');
+      await writeBookingLedgerEntries({
+        requestId,
+        ownerId: booking.ownerId,
+        providerId: booking.providerId,
+        providerType: booking.providerType,
+        totalCents: booking.totalCents,
+        subtotalCents: booking.subtotalCents,
+        serviceFeeCents: booking.serviceFeeCents,
+        paymentTransactionId: booking.paymentTransactionId,
+        paymentMethod: booking.paymentMethod,
+      });
+    } catch (ledgerErr: any) {
+      // Non-blocking: missing ledger rows trigger a reconciliation warning,
+      // not a booking failure.  Ops can replay from audit log.
+      logger.warn('[BookingRequests] Ledger write failed (non-blocking)', {
+        error: ledgerErr.message, requestId,
+      });
+    }
     
     await db.update(bookingRequests)
       .set({
@@ -2168,6 +2167,29 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
 
+    // Real Firestore escrow refund — customer always gets full refund on emergency cancel
+    if (refundCents > 0) {
+      setImmediate(async () => {
+        try {
+          const escrows = await EscrowService.getEscrowsByBooking(requestId);
+          for (const escrow of escrows) {
+            if (escrow.status === 'held') {
+              await EscrowService.refundEscrowPayment(
+                escrow.id,
+                `Provider emergency cancel. Reason: ${rawReason}. Full refund: ₪${(refundCents / 100).toFixed(2)}.`,
+                userId,
+              );
+              logger.info('[BookingRequests] Firestore escrow refunded on emergency cancel', { requestId, escrowId: escrow.id });
+            }
+          }
+        } catch (escrowRefundErr: any) {
+          logger.warn('[BookingRequests] Firestore escrow refund failed on emergency cancel (non-blocking)', {
+            error: escrowRefundErr.message, requestId,
+          });
+        }
+      });
+    }
+
     // Wallet/escrow refund to customer (same logic as normal cancel)
     const financeState = (booking as any).financeState as string | null;
     const holdCents = Number((booking as any).walletHoldCents) || 0;
@@ -2352,6 +2374,34 @@ router.post('/:requestId/cancel', async (req, res) => {
         updatedAt: new Date(),
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
+
+    // ── Real escrow refund: update Firestore escrow status to 'refunded' ─────
+    // For card-based bookings, the Firestore escrow document must be updated to
+    // 'refunded' so admin reconciliation shows the correct state.
+    // Wallet-only bookings may have no Firestore escrow; getEscrowsByBooking()
+    // returns [] in that case and this block is a no-op.
+    if (refundCents > 0) {
+      setImmediate(async () => {
+        try {
+          const escrows = await EscrowService.getEscrowsByBooking(requestId);
+          for (const escrow of escrows) {
+            if (escrow.status === 'held') {
+              await EscrowService.refundEscrowPayment(
+                escrow.id,
+                `Booking cancelled by ${cancelledBy}. Tier: ${cancellationTier}. Refund: ₪${(refundCents / 100).toFixed(2)}.`,
+                userId,
+              );
+              logger.info('[BookingRequests] Firestore escrow refunded on cancel', { requestId, escrowId: escrow.id, refundCents });
+            }
+          }
+        } catch (escrowRefundErr: any) {
+          // Non-blocking: Firestore drift surfaced in admin reconciliation as a warn.
+          logger.warn('[BookingRequests] Firestore escrow refund failed on cancel (non-blocking)', {
+            error: escrowRefundErr.message, requestId,
+          });
+        }
+      });
+    }
 
     // ── Domain event: BOOKING_CANCELLED ──────────────────────────────────────
     eventPublisher.publishEvent(
