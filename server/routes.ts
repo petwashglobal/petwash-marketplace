@@ -64,6 +64,7 @@ import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
 import israelComplianceRoutes from "./routes/finance/israel-compliance";
+import treasurySettingsRoutes from "./routes/finance/treasury-settings";
 import adminEscrowReconciliationRoutes, { startEscrowDriftMonitor } from "./routes/admin-escrow-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
@@ -1885,84 +1886,20 @@ self.addEventListener('notificationclick', (event) => {
   // ========================================================================
   const { hashPassword, verifyPassword, getCurrentUser, requireAuth: simpleRequireAuth } = await import('./simpleAuth');
 
-  // POST /api/simple-auth/signup - Register new customer
-  app.post('/api/simple-auth/signup', async (req, res) => {
-    try {
-      const { email, password, firstName, lastName, phone, termsAccepted } = req.body;
-
-      // Validation - provide specific error messages
-      if (!email) {
-        return res.status(400).json({ ok: false, error: 'Email is required' });
-      }
-      if (!password) {
-        return res.status(400).json({ ok: false, error: 'Password is required' });
-      }
-      if (!firstName) {
-        return res.status(400).json({ ok: false, error: 'First name is required' });
-      }
-      if (!lastName) {
-        return res.status(400).json({ ok: false, error: 'Last name is required' });
-      }
-      // CRITICAL: Explicit consent required for GDPR + Israeli Privacy Law 2025 compliance
-      if (!termsAccepted) {
-        return res.status(400).json({ ok: false, error: 'You must accept the terms and conditions' });
-      }
-
-      if (password.length < 8) {
-        return res.status(400).json({ ok: false, error: 'Password must be at least 8 characters' });
-      }
-
-      // Check if email exists
-      const [existingUser] = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.email, email.toLowerCase()))
-        .limit(1);
-
-      if (existingUser) {
-        return res.status(400).json({ ok: false, error: 'Email already registered' });
-      }
-
-      // Hash password
-      const passwordHash = await hashPassword(password);
-
-      // Create user with explicit consent
-      const [newUser] = await db
-        .insert(customers)
-        .values({
-          email: email.toLowerCase(),
-          password: passwordHash,
-          firstName,
-          lastName,
-          phone: phone || null,
-          termsAccepted: true, // Already validated above - user explicitly consented
-          authProvider: 'email',
-          isVerified: false,
-          loyaltyTier: 'new',
-          washBalance: 0,
-        })
-        .returning();
-
-      // Create session
-      if (req.session) {
-        req.session.userId = String(newUser.id);
-      }
-
-      logger.info(`[Simple Auth] ✅ New user registered: ${email}`);
-
-      res.json({
-        ok: true,
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-        }
-      });
-    } catch (error) {
-      logger.error('[Simple Auth] Signup error:', error);
-      res.status(500).json({ ok: false, error: 'Registration failed' });
-    }
+  // POST /api/simple-auth/signup — HARD-DEPRECATED (410 GONE)
+  // This endpoint created rows in the `customers` table with a session-cookie-based
+  // identity that has NO Firebase UID. Those accounts are ghosts: they cannot
+  // authenticate with the Firebase-based platform (loyalty, bookings, payouts, etc.).
+  // No current UI calls this path — the useSimpleAuth hook is dead code.
+  // Canonical registration: Firebase Auth → POST /api/auth/session → POST /api/users/create-profile
+  app.post('/api/simple-auth/signup', (_req, res) => {
+    logger.warn('[SimpleAuth] Deprecated signup endpoint called — returning 410 GONE');
+    res.status(410).json({
+      ok: false,
+      error: 'ENDPOINT_REMOVED',
+      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    });
   });
 
   // POST /api/simple-auth/login - Login with email and password
@@ -5350,87 +5287,96 @@ self.addEventListener('notificationclick', (event) => {
       const discountAmount = (Number(pkg.price) * discount) / 100;
       const finalPrice = Number(pkg.price) - discountAmount;
 
-      // For now, simulate payment success (integrate with Nayax later)
+      // REAL PAYMENT: Create a pending wash history record, then initiate a Nayax
+      // hosted payment session.  Wash balance is NOT awarded here — it is awarded
+      // only when the Nayax webhook confirms payment at
+      // POST /api/webhooks/nayax/checkout-payment.
       if (paymentMethod === 'credit_card' || paymentMethod === 'nayax') {
-        // Award loyalty points: 1 point per ILS spent (rounded)
-        const pointsEarned = Math.floor(finalPrice);
-        
-        // TRUE ATOMIC: Use SQL-level increments to prevent race conditions
-        // Database performs the addition, not JavaScript (prevents concurrent overwrites)
-        await db
-          .update(users)
-          .set({
-            washBalance: sql`${users.washBalance} + ${pkg.washCount}`, // SQL-level increment
-            totalSpent: sql`CAST(${users.totalSpent} AS DECIMAL) + ${finalPrice}`, // SQL-level increment
-            loyaltyPoints: sql`${users.loyaltyPoints} + ${pointsEarned}`, // SQL-level increment
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, userId));
-
-        // Fetch updated balances for logging
-        const updatedUser = await storage.getUser(userId);
-
-        logger.info(`Package purchased: ${pkg.washCount} washes, ${pointsEarned} loyalty points awarded`, {
-          userId,
-          packageId,
-          finalPrice,
-          pointsEarned,
-          newWashBalance: updatedUser?.washBalance,
-          newPointsBalance: updatedUser?.loyaltyPoints,
-          newTotalSpent: updatedUser?.totalSpent
-        });
-
-        // Record wash history
-        const washHistory = await storage.createWashHistory({
+        // Create pending wash history — status = 'pending' until webhook confirms.
+        const pendingWashHistory = await storage.createWashHistory({
           userId,
           packageId,
           washCount: pkg.washCount,
           originalPrice: pkg.price,
           discountApplied: String(discount),
           finalPrice: String(finalPrice),
-          paymentMethod
+          paymentMethod: paymentMethod || 'credit_card',
+          status: 'pending',
         });
 
-        // Log ALL discount usage to loyalty ledger for audit trail
-        if (discount > 0 && discountAmount > 0) {
-          if (discountType === 'birthday_coupon' && birthdayCoupon.birthdayYear) {
-            // Use birthday coupon specific logging with birthdayYear
-            const { markBirthdayCouponUsed } = await import('./birthday-coupon');
-            await markBirthdayCouponUsed(
-              userId, 
-              washHistory.id.toString(), 
-              discountAmount,
-              Number(pkg.price),
-              finalPrice,
-              packageId,
-              birthdayCoupon.birthdayYear
-            );
-          } else {
-            // Standard discount logging
-            const { db } = await import('./lib/firebase-admin');
-            await db.collection('users').doc(userId).collection('loyalty_ledger').doc(washHistory.id.toString()).set({
-              orderId: washHistory.id.toString(),
-              amount: discountAmount,
-              discountPercent: discount,
-              discountType,
-              kycType: kycDiscount.type || null,
-              timestamp: new Date(),
-              type: 'discount_applied',
-              packageId,
-              originalPrice: Number(pkg.price),
-              finalPrice
-            });
-            logger.info(`Discount logged: ${discountType} (${discount}%) - ₪${discountAmount.toFixed(2)}`);
-          }
+        // Persist discount metadata for the webhook to pick up on confirmation.
+        // Stored in Firestore so the webhook (separate process) can read it.
+        try {
+          const { db: adminDb } = await import('./lib/firebase-admin');
+          await adminDb.collection('checkout_sessions').doc(String(pendingWashHistory.id)).set({
+            userId,
+            packageId,
+            washHistoryId: pendingWashHistory.id,
+            washCount: pkg.washCount,
+            originalPrice: Number(pkg.price),
+            discountAmount,
+            discountPercent: discount,
+            discountType,
+            finalPrice,
+            kycType: kycDiscount.type || null,
+            birthdayYear: birthdayCoupon.birthdayYear || null,
+            hasUsedNewMemberDiscount: (user?.isClubMember && !user?.hasUsedNewMemberDiscount) || false,
+            createdAt: new Date(),
+          });
+        } catch (fsErr: any) {
+          logger.warn('[Checkout] Firestore session metadata write failed (non-blocking)', { error: fsErr.message, userId });
         }
+
+        // Initiate Nayax hosted payment session.
+        const { NayaxOnlinePaymentService } = await import('./services/NayaxOnlinePaymentService');
+        const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+        const sessionResult = await NayaxOnlinePaymentService.createPaymentSession({
+          bookingId: `checkout_${pendingWashHistory.id}`,
+          bookingNumber: `WASH-${pendingWashHistory.id}`,
+          amountCents: Math.round(finalPrice * 100),
+          customerEmail: user?.email || undefined,
+          description: `PetWash™ — ${pkg.washCount} washes package`,
+          returnUrl: `${appUrl}/packages/success?ref=${pendingWashHistory.id}`,
+          cancelUrl: `${appUrl}/packages?cancelled=1`,
+          webhookUrl: `${appUrl}/api/webhooks/nayax/checkout-payment`,
+        });
+
+        if (!sessionResult.success) {
+          // Roll back the pending record so it doesn't orphan.
+          try {
+            const { washHistory: washHistoryTable } = await import('@shared/schema');
+            await db.update(washHistoryTable)
+              .set({ status: 'cancelled' })
+              .where(eq(washHistoryTable.id, pendingWashHistory.id));
+          } catch (_) { /* best-effort rollback */ }
+          logger.error('[Checkout] Payment session creation failed', {
+            userId, packageId, error: sessionResult.error,
+          });
+          return res.status(502).json({
+            message: 'Payment gateway unavailable. Please try again.',
+            messageHe: 'שגיאה בשער התשלום. אנא נסה שוב.',
+            errorCode: 'PAYMENT_SESSION_FAILED',
+          });
+        }
+
+        logger.info('[Checkout] Payment session created — awaiting Nayax confirmation', {
+          userId, packageId, pendingId: pendingWashHistory.id,
+          sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
+        });
 
         res.json({
           success: true,
-          message: "Purchase successful",
-          washesAdded: pkg.washCount,
-          amountPaid: finalPrice,
+          requiresRedirect: true,
+          paymentUrl: sessionResult.paymentUrl,
+          sessionId: sessionResult.sessionId,
+          pendingId: pendingWashHistory.id,
+          demoMode: sessionResult.demoMode,
+          amount: finalPrice,
           discountApplied: discount,
-          discountType
+          discountType,
+          message: sessionResult.demoMode
+            ? 'Demo mode — complete the demo payment to receive your washes.'
+            : 'Redirecting to secure payment page...',
         });
       } else {
         res.status(400).json({ message: "Invalid payment method" });
@@ -9476,112 +9422,21 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Customer registration endpoint (public - no auth required)
-  app.post('/api/customer/register', async (req, res) => {
-    try {
-      const {
-        firstName, lastName, email, phone, password,
-        dateOfBirth, country, gender, petType,
-        loyaltyProgram, reminders, marketing, termsAccepted,
-        captchaToken
-      } = req.body;
-
-      if (captchaToken) {
-        const captchaResult = await verifyCaptchaToken(captchaToken, 'register');
-        if (!captchaResult.valid) {
-          logger.warn('[CustomerRegister] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason, source: captchaResult.source });
-          return res.status(403).json({ message: 'Security verification failed. Please try again.' });
-        }
-      } else {
-        return res.status(400).json({ message: 'Security verification token required.' });
-      }
-
-      if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
-        return res.status(400).json({ message: 'Missing required fields' });
-      }
-
-      const existingCustomer = await storage.getCustomerByEmail(email);
-      if (existingCustomer) {
-        return res.status(400).json({ message: 'Customer with this email already exists' });
-      }
-
-      const { scrypt, randomBytes } = await import('crypto');
-      const { promisify } = await import('util');
-      const scryptAsync = promisify(scrypt);
-      const salt = randomBytes(16).toString('hex');
-      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString('hex')}.${salt}`;
-
-      const customerData: InsertCustomer = {
-        firstName, lastName, email, phone,
-        password: hashedPassword,
-        dateOfBirth: dateOfBirth || null,
-        country: country || 'Israel',
-        gender,
-        petType,
-        loyaltyProgram: loyaltyProgram || false,
-        reminders: reminders || false,
-        marketing: marketing || false,
-        termsAccepted: termsAccepted || false,
-        isVerified: false,
-        loyaltyTier: 'new',
-        totalSpent: '0',
-        washBalance: 0
-      };
-
-      const customer = await storage.createCustomer(customerData);
-
-      try {
-        const { sendLuxuryEmail } = await import('./email/luxury-email-service');
-        const { generateCustomerWelcomeEmail } = await import('./email/templates/welcome-customer-signup-2026');
-        const welcomeEmail = generateCustomerWelcomeEmail({
-          firstName, lastName, email,
-          language: country === 'Israel' ? 'he' : 'en',
-          petType: petType || undefined,
-        });
-        sendLuxuryEmail({
-          to: email,
-          subject: welcomeEmail.subject,
-          html: welcomeEmail.html,
-        }).catch(err => logger.error('[CustomerRegister] Welcome email failed', err));
-      } catch (emailErr) {
-        logger.warn('[CustomerRegister] Email service error', emailErr);
-      }
-
-      try {
-        const { logRegistration } = await import('./services/googleSheetsIntegration');
-        await logRegistration({
-          userId: String(customer.id),
-          firstName, lastName, email,
-          phone,
-          country: country || 'Israel',
-          registrationSource: 'customer-signup-form',
-          profilePhotoUrl: '',
-          language: country === 'Israel' ? 'he' : 'en',
-          petType: petType || '',
-          status: 'Active',
-        });
-        logger.info('[CustomerRegister] Logged to Google Sheets', { email });
-      } catch (sheetsErr) {
-        logger.warn('[CustomerRegister] Google Sheets logging failed (non-blocking)', sheetsErr);
-      }
-
-      logger.info('[CustomerRegister] Customer registered successfully', { email, id: customer.id });
-
-      res.status(201).json({
-        message: 'Registration successful',
-        customer: {
-          id: customer.id,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          email: customer.email,
-          loyaltyTier: customer.loyaltyTier
-        }
-      });
-    } catch (error: any) {
-      logger.error('[CustomerRegister] Registration error', error);
-      res.status(500).json({ message: 'Registration failed' });
-    }
+  // HARD-DEPRECATED: POST /api/customer/register
+  // This endpoint created rows in the `customers` table without Firebase Auth,
+  // producing accounts that have no Firebase UID and cannot authenticate with
+  // the rest of the platform. No current UI calls this path — CustomerSignupModal
+  // redirects to /signup which uses the canonical Firebase flow.
+  // Permanently removed: returns 410 GONE so any stale bookmarks or third-party
+  // integrations receive an unambiguous signal to migrate.
+  // Canonical registration path: Firebase Auth → POST /api/auth/session → POST /api/users/create-profile
+  app.post('/api/customer/register', (_req, res) => {
+    logger.warn('[CustomerRegister] Deprecated endpoint called — returning 410 GONE');
+    res.status(410).json({
+      error: 'ENDPOINT_REMOVED',
+      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    });
   });
 
   // Loyalty & Rewards routes - Protected with Firebase auth
@@ -9712,7 +9567,8 @@ self.addEventListener('notificationclick', (event) => {
   // Phase 12.17 — Cash Reconciliation & Treasury Discipline
   // P0-SEC: Added validateFirebaseToken + adminLimiter (was: apiLimiter only — fully unauthenticated).
   // Before: any caller could POST /batches, /batches/:id/mark-paid, /import-bank-transactions etc.
-  // After:  requires valid Firebase ID token; inner requireTreasuryAdmin guard also enforces admin/executive/franchise_owner.
+  // After:  requires valid Firebase ID token; inner requireTreasuryAdmin guard enforces super_admin/finance/ceo only.
+  //         franchise_owner and executive are intentionally excluded — they have scoped finance endpoints.
   const treasuryRoutes = await import('./routes/treasury');
   app.use('/api/treasury', validateFirebaseToken, adminLimiter, treasuryRoutes.default);
   treasuryRoutes.startReconciliationScheduler();
@@ -10380,6 +10236,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
   app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
   app.use('/api/admin/finance/israel-compliance', adminLimiter, israelComplianceRoutes);
+  // Treasury settings — super_admin / finance / ceo only (role enforced inside the router)
+  app.use('/api/admin/finance/treasury', adminLimiter, treasurySettingsRoutes);
   app.use('/api/admin/escrow', adminLimiter, adminEscrowReconciliationRoutes);
   
   // Thank you email route (management use)

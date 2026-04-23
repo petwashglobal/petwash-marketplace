@@ -18,6 +18,7 @@ import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
 import { AIPayoutVerificationService } from "./AIPayoutVerificationService";
 import { FinancialDocumentService } from "./FinancialDocumentService";
+import { TreasuryConfigService } from "./TreasuryConfigService";
 import { dispatchNotifications, buildPayoutIssuedSms } from "./PetWashNotificationEngine";
 
 export class ProviderPayoutService {
@@ -155,17 +156,52 @@ export class ProviderPayoutService {
         netAmount: payout.netAmount,
       });
 
+      // STEP 2: Treasury source validation
+      // Every bank transfer MUST originate from the company's verified treasury account.
+      // If the treasury is not configured, verified, and active, the transfer is blocked.
+      const systemActor = {
+        uid: 'system',
+        email: 'system@petwash.co.il',
+        role: 'system',
+      };
+      const treasuryValidation = await TreasuryConfigService.validatePayoutSource();
+      await TreasuryConfigService.auditPayoutValidation(systemActor, String(payoutId), treasuryValidation);
+
+      if (!treasuryValidation.readyForTransfer) {
+        logger.warn('[ProviderPayout] BLOCKED — treasury not ready for transfer', {
+          payoutId,
+          reason: treasuryValidation.reason,
+          // No bank details in logs
+        });
+
+        await db.update(superAppPayouts)
+          .set({
+            status: 'failed',
+            failureReason: `Treasury not ready: ${treasuryValidation.reason}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(superAppPayouts.id, payoutId));
+
+        return {
+          success: false,
+          error: `Payout blocked: ${treasuryValidation.reason}`,
+        };
+      }
+
       // Process Israeli bank transfer
       const transferResult = await this.processIsraeliBankTransfer(payout, provider);
 
       if (transferResult.success) {
-        // Update status to 'completed'
+        // Update status to 'completed' and stamp treasury_setting_id for reconciliation
         await db.update(superAppPayouts)
           .set({
             status: 'completed',
             bankTransferReference: transferResult.bankTransferReference,
             paidAt: new Date(),
             updatedAt: new Date(),
+            ...(treasuryValidation.treasurySettingId
+              ? { treasurySettingId: treasuryValidation.treasurySettingId }
+              : {}),
           })
           .where(eq(superAppPayouts.id, payoutId));
 

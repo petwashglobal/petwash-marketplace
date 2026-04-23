@@ -66,6 +66,14 @@ const EnvSchema = z.object({
   DOCUMENT_ENCRYPTION_KEY: z.string().min(32).optional()
     .describe("AES-256-GCM master key for provider KYC / biometric document encryption (min 32 chars)"),
 
+  // ===== TREASURY FIELD ENCRYPTION =====
+  // Required in production. Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  // Store in GCP Secret Manager / AWS SSM — never in source code.
+  // Israeli Privacy Protection Regulations (Data Security) 5777-2017, Article 9.
+  TREASURY_FIELD_ENCRYPTION_KEY: z.string().min(64).optional()
+    .describe("AES-256-GCM key (64 hex chars) for encrypting IBAN and account number at rest"),
+
   KYC_SALT: z.string().optional()
     .describe("Salt for KYC hash derivation — required for provider onboarding"),
 
@@ -194,6 +202,9 @@ export function validateEnv(): ValidatedEnv {
   console.log(`   → Document encryption key:  ${env.DOCUMENT_ENCRYPTION_KEY ? '✅ Configured' : '❌ MISSING — provider KYC documents stored UNENCRYPTED in GCS'}`);
   console.log(`   → KYC salt:                 ${env.KYC_SALT ? '✅ Configured' : '❌ MISSING — KYC hash derivation throws at runtime'}`);
 
+  console.log("\n🏦 Treasury / Finance:");
+  console.log(`   → Treasury encryption key:  ${env.TREASURY_FIELD_ENCRYPTION_KEY ? '✅ Configured' : '❌ MISSING — IBAN/account stored UNENCRYPTED in production (FATAL)'}`);
+
   console.log("\n📱 Mobile Auth:");
   console.log(`   → Mobile link secret:       ${env.MOBILE_LINK_SECRET ? '✅ Configured' : '❌ MISSING — mobile one-tap link generation throws when called'}`);
 
@@ -216,6 +227,23 @@ export function validateEnv(): ValidatedEnv {
     throw new Error(
       '[env-validation] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
       'Add it to GCP Secret Manager and redeploy.'
+    );
+  }
+
+  // ── Production hard-stop for treasury field encryption ───────────────────────
+  // TREASURY_FIELD_ENCRYPTION_KEY is required in production to encrypt IBAN and
+  // account number at rest (Israeli Privacy Protection Regulations 5777-2017, Art. 9).
+  // Without it, secretFieldCrypto throws on the first seedFromEnv() call.
+  // We fail fast here rather than at runtime.
+  if (env.NODE_ENV === 'production' && !env.TREASURY_FIELD_ENCRYPTION_KEY) {
+    console.error('\n❌ FATAL: TREASURY_FIELD_ENCRYPTION_KEY is not set in production.');
+    console.error('   Treasury IBAN and account number will not be encrypted at rest.');
+    console.error('   All provider payouts will be BLOCKED until this secret is added.');
+    console.error('   → Generate: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    console.error('   → Set it in GCP Secret Manager and bind to the Cloud Run revision.\n');
+    throw new Error(
+      '[env-validation] TREASURY_FIELD_ENCRYPTION_KEY is required in production. ' +
+      'Add a 64-hex-char key to GCP Secret Manager and redeploy.'
     );
   }
 

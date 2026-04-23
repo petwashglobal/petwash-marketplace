@@ -91,7 +91,7 @@ export async function updateLoyalty(
         SET 
           loyalty_points = GREATEST(0, loyalty_points + ${pointsDelta}),
           updated_at = NOW()
-        WHERE firebase_uid = ${userId}
+        WHERE id = ${userId}
         RETURNING 
           loyalty_points as points,
           email,
@@ -115,7 +115,7 @@ export async function updateLoyalty(
       await tx.execute(sql`
         UPDATE users 
         SET loyalty_tier = ${newTier}
-        WHERE firebase_uid = ${userId}
+        WHERE id = ${userId}
       `);
 
       // Keep wallet_accounts.loyalty_tier in sync — the Prestige Pass card reads
@@ -218,7 +218,7 @@ export async function updateLoyalty(
           SET 
             loyalty_points = GREATEST(0, loyalty_points - ${pointsDelta}),
             updated_at = NOW()
-          WHERE firebase_uid = ${userId}
+          WHERE id = ${userId}
         `);
         
         // Recalculate tier after rollback
@@ -226,7 +226,7 @@ export async function updateLoyalty(
         await db.execute(sql`
           UPDATE users 
           SET loyalty_tier = ${rollbackTier}
-          WHERE firebase_uid = ${userId}
+          WHERE id = ${userId}
         `);
         
         // Log rollback event
@@ -330,7 +330,7 @@ export async function getLoyaltyStatus(userId: string) {
         loyalty_points as points,
         loyalty_tier as tier
       FROM users
-      WHERE firebase_uid = ${userId}
+      WHERE id = ${userId}
     `);
     
     if (!result.rows || result.rows.length === 0) {

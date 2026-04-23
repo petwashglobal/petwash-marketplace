@@ -2,7 +2,7 @@ import { getVertexAIConfig } from '../lib/gemini-client';
 import { Router, type Request, type Response } from 'express';
 import { randomBytes } from 'crypto';
 import { db } from '../db';
-import { eq, desc, and, gte, lte } from 'drizzle-orm';
+import { eq, desc, and, gte, lte, gt } from 'drizzle-orm';
 import { authService } from '../services/AuthService';
 import {
   loyaltyProfiles,
@@ -690,7 +690,7 @@ router.post('/challenges/claim', async (req: AuthenticatedRequest, res: Response
     const userId = req.firebaseUser!.uid;
     const { challengeId } = req.body;
 
-    // Get user challenge
+    // Pre-flight reads (outside transaction)
     const [userChallenge] = await db
       .select()
       .from(userChallenges)
@@ -705,7 +705,6 @@ router.post('/challenges/claim', async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'Challenge not found or not completed' });
     }
 
-    // Get challenge details
     const [challenge] = await db
       .select()
       .from(dailyChallenges)
@@ -716,50 +715,64 @@ router.post('/challenges/claim', async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'Challenge not found' });
     }
 
-    // Update challenge status
-    await db
-      .update(userChallenges)
-      .set({
-        status: 'claimed',
-        claimedAt: new Date(),
-      })
-      .where(and(
-        eq(userChallenges.userId, userId),
-        eq(userChallenges.challengeId, challengeId)
-      ));
-
-    // Award rewards
-    const [profile] = await db
-      .select()
-      .from(loyaltyProfiles)
-      .where(eq(loyaltyProfiles.userId, userId))
-      .limit(1);
-
-    if (profile) {
-      await db
-        .update(loyaltyProfiles)
+    // ── Atomic transaction: mark claimed + award points + log ──
+    // Without this, a crash between status update and points award leaves the
+    // challenge claimed but no points issued (or vice versa on double-submit).
+    await db.transaction(async (tx) => {
+      // 1. Mark as claimed — only if still 'completed' (guard against double-claim)
+      const updated = await tx
+        .update(userChallenges)
         .set({
-          points: profile.points + challenge.pointsReward,
-          lifetimePoints: profile.lifetimePoints + challenge.pointsReward,
-          xp: profile.xp + challenge.xpReward,
-          updatedAt: new Date(),
+          status: 'claimed',
+          claimedAt: new Date(),
         })
-        .where(eq(loyaltyProfiles.userId, userId));
+        .where(and(
+          eq(userChallenges.userId, userId),
+          eq(userChallenges.challengeId, challengeId),
+          eq(userChallenges.status, 'completed'), // idempotent guard
+        ))
+        .returning({ id: userChallenges.id });
 
-      // Log transaction
-      await db.insert(pointsTransactions).values({
-        userId,
-        type: 'bonus',
-        amount: challenge.pointsReward,
-        balance: profile.points + challenge.pointsReward,
-        source: 'challenge_completion',
-        sourceId: challenge.id.toString(),
-        description: `Challenge completed: ${challenge.name}`,
-      });
-    }
+      if (!updated.length) {
+        throw Object.assign(new Error('Challenge already claimed or status changed'), { status: 409 });
+      }
+
+      // 2. Award points + XP
+      const [profile] = await tx
+        .select()
+        .from(loyaltyProfiles)
+        .where(eq(loyaltyProfiles.userId, userId))
+        .limit(1);
+
+      if (profile) {
+        await tx
+          .update(loyaltyProfiles)
+          .set({
+            points: profile.points + challenge.pointsReward,
+            lifetimePoints: profile.lifetimePoints + challenge.pointsReward,
+            xp: profile.xp + challenge.xpReward,
+            updatedAt: new Date(),
+          })
+          .where(eq(loyaltyProfiles.userId, userId));
+
+        // 3. Log transaction (same transaction — no orphan logs)
+        await tx.insert(pointsTransactions).values({
+          userId,
+          type: 'bonus',
+          amount: challenge.pointsReward,
+          balance: profile.points + challenge.pointsReward,
+          source: 'challenge_completion',
+          sourceId: challenge.id.toString(),
+          description: `Challenge completed: ${challenge.name}`,
+        });
+      }
+    });
 
     res.json({ message: 'Reward claimed successfully', reward: { points: challenge.pointsReward, xp: challenge.xpReward } });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 409) {
+      return res.status(409).json({ error: error.message });
+    }
     logger.error('Error claiming challenge reward:', error);
     res.status(500).json({ error: 'Failed to claim challenge reward' });
   }
@@ -801,7 +814,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
     const userId = req.firebaseUser!.uid;
     const { rewardId } = req.body;
 
-    // Get reward details
+    // Pre-flight reads (outside transaction — fast validation before we acquire locks)
     const [reward] = await db
       .select()
       .from(rewardsMarketplace)
@@ -812,7 +825,6 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
       return res.status(404).json({ error: 'Reward not found or unavailable' });
     }
 
-    // Check user points
     const [profile] = await db
       .select()
       .from(loyaltyProfiles)
@@ -827,58 +839,77 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
       return res.status(400).json({ error: 'Insufficient points' });
     }
 
-    // Check stock
     if (reward.stock !== null && reward.stock <= 0) {
       return res.status(400).json({ error: 'Reward out of stock' });
     }
 
-    // Create redemption
+    // ── Atomic transaction: deduct points + create redemption + decrement stock ──
+    // All three writes succeed together or all roll back. Without this, a crash
+    // between the INSERT and the UPDATE could give a user a voucher without
+    // deducting their points (or deduct points without issuing a voucher).
     const voucherCode = `REWARD-${Date.now()}-${randomBytes(5).toString('hex').toUpperCase()}`;
-    
-    const [redemption] = await db
-      .insert(userRedemptions)
-      .values({
-        userId,
-        rewardId,
-        pointsCost: reward.pointsCost,
-        status: 'pending',
-        voucherCode,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-      })
-      .returning();
+    let redemption: any;
 
-    // Deduct points
-    await db
-      .update(loyaltyProfiles)
-      .set({
-        points: profile.points - reward.pointsCost,
-        updatedAt: new Date(),
-      })
-      .where(eq(loyaltyProfiles.userId, userId));
-
-    // Log transaction
-    await db.insert(pointsTransactions).values({
-      userId,
-      type: 'redeemed',
-      amount: -reward.pointsCost,
-      balance: profile.points - reward.pointsCost,
-      source: 'reward_redemption',
-      sourceId: reward.id.toString(),
-      description: `Redeemed: ${reward.name}`,
-    });
-
-    // Update stock if applicable
-    if (reward.stock !== null) {
-      await db
-        .update(rewardsMarketplace)
+    await db.transaction(async (tx) => {
+      // 1. Deduct points — use optimistic check inside the transaction to guard
+      //    against a concurrent request spending the same points.
+      const updated = await tx
+        .update(loyaltyProfiles)
         .set({
-          stock: reward.stock - 1,
+          points: profile.points - reward.pointsCost,
           updatedAt: new Date(),
         })
-        .where(eq(rewardsMarketplace.id, rewardId));
-    }
+        .where(and(
+          eq(loyaltyProfiles.userId, userId),
+          gte(loyaltyProfiles.points, reward.pointsCost), // guard: still enough points
+        ))
+        .returning({ points: loyaltyProfiles.points });
 
-    // ── Loyalty redemption document + notifications (fire-and-forget) ──
+      if (!updated.length) {
+        throw Object.assign(new Error('Insufficient points (concurrent spend)'), { status: 400 });
+      }
+
+      // 2. Create redemption record
+      const [inserted] = await tx
+        .insert(userRedemptions)
+        .values({
+          userId,
+          rewardId,
+          pointsCost: reward.pointsCost,
+          status: 'pending',
+          voucherCode,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        })
+        .returning();
+      redemption = inserted;
+
+      // 3. Log transaction
+      await tx.insert(pointsTransactions).values({
+        userId,
+        type: 'redeemed',
+        amount: -reward.pointsCost,
+        balance: profile.points - reward.pointsCost,
+        source: 'reward_redemption',
+        sourceId: reward.id.toString(),
+        description: `Redeemed: ${reward.name}`,
+      });
+
+      // 4. Decrement stock if applicable (inside same transaction)
+      if (reward.stock !== null) {
+        await tx
+          .update(rewardsMarketplace)
+          .set({
+            stock: reward.stock - 1,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(rewardsMarketplace.id, rewardId),
+            gt(rewardsMarketplace.stock, 0), // guard: still in stock
+          ));
+      }
+    });
+
+    // ── Post-commit notifications (fire-and-forget) ──
     (async () => {
       try {
         const [customer] = await db.select({ email: users.email, phone: users.phone })
@@ -951,7 +982,10 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
     })();
 
     res.json({ redemption, voucherCode });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     logger.error('Error redeeming reward:', error);
     res.status(500).json({ error: 'Failed to redeem reward' });
   }

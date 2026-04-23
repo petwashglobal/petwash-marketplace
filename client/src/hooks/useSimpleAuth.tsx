@@ -1,3 +1,20 @@
+/**
+ * @deprecated — DEAD CODE. This hook and its provider are not imported by any file.
+ *
+ * The signup() method called /api/simple-auth/signup (a real endpoint), but the
+ * canonical registration path is:
+ *   Firebase Auth (email / Google / Apple / phone)
+ *   → POST /api/auth/session
+ *   → POST /api/users/create-profile
+ *
+ * Do NOT add new imports of SimpleAuthProvider or useSimpleAuth.
+ * /api/simple-auth/me and /api/simple-auth/login are still live for the SignIn
+ * session-verification flow (publicAuthRouter) but are called directly, not through
+ * this hook.
+ *
+ * This file is kept only to preserve git history. It will be fully deleted in the
+ * next major cleanup pass.
+ */
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { logger } from '@/lib/logger';

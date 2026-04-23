@@ -54,122 +54,14 @@ export function setupCustomerAuth(app: Express) {
     }
   ));
 
-  // Customer registration endpoint
-  app.post("/api/customer/register", async (req, res) => {
-    try {
-      const {
-        firstName,
-        lastName,
-        email,
-        phone,
-        password,
-        dateOfBirth,
-        country,
-        gender,
-        petType,
-        loyaltyProgram,
-        reminders,
-        marketing,
-        termsAccepted,
-        captchaToken
-      } = req.body;
-
-      if (captchaToken) {
-        const captchaResult = await verifyRecaptchaToken(captchaToken, 'register', req.ip || undefined);
-        if (!captchaResult.success) {
-          return res.status(403).json({ message: "Security verification failed. Please try again." });
-        }
-      } else if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ message: "Security verification required" });
-      }
-
-      if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
-        return res.status(400).json({
-          message: "Missing required fields"
-        });
-      }
-
-      // Check if customer already exists
-      const existingCustomer = await storage.getCustomerByEmail(email);
-      if (existingCustomer) {
-        return res.status(400).json({
-          message: "Customer with this email already exists"
-        });
-      }
-
-      // Hash password
-      const hashedPassword = await hashPassword(password);
-
-      // Create customer
-      const customerData: InsertCustomer = {
-        firstName,
-        lastName,
-        email,
-        phone,
-        password: hashedPassword,
-        dateOfBirth: dateOfBirth || null, // Store as YYYY-MM-DD string (no timezone conversion)
-        country: country || 'Israel',
-        gender,
-        petType,
-        loyaltyProgram: loyaltyProgram || false,
-        reminders: reminders || false,
-        marketing: marketing || false,
-        termsAccepted: termsAccepted || false,
-        isVerified: false,
-        loyaltyTier: 'new',
-        totalSpent: '0',
-        washBalance: 0
-      };
-
-      const customer = await storage.createCustomer(customerData);
-      
-      const welcomeEmail = generateCustomerWelcomeEmail({
-        firstName,
-        lastName,
-        email,
-        language: country === 'Israel' ? 'he' : 'en',
-        petType: petType || undefined,
-      });
-      sendLuxuryEmail({
-        to: email,
-        subject: welcomeEmail.subject,
-        html: welcomeEmail.html,
-      }).catch(err => logger.error('[CustomerAuth] Welcome email failed', err));
-
-      // Auto-login the customer after registration
-      req.login(customer, (err) => {
-        if (err) {
-          logger.error('Auto-login error', err);
-          return res.status(201).json({
-            message: "Registration successful",
-            customer: {
-              id: customer.id,
-              firstName: customer.firstName,
-              lastName: customer.lastName,
-              email: customer.email,
-              loyaltyTier: customer.loyaltyTier
-            }
-          });
-        }
-        
-        res.status(201).json({
-          message: "Registration and login successful",
-          customer: {
-            id: customer.id,
-            firstName: customer.firstName,
-            lastName: customer.lastName,
-            email: customer.email,
-            loyaltyTier: customer.loyaltyTier
-          }
-        });
-      });
-
-    } catch (error) {
-      logger.error('Customer registration error', error);
-      res.status(500).json({
-        message: "Registration failed"
-      });
-    }
+  // HARD-DEPRECATED: /api/customer/register
+  // setupCustomerAuth() is never called in production — this handler is unreachable.
+  // Kept here only to preserve git history. Returns 410 GONE if somehow mounted.
+  app.post("/api/customer/register", (_req, res) => {
+    res.status(410).json({
+      error: 'ENDPOINT_REMOVED',
+      message: 'Legacy registration endpoint permanently removed. Use Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    });
   });
 
   // Customer login endpoint

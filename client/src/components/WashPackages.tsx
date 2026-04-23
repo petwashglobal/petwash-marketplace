@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, Sparkles, Crown, Leaf, ShieldCheck, ArrowRight, Lock } from 'lucide-react';
 import { ExpressCheckoutModal } from '@/components/ExpressCheckoutModal';
-import { CustomerSignupModal } from '@/components/CustomerSignupModal';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { t, type Language } from '@/lib/i18n';
@@ -123,7 +122,6 @@ const organicText: Record<string, string> = {
 export function WashPackages({ language }: WashPackagesProps) {
   const [selectedPackage, setSelectedPackage] = useState<WashPackage | null>(null);
   const [isExpressCheckoutOpen, setIsExpressCheckoutOpen] = useState(false);
-  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const { user } = useFirebaseAuth();
   const { trackPackageSelection } = useAnalytics();
 
@@ -425,12 +423,6 @@ export function WashPackages({ language }: WashPackagesProps) {
           language={language}
         />
       )}
-
-      <CustomerSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={() => setIsSignupModalOpen(false)}
-        language={language}
-      />
     </section>
   );
 }

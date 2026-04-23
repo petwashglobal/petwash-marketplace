@@ -7,13 +7,14 @@ import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
 import { kycMemoryProcessor, kycAnomalyDetector } from '../services/KYC2026';
 import sgMail, { isSendGridConfigured } from '../lib/sendgrid';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
+import { resubmitLimiter } from '../middleware/rateLimiter';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import multer from 'multer';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
@@ -516,6 +517,29 @@ router.post('/apply', upload.fields([
         error: 'You already have a pending application',
         errorCode: 'APPLICATION_EXISTS'
       });
+    }
+
+    // Shared-email conflict guard: reject if this email is already associated with
+    // a *different* Firebase UID in provider_applications. This catches family/shared
+    // email accounts before the INSERT reaches the DB unique constraint.
+    if (authenticatedUser.email) {
+      const [emailConflict] = await db
+        .select({ userId: providerApplications.userId })
+        .from(providerApplications)
+        .where(
+          and(
+            eq(providerApplications.email, authenticatedUser.email),
+            ne(providerApplications.userId, authenticatedUser.uid)
+          )
+        )
+        .limit(1);
+
+      if (emailConflict) {
+        return res.status(409).json({
+          error: 'This email address is already registered under a different account. Please use a unique email address or contact support.',
+          errorCode: 'EMAIL_CONFLICT',
+        });
+      }
     }
 
     // Upload files to Firebase Storage (use default bucket from initialization — no gs:// prefix)
@@ -1603,6 +1627,72 @@ router.get('/admin/applications/queue', requireSupport, async (req: Request, res
   }
 });
 
+// POST /admin/applications/:numericId/promote-trainee
+// Upgrades an approved trainee to a full provider — updates Firebase custom claims and DB.
+// This is an admin action only (support staff cannot change roles).
+router.post('/admin/applications/:numericId/promote-trainee', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const numericId = parseInt(req.params.numericId);
+    if (isNaN(numericId)) return res.status(400).json({ error: 'Invalid application ID' });
+
+    // adminUid and adminEmail are set by requireAdmin middleware from the verified
+    // Firebase ID token — they are NOT user-supplied values.
+    const { adminUid, adminEmail } = req.body;
+
+    const appRow = await pool.query(
+      `SELECT application_id, user_id, provider_type, status, approved_as_provider_id
+         FROM provider_applications WHERE id = $1`,
+      [numericId]
+    );
+    if (!appRow.rows.length) return res.status(404).json({ error: 'Application not found' });
+
+    const app = appRow.rows[0];
+    if (app.status !== 'approved') {
+      return res.status(400).json({ error: `Cannot promote from status: ${app.status}. Application must be approved first.` });
+    }
+
+    if (app.user_id) {
+      try {
+        const existingClaims = (await auth.getUser(app.user_id)).customClaims || {};
+        // Clear trainee claim, ensure role is full provider
+        const newClaims = {
+          ...existingClaims,
+          role: 'provider',
+          accountType: 'provider',
+          isTrainee: false,
+          providerVerified: true,
+          providerPromotedAt: new Date().toISOString(),
+          promotedBy: adminEmail || adminUid,
+        };
+        await auth.setCustomUserClaims(app.user_id, newClaims);
+        logger.info('[ProviderOnboarding] Trainee promoted to full provider', { userId: app.user_id, applicationId: app.application_id });
+      } catch (claimsErr: any) {
+        logger.error('[ProviderOnboarding] Failed to update claims on trainee promote', { error: claimsErr?.message });
+        return res.status(500).json({ error: 'Failed to update role claims', details: claimsErr?.message });
+      }
+    }
+
+    writeProviderAudit({
+      applicationId: numericId,
+      eventType: 'trainee_promoted',
+      actorUserId: adminUid || 'admin',
+      actorRole: 'admin',
+      payload: { providerId: app.approved_as_provider_id, promotedBy: adminEmail },
+    }).catch(() => {});
+
+    logSystemMessage({
+      applicationId: numericId,
+      body: `Trainee promoted to full provider by admin ${adminEmail || adminUid}.`,
+      providerVisible: false,
+    }).catch(() => {});
+
+    res.json({ success: true, message: 'Trainee promoted to full provider' });
+  } catch (err: any) {
+    logger.error('[ProviderOnboarding] promote-trainee error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /admin/applications/:numericId/assign
 router.post('/admin/applications/:numericId/assign', requireSupport, async (req: Request, res: Response) => {
   try {
@@ -1914,6 +2004,7 @@ router.post('/my/messages', async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────────────────────────
 router.post(
   '/resubmit/:token',
+  resubmitLimiter,
   upload.fields([
     { name: 'selfiePhoto', maxCount: 1 },
     { name: 'governmentId', maxCount: 1 },
@@ -2234,6 +2325,97 @@ router.post(
     }
   }
 );
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MANAGEMENT ANALYTICS ROUTES  (read-only, no individual application actions)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /mgmt/analytics
+ *
+ * Returns aggregate KYC funnel KPIs, approval trend (last 30 days), queue aging
+ * distribution, and per-reviewer workload.  Management-only — cannot be used to
+ * action individual applications.
+ */
+router.get('/mgmt/analytics', requireManagement, async (req: Request, res: Response) => {
+  try {
+    const [kpiRow, trendRows, agingRows, workloadRows] = await Promise.all([
+      // ── KPI snapshot ──────────────────────────────────────────────────────
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE status IN ('submitted','pending_review','processing','pending_resubmission'))  AS pending_total,
+          COUNT(*) FILTER (WHERE status = 'approved'  AND updated_at >= NOW() - INTERVAL '7 days')             AS approved_this_week,
+          COUNT(*) FILTER (WHERE status = 'rejected'  AND updated_at >= NOW() - INTERVAL '7 days')             AS rejected_this_week,
+          COUNT(*) FILTER (WHERE status = 'pending_resubmission')                                              AS awaiting_resubmission,
+          COUNT(*) FILTER (WHERE kyc_fraud_risk_level = 'high')                                                AS high_fraud_flags,
+          ROUND(
+            100.0 * COUNT(*) FILTER (WHERE status = 'approved')
+            / NULLIF(COUNT(*) FILTER (WHERE status IN ('approved','rejected')), 0)
+          , 1)                                                                                                  AS approval_rate_pct
+        FROM provider_applications
+      `),
+
+      // ── Daily approval / rejection trend (last 30 days) ───────────────────
+      pool.query(`
+        SELECT
+          DATE_TRUNC('day', updated_at)::date AS day,
+          COUNT(*) FILTER (WHERE status = 'approved') AS approvals,
+          COUNT(*) FILTER (WHERE status = 'rejected') AS rejections
+        FROM provider_applications
+        WHERE updated_at >= NOW() - INTERVAL '30 days'
+          AND status IN ('approved','rejected')
+        GROUP BY 1
+        ORDER BY 1
+      `),
+
+      // ── Queue aging buckets ────────────────────────────────────────────────
+      pool.query(`
+        SELECT
+          CASE
+            WHEN age_hours < 24   THEN 'under_24h'
+            WHEN age_hours < 72   THEN '24_72h'
+            WHEN age_hours < 168  THEN '72h_7d'
+            ELSE                       'over_7d'
+          END AS bucket,
+          COUNT(*) AS count
+        FROM (
+          SELECT EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 AS age_hours
+          FROM provider_review_queue
+          WHERE status = 'open'
+        ) sub
+        GROUP BY 1
+        ORDER BY MIN(age_hours)
+      `),
+
+      // ── Reviewer workload (last 30 days) ──────────────────────────────────
+      pool.query(`
+        SELECT
+          reviewed_by                                                                   AS reviewer,
+          COUNT(*)                                                                      AS total_reviewed,
+          COUNT(*) FILTER (WHERE status = 'approved')                                  AS approved,
+          COUNT(*) FILTER (WHERE status = 'rejected')                                  AS rejected,
+          ROUND(AVG(EXTRACT(EPOCH FROM (reviewed_at - submitted_at)) / 3600), 1)       AS avg_review_hours
+        FROM provider_applications
+        WHERE reviewed_at >= NOW() - INTERVAL '30 days'
+          AND reviewed_by IS NOT NULL
+        GROUP BY 1
+        ORDER BY 2 DESC
+        LIMIT 20
+      `),
+    ]);
+
+    res.json({
+      kpi: kpiRow.rows[0],
+      trend: trendRows.rows,
+      aging: agingRows.rows,
+      workload: workloadRows.rows,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    logger.error('[ProviderOnboarding] mgmt/analytics error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;
 

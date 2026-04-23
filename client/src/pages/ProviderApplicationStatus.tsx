@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { getAuth } from 'firebase/auth';
+import { Link } from 'wouter';
 
 interface ApplicationStatus {
   id: number;
@@ -261,7 +262,7 @@ export default function ProviderApplicationStatus() {
           <Card className="border-green-200 bg-green-50">
             <CardContent className="pt-6 pb-6 flex items-start gap-4">
               <CheckCircle2 className="h-8 w-8 text-green-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
+              <div className="space-y-3 flex-1">
                 <p className="font-semibold text-green-800 text-lg">You're approved!</p>
                 <p className="text-sm text-green-700">
                   Welcome to the PetWash provider network. Your provider ID is:
@@ -272,6 +273,14 @@ export default function ProviderApplicationStatus() {
                     Approved on {new Date(app.reviewed_at).toLocaleDateString('he-IL')}
                   </p>
                 )}
+                <div className="pt-2">
+                  <Link href="/provider-os">
+                    <Button className="bg-green-700 hover:bg-green-800 text-white gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Go to your Provider Dashboard →
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>

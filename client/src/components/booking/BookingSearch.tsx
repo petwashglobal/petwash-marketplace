@@ -692,23 +692,94 @@ export default function BookingSearch() {
           </div>
 
           {searchResults.length === 0 ? (
-            <Card className="p-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                {isHebrew
-                  ? 'לא נמצאו ספקים התואמים לחיפוש שלך.'
-                  : 'No providers found matching your search.'}
-              </p>
-              {filters.latitude && filters.radiusKm < 50 && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setFilters(p => ({ ...p, radiusKm: Math.min(50, p.radiusKm + 10) }));
-                    handleSearch();
-                  }}
-                >
-                  {isHebrew ? 'הרחב רדיוס חיפוש' : 'Expand search radius'}
-                </Button>
-              )}
+            <Card className="p-8">
+              <div className="text-center space-y-3">
+                <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">
+                  {isHebrew
+                    ? 'לא נמצאו ספקים התואמים לחיפוש שלך.'
+                    : 'No providers found matching your search.'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {isHebrew
+                    ? 'נסה אחד מהאפשרויות הבאות:'
+                    : 'Try one of these to find available care:'}
+                </p>
+              </div>
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                {/* Expand radius */}
+                {filters.latitude && filters.radiusKm < 50 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(p => ({ ...p, radiusKm: Math.min(50, p.radiusKm + 10) }));
+                      handleSearch();
+                    }}
+                  >
+                    📍 {isHebrew ? `הרחב רדיוס ל-${Math.min(50, filters.radiusKm + 10)} ק"מ` : `Expand radius to ${Math.min(50, filters.radiusKm + 10)} km`}
+                  </Button>
+                )}
+
+                {/* Clear dates — try any available date */}
+                {(filters.startDate || filters.endDate) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(p => ({ ...p, startDate: '', endDate: '' }));
+                      handleSearch();
+                    }}
+                  >
+                    📅 {isHebrew ? 'נסה כל תאריך זמין' : 'Try any available date'}
+                  </Button>
+                )}
+
+                {/* Clear rating / verified filters */}
+                {(filters.minRating > 0 || filters.verifiedOnly) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(p => ({ ...p, minRating: 0, verifiedOnly: false }));
+                      handleSearch();
+                    }}
+                  >
+                    ⭐ {isHebrew ? 'הסר סינון דירוג' : 'Remove rating filters'}
+                  </Button>
+                )}
+
+                {/* Switch to a different service type */}
+                {filters.serviceType !== 'grooming' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(p => ({ ...p, serviceType: 'grooming' }));
+                      handleSearch();
+                    }}
+                  >
+                    ✂️ {isHebrew ? 'עבור לטיפוח' : 'Browse groomers'}
+                  </Button>
+                )}
+                {filters.serviceType !== 'dog_walking' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(p => ({ ...p, serviceType: 'dog_walking' }));
+                      handleSearch();
+                    }}
+                  >
+                    🐕 {isHebrew ? 'עבור להליכות' : 'Browse dog walkers'}
+                  </Button>
+                )}
+                {filters.serviceType !== 'pet_sitting' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(p => ({ ...p, serviceType: 'pet_sitting' }));
+                      handleSearch();
+                    }}
+                  >
+                    🏠 {isHebrew ? 'עבור לשמירה' : 'Browse pet sitters'}
+                  </Button>
+                )}
+              </div>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

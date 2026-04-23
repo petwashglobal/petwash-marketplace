@@ -821,4 +821,417 @@ router.get('/nayax/health', (req, res) => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /api/webhooks/nayax/checkout-payment
+//
+// Confirms a wash-package purchase initiated via POST /api/checkout.
+// The /api/checkout route creates a pending washHistory record and a Nayax
+// hosted-payment session.  This webhook fires when the customer completes payment
+// on Nayax's page and performs the balance award — ONLY on real confirmation.
+//
+// bookingId format: "checkout_{washHistoryId}"
+// ═══════════════════════════════════════════════════════════════════════════════
+router.post(
+  '/nayax/checkout-payment',
+  validateIPAllowlist,
+  captureRawBody,
+  async (req: express.Request & { rawBody?: Buffer }, res: express.Response) => {
+    try {
+      const rawBodyBuffer: Buffer = Buffer.isBuffer(req.body)
+        ? req.body
+        : Buffer.from(JSON.stringify(req.body));
+      const rawBody = rawBodyBuffer.toString('utf8');
+
+      let parsedBody: any;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+      }
+
+      // Signature check (same as /nayax/payment)
+      const signature = req.headers['x-nayax-signature'] as string | undefined;
+      const signatureEnforced = NayaxOnlinePaymentService.isSignatureEnforced();
+      if (signatureEnforced && !signature) {
+        logger.warn('[CheckoutWebhook] Missing required signature header');
+        return res.status(401).json({ error: 'X-Nayax-Signature header is required' });
+      }
+      if (signature && !NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
+        logger.warn('[CheckoutWebhook] Invalid signature');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      const payload = parsedBody as {
+        event: string;
+        bookingId: string;     // "checkout_{washHistoryId}"
+        transactionId: string;
+        amountCents: number;
+        currency: string;
+        sessionId?: string;
+        timestamp: string;
+      };
+
+      if (!payload.bookingId || !payload.transactionId || !payload.event) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Extract numeric washHistoryId from "checkout_{id}"
+      const prefix = 'checkout_';
+      if (!payload.bookingId.startsWith(prefix)) {
+        logger.warn('[CheckoutWebhook] Unexpected bookingId format', { bookingId: payload.bookingId });
+        return res.status(400).json({ error: 'Invalid bookingId format for checkout webhook' });
+      }
+      const washHistoryId = parseInt(payload.bookingId.slice(prefix.length), 10);
+      if (isNaN(washHistoryId)) {
+        return res.status(400).json({ error: 'Invalid washHistoryId' });
+      }
+
+      // Deduplicate using Redis (same helper used by /nayax/terminal)
+      const dedupKey = `checkout-webhook:${payload.transactionId}`;
+      try {
+        const alreadyProcessed = await redis.get(dedupKey);
+        if (alreadyProcessed) {
+          logger.info('[CheckoutWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
+          return res.status(200).json({ received: true, note: 'already_processed' });
+        }
+        await redis.setEx(dedupKey, WEBHOOK_DEDUP_TTL_SECONDS, '1');
+      } catch (redisErr: any) {
+        logger.warn('[CheckoutWebhook] Redis dedup unavailable — proceeding without dedup', { error: redisErr.message });
+      }
+
+      // Load pending washHistory record
+      const { washHistory: washHistoryTable, users: usersTable, washPackages: washPackagesTable } = await import('@shared/schema');
+      const [historyRow] = await db
+        .select()
+        .from(washHistoryTable)
+        .where(eq(washHistoryTable.id, washHistoryId))
+        .limit(1);
+
+      if (!historyRow) {
+        logger.error('[CheckoutWebhook] washHistory record not found', { washHistoryId });
+        return res.status(404).json({ error: 'Checkout session not found' });
+      }
+
+      // Idempotency: if already completed, return success without re-awarding.
+      if (historyRow.status === 'completed') {
+        logger.info('[CheckoutWebhook] Already completed — idempotent response', { washHistoryId });
+        return res.status(200).json({ received: true, note: 'already_completed' });
+      }
+
+      if (payload.event === 'payment.success') {
+        // Amount validation (1-agora tolerance)
+        const expectedCents = Math.round(parseFloat(String(historyRow.finalPrice)) * 100);
+        if (Math.abs(payload.amountCents - expectedCents) > 1) {
+          logger.error('[CheckoutWebhook] Amount mismatch — possible fraud', {
+            washHistoryId, expected: expectedCents, received: payload.amountCents,
+          });
+          return res.status(400).json({ error: 'Amount mismatch', expected: expectedCents, received: payload.amountCents });
+        }
+
+        // Load session metadata from Firestore (discount info etc.)
+        const { db: adminDb } = await import('../lib/firebase-admin');
+        const sessionDoc = await adminDb.collection('checkout_sessions').doc(String(washHistoryId)).get();
+        const sessionData = sessionDoc.exists ? (sessionDoc.data() as any) : null;
+
+        const userId        = historyRow.userId;
+        const washCount     = historyRow.washCount ?? 1;
+        const finalPrice    = parseFloat(String(historyRow.finalPrice));
+        const pointsEarned  = Math.floor(finalPrice);
+        const discountAmount   = sessionData?.discountAmount   ?? 0;
+        const discountPercent  = sessionData?.discountPercent  ?? 0;
+        const discountType     = sessionData?.discountType     ?? 'none';
+        const birthdayYear     = sessionData?.birthdayYear     ?? null;
+        const kycType          = sessionData?.kycType          ?? null;
+        const isNewMemberDiscountApplied = sessionData?.hasUsedNewMemberDiscount === true;
+
+        // Atomic balance award (SQL-level to prevent race conditions)
+        await db
+          .update(usersTable)
+          .set({
+            washBalance:   sql`${usersTable.washBalance} + ${washCount}`,
+            totalSpent:    sql`CAST(${usersTable.totalSpent} AS DECIMAL) + ${finalPrice}`,
+            loyaltyPoints: sql`${usersTable.loyaltyPoints} + ${pointsEarned}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(usersTable.id, userId));
+
+        // If this was a new-member-bonus redemption, flag the user so they can't
+        // use it again.  (The /api/checkout route set hasUsedNewMemberDiscount: true
+        // before creating the session; here we confirm it is persisted.)
+        if (isNewMemberDiscountApplied) {
+          await db
+            .update(usersTable)
+            .set({ hasUsedNewMemberDiscount: true, updatedAt: new Date() })
+            .where(eq(usersTable.id, userId));
+        }
+
+        // Mark wash history as completed with real transaction ID
+        await db
+          .update(washHistoryTable)
+          .set({ status: 'completed' })
+          .where(eq(washHistoryTable.id, washHistoryId));
+
+        // Log discount usage to loyalty ledger (fire-and-forget)
+        setImmediate(async () => {
+          try {
+            if (discountAmount > 0 && discountPercent > 0) {
+              if (discountType === 'birthday_coupon' && birthdayYear) {
+                const { markBirthdayCouponUsed } = await import('../birthday-coupon');
+                await markBirthdayCouponUsed(
+                  userId,
+                  String(washHistoryId),
+                  discountAmount,
+                  parseFloat(String(historyRow.originalPrice)),
+                  finalPrice,
+                  String(historyRow.packageId),
+                  birthdayYear,
+                );
+              } else {
+                await adminDb.collection('users').doc(userId).collection('loyalty_ledger').doc(String(washHistoryId)).set({
+                  orderId: String(washHistoryId),
+                  amount: discountAmount,
+                  discountPercent,
+                  discountType,
+                  kycType: kycType || null,
+                  timestamp: new Date(),
+                  type: 'discount_applied',
+                  packageId: historyRow.packageId,
+                  originalPrice: parseFloat(String(historyRow.originalPrice)),
+                  finalPrice,
+                  nayaxTransactionId: payload.transactionId,
+                });
+              }
+            }
+            // Clean up the checkout session metadata
+            await adminDb.collection('checkout_sessions').doc(String(washHistoryId)).delete();
+          } catch (ledgerErr: any) {
+            logger.warn('[CheckoutWebhook] Loyalty ledger write failed (non-blocking)', { error: ledgerErr.message });
+          }
+        });
+
+        logger.info('[CheckoutWebhook] ✅ Wash balance awarded', {
+          userId, washHistoryId, washCount, finalPrice, transactionId: payload.transactionId,
+        });
+
+        return res.status(200).json({ received: true, washesAwarded: washCount });
+
+      } else if (payload.event === 'payment.failed' || payload.event === 'payment.expired' || payload.event === 'payment.cancelled') {
+        // Mark the pending record as cancelled — no balance awarded.
+        await db
+          .update(washHistoryTable)
+          .set({ status: 'cancelled' })
+          .where(eq(washHistoryTable.id, washHistoryId));
+
+        logger.info('[CheckoutWebhook] Payment failed/cancelled — wash history cancelled', {
+          washHistoryId, event: payload.event,
+        });
+
+        return res.status(200).json({ received: true, note: `checkout_${payload.event}` });
+      }
+
+      return res.status(200).json({ received: true, note: 'unhandled_event', event: payload.event });
+
+    } catch (error: any) {
+      logger.error('[CheckoutWebhook] Unhandled error', { error: error.message });
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /api/webhooks/nayax/booking-request-payment
+//
+// Confirms a marketplace booking payment initiated via
+// POST /api/booking-requests/:id/pay.
+// That route creates a Nayax session and sets booking status = 'payment_pending'.
+// This webhook fires when payment is confirmed and transitions the booking to
+// 'confirmed', creating the Firestore escrow record with the real transaction ID.
+// ═══════════════════════════════════════════════════════════════════════════════
+router.post(
+  '/nayax/booking-request-payment',
+  validateIPAllowlist,
+  captureRawBody,
+  async (req: express.Request & { rawBody?: Buffer }, res: express.Response) => {
+    try {
+      const rawBodyBuffer: Buffer = Buffer.isBuffer(req.body)
+        ? req.body
+        : Buffer.from(JSON.stringify(req.body));
+      const rawBody = rawBodyBuffer.toString('utf8');
+
+      let parsedBody: any;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+      }
+
+      // Signature check
+      const signature = req.headers['x-nayax-signature'] as string | undefined;
+      const signatureEnforced = NayaxOnlinePaymentService.isSignatureEnforced();
+      if (signatureEnforced && !signature) {
+        logger.warn('[BookingReqWebhook] Missing required signature header');
+        return res.status(401).json({ error: 'X-Nayax-Signature header is required' });
+      }
+      if (signature && !NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
+        logger.warn('[BookingReqWebhook] Invalid signature');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      const payload = parsedBody as {
+        event: string;
+        bookingId: string;     // booking_requests.requestId (nanoid)
+        transactionId: string;
+        amountCents: number;
+        currency: string;
+        sessionId?: string;
+        timestamp: string;
+      };
+
+      if (!payload.bookingId || !payload.transactionId || !payload.event) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Deduplicate
+      const dedupKey = `br-webhook:${payload.transactionId}`;
+      try {
+        const alreadyProcessed = await redis.get(dedupKey);
+        if (alreadyProcessed) {
+          logger.info('[BookingReqWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
+          return res.status(200).json({ received: true, note: 'already_processed' });
+        }
+        await redis.setEx(dedupKey, WEBHOOK_DEDUP_TTL_SECONDS, '1');
+      } catch (redisErr: any) {
+        logger.warn('[BookingReqWebhook] Redis dedup unavailable', { error: redisErr.message });
+      }
+
+      const { bookingRequests: bookingRequestsTable } = await import('@shared/schema');
+
+      const [booking] = await db
+        .select()
+        .from(bookingRequestsTable)
+        .where(eq(bookingRequestsTable.requestId, payload.bookingId))
+        .limit(1);
+
+      if (!booking) {
+        logger.error('[BookingReqWebhook] Booking not found', { bookingId: payload.bookingId });
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // Idempotency: already confirmed
+      if (booking.status === 'confirmed' || booking.status === 'in_progress') {
+        logger.info('[BookingReqWebhook] Booking already confirmed — idempotent', { bookingId: payload.bookingId });
+        return res.status(200).json({ received: true, note: 'already_confirmed' });
+      }
+
+      if (payload.event === 'payment.success') {
+        // Amount validation (1-agora tolerance)
+        const bookingTotalCents = booking.totalCents;
+        if (Math.abs(payload.amountCents - bookingTotalCents) > 1) {
+          logger.error('[BookingReqWebhook] Amount mismatch — POTENTIAL FRAUD', {
+            bookingId: payload.bookingId, expected: bookingTotalCents, received: payload.amountCents,
+          });
+          return res.status(400).json({ error: 'Amount mismatch', expected: bookingTotalCents, received: payload.amountCents });
+        }
+
+        // Update the Firestore escrow document that was created during /pay.
+        // Replace the placeholder sessionId with the real Nayax transactionId.
+        // Uses getEscrowsByBooking so the escrow ID doesn't need to be stored separately.
+        const EscrowService = (await import('../services/EscrowService')).default;
+        try {
+          const escrows = await EscrowService.getEscrowsByBooking(payload.bookingId);
+          for (const escrow of escrows) {
+            // Update the nayaxTransactionId on the Firestore doc with the real txId
+            const { db: adminDb } = await import('../lib/firebase-admin');
+            await adminDb.collection('escrow_payments').doc(escrow.id).update({
+              nayaxTransactionId: payload.transactionId,
+              status: 'held',
+              updatedAt: new Date(),
+            });
+          }
+        } catch (escrowErr: any) {
+          logger.warn('[BookingReqWebhook] Escrow txId update failed (non-blocking)', { error: escrowErr.message });
+        }
+
+        const statusHistory = ((booking.statusHistory as any[]) ?? []);
+        statusHistory.push({
+          status: 'confirmed',
+          timestamp: new Date().toISOString(),
+          note: `Payment of ₪${(bookingTotalCents / 100).toFixed(2)} confirmed by Nayax. Held in 72-hour escrow. txId: ${payload.transactionId}`,
+        });
+
+        // Atomic DB write: confirmed + real transaction ID
+        await db
+          .update(bookingRequestsTable)
+          .set({
+            status: 'confirmed',
+            paymentTransactionId: payload.transactionId,
+            paymentHeldAt: new Date(),
+            statusHistory,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(bookingRequestsTable.requestId, payload.bookingId));
+
+        logger.info('[BookingReqWebhook] ✅ Booking confirmed via real Nayax payment', {
+          bookingId: payload.bookingId,
+          transactionId: payload.transactionId,
+          amountCents: payload.amountCents,
+        });
+
+        return res.status(200).json({ received: true, bookingId: payload.bookingId, status: 'confirmed' });
+
+      } else if (payload.event === 'payment.failed' || payload.event === 'payment.expired' || payload.event === 'payment.cancelled') {
+        // Revert to the pre-payment status so the customer can retry.
+        // The booking_request was in 'payment_pending'; roll back to 'meet_greet_completed'
+        // or 'accepted' depending on where it was before.
+        const revertStatus = 'meet_greet_completed';
+
+        const statusHistory = ((booking.statusHistory as any[]) ?? []);
+        statusHistory.push({
+          status: revertStatus,
+          timestamp: new Date().toISOString(),
+          note: `Payment ${payload.event} — booking reverted to ${revertStatus} for retry. txId: ${payload.transactionId}`,
+        });
+
+        await db
+          .update(bookingRequestsTable)
+          .set({
+            status: revertStatus as any,
+            statusHistory,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(bookingRequestsTable.requestId, payload.bookingId));
+
+        // Release the escrow that was created at /pay (not actually held until success,
+        // but clean up the Firestore doc to prevent stale records).
+        try {
+          const EscrowService = (await import('../services/EscrowService')).default;
+          const escrows = await EscrowService.getEscrowsByBooking(payload.bookingId);
+          for (const escrow of escrows) {
+            const { db: adminDb } = await import('../lib/firebase-admin');
+            await adminDb.collection('escrow_payments').doc(escrow.id).update({
+              status: 'refunded',
+              reason: `Payment ${payload.event}`,
+              updatedAt: new Date(),
+            });
+          }
+        } catch (escrowErr: any) {
+          logger.warn('[BookingReqWebhook] Escrow cleanup failed (non-blocking)', { error: escrowErr.message });
+        }
+
+        logger.info('[BookingReqWebhook] Payment failed — booking reverted', {
+          bookingId: payload.bookingId, event: payload.event,
+        });
+
+        return res.status(200).json({ received: true, note: `payment_${payload.event}`, bookingId: payload.bookingId });
+      }
+
+      return res.status(200).json({ received: true, note: 'unhandled_event', event: payload.event });
+
+    } catch (error: any) {
+      logger.error('[BookingReqWebhook] Unhandled error', { error: error.message });
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
 export default router;

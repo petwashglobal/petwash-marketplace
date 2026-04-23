@@ -323,9 +323,11 @@ const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
+const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
+const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
 const AdminLiveEvents = lazy(() => import("@/pages/admin/AdminLiveEvents"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
@@ -1768,6 +1770,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
+        {/* Management KYC analytics dashboard — read-only aggregate metrics */}
+        <Route path="/admin/providers/analytics">
+          {() => (
+            <AdminRouteGuard>
+              <ManagementKycDashboard />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* Applicant: check own application status */}
         <Route path="/provider-application/status">
           {() => <RequireAuth><ProviderApplicationStatus /></RequireAuth>}
@@ -1779,6 +1790,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<div />}>
                 <AdminOpsMonitor />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        <Route path="/admin/treasury">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<div />}>
+                <AdminTreasurySettings />
               </Suspense>
             </AdminRouteGuard>
           )}
@@ -2385,7 +2406,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Phase 12.17 — Cash Reconciliation & Treasury Discipline */}
         <Route path="/treasury">
           {() => (
-            <ExecutiveSuiteGuard>
+            <ExecutiveSuiteGuard requiredRoles={['super_admin', 'finance', 'ceo']}>
               <Suspense fallback={<PageLoader />}>
                 <Treasury />
               </Suspense>
@@ -2396,7 +2417,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Phase 12.18 — Forecasting, Liquidity & Reserve Planning */}
         <Route path="/treasury/forecast">
           {() => (
-            <ExecutiveSuiteGuard>
+            <ExecutiveSuiteGuard requiredRoles={['super_admin', 'finance', 'ceo']}>
               <Suspense fallback={<PageLoader />}>
                 <TreasuryForecast />
               </Suspense>
