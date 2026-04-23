@@ -1527,7 +1527,7 @@ router.post('/:requestId/arriving', async (req, res) => {
  * - Triggers provider payout after 72 hours
  * - Sends notifications to both parties
  */
-router.post('/:requestId/confirm', async (req, res) => {
+async function handleConfirmCompletion(req: any, res: any): Promise<void> {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
@@ -1962,21 +1962,16 @@ router.post('/:requestId/confirm', async (req, res) => {
     logger.error('[BookingRequests] Confirm error', { error: error.message });
     res.status(500).json({ error: 'Failed to confirm completion' });
   }
-});
+}
+
+router.post('/:requestId/confirm', handleConfirmCompletion);
 
 /**
  * POST /api/booking-requests/:requestId/approve-completion
  * Blueprint-aligned alias for /confirm — customer approves completion and releases escrow.
- * Functionally identical to /confirm; exists so the new API surface matches the blueprint spec.
+ * Delegates directly to handleConfirmCompletion() (same logic, same auth, same DB writes).
  */
-router.post('/:requestId/approve-completion', async (req, res) => {
-  // Delegate to the /confirm handler by forwarding the request path and calling next.
-  // Since express routes are separate, we simply replicate the logic by redirecting internally.
-  req.url = `/${req.params.requestId}/confirm`;
-  return (router as any).handle({ ...req, url: req.url, path: `/${req.params.requestId}/confirm` }, res, () => {
-    res.status(404).json({ error: 'Not found' });
-  });
-});
+router.post('/:requestId/approve-completion', handleConfirmCompletion);
 
 /**
  * POST /api/booking-requests/:requestId/dispute

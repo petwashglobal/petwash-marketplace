@@ -1885,84 +1885,20 @@ self.addEventListener('notificationclick', (event) => {
   // ========================================================================
   const { hashPassword, verifyPassword, getCurrentUser, requireAuth: simpleRequireAuth } = await import('./simpleAuth');
 
-  // POST /api/simple-auth/signup - Register new customer
-  app.post('/api/simple-auth/signup', async (req, res) => {
-    try {
-      const { email, password, firstName, lastName, phone, termsAccepted } = req.body;
-
-      // Validation - provide specific error messages
-      if (!email) {
-        return res.status(400).json({ ok: false, error: 'Email is required' });
-      }
-      if (!password) {
-        return res.status(400).json({ ok: false, error: 'Password is required' });
-      }
-      if (!firstName) {
-        return res.status(400).json({ ok: false, error: 'First name is required' });
-      }
-      if (!lastName) {
-        return res.status(400).json({ ok: false, error: 'Last name is required' });
-      }
-      // CRITICAL: Explicit consent required for GDPR + Israeli Privacy Law 2025 compliance
-      if (!termsAccepted) {
-        return res.status(400).json({ ok: false, error: 'You must accept the terms and conditions' });
-      }
-
-      if (password.length < 8) {
-        return res.status(400).json({ ok: false, error: 'Password must be at least 8 characters' });
-      }
-
-      // Check if email exists
-      const [existingUser] = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.email, email.toLowerCase()))
-        .limit(1);
-
-      if (existingUser) {
-        return res.status(400).json({ ok: false, error: 'Email already registered' });
-      }
-
-      // Hash password
-      const passwordHash = await hashPassword(password);
-
-      // Create user with explicit consent
-      const [newUser] = await db
-        .insert(customers)
-        .values({
-          email: email.toLowerCase(),
-          password: passwordHash,
-          firstName,
-          lastName,
-          phone: phone || null,
-          termsAccepted: true, // Already validated above - user explicitly consented
-          authProvider: 'email',
-          isVerified: false,
-          loyaltyTier: 'new',
-          washBalance: 0,
-        })
-        .returning();
-
-      // Create session
-      if (req.session) {
-        req.session.userId = String(newUser.id);
-      }
-
-      logger.info(`[Simple Auth] ✅ New user registered: ${email}`);
-
-      res.json({
-        ok: true,
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-        }
-      });
-    } catch (error) {
-      logger.error('[Simple Auth] Signup error:', error);
-      res.status(500).json({ ok: false, error: 'Registration failed' });
-    }
+  // POST /api/simple-auth/signup — HARD-DEPRECATED (410 GONE)
+  // This endpoint created rows in the `customers` table with a session-cookie-based
+  // identity that has NO Firebase UID. Those accounts are ghosts: they cannot
+  // authenticate with the Firebase-based platform (loyalty, bookings, payouts, etc.).
+  // No current UI calls this path — the useSimpleAuth hook is dead code.
+  // Canonical registration: Firebase Auth → POST /api/auth/session → POST /api/users/create-profile
+  app.post('/api/simple-auth/signup', (_req, res) => {
+    logger.warn('[SimpleAuth] Deprecated signup endpoint called — returning 410 GONE');
+    res.status(410).json({
+      ok: false,
+      error: 'ENDPOINT_REMOVED',
+      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    });
   });
 
   // POST /api/simple-auth/login - Login with email and password

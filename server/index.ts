@@ -1103,6 +1103,8 @@ if (isProduction) {
         startWinbackCron();
         const { startRecoveryAutomationCron } = await import('./cron/recovery-automation');
         startRecoveryAutomationCron();
+        const { startAutoApproveCompletionsCron } = await import('./cron/auto-approve-completions');
+        startAutoApproveCompletionsCron();
         console.log('[Cron] All cron jobs initialized successfully');
       } catch (e: any) {
         console.error('[Cron] Failed to initialize cron jobs (non-fatal):', e.message);
@@ -1152,6 +1154,8 @@ if (isProduction) {
       startWinbackCron();
       const { startRecoveryAutomationCron } = await import("./cron/recovery-automation");
       startRecoveryAutomationCron();
+      const { startAutoApproveCompletionsCron } = await import("./cron/auto-approve-completions");
+      startAutoApproveCompletionsCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
