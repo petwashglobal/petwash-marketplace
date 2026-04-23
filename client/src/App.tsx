@@ -326,6 +326,7 @@ const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
+const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
 const AdminLiveEvents = lazy(() => import("@/pages/admin/AdminLiveEvents"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
@@ -1779,6 +1780,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<div />}>
                 <AdminOpsMonitor />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        <Route path="/admin/treasury">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<div />}>
+                <AdminTreasurySettings />
               </Suspense>
             </AdminRouteGuard>
           )}

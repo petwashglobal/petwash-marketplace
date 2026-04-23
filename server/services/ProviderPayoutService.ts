@@ -192,13 +192,16 @@ export class ProviderPayoutService {
       const transferResult = await this.processIsraeliBankTransfer(payout, provider);
 
       if (transferResult.success) {
-        // Update status to 'completed'
+        // Update status to 'completed' and stamp treasury_setting_id for reconciliation
         await db.update(superAppPayouts)
           .set({
             status: 'completed',
             bankTransferReference: transferResult.bankTransferReference,
             paidAt: new Date(),
             updatedAt: new Date(),
+            ...(treasuryValidation.treasurySettingId
+              ? { treasurySettingId: treasuryValidation.treasurySettingId }
+              : {}),
           })
           .where(eq(superAppPayouts.id, payoutId));
 

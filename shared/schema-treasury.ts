@@ -5,12 +5,13 @@
  *
  * SECURITY RULES (Israel Financial Regulation + Internal Policy):
  *  - This table is BACKEND-ONLY. Never expose to frontend, browser, logs, or public repo.
- *  - Sensitive columns (iban, account_number, branch_number, swift) are populated
- *    exclusively from server-side environment variables during the initial-seed step.
- *    They are NEVER hardcoded in source code.
+ *  - Sensitive columns (iban_encrypted, account_number_encrypted) store AES-256-GCM
+ *    ciphertext produced by secretFieldCrypto.encryptField().
+ *    The encryption key MUST live in secrets manager (TREASURY_FIELD_ENCRYPTION_KEY).
  *  - All API endpoints that read this table MUST return masked values only.
  *    Masking is enforced by TreasuryConfigService — never bypass it.
  *  - Every read and write is recorded in the treasury_access_log table.
+ *  - Structural changes are recorded in treasury_settings_audit.
  *  - Required admin role: 'super_admin' OR 'finance' (enforced in the route layer).
  *
  * Israeli Regulatory Context:
@@ -18,8 +19,12 @@
  *  - IBAN format: IL + 2 check digits + 3-digit bank code + 3-digit branch + 13-digit account.
  *  - The treasury account serves as the sole company beneficiary for all provider payouts
  *    and settlement transfers (per Israel Payment Services Law 2023 requirements).
+ *  - Encryption at rest is required by the Israeli Privacy Protection Regulations
+ *    (Data Security) 5777-2017, Article 9 ("Protection of sensitive databases").
  *  - Access to account details by staff is governed by the company's internal Information
  *    Security Policy and must comply with the Bank of Israel's Cyber Directive (06/2017).
+ *  - Audit logs must be retained for 7 years per the Accounting Records Law
+ *    (חוק מסמכי חשבונות), תשמ"ו-1976.
  */
 
 import {
@@ -36,7 +41,8 @@ import { z } from 'zod';
 
 // ── treasury_settings ─────────────────────────────────────────────────────────
 // One row only. All DML must go through TreasuryConfigService.
-// Sensitive string columns have a max length matching Israeli bank field sizes.
+// Sensitive fields are stored encrypted; plain-text columns are retained for
+// backward compatibility with the v1 migration but must not be set after v2.
 
 export const treasurySettings = pgTable('treasury_settings', {
   id: serial('id').primaryKey(),
@@ -50,27 +56,43 @@ export const treasurySettings = pgTable('treasury_settings', {
   companyNumber: varchar('company_number', { length: 20 }).notNull(),
 
   // ── Bank account identity ─────────────────────────────────────────────────
-  // These fields MUST be populated from environment variables (COMPANY_BANK_*)
-  // by TreasuryConfigService.seedFromEnv() only. Never set them directly in code.
-
+  // Non-sensitive fields stored in plain text.
   /** Israeli bank name (e.g. 'Mizrahi-Tefahot') */
   bankName: varchar('bank_name', { length: 80 }).notNull(),
   /** Israeli bank code (e.g. '20' for Mizrahi-Tefahot; up to 10 chars to accommodate edge cases) */
   bankCode: varchar('bank_code', { length: 10 }).notNull(),
-  /** Branch number (e.g. '422') */
+  /** Branch number (e.g. '422') — low sensitivity, stored plain */
   branchNumber: varchar('branch_number', { length: 10 }).notNull(),
-  /** Account number (e.g. '082526') */
-  accountNumber: varchar('account_number', { length: 20 }).notNull(),
-  /**
-   * Full IBAN in normalised form (no spaces), e.g. 'IL410200000082008526526'.
-   * Stored without spaces so it can be used directly in SEPA/bank API calls.
-   * Display formatting (IL41 **** **** ...) is applied by the masking helper.
-   */
-  iban: varchar('iban', { length: 34 }).notNull(),
-  /** BIC / SWIFT code (e.g. 'MIZBILIT') */
-  swift: varchar('swift', { length: 11 }).notNull(),
   /** Account holder name exactly as it appears on the bank certificate */
   accountHolderName: varchar('account_holder_name', { length: 120 }).notNull(),
+  /** SWIFT/BIC code stored in plain text (publicly registered code, low sensitivity) */
+  swift: varchar('swift', { length: 11 }).notNull(),
+
+  // ── Encrypted sensitive fields (v2) ──────────────────────────────────────
+  // These store the output of secretFieldCrypto.encryptField() — AES-256-GCM ciphertext.
+  // Format: enc:v1:<iv_hex>:<authTag_hex>:<cipher_hex>
+  // Set/read ONLY by TreasuryConfigService. Never set directly.
+
+  /**
+   * AES-256-GCM encrypted IBAN (no spaces, e.g. enc:v1:...).
+   * Decrypt with secretFieldCrypto.decryptField() inside TreasuryConfigService only.
+   */
+  ibanEncrypted: text('iban_encrypted'),
+
+  /**
+   * AES-256-GCM encrypted account number (e.g. enc:v1:...).
+   * Decrypt with secretFieldCrypto.decryptField() inside TreasuryConfigService only.
+   */
+  accountNumberEncrypted: text('account_number_encrypted'),
+
+  // ── Masked display cache (computed on write, updated on rotate) ───────────
+  // These allow admin UI to display safely without decrypting in the route layer.
+  /** e.g. 'IL41 **** **** **** **** 526' — updated on every seed/rotate */
+  ibanMaskedCache: varchar('iban_masked_cache', { length: 50 }),
+  /** e.g. '***526' — updated on every seed/rotate */
+  accountNumberMaskedCache: varchar('account_number_masked_cache', { length: 20 }),
+  /** e.g. 'MIZB****' — updated on every seed/rotate */
+  swiftMaskedCache: varchar('swift_masked_cache', { length: 20 }),
 
   // ── Document provenance ───────────────────────────────────────────────────
   /** Date the bank account was opened — from the bank certificate */
@@ -141,6 +163,7 @@ export const treasuryAccessLog = pgTable('treasury_access_log', {
    *   'UPDATE'           — field(s) updated
    *   'VERIFY'           — status changed to 'verified'
    *   'SUSPEND'          — status changed to 'suspended'
+   *   'ROTATE'           — new treasury record created, old deactivated
    *   'PAYOUT_VALIDATED' — ProviderPayoutService checked treasury identity before transfer
    *   'PAYOUT_BLOCKED'   — ProviderPayoutService blocked a transfer (treasury not ready)
    */
@@ -163,3 +186,39 @@ export const treasuryAccessLog = pgTable('treasury_access_log', {
 }));
 
 export type TreasuryAccessLog = typeof treasuryAccessLog.$inferSelect;
+
+// ── treasury_settings_audit ───────────────────────────────────────────────────
+// Structural change audit — records create / verify / suspend / rotate events
+// with before/after masked snapshots for compliance and auditor review.
+// Never stores raw bank details — masked values only.
+
+export const treasurySettingsAudit = pgTable('treasury_settings_audit', {
+  id: serial('id').primaryKey(),
+  /** ID of the treasury_settings row this event relates to */
+  treasurySettingId: serial('treasury_setting_id').notNull(),
+  /** Action performed: 'created' | 'verified' | 'suspended' | 'rotated' | 'metadata_updated' */
+  action: varchar('action', { length: 40 }).notNull(),
+  /** Firebase UID of the person who triggered this event */
+  performedByUid: varchar('performed_by_uid', { length: 128 }).notNull(),
+  /** Display email of the actor */
+  performedByEmail: varchar('performed_by_email', { length: 255 }).notNull(),
+  /**
+   * JSON snapshot of the PREVIOUS masked state (before the action).
+   * Only contains masked values — never raw IBAN, account number, or SWIFT.
+   */
+  previousMaskedSnapshot: text('previous_masked_snapshot'),
+  /**
+   * JSON snapshot of the NEW masked state (after the action).
+   * Only contains masked values — never raw IBAN, account number, or SWIFT.
+   */
+  newMaskedSnapshot: text('new_masked_snapshot'),
+  /** Optional human note (from the admin who performed the action) */
+  note: text('note'),
+  performedAt: timestamp('performed_at').defaultNow().notNull(),
+}, (t) => ({
+  settingIdx: index('idx_treasury_audit_setting').on(t.treasurySettingId),
+  timeIdx: index('idx_treasury_audit_time').on(t.performedAt),
+}));
+
+export type TreasurySettingsAudit = typeof treasurySettingsAudit.$inferSelect;
+

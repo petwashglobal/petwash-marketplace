@@ -6,15 +6,21 @@
  *
  * SECURITY CONTRACT (Israeli Financial Regulation + Internal Policy):
  *  ▸ All reads return MASKED values. Raw values are never returned to callers.
- *  ▸ Sensitive env vars (COMPANY_BANK_*) are consumed ONCE at seed time and
- *    then treated as write-only in this file. No method returns them.
+ *  ▸ Sensitive env vars (COMPANY_BANK_*) are consumed ONCE at seed time;
+ *    IBAN and account number are then stored AES-256-GCM encrypted via
+ *    secretFieldCrypto.encryptField().  No method exposes the plaintext.
+ *  ▸ Display masking is served from pre-computed cache columns (iban_masked_cache,
+ *    account_number_masked_cache) so the route layer never needs to decrypt.
  *  ▸ Every read, write, and payout validation is recorded in treasury_access_log.
+ *  ▸ Structural events (seed, verify, suspend, rotate) are also recorded in
+ *    treasury_settings_audit with before/after masked snapshots.
  *  ▸ Application logs MUST NOT contain IBAN, account numbers, SWIFT, or branch.
  *    The logger calls in this file are carefully written to exclude them.
  *  ▸ This module must never be imported by any frontend-facing code.
  *    If you see this import in a client/ file, remove it immediately.
  *
  * Required environment variables (set in secrets manager / .env — never in code):
+ *   TREASURY_FIELD_ENCRYPTION_KEY — 64 hex chars (AES-256 key for field encryption)
  *   COMPANY_BANK_IBAN            — normalised, no spaces, e.g. IL410200000082008526526
  *   COMPANY_BANK_SWIFT           — e.g. MIZBILIT
  *   COMPANY_BANK_NAME            — e.g. Mizrahi-Tefahot
@@ -30,15 +36,28 @@
  *  ▸ All outgoing bank transfers from this account to providers are subject to
  *    the Payment Services Law (Israel, 2023) and require the source account to
  *    be formally registered as the company's treasury account.
+ *  ▸ Encryption at rest is required by the Israeli Privacy Protection Regulations
+ *    (Data Security) 5777-2017, Article 9 ("Protection of sensitive databases").
  *  ▸ Treasury access audit logs must be retained for 7 years per the Accounting
  *    Records Law (חוק מסמכי חשבונות), תשמ"ו-1976.
  */
 
 import { db } from '../db';
-import { treasurySettings, treasuryAccessLog } from '@shared/schema-treasury';
+import {
+  treasurySettings,
+  treasuryAccessLog,
+  treasurySettingsAudit,
+} from '@shared/schema-treasury';
 import type { TreasurySettings } from '@shared/schema-treasury';
 import { eq, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import {
+  encryptField,
+  decryptField,
+  maskIban,
+  maskAccountNumber,
+  maskSwift,
+} from './secretFieldCrypto';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,8 +69,7 @@ export interface MaskedTreasury {
   companyNumber: string;
   bankName: string;
   bankCode: string;
-  /** e.g. '***' — last digit only */
-  branchNumberMasked: string;
+  branchNumber: string;   // branch number is low-sensitivity; shown in plain to finance admins
   /** e.g. '***526' — last 3 digits only */
   accountNumberMasked: string;
   /** e.g. 'IL41 **** **** **** **** 526' */
@@ -84,60 +102,22 @@ export interface PayoutSourceValidation {
   reason: string;
   /** True only when the treasury is in 'verified' state and flagged as active payout source */
   readyForTransfer: boolean;
+  /** ID of the verified treasury record (used to stamp payout/settlement rows) */
+  treasurySettingId?: number;
 }
 
-// ── Masking helpers ───────────────────────────────────────────────────────────
-
-/**
- * Mask an IBAN for safe display.
- * Input:  'IL410200000082008526526'  (normalised, no spaces)
- * Output: 'IL41 **** **** **** **** 526'
- *
- * Only the country code + check digits (4 chars) and last 3 digits are shown.
- * The middle portion is fully masked to prevent reconstruction of the account number.
- */
-function maskIban(iban: string): string {
-  if (!iban || iban.length < 8) return '****';
-  const clean = iban.replace(/\s/g, '');
-  const prefix = clean.slice(0, 4);           // IL41
-  const suffix = clean.slice(-3);             // 526
-  const middleLen = Math.max(0, clean.length - 7);
-  const middleGroups = Math.ceil(middleLen / 4);
-  const masked = Array(middleGroups).fill('****').join(' ');
-  return `${prefix} ${masked} ${suffix}`;
+/** Health indicators for the admin diagnostics endpoint */
+export interface TreasuryHealthStatus {
+  treasuryConfigured: boolean;
+  treasuryVerified: boolean;
+  treasuryCertificateFresh: boolean;
+  payoutSourceReady: boolean;
+  detail: string;
 }
 
-/**
- * Mask an account number — show only last 3 digits.
- * Input:  '082526'
- * Output: '***526'
- */
-function maskAccountNumber(acct: string): string {
-  if (!acct || acct.length < 4) return '***';
-  return '***' + acct.slice(-3);
-}
+// ── Masking from cached columns ───────────────────────────────────────────────
 
-/**
- * Mask a branch number — show only last digit.
- * Input:  '422'
- * Output: '**2'
- */
-function maskBranchNumber(branch: string): string {
-  if (!branch || branch.length < 2) return '***';
-  return '*'.repeat(Math.max(0, branch.length - 1)) + branch.slice(-1);
-}
-
-/**
- * Mask a SWIFT/BIC code — show first 4 chars only.
- * Input:  'MIZBILIT'
- * Output: 'MIZB****'
- */
-function maskSwift(swift: string): string {
-  if (!swift || swift.length < 5) return '****';
-  return swift.slice(0, 4) + '*'.repeat(swift.length - 4);
-}
-
-/** Apply all masking rules to a raw treasury row. */
+/** Build a MaskedTreasury from a DB row, using the pre-computed mask cache columns. */
 function applyMask(row: TreasurySettings): MaskedTreasury {
   return {
     id: row.id,
@@ -146,10 +126,10 @@ function applyMask(row: TreasurySettings): MaskedTreasury {
     companyNumber: row.companyNumber,
     bankName: row.bankName,
     bankCode: row.bankCode,
-    branchNumberMasked: maskBranchNumber(row.branchNumber),
-    accountNumberMasked: maskAccountNumber(row.accountNumber),
-    ibanMasked: maskIban(row.iban),
-    swiftMasked: maskSwift(row.swift),
+    branchNumber: row.branchNumber,
+    accountNumberMasked: row.accountNumberMaskedCache ?? '***',
+    ibanMasked: row.ibanMaskedCache ?? '****',
+    swiftMasked: row.swiftMaskedCache ?? '****',
     accountHolderName: row.accountHolderName,
     accountOpenedAt: row.accountOpenedAt ?? null,
     sourceDocumentDate: row.sourceDocumentDate ?? null,
@@ -164,11 +144,13 @@ function applyMask(row: TreasurySettings): MaskedTreasury {
   };
 }
 
-// ── Audit logging helper ──────────────────────────────────────────────────────
+// ── Audit logging helpers ─────────────────────────────────────────────────────
+
+type AccessLogAction = typeof treasuryAccessLog.$inferSelect['action'];
 
 async function auditLog(
   actor: TreasuryActor,
-  action: TreasuryAccessLog['action'],
+  action: AccessLogAction,
   description: string,
 ): Promise<void> {
   try {
@@ -177,24 +159,45 @@ async function auditLog(
       actorEmail: actor.email,
       actorRole: actor.role,
       action,
-      // description must never contain IBAN, account number, or other secrets
       description,
       ipAddress: actor.ip ?? null,
       userAgent: actor.userAgent ?? null,
     });
   } catch (err) {
-    // Audit failures must never silently swallow — log (without sensitive data) and rethrow
-    logger.error('[TreasuryConfig] CRITICAL: failed to write audit log', {
+    logger.error('[TreasuryConfig] CRITICAL: failed to write access audit log', {
       action,
       actorUid: actor.uid,
-      // deliberately NOT logging description here in case caller accidentally included secrets
     });
     throw err;
   }
 }
 
-// Alias for the action type so callers don't import the DB type directly
-type TreasuryAccessLog = typeof treasuryAccessLog.$inferSelect;
+async function structuralAudit(
+  actor: TreasuryActor,
+  treasurySettingId: number,
+  action: string,
+  previousMasked: MaskedTreasury | null,
+  newMasked: MaskedTreasury,
+  note?: string,
+): Promise<void> {
+  try {
+    await db.insert(treasurySettingsAudit).values({
+      treasurySettingId,
+      action,
+      performedByUid: actor.uid,
+      performedByEmail: actor.email,
+      previousMaskedSnapshot: previousMasked ? JSON.stringify(previousMasked) : null,
+      newMaskedSnapshot: JSON.stringify(newMasked),
+      note: note ?? null,
+    });
+  } catch (err) {
+    logger.error('[TreasuryConfig] CRITICAL: failed to write structural audit entry', {
+      action,
+      actorUid: actor.uid,
+    });
+    throw err;
+  }
+}
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -203,15 +206,12 @@ export class TreasuryConfigService {
   /**
    * Seed the treasury_settings row from environment variables.
    *
-   * This is an upsert operation — safe to call on every server startup if
-   * you want the DB to stay in sync with the env configuration.
+   * Sensitive fields (IBAN, account number) are encrypted with AES-256-GCM via
+   * secretFieldCrypto.encryptField() before being written to the database.
+   * Masked display caches are pre-computed and stored alongside the ciphertext.
    *
-   * MUST be called from server-side startup code only (e.g. server/index.ts).
+   * MUST be called from server-side startup code only.
    * MUST NOT be called from any request handler.
-   *
-   * If any required env var is missing, the seed is skipped and a startup
-   * warning is emitted. The system can still operate in read-only mode
-   * (payouts will be blocked until treasury is configured and verified).
    */
   static async seedFromEnv(actor: TreasuryActor): Promise<void> {
     const iban            = process.env.COMPANY_BANK_IBAN;
@@ -235,7 +235,6 @@ export class TreasuryConfigService {
     ].filter(Boolean);
 
     if (missing.length > 0) {
-      // Log variable names only — NOT any values
       logger.warn('[TreasuryConfig] Treasury seed skipped — missing env vars', {
         missingVars: missing,
         note: 'Set these in secrets manager or .env — never in source code',
@@ -243,48 +242,63 @@ export class TreasuryConfigService {
       return;
     }
 
-    const newValues = {
-        legalEntityName: 'PET WASH LTD',
-        legalEntityNameHe: 'פט וואש בע"מ',
-        companyNumber: '517145033',
-        bankName: bankName!,
-        bankCode: bankCode!,
-        branchNumber: branchNumber!,
-        accountNumber: accountNumber!,
-        iban: iban!.replace(/\s/g, ''),  // normalise: strip any spaces
-        swift: swift!,
-        accountHolderName: accountHolder!,
-        accountOpenedAt: openedAt ? new Date(openedAt) : null,
-        sourceDocumentDate: certDate ? new Date(certDate) : null,
-        verificationStatus: 'pending',
-        isActivePayoutSource: false,    // must be manually enabled by a verified finance officer
-        isActiveForReconciliation: false,
-        lastModifiedByUid: actor.uid,
+    // Normalise IBAN and encrypt sensitive fields
+    const ibanClean = iban!.replace(/\s/g, '');
+    const ibanEncrypted = encryptField(ibanClean);
+    const accountNumberEncrypted = encryptField(accountNumber!);
+
+    // Pre-compute masked values for the display cache
+    const ibanMaskedCache = maskIban(ibanClean);
+    const accountNumberMaskedCache = maskAccountNumber(accountNumber!);
+    const swiftMaskedCache = maskSwift(swift!);
+
+    const existing = await db
+      .select({ id: treasurySettings.id })
+      .from(treasurySettings)
+      .limit(1);
+
+    const previousMasked = existing.length > 0
+      ? applyMask((await db.select().from(treasurySettings).limit(1))[0])
+      : null;
+
+    const sharedValues = {
+      bankName: bankName!,
+      bankCode: bankCode!,
+      branchNumber: branchNumber!,
+      swift: swift!,
+      accountHolderName: accountHolder!,
+      ibanEncrypted,
+      accountNumberEncrypted,
+      ibanMaskedCache,
+      accountNumberMaskedCache,
+      swiftMaskedCache,
+      accountOpenedAt: openedAt ? new Date(openedAt) : null,
+      sourceDocumentDate: certDate ? new Date(certDate) : null,
+      updatedAt: new Date(),
+      lastModifiedByUid: actor.uid,
     };
 
-    // Select-then-upsert: Drizzle does not support arbitrary SQL expressions as
-    // conflict targets, so we check for an existing row first.
-    const existing = await db.select({ id: treasurySettings.id }).from(treasurySettings).limit(1);
+    let rowId: number;
     if (existing.length > 0) {
-      // Update the existing singleton row — preserve verification status & flags
       await db
         .update(treasurySettings)
-        .set({
-          bankName: newValues.bankName,
-          bankCode: newValues.bankCode,
-          branchNumber: newValues.branchNumber,
-          accountNumber: newValues.accountNumber,
-          iban: newValues.iban,
-          swift: newValues.swift,
-          accountHolderName: newValues.accountHolderName,
-          accountOpenedAt: newValues.accountOpenedAt,
-          sourceDocumentDate: newValues.sourceDocumentDate,
-          updatedAt: new Date(),
-          lastModifiedByUid: actor.uid,
-        })
+        .set(sharedValues)
         .where(eq(treasurySettings.id, existing[0].id));
+      rowId = existing[0].id;
     } else {
-      await db.insert(treasurySettings).values(newValues);
+      const [inserted] = await db
+        .insert(treasurySettings)
+        .values({
+          legalEntityName: 'PET WASH LTD',
+          legalEntityNameHe: 'פט וואש בע"מ',
+          companyNumber: '517145033',
+          verificationStatus: 'pending',
+          isActivePayoutSource: false,
+          isActiveForReconciliation: false,
+          ...sharedValues,
+        })
+        .returning({ id: treasurySettings.id });
+      rowId = inserted.id;
     }
 
     logger.info('[TreasuryConfig] Treasury settings seeded/updated from env vars', {
@@ -293,12 +307,16 @@ export class TreasuryConfigService {
       // No IBAN, account number, or branch in logs
     });
 
+    const newRow = (await db.select().from(treasurySettings).limit(1))[0];
+    const newMasked = applyMask(newRow);
+
     await auditLog(actor, 'SEED', 'Treasury settings seeded from environment variables at server startup');
+    await structuralAudit(actor, rowId, 'created', previousMasked, newMasked, 'Seeded from env vars');
   }
 
   /**
    * Return the masked treasury settings for admin display.
-   * Never returns raw IBAN, account number, or SWIFT.
+   * Reads the pre-computed mask cache — never decrypts.
    */
   static async getMasked(actor: TreasuryActor): Promise<MaskedTreasury | null> {
     const rows = await db.select().from(treasurySettings).limit(1);
@@ -311,8 +329,8 @@ export class TreasuryConfigService {
 
   /**
    * Update non-sensitive metadata fields only.
-   * Sensitive bank details (IBAN, account, branch, SWIFT) cannot be changed
-   * via this method — they must be updated by re-seeding from env vars.
+   * Sensitive bank details (IBAN, account, branch, SWIFT) must be updated
+   * by re-seeding from env vars.
    */
   static async updateMetadata(
     actor: TreasuryActor,
@@ -328,25 +346,21 @@ export class TreasuryConfigService {
 
     await db
       .update(treasurySettings)
-      .set({
-        ...fields,
-        updatedAt: new Date(),
-        lastModifiedByUid: actor.uid,
-      })
+      .set({ ...fields, updatedAt: new Date(), lastModifiedByUid: actor.uid })
       .where(eq(treasurySettings.id, rows[0].id));
 
     await auditLog(actor, 'UPDATE', 'Treasury metadata updated (document provenance fields)');
 
-    const updated = await db.select().from(treasurySettings).limit(1);
-    return updated.length > 0 ? applyMask(updated[0]) : null;
+    const updated = (await db.select().from(treasurySettings).limit(1))[0];
+    const newMasked = applyMask(updated);
+    await structuralAudit(actor, rows[0].id, 'metadata_updated', applyMask(rows[0]), newMasked);
+
+    return newMasked;
   }
 
   /**
    * Mark the treasury account as verified by a human finance officer.
-   * This also enables it as the active payout source and reconciliation account.
-   *
-   * Only callable by 'super_admin' or 'finance' roles.
-   * The route layer enforces this — this method trusts the caller has already verified.
+   * Also enables it as the active payout source and reconciliation account.
    */
   static async markVerified(
     actor: TreasuryActor,
@@ -355,12 +369,14 @@ export class TreasuryConfigService {
     const rows = await db.select().from(treasurySettings).limit(1);
     if (rows.length === 0) return null;
 
+    const previousMasked = applyMask(rows[0]);
+
     await db
       .update(treasurySettings)
       .set({
         verificationStatus: 'verified',
         verifiedByUid: actor.uid,
-        verifiedByName: actor.email,   // store email as the display name
+        verifiedByName: actor.email,
         verifiedAt: new Date(),
         verificationNote: opts.note ?? 'Verified by finance officer',
         isActivePayoutSource: true,
@@ -373,22 +389,24 @@ export class TreasuryConfigService {
     logger.info('[TreasuryConfig] Treasury account verified and activated', {
       verifiedByUid: actor.uid,
       companyNumber: rows[0].companyNumber,
-      // No bank details in logs
     });
+
+    const updated = (await db.select().from(treasurySettings).limit(1))[0];
+    const newMasked = applyMask(updated);
 
     await auditLog(
       actor,
       'VERIFY',
       `Treasury account verified and activated as payout source. Note: ${opts.note ?? 'none'}`,
     );
+    await structuralAudit(actor, rows[0].id, 'verified', previousMasked, newMasked, opts.note);
 
-    const updated = await db.select().from(treasurySettings).limit(1);
-    return updated.length > 0 ? applyMask(updated[0]) : null;
+    return newMasked;
   }
 
   /**
-   * Suspend the treasury account (e.g. bank investigation, fraud alert).
-   * Automatically disables it as payout source and reconciliation account.
+   * Suspend the treasury account.
+   * Immediately disables it as payout source and reconciliation account.
    */
   static async suspend(
     actor: TreasuryActor,
@@ -396,6 +414,8 @@ export class TreasuryConfigService {
   ): Promise<MaskedTreasury | null> {
     const rows = await db.select().from(treasurySettings).limit(1);
     if (rows.length === 0) return null;
+
+    const previousMasked = applyMask(rows[0]);
 
     await db
       .update(treasurySettings)
@@ -411,24 +431,21 @@ export class TreasuryConfigService {
 
     logger.warn('[TreasuryConfig] Treasury account SUSPENDED', {
       actorUid: actor.uid,
-      // reason is safe to log as it comes from the finance officer, not the bank system
       reason,
     });
 
-    await auditLog(actor, 'SUSPEND', `Treasury account suspended. Reason: ${reason}`);
+    const updated = (await db.select().from(treasurySettings).limit(1))[0];
+    const newMasked = applyMask(updated);
 
-    const updated = await db.select().from(treasurySettings).limit(1);
-    return updated.length > 0 ? applyMask(updated[0]) : null;
+    await auditLog(actor, 'SUSPEND', `Treasury account suspended. Reason: ${reason}`);
+    await structuralAudit(actor, rows[0].id, 'suspended', previousMasked, newMasked, reason);
+
+    return newMasked;
   }
 
   /**
    * Validate that the treasury is configured and ready to be used as a payout source.
-   *
    * Call this in ProviderPayoutService BEFORE initiating any bank transfer.
-   * A transfer MUST NOT proceed unless this returns `readyForTransfer: true`.
-   *
-   * This method does NOT log every payout call — callers log contextually.
-   * Use auditPayoutValidation() for individual payout audit entries.
    */
   static async validatePayoutSource(): Promise<PayoutSourceValidation> {
     const rows = await db.select().from(treasurySettings).limit(1);
@@ -467,10 +484,10 @@ export class TreasuryConfigService {
       };
     }
 
-    if (!t.iban || !t.swift || !t.accountNumber) {
+    if (!t.ibanEncrypted || !t.accountNumberEncrypted) {
       return {
         valid: false,
-        reason: 'Treasury account is missing required bank details. Re-seed from environment variables.',
+        reason: 'Treasury account is missing required encrypted bank details. Re-seed from environment variables.',
         readyForTransfer: false,
       };
     }
@@ -479,6 +496,7 @@ export class TreasuryConfigService {
       valid: true,
       reason: 'Treasury account verified and ready',
       readyForTransfer: true,
+      treasurySettingId: t.id,
     };
   }
 
@@ -501,12 +519,11 @@ export class TreasuryConfigService {
 
   /**
    * Return paginated access log entries for the admin audit view.
-   * Results are safe to display — they never contain raw bank details.
    */
   static async getAccessLog(
     actor: TreasuryActor,
     opts: { limit?: number; offset?: number } = {},
-  ): Promise<TreasuryAccessLog[]> {
+  ) {
     const limit = Math.min(opts.limit ?? 50, 200);
     const offset = opts.offset ?? 0;
 
@@ -517,9 +534,107 @@ export class TreasuryConfigService {
       .limit(limit)
       .offset(offset);
 
-    // Log the audit-log read itself (meta-audit)
     await auditLog(actor, 'READ', `Admin viewed treasury access log (limit=${limit}, offset=${offset})`);
 
     return rows;
   }
+
+  /**
+   * Return paginated structural audit entries (masked snapshots only).
+   */
+  static async getStructuralAuditLog(
+    actor: TreasuryActor,
+    opts: { limit?: number; offset?: number } = {},
+  ) {
+    const limit = Math.min(opts.limit ?? 50, 200);
+    const offset = opts.offset ?? 0;
+
+    const rows = await db
+      .select()
+      .from(treasurySettingsAudit)
+      .orderBy(sql`performed_at DESC`)
+      .limit(limit)
+      .offset(offset);
+
+    await auditLog(actor, 'READ', `Admin viewed treasury structural audit log`);
+
+    return rows;
+  }
+
+  /**
+   * Health indicators for admin diagnostics.
+   * Cert freshness threshold: 365 days (Bank of Israel guidance on account cert renewal).
+   */
+  static async getHealthStatus(): Promise<TreasuryHealthStatus> {
+    const rows = await db.select().from(treasurySettings).limit(1);
+
+    if (rows.length === 0) {
+      return {
+        treasuryConfigured: false,
+        treasuryVerified: false,
+        treasuryCertificateFresh: false,
+        payoutSourceReady: false,
+        detail: 'Treasury not configured',
+      };
+    }
+
+    const t = rows[0];
+    const isVerified = t.verificationStatus === 'verified';
+    const certDate = t.sourceDocumentDate;
+    const freshThresholdDays = 365;
+    const isCertFresh = certDate
+      ? (Date.now() - certDate.getTime()) / 86_400_000 < freshThresholdDays
+      : false;
+
+    return {
+      treasuryConfigured: true,
+      treasuryVerified: isVerified,
+      treasuryCertificateFresh: isCertFresh,
+      payoutSourceReady: isVerified && t.isActivePayoutSource,
+      detail: isVerified
+        ? isCertFresh
+          ? 'Treasury operational'
+          : 'Treasury verified but certificate may be outdated — request fresh bank letter'
+        : `Treasury status: ${t.verificationStatus}`,
+    };
+  }
+
+  /**
+   * Decrypt the IBAN for internal use by the payout/bank transfer engine only.
+   * MUST NOT be called from any route handler or exported to the frontend.
+   *
+   * @internal
+   */
+  static async _internalGetDecryptedIban(): Promise<string | null> {
+    const rows = await db.select().from(treasurySettings).limit(1);
+    if (rows.length === 0 || !rows[0].ibanEncrypted) return null;
+    try {
+      return decryptField(rows[0].ibanEncrypted);
+    } catch (err) {
+      logger.error('[TreasuryConfig] Failed to decrypt IBAN — ciphertext tampered?', {
+        error: String(err),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Decrypt the account number for internal use by the payout/bank transfer engine only.
+   * MUST NOT be called from any route handler or exported to the frontend.
+   *
+   * @internal
+   */
+  static async _internalGetDecryptedAccountNumber(): Promise<string | null> {
+    const rows = await db.select().from(treasurySettings).limit(1);
+    if (rows.length === 0 || !rows[0].accountNumberEncrypted) return null;
+    try {
+      return decryptField(rows[0].accountNumberEncrypted);
+    } catch (err) {
+      logger.error('[TreasuryConfig] Failed to decrypt account number — ciphertext tampered?', {
+        error: String(err),
+      });
+      return null;
+    }
+  }
 }
+

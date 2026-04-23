@@ -224,7 +224,6 @@ router.get('/log', async (req: Request, res: Response) => {
 
 // ── GET /api/admin/finance/treasury/payout-status ────────────────────────────
 // Quick check: is the treasury ready for outgoing bank transfers?
-// Used by ProviderPayoutService health-check and the admin dashboard widget.
 
 router.get('/payout-status', async (req: Request, res: Response) => {
   try {
@@ -242,6 +241,35 @@ router.get('/payout-status', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error('[TreasurySettings] GET /payout-status failed', err);
     return res.status(500).json({ error: 'Failed to check payout status' });
+  }
+});
+
+// ── GET /api/admin/finance/treasury/health ────────────────────────────────────
+// Returns all health indicators for the finance admin diagnostics dashboard.
+
+router.get('/health', async (req: Request, res: Response) => {
+  try {
+    const health = await TreasuryConfigService.getHealthStatus();
+    return res.json({ health });
+  } catch (err) {
+    logger.error('[TreasurySettings] GET /health failed', err);
+    return res.status(500).json({ error: 'Failed to get treasury health status' });
+  }
+});
+
+// ── GET /api/admin/finance/treasury/audit ─────────────────────────────────────
+// Returns paginated structural audit trail (masked snapshots only).
+
+router.get('/audit', async (req: Request, res: Response) => {
+  try {
+    const actor = actorFromReq(req);
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 200);
+    const offset = parseInt(String(req.query.offset ?? '0'), 10);
+    const entries = await TreasuryConfigService.getStructuralAuditLog(actor, { limit, offset });
+    return res.json({ entries, limit, offset });
+  } catch (err) {
+    logger.error('[TreasurySettings] GET /audit failed', err);
+    return res.status(500).json({ error: 'Failed to retrieve audit trail' });
   }
 });
 
