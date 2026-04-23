@@ -9567,7 +9567,8 @@ self.addEventListener('notificationclick', (event) => {
   // Phase 12.17 — Cash Reconciliation & Treasury Discipline
   // P0-SEC: Added validateFirebaseToken + adminLimiter (was: apiLimiter only — fully unauthenticated).
   // Before: any caller could POST /batches, /batches/:id/mark-paid, /import-bank-transactions etc.
-  // After:  requires valid Firebase ID token; inner requireTreasuryAdmin guard also enforces admin/executive/franchise_owner.
+  // After:  requires valid Firebase ID token; inner requireTreasuryAdmin guard enforces super_admin/finance/ceo only.
+  //         franchise_owner and executive are intentionally excluded — they have scoped finance endpoints.
   const treasuryRoutes = await import('./routes/treasury');
   app.use('/api/treasury', validateFirebaseToken, adminLimiter, treasuryRoutes.default);
   treasuryRoutes.startReconciliationScheduler();

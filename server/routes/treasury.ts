@@ -18,10 +18,25 @@ const router = Router();
 // P0-SEC: Per-router authentication + role guard (defense-in-depth)
 // The outer mount in routes.ts already applies validateFirebaseToken + adminLimiter.
 // This guard provides a second layer: if the outer chain is ever misconfigured, all
-// reads AND writes still require a verified Firebase user with admin, executive, or
-// franchise_owner role.
+// reads AND writes still require a verified Firebase user with a central-treasury role.
+//
+// ROLE POLICY — central company treasury:
+//   super_admin — full platform authority
+//   finance     — treasury / settlement / reconciliation staff
+//   ceo         — executive oversight
+//
+// These are the same three roles enforced by server/routes/finance/treasury-settings.ts
+// (the even more sensitive bank-account-detail endpoint).  The two routers must stay
+// in sync so the role boundary for all treasury data is consistent.
+//
+// Intentionally excluded:
+//   admin         — general dashboard access; does not need raw bank transactions
+//   executive     — not a canonical ADMIN_ROLES role; no legitimate treasury claim
+//   franchise_owner — has own scoped endpoint at /api/franchise/:id/finance/summary
+//                     (franchise-finance.ts checks DB ownership); must NOT see
+//                     group-level bank transactions, liquidity, or reconciliation
 // ---------------------------------------------------------------------------
-const TREASURY_ALLOWED_ROLES = new Set(['admin', 'executive', 'franchise_owner']);
+const TREASURY_ALLOWED_ROLES = new Set(['super_admin', 'finance', 'ceo']);
 
 function requireTreasuryAdmin(req: Request, res: Response, next: NextFunction) {
   const fbUser = (req as any).firebaseUser;
@@ -30,7 +45,7 @@ function requireTreasuryAdmin(req: Request, res: Response, next: NextFunction) {
   }
   const role: string = fbUser?.claims?.role ?? fbUser?.role ?? '';
   if (!TREASURY_ALLOWED_ROLES.has(role)) {
-    return res.status(403).json({ error: 'Insufficient role — requires admin, executive, or franchise_owner', userRole: role });
+    return res.status(403).json({ error: 'Insufficient role — central treasury requires super_admin, finance, or ceo', userRole: role });
   }
   next();
 }
