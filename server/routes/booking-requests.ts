@@ -1157,6 +1157,11 @@ router.post('/:requestId/pay', async (req, res) => {
       });
     }
 
+    const sessionId = sessionResult.sessionId || `SESSION-${requestId}`;
+    if (!sessionResult.sessionId) {
+      logger.warn('[BookingRequests] Nayax session created without a sessionId — using fallback placeholder; webhook reconciliation may be affected', { requestId });
+    }
+
     // Create the Firestore escrow record with the session ID as a placeholder.
     // The webhook will update it to the real transaction ID on confirmation.
     try {
@@ -1165,7 +1170,7 @@ router.post('/:requestId/pay', async (req, res) => {
         booking.ownerId,
         booking.providerId,
         booking.totalCents / 100,
-        sessionResult.sessionId || `SESSION-${requestId}`, // placeholder until real txId
+        sessionId, // placeholder until real txId arrives from webhook
         {
           serviceType: booking.serviceType,
           providerType: booking.providerType,
@@ -1198,7 +1203,7 @@ router.post('/:requestId/pay', async (req, res) => {
       .set({
         status: 'payment_pending',
         paymentMethod: paymentMethod || 'nayax',
-        paymentTransactionId: sessionResult.sessionId || null, // session ID stored; real txId comes from webhook
+        paymentTransactionId: sessionId, // placeholder; real txId set by webhook
         statusHistory,
         updatedAt: new Date(),
       })

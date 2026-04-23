@@ -942,7 +942,7 @@ router.post(
         const discountType     = sessionData?.discountType     ?? 'none';
         const birthdayYear     = sessionData?.birthdayYear     ?? null;
         const kycType          = sessionData?.kycType          ?? null;
-        const hadNewMember     = sessionData?.hasUsedNewMemberDiscount === true;
+        const isNewMemberDiscountApplied = sessionData?.hasUsedNewMemberDiscount === true;
 
         // Atomic balance award (SQL-level to prevent race conditions)
         await db
@@ -958,7 +958,7 @@ router.post(
         // If this was a new-member-bonus redemption, flag the user so they can't
         // use it again.  (The /api/checkout route set hasUsedNewMemberDiscount: true
         // before creating the session; here we confirm it is persisted.)
-        if (hadNewMember) {
+        if (isNewMemberDiscountApplied) {
           await db
             .update(usersTable)
             .set({ hasUsedNewMemberDiscount: true, updatedAt: new Date() })
