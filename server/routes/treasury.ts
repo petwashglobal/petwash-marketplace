@@ -17,8 +17,9 @@ const router = Router();
 // ---------------------------------------------------------------------------
 // P0-SEC: Per-router authentication + role guard (defense-in-depth)
 // The outer mount in routes.ts already applies validateFirebaseToken + adminLimiter.
-// This guard provides a second layer: if the outer chain is ever misconfigured, writes
-// still require a verified Firebase user with admin, executive, or franchise_owner role.
+// This guard provides a second layer: if the outer chain is ever misconfigured, all
+// reads AND writes still require a verified Firebase user with admin, executive, or
+// franchise_owner role.
 // ---------------------------------------------------------------------------
 const TREASURY_ALLOWED_ROLES = new Set(['admin', 'executive', 'franchise_owner']);
 
@@ -34,6 +35,10 @@ function requireTreasuryAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Apply the role guard to EVERY route in this router (reads and writes alike).
+// Financial data — payout batches, bank transactions, reconciliation results,
+// settlement traces, liquidity forecasts — must never be visible to non-admin roles.
+router.use(requireTreasuryAdmin);
 
 // ---------------------------------------------------------------------------
 // T171 — Payout batch management
