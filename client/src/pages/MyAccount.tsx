@@ -112,6 +112,24 @@ interface WalletSummary {
   tierPointsThisYear: number;
 }
 
+interface LoginSecurityEvent {
+  id: number;
+  eventType: 'login_success' | 'new_device_login' | 'new_browser_login' | 'new_location_login' | 'high_risk_login';
+  maskedIp: string | null;
+  country: string | null;
+  city: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  riskScore: number;
+  riskFlags: string[];
+  isNewDevice: boolean;
+  isNewBrowser: boolean;
+  isNewLocation: boolean;
+  isHighRiskIp: boolean;
+  createdAt: string;
+}
+
 interface UserProfile {
   displayName: string;
   email: string;
@@ -668,7 +686,7 @@ export default function MyAccount() {
   });
 
   // ── Recent logins (security) ──
-  const { data: recentLoginsData, isLoading: recentLoginsLoading } = useQuery<{ events: any[] }>({
+  const { data: recentLoginsData, isLoading: recentLoginsLoading } = useQuery<{ events: LoginSecurityEvent[] }>({
     queryKey: ['/api/account/security/recent-logins'],
     enabled: !!user && activeTab === 'security',
   });
@@ -2615,7 +2633,7 @@ export default function MyAccount() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {(recentLoginsData.events as any[]).map((ev: any) => {
+                    {recentLoginsData.events.map((ev: LoginSecurityEvent) => {
                       const flagLabel = (flags: string[]): { label: string; color: string } => {
                         if (flags.includes('HIGH_RISK_IP'))  return { label: isHebrew ? 'סיכון גבוה' : 'High Risk',     color: 'bg-red-100 text-red-700' };
                         if (flags.includes('NEW_DEVICE'))    return { label: isHebrew ? 'מכשיר חדש' : 'New Device',    color: 'bg-orange-100 text-orange-700' };
@@ -2625,7 +2643,7 @@ export default function MyAccount() {
                         return { label: isHebrew ? 'כניסה רגילה' : 'Normal Login', color: 'bg-green-100 text-green-700' };
                       };
                       const badge = flagLabel(ev.riskFlags || []);
-                      const location = [ev.city, ev.country].filter((s: string) => s && s !== 'Unknown').join(', ') || (isHebrew ? 'מיקום לא ידוע' : 'Unknown location');
+                      const location = [ev.city, ev.country].filter((s) => s && s !== 'Unknown').join(', ') || (isHebrew ? 'מיקום לא ידוע' : 'Unknown location');
                       const dt = new Date(ev.createdAt);
                       const dateStr = dt.toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
                       const timeStr = dt.toLocaleTimeString(isHebrew ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit' });

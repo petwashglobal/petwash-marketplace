@@ -60,9 +60,9 @@ export interface RiskAssessment {
 function parseUserAgent(ua: string): ParsedUA {
   const s = ua || '';
 
-  // Device type
-  const isMobile = /Mobile|Android.*(?!Tablet)|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(s);
+  // Device type — check tablet first (some Android tablets include both "Android" and "Mobile")
   const isTablet = /Tablet|iPad|Android(?!.*Mobile)/i.test(s);
+  const isMobile = !isTablet && /Mobile|Android(?!.*Tablet)|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(s);
   const device = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop';
 
   // Browser
@@ -86,7 +86,8 @@ function parseUserAgent(ua: string): ParsedUA {
   else if (/Linux/i.test(s))      os = 'Linux';
   else if (/CrOS/i.test(s))       os = 'ChromeOS';
 
-  const userAgentHash = crypto.createHash('sha256').update(s).digest('hex').slice(0, 32);
+  // Use full 64-char hash for better collision resistance
+  const userAgentHash = crypto.createHash('sha256').update(s).digest('hex');
 
   return { device, browser, os, userAgentHash };
 }
@@ -115,14 +116,21 @@ function maskIp(ip: string): string {
 /**
  * Stable HMAC-SHA256 hash of the raw IP using the userId as per-user salt.
  * Allows us to compare "same IP" across logins without storing the raw IP.
+ * Requires IP_HASH_SALT env var — logs a warning if not set in production.
  */
 function hashIp(ip: string, userId: string): string {
-  const SALT = process.env.IP_HASH_SALT || 'petwash-ip-salt-2026';
+  const SALT = process.env.IP_HASH_SALT;
+  if (!SALT) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.warn('[AuthEventService] IP_HASH_SALT env var is not set — IP hashes will be weakly salted');
+    }
+  }
+  const effectiveSalt = SALT || 'petwash-ip-salt-default';
+  // Use full 64-char hex output for maximum collision resistance
   return crypto
-    .createHmac('sha256', `${SALT}:${userId}`)
+    .createHmac('sha256', `${effectiveSalt}:${userId}`)
     .update(ip)
-    .digest('hex')
-    .slice(0, 32);
+    .digest('hex');
 }
 
 /**
