@@ -15097,3 +15097,46 @@ export const insertWithholdingRemittanceLedgerSchema = createInsertSchema(withho
 });
 export type InsertWithholdingRemittanceLedger = z.infer<typeof insertWithholdingRemittanceLedgerSchema>;
 export type WithholdingRemittanceLedger = typeof withholdingRemittanceLedger.$inferSelect;
+
+// ── Login Security Events (new-login alert & recent-login security log) ───────
+// Separate from the older auth_events table (which tracks raw auth attempts).
+// This table stores per-login risk analysis with privacy-safe fields only.
+
+export const loginSecurityEventTypeEnum = pgEnum('login_security_event_type', [
+  'login_success',
+  'new_device_login',
+  'new_browser_login',
+  'new_location_login',
+  'high_risk_login',
+]);
+
+export const loginSecurityEvents = pgTable('login_security_events', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 128 }).notNull(),
+  email: varchar('email', { length: 255 }),
+  eventType: loginSecurityEventTypeEnum('event_type').notNull().default('login_success'),
+  // IP stored as masked (last octet replaced with 'xxx') — never store raw
+  maskedIp: varchar('masked_ip', { length: 64 }),
+  // HMAC-SHA256 hash of raw IP + per-user salt — used for device/location comparison
+  ipHash: varchar('ip_hash', { length: 64 }),
+  country: varchar('country', { length: 100 }),
+  city: varchar('city', { length: 100 }),
+  device: varchar('device', { length: 100 }),    // mobile / desktop / tablet
+  browser: varchar('browser', { length: 100 }),
+  os: varchar('os', { length: 100 }),
+  // SHA-256 hash of raw user-agent string — NOT the raw string
+  userAgentHash: varchar('user_agent_hash', { length: 64 }),
+  riskScore: integer('risk_score').default(0).notNull(),
+  riskFlags: jsonb('risk_flags').default(sql`'[]'::jsonb`), // string[]
+  isNewDevice: boolean('is_new_device').default(false).notNull(),
+  isNewBrowser: boolean('is_new_browser').default(false).notNull(),
+  isNewLocation: boolean('is_new_location').default(false).notNull(),
+  isHighRiskIp: boolean('is_high_risk_ip').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_login_sec_events_user').on(table.userId),
+  index('idx_login_sec_events_user_created').on(table.userId, table.createdAt),
+]);
+
+export type LoginSecurityEvent = typeof loginSecurityEvents.$inferSelect;
+export type InsertLoginSecurityEvent = typeof loginSecurityEvents.$inferInsert;

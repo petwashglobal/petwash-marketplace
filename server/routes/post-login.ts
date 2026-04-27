@@ -6,6 +6,8 @@ import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin } from "../middleware/rbac";
 import { isAdminRole } from "@shared/adminRoles";
+import { recordLoginEvent } from "../services/AuthEventService";
+import { getClientIP } from "../services/alerts";
 
 const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL || '';
 if (!process.env.ADMIN_APPROVER_EMAIL) {
@@ -572,6 +574,17 @@ export async function postLoginDecider(req: Request, res: Response) {
       userAgent,
       riskScore: 0,
       metadata: { role: effectiveRole, status: userStatus, traceId },
+    });
+
+    // Record auth event for new-login alert & recent-login security log.
+    // Fire-and-forget — never block the auth response.
+    recordLoginEvent({
+      userId,
+      email: (u as any).email || undefined,
+      ip: getClientIP(req),
+      userAgent: req.headers['user-agent'] || '',
+    }).catch((err) => {
+      logger.warn('[PostLogin] recordLoginEvent failed (non-fatal)', { error: String(err) });
     });
 
     logAuditEvent({
