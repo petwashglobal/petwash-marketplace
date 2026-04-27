@@ -160,7 +160,8 @@ const placesSessionLimiter = rateLimit({
 
 // ── Fix 2: Strict hostname matching ──────────────────────────────────────────
 // Accepts exact domain match OR subdomain (e.g. app.petwash.co.il ✓, petwash.co.il.evil.com ✗)
-function isAllowedHostname(hostname: string, allowedDomains: string[]): boolean {
+// Exported so that unit tests can call the real implementation directly.
+export function isAllowedHostname(hostname: string, allowedDomains: string[]): boolean {
   const h = hostname.toLowerCase();
   return allowedDomains.some(domain => {
     const d = domain.toLowerCase();
@@ -172,6 +173,37 @@ function isAllowedHostname(hostname: string, allowedDomains: string[]): boolean 
 // x-internal-service header is spoofable from any browser. Instead, server-to-server
 // calls must send x-internal-secret matching the env var (never exposed to frontend).
 // Allowed origins for the Places proxy - prevents external sites burning your API quota.
+
+/**
+ * Build the Places proxy origin allowlist.
+ *
+ * Exported for unit testing so tests call the real implementation rather than
+ * duplicating the logic.  Pass `isDev = false` to simulate production behaviour.
+ *
+ * Production allowlist: petwash-owned domains only.
+ * Dev-only additions: Replit preview domains and localhost — NEVER in production.
+ */
+export function buildPlacesAllowlist(isDev: boolean): string[] {
+  const devOnlyOrigins = isDev
+    ? ['replit.dev', 'repl.co', 'localhost', '127.0.0.1']
+    : [];
+
+  return [
+    'petwash.co.il',
+    'www.petwash.co.il',
+    'auth.petwash.co.il',
+    'petwashglobal.com',
+    'signinpetwash.web.app',
+    'signinpetwash.firebaseapp.com',
+    ...devOnlyOrigins,
+  ];
+}
+
+// Module-level allowlist — evaluated once at startup using the current NODE_ENV.
+const _DEFAULT_ALLOWED_ORIGINS = buildPlacesAllowlist(
+  process.env.NODE_ENV !== 'production',
+);
+
 function isAllowedPlacesOrigin(req: any): boolean {
   const origin = req.headers['origin'] as string | undefined;
   const referer = req.headers['referer'] as string | undefined;
@@ -181,16 +213,7 @@ function isAllowedPlacesOrigin(req: any): boolean {
     ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
     : [];
 
-  const defaultAllowed = [
-    'petwash.co.il',
-    'petwashglobal.com',
-    'signinpetwash.web.app',
-    'signinpetwash.firebaseapp.com',
-    'replit.dev',
-    'repl.co',
-    'localhost',
-    '127.0.0.1',
-  ];
+  const defaultAllowed = _DEFAULT_ALLOWED_ORIGINS;
 
   // No Origin or Referer — this happens when Firebase Hosting proxies the
   // request to Cloud Run (the CDN layer strips both headers for same-origin
