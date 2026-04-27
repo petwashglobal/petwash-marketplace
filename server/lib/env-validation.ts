@@ -77,6 +77,9 @@ const EnvSchema = z.object({
   KYC_SALT: z.string().optional()
     .describe("Salt for KYC hash derivation — required for provider onboarding"),
 
+  IP_HASH_SALT: z.string().min(16).optional()
+    .describe("HMAC-SHA256 salt for IP hashing in login_security_events — required in production (min 16 chars)"),
+
   // ===== K9000 IoT MACHINE CONTROL =====
   MACHINE_SECRET_KEY: z.string().optional()
     .describe("HMAC secret shared with K9000 IoT controllers — must match hardware config"),
@@ -201,6 +204,7 @@ export function validateEnv(): ValidatedEnv {
   console.log("\n🔐 Provider KYC / Docs:");
   console.log(`   → Document encryption key:  ${env.DOCUMENT_ENCRYPTION_KEY ? '✅ Configured' : '❌ MISSING — provider KYC documents stored UNENCRYPTED in GCS'}`);
   console.log(`   → KYC salt:                 ${env.KYC_SALT ? '✅ Configured' : '❌ MISSING — KYC hash derivation throws at runtime'}`);
+  console.log(`   → IP hash salt:             ${env.IP_HASH_SALT ? '✅ Configured' : '❌ MISSING — login IP hashes use dev-only placeholder (FATAL in production)'}`);
 
   console.log("\n🏦 Treasury / Finance:");
   console.log(`   → Treasury encryption key:  ${env.TREASURY_FIELD_ENCRYPTION_KEY ? '✅ Configured' : '❌ MISSING — IBAN/account stored UNENCRYPTED in production (FATAL)'}`);
@@ -247,8 +251,23 @@ export function validateEnv(): ValidatedEnv {
     );
   }
 
-  // ── Production hard-stop for K9000 QR token signing ─────────────────────────
-  // PASS_TOKEN_SECRET (or COOKIE_SECRET fallback) powers the HMAC-signed 45-second
+  // ── Production hard-stop for IP hash salt ────────────────────────────────────
+  // IP_HASH_SALT is used in AuthEventService to HMAC-hash raw IPs before storage.
+  // Without it, login IP hashes fall back to a dev-only placeholder — any attacker
+  // who reads the source code could compute the same HMAC and reverse-lookup IPs.
+  if (env.NODE_ENV === 'production' && !env.IP_HASH_SALT) {
+    console.error('\n❌ FATAL: IP_HASH_SALT is not set in production.');
+    console.error('   Login IP hashes in login_security_events would use a known dev placeholder,');
+    console.error('   making HMAC protection effectively useless (attacker can reverse IPs).');
+    console.error('   → Generate: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    console.error('   → Set it in GCP Secret Manager and bind to the Cloud Run revision.\n');
+    throw new Error(
+      '[env-validation] IP_HASH_SALT is required in production. ' +
+      'Add a 64-hex-char value to GCP Secret Manager and redeploy.'
+    );
+  }
+
+  // ── Production hard-stop for K9000 QR token signing ─────────────────────────  // PASS_TOKEN_SECRET (or COOKIE_SECRET fallback) powers the HMAC-signed 45-second
   // QR tokens used by the K9000 mobile redeem flow.  Without it every QR scan
   // returns MISSING_SECRET and the machine will not start.
   const passTokenSecret = env.PASS_TOKEN_SECRET ?? env.COOKIE_SECRET ?? '';

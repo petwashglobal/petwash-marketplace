@@ -116,16 +116,21 @@ function maskIp(ip: string): string {
 /**
  * Stable HMAC-SHA256 hash of the raw IP using the userId as per-user salt.
  * Allows us to compare "same IP" across logins without storing the raw IP.
- * Requires IP_HASH_SALT env var — logs a warning if not set in production.
+ *
+ * IP_HASH_SALT must be set in production (env-validation.ts hard-stops if absent).
+ * In development a clearly-labelled placeholder is used with a logged warning.
+ * Never falls back to a hardcoded value that could be read from source code.
  */
 function hashIp(ip: string, userId: string): string {
   const SALT = process.env.IP_HASH_SALT;
   if (!SALT) {
     if (process.env.NODE_ENV === 'production') {
-      logger.warn('[AuthEventService] IP_HASH_SALT env var is not set — IP hashes will be weakly salted');
+      // env-validation.ts should have already hard-stopped, but guard here too.
+      throw new Error('[AuthEventService] FATAL: IP_HASH_SALT is required in production');
     }
+    logger.warn('[AuthEventService] IP_HASH_SALT not set — using dev-only placeholder. Set this before going to production.');
   }
-  const effectiveSalt = SALT || 'petwash-ip-salt-default';
+  const effectiveSalt = SALT || 'dev-only-ip-hash-salt__not-for-production';
   // Use full 64-char hex output for maximum collision resistance
   return crypto
     .createHmac('sha256', `${effectiveSalt}:${userId}`)
