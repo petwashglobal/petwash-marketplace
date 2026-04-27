@@ -44,7 +44,6 @@ integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistence:1.
 [userenv]
 
 [userenv.shared]
-VITE_PRODUCTION_API_URL = "https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev"
 GOOGLE_FORMS_SPREADSHEET_ID = "14mRX4qJSABg-EcfONomk-fksegYrcIF_sFaEi3Bm2ss"
 ACCOUNTING_SPREADSHEET_ID = "1dGgGUwiTI0htO0SvkzPEkXDWnjiOp8PUZRI3RDk_LJk"
 FIREBASE_PROJECT_ID = "signinpetwash"
