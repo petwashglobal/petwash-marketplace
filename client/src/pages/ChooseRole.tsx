@@ -36,8 +36,11 @@ export default function ChooseRole() {
         body: JSON.stringify({ intent }),
       });
       const data = await res.json();
-      if (data.redirectTo) {
-        navigate(data.redirectTo);
+      const destination = data.redirectTo || data.nextUrl;
+      if (destination) {
+        navigate(destination);
+      } else {
+        setLoading(null);
       }
     } catch (err) {
       console.error("[ChooseRole] Error:", err);
