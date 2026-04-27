@@ -112,6 +112,24 @@ interface WalletSummary {
   tierPointsThisYear: number;
 }
 
+interface LoginSecurityEvent {
+  id: number;
+  eventType: 'login_success' | 'new_device_login' | 'new_browser_login' | 'new_location_login' | 'high_risk_login';
+  maskedIp: string | null;
+  country: string | null;
+  city: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  riskScore: number;
+  riskFlags: string[];
+  isNewDevice: boolean;
+  isNewBrowser: boolean;
+  isNewLocation: boolean;
+  isHighRiskIp: boolean;
+  createdAt: string;
+}
+
 interface UserProfile {
   displayName: string;
   email: string;
@@ -665,6 +683,12 @@ export default function MyAccount() {
       queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
       toast({ title: isHebrew ? 'מכשיר הוסר' : 'Device removed' });
     },
+  });
+
+  // ── Recent logins (security) ──
+  const { data: recentLoginsData, isLoading: recentLoginsLoading } = useQuery<{ events: LoginSecurityEvent[] }>({
+    queryKey: ['/api/account/security/recent-logins'],
+    enabled: !!user && activeTab === 'security',
   });
 
   // ── Documents: intake forms + invoices ──
@@ -2585,6 +2609,82 @@ export default function MyAccount() {
                     <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-400 transition-colors" />
                   </Button>
                 </div>
+              </div>
+
+              {/* ── Recent Logins ── */}
+              <div className="pw-section-card">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
+                    <History className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'כניסות אחרונות' : 'Recent Logins'}</h3>
+                    <p className="text-xs text-gray-400">{isHebrew ? 'פעילות כניסה אחרונה לחשבון שלך' : 'Recent sign-in activity on your account'}</p>
+                  </div>
+                </div>
+
+                {recentLoginsLoading ? (
+                  <div className="py-6 flex justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
+                  </div>
+                ) : !recentLoginsData?.events?.length ? (
+                  <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center">
+                    <p className="text-sm text-gray-400">{isHebrew ? 'אין נתוני כניסה זמינים' : 'No login history available yet'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentLoginsData.events.map((ev: LoginSecurityEvent) => {
+                      const flagLabel = (flags: string[]): { label: string; color: string } => {
+                        if (flags.includes('HIGH_RISK_IP'))  return { label: isHebrew ? 'סיכון גבוה' : 'High Risk',     color: 'bg-red-100 text-red-700' };
+                        if (flags.includes('NEW_DEVICE'))    return { label: isHebrew ? 'מכשיר חדש' : 'New Device',    color: 'bg-orange-100 text-orange-700' };
+                        if (flags.includes('NEW_BROWSER'))   return { label: isHebrew ? 'דפדפן חדש' : 'New Browser',   color: 'bg-amber-100 text-amber-700' };
+                        if (flags.includes('NEW_COUNTRY') || flags.includes('NEW_CITY'))
+                          return { label: isHebrew ? 'מיקום חדש' : 'New Location', color: 'bg-blue-100 text-blue-700' };
+                        return { label: isHebrew ? 'כניסה רגילה' : 'Normal Login', color: 'bg-green-100 text-green-700' };
+                      };
+                      const badge = flagLabel(ev.riskFlags || []);
+                      const location = [ev.city, ev.country].filter((s) => s && s !== 'Unknown').join(', ') || (isHebrew ? 'מיקום לא ידוע' : 'Unknown location');
+                      const dt = new Date(ev.createdAt);
+                      const dateStr = dt.toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+                      const timeStr = dt.toLocaleTimeString(isHebrew ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+
+                      return (
+                        <div key={ev.id} className="flex items-start justify-between px-4 py-3 rounded-xl border border-gray-100 bg-white gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${badge.color}`}>
+                                {badge.label}
+                              </span>
+                              <span className="text-xs text-gray-400 truncate">
+                                {dateStr} · {timeStr}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-gray-800 truncate">{location}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {ev.device && <span className="mr-2">{ev.device.charAt(0).toUpperCase() + ev.device.slice(1)}</span>}
+                              {ev.browser && <span className="mr-2">· {ev.browser}</span>}
+                              {ev.os && <span>· {ev.os}</span>}
+                            </p>
+                            {ev.maskedIp && ev.maskedIp !== 'unknown' && (
+                              <p className="text-[11px] text-gray-300 mt-0.5 font-mono">{ev.maskedIp}</p>
+                            )}
+                          </div>
+                          {ev.riskScore > 20 && (
+                            <div className="flex-shrink-0 text-right">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                ev.riskScore >= 51 ? 'bg-red-100 text-red-600' :
+                                ev.riskScore >= 21 ? 'bg-amber-100 text-amber-600' :
+                                'bg-green-100 text-green-600'
+                              }`}>
+                                {isHebrew ? 'סיכון' : 'Risk'} {ev.riskScore}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </TabsContent>
 

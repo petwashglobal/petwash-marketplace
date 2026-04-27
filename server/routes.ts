@@ -231,6 +231,7 @@ import marketplaceRankingRoutes from "./routes/marketplace-ranking";
 import disputesRoutes from "./routes/disputes";
 import groomingFeedbackRoutes from "./routes/grooming-feedback";
 import securityStatusRoutes from "./routes/security-status";
+import authEventsRoutes from "./routes/auth-events";
 import eventsRoutes from "./routes/events";
 import unifiedBookingRoutes from "./routes/unified-booking";
 import sendReportRoutes from "./routes/send-report";
@@ -10574,6 +10575,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/deployment', adminLimiter, requireAdminMfa, deploymentRoutes);
   app.use('/api/metrics', adminLimiter, metricsRoutes);
   app.use('/api/security', adminLimiter, securityStatusRoutes);
+  app.use('/api/account/security', validateFirebaseToken, apiLimiter, authEventsRoutes);
   app.use('/api/send-report', adminLimiter, sendReportRoutes);
   app.use('/api/status', apiLimiter, statusRoutes);
   app.use('/api/synthetic', adminLimiter, syntheticRoutes);
