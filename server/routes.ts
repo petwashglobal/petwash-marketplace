@@ -10575,7 +10575,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/deployment', adminLimiter, requireAdminMfa, deploymentRoutes);
   app.use('/api/metrics', adminLimiter, metricsRoutes);
   app.use('/api/security', adminLimiter, securityStatusRoutes);
-  app.use('/api/account/security', apiLimiter, authEventsRoutes);
+  app.use('/api/account/security', validateFirebaseToken, apiLimiter, authEventsRoutes);
   app.use('/api/send-report', adminLimiter, sendReportRoutes);
   app.use('/api/status', apiLimiter, statusRoutes);
   app.use('/api/synthetic', adminLimiter, syntheticRoutes);
