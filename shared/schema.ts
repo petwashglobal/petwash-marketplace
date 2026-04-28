@@ -7783,6 +7783,17 @@ export const platforms = pgTable("platforms", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ===== PET TEMPERAMENT ENUM (privacy-safe, staff-friendly labels) =====
+// Do NOT use "aggressive" or other stigmatising terms.
+// Values are chosen to inform staff without publicly labelling the animal.
+export const petTemperamentEnum = pgEnum("pet_temperament", [
+  "calm",
+  "nervous",
+  "high_energy",
+  "needs_careful_handling",
+  "staff_assistance_recommended",
+]);
+
 // ===== PETS TABLE =====
 export const pets = pgTable("pets", {
   id: serial("id").primaryKey(),
@@ -7797,7 +7808,13 @@ export const pets = pgTable("pets", {
   size: varchar("size"),
   color: varchar("color"),
   microchipId: varchar("microchip_id"),
+  // Photo upload is optional — no facial/AI recognition is implied or performed.
   photoUrl: varchar("photo_url"),
+
+  // ── MEDICAL DATA — private by default, shared only with explicit consent ──
+  // These fields MUST NOT appear in any public API response.
+  // Set medicalShareConsent=true before exposing to any third party or service provider.
+  skinSensitivity: text("skin_sensitivity"),           // e.g. "sensitive to chlorine"
   allergies: text("allergies"),
   medications: text("medications"),
   specialNeeds: text("special_needs"),
@@ -7806,7 +7823,15 @@ export const pets = pgTable("pets", {
   vaccinationStatus: varchar("vaccination_status").default("unknown"),
   lastVaccinationDate: date("last_vaccination_date"),
   nextVaccinationDate: date("next_vaccination_date"),
-  temperament: varchar("temperament"),
+  // true = medical fields above are private and must not be exposed (default safe)
+  medicalDataPrivate: boolean("medical_data_private").default(true).notNull(),
+  // true = owner has explicitly consented to share medical data with service providers
+  medicalShareConsent: boolean("medical_share_consent").default(false).notNull(),
+  // ISO timestamp of last consent change for audit trail
+  medicalConsentUpdatedAt: timestamp("medical_consent_updated_at"),
+
+  // Temperament — use enum only; no free-text "aggressive" labelling
+  temperament: petTemperamentEnum("temperament"),
   goodWithKids: boolean("good_with_kids"),
   goodWithDogs: boolean("good_with_dogs"),
   goodWithCats: boolean("good_with_cats"),
@@ -15140,3 +15165,232 @@ export const loginSecurityEvents = pgTable('login_security_events', {
 
 export type LoginSecurityEvent = typeof loginSecurityEvents.$inferSelect;
 export type InsertLoginSecurityEvent = typeof loginSecurityEvents.$inferInsert;
+
+// ============================================================================
+// PRIVACY-FIRST ACCOUNT SCHEMA — 2026
+// Implements the privacy-first account model requirements:
+//   • No National ID / Passport for normal users
+//   • Modular account data (notification consents, wash preferences, platform
+//     access, account lifecycle requests)
+//   • Business/high-risk legal ID gated behind separate table + audit log
+// ============================================================================
+
+// ── 1. BUSINESS LEGAL ID DOCUMENTS ─────────────────────────────────────────
+// National ID, Passport, and equivalent government documents MUST NOT be
+// collected for regular consumer accounts.  They are only permitted when:
+//   (a) the account is a verified business entity, OR
+//   (b) a compliance officer marks the transaction as high-risk and records
+//       a documented reason in legal_reason.
+//
+// ACCESS: restricted to compliance officers and auditors only.
+// Every row is append-only; corrections go in a new row with supersededById.
+export const businessLegalIdDocuments = pgTable("business_legal_id_documents", {
+  id: serial("id").primaryKey(),
+  // The account this document belongs to
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  // "business_verified" | "high_risk_payment" | "compliance_hold"
+  collectionReason: varchar("collection_reason", { length: 60 }).notNull(),
+  // Plain-text explanation recorded by the compliance officer
+  legalReason: text("legal_reason").notNull(),
+  // "national_id" | "passport" | "drivers_license" | "company_registration"
+  documentType: varchar("document_type", { length: 40 }).notNull(),
+  documentCountry: varchar("document_country", { length: 10 }).notNull(),
+  // Secure storage URL (e.g. GCS signed object) — never a public URL
+  documentStorageUrl: varchar("document_storage_url", { length: 512 }).notNull(),
+  // SHA-256 hash of the raw document file for integrity verification
+  documentFileHash: varchar("document_file_hash", { length: 64 }).notNull(),
+  documentExpiresAt: date("document_expires_at"),
+  // "pending" | "approved" | "rejected" | "superseded"
+  verificationStatus: varchar("verification_status", { length: 20 }).notNull().default("pending"),
+  verifiedAt: timestamp("verified_at"),
+  // The compliance officer / admin who approved or rejected
+  reviewedByUserId: varchar("reviewed_by_user_id", { length: 128 }),
+  reviewNotes: text("review_notes"),
+  // Points to the newer row that supersedes this one (append-only corrections)
+  supersededById: integer("superseded_by_id"),
+  // IP address of the uploader (privacy-safe: last octet masked)
+  uploaderMaskedIp: varchar("uploader_masked_ip", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_biz_legal_id_user").on(table.userId),
+  index("idx_biz_legal_id_status").on(table.verificationStatus),
+]);
+
+export const insertBusinessLegalIdDocumentSchema = createInsertSchema(businessLegalIdDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertBusinessLegalIdDocument = z.infer<typeof insertBusinessLegalIdDocumentSchema>;
+export type BusinessLegalIdDocument = typeof businessLegalIdDocuments.$inferSelect;
+
+// ── 2. USER NOTIFICATION CONSENTS ──────────────────────────────────────────
+// Separate table so each channel/purpose combination can be independently
+// toggled and audited.  The users.communicationPreferences jsonb field remains
+// for backward-compat caching but this table is the authoritative source.
+//
+// channel: "whatsapp" | "sms" | "email" | "push"
+// purpose: "service_alerts" | "receipts" | "marketing" | "reminders"
+export const userNotificationConsents = pgTable("user_notification_consents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  channel: varchar("channel", { length: 20 }).notNull(),
+  purpose: varchar("purpose", { length: 30 }).notNull(),
+  // Explicit opt-in required; default is false (consent not given)
+  consented: boolean("consented").default(false).notNull(),
+  // ISO 8601 timestamp when the user last changed this preference
+  consentedAt: timestamp("consented_at"),
+  // IP address at the time of consent change (last octet masked)
+  consentIpMasked: varchar("consent_ip_masked", { length: 64 }),
+  // Version of the privacy policy / T&C that was in effect when consent was given
+  policyVersion: varchar("policy_version", { length: 20 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_notif_consent_user").on(table.userId),
+  // Enforce one row per user+channel+purpose combination
+  uniqueIndex("idx_notif_consent_unique").on(table.userId, table.channel, table.purpose),
+]);
+
+export const insertUserNotificationConsentSchema = createInsertSchema(userNotificationConsents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserNotificationConsent = z.infer<typeof insertUserNotificationConsentSchema>;
+export type UserNotificationConsent = typeof userNotificationConsents.$inferSelect;
+
+// ── 3. USER WASH PREFERENCES ───────────────────────────────────────────────
+// Decoupled from the main users row so preferences can be versioned and
+// restored independently.
+export const userWashPreferences = pgTable("user_wash_preferences", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull().unique(),
+  // "economy" | "standard" | "premium" | "luxury"
+  preferredWashPackage: varchar("preferred_wash_package", { length: 30 }),
+  // "morning" | "afternoon" | "evening" | "any"
+  preferredTimeSlot: varchar("preferred_time_slot", { length: 20 }),
+  preferredStationId: varchar("preferred_station_id", { length: 80 }),
+  useEcoWater: boolean("use_eco_water").default(false),
+  addFragranceService: boolean("add_fragrance_service").default(false),
+  addDryingService: boolean("add_drying_service").default(false),
+  // Free-form notes stored by the owner (not shown to public)
+  washNotes: text("wash_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_wash_prefs_user").on(table.userId),
+]);
+
+export const insertUserWashPreferencesSchema = createInsertSchema(userWashPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserWashPreferences = z.infer<typeof insertUserWashPreferencesSchema>;
+export type UserWashPreferences = typeof userWashPreferences.$inferSelect;
+
+// ── 4. ACCOUNT DELETION REQUESTS ───────────────────────────────────────────
+// Implements the "right to erasure" (GDPR Art. 17 / Israel Privacy Law).
+// A request moves through: pending → processing → completed | rejected.
+// Actual data erasure is performed by a scheduled job that processes rows
+// in "processing" status; it records the erased_at timestamp on completion.
+export const accountDeletionRequests = pgTable("account_deletion_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  // "user_requested" | "admin_initiated" | "legal_hold_expired"
+  requestReason: varchar("request_reason", { length: 60 }).notNull().default("user_requested"),
+  // Optional free-text from the user
+  userNotes: text("user_notes"),
+  // "pending" | "processing" | "completed" | "rejected" | "cancelled"
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // Scheduled date after which the data may be erased (cooling-off period)
+  scheduledErasureAt: timestamp("scheduled_erasure_at"),
+  erasedAt: timestamp("erased_at"),
+  // Admin who rejected or approved, if applicable
+  reviewedByUserId: varchar("reviewed_by_user_id", { length: 128 }),
+  reviewNotes: text("review_notes"),
+  // IP at request time (last octet masked)
+  requestIpMasked: varchar("request_ip_masked", { length: 64 }),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_acct_del_user").on(table.userId),
+  index("idx_acct_del_status").on(table.status),
+  index("idx_acct_del_scheduled").on(table.scheduledErasureAt),
+]);
+
+export const insertAccountDeletionRequestSchema = createInsertSchema(accountDeletionRequests).omit({
+  id: true,
+  requestedAt: true,
+  updatedAt: true,
+});
+export type InsertAccountDeletionRequest = z.infer<typeof insertAccountDeletionRequestSchema>;
+export type AccountDeletionRequest = typeof accountDeletionRequests.$inferSelect;
+
+// ── 5. DATA EXPORT REQUESTS ─────────────────────────────────────────────────
+// Implements the "right of access" / data portability (GDPR Art. 15 & 20).
+// A background job generates a structured JSON/ZIP archive and stores a
+// signed download URL.  The URL expires after downloadUrlExpiresAt.
+export const dataExportRequests = pgTable("data_export_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  // "pending" | "processing" | "ready" | "downloaded" | "expired" | "failed"
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // Signed, time-limited download URL generated after processing
+  downloadUrl: varchar("download_url", { length: 512 }),
+  downloadUrlExpiresAt: timestamp("download_url_expires_at"),
+  downloadedAt: timestamp("downloaded_at"),
+  // IP at request time (last octet masked)
+  requestIpMasked: varchar("request_ip_masked", { length: 64 }),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  failureReason: text("failure_reason"),
+}, (table) => [
+  index("idx_data_export_user").on(table.userId),
+  index("idx_data_export_status").on(table.status),
+]);
+
+export const insertDataExportRequestSchema = createInsertSchema(dataExportRequests).omit({
+  id: true,
+  requestedAt: true,
+});
+export type InsertDataExportRequest = z.infer<typeof insertDataExportRequestSchema>;
+export type DataExportRequest = typeof dataExportRequests.$inferSelect;
+
+// ── 6. USER PLATFORM ACCESS ─────────────────────────────────────────────────
+// Tracks which PetWash platform modules each user account has access to.
+// Enables multi-platform readiness without polluting the core users table.
+// One row per user+platform combination.
+//
+// platformCode values match the platform slugs used across the super-app:
+//   "wash_station" | "pet_sitting" | "dog_walking" | "academy"
+//   | "lost_and_found" | "pettrek" | "mobile_vet" (future)
+export const userPlatformAccess = pgTable("user_platform_access", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  // Matches platform slugs: wash_station, pet_sitting, dog_walking, academy,
+  // lost_and_found, pettrek — extensible for future services
+  platformCode: varchar("platform_code", { length: 40 }).notNull(),
+  // "active" | "suspended" | "pending_verification" | "revoked"
+  accessStatus: varchar("access_status", { length: 30 }).notNull().default("active"),
+  // "customer" | "provider" | "staff" | "admin"
+  accessRole: varchar("access_role", { length: 20 }).notNull().default("customer"),
+  grantedAt: timestamp("granted_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+  // Admin who granted or revoked access
+  grantedByUserId: varchar("granted_by_user_id", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_platform_access_user").on(table.userId),
+  index("idx_platform_access_platform").on(table.platformCode),
+  uniqueIndex("idx_platform_access_unique").on(table.userId, table.platformCode),
+]);
+
+export const insertUserPlatformAccessSchema = createInsertSchema(userPlatformAccess).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserPlatformAccess = z.infer<typeof insertUserPlatformAccessSchema>;
+export type UserPlatformAccess = typeof userPlatformAccess.$inferSelect;
