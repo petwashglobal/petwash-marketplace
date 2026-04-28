@@ -46,10 +46,11 @@
 }
 
 /* ══════════════════════════════════
-   PAGE BACKGROUND — Luxury Cream
+   PAGE BACKGROUND — Pure White
+   iPhone/Safari safe: no cream or off-white gradient.
    ══════════════════════════════════ */
 .pw-account-page {
-  background: linear-gradient(180deg, #fafaf8 0%, #f5f3ee 30%, #fafaf8 100%);
+  background: #ffffff;
   min-height: 100vh;
 }
 

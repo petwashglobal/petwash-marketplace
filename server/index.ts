@@ -781,6 +781,17 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // Google Places autocomplete and details are user-facing on first page load.
+  // Early-bypass the startup guard so address suggestions are never blocked by
+  // a cold-start window — the handlers forward to google-services.ts once it
+  // is registered; if the API key is missing they return 503 with a clear reason.
+  if (
+    req.path === '/api/google/places-autocomplete' ||
+    req.path === '/api/google/places-details'
+  ) {
+    return next();
+  }
+
   if (isProduction && !serverReady) {
     if (req.path === '/' || req.method === 'HEAD') {
       return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
