@@ -4,6 +4,12 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { z } from 'zod';
 import { FIRESTORE_PATHS, insertPetProfileSchema } from '@shared/firestore-schema';
 import { logger } from '../lib/logger';
+import {
+  stripMedicalFields,
+  withOwnerMedicalFields,
+  filterPetForProvider,
+  filterPetPublic,
+} from '../lib/petPrivacy';
 
 const router = Router();
 
@@ -22,13 +28,18 @@ router.get('/', validateFirebaseToken, async (req, res) => {
       .orderBy('createdAt', 'desc')
       .get();
     
-    const pets = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-      birthday: doc.data().birthday || null,
-    }));
+    const pets = snapshot.docs.map(doc => {
+      const raw = {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate(),
+        birthday: doc.data().birthday || null,
+      };
+      // Owners see all non-internal fields including their own medical data.
+      // Internal audit fields (temperamentArchived) are still stripped.
+      return withOwnerMedicalFields(raw);
+    });
     
     res.json({ pets });
   } catch (error) {
@@ -51,12 +62,15 @@ router.get('/:petId', validateFirebaseToken, async (req, res) => {
     }
     
     const data = doc.data()!;
-    res.json({
+    // The pet owner receives their own data with medical fields included,
+    // but internal audit fields (temperamentArchived) are stripped.
+    const petForOwner = withOwnerMedicalFields({
       id: doc.id,
       ...data,
       createdAt: data.createdAt?.toDate(),
       updatedAt: data.updatedAt?.toDate(),
     });
+    res.json(petForOwner);
   } catch (error) {
     logger.error('Error fetching pet', error);
     res.status(500).json({ error: 'Failed to fetch pet' });
@@ -196,13 +210,18 @@ router.get('/admin/all', validateFirebaseToken, isAdmin, async (req, res) => {
       const petsRef = firestore.collection(FIRESTORE_PATHS.PETS(uid as string));
       const snapshot = await petsRef.get();
       
-      const pets = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-        deletedAt: doc.data().deletedAt?.toDate() || null,
-      }));
+      const pets = snapshot.docs.map(doc => {
+        // Admin view retains medical fields to support welfare checks.
+        // Internal archive fields (temperamentArchived) are still stripped.
+        const raw = {
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate(),
+          deletedAt: doc.data().deletedAt?.toDate() || null,
+        };
+        return withOwnerMedicalFields(raw);
+      });
       
       return res.json(pets);
     }
