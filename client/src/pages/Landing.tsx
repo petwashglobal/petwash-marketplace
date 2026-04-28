@@ -10,6 +10,7 @@ import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/componen
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import k9000StationImg from '@assets/D49C7A93-BA54-43A7-A3F6-5FEC96439FE3_1770820255509.png';
 
@@ -19,28 +20,19 @@ interface LandingProps {
 }
 
 export default function Landing({ language, onLanguageChange }: LandingProps) {
-  const { user, loading, claims } = useFirebaseAuth();
+  const { user } = useFirebaseAuth();
+  const { getAccountRoute } = useAccountNavigation();
   const [, setLocation] = useLocation();
 
-  const getDashboardPath = (): string => {
-    if (!user) return '/signin';
-    const role = claims?.role;
-    const ADMIN_ROLES = ['staff', 'admin', 'management', 'super_admin'];
-    if (role === 'provider') return '/provider/dashboard';
-    if (ADMIN_ROLES.includes(role ?? '')) return '/dashboard';
-    // Email-based fallback: if Firebase claim hasn't been written yet (first login
-    // or token not yet refreshed), use the email list that mirrors the server check.
-    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'nirhadad1@gmail.com,nir.h@petwash.co.il,ceo@petwash.co.il')
-      .split(',').map((e: string) => e.trim().toLowerCase());
-    if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
-    return '/my-account';
+  /** Navigate to the user's account destination.
+   *  getAccountRoute() returns '#' while auth is loading — we no-op in that case
+   *  so a logged-in user refreshing the page and immediately tapping is safe. */
+  const handleAuthNavigate = () => {
+    const route = getAccountRoute();
+    if (route === '#') return;
+    setLocation(route);
   };
 
-  /** Navigate to dashboard or sign-in only after auth has resolved. */
-  const handleAuthNavigate = (whenLoggedOut = '/signin') => {
-    if (loading) return;
-    setLocation(user ? getDashboardPath() : whenLoggedOut);
-  };
   const [heroAnimated, setHeroAnimated] = useState(false);
   
   const { ref: techRef, isRevealed: techRevealed } = useScrollReveal<HTMLElement>();

@@ -34,7 +34,8 @@ import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
 import { Bell } from "lucide-react";
-import { useFirebaseAuth, type UserRole } from "../auth/AuthProvider";
+import { useFirebaseAuth } from "../auth/AuthProvider";
+import { useAccountNavigation } from "../hooks/useAccountNavigation";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
@@ -238,26 +239,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   language: controlledLanguage, 
   onLanguageChange: controlledOnLanguageChange 
 }) => {
-  const { user, loading, logout, claims } = useFirebaseAuth();
+  const { user, loading, logout } = useFirebaseAuth();
+  const { getAccountRoute } = useAccountNavigation();
 
-  const getDashboardPath = (): string => {
-    if (!user) return '/signin';
-    const role = claims?.role as UserRole;
-    const ADMIN_ROLES: UserRole[] = ['staff', 'admin', 'management', 'super_admin'];
-    if (role === 'provider') return '/provider/dashboard';
-    if (ADMIN_ROLES.includes(role)) return '/dashboard';
-    // Email-based fallback for when Firebase claim hasn't been written yet
-    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
-      .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-    if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
-    return '/my-account';
-  };
-
-  /** Navigate to the dashboard only after auth has fully resolved. During loading,
-   *  user is null so getDashboardPath() would return '/signin' — a false negative. */
+  /** Navigate to the user's account destination. No-ops while auth is loading
+   *  (getAccountRoute returns '#' during loading) so we never send a logged-in
+   *  user to /signin due to a race between the click and Firebase resolving. */
   const handleProfileNavigate = () => {
-    if (loading) return;
-    handleNavigate(getDashboardPath());
+    const route = getAccountRoute();
+    if (route === '#') return;
+    handleNavigate(route);
   };
 
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
