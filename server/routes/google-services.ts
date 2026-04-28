@@ -415,11 +415,15 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimit
       const reasonCode = response.status === 403 ? 'API_KEY_DENIED'
         : response.status === 429 ? 'QUOTA_EXCEEDED'
         : 'GOOGLE_API_ERROR';
+      let refererHost: string | undefined;
+      try {
+        if (req.headers['referer']) refererHost = new URL(req.headers['referer'] as string).hostname;
+      } catch { /* ignore malformed referer */ }
       // Safe log — no full address, no API key, no phone, no ID number
       logger.warn('[Google Places] autocomplete failed', {
         statusCode: response.status,
         origin: req.headers['origin'],
-        referer: (() => { try { return req.headers['referer'] ? new URL(req.headers['referer'] as string).hostname : undefined; } catch { return undefined; } })(),
+        referer: refererHost,
         userAgent: (req.headers['user-agent'] as string | undefined)?.substring(0, 100),
         endpoint: req.path,
         queryLength: typeof input === 'string' ? input.length : 0,
