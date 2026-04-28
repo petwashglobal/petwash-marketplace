@@ -94,7 +94,7 @@ export function BookingRequestModal({
     }
   }, [userProfile]);
 
-  const totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
+  const totalDays = Math.max(1, differenceInDays(endDate, startDate));
   const dailyRate = provider?.pricePerDay || 150;
   const subtotal = dailyRate * totalDays * petCount;
   const serviceFee = Math.round(subtotal * 0.15);
@@ -307,7 +307,7 @@ export function BookingRequestModal({
                             mode="single"
                             selected={endDate}
                             onSelect={(date) => date && setEndDate(date)}
-                            disabled={(date) => date < startDate}
+                            disabled={(date) => date <= startDate}
                           />
                         </PopoverContent>
                       </Popover>
