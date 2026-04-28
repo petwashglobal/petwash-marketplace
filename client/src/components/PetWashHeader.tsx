@@ -253,6 +253,13 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     return '/my-account';
   };
 
+  /** Navigate to the dashboard only after auth has fully resolved. During loading,
+   *  user is null so getDashboardPath() would return '/signin' — a false negative. */
+  const handleProfileNavigate = () => {
+    if (loading) return;
+    handleNavigate(getDashboardPath());
+  };
+
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -492,8 +499,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               type="button"
               className="pw-header-profile-btn"
               style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
-              onClick={() => { if (loading) return; handleNavigate(getDashboardPath()); }}
+              onClick={handleProfileNavigate}
               aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
+              aria-busy={loading || undefined}
+              aria-disabled={loading || undefined}
               data-testid="button-header-profile"
             >
               <div className="pw-header-profile-circle">
@@ -612,7 +621,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             type="button"
             className="pw-account-btn"
             style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
-            onClick={() => { if (loading) return; handleNavigate(getDashboardPath()); }}
+            onClick={handleProfileNavigate}
+            aria-busy={loading || undefined}
+            aria-disabled={loading || undefined}
           >
             <div className="pw-account-circle">
               <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
@@ -747,7 +758,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   type="button"
                   className="pw-mobile-link"
                   style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
-                  onClick={() => { if (loading) return; handleNavigate(getDashboardPath()); }}
+                  onClick={handleProfileNavigate}
+                  aria-busy={loading || undefined}
+                  aria-disabled={loading || undefined}
                 >
                   {t("mydashboard", currentLanguage)}
                 </button>

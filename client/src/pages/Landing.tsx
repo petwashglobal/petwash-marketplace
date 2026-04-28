@@ -35,6 +35,12 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
     if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
     return '/my-account';
   };
+
+  /** Navigate to dashboard or sign-in only after auth has resolved. */
+  const handleAuthNavigate = (whenLoggedOut = '/signin') => {
+    if (loading) return;
+    setLocation(user ? getDashboardPath() : whenLoggedOut);
+  };
   const [heroAnimated, setHeroAnimated] = useState(false);
   
   const { ref: techRef, isRevealed: techRevealed } = useScrollReveal<HTMLElement>();
@@ -136,7 +142,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               >
                 {user ? (
                   <Button 
-                    onClick={() => { if (loading) return; setLocation(getDashboardPath()); }}
+                    onClick={() => handleAuthNavigate()}
                     className="gold-shimmer-btn text-white px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
                     {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
@@ -443,7 +449,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
             <div className="mt-12 text-center">
               <Button
-                onClick={() => { if (loading) return; setLocation(user ? getDashboardPath() : '/signin'); }}
+                onClick={() => handleAuthNavigate()}
                 className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',
