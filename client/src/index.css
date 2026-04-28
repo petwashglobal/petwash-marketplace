@@ -113,8 +113,29 @@
 }
 
 /* ============================================================================
-   LUXURY ANIMATION SYSTEM 2025 - Cartier/Louis Vuitton Style
+   GLOBAL WHITE BACKGROUND — iPhone/Safari safe-area fix
+   Prevents off-white cream from showing behind the dashboard on OLED screens.
+   Cards and gold elements keep their own backgrounds; only the page shell is reset.
    ============================================================================ */
+html,
+body,
+#root {
+  background: #ffffff !important;
+}
+
+body {
+  margin: 0;
+  background-color: #ffffff !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* iPhone safe-area: ensure no cream bleed behind the notch / home indicator */
+@supports (padding: max(0px)) {
+  body,
+  #root {
+    background: #ffffff !important;
+  }
+}
 
 /* Keyframe Animations */
 @keyframes fadeUp {

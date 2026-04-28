@@ -184,7 +184,13 @@ export default function ProviderOnboarding() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setPhoneOtpError(data.message || (isHebrew ? 'שליחת קוד נכשלה' : 'Failed to send code'));
+        // If the server is still starting up, show a friendlier message
+        const rawMsg: string = data.message || '';
+        const isStartingUp = res.status === 503 || rawMsg.toLowerCase().includes('starting up');
+        const errorMsg = isStartingUp
+          ? (isHebrew ? 'שירות האימות אינו זמין כרגע. אנא נסה שוב.' : 'Verification service is temporarily unavailable. Please try again.')
+          : rawMsg || (isHebrew ? 'שליחת קוד נכשלה' : 'Failed to send code');
+        setPhoneOtpError(errorMsg);
         return;
       }
       setPhoneOtpId(data.otpId);
