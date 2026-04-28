@@ -68,12 +68,17 @@ ALTER TABLE "pets" RENAME COLUMN "temperament_new" TO "temperament";
 
 -- ── 3. business_legal_id_documents ──────────────────────────────────────────
 -- National ID / Passport ONLY for verified business accounts or high-risk cases.
+--
+-- DELETION POLICY: ON DELETE RESTRICT — the users row must not be physically
+-- deleted while a legal/compliance document for that user still exists.
+-- The erasure background job handles documents first (anonymise or retain per
+-- legal obligation: Israeli Privacy Law, AML 7-year hold, GDPR Art. 17(3)).
 CREATE TABLE IF NOT EXISTS "business_legal_id_documents" (
   "id"                     serial PRIMARY KEY,
-  "user_id"                varchar(128)    NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "user_id"                varchar(128)    NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
   -- "business_verified" | "high_risk_payment" | "compliance_hold"
   "collection_reason"      varchar(60)     NOT NULL,
-  -- Plain-text justification written by the compliance officer
+  -- Plain-text justification written by the compliance officer (mandatory)
   "legal_reason"           text            NOT NULL,
   -- "national_id" | "passport" | "drivers_license" | "company_registration"
   "document_type"          varchar(40)     NOT NULL,
@@ -92,6 +97,13 @@ CREATE TABLE IF NOT EXISTS "business_legal_id_documents" (
   "superseded_by_id"       integer,
   -- Uploader IP with last octet masked (privacy-safe)
   "uploader_masked_ip"     varchar(64),
+  -- Legal retention lifecycle
+  -- "active" | "deletion_requested" | "deletion_blocked_by_legal_retention"
+  -- | "anonymised" | "retained_for_legal_obligation"
+  "retention_status"       varchar(50)     NOT NULL DEFAULT 'active',
+  "retention_expires_at"   timestamp,
+  "deletion_blocked_reason" text,
+  "anonymised_at"          timestamp,
   "created_at"             timestamp       NOT NULL DEFAULT now()
 );
 
@@ -100,6 +112,9 @@ CREATE INDEX IF NOT EXISTS "idx_biz_legal_id_user"
 
 CREATE INDEX IF NOT EXISTS "idx_biz_legal_id_status"
   ON "business_legal_id_documents" ("verification_status");
+
+CREATE INDEX IF NOT EXISTS "idx_biz_legal_id_retention"
+  ON "business_legal_id_documents" ("retention_status");
 
 -- ── 4. user_notification_consents ───────────────────────────────────────────
 -- Authoritative per-channel, per-purpose consent table.

@@ -15187,10 +15187,22 @@ export type InsertLoginSecurityEvent = typeof loginSecurityEvents.$inferInsert;
 //
 // ACCESS: restricted to compliance officers and auditors only.
 // Every row is append-only; corrections go in a new row with supersededById.
+//
+// DELETION POLICY — DO NOT cascade-delete legal/compliance documents.
+// Legal obligations (Israeli Privacy Law, AML, GDPR Art. 17(3)) may require
+// documents to be retained even after the account is deleted.  The safe
+// lifecycle is:
+//   active → deletion_requested → deletion_blocked_by_legal_retention
+//                               OR anonymised (where law permits)
+// The users table FK therefore uses ON DELETE RESTRICT; a dedicated background
+// job manages retention expiry and anonymisation.
 export const businessLegalIdDocuments = pgTable("business_legal_id_documents", {
   id: serial("id").primaryKey(),
   // The account this document belongs to
-  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  // ON DELETE RESTRICT — do NOT allow the users row to be deleted while a
+  // legal/compliance document for that user still exists. The erasure job
+  // must handle this document first (anonymise or retain per legal obligation).
+  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "restrict" }),
   // "business_verified" | "high_risk_payment" | "compliance_hold"
   collectionReason: varchar("collection_reason", { length: 60 }).notNull(),
   // Plain-text explanation recorded by the compliance officer
@@ -15213,10 +15225,26 @@ export const businessLegalIdDocuments = pgTable("business_legal_id_documents", {
   supersededById: integer("superseded_by_id"),
   // IP address of the uploader (privacy-safe: last octet masked)
   uploaderMaskedIp: varchar("uploader_masked_ip", { length: 64 }),
+
+  // ── LEGAL RETENTION FIELDS ─────────────────────────────────────────────────
+  // "active" | "deletion_requested" | "deletion_blocked_by_legal_retention"
+  //          | "anonymised" | "retained_for_legal_obligation"
+  retentionStatus: varchar("retention_status", { length: 50 }).notNull().default("active"),
+  // Earliest date the document MAY be deleted (set by compliance officer).
+  // NULL means "no known end date" (retain indefinitely until reviewed).
+  retentionExpiresAt: timestamp("retention_expires_at"),
+  // Human-readable reason why deletion is blocked (e.g. "AML 7-year hold").
+  // Populated when retentionStatus = deletion_blocked_by_legal_retention.
+  deletionBlockedReason: text("deletion_blocked_reason"),
+  // Timestamp when PII was removed and replaced with hashes (anonymisation).
+  // documentStorageUrl and documentFileHash become tombstone references only.
+  anonymisedAt: timestamp("anonymised_at"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_biz_legal_id_user").on(table.userId),
   index("idx_biz_legal_id_status").on(table.verificationStatus),
+  index("idx_biz_legal_id_retention").on(table.retentionStatus),
 ]);
 
 export const insertBusinessLegalIdDocumentSchema = createInsertSchema(businessLegalIdDocuments).omit({
