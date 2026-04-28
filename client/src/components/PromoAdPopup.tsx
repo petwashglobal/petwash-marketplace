@@ -3,7 +3,7 @@ import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 
-type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'poster';
+type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'poster' | 'smart-hub';
 
 interface PromoAdConfig {
   id: string;
@@ -21,12 +21,27 @@ interface PromoAdConfig {
   enabled: boolean;
 }
 
+// ── Safety guard ──────────────────────────────────────────────────────────────
+// Block any image whose URL contains developer/backend keywords from being
+// shown in a public-facing popup.
+const BLOCKED_PUBLIC_IMAGE_WORDS = [
+  'github', 'replit', 'backend', 'admin', 'screenshot',
+  'merge', 'pull-request', 'repository', 'attached_assets',
+];
+
+function isPublicSafePromoImage(src: string): boolean {
+  const lower = src.toLowerCase();
+  return !BLOCKED_PUBLIC_IMAGE_WORDS.some((word) => lower.includes(word));
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const DEFAULT_PROMO: PromoAdConfig = {
   id: 'petwash-platform-2026',
-  template: 'poster',
-  imageUrl: '/brand/petwash-fullscreen-ad.png',
-  title: '⁦Pet Wash™⁩',
-  titleHe: '⁦Pet Wash™⁩',
+  template: 'smart-hub',
+  // imageUrl intentionally omitted — the smart-hub template renders its own
+  // coded visual so the popup is never dependent on a single image file.
+  title: 'PetWash™',
+  titleHe: 'PetWash™',
   subtitle: 'ONE WORLD. EVERY PET.',
   subtitleHe: 'עולם אחד. כל חיית מחמד.',
   ctaText: 'Explore Platforms',
@@ -138,6 +153,8 @@ export function PromoAdPopup({
         return <MembershipTiersTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
       case 'poster':
         return <PosterTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
+      case 'smart-hub':
+        return <SmartHubTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
       default:
         return <FullscreenTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
     }
@@ -401,16 +418,24 @@ function MembershipTiersTemplate({ config, title, subtitle, ctaText, onCta }: Te
 /**
  * PosterTemplate — full-bleed approved brand ad image.
  * Shows the image filling the entire popup area with an optional CTA button
- * pinned to the bottom. If the image fails to load, falls back to a minimal
- * branded card so nothing is blank.
+ * pinned to the bottom. If the image fails to load or is not public-safe,
+ * falls back to a minimal branded card so nothing is blank.
  */
 function PosterTemplate({ config, ctaText, onCta }: TemplateProps) {
   const [imgFailed, setImgFailed] = useState(false);
 
+  // Safety guard: block any image that looks like a backend/dev screenshot
+  const imageIsSafe = !!(config.imageUrl && isPublicSafePromoImage(config.imageUrl));
+  const showImage = config.imageUrl && imageIsSafe && !imgFailed;
+
+  if (!imageIsSafe && config.imageUrl) {
+    console.warn('[PromoAdPopup] Blocked unsafe image URL from public popup:', config.imageUrl);
+  }
+
   return (
     <div className="relative w-full h-full flex flex-col bg-white">
       {/* Full-bleed poster image */}
-      {config.imageUrl && !imgFailed ? (
+      {showImage ? (
         <img
           src={config.imageUrl}
           alt="Pet Wash™"
@@ -454,6 +479,127 @@ function PosterTemplate({ config, ctaText, onCta }: TemplateProps) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * SmartHubTemplate — the official PetWash 2026 entry popup.
+ * Renders a fully coded Smart Hub visual:
+ *   "ONE WORLD. EVERY PET."  /  PetWash™
+ *   Central hub with 5 platform badges
+ *   CTA: Explore Platforms + Continue to Site
+ *
+ * This template never uses an image file so it cannot accidentally show
+ * a backend/developer screenshot. It is the authoritative public popup.
+ */
+function SmartHubTemplate({ config, title, subtitle, ctaText, onCta }: TemplateProps) {
+  return (
+    <div className="relative w-full h-full flex flex-col bg-white overflow-y-auto">
+      {/* ── Header ── */}
+      <div className="flex-shrink-0 pt-10 pb-4 px-6 text-center">
+        <p className="text-xs font-bold tracking-[0.25em] text-gray-400 uppercase mb-1">www.PetWash.co.il</p>
+        <h1 className="text-2xl md:text-3xl font-black tracking-wide text-gray-900 leading-tight">
+          {subtitle || 'ONE WORLD. EVERY PET.'}
+        </h1>
+        <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-none mt-1">
+          {title || 'PetWash™'}
+        </h2>
+      </div>
+
+      {/* ── Hub diagram ── */}
+      <div className="flex-1 flex items-center justify-center px-4 py-2">
+        <div className="relative w-full max-w-xs mx-auto" style={{ aspectRatio: '1 / 1.1' }}>
+          {/* Central hub */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-28 h-28 md:w-32 md:h-32 rounded-full flex flex-col items-center justify-center shadow-2xl border-4 border-yellow-300"
+              style={{ background: 'radial-gradient(circle at 35% 35%, #5adc3c, #2e8a10)' }}>
+              <img
+                src="/brand/petwash-logo-white-bg.png"
+                alt="PetWash™"
+                className="w-16 h-10 object-contain"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+              <span className="text-white text-[10px] font-bold tracking-wider mt-1">SMART HUB</span>
+            </div>
+          </div>
+
+          {/* Top-left: PetSitter */}
+          <PlatformBadge
+            label="PetSitter for All Pets"
+            emoji="🐾"
+            colorClass="from-pink-500 to-rose-600"
+            style={{ top: '2%', left: '0%' }}
+          />
+          {/* Top-right: Walk My Pet */}
+          <PlatformBadge
+            label="Walk My Pet"
+            emoji="🐕"
+            colorClass="from-sky-400 to-blue-600"
+            style={{ top: '2%', right: '0%' }}
+          />
+          {/* Bottom-left: Pet Wash Academy */}
+          <PlatformBadge
+            label="Pet Wash Academy"
+            emoji="🎓"
+            colorClass="from-violet-500 to-purple-700"
+            style={{ bottom: '18%', left: '0%' }}
+          />
+          {/* Bottom-right: Pet Finder */}
+          <PlatformBadge
+            label="Pet Finder – Free"
+            emoji="📍"
+            colorClass="from-amber-400 to-yellow-500"
+            style={{ bottom: '18%', right: '0%' }}
+          />
+          {/* Bottom-center: PetTrek */}
+          <PlatformBadge
+            label="PetTrek"
+            emoji="🚗"
+            colorClass="from-slate-500 to-slate-700"
+            style={{ bottom: '0%', left: '50%', transform: 'translateX(-50%)' }}
+          />
+        </div>
+      </div>
+
+      {/* ── CTA ── */}
+      <div
+        className="flex-shrink-0 px-6 pb-6 pt-2 bg-white"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}
+      >
+        <button
+          onClick={onCta}
+          className="w-full py-4 bg-black text-white font-bold text-base rounded-2xl tracking-wide hover:bg-gray-900 active:scale-[0.98] transition-all shadow-lg"
+          data-testid="button-promo-cta"
+        >
+          {ctaText || 'Explore Platforms'}
+        </button>
+        <button
+          onClick={onCta}
+          className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
+        >
+          Continue to Site →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface PlatformBadgeProps {
+  label: string;
+  emoji: string;
+  colorClass: string;
+  style?: React.CSSProperties;
+}
+
+function PlatformBadge({ label, emoji, colorClass, style }: PlatformBadgeProps) {
+  return (
+    <div
+      className={`absolute w-[38%] aspect-square rounded-2xl bg-gradient-to-br ${colorClass} flex flex-col items-center justify-center shadow-xl border-2 border-white/40 p-1 text-white text-center`}
+      style={style}
+    >
+      <span className="text-2xl mb-0.5">{emoji}</span>
+      <span className="text-[10px] font-bold leading-tight px-1">{label}</span>
     </div>
   );
 }

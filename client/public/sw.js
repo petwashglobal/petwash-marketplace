@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petwash-pwa-v1';
+const CACHE_NAME = 'petwash-pwa-v2';
 const APP_SHELL = [
   '/',
   '/manifest.json',
