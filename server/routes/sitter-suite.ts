@@ -33,6 +33,7 @@ import { nayaxSitterMarketplace } from '../services/NayaxSitterMarketplaceServic
 import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
+import { withOwnerMedicalFields, filterPetForProvider } from '../lib/petPrivacy';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
@@ -529,10 +530,13 @@ router.get('/my-pets', requireAuth, async (req: any, res) => {
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    const pets = await db
+    const rows = await db
       .select()
       .from(petProfilesForSitting)
       .where(eq(petProfilesForSitting.userId, userId));
+    // Owner can see their own pets' medical data.
+    // Internal audit fields (temperamentArchived) are stripped.
+    const pets = rows.map(p => withOwnerMedicalFields(p as Record<string, unknown>));
     res.json(pets);
   } catch (error) {
     logger.error('[Sitter Suite] Error fetching my-pets', error);
@@ -592,19 +596,33 @@ router.get('/calculate-price', requireAuth, async (req: any, res) => {
 
 /**
  * GET /api/sitter-suite/pets - Get user's pets for sitting
+ * Requires authentication. If the caller IS the pet owner, medical data is included.
+ * If the caller is a third party (e.g. a sitter), only provider-safe fields are returned.
  */
-router.get('/pets', async (req, res) => {
+router.get('/pets', requireAuth, async (req: any, res) => {
   try {
+    const callerId: string = req.user?.uid || req.firebaseUser?.uid || '';
     const userId = req.query.userId as string;
     
     if (!userId) {
       return res.status(400).json({ error: 'userId required' });
     }
     
-    const pets = await db
+    const rows = await db
       .select()
       .from(petProfilesForSitting)
       .where(eq(petProfilesForSitting.userId, userId));
+
+    const isOwner = callerId === userId;
+    const pets = rows.map(p => {
+      const raw = p as Record<string, unknown>;
+      // Owner sees full medical data (minus internal audit fields).
+      // Any other authenticated caller gets only provider-safe fields unless
+      // the pet record carries an explicit medicalShareConsent flag.
+      return isOwner
+        ? withOwnerMedicalFields(raw)
+        : filterPetForProvider(raw);
+    });
     
     res.json(pets);
   } catch (error) {
@@ -696,8 +714,10 @@ router.post('/bookings', requireAuth, async (req, res) => {
       endDate: end,
       metadata: { 
         petType: pet.breed,
-        specialNeeds: pet.specialNeeds,
-        allergies: pet.allergies
+        // Medical data (specialNeeds, allergies) is only forwarded to the
+        // availability engine when the owner has consented to share it.
+        specialNeeds: pet.medicalShareConsent ? pet.specialNeeds : undefined,
+        allergies: pet.medicalShareConsent ? pet.allergies : undefined,
       }
     });
 
@@ -726,12 +746,16 @@ router.post('/bookings', requireAuth, async (req, res) => {
     
     let triageResult = { urgencyScore: 1, triageNotes: '' };
     try {
+      // Medical data (allergies) is only passed to the AI triage service when
+      // the owner has explicitly consented to sharing medical data (medicalShareConsent=true).
+      // Without consent, allergen information is omitted from the AI context.
+      const medicalConsented = pet.medicalShareConsent === true;
       triageResult = await sitterAITriageService.analyzeBookingUrgency({
         startDate: start,
         endDate: end,
         petType: pet.breed,
-        specialNeeds: pet.specialNeeds || undefined,
-        allergies: pet.allergies ? JSON.stringify(pet.allergies) : undefined,
+        specialNeeds: medicalConsented ? (pet.specialNeeds || undefined) : undefined,
+        allergies: medicalConsented && pet.allergies ? JSON.stringify(pet.allergies) : undefined,
         city: sitter.city,
         ownerMessage: specialInstructions,
       });

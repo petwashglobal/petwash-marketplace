@@ -8377,6 +8377,19 @@ self.addEventListener('notificationclick', (event) => {
       // Get pets for the customer using proper storage
       const pets = await storage.getCustomerPets(parseInt(customerId));
 
+      // Audit-log every admin read of customer pet data (may contain medical fields)
+      await logAuditEvent({
+        actorUserId: req.adminUser?.id || req.user?.uid,
+        actorRole: 'admin',
+        actionType: 'ADMIN_CUSTOMER_PETS_READ',
+        targetType: 'customer_pets',
+        targetId: customerId,
+        ip: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip,
+        userAgent: req.headers['user-agent'],
+        traceId: req.traceId,
+        metadata: { resultCount: pets?.length ?? 0 },
+      });
+
       res.json(pets);
     } catch (error) {
       logger.error('Error fetching customer pets:', error);
@@ -9519,6 +9532,10 @@ self.addEventListener('notificationclick', (event) => {
   // Pet Profiles routes
   const petsRoutes = await import('./routes/pets');
   app.use('/api/pets', apiLimiter, petsRoutes.default);
+
+  // Business Legal ID documents (compliance-role only — normal users receive 403)
+  const businessLegalIdRoutes = await import('./routes/business-legal-id');
+  app.use('/api/business-legal-id', apiLimiter, businessLegalIdRoutes.default);
 
   // Pet Avatars routes (The Plush Lab - Premium avatar creator)
   const avatarsRoutes = await import('./routes/avatars');
@@ -14581,7 +14598,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         .from(customerPets)
         .where(eq(customerPets.userId, userId));
       
-      res.json(userPets);
+      // Owner reads their own pets — strip internal audit fields only.
+      const { withOwnerMedicalFields } = await import('./lib/petPrivacy');
+      const filteredPets = userPets.map(p => withOwnerMedicalFields(p as Record<string, unknown>));
+      res.json(filteredPets);
     } catch (error: any) {
       logger.error('[PetCare] Fetch pets failed', error);
       res.status(500).json({ error: error.message });
