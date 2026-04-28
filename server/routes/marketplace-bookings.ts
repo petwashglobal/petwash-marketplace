@@ -585,8 +585,16 @@ router.get('/my-bookings', async (req, res) => {
 
 router.get('/:bookingId', async (req, res) => {
   try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const { bookingId } = req.params;
-    
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
     const booking = await bookingLifecycleService.getBookingWithHistory(bookingId);
     
     if (!booking) {
@@ -800,8 +808,16 @@ router.post('/:bookingId/cancel', async (req, res) => {
 
 router.get('/:bookingId/history', async (req, res) => {
   try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const { bookingId } = req.params;
-    
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
     const history = await db.select()
       .from(bookingStatusHistory)
       .where(eq(bookingStatusHistory.bookingId, bookingId))
@@ -816,8 +832,16 @@ router.get('/:bookingId/history', async (req, res) => {
 
 router.get('/:bookingId/escrow', async (req, res) => {
   try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const { bookingId } = req.params;
-    
+    const userRole = req.user?.role || req.firebaseUser?.claims?.role;
+    const party = await assertBookingParty(bookingId, userId, userRole, res);
+    if (!party) return;
+
     const [escrow] = await db.select()
       .from(escrowHoldings)
       .where(eq(escrowHoldings.bookingId, bookingId))
