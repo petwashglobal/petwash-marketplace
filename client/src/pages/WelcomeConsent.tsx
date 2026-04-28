@@ -10,7 +10,7 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { type Language, t } from '@/lib/i18n';
-import { GmailOAuthButton } from '@/components/GmailOAuthButton';
+import { GmailOAuthButton, type GmailConnectionData } from '@/components/GmailOAuthButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,7 +29,8 @@ import {
   Star,
   ArrowRight,
   ArrowLeft,
-  Info
+  Info,
+  Zap
 } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 
@@ -49,15 +50,17 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
   });
   const [showCorporateGuidelines, setShowCorporateGuidelines] = useState(false);
   const [isGmailConnected, setIsGmailConnected] = useState(false);
+  const [gmailData, setGmailData] = useState<GmailConnectionData | null>(null);
 
   const allRequiredConsentsGiven = 
     consents.termsOfService && 
     consents.privacyPolicy && 
     consents.corporateGuidelines;
 
-  const handleGmailSuccess = () => {
+  const handleGmailSuccess = (_accessToken: string, _user: any, data?: GmailConnectionData) => {
     setIsGmailConnected(true);
     setConsents(prev => ({ ...prev, gmailIntegration: true }));
+    if (data) setGmailData(data);
   };
 
   const handleContinue = async () => {
@@ -158,7 +161,30 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 onSuccess={handleGmailSuccess}
               />
 
-              {isGmailConnected && (
+              {isGmailConnected && gmailData?.isReturningCustomer && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border-2 border-amber-200/60 dark:border-amber-700/40 animate-in fade-in duration-500">
+                  <div className="flex items-start gap-3">
+                    <Zap className="w-6 h-6 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div>
+                      <h4 className="font-semibold text-amber-900 dark:text-amber-100">
+                        {gmailData.displayName
+                          ? `${t('gmail.welcomeBack', language)} ${gmailData.displayName}!`
+                          : t('gmail.welcomeBack', language)}
+                      </h4>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                        {t('gmail.returningCustomerFound', language)}
+                      </p>
+                      {gmailData.lastBookingSubject && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
+                          {t('gmail.lastBookingFound', language)}: {gmailData.lastBookingSubject}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isGmailConnected && !gmailData?.isReturningCustomer && (
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 border-2 border-green-200/60 dark:border-green-700/40 animate-in fade-in duration-500">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
