@@ -19,7 +19,7 @@ interface LandingProps {
 }
 
 export default function Landing({ language, onLanguageChange }: LandingProps) {
-  const { user, claims } = useFirebaseAuth();
+  const { user, loading, claims } = useFirebaseAuth();
   const [, setLocation] = useLocation();
 
   const getDashboardPath = (): string => {
@@ -136,7 +136,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               >
                 {user ? (
                   <Button 
-                    onClick={() => setLocation(getDashboardPath())}
+                    onClick={() => { if (loading) return; setLocation(getDashboardPath()); }}
                     className="gold-shimmer-btn text-white px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
                     {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
@@ -443,7 +443,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
             <div className="mt-12 text-center">
               <Button
-                onClick={() => setLocation(user ? getDashboardPath() : '/signin')}
+                onClick={() => { if (loading) return; setLocation(user ? getDashboardPath() : '/signin'); }}
                 className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',

@@ -238,7 +238,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   language: controlledLanguage, 
   onLanguageChange: controlledOnLanguageChange 
 }) => {
-  const { user, logout, claims } = useFirebaseAuth();
+  const { user, loading, logout, claims } = useFirebaseAuth();
 
   const getDashboardPath = (): string => {
     if (!user) return '/signin';
@@ -491,8 +491,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <button
               type="button"
               className="pw-header-profile-btn"
-              style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-              onClick={() => handleNavigate(getDashboardPath())}
+              style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+              onClick={() => { if (loading) return; handleNavigate(getDashboardPath()); }}
               aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
               data-testid="button-header-profile"
             >
@@ -611,8 +611,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           <button
             type="button"
             className="pw-account-btn"
-            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-            onClick={() => handleNavigate(getDashboardPath())}
+            style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+            onClick={() => { if (loading) return; handleNavigate(getDashboardPath()); }}
           >
             <div className="pw-account-circle">
               <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
@@ -746,8 +746,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 <button
                   type="button"
                   className="pw-mobile-link"
-                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-                  onClick={() => handleNavigate(getDashboardPath())}
+                  style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+                  onClick={() => { if (loading) return; handleNavigate(getDashboardPath()); }}
                 >
                   {t("mydashboard", currentLanguage)}
                 </button>
