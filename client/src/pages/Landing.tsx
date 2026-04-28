@@ -10,6 +10,7 @@ import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/componen
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import k9000StationImg from '@assets/D49C7A93-BA54-43A7-A3F6-5FEC96439FE3_1770820255509.png';
 
@@ -19,22 +20,9 @@ interface LandingProps {
 }
 
 export default function Landing({ language, onLanguageChange }: LandingProps) {
-  const { user, claims } = useFirebaseAuth();
+  const { user } = useFirebaseAuth();
+  const { getAccountRoute } = useAccountNavigation();
   const [, setLocation] = useLocation();
-
-  const getDashboardPath = (): string => {
-    if (!user) return '/signin';
-    const role = claims?.role;
-    const ADMIN_ROLES = ['staff', 'admin', 'management', 'super_admin'];
-    if (role === 'provider') return '/provider/dashboard';
-    if (ADMIN_ROLES.includes(role ?? '')) return '/dashboard';
-    // Email-based fallback: if Firebase claim hasn't been written yet (first login
-    // or token not yet refreshed), use the email list that mirrors the server check.
-    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'nirhadad1@gmail.com,nir.h@petwash.co.il,ceo@petwash.co.il')
-      .split(',').map((e: string) => e.trim().toLowerCase());
-    if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
-    return '/my-account';
-  };
   const [heroAnimated, setHeroAnimated] = useState(false);
   
   const { ref: techRef, isRevealed: techRevealed } = useScrollReveal<HTMLElement>();
@@ -136,7 +124,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               >
                 {user ? (
                   <Button 
-                    onClick={() => setLocation(getDashboardPath())}
+                    onClick={() => setLocation(getAccountRoute())}
                     className="gold-shimmer-btn text-white px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
                     {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
@@ -443,7 +431,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
             <div className="mt-12 text-center">
               <Button
-                onClick={() => setLocation(user ? getDashboardPath() : '/signin')}
+                onClick={() => setLocation(user ? getAccountRoute() : '/signin')}
                 className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',
