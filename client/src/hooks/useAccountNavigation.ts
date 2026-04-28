@@ -16,6 +16,7 @@
  */
 
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import type { User } from 'firebase/auth';
 import { useWhoami } from '@/auth/useWhoami';
 
 function normalizeRole(value?: string | null): string {
@@ -31,7 +32,7 @@ const ADMIN_ROLES = new Set(['super_admin', 'admin', 'management', 'staff']);
 export function computeAccountRoute(params: {
   authLoading: boolean;
   claimsLoading: boolean;
-  firebaseUser: unknown | null;
+  firebaseUser: User | null;
   claimsRole?: string | null;
   claimsAccountType?: string | null;
   whoamiRole?: string | null;
@@ -58,7 +59,6 @@ export function computeAccountRoute(params: {
 
   // 2. Truly not logged in → sign-in
   if (!firebaseUser) return '/signin';
-
   // 3. Derive the effective role from the most authoritative source first.
   //    whoami (server-side session) > Firebase claims > empty string
   const role = normalizeRole(whoamiRole || claimsRole);
@@ -105,7 +105,7 @@ export function useAccountNavigation() {
       claimsAccountType: claims?.accountType,
       whoamiRole: whoami?.role,
       whoamiAccountType: whoami?.accountType,
-      userEmail: (user as any)?.email ?? null,
+      userEmail: user?.email ?? null,
       adminEmails,
     });
   }
