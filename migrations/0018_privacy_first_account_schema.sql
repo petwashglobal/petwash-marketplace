@@ -35,24 +35,34 @@ ALTER TABLE "pets"
   ADD COLUMN IF NOT EXISTS "medical_consent_updated_at" timestamp;
 
 -- Migrate existing temperament varchar to the new enum safely:
---   Step 1: add a new typed column
+--   Step 1: archive the original free-text value before any conversion
+ALTER TABLE "pets"
+  ADD COLUMN IF NOT EXISTS "temperament_archived" text;
+
+UPDATE "pets"
+  SET "temperament_archived" = "temperament"
+  WHERE "temperament" IS NOT NULL AND "temperament_archived" IS NULL;
+
+--   Step 2: add a new typed column
 ALTER TABLE "pets"
   ADD COLUMN IF NOT EXISTS "temperament_new" pet_temperament;
 
--- Step 2: map any existing values to the closest safe label
+-- Step 3: map any existing values to the closest safe label.
+-- Original values are preserved in temperament_archived for audit purposes.
 UPDATE "pets" SET "temperament_new" = CASE
   WHEN lower("temperament") IN ('calm', 'gentle', 'friendly', 'relaxed', 'docile') THEN 'calm'::pet_temperament
   WHEN lower("temperament") IN ('nervous', 'anxious', 'shy', 'fearful', 'timid') THEN 'nervous'::pet_temperament
   WHEN lower("temperament") IN ('high energy', 'high_energy', 'energetic', 'active', 'excitable') THEN 'high_energy'::pet_temperament
   WHEN lower("temperament") IN ('aggressive', 'reactive', 'unpredictable', 'dominant',
                                   'needs careful handling', 'needs_careful_handling') THEN 'needs_careful_handling'::pet_temperament
+  -- Values that suggest a higher risk level map to staff_assistance_recommended
   WHEN lower("temperament") IN ('dangerous', 'staff assistance', 'staff_assistance_recommended',
                                   'staff assistance recommended') THEN 'staff_assistance_recommended'::pet_temperament
-  ELSE NULL  -- unmapped values become NULL (safe default)
+  ELSE NULL  -- unmapped values become NULL (safe default); original is kept in temperament_archived
 END
 WHERE "temperament" IS NOT NULL;
 
--- Step 3: drop the old untyped column and rename the new one
+-- Step 4: drop the old untyped column and rename the new one
 ALTER TABLE "pets" DROP COLUMN IF EXISTS "temperament";
 ALTER TABLE "pets" RENAME COLUMN "temperament_new" TO "temperament";
 
@@ -60,7 +70,7 @@ ALTER TABLE "pets" RENAME COLUMN "temperament_new" TO "temperament";
 -- National ID / Passport ONLY for verified business accounts or high-risk cases.
 CREATE TABLE IF NOT EXISTS "business_legal_id_documents" (
   "id"                     serial PRIMARY KEY,
-  "user_id"                varchar(128)    NOT NULL,
+  "user_id"                varchar(128)    NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   -- "business_verified" | "high_risk_payment" | "compliance_hold"
   "collection_reason"      varchar(60)     NOT NULL,
   -- Plain-text justification written by the compliance officer
@@ -97,7 +107,7 @@ CREATE INDEX IF NOT EXISTS "idx_biz_legal_id_status"
 -- purpose: service_alerts | receipts | marketing | reminders
 CREATE TABLE IF NOT EXISTS "user_notification_consents" (
   "id"                serial PRIMARY KEY,
-  "user_id"           varchar(128)  NOT NULL,
+  "user_id"           varchar(128)  NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "channel"           varchar(20)   NOT NULL,
   "purpose"           varchar(30)   NOT NULL,
   -- Explicit opt-in required; defaults to false (no consent)
@@ -119,7 +129,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "idx_notif_consent_unique"
 -- ── 5. user_wash_preferences ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "user_wash_preferences" (
   "id"                      serial PRIMARY KEY,
-  "user_id"                 varchar(128)  NOT NULL UNIQUE,
+  "user_id"                 varchar(128)  NOT NULL UNIQUE REFERENCES "users"("id") ON DELETE CASCADE,
   -- "economy" | "standard" | "premium" | "luxury"
   "preferred_wash_package"  varchar(30),
   -- "morning" | "afternoon" | "evening" | "any"
@@ -140,7 +150,7 @@ CREATE INDEX IF NOT EXISTS "idx_wash_prefs_user"
 -- Right to Erasure — GDPR Art. 17 / Israel Privacy Law
 CREATE TABLE IF NOT EXISTS "account_deletion_requests" (
   "id"                   serial PRIMARY KEY,
-  "user_id"              varchar(128)  NOT NULL,
+  "user_id"              varchar(128)  NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
   -- "user_requested" | "admin_initiated" | "legal_hold_expired"
   "request_reason"       varchar(60)   NOT NULL DEFAULT 'user_requested',
   "user_notes"           text,
@@ -168,7 +178,7 @@ CREATE INDEX IF NOT EXISTS "idx_acct_del_scheduled"
 -- Right of Access / Data Portability — GDPR Art. 15 & 20
 CREATE TABLE IF NOT EXISTS "data_export_requests" (
   "id"                      serial PRIMARY KEY,
-  "user_id"                 varchar(128)  NOT NULL,
+  "user_id"                 varchar(128)  NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
   -- "pending" | "processing" | "ready" | "downloaded" | "expired" | "failed"
   "status"                  varchar(20)   NOT NULL DEFAULT 'pending',
   -- Signed, time-limited download URL generated after processing
@@ -193,7 +203,7 @@ CREATE INDEX IF NOT EXISTS "idx_data_export_status"
 --             | lost_and_found | pettrek | mobile_vet (future)
 CREATE TABLE IF NOT EXISTS "user_platform_access" (
   "id"                  serial PRIMARY KEY,
-  "user_id"             varchar(128)  NOT NULL,
+  "user_id"             varchar(128)  NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "platform_code"       varchar(40)   NOT NULL,
   -- "active" | "suspended" | "pending_verification" | "revoked"
   "access_status"       varchar(30)   NOT NULL DEFAULT 'active',

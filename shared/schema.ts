@@ -7839,6 +7839,9 @@ export const pets = pgTable("pets", {
   lastWashDate: timestamp("last_wash_date"),
   lastWalkDate: timestamp("last_walk_date"),
   lastGroomDate: timestamp("last_groom_date"),
+  // Archived original free-text temperament value (populated by migration 0018).
+  // Never expose this field in public API responses.
+  temperamentArchived: text("temperament_archived"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -15187,7 +15190,7 @@ export type InsertLoginSecurityEvent = typeof loginSecurityEvents.$inferInsert;
 export const businessLegalIdDocuments = pgTable("business_legal_id_documents", {
   id: serial("id").primaryKey(),
   // The account this document belongs to
-  userId: varchar("user_id", { length: 128 }).notNull(),
+  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "cascade" }),
   // "business_verified" | "high_risk_payment" | "compliance_hold"
   collectionReason: varchar("collection_reason", { length: 60 }).notNull(),
   // Plain-text explanation recorded by the compliance officer
@@ -15232,7 +15235,7 @@ export type BusinessLegalIdDocument = typeof businessLegalIdDocuments.$inferSele
 // purpose: "service_alerts" | "receipts" | "marketing" | "reminders"
 export const userNotificationConsents = pgTable("user_notification_consents", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 128 }).notNull(),
+  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "cascade" }),
   channel: varchar("channel", { length: 20 }).notNull(),
   purpose: varchar("purpose", { length: 30 }).notNull(),
   // Explicit opt-in required; default is false (consent not given)
@@ -15264,7 +15267,7 @@ export type UserNotificationConsent = typeof userNotificationConsents.$inferSele
 // restored independently.
 export const userWashPreferences = pgTable("user_wash_preferences", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 128 }).notNull().unique(),
+  userId: varchar("user_id", { length: 128 }).notNull().unique().references(() => users.id, { onDelete: "cascade" }),
   // "economy" | "standard" | "premium" | "luxury"
   preferredWashPackage: varchar("preferred_wash_package", { length: 30 }),
   // "morning" | "afternoon" | "evening" | "any"
@@ -15296,7 +15299,7 @@ export type UserWashPreferences = typeof userWashPreferences.$inferSelect;
 // in "processing" status; it records the erased_at timestamp on completion.
 export const accountDeletionRequests = pgTable("account_deletion_requests", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 128 }).notNull(),
+  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "restrict" }),
   // "user_requested" | "admin_initiated" | "legal_hold_expired"
   requestReason: varchar("request_reason", { length: 60 }).notNull().default("user_requested"),
   // Optional free-text from the user
@@ -15333,7 +15336,7 @@ export type AccountDeletionRequest = typeof accountDeletionRequests.$inferSelect
 // signed download URL.  The URL expires after downloadUrlExpiresAt.
 export const dataExportRequests = pgTable("data_export_requests", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 128 }).notNull(),
+  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "restrict" }),
   // "pending" | "processing" | "ready" | "downloaded" | "expired" | "failed"
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   // Signed, time-limited download URL generated after processing
@@ -15367,7 +15370,7 @@ export type DataExportRequest = typeof dataExportRequests.$inferSelect;
 //   | "lost_and_found" | "pettrek" | "mobile_vet" (future)
 export const userPlatformAccess = pgTable("user_platform_access", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 128 }).notNull(),
+  userId: varchar("user_id", { length: 128 }).notNull().references(() => users.id, { onDelete: "cascade" }),
   // Matches platform slugs: wash_station, pet_sitting, dog_walking, academy,
   // lost_and_found, pettrek — extensible for future services
   platformCode: varchar("platform_code", { length: 40 }).notNull(),
