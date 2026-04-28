@@ -117,6 +117,32 @@ export function withOwnerMedicalFields(pet: AnyPet): AnyPet {
 }
 
 /**
+ * Medical fields that a provider may receive when the pet owner has given
+ * explicit consent (medicalShareConsent=true).
+ *
+ * This is an ALLOWLIST — fields not in this list are NEVER forwarded to a
+ * provider, even with consent.  This prevents any future or unknown field
+ * (e.g. internal document storage URLs, audit fields) from accidentally
+ * leaking through a "spread + delete" pattern.
+ */
+export const PET_PROVIDER_CONSENT_MEDICAL_FIELDS = [
+  'skinSensitivity',
+  'allergies',
+  'medications',
+  'specialNeeds',
+  'vetName',           // customerPets table
+  'vetPhone',          // customerPets table
+  'vetContactName',    // petProfilesForSitting table
+  'vetContactPhone',   // petProfilesForSitting table
+  'emergencyContactName',
+  'emergencyContactPhone',
+  'vaccinationStatus',
+  'lastVaccinationDate',
+  'nextVaccinationDate',
+  'vaccinationNotes',
+] as const;
+
+/**
  * Returns a filtered pet object suitable for a *service provider*.
  *
  * Medical fields are included ONLY when:
@@ -124,6 +150,10 @@ export function withOwnerMedicalFields(pet: AnyPet): AnyPet {
  *   2. `consentOverride` is not explicitly set to false (e.g., booking cancelled)
  *
  * In all other cases only the safe provider-visible fields are returned.
+ *
+ * IMPORTANT: Both paths use an ALLOWLIST (not a denylist).  This ensures any
+ * future or unknown field on the pet object — such as internal document storage
+ * URLs, database internals, or audit columns — can never leak to a provider.
  */
 export function filterPetForProvider(
   pet: AnyPet,
@@ -134,23 +164,23 @@ export function filterPetForProvider(
     pet['medicalShareConsent'] === true &&
     pet['medicalDataPrivate'] !== true;
 
-  if (hasConsent) {
-    // Include medical fields but still strip internal audit fields
-    const result = { ...pet };
-    delete result['temperamentArchived'];
-    delete result['medicalDataPrivate'];
-    delete result['medicalShareConsent'];
-    delete result['medicalConsentUpdatedAt'];
-    return result;
-  }
-
-  // No consent — return only provider-safe fields
+  // Build the result from the provider-safe allowlist first.
   const result: AnyPet = {};
   for (const field of PET_PROVIDER_SAFE_FIELDS) {
     if (field in pet) {
       result[field] = pet[field];
     }
   }
+
+  if (hasConsent) {
+    // Add only the explicitly-allowed medical fields — no spread, no denylist.
+    for (const field of PET_PROVIDER_CONSENT_MEDICAL_FIELDS) {
+      if (field in pet) {
+        result[field] = pet[field];
+      }
+    }
+  }
+
   return result;
 }
 

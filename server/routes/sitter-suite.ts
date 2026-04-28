@@ -34,6 +34,8 @@ import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { withOwnerMedicalFields, filterPetForProvider } from '../lib/petPrivacy';
+import { isSuperAdmin } from '../middleware/rbac';
+import { logAuditEvent } from '../middleware/auditLog';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
@@ -596,34 +598,109 @@ router.get('/calculate-price', requireAuth, async (req: any, res) => {
 
 /**
  * GET /api/sitter-suite/pets - Get user's pets for sitting
- * Requires authentication. If the caller IS the pet owner, medical data is included.
- * If the caller is a third party (e.g. a sitter), only provider-safe fields are returned.
+ *
+ * Authorization model (prevents IDOR — authenticated ≠ authorised):
+ *   OWNER  — caller's UID matches the requested userId. Full medical data returned
+ *             (minus internal audit fields).
+ *   ADMIN  — caller is a super_admin or compliance role. Full medical data
+ *             returned + mandatory audit log.
+ *   ASSIGNED PROVIDER — caller is a sitter who has an active/confirmed booking
+ *             for this exact owner. Provider-safe fields only; medical fields
+ *             included only when the pet carries medicalShareConsent=true.
+ *   ELSE   — 403 Forbidden. A random logged-in user cannot enumerate another
+ *             user's pets by passing userId=X.
  */
 router.get('/pets', requireAuth, async (req: any, res) => {
   try {
     const callerId: string = req.user?.uid || req.firebaseUser?.uid || '';
+    const callerEmail: string = req.user?.email || '';
     const userId = req.query.userId as string;
-    
+
     if (!userId) {
       return res.status(400).json({ error: 'userId required' });
     }
-    
+
+    const isOwner = callerId === userId;
+
+    // ── Super-admin / compliance bypass ────────────────────────────────────
+    const COMPLIANCE_ROLES = ['compliance', 'compliance_officer', 'auditor', 'legal'];
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+    const callerEmailLower = callerEmail.toLowerCase();
+    const isAdminOrCompliance =
+      superAdminEmails.includes(callerEmailLower) ||
+      isSuperAdmin(callerEmail) ||
+      (req.userRole?.role && COMPLIANCE_ROLES.includes(String(req.userRole.role.name || req.userRole.role).toLowerCase()));
+
+    // ── Assigned provider check ─────────────────────────────────────────────
+    // Is the caller a sitter who has an active booking for this owner?
+    let isAssignedProvider = false;
+    if (!isOwner && !isAdminOrCompliance) {
+      // Look up the caller's sitter profile
+      const [callerSitterProfile] = await db
+        .select({ id: sitterProfiles.id })
+        .from(sitterProfiles)
+        .where(eq(sitterProfiles.userId, callerId));
+
+      if (callerSitterProfile) {
+        const [activeBooking] = await db
+          .select({ id: sitterBookings.id })
+          .from(sitterBookings)
+          .where(
+            and(
+              eq(sitterBookings.sitterId, callerSitterProfile.id),
+              eq(sitterBookings.ownerId, userId),
+              sql`${sitterBookings.status} IN ('pending_provider','confirmed','in_progress')`
+            )
+          )
+          .limit(1);
+        isAssignedProvider = !!activeBooking;
+      }
+    }
+
+    // ── Authorization gate ──────────────────────────────────────────────────
+    if (!isOwner && !isAdminOrCompliance && !isAssignedProvider) {
+      logger.warn('[Sitter Suite] IDOR attempt blocked', {
+        callerId,
+        requestedUserId: userId,
+      });
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // ── Fetch pets ──────────────────────────────────────────────────────────
     const rows = await db
       .select()
       .from(petProfilesForSitting)
       .where(eq(petProfilesForSitting.userId, userId));
 
-    const isOwner = callerId === userId;
+    // ── Admin audit log ─────────────────────────────────────────────────────
+    if (isAdminOrCompliance) {
+      await logAuditEvent({
+        actorUserId: callerId,
+        actorRole: 'admin',
+        actionType: 'ADMIN_SITTER_SUITE_PETS_READ',
+        targetType: 'pet_profiles_for_sitting',
+        targetId: userId,
+        ip: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip,
+        userAgent: req.headers['user-agent'],
+        traceId: req.traceId,
+        metadata: { resultCount: rows.length },
+      });
+    }
+
+    // ── Filter and respond ──────────────────────────────────────────────────
     const pets = rows.map(p => {
       const raw = p as Record<string, unknown>;
-      // Owner sees full medical data (minus internal audit fields).
-      // Any other authenticated caller gets only provider-safe fields unless
-      // the pet record carries an explicit medicalShareConsent flag.
-      return isOwner
-        ? withOwnerMedicalFields(raw)
-        : filterPetForProvider(raw);
+      if (isOwner || isAdminOrCompliance) {
+        // Owner / admin sees full data minus internal audit fields.
+        return withOwnerMedicalFields(raw);
+      }
+      // Assigned provider — provider-safe fields; medical only if consented.
+      return filterPetForProvider(raw);
     });
-    
+
     res.json(pets);
   } catch (error) {
     logger.error('[Sitter Suite] Error fetching pets', error);

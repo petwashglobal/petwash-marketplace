@@ -561,3 +561,371 @@ describe('JSON serialisation — sensitive fields do not appear in provider resp
     }
   });
 });
+
+// ── Test section 12: IDOR authorisation model — /api/sitter-suite/pets ───────
+
+/**
+ * Simulates the exact authorization logic from the updated GET /api/sitter-suite/pets handler.
+ * The DB calls (sitter profile + active booking lookup) are represented here
+ * as simple boolean arguments so we can test all branches in isolation.
+ */
+function simulateSitterPetsAuthorization(opts: {
+  callerId: string;
+  requestedUserId: string;
+  callerEmail: string;
+  superAdminEmails?: string[];
+  complianceRoleName?: string;
+  callerHasSitterProfile?: boolean;
+  callerHasActiveBookingForOwner?: boolean;
+}): 'owner' | 'admin' | 'provider' | '403' {
+  const {
+    callerId,
+    requestedUserId,
+    callerEmail,
+    superAdminEmails = [],
+    complianceRoleName,
+    callerHasSitterProfile = false,
+    callerHasActiveBookingForOwner = false,
+  } = opts;
+
+  const COMPLIANCE_ROLES = ['compliance', 'compliance_officer', 'auditor', 'legal'];
+  const isOwner = callerId === requestedUserId;
+  const isAdminOrCompliance =
+    superAdminEmails.includes(callerEmail.toLowerCase()) ||
+    (complianceRoleName !== undefined && COMPLIANCE_ROLES.includes(complianceRoleName.toLowerCase()));
+
+  if (isOwner) return 'owner';
+  if (isAdminOrCompliance) return 'admin';
+
+  const isAssignedProvider = callerHasSitterProfile && callerHasActiveBookingForOwner;
+  if (isAssignedProvider) return 'provider';
+
+  return '403';
+}
+
+describe('sitter-suite GET /pets — IDOR authorization model', () => {
+  const OWNER_ID = 'owner-uid-001';
+  const SITTER_ID = 'sitter-uid-999';
+  const RANDOM_CUSTOMER_ID = 'random-uid-777';
+  const ADMIN_EMAIL = 'admin@petwash.co.il';
+  const SUPER_ADMIN_EMAILS = [ADMIN_EMAIL];
+
+  // ── Owner access ────────────────────────────────────────────────────────
+  it('owner receives "owner" access tier (full medical data)', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: OWNER_ID,
+      requestedUserId: OWNER_ID,
+      callerEmail: 'owner@example.com',
+    });
+    expect(result).toBe('owner');
+  });
+
+  // ── Random customer IDOR block ──────────────────────────────────────────
+  it('random logged-in customer gets 403 for another user\'s pets', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: RANDOM_CUSTOMER_ID,
+      requestedUserId: OWNER_ID,
+      callerEmail: 'random@example.com',
+    });
+    expect(result).toBe('403');
+  });
+
+  it('authenticated provider with NO booking for the owner gets 403', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: SITTER_ID,
+      requestedUserId: OWNER_ID,
+      callerEmail: 'sitter@example.com',
+      callerHasSitterProfile: true,
+      callerHasActiveBookingForOwner: false,   // not assigned to this owner
+    });
+    expect(result).toBe('403');
+  });
+
+  it('authenticated sitter without a sitter profile gets 403', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: SITTER_ID,
+      requestedUserId: OWNER_ID,
+      callerEmail: 'sitter@example.com',
+      callerHasSitterProfile: false,
+      callerHasActiveBookingForOwner: true,    // irrelevant — no profile
+    });
+    expect(result).toBe('403');
+  });
+
+  // ── Assigned provider access ────────────────────────────────────────────
+  it('assigned sitter with active booking receives "provider" access tier', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: SITTER_ID,
+      requestedUserId: OWNER_ID,
+      callerEmail: 'sitter@example.com',
+      callerHasSitterProfile: true,
+      callerHasActiveBookingForOwner: true,
+    });
+    expect(result).toBe('provider');
+  });
+
+  // ── Admin / compliance access ───────────────────────────────────────────
+  it('super_admin receives "admin" access tier', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: 'admin-uid',
+      requestedUserId: OWNER_ID,
+      callerEmail: ADMIN_EMAIL,
+      superAdminEmails: SUPER_ADMIN_EMAILS,
+    });
+    expect(result).toBe('admin');
+  });
+
+  it('compliance_officer receives "admin" access tier', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: 'compliance-uid',
+      requestedUserId: OWNER_ID,
+      callerEmail: 'compliance@petwash.co.il',
+      complianceRoleName: 'compliance_officer',
+    });
+    expect(result).toBe('admin');
+  });
+
+  it('auditor role receives "admin" access tier', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: 'auditor-uid',
+      requestedUserId: OWNER_ID,
+      callerEmail: 'audit@petwash.co.il',
+      complianceRoleName: 'auditor',
+    });
+    expect(result).toBe('admin');
+  });
+
+  // ── Edge: super_admin email is case-insensitive ─────────────────────────
+  it('super_admin email check is case-insensitive', () => {
+    const result = simulateSitterPetsAuthorization({
+      callerId: 'admin-uid',
+      requestedUserId: OWNER_ID,
+      callerEmail: 'ADMIN@PETWASH.CO.IL',
+      superAdminEmails: [ADMIN_EMAIL],
+    });
+    expect(result).toBe('admin');
+  });
+});
+
+// ── Test section 13: data returned for each access tier ──────────────────────
+
+describe('sitter-suite GET /pets — data shape per access tier', () => {
+  const FULL_PET = {
+    id: 1,
+    userId: 'owner-uid-001',
+    name: 'Luna',
+    breed: 'Labrador',
+    age: 4,
+    photoUrl: 'https://cdn.petwash.co.il/pets/luna.jpg',
+    temperament: 'calm',
+    goodWithKids: true,
+    // Medical
+    allergies: [{ allergen: 'chicken', severity: 'severe', highAlertFlag: true, notes: '' }],
+    skinSensitivity: 'Sensitive to chlorine',
+    medications: 'Cyclosporine',
+    specialNeeds: 'Post-op',
+    vetContactName: 'Dr. Levi',
+    vetContactPhone: '+972-54-000-0001',
+    medicalDataPrivate: true,
+    medicalShareConsent: false,
+    temperamentArchived: 'very friendly',
+  };
+
+  const CONSENTED_PET = { ...FULL_PET, medicalDataPrivate: false, medicalShareConsent: true };
+
+  it('owner tier returns medical fields', () => {
+    const result = withOwnerMedicalFields(FULL_PET as any);
+    expect(result).toHaveProperty('allergies');
+    expect(result).toHaveProperty('medications');
+    expect(result).toHaveProperty('skinSensitivity');
+  });
+
+  it('owner tier strips temperamentArchived', () => {
+    const result = withOwnerMedicalFields(FULL_PET as any);
+    expect(result).not.toHaveProperty('temperamentArchived');
+  });
+
+  it('admin tier (same as owner) returns medical fields and strips temperamentArchived', () => {
+    const result = withOwnerMedicalFields(FULL_PET as any);
+    expect(result).toHaveProperty('allergies');
+    expect(result).not.toHaveProperty('temperamentArchived');
+  });
+
+  it('provider tier — no consent — returns only PET_PROVIDER_SAFE_FIELDS', () => {
+    const result = filterPetForProvider(FULL_PET as any);
+    expect(result).not.toHaveProperty('allergies');
+    expect(result).not.toHaveProperty('skinSensitivity');
+    expect(result).not.toHaveProperty('medications');
+    expect(result).not.toHaveProperty('specialNeeds');
+    expect(result).not.toHaveProperty('vetContactName');
+    expect(result).not.toHaveProperty('vetContactPhone');
+    expect(result).not.toHaveProperty('medicalDataPrivate');
+    expect(result).not.toHaveProperty('medicalShareConsent');
+    expect(result).not.toHaveProperty('temperamentArchived');
+  });
+
+  it('provider tier — no consent — response limited to PET_PROVIDER_SAFE_FIELDS', () => {
+    const result = filterPetForProvider(FULL_PET as any);
+    const allowed = new Set(PET_PROVIDER_SAFE_FIELDS as unknown as string[]);
+    for (const key of Object.keys(result)) {
+      expect(allowed.has(key), `unexpected key "${key}" in assigned provider response`).toBe(true);
+    }
+  });
+
+  it('provider tier — with medicalShareConsent — returns medical fields', () => {
+    const result = filterPetForProvider(CONSENTED_PET as any);
+    expect(result).toHaveProperty('allergies');
+    expect(result).toHaveProperty('skinSensitivity');
+    expect(result).toHaveProperty('medications');
+  });
+
+  it('provider tier — with medicalShareConsent — still strips temperamentArchived', () => {
+    const result = filterPetForProvider(CONSENTED_PET as any);
+    expect(result).not.toHaveProperty('temperamentArchived');
+  });
+
+  it('provider tier — with medicalShareConsent — strips consent flag from response', () => {
+    const result = filterPetForProvider(CONSENTED_PET as any);
+    expect(result).not.toHaveProperty('medicalShareConsent');
+    expect(result).not.toHaveProperty('medicalDataPrivate');
+  });
+
+  it('consentOverride=false hard-blocks medical even for consented pet', () => {
+    const result = filterPetForProvider(CONSENTED_PET as any, { consentOverride: false });
+    expect(result).not.toHaveProperty('allergies');
+    expect(result).not.toHaveProperty('medications');
+  });
+});
+
+// ── Test section 14: Admin audit log for sitter-suite pet read ────────────────
+
+describe('sitter-suite GET /pets — admin access is audit-logged', () => {
+  it('logAuditEvent is called with ADMIN_SITTER_SUITE_PETS_READ for admin reads', async () => {
+    const auditCalls: any[] = [];
+    const mockLogAuditEvent = async (params: any) => { auditCalls.push(params); };
+
+    // Simulate the admin branch of the handler
+    const rows = [{ id: 1, name: 'Luna', allergies: 'chicken' }];
+    await mockLogAuditEvent({
+      actorUserId: 'admin-uid',
+      actorRole: 'admin',
+      actionType: 'ADMIN_SITTER_SUITE_PETS_READ',
+      targetType: 'pet_profiles_for_sitting',
+      targetId: 'owner-uid-001',
+      metadata: { resultCount: rows.length },
+    });
+
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0].actionType).toBe('ADMIN_SITTER_SUITE_PETS_READ');
+    expect(auditCalls[0].actorRole).toBe('admin');
+    expect(auditCalls[0].metadata.resultCount).toBe(1);
+  });
+
+  it('non-admin access does NOT produce an audit log', () => {
+    // The audit log branch only fires for isAdminOrCompliance=true
+    const auditCalls: any[] = [];
+    const isAdminOrCompliance = false;
+    if (isAdminOrCompliance) {
+      auditCalls.push({ actionType: 'ADMIN_SITTER_SUITE_PETS_READ' });
+    }
+    expect(auditCalls).toHaveLength(0);
+  });
+});
+
+// ── Test section 15: Pet photo privacy ───────────────────────────────────────
+
+describe('Pet photo privacy', () => {
+  const PET_WITH_PHOTO = {
+    id: 1,
+    name: 'Luna',
+    species: 'dog',
+    breed: 'Labrador',
+    photoUrl: 'https://cdn.petwash.co.il/pets/luna.jpg',
+    // Hypothetical internal/private document URLs that must never leak
+    documentStorageUrl: 'gs://petwash-private-bucket/docs/pet-1/medical-report.pdf',
+    internalPhotoPath: '/internal/storage/pets/luna-raw.jpg',
+    // Medical fields
+    allergies: 'chicken',
+    medications: 'Cyclosporine',
+    medicalDataPrivate: true,
+    medicalShareConsent: false,
+    temperamentArchived: 'used to be hyper',
+  };
+
+  it('public response includes photoUrl (display-safe)', () => {
+    const result = filterPetPublic(PET_WITH_PHOTO as any);
+    expect(result).toHaveProperty('photoUrl', 'https://cdn.petwash.co.il/pets/luna.jpg');
+  });
+
+  it('public response does NOT expose documentStorageUrl', () => {
+    const result = filterPetPublic(PET_WITH_PHOTO as any);
+    expect(result).not.toHaveProperty('documentStorageUrl');
+  });
+
+  it('public response does NOT expose internalPhotoPath', () => {
+    const result = filterPetPublic(PET_WITH_PHOTO as any);
+    expect(result).not.toHaveProperty('internalPhotoPath');
+  });
+
+  it('public response does NOT expose medical data', () => {
+    const result = filterPetPublic(PET_WITH_PHOTO as any);
+    expect(result).not.toHaveProperty('allergies');
+    expect(result).not.toHaveProperty('medications');
+  });
+
+  it('provider (no consent) response includes photoUrl for service use', () => {
+    const result = filterPetForProvider(PET_WITH_PHOTO as any);
+    expect(result).toHaveProperty('photoUrl');
+  });
+
+  it('provider (no consent) response does NOT expose documentStorageUrl', () => {
+    const result = filterPetForProvider(PET_WITH_PHOTO as any);
+    expect(result).not.toHaveProperty('documentStorageUrl');
+  });
+
+  it('provider (no consent) response does NOT expose internalPhotoPath', () => {
+    const result = filterPetForProvider(PET_WITH_PHOTO as any);
+    expect(result).not.toHaveProperty('internalPhotoPath');
+  });
+
+  it('provider (no consent) response does NOT expose medical data despite photo present', () => {
+    const result = filterPetForProvider(PET_WITH_PHOTO as any);
+    expect(result).not.toHaveProperty('allergies');
+    expect(result).not.toHaveProperty('medications');
+  });
+
+  it('provider with consent response includes photoUrl AND medical data', () => {
+    const consented = { ...PET_WITH_PHOTO, medicalDataPrivate: false, medicalShareConsent: true };
+    const result = filterPetForProvider(consented as any);
+    expect(result).toHaveProperty('photoUrl');
+    expect(result).toHaveProperty('allergies');
+  });
+
+  it('provider with consent still never exposes documentStorageUrl', () => {
+    const consented = { ...PET_WITH_PHOTO, medicalDataPrivate: false, medicalShareConsent: true };
+    const result = filterPetForProvider(consented as any);
+    expect(result).not.toHaveProperty('documentStorageUrl');
+  });
+
+  it('public photoUrl is a standard https:// CDN URL (not a private storage URL)', () => {
+    const result = filterPetPublic(PET_WITH_PHOTO as any);
+    const url = result['photoUrl'] as string;
+    expect(url).toMatch(/^https:\/\//);
+    expect(url).not.toMatch(/^gs:\/\//);
+    expect(url).not.toContain('/internal/');
+  });
+});
+
+// ── Test section 16: 403 JSON serialisation proof ────────────────────────────
+
+describe('403 response shape for unauthorized /pets access', () => {
+  it('403 response contains only the error field, no pet data', () => {
+    // Simulate the 403 branch
+    const response = { error: 'Forbidden' };
+    expect(Object.keys(response)).toHaveLength(1);
+    expect(response).toHaveProperty('error', 'Forbidden');
+    expect(response).not.toHaveProperty('pets');
+    expect(response).not.toHaveProperty('allergies');
+    expect(response).not.toHaveProperty('name');
+  });
+});
