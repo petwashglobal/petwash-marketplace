@@ -38,6 +38,9 @@ export function useAccountNavigation() {
 
     // Email-based fallback: custom claims may not have been written yet on the
     // very first login (token not yet refreshed). Mirror the server-side check.
+    // Requires VITE_ADMIN_EMAILS env var to be set in production (comma-separated
+    // list of admin email addresses). No hardcoded fallback is kept here
+    // intentionally — credentials must not be committed to source code.
     const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
       .split(',')
       .map((e: string) => e.trim().toLowerCase())
