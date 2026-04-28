@@ -239,8 +239,17 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   language: controlledLanguage, 
   onLanguageChange: controlledOnLanguageChange 
 }) => {
-  const { user, logout } = useFirebaseAuth();
+  const { user, loading, logout } = useFirebaseAuth();
   const { getAccountRoute } = useAccountNavigation();
+
+  /** Navigate to the user's account destination. No-ops while auth is loading
+   *  (getAccountRoute returns '#' during loading) so we never send a logged-in
+   *  user to /signin due to a race between the click and Firebase resolving. */
+  const handleProfileNavigate = () => {
+    const route = getAccountRoute();
+    if (route === '#') return;
+    handleNavigate(route);
+  };
 
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
@@ -480,9 +489,11 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <button
               type="button"
               className="pw-header-profile-btn"
-              style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-              onClick={() => handleNavigate(getAccountRoute())}
+              style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+              onClick={handleProfileNavigate}
               aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
+              aria-busy={loading || undefined}
+              aria-disabled={loading || undefined}
               data-testid="button-header-profile"
             >
               <div className="pw-header-profile-circle">
@@ -600,8 +611,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           <button
             type="button"
             className="pw-account-btn"
-            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-            onClick={() => handleNavigate(getAccountRoute())}
+            style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+            onClick={handleProfileNavigate}
+            aria-busy={loading || undefined}
+            aria-disabled={loading || undefined}
           >
             <div className="pw-account-circle">
               <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
@@ -735,8 +748,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 <button
                   type="button"
                   className="pw-mobile-link"
-                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-                  onClick={() => handleNavigate(getAccountRoute())}
+                  style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+                  onClick={handleProfileNavigate}
+                  aria-busy={loading || undefined}
+                  aria-disabled={loading || undefined}
                 >
                   {t("mydashboard", currentLanguage)}
                 </button>

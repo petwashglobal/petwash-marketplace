@@ -119,6 +119,7 @@ const SERVICE_TO_ROUTE: Record<string, string> = {
 };
 
 interface Booking {
+  requestId: string;
   status: string;
   serviceType: string;
   startDate: string;

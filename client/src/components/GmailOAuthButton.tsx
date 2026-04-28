@@ -9,11 +9,28 @@ import { logger } from '@/lib/logger';
 import { type Language, t } from '@/lib/i18n';
 import { getApiUrl } from '@/lib/apiConfig';
 
+/** Data returned after a successful Gmail OAuth connection */
+export interface GmailConnectionData {
+  /** True if PetWash booking confirmation emails were found in the inbox */
+  isReturningCustomer: boolean;
+  /** Subject line of the most recent PetWash booking email, if found */
+  lastBookingSubject?: string;
+  /** Date header of the most recent PetWash booking email, if found */
+  lastBookingDate?: string;
+  /** User display name from Google profile */
+  displayName?: string;
+  /** User avatar URL from Google profile */
+  photoURL?: string;
+}
+
 interface GmailOAuthButtonProps {
   language: Language;
-  onSuccess?: (accessToken: string, user: any) => void;
+  onSuccess?: (accessToken: string, user: any, data?: GmailConnectionData) => void;
   onError?: (error: Error) => void;
 }
+
+/** Email address used for PetWash transactional notifications */
+const PETWASH_NOREPLY = 'noreply@petwash.co.il';
 
 /**
  * LUXURY 2025: Premium Gmail OAuth Button
@@ -89,18 +106,62 @@ export function GmailOAuthButton({ language, onSuccess, onError }: GmailOAuthBut
 
       logger.info('[Gmail OAuth] Gmail connection saved successfully');
       
+      // ── Returning-customer detection ────────────────────────────────────────
+      // Search the inbox for PetWash booking confirmation emails.
+      // This runs client-side using the just-obtained access token so no extra
+      // backend round-trip is needed. Non-blocking — failure never prevents sign-in.
+      const connectionData: GmailConnectionData = {
+        isReturningCustomer: false,
+        displayName: result.user.displayName || undefined,
+        photoURL: result.user.photoURL || undefined,
+      };
+
+      try {
+        const searchRes = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=from:${PETWASH_NOREPLY}&maxResults=1`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          if (searchData.messages?.length > 0) {
+            connectionData.isReturningCustomer = true;
+            // Fetch subject + date of the most recent booking email
+            const msgId = searchData.messages[0].id;
+            const msgRes = await fetch(
+              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=metadata&metadataHeaders=Subject&metadataHeaders=Date`,
+              { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (msgRes.ok) {
+              const msgData = await msgRes.json();
+              const messageHeaders: Array<{ name: string; value: string }> = msgData.payload?.headers || [];
+              connectionData.lastBookingSubject = messageHeaders.find(h => h.name === 'Subject')?.value;
+              connectionData.lastBookingDate = messageHeaders.find(h => h.name === 'Date')?.value;
+            }
+          }
+        }
+        logger.info('[Gmail OAuth] Inbox scan complete', {
+          isReturningCustomer: connectionData.isReturningCustomer,
+        });
+      } catch (scanErr) {
+        logger.warn('[Gmail OAuth] Inbox scan failed (non-blocking):', scanErr);
+      }
+
       setConnected(true);
 
       // Show success message
       toast({
-        title: t('gmail.connectedSuccess', language),
-        description: t('gmail.canAccessNow', language),
+        title: connectionData.isReturningCustomer
+          ? t('gmail.welcomeBack', language)
+          : t('gmail.connectedSuccess', language),
+        description: connectionData.isReturningCustomer
+          ? t('gmail.returningCustomerFound', language)
+          : t('gmail.canAccessNow', language),
         duration: 5000,
       });
 
-      // Call success callback
+      // Call success callback with enriched profile data
       if (onSuccess) {
-        onSuccess(accessToken, result.user);
+        onSuccess(accessToken, result.user, connectionData);
       }
 
     } catch (error: any) {

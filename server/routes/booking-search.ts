@@ -643,7 +643,7 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
               distanceKm,
               rating,
               isVerified: walker.verificationStatus === 'verified',
-              hasPoliceCheck: walker.policeCheckVerified || false,
+              hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
               totalBookings: walker.totalWalks || 0,
             }),
           };
@@ -674,17 +674,17 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
         totalReviews: walker.totalReviews || 0,
         totalBookings: walker.totalWalks || 0,
         pricePerNight: null,
-        pricePerHour: walker.hourlyRate ? parseInt(walker.hourlyRate) : null,
+        pricePerHour: walker.baseHourlyRate ? parseInt(walker.baseHourlyRate) : null,
         city: walker.city || '',
         isVerified: walker.verificationStatus === 'verified',
-        hasPoliceCheck: walker.policeCheckVerified || false,
+        hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
         yearsExperience: walker.yearsOfExperience || 0,
         acceptedPetTypes: ['dog'],
-        maxPets: walker.maxDogsPerWalk || 3,
+        maxPets: walker.maxDailyWalks || 3,
         bio: walker.bio,
         badges: buildWalkerBadges(walker),
         responseTime: 'within 24 hours',
-        lastActive: walker.lastActiveAt,
+        lastActive: walker.updatedAt,
         distanceKm: walker._distanceKm !== null ? Math.round(walker._distanceKm * 10) / 10 : null,
         proximityTier: walker._distanceKm !== null ? proximityTier(walker._distanceKm) : null,
         matchScore: Math.round(walker._score),
@@ -733,17 +733,17 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
       totalReviews: walker.totalReviews || 0,
       totalBookings: walker.totalWalks || 0,
       pricePerNight: null,
-      pricePerHour: walker.hourlyRate ? parseInt(walker.hourlyRate) : null,
+      pricePerHour: walker.baseHourlyRate ? parseInt(walker.baseHourlyRate) : null,
       city: walker.city || '',
       isVerified: walker.verificationStatus === 'verified',
-      hasPoliceCheck: walker.policeCheckVerified || false,
+      hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
       yearsExperience: walker.yearsOfExperience || 0,
       acceptedPetTypes: ['dog'],
-      maxPets: walker.maxDogsPerWalk || 3,
+      maxPets: walker.maxDailyWalks || 3,
       bio: walker.bio,
       badges: buildWalkerBadges(walker),
       responseTime: 'within 24 hours',
-      lastActive: walker.lastActiveAt,
+      lastActive: walker.updatedAt,
       distanceKm: null,
       proximityTier: null,
       matchScore: null,
@@ -1152,8 +1152,8 @@ function buildBadges(sitter: any): string[] {
 function buildWalkerBadges(walker: any): string[] {
   const badges: string[] = [];
   if (walker.verificationStatus === 'verified') badges.push('verified');
-  if (walker.policeCheckVerified) badges.push('police_check');
-  if (walker.bodyCamera) badges.push('body_camera');
+  if (walker.backgroundCheckStatus === 'passed') badges.push('police_check');
+  if (walker.hasBodyCamera) badges.push('body_camera');
   if (walker.gpsTracking) badges.push('gps_tracking');
   if ((walker.yearsOfExperience || 0) >= 5) badges.push('experienced');
   if ((walker.averageRating || 0) >= 4.8) badges.push('top_rated');
