@@ -27,7 +27,7 @@ import {
   PET_MEDICAL_PRIVATE_FIELDS,
   PET_PROVIDER_SAFE_FIELDS,
   PET_PUBLIC_FIELDS,
-} from '../../server/lib/petPrivacy';
+} from '../lib/petPrivacy';
 
 // ── Test fixtures ────────────────────────────────────────────────────────────
 

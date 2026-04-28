@@ -211,8 +211,8 @@ router.get('/admin/all', validateFirebaseToken, isAdmin, async (req, res) => {
       const snapshot = await petsRef.get();
       
       const pets = snapshot.docs.map(doc => {
-        // Admin view strips temperamentArchived but retains medical fields
-        // to support welfare checks. Every admin read is audit-logged.
+        // Admin view retains medical fields to support welfare checks.
+        // Internal archive fields (temperamentArchived) are still stripped.
         const raw = {
           id: doc.id,
           ...doc.data(),
@@ -220,9 +220,7 @@ router.get('/admin/all', validateFirebaseToken, isAdmin, async (req, res) => {
           updatedAt: doc.data().updatedAt?.toDate(),
           deletedAt: doc.data().deletedAt?.toDate() || null,
         };
-        // Strip internal archive field even in admin view
-        delete (raw as any).temperamentArchived;
-        return raw;
+        return withOwnerMedicalFields(raw);
       });
       
       return res.json(pets);

@@ -22,7 +22,9 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
-const router = Router();
+// Tombstone value written over PII fields when a document is anonymised.
+// Using a constant ensures consistent detection in downstream processing.
+const ANONYMISED_TOMBSTONE = '[ANONYMISED]';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,7 +56,7 @@ const createDocumentSchema = z.object({
   collectionReason: z.enum(ALLOWED_COLLECTION_REASONS),
   legalReason: z.string().min(20, 'legalReason must be at least 20 characters describing the legal basis'),
   documentType: z.enum(ALLOWED_DOCUMENT_TYPES),
-  documentCountry: z.string().length(2, 'documentCountry must be an ISO 2-letter country code').toUpperCase(),
+  documentCountry: z.string().length(2, 'documentCountry must be an ISO 2-letter country code').transform(val => val.toUpperCase()),
   documentStorageUrl: z.string().url('documentStorageUrl must be a valid URL'),
   documentFileHash: z.string().length(64, 'documentFileHash must be a 64-char SHA-256 hex string').regex(/^[a-f0-9]{64}$/i),
   documentExpiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -318,8 +320,8 @@ router.patch(
       if (retentionStatus === 'anonymised') {
         updateValues.anonymisedAt = new Date();
         // Overwrite sensitive fields with tombstone values
-        updateValues.documentStorageUrl = '[ANONYMISED]';
-        updateValues.documentFileHash = '[ANONYMISED]';
+        updateValues.documentStorageUrl = ANONYMISED_TOMBSTONE;
+        updateValues.documentFileHash = ANONYMISED_TOMBSTONE;
       }
 
       await db
