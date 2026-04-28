@@ -489,8 +489,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 
   return (
     <Suspense fallback={<PageLoader />}>
-      {/* Google One Tap - Disabled to improve page load speed */}
-      {/* {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />} */}
+      {/* Google One Tap - shows floating "Continue as …?" card for signed-in Google users */}
+      {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />}
       
       <Switch>
         {/* Public routes */}
