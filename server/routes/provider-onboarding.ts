@@ -38,6 +38,12 @@ import {
   buildDocumentsReceivedEmail,
   PROVIDER_SENDER,
 } from '../email/templates/provider-workflow-emails';
+import {
+  ENHANCED_VERIFICATION_REASONS,
+  defaultReasonsForProviderTypes,
+  requiresEnhancedVerification as computeRequiresEnhancedVerification,
+  type EnhancedVerificationReason,
+} from '@shared/legal/providerDeclaration';
 
 const router = Router();
 
@@ -436,6 +442,9 @@ router.post('/apply', upload.fields([
       residentialHistory: rawResidentialHistory,
       backgroundCheckConsent: rawBackgroundCheckConsent,
       declarations: rawDeclarations,
+      // Israel-safe self-declaration (2026 spec).
+      selfDeclarationNoRelevantConvictions: rawSelfDeclaration,
+      enhancedVerificationReasons: rawEnhancedReasons,
       insurancePolicyNumber,
       insuranceProvider: insuranceProviderName,
       insuranceExpiry,
@@ -477,6 +486,77 @@ router.post('/apply', upload.fields([
       logger.warn('[Provider Onboarding] Missing required fields', { traceId, firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
       return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required', errorCode: 'MISSING_FIELDS' });
     }
+
+    // Government-issued ID is REQUIRED for every provider (Israel-safe spec).
+    if (!files?.governmentId || !files.governmentId[0]) {
+      logger.warn('[Provider Onboarding] Missing government ID upload', { traceId, userId: authenticatedUser.uid });
+      return res.status(400).json({
+        error: 'Government-issued ID is required for every provider.',
+        errorCode: 'ID_REQUIRED',
+      });
+    }
+
+    // Israel-safe self-declaration is MANDATORY. Reject the application if
+    // the provider did not tick the no-relevant-convictions checkbox.
+    const selfDeclarationNoRelevantConvictions =
+      rawSelfDeclaration === true ||
+      rawSelfDeclaration === 'true' ||
+      rawSelfDeclaration === '1';
+    if (!selfDeclarationNoRelevantConvictions) {
+      logger.warn('[Provider Onboarding] Self-declaration not ticked — rejecting', {
+        traceId,
+        userId: authenticatedUser.uid,
+      });
+      return res.status(400).json({
+        error:
+          'You must confirm the provider declaration before submitting your application.',
+        errorCode: 'SELF_DECLARATION_REQUIRED',
+      });
+    }
+
+    // Compute enhanced-verification reasons. Client may submit explicit
+    // reasons (from the UI's "what services will you offer?" picker), but
+    // we always intersect with the canonical allowlist and union with the
+    // safe defaults derived from the chosen provider types.
+    let clientReasons: string[] = [];
+    if (Array.isArray(rawEnhancedReasons)) {
+      clientReasons = rawEnhancedReasons.filter((r): r is string => typeof r === 'string');
+    } else if (typeof rawEnhancedReasons === 'string') {
+      try {
+        const parsed = JSON.parse(rawEnhancedReasons);
+        if (Array.isArray(parsed)) {
+          clientReasons = parsed.filter((r): r is string => typeof r === 'string');
+        }
+      } catch { /* ignore — clientReasons stays empty */ }
+    }
+    const allowedReasons = new Set<string>(ENHANCED_VERIFICATION_REASONS);
+    let providerTypesForDefaults: string[] = [providerType];
+    try {
+      if (rawProviderTypes) {
+        const arr = typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes;
+        if (Array.isArray(arr)) providerTypesForDefaults = arr;
+      }
+    } catch { /* keep single providerType */ }
+    const reasonSet = new Set<EnhancedVerificationReason>(
+      defaultReasonsForProviderTypes(providerTypesForDefaults),
+    );
+    for (const r of clientReasons) {
+      if (allowedReasons.has(r)) reasonSet.add(r as EnhancedVerificationReason);
+    }
+    const enhancedVerificationReasons = Array.from(reasonSet);
+    const requiresEnhancedVerification = computeRequiresEnhancedVerification(
+      enhancedVerificationReasons,
+    );
+
+    // Capture IP for the legal record (best-effort; trust proxy already on).
+    const selfDeclarationIp =
+      (req.ip ||
+        (req.headers['x-forwarded-for'] as string | undefined) ||
+        req.socket?.remoteAddress ||
+        '')
+        .toString()
+        .slice(0, 64);
+    const selfDeclarationAt = new Date();
 
     // AUTO-APPROVAL FLOW: No invite code required
     // Providers who upload required documents and pass biometric verification
@@ -672,6 +752,12 @@ router.post('/apply', upload.fields([
       residentialHistory: residentialHistory.length > 0 ? JSON.stringify(residentialHistory) : null,
       criminalCheckConsent: backgroundCheckConsent,
       criminalCheckConsentDate: backgroundCheckConsent ? new Date() : null,
+      // Israel-safe self-declaration (2026 spec)
+      selfDeclarationNoRelevantConvictions,
+      selfDeclarationAt,
+      selfDeclarationIp,
+      requiresEnhancedVerification,
+      enhancedVerificationReasons,
       petFirstAidCertUrl: petFirstAidCertUrl || null,
       petFirstAidProvider: petFirstAidNumber || null,
       petFirstAidExpiresAt: petFirstAidExpiry ? new Date(petFirstAidExpiry) : null,

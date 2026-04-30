@@ -9,10 +9,11 @@
  */
 
 import { db } from '../db';
-import { 
+import {
   providerApprovalQueue,
   providerPoliceChecks,
   providerCertificates,
+  providerApplications,
   walkerProfiles,
   sitterProfiles,
   trainers,
@@ -418,21 +419,60 @@ class AdminProviderReviewService {
         };
       }
 
-      // SECURITY FIX (item 20): Police check must be approved before any provider can be activated.
-      // BEFORE: approveApplication() never read the checklist — admin could approve without
-      //         verifying policeCheckApproved, making the police clearance requirement cosmetic only.
-      // AFTER:  Hard gate. policeCheckApproved === false throws and returns 422 to the admin UI.
-      //         Admin MUST mark police check approved on the checklist before this succeeds.
-      if (!review.checklist.policeCheckApproved) {
-        logger.warn('[AdminReview] Approval blocked — police check not approved', {
+      // Israel-safe approval gate (2026 spec). Replaces the previous hard
+      // police-check gate. Two paths:
+      //   1. Provider opted into a high-risk service
+      //      (requires_enhanced_verification = true) → police check IS still
+      //      required. Admin MUST tick policeCheckApproved.
+      //   2. Provider only offers low-risk services → the signed
+      //      self_declaration_no_relevant_convictions checkbox is sufficient.
+      //      Admin can approve without a police clearance document.
+      const providerUserId = String(review.application.providerId);
+      const [providerApp] = await db
+        .select({
+          requiresEnhancedVerification: providerApplications.requiresEnhancedVerification,
+          selfDeclarationNoRelevantConvictions: providerApplications.selfDeclarationNoRelevantConvictions,
+          selfDeclarationAt: providerApplications.selfDeclarationAt,
+        })
+        .from(providerApplications)
+        .where(eq(providerApplications.userId, providerUserId))
+        .limit(1);
+
+      if (!providerApp) {
+        logger.warn('[AdminReview] Approval blocked — no provider_applications row for queue entry', {
           applicationId,
-          reviewerId,
-          checklist: review.checklist,
+          providerUserId,
         });
         return {
           success: false,
-          messageHe: 'לא ניתן לאשר — בדיקת המשטרה טרם אושרה. יש לסמן אישור בדיקת משטרה ברשימת הפריטים תחילה.',
-          messageEn: 'Approval blocked — police check has not been approved. Mark police check approved on the checklist first.',
+          messageHe: 'לא ניתן לאשר — לא נמצאה בקשת ספק תואמת.',
+          messageEn: 'Approval blocked — no matching provider application was found.',
+        };
+      }
+
+      if (!providerApp.selfDeclarationNoRelevantConvictions || !providerApp.selfDeclarationAt) {
+        logger.warn('[AdminReview] Approval blocked — provider self-declaration missing', {
+          applicationId,
+          reviewerId,
+          providerUserId,
+        });
+        return {
+          success: false,
+          messageHe: 'לא ניתן לאשר — הצהרת הספק על היעדר הרשעות רלוונטיות חסרה.',
+          messageEn: 'Approval blocked — provider self-declaration of no relevant convictions is missing.',
+        };
+      }
+
+      if (providerApp.requiresEnhancedVerification && !review.checklist.policeCheckApproved) {
+        logger.warn('[AdminReview] Approval blocked — enhanced verification required but police check not approved', {
+          applicationId,
+          reviewerId,
+          providerUserId,
+        });
+        return {
+          success: false,
+          messageHe: 'לא ניתן לאשר — שירותי סיכון גבוה מחייבים בדיקת משטרה מאושרת בנוסף להצהרה.',
+          messageEn: 'Approval blocked — high-risk services require an approved police check in addition to the self-declaration.',
         };
       }
 
