@@ -35,3 +35,12 @@ petwash-wallet.key
 # Secrets files — never commit
 *.secrets*.txt
 .secrets-for-nir-only.txt
+# Session / auth artifacts — never commit
+cookies.txt
+test_cookies.txt
+*_cookies.txt
+tmp_login.txt
+temp_response.txt
+# Build / scan logs — never commit
+build-output.txt
+load-test-output.txt
