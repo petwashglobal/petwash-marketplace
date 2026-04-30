@@ -162,7 +162,12 @@ export function InsuranceAndProtection({ variant = "full", className = "", flowT
       {
         category: isHebrew ? "דרישות ספק" : "Provider Requirements",
         items: [
-          isHebrew ? "ספקים עם הרשעות פליליות ב-5 שנים האחרונות (למעט תעבורה)" : "Providers with criminal convictions in past 5 years (excluding traffic)"
+          isHebrew
+            ? "כל ספק חייב להעלות תעודת זהות בתוקף ולחתום על הצהרה כי אין לו הרשעות פליליות רלוונטיות או הליכים משפטיים פעילים שעלולים ליצור סיכון לחיות מחמד, ללקוחות, לבתיהם, לרכושם או לפלטפורמה."
+            : "Every provider must upload a valid government-issued ID and sign a declaration that they have no relevant criminal convictions or active legal matters that may create risk to pets, customers, homes, property, or the platform.",
+          isHebrew
+            ? "עבור שירותים בסיכון גבוה (כניסה לבית הלקוח, שמרטפות לילה, החזקת מפתחות, או הסעת חיות מחמד) נדרשת גם בדיקת רקע משטרתית מאושרת."
+            : "Higher-risk services (home access, overnight sitting, key holding, or pet transport) additionally require an approved police background check."
         ]
       }
     ],
