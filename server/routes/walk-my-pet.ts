@@ -48,6 +48,35 @@ const BOOKING_GRACE_PERIOD_MS = 5 * 60 * 1000;
 
 // =================== WALKER REGISTRATION & PROFILES ===================
 
+// Strict allowlist for walker self-registration. Server-controlled fields
+// (verificationStatus, ratings, banking, commission, biometric scores, etc.)
+// are NEVER accepted from the client — they are set server-side below.
+const walkerRegisterBodySchema = z.object({
+  captchaToken: z.string().optional(),
+  turnstileToken: z.string().optional(),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  displayName: z.string().max(120).optional(),
+  profilePhotoUrl: z.string().url().max(500).optional(),
+  bio: z.string().max(2000).optional(),
+  city: z.string().min(1).max(120),
+  country: z.string().min(2).max(8).default('IL'),
+  serviceRadiusKm: z.number().int().min(0).max(200).optional(),
+  yearsOfExperience: z.number().int().min(0).max(80).optional(),
+  specializations: z.array(z.string().max(60)).max(20).optional(),
+  certifications: z.array(z.string().max(80)).max(20).optional(),
+  hasBodyCamera: z.boolean().optional(),
+  hasDroneAccess: z.boolean().optional(),
+  hasFirstAidKit: z.boolean().optional(),
+  hasCarTransport: z.boolean().optional(),
+  baseHourlyRate: z.union([z.number(), z.string()]),
+  minimumMinutes: z.number().int().min(5).max(480).optional(),
+  currency: z.enum(['ILS', 'USD', 'GBP', 'AUD', 'CAD']).optional(),
+  walkPackages: z.array(z.any()).max(20).optional(),
+  extraServices: z.array(z.any()).max(20).optional(),
+  maxDailyWalks: z.number().int().min(0).max(50).optional(),
+}).strict();
+
 // Create walker profile (first step of registration)
 router.post('/walkers/register', requireAuth, async (req, res) => {
   try {
@@ -57,7 +86,19 @@ router.post('/walkers/register', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { captchaToken, turnstileToken: walkerTurnstileToken, ...bodyWithoutToken } = req.body;
+    const parsed = walkerRegisterBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn('[Walk My Pet] Walker registration rejected — invalid body', {
+        userId,
+        issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), code: i.code })),
+      });
+      return res.status(400).json({
+        error: 'Invalid registration data',
+        errorCode: 'INVALID_BODY',
+        issues: parsed.error.issues,
+      });
+    }
+    const { captchaToken, turnstileToken: walkerTurnstileToken, ...safeBody } = parsed.data;
     if (!captchaToken) {
       logger.warn('[Walk My Pet] Walker registration rejected — missing captchaToken', { userId });
       return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
@@ -83,17 +124,21 @@ router.post('/walkers/register', requireAuth, async (req, res) => {
     }
 
     const walkerData: InsertWalkerProfile = {
-      ...bodyWithoutToken,
+      ...safeBody,
+      baseHourlyRate: String(safeBody.baseHourlyRate),
       userId,
       walkerId: `WALKER-${crypto.randomUUID()}`,
       verificationStatus: 'pending',
       kycCompleted: false,
+      backgroundCheckStatus: 'pending',
       averageRating: '0',
       totalWalks: 0,
       totalReviews: 0,
       acceptanceRate: '0',
       isAvailable: false, // Not available until verified
       isActive: true,
+      bankAccountVerified: false,
+      commissionRate: '15.00',
     };
 
     const [newWalker] = await db.insert(walkerProfiles).values(walkerData).returning();
