@@ -146,6 +146,7 @@ import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
+import adminBrainRoutes from "./routes/admin-brain";
 import adminNotificationsRoutes from "./routes/admin-notifications";
 import adminPawFinderRoutes from "./routes/admin-paw-finder";
 import systemEventsAdminRoutes from "./routes/system-events";
@@ -9656,6 +9657,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminDashboardRoutes);
   app.use('/api/admin/loyalty', adminLimiter, adminLoyaltyRoutes);
+  // Operations Brain (CEO read-only dashboard) — its own router, gated by
+  // requireBrainAccess (super-admin email OR ceo|cfo|ops_lead role). Read-only.
+  app.use('/api/admin/brain', adminLimiter, adminBrainRoutes);
   app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);

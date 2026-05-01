@@ -123,6 +123,7 @@ const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const AdminLoginV2 = lazy(() => import("@/pages/admin/AdminLoginV2"));
 const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
 const GroupStatusMonitor = lazy(() => import("@/pages/admin/GroupStatusMonitor"));
+const BrainDashboard = lazy(() => import("@/pages/admin/BrainDashboard"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
@@ -2583,6 +2584,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminInbox />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/brain">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <BrainDashboard />
+              </Suspense>
             </AdminRouteGuard>
           )}
         </Route>
