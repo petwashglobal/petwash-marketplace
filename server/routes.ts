@@ -142,7 +142,7 @@ import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import providerTrainingRoutes from "./routes/provider-training";
 import policeCheckRoutes from "./routes/police-check";
-import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami } from "./routes/post-login";
+import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami, seedIntent } from "./routes/post-login";
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
@@ -1318,7 +1318,13 @@ self.addEventListener('notificationclick', (event) => {
 
   // POST /api/auth/post-login - Central role-based routing decider
   app.post('/api/auth/post-login', authLimiter, requireAuth, auditLogMiddleware('POST_LOGIN'), postLoginDecider);
-  
+
+  // POST /api/auth/seed-intent — Phase A: HttpOnly cookie that survives ITP.
+  // Called by the public SignIn page BEFORE the Firebase OAuth redirect so the
+  // user's chosen intent is durable across the cross-origin roundtrip.
+  // No auth required (the user is not yet logged in).
+  app.post('/api/auth/seed-intent', authLimiter, auditLogMiddleware('SEED_INTENT'), seedIntent);
+
   // GET /api/auth/whoami - Returns current user profile status and required fields
   app.get('/api/auth/whoami', requireAuth, getWhoami);
   
