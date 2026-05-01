@@ -10734,6 +10734,23 @@ export const bookingRequests = pgTable("booking_requests", {
   disputeOpenedBy: varchar("dispute_opened_by", { length: 16 }),            // owner | system
   disputeReason: text("dispute_reason"),
 
+  // ── Customer address snapshot (Phase B6) ──────────────────────────────────
+  // Frozen at booking-create time so the booking row has a permanent
+  // record of WHERE the service was requested, independent of the
+  // customer's mutable profile address. Used by admin/dispute audits,
+  // tax invoices, and the proximity engine.
+  customerAddress:       text("customer_address"),
+  customerStreet:        varchar("customer_street", { length: 200 }),
+  customerStreetNumber:  varchar("customer_street_number", { length: 40 }),
+  customerApartment:     varchar("customer_apartment", { length: 80 }),
+  customerCity:          varchar("customer_city", { length: 120 }),
+  customerCityKey:       varchar("customer_city_key", { length: 60 }),
+  customerCountry:       varchar("customer_country", { length: 2 }),
+  customerPostalCode:    varchar("customer_postal_code", { length: 16 }),
+  customerLatitude:      decimal("customer_latitude", { precision: 10, scale: 7 }),
+  customerLongitude:     decimal("customer_longitude", { precision: 10, scale: 7 }),
+  customerPlaceId:       varchar("customer_place_id", { length: 200 }),
+
   // Metadata
   searchId: varchar("search_id", { length: 24 }), // Link to original search
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -10784,6 +10801,28 @@ export const quoteAddonInputSchema = z.object({
   unitPriceCents: z.number().min(0),
 });
 
+/**
+ * Customer address snapshot (Phase B6).
+ *
+ * The full structured address stored on the booking row at create time.
+ * All fields optional so legacy callers (without the autocomplete) keep
+ * working — the route handler will populate what it can.
+ */
+export const customerAddressSnapshotSchema = z.object({
+  formattedAddress: z.string().max(500).optional(),
+  street: z.string().max(200).optional(),
+  streetNumber: z.string().max(40).optional(),
+  apartment: z.string().max(80).optional(),
+  city: z.string().max(120).optional(),
+  country: z.string().max(2).optional(),
+  postalCode: z.string().max(16).optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  placeId: z.string().max(200).optional(),
+});
+
+export type CustomerAddressSnapshot = z.infer<typeof customerAddressSnapshotSchema>;
+
 export const createBookingRequestSchema = z.object({
   providerId: z.string(),
   providerProfileId: z.number().optional(),
@@ -10804,6 +10843,8 @@ export const createBookingRequestSchema = z.object({
   useWalletCredit: z.boolean().optional(),
   giftCardCode: z.string().optional().nullable(),
   applyLoyaltyCredits: z.boolean().optional().default(false),
+  // Phase B6 — customer address snapshot
+  customerAddress: customerAddressSnapshotSchema.optional(),
 });
 
 export type CreateBookingRequest = z.infer<typeof createBookingRequestSchema>;

@@ -49,6 +49,7 @@ import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../uti
 import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
+import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
@@ -108,6 +109,28 @@ router.post('/', async (req, res) => {
         error: 'service_legally_blocked',
         code: 'PETTREK_NOT_LICENSED',
         message: 'PetTrek™ bookings are not available — service pending licensing in Israel.',
+      });
+    }
+
+    // ARCHITECTURE BLOCK (Phase B6): K9000 self-service kiosks must NEVER
+    // create a marketplace booking_request row. K9000 is the Nayax + QR
+    // self-service flow — two bays as kiosk capacity, no appointment, no
+    // accept/decline cycle, no provider lifecycle. Walk-up customers tap
+    // the Nayax terminal directly; registered customers redeem credit /
+    // loyalty / e-gift via the Nayax QR reader.
+    //
+    // The legacy `'k9000'` value in the providerType enum exists for
+    // reporting compatibility only. Reject it explicitly here so future
+    // code can never accidentally pull K9000 into the marketplace flow.
+    const rawProviderType = req.body?.providerType;
+    if (rawProviderType === 'k9000' || rawServiceType === 'k9000_wash') {
+      logger.warn('[BookingRequests] K9000 booking attempt rejected — kiosk flow only', {
+        userId, providerType: rawProviderType, serviceType: rawServiceType,
+      });
+      return res.status(400).json({
+        error: 'K9000 stations are self-service kiosks — no booking required.',
+        code: 'K9000_NOT_A_BOOKING',
+        message: 'Use the Nayax terminal at the station (tap-to-pay) or the mobile QR / numeric code redemption flow. K9000 sessions are not appointments.',
       });
     }
 
@@ -248,6 +271,28 @@ router.post('/', async (req, res) => {
       ? data.petDetails
       : null;
     
+    // ── Phase B6 — customer address snapshot ──────────────────────────────────
+    // Freeze the customer's address at booking-create time so the booking
+    // row has a permanent record of WHERE the service was requested,
+    // independent of the customer's mutable profile address. All fields
+    // optional — legacy callers without the autocomplete keep working.
+    const addrSrc = (data as any).customerAddress ?? null;
+    const addressSnapshot = addrSrc ? {
+      customerAddress:      addrSrc.formattedAddress?.slice(0, 5000) ?? null,
+      customerStreet:       addrSrc.street ? stripHebrewStreetPrefix(addrSrc.street).slice(0, 200) : null,
+      customerStreetNumber: addrSrc.streetNumber?.toString().slice(0, 40) ?? null,
+      customerApartment:    addrSrc.apartment?.toString().slice(0, 80) ?? null,
+      customerCity:         addrSrc.city?.toString().slice(0, 120) ?? null,
+      customerCityKey:      addrSrc.city ? cityKey(addrSrc.city).slice(0, 60) : null,
+      customerCountry:      addrSrc.country?.toString().slice(0, 2).toUpperCase() ?? null,
+      customerPostalCode:   normalizeIsraeliPostalCode(addrSrc.postalCode ?? null),
+      customerLatitude:     typeof addrSrc.latitude === 'number' && Number.isFinite(addrSrc.latitude)
+                              ? String(addrSrc.latitude) : null,
+      customerLongitude:    typeof addrSrc.longitude === 'number' && Number.isFinite(addrSrc.longitude)
+                              ? String(addrSrc.longitude) : null,
+      customerPlaceId:      addrSrc.placeId?.toString().slice(0, 200) ?? null,
+    } : {};
+
     // ── Create booking request row ─────────────────────────────────────────────
     const [booking] = await db.insert(bookingRequests).values({
       requestId,
@@ -258,6 +303,7 @@ router.post('/', async (req, res) => {
       serviceType: data.serviceType,
       startDate,
       endDate,
+      ...addressSnapshot,
       petIds: data.petIds || (data.petDetails?.map(p => String(p.petId ?? '')).filter(Boolean) ?? []),
       petCount: data.petCount,
       petDetails: petDetailsForRow,
