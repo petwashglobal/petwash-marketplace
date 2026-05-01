@@ -40,11 +40,13 @@ const DEFAULT_PROMO: PromoAdConfig = {
   template: 'poster',
   // Real Smart Hub hero image. PetTrek "Coming Soon" tag MUST be baked
   // into this image (the popup itself does not overlay any text on top).
-  // Drop the file at: client/public/brand/petwash-smart-hub-2026.png
-  // (and optionally mirror to brand/ as the source-of-truth folder).
+  // File lives at: client/public/brand/petwash-smart-hub-2026.PNG
+  // (uppercase .PNG matches the asset committed to main; case matters
+  // on Linux/Cloud Run — do NOT change to .png unless the file is
+  // also renamed.)
   // If the file is missing, PosterTemplate falls back to a clean branded
   // card so the popup never breaks.
-  imageUrl: '/brand/petwash-smart-hub-2026.png',
+  imageUrl: '/brand/petwash-smart-hub-2026.PNG',
   title: 'PetWash™',
   titleHe: 'PetWash™',
   subtitle: 'ONE WORLD. EVERY PET.',
