@@ -106,6 +106,50 @@ class CalendarIntegrationService {
   async createBookingEvent(event: BookingCalendarEvent): Promise<{ eventId: string; htmlLink: string } | null> {
     try {
       const calendar = await getCalendarClient();
+      if (!calendar) {
+        // Fail-safe: when no auth is configured, never throw — just log
+        // and return null. Callers MUST treat null as "no calendar today,
+        // try again next time" and never block a booking on it.
+        logger.warn('[Calendar] createBookingEvent skipped — no calendar client', {
+          bookingId: event.bookingId,
+        });
+        return null;
+      }
+
+      // Idempotency — search for an existing event tagged with the same
+      // petwash_booking_id BEFORE creating. Safe to retry: a network blip,
+      // a webhook redelivery, or a "click accept twice" never produces
+      // duplicate calendar events.
+      try {
+        // googleapis type union confuses tsc when callbacks aren't supplied;
+        // cast through `any` to match the working pattern used elsewhere in
+        // this file (deleteBookingEvent / listUpcomingBookingEvents).
+        const existing: any = await (calendar.events as any).list({
+          calendarId: 'primary',
+          privateExtendedProperty: `petwash_booking_id=${event.bookingId}`,
+          maxResults: 1,
+          showDeleted: false,
+        });
+        const found = existing?.data?.items?.[0];
+        if (found && found.id) {
+          logger.info('[Calendar] createBookingEvent idempotent — existing event found', {
+            bookingId: event.bookingId,
+            eventId: found.id,
+          });
+          return {
+            eventId: found.id,
+            htmlLink: found.htmlLink || '',
+          };
+        }
+      } catch (idemErr: any) {
+        // List failure is non-fatal: log + fall through to insert. Worst
+        // case we create a duplicate; deleteBookingEvent cleans up by
+        // booking_id so the duplicate would still be removed on cancel.
+        logger.warn('[Calendar] Idempotency lookup failed (continuing to insert)', {
+          bookingId: event.bookingId,
+          error: idemErr?.message,
+        });
+      }
 
       const calendarEvent = {
         summary: event.title,
@@ -159,6 +203,84 @@ class CalendarIntegrationService {
       };
     } catch (error) {
       logger.warn('[Calendar] Failed to create event (non-blocking)', {
+        bookingId: event.bookingId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Update an existing calendar event (reschedule path).
+   *
+   * Looks up the event by booking_id (extendedProperties), patches
+   * start/end/title/description/location, and re-sends invitation emails
+   * to attendees if any.
+   *
+   * Idempotent: if no event is found, it falls back to createBookingEvent
+   * so calling this on a booking that never had an event still produces
+   * the correct end state. Always non-blocking — returns null on failure.
+   */
+  async updateBookingEvent(event: BookingCalendarEvent): Promise<{ eventId: string; htmlLink: string } | null> {
+    try {
+      const calendar = await getCalendarClient();
+      if (!calendar) {
+        logger.warn('[Calendar] updateBookingEvent skipped — no calendar client', {
+          bookingId: event.bookingId,
+        });
+        return null;
+      }
+
+      // Same googleapis type-union workaround as in createBookingEvent.
+      const existing: any = await (calendar.events as any).list({
+        calendarId: 'primary',
+        privateExtendedProperty: `petwash_booking_id=${event.bookingId}`,
+        maxResults: 1,
+        showDeleted: false,
+      });
+      const found = existing?.data?.items?.[0];
+
+      if (!found || !found.id) {
+        // No event yet — degrade to create. Keeps the operation idempotent
+        // when called on a booking that never reached the accept handler.
+        logger.info('[Calendar] updateBookingEvent — no existing event, creating instead', {
+          bookingId: event.bookingId,
+        });
+        return await this.createBookingEvent(event);
+      }
+
+      const patchBody = {
+        summary: event.title,
+        description: this.buildDescription(event),
+        start: {
+          dateTime: event.startTime.toISOString(),
+          timeZone: 'Asia/Jerusalem',
+        },
+        end: {
+          dateTime: event.endTime.toISOString(),
+          timeZone: 'Asia/Jerusalem',
+        },
+        location: event.location || undefined,
+      };
+
+      const result: any = await (calendar.events as any).patch({
+        calendarId: 'primary',
+        eventId: found.id,
+        sendUpdates: event.attendeeEmails && event.attendeeEmails.length > 0 ? 'all' : 'none',
+        requestBody: patchBody,
+      });
+
+      logger.info('[Calendar] Event updated (reschedule)', {
+        eventId: result?.data?.id,
+        bookingId: event.bookingId,
+      });
+
+      return {
+        eventId: result?.data?.id || found.id,
+        htmlLink: result?.data?.htmlLink || found.htmlLink || '',
+      };
+    } catch (error) {
+      logger.warn('[Calendar] Failed to update event (non-blocking)', {
         bookingId: event.bookingId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });

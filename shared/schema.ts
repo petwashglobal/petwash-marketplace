@@ -10534,6 +10534,27 @@ export const bookingSearchFiltersSchema = z.object({
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   radiusKm: z.number().min(1).max(50).default(10).optional(),
+
+  /**
+   * Strict proximity mode (Phase B3).
+   *
+   * When true, the matching engine refuses to fall back to text search
+   * and rejects providers that lack lat/lng:
+   *   - filters.latitude + filters.longitude become REQUIRED. Missing
+   *     either → 422 COORDINATES_REQUIRED.
+   *   - Providers without coordinates are filtered OUT (not silently
+   *     scored zero).
+   *   - Ranking is strict tiered:
+   *       1. distance bucket (rounded down to 0.5 km)
+   *       2. rating (DESC)
+   *       3. recent booking volume (DESC, proxy for availability)
+   *   - Provider serviceRadiusKm is respected — a walker who only
+   *     serves 3 km will not appear at 8 km even if they're top-rated.
+   *
+   * Default false for backwards compatibility with legacy callers that
+   * still rely on city-text fallback.
+   */
+  requireCoordinates: z.boolean().default(false).optional(),
   
   // Date range
   startDate: z.string().optional(),
