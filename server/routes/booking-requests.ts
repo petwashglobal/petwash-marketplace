@@ -111,6 +111,28 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // ARCHITECTURE BLOCK (Phase B6): K9000 self-service kiosks must NEVER
+    // create a marketplace booking_request row. K9000 is the Nayax + QR
+    // self-service flow — two bays as kiosk capacity, no appointment, no
+    // accept/decline cycle, no provider lifecycle. Walk-up customers tap
+    // the Nayax terminal directly; registered customers redeem credit /
+    // loyalty / e-gift via the Nayax QR reader.
+    //
+    // The legacy `'k9000'` value in the providerType enum exists for
+    // reporting compatibility only. Reject it explicitly here so future
+    // code can never accidentally pull K9000 into the marketplace flow.
+    const rawProviderType = req.body?.providerType;
+    if (rawProviderType === 'k9000' || rawServiceType === 'k9000_wash') {
+      logger.warn('[BookingRequests] K9000 booking attempt rejected — kiosk flow only', {
+        userId, providerType: rawProviderType, serviceType: rawServiceType,
+      });
+      return res.status(400).json({
+        error: 'K9000 stations are self-service kiosks — no booking required.',
+        code: 'K9000_NOT_A_BOOKING',
+        message: 'Use the Nayax terminal at the station (tap-to-pay) or the mobile QR / numeric code redemption flow. K9000 sessions are not appointments.',
+      });
+    }
+
     const data = createBookingRequestSchema.parse(req.body);
     const requestId = nanoid(12);
     
