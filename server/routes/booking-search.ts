@@ -149,6 +149,76 @@ function rankAndPaginate<T extends { _score: number }>(
   };
 }
 
+/**
+ * Strict tiered proximity ranker (Phase B3 — Uber-style).
+ *
+ * Sort order:
+ *   1. distance bucket (rounded down to 0.5 km — same-block ties together)
+ *   2. rating DESC (higher rated first)
+ *   3. totalBookings DESC (proxy for availability / experience)
+ *
+ * Providers with `_distanceKm === null` are NOT expected here — the
+ * caller must filter them out before passing in (strict mode contract).
+ */
+function rankAndPaginateStrict<
+  T extends { _distanceKm: number | null; rating?: number; totalBookings?: number }
+>(
+  items: T[],
+  limit: number,
+  offset: number,
+): { ranked: T[]; total: number } {
+  const bucket = (km: number) => Math.floor(km * 2) / 2; // 0.5 km buckets
+  const sorted = [...items].sort((a, b) => {
+    const aDist = a._distanceKm ?? Number.POSITIVE_INFINITY;
+    const bDist = b._distanceKm ?? Number.POSITIVE_INFINITY;
+    const ab = bucket(aDist);
+    const bb = bucket(bDist);
+    if (ab !== bb) return ab - bb;                                   // 1. distance bucket
+    const ar = a.rating ?? 0;
+    const br = b.rating ?? 0;
+    if (ar !== br) return br - ar;                                   // 2. rating DESC
+    const av = a.totalBookings ?? 0;
+    const bv = b.totalBookings ?? 0;
+    if (av !== bv) return bv - av;                                   // 3. volume DESC
+    return aDist - bDist;                                            // tie-break: exact distance
+  });
+  return {
+    ranked: sorted.slice(offset, offset + limit),
+    total: sorted.length,
+  };
+}
+
+/**
+ * Strict-mode coordinate gate (Phase B3).
+ *
+ * Returns an HTTP-ready error when `requireCoordinates` is set but the
+ * caller has not supplied both `latitude` and `longitude`. Returns null
+ * when the request is fine to proceed (either strict-off, or coords
+ * present).
+ *
+ * Also asserts coordinates are real numbers in valid WGS-84 bounds —
+ * an attacker sending `latitude: NaN` or `latitude: 9999` would
+ * otherwise pass the basic `!= null` check.
+ */
+export function assertProximityRequirements(
+  filters: { requireCoordinates?: boolean; latitude?: number; longitude?: number },
+): { statusCode: 422; body: { error: string; code: string } } | null {
+  if (!filters.requireCoordinates) return null;
+  const { latitude, longitude } = filters;
+  const validLat = typeof latitude === 'number' && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90;
+  const validLng = typeof longitude === 'number' && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
+  if (!validLat || !validLng) {
+    return {
+      statusCode: 422,
+      body: {
+        error: 'Strict proximity mode requires valid latitude and longitude.',
+        code: 'COORDINATES_REQUIRED',
+      },
+    };
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AVAILABILITY CHECK
 // ─────────────────────────────────────────────────────────────────────────────
@@ -254,6 +324,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: dateError });
     }
 
+    // Phase B3 — strict proximity gate. If the caller asked for
+    // requireCoordinates (Uber-style search), the request MUST carry
+    // valid lat/lng. Refuses early with 422 so the search engine never
+    // silently falls back to text search.
+    const proxError = assertProximityRequirements(filters);
+    if (proxError) {
+      logger.warn('[BookingSearch] Strict proximity rejected — missing coords', {
+        searchId, hasLat: typeof filters.latitude === 'number', hasLng: typeof filters.longitude === 'number',
+      });
+      return res.status(proxError.statusCode).json(proxError.body);
+    }
+
     logger.info('[BookingSearch] Search request', {
       searchId,
       serviceType: filters.serviceType,
@@ -261,6 +343,7 @@ router.post('/', async (req, res) => {
       petTypes: filters.petTypes,
       city: filters.city,
       hasCoords: !!(filters.latitude && filters.longitude),
+      requireCoordinates: !!filters.requireCoordinates,
       radiusKm: filters.radiusKm,
       startDate: filters.startDate,
       endDate: filters.endDate,
@@ -486,14 +569,32 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
             }),
           };
         })
-        .filter(s => s._distanceKm === null || s._distanceKm <= radiusKm);
+        // Phase B3 — strict proximity drops providers without coords;
+        // legacy mode keeps them (returned with distanceKm = null).
+        .filter(s => {
+          if (filters.requireCoordinates) {
+            if (s._distanceKm === null) return false;          // strict: no coords → out
+            return s._distanceKm <= radiusKm;
+          }
+          return s._distanceKm === null || s._distanceKm <= radiusKm;
+        });
 
-      const { ranked, total } = rankAndPaginate(
-        scored,
-        filters.sortOrder ?? 'desc',
-        limit,
-        offset,
-      );
+      const { ranked, total } = filters.requireCoordinates
+        ? rankAndPaginateStrict(
+            scored.map(s => ({
+              ...s,
+              rating: parseFloat(s.rating || '0'),
+              totalBookings: s.totalBookings || 0,
+            })),
+            limit,
+            offset,
+          )
+        : rankAndPaginate(
+            scored,
+            filters.sortOrder ?? 'desc',
+            limit,
+            offset,
+          );
 
       const providers = ranked.map(sitter => {
         const housePolicies = sitter.housePolicies as { maxPetsAtOnce?: number } | null;
@@ -503,7 +604,9 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
           firstName: sitter.firstName,
           lastName: sitter.lastName || '',
           profilePictureUrl: sitter.profilePictureUrl,
-          rating: parseFloat(sitter.rating || '0'),
+          // String() handles both legacy ranker (string rating) and strict
+          // ranker (already-parsed number rating from the adapter map).
+          rating: parseFloat(String(sitter.rating || '0')),
           totalReviews: sitter.totalReviews || 0,
           totalBookings: sitter.totalBookings || 0,
           pricePerNight: sitter.pricePerDayCents ? Math.round(sitter.pricePerDayCents / 100) : null,
@@ -666,20 +769,31 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
           };
         })
         .filter(w => {
-          if (w._distanceKm === null) return true; // no coords stored — keep in results
-          // Exclude walkers whose home base is beyond the search radius
+          // Phase B3 — strict mode rejects walkers without coords;
+          // legacy mode keeps them.
+          if (w._distanceKm === null) return !filters.requireCoordinates;
           if (w._distanceKm > radiusKm) return false;
           // Also exclude if walker's own service radius doesn't reach us
           const walkerServiceRadius = w.serviceRadiusKm ?? 5;
           return w._distanceKm <= walkerServiceRadius + radiusKm;
         });
 
-      const { ranked, total } = rankAndPaginate(
-        scored,
-        filters.sortOrder ?? 'desc',
-        limit,
-        offset,
-      );
+      const { ranked, total } = filters.requireCoordinates
+        ? rankAndPaginateStrict(
+            scored.map(w => ({
+              ...w,
+              rating: parseFloat(w.averageRating || '0'),
+              totalBookings: w.totalWalks || 0,
+            })),
+            limit,
+            offset,
+          )
+        : rankAndPaginate(
+            scored,
+            filters.sortOrder ?? 'desc',
+            limit,
+            offset,
+          );
 
       const providers = ranked.map(walker => ({
         id: walker.id,
@@ -687,7 +801,9 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
         firstName: walker.firstName,
         lastName: walker.lastName || '',
         profilePictureUrl: walker.profilePhotoUrl,
-        rating: parseFloat(walker.averageRating || '0'),
+        // String() handles both legacy ranker (string rating) and strict
+        // ranker (already-parsed number rating from the adapter map).
+        rating: parseFloat(String(walker.averageRating || '0')),
         totalReviews: walker.totalReviews || 0,
         totalBookings: walker.totalWalks || 0,
         pricePerNight: null,
