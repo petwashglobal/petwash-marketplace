@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FormLayout, FormSuccess, Field, FormSection, inputCls, textareaCls, selectCls, SubmitButton } from './FormLayout';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 
 export default function CustomerOnboardingForm() {
   const { toast } = useToast();
@@ -10,6 +11,8 @@ export default function CustomerOnboardingForm() {
   const [form, setForm] = useState({
     ownerFirstName: '', ownerLastName: '', email: '', phone: '',
     address: '', city: '', country: 'Israel / ישראל', language: '',
+    // Israel-aware structured address (auto-filled by Google Places autocomplete)
+    apartment: '', postalCode: '', latitude: '', longitude: '', placeId: '',
     petName: '', species: '', breed: '', age: '', weight: '', gender: '',
     microchipNumber: '', vetName: '', vetPhone: '',
     allergies: '', medicalNotes: '', vaccinationsUpToDate: '', referralSource: '',
@@ -51,7 +54,25 @@ export default function CustomerOnboardingForm() {
 
           <FormSection title="Address / כתובת" />
           <div className="col-span-full">
-            <Field label="Street Address" labelHe="כתובת" required><input className={inputCls} value={form.address} onChange={set('address')} placeholder="123 HaYarkon St, Apt 5" /></Field>
+            <GooglePlacesAutocomplete
+              value={form.address}
+              onChange={(v) => setForm(f => ({ ...f, address: v }))}
+              onPlaceSelected={(place: PlaceDetails) => setForm(f => ({
+                ...f,
+                address: place.formattedAddress || f.address,
+                city: place.city || f.city,
+                country: place.country || f.country,
+                postalCode: place.postalCode || '',
+                latitude: place.lat != null ? String(place.lat) : '',
+                longitude: place.lng != null ? String(place.lng) : '',
+                placeId: place.placeId || '',
+              }))}
+              label="Street Address / כתובת"
+              required
+              apartmentLabel="דירה / Apartment"
+              apartmentPlaceholder="77"
+              postalCodeLabel="מיקוד / Postal Code"
+            />
           </div>
           <Field label="City" labelHe="עיר" required><input className={inputCls} value={form.city} onChange={set('city')} placeholder="Tel Aviv" /></Field>
           <Field label="Country" labelHe="מדינה" required>
