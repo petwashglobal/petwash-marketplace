@@ -38,6 +38,62 @@ export type PaymentMethod = 'card' | 'apple_pay' | 'google_pay' | 'qr_voucher' |
 export type PaymentChannel = 'web' | 'terminal' | 'mobile_app' | 'kiosk';
 export type PaymentPlatform = 'sitter_suite' | 'walk_my_pet' | 'pet_trek' | 'k9000_wash' | 'e_gift';
 
+/**
+ * Payment provider discriminator.
+ *
+ * Two completely separate processors live in the system:
+ *
+ *   'nayax'    — physical kiosk + QR redemption.
+ *                Used by:
+ *                  K9000 self-service kiosks (tap-to-pay at terminal,
+ *                  mobile QR / numeric code redemption through the
+ *                  Nayax QR reader). Wallet ledger is shared with the
+ *                  marketplace; the redemption goes wallet → Nayax
+ *                  session.
+ *                NOT used for: appointment bookings, calendar, accept/
+ *                  decline cycle.
+ *                Code: server/services/Nayax*.ts,
+ *                      server/routes/nayax-*.ts.
+ *
+ *   'tranzila' — online card capture for marketplace bookings.
+ *                Used by:
+ *                  Sitter Suite, Walk My Pet, Trainer / driver / groomer
+ *                  online booking flows.
+ *                Gated by feature flags TRANZILA_*_ENABLED in env.
+ *                Code: server/services/TranzilaService.ts,
+ *                      server/services/TranzilaPaymentRequestService.ts,
+ *                      server/routes/tranzila-*.ts.
+ *
+ * Existing routing in PaymentGatewayService dispatches by
+ * `PaymentPlatform`. The discriminator below is a strictly typed
+ * synonym you can use anywhere a single provider must be selected
+ * explicitly (e.g. webhook routing, refund target, audit logs).
+ *
+ * Helper `resolveProviderForPlatform()` is the canonical mapping —
+ * use it instead of inline string comparisons so adding a new
+ * platform never silently routes to the wrong processor.
+ */
+export type PaymentProvider = 'nayax' | 'tranzila';
+
+export function resolveProviderForPlatform(platform: PaymentPlatform): PaymentProvider {
+  switch (platform) {
+    case 'k9000_wash':
+      // Self-service kiosk + QR redemption — Nayax only.
+      return 'nayax';
+    case 'sitter_suite':
+    case 'walk_my_pet':
+    case 'pet_trek':
+    case 'e_gift':
+      // Online booking + e-gift purchase — Tranzila when enabled.
+      return 'tranzila';
+    default: {
+      // Exhaustiveness check at compile time.
+      const _exhaustive: never = platform;
+      throw new Error(`Unknown payment platform: ${String(_exhaustive)}`);
+    }
+  }
+}
+
 export interface UnifiedPaymentRequest {
   platform: PaymentPlatform;
   channel: PaymentChannel;
