@@ -2,7 +2,7 @@
  * ISRAELI DIGITAL RECEIPT SERVICE (שירות קבלות דיגיטליות)
  * 
  * Israeli Tax Authority compliant digital receipts - per Israeli law 2026
- * Implements the Wolt/Airbnb broker model for subcontractors:
+ * Implements the marketplace broker broker model for subcontractors:
  * - Customer pays Pet Wash Ltd (platform)
  * - Platform deducts broker commission + VAT
  * - Platform applies withholding tax (ניכוי מס במקור) on provider payout
@@ -187,7 +187,7 @@ export class IsraeliDigitalReceiptService {
 
   /**
    * Calculate provider settlement with Israeli law deductions
-   * Implements Wolt/Airbnb subcontractor model:
+   * Implements marketplace broker subcontractor model:
    * 1. Gross payout = customer payment - platform commission
    * 2. Withholding tax deducted at source (ניכוי מס במקור)
    * 3. Net payment = gross - withholding tax

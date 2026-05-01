@@ -150,7 +150,7 @@ function rankAndPaginate<T extends { _score: number }>(
 }
 
 /**
- * Strict tiered proximity ranker (Phase B3 — Uber-style).
+ * Strict tiered proximity ranker (Phase B3 — on-demand).
  *
  * Sort order:
  *   1. distance bucket (rounded down to 0.5 km — same-block ties together)
@@ -325,7 +325,7 @@ router.post('/', async (req, res) => {
     }
 
     // Phase B3 — strict proximity gate. If the caller asked for
-    // requireCoordinates (Uber-style search), the request MUST carry
+    // requireCoordinates (on-demand search), the request MUST carry
     // valid lat/lng. Refuses early with 422 so the search engine never
     // silently falls back to text search.
     const proxError = assertProximityRequirements(filters);

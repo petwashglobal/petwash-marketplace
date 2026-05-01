@@ -298,9 +298,9 @@ export default function ProviderOnboarding() {
     city: isHebrew ? 'עיר' : 'City',
     country: isHebrew ? 'מדינה' : 'Country',
     biometricKyc: isHebrew ? 'אימות ביומטרי (רמת בנקאות)' : 'Biometric Verification (Banking-Level)',
-    kycDescription: isHebrew 
-      ? 'כמו Uber, אנו דורשים אימות זהות מאובטח עם התאמת פנים באמצעות AI'
-      : 'Like Uber, we require secure identity verification with AI-powered face matching',
+    kycDescription: isHebrew
+      ? 'אנו דורשים אימות זהות מאובטח עם התאמת פנים באמצעות AI ברמת בנקאות'
+      : 'Bank-grade identity verification with AI-powered face matching',
     selfiePhoto: isHebrew ? 'סלפי בזמן אמת' : 'Live Selfie Photo',
     governmentId: isHebrew ? 'תעודה ממשלתית' : 'Government ID',
     governmentIdDescription: isHebrew ? 'דרכון, ת.ז., או רישיון נהיגה' : 'Passport, National ID, or Driver\'s License',

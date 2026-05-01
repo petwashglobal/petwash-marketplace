@@ -6,7 +6,7 @@
  * - Walker receives: 85% of Base Price (after 15% commission)
  * - ⁦PetWash™⁩ keeps: 15% commission (industry standard)
  * 
- * Payment Flow (Airbnb-style escrow):
+ * Payment Flow (marketplace-style escrow):
  * 1. Owner pays base + 15% platform fee + VAT to PetWash via Nayax
  * 2. Nayax holds payment in 72-hour escrow
  * 3. After walk completion (GPS check-out verified), walker receives 85% payout

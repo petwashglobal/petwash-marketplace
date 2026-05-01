@@ -19,7 +19,7 @@ export default function PlatformShowcase() {
         "Pet ⁦Wash Hub™⁩ - Premium organic washing stations",
         "⁦Walk My Pet™⁩ - Real-time GPS dog walking marketplace (15% commission)",
         "⁦The Sitter Suite™⁩ - AI-powered pet sitting with urgency triage",
-        "⁦PetTrek™⁩ - Uber-style pet transport with dynamic fare estimation",
+        "⁦PetTrek™⁩ - On-demand pet transport with dynamic fare estimation",
         "K9000 IoT Stations - Cloud-managed wash bays with remote control",
         "⁦The Plush Lab™⁩ - AI avatar creator with custom animations",
         "Enterprise Division - Global franchise & B2B operations"

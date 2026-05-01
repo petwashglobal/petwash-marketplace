@@ -2,7 +2,7 @@
  * BASE LUXURY BOOKING ENGINE
  * ===========================
  * Unified booking infrastructure for all Pet Wash™ platforms
- * Like Uber: one core engine, platform-specific strategies
+ * on-demand model: one core engine, platform-specific strategies
  * 
  * Provides:
  * - Availability checking with capacity management
@@ -276,7 +276,7 @@ export abstract class BaseLuxuryBookingEngine {
         providerId,
       });
 
-      // Process payment and move to escrow (like Airbnb)
+      // Process payment and move to escrow (marketplace platform)
       const escrowResult = await this.moveToEscrow(
         bookingId,
         pricing.totalPrice,
@@ -433,7 +433,7 @@ export abstract class BaseLuxuryBookingEngine {
   }
 
   /**
-   * Move payment to escrow (like Airbnb - hold until service completion)
+   * Move payment to escrow (marketplace platform - hold until service completion)
    * @param customerId - Firebase UID of the customer paying
    * @param providerId - Firebase UID or ID of the provider receiving funds; use 'pending' for dispatch-style flows where provider is assigned later
    */

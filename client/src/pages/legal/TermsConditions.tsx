@@ -48,7 +48,7 @@ export default function TermsConditions() {
               <div className="bg-white dark:bg-white border-r-4 border-yellow-500 p-6 rounded-lg">
                 <p className="font-bold mb-2">{isHebrew ? '⚠️ חשוב: Pet Wash היא פלטפורמת מקשרת' : '⚠️ IMPORTANT: Pet Wash is a Connector Platform'}</p>
                 <ul className="list-disc list-inside space-y-2 mr-6">
-                  <li>{isHebrew ? 'אנו מקשרים בין בעלי חיות מחמד לשמרטפים עצמאיים (כמו cars.com.au או Airbnb)' : 'We connect pet owners with independent sitters (like cars.com.au or Airbnb)'}</li>
+                  <li>{isHebrew ? 'אנו מקשרים בין בעלי חיות מחמד לשמרטפים עצמאיים — מרקטפלייס דיגיטלי' : 'We connect pet owners with independent sitters — digital marketplace platform'}</li>
                   <li>{isHebrew ? 'אנו לא מעסיקים שמרטפים - הם קבלנים עצמאיים' : 'We do NOT employ sitters - they are independent contractors'}</li>
                   <li>{isHebrew ? 'אנו לא מספקים שירותי טיפול בחיות מחמד ישירות' : 'We do NOT provide pet care services directly'}</li>
                   <li>{isHebrew ? 'אנו לוקחים עמלת תיווך של 7% עבור חיבור מוצלח' : 'We take a 7% brokerage commission for successful connections'}</li>
@@ -329,7 +329,7 @@ export default function TermsConditions() {
             <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 text-center">
               <p>© 2026 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
               <p className="mt-2">
-                {isHebrew ? 'תנאים אלה מותאמים מפרקטיקות מובילות בתעשייה (Airbnb, Booking.com) למרקטפלייס טיפול בחיות מחמד.' : 'These Terms are adapted from industry-leading practices (Airbnb, Booking.com) for the pet care marketplace.'}
+                {isHebrew ? 'תנאים אלה תואמים פרקטיקות מובילות בתעשיית ה-marketplace הדיגיטלי לשירותי חיות מחמד.' : 'These Terms align with leading digital-marketplace practices for the pet care category.'}
               </p>
             </div>
           </div>

@@ -4,7 +4,7 @@
  * Single entry point for all booking operations across ⁦Pet Wash™⁩ platforms
  * Routes to correct luxury engine based on platform type
  * 
- * Like Uber: One booking API, multiple service types
+ * on-demand model: One booking API, multiple service types
  * 
  * Supported Platforms:
  * - sitter_suite → SitterAdvancedBookingEngine (existing 7-star)

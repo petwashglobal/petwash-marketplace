@@ -48,9 +48,9 @@ export default function PrivacyPolicy() {
               </p>
               <p className="luxury-text-body">
                 {isHebrew ? (
-                  <>Pet Wash פועלת כפלטפורמת מקשרת בלבד (כמו cars.com.au או Airbnb) - אנחנו מאפשרים חיבור בין שני צדדים עצמאיים ולוקחים עמלת תיווך קטנה. אנו לא מעסיקים שמרטפים ולא מספקים את השירותים ישירות.</>
+                  <>Pet Wash פועלת כפלטפורמת מקשרת בלבד — מרקטפלייס דיגיטלי המאפשר חיבור בין שני צדדים עצמאיים ולוקח עמלת תיווך קטנה. אנו לא מעסיקים שמרטפים ולא מספקים את השירותים ישירות.</>
                 ) : (
-                  <>Pet Wash operates as a connector platform only (like cars.com.au or Airbnb) - we facilitate connections between two independent parties and take a small brokerage commission. We do not employ sitters nor provide services directly.</>
+                  <>Pet Wash operates as a connector platform only — a digital marketplace that facilitates connections between two independent parties and takes a small brokerage commission. We do not employ sitters nor provide services directly.</>
                 )}
               </p>
             </div>
@@ -435,7 +435,7 @@ export default function PrivacyPolicy() {
             <div className="luxury-glass-panel p-6 text-center luxury-animate-fade-in mt-8">
               <p className="luxury-text-small">© 2026 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
               <p className="luxury-text-small mt-2">
-                {isHebrew ? 'מדיניות זו מותאמת מפרקטיקות מובילות בתעשייה (Airbnb, Booking.com) לשוק טיפול בחיות מחמד.' : 'This policy is adapted from industry-leading practices (Airbnb, Booking.com) for the pet care marketplace.'}
+                {isHebrew ? 'מדיניות זו תואמת פרקטיקות מובילות בתעשיית ה-marketplace הדיגיטלי לשירותי חיות מחמד.' : 'This policy aligns with leading digital-marketplace practices for the pet care category.'}
               </p>
             </div>
           </div>

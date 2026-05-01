@@ -1,6 +1,6 @@
 /**
  * Proximity-Based Sitter Search Engine
- * Like Uber - finds nearest sitters based on user location
+ * on-demand model - finds nearest sitters based on user location
  * Loyalty members only
  *
  * Geocoding fallback: if a sitter's DB record has no lat/lng,
@@ -123,7 +123,7 @@ export class SitterProximitySearch {
   }
 
   /**
-   * Find sitters within radius (like Uber driver search)
+   * Find sitters within radius (on-demand model driver search)
    * Only available to verified loyalty members
    */
   async findSittersNearby(

@@ -411,7 +411,7 @@ const BookTrip = lazy(() => import("@/pages/pettrek/BookTrip"));
 const TrackTrip = lazy(() => import("@/pages/pettrek/TrackTrip"));
 const ProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard"));
 
-// ⁦The Sitter Suite™⁩ - Legal Documents (Airbnb-style compliance)
+// ⁦The Sitter Suite™⁩ - Legal Documents (marketplace platform compliance)
 const SitterPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const SitterTermsConditions = lazy(() => import("@/pages/legal/TermsConditions"));
 const SitterDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));

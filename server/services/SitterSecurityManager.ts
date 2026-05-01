@@ -1,7 +1,7 @@
 /**
  * Security & Vetting Manager for ⁦The Sitter Suite™⁩
  * Handles ID verification, background checks, fraud detection
- * Enterprise-grade security like Airbnb/Uber
+ * Enterprise-grade security marketplace platform/on-demand platform
  */
 
 import { globalConfig } from './SitterGlobalConfig';
@@ -88,7 +88,7 @@ export class SitterSecurityManager {
 
   /**
    * Real-time fraud detection in chat messages
-   * Prevents off-platform transactions (like Airbnb/Uber)
+   * Prevents off-platform transactions (marketplace platform/on-demand platform)
    */
   monitorDirectMessages(
     senderId: string,

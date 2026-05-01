@@ -248,9 +248,9 @@ export default function BookTrip() {
           </h1>
           
           <p className="luxury-text-body max-w-2xl mx-auto">
-            {isHebrew 
-              ? 'שירות הסעות מקצועי ובטוח לחיות המחמד שלכם — מחיר ידוע מראש, כמו אובר'
-              : 'Professional and safe pet transport — upfront pricing, Uber-style'
+            {isHebrew
+              ? 'שירות הסעות מקצועי ובטוח לחיות המחמד שלכם — מחיר ידוע מראש, ללא הפתעות'
+              : 'Professional and safe pet transport — upfront pricing, no surprises'
             }
           </p>
         </div>
@@ -488,9 +488,9 @@ export default function BookTrip() {
                       {isHebrew ? 'המחיר שלך — ידוע מראש!' : 'Your Price — Known Upfront!'}
                     </h2>
                     <p className="luxury-text-body mb-6">
-                      {isHebrew 
-                        ? 'המחיר סופי — לא יהיו הפתעות. כמו אובר, מה שרואים זה מה שמשלמים.'
-                        : 'Final price — no surprises. Like Uber, what you see is what you pay.'}
+                      {isHebrew
+                        ? 'המחיר סופי — ללא הפתעות. מה שרואים זה מה שמשלמים.'
+                        : 'Final price — no surprises. What you see is what you pay.'}
                     </p>
 
                     <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-6 border border-purple-100">

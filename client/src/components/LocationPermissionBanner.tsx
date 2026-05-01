@@ -91,8 +91,8 @@ export default function LocationPermissionBanner({
                 ? 'כדי לקבל תוצאות בסביבתך, הפעל מיקום בהגדרות הדפדפן ורענן'
                 : 'To see results near you, allow location in browser settings and refresh')
             : (isHebrew
-                ? 'כמו Uber — ספקים ולקוחות מותאמים לפי קרבה מדויקת. כתובת ידנית עובדת גם כן.'
-                : 'Like Uber — providers and clients matched by exact proximity. Typing an address works too.')
+                ? 'התאמה מדויקת לפי קרבה — ספקים ולקוחות בסביבה שלך. ניתן גם להזין כתובת ידנית.'
+                : 'Precision proximity matching across the PetWash™ network. Typing an address works too.')
           }
         </p>
       </div>

@@ -2,7 +2,7 @@
  * THE SITTER SUITE™ - Backend API Routes
  * 
  * Revolutionary pet sitting marketplace with Nayax split payments
- * Like Booking.com/Airbnb - Apple-level premium experience
+ * Like marketplace platform - Apple-level premium experience
  */
 
 import { Router, Request } from 'express';
@@ -843,7 +843,7 @@ router.post('/bookings', requireAuth, async (req, res) => {
     const bookingId = `SITTER_${nanoid(12)}`;
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
-    // UBER-STYLE: Create booking in pending_provider status (NOT confirmed yet)
+    // ON-DEMAND: Create booking in pending_provider status (NOT confirmed yet)
     // Payment is NOT captured until provider accepts
     const [newBooking] = await db
       .insert(sitterBookings)
@@ -956,7 +956,7 @@ router.post('/bookings', requireAuth, async (req, res) => {
 
 /**
  * PATCH /api/sitter-suite/bookings/:bookingId/provider-respond
- * Uber-style: Provider accepts or declines a booking request
+ * on-demand: Provider accepts or declines a booking request
  * Both parties must confirm for the booking to proceed
  */
 router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, res) => {
@@ -1383,7 +1383,7 @@ router.get('/bookings', requireAuth, async (req, res) => {
 /**
  * PATCH /api/sitter-suite/bookings/:id/complete - Complete booking and trigger sitter payout
  * Israeli Law 2026: Applies withholding tax (ניכוי מס במקור), records commission, generates settlement
- * Subcontractor model (like Wolt Israel) - providers are independent contractors
+ * Subcontractor broker model — providers are independent contractors
  */
 router.patch('/bookings/:id/complete', async (req, res) => {
   try {
@@ -1556,7 +1556,7 @@ router.post('/reviews', async (req, res) => {
   }
 });
 
-// ==================== PROXIMITY SEARCH (Like Uber) ====================
+// ==================== PROXIMITY SEARCH (on-demand model) ====================
 
 /**
  * POST /api/sitter-suite/search/nearby - Find sitters near user location
@@ -1637,7 +1637,7 @@ router.get('/top-reviews', async (req, res) => {
 });
 
 /**
- * GET /api/sitter-suite/sitters/:id/reviews - Get Uber-style reviews for sitter
+ * GET /api/sitter-suite/sitters/:id/reviews - Get on-demand reviews for sitter
  */
 router.get('/sitters/:id/reviews', async (req, res) => {
   try {
@@ -1650,7 +1650,7 @@ router.get('/sitters/:id/reviews', async (req, res) => {
       .orderBy(desc(sitterReviews.createdAt))
       .limit(50);
     
-    // Calculate rating breakdown (like Uber)
+    // Calculate rating breakdown (on-demand model)
     const ratingCounts = {
       5: reviews.filter(r => r.rating === 5).length,
       4: reviews.filter(r => r.rating === 4).length,

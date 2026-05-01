@@ -1,7 +1,7 @@
 /**
  * Advanced Booking Engine for ⁦The Sitter Suite™⁩
  * Handles complex availability, dynamic pricing, holiday surges, escrow payments
- * Enterprise-level like Booking.com / Airbnb
+ * Enterprise-level marketplace booking / marketplace platform
  */
 
 import { globalConfig } from './SitterGlobalConfig';
@@ -119,7 +119,7 @@ export class SitterAdvancedBookingEngine {
 
   /**
    * Calculate price with dynamic pricing, holiday surges, loyalty discounts, and transparent fees
-   * Like Booking.com/Airbnb: shows full breakdown
+   * Like marketplace platform: shows full breakdown
    * 
    * UPDATED: Now includes loyalty tier discounts (5-20%) across all tiers
    */
@@ -206,7 +206,7 @@ export class SitterAdvancedBookingEngine {
 
   /**
    * Process payment and move to escrow
-   * Like Airbnb: Hold funds until service completion
+   * marketplace platform: Hold funds until service completion
    */
   async processPayment(
     bookingId: string,

@@ -70,12 +70,12 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
     negatives: "logos, text, low detail"
   },
   {
-    id: "amazon-champion",
+    id: "warrior-champion",
     group: "Super Archetypes",
-    label_en: "Amazon Champion (gold-red armor)",
-    label_he: "אלופת האמזונות (שריון זהב-אדום)",
-    slug: "amazon-champion",
-    thumb: "/avatars/amazon-champion.webp",
+    label_en: "Warrior Champion (gold-red armor)",
+    label_he: "אלופת לוחמת (שריון זהב-אדום)",
+    slug: "warrior-champion",
+    thumb: "/avatars/warrior-champion.webp",
     style: "photoreal",
     palette: ["#D4AF37", "#A00022", "#1E2A5A"],
     prompt:

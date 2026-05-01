@@ -17,7 +17,7 @@
  *   netRevenue         = grossCollectedILS − vatOwed
  *   providerShare      = 0
  *
- * ── MODE B: MARKETPLACE (Wolt / Uber model) ─────────────────────────────────
+ * ── MODE B: MARKETPLACE (broker model) ─────────────────────────────────
  * Used for: Sitter Suite, Walk My Pet, PetTrek, Pet Wash Hub, Paw Finder, PlushLab
  * PetWash is an indirect agent (סוכן בלתי מגולה).
  * Customer pays ONE total amount; PetWash keeps its commission; provider receives the rest.
@@ -142,7 +142,7 @@ class VATCalculatorService {
     };
   }
 
-  // ── MODE B: Marketplace / agent model (Wolt-style provider services) ────────
+  // ── MODE B: Marketplace / agent model (broker-style provider services) ─────
   // Input: grossCollectedILS = the total the customer actually paid (Nayax charge)
   calculateMarketplaceVAT(
     grossCollectedILS: number,

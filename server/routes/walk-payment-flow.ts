@@ -1,5 +1,5 @@
 /**
- * EMERGENCY WALK PAYMENT FLOW (UBER-STYLE)
+ * EMERGENCY WALK PAYMENT FLOW (ON-DEMAND)
  * Pay first → Create booking (eliminates no-shows)
  *
  * Flow:

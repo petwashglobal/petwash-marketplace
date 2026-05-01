@@ -1,7 +1,7 @@
 /**
- * FlashDeals — Provider limited-time discount marketplace
- * Airbnb/dynamic pricing style: urgency, countdown, slot scarcity
- * Supports 2 dogs + 1 cat weekly bookings as requested
+ * FlashDeals — Provider limited-time discount marketplace.
+ * Dynamic pricing with countdown urgency and slot scarcity.
+ * Supports 2 dogs + 1 cat weekly bookings as requested.
  */
 
 import { useState, useEffect } from 'react';

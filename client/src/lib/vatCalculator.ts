@@ -1,6 +1,6 @@
 /**
- * Frontend VAT Calculator Helper — Israeli Marketplace (Wolt) Model
- * Aligns with server/services/VATCalculatorService.ts Mode B
+ * Frontend VAT Calculator Helper — Israeli marketplace broker model.
+ * Aligns with server/services/VATCalculatorService.ts Mode B.
  *
  * Israeli VAT: 18% (effective Jan 1, 2025)
  *
@@ -17,7 +17,7 @@
  *   netToProvider      = ₪127.50  (gross − commission)
  *
  * WRONG (old additive):  totalCharged = ₪150 + ₪22.50 + ₪4.05 = ₪176.55 ← overcharges
- * CORRECT (Wolt model):  totalCharged = ₪150.00                            ← listed price
+ * CORRECT (broker model): totalCharged = ₪150.00                          ← listed price
  */
 
 export const ISRAELI_VAT_RATE = 0.18;
@@ -39,7 +39,7 @@ export interface VATCalculation {
   // ── backward-compat aliases used in booking payloads ──────────────────────
   /** @deprecated alias for grossCollectedILS */
   totalCharged: number;
-  /** @deprecated alias for grossCollectedILS — base IS the gross in Wolt model */
+  /** @deprecated alias for grossCollectedILS — base IS the gross in broker model */
   baseAmount: number;
   /** @deprecated alias for vatOnCommission */
   vatAmount: number;
@@ -92,7 +92,7 @@ export class VATCalculator {
 
   /**
    * Total charged to the customer.
-   * In the Wolt model this equals the listed price — nothing is added on top.
+   * In the broker model this equals the listed price — nothing is added on top.
    */
   calculateTotalWithVAT(listedPriceILS: number): number {
     return this.roundToCurrency(listedPriceILS);

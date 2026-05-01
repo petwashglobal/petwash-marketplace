@@ -194,7 +194,7 @@ router.get('/owner/active-walks', requireAuth, async (req, res) => {
 
 /**
  * Register a user's current device GPS location (passive stamp).
- * Used for Uber-style provider/customer matching.
+ * Used for on-demand provider/customer matching.
  * POST /api/gps/user-location
  * Body: { latitude, longitude, accuracy, role: 'customer'|'provider' }
  */

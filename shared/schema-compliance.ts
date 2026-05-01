@@ -24,7 +24,7 @@ import { z } from "zod";
  * - Government agencies (Israeli ministries, municipalities)
  * - Customers, service providers
  * 
- * Like Airbnb, Booking.com, TripAdvisor compliance systems
+ * marketplace platform, marketplace platform, TripAdvisor compliance systems
  * Created: November 10, 2025
  */
 
@@ -72,7 +72,7 @@ export const authorityDocuments = pgTable("authority_documents", {
   riskCategory: varchar("risk_category").default("medium"), // low, medium, high, critical
   autoRenewalEnabled: boolean("auto_renewal_enabled").default(false),
   
-  // Public Display (like Airbnb shows licenses)
+  // Public Display (marketplace platform shows licenses)
   displayPublicly: boolean("display_publicly").default(true),
   displayBadge: boolean("display_badge").default(true), // Show "Verified" badge
   displayPriority: integer("display_priority").default(1), // 1 = highest priority
@@ -151,7 +151,7 @@ export const providerLicenses = pgTable("provider_licenses", {
 // =================== BOOKING POLICIES & DISPUTE RESOLUTION ===================
 
 /**
- * Cancellation and refund policies (like Airbnb/Booking.com)
+ * Cancellation and refund policies (like marketplace platform)
  */
 export const bookingPolicies = pgTable("booking_policies", {
   id: serial("id").primaryKey(),

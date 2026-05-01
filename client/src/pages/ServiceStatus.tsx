@@ -88,8 +88,8 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
       status: 'production',
       backend: true,
       frontend: true,
-      notes: 'Uber-style pet transport, live GPS, dynamic fare estimation',
-      notesHe: 'הסעות סגנון Uber, GPS חי, הערכת מחיר דינמית',
+      notes: 'On-demand pet transport, live GPS, dynamic fare estimation',
+      notesHe: 'הסעות לפי דרישה, GPS חי, הערכת מחיר דינמית',
     },
     {
       name: '⁦The Plush Lab™⁩ (Avatar Creator)',
