@@ -49,6 +49,7 @@ import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../uti
 import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
+import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -247,6 +248,28 @@ router.post('/', async (req, res) => {
       ? data.petDetails
       : null;
     
+    // ── Phase B6 — customer address snapshot ──────────────────────────────────
+    // Freeze the customer's address at booking-create time so the booking
+    // row has a permanent record of WHERE the service was requested,
+    // independent of the customer's mutable profile address. All fields
+    // optional — legacy callers without the autocomplete keep working.
+    const addrSrc = (data as any).customerAddress ?? null;
+    const addressSnapshot = addrSrc ? {
+      customerAddress:      addrSrc.formattedAddress?.slice(0, 5000) ?? null,
+      customerStreet:       addrSrc.street ? stripHebrewStreetPrefix(addrSrc.street).slice(0, 200) : null,
+      customerStreetNumber: addrSrc.streetNumber?.toString().slice(0, 40) ?? null,
+      customerApartment:    addrSrc.apartment?.toString().slice(0, 80) ?? null,
+      customerCity:         addrSrc.city?.toString().slice(0, 120) ?? null,
+      customerCityKey:      addrSrc.city ? cityKey(addrSrc.city).slice(0, 60) : null,
+      customerCountry:      addrSrc.country?.toString().slice(0, 2).toUpperCase() ?? null,
+      customerPostalCode:   normalizeIsraeliPostalCode(addrSrc.postalCode ?? null),
+      customerLatitude:     typeof addrSrc.latitude === 'number' && Number.isFinite(addrSrc.latitude)
+                              ? String(addrSrc.latitude) : null,
+      customerLongitude:    typeof addrSrc.longitude === 'number' && Number.isFinite(addrSrc.longitude)
+                              ? String(addrSrc.longitude) : null,
+      customerPlaceId:      addrSrc.placeId?.toString().slice(0, 200) ?? null,
+    } : {};
+
     // ── Create booking request row ─────────────────────────────────────────────
     const [booking] = await db.insert(bookingRequests).values({
       requestId,
@@ -257,6 +280,7 @@ router.post('/', async (req, res) => {
       serviceType: data.serviceType,
       startDate,
       endDate,
+      ...addressSnapshot,
       petIds: data.petIds || (data.petDetails?.map(p => String(p.petId ?? '')).filter(Boolean) ?? []),
       petCount: data.petCount,
       petDetails: petDetailsForRow,
