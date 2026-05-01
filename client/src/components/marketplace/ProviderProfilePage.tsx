@@ -31,6 +31,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { InsuranceTrustChip } from './InsuranceTrustChip';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -426,6 +427,9 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 </div>
               ))}
             </section>
+
+            {/* Insurance trust row — every booking is covered */}
+            <InsuranceTrustChip variant="row" isHebrew={isHebrew} />
 
             {/* About */}
             <section>
@@ -839,6 +843,9 @@ function BookingWidget({
             </span>
           </div>
         )}
+        <div className="pt-1">
+          <InsuranceTrustChip variant="badge" isHebrew={isHebrew} />
+        </div>
         {/* Response rate hidden if not known */}
         {stats?.responseRatePct === null && !statsLoading && (
           <p className="text-xs text-gray-400 italic">
