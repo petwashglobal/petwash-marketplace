@@ -53,7 +53,7 @@ const DEFAULT_PROMO: PromoAdConfig = {
   subtitleHe: 'עולם אחד. כל חיית מחמד.',
   ctaText: 'Explore Platforms',
   ctaTextHe: 'גלה את הפלטפורמות',
-  ctaUrl: '/divisions',
+  ctaUrl: '/',
   enabled: true,
 };
 
