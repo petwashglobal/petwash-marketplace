@@ -29,6 +29,13 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
+import {
+  PROVIDER_DECLARATION_TEXT,
+  ENHANCED_REASON_LABELS,
+  ENHANCED_VERIFICATION_REASONS,
+  defaultReasonsForProviderTypes,
+  type EnhancedVerificationReason,
+} from '@shared/legal/providerDeclaration';
 
 export default function ProviderOnboarding() {
   const { user } = useFirebaseAuth();
@@ -118,6 +125,23 @@ export default function ProviderOnboarding() {
   // Universal declarations (all roles)
   const [declarationAccurateInfo, setDeclarationAccurateInfo] = useState(false);
   const [declarationAcceptTerms, setDeclarationAcceptTerms] = useState(false);
+
+  // Israel-safe self-declaration (2026 spec). Mandatory for every provider.
+  const [selfDeclarationNoConvictions, setSelfDeclarationNoConvictions] = useState(false);
+
+  // Provider can also opt into high-risk services explicitly. The defaults
+  // derived from providerTypes are unioned with these picks server-side.
+  const [enhancedReasons, setEnhancedReasons] = useState<EnhancedVerificationReason[]>([]);
+
+  const declarationText = isHebrew ? PROVIDER_DECLARATION_TEXT.he : PROVIDER_DECLARATION_TEXT.en;
+  const derivedDefaultReasons = defaultReasonsForProviderTypes(providerTypes);
+  const effectiveEnhancedReasons = Array.from(
+    new Set<EnhancedVerificationReason>([
+      ...derivedDefaultReasons,
+      ...enhancedReasons,
+    ]),
+  );
+  const enhancedVerificationRequired = effectiveEnhancedReasons.length > 0;
 
   // State
   const [loading, setLoading] = useState(false);
@@ -357,6 +381,16 @@ export default function ProviderOnboarding() {
       return;
     }
 
+    // Israel-safe self-declaration is mandatory.
+    if (!selfDeclarationNoConvictions) {
+      toast({
+        variant: 'destructive',
+        title: t.error,
+        description: declarationText.checkboxLabel,
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -376,6 +410,10 @@ export default function ProviderOnboarding() {
       
       formData.append('residentialHistory', JSON.stringify(residentialHistory.filter(addr => addr.trim())));
       formData.append('backgroundCheckConsent', backgroundCheckConsent.toString());
+
+      // Israel-safe self-declaration (2026 spec)
+      formData.append('selfDeclarationNoRelevantConvictions', selfDeclarationNoConvictions ? 'true' : 'false');
+      formData.append('enhancedVerificationReasons', JSON.stringify(effectiveEnhancedReasons));
 
       const declarations: Record<string, boolean> = {
         declarationAccurateInfo,
@@ -1230,16 +1268,76 @@ export default function ProviderOnboarding() {
                     <h4 className="font-semibold text-gray-900 dark:text-black">
                       ✅ {isHebrew ? 'הצהרות כלליות (חובה)' : 'General Declarations (Required)'}
                     </h4>
-                    
+
                     <label className="flex items-start gap-3 cursor-pointer">
                       <Checkbox checked={declarationAccurateInfo} onCheckedChange={(checked) => setDeclarationAccurateInfo(!!checked)} className="mt-1" data-testid="checkbox-accurate-info" />
                       <span className="text-sm">{isHebrew ? 'כל המידע שמסרתי נכון ומדויק' : 'All information I provided is true and accurate'}</span>
                     </label>
-                    
+
                     <label className="flex items-start gap-3 cursor-pointer">
                       <Checkbox checked={declarationAcceptTerms} onCheckedChange={(checked) => setDeclarationAcceptTerms(!!checked)} className="mt-1" data-testid="checkbox-accept-terms" />
                       <span className="text-sm">{isHebrew ? 'אני מסכים/ה לתנאי השימוש ולהסכם קבלן עצמאי' : 'I agree to the Terms of Service and Independent Contractor Agreement'}</span>
                     </label>
+                  </div>
+
+                  {/* Israel-safe self-declaration (2026 spec). Mandatory.  */}
+                  <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-300 dark:border-blue-700">
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-200">
+                      🛡️ {declarationText.title}
+                    </h4>
+                    <p className="text-xs text-blue-900 dark:text-blue-200">
+                      {declarationText.idRequiredNotice}
+                    </p>
+                    <p className="text-xs text-blue-900 dark:text-blue-200">
+                      {declarationText.body}
+                    </p>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <Checkbox
+                        checked={selfDeclarationNoConvictions}
+                        onCheckedChange={(checked) => setSelfDeclarationNoConvictions(!!checked)}
+                        className="mt-1"
+                        data-testid="checkbox-self-declaration-no-convictions"
+                      />
+                      <span className="text-sm text-blue-900 dark:text-blue-200">
+                        {declarationText.checkboxLabel}
+                      </span>
+                    </label>
+
+                    {/* Optional opt-in to high-risk service categories */}
+                    <div className="mt-2 pt-3 border-t border-blue-200 dark:border-blue-700">
+                      <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-2">
+                        {isHebrew ? 'שירותים שאספק (סמן את כל הרלוונטיים):' : 'Services I will offer (tick all that apply):'}
+                      </p>
+                      {ENHANCED_VERIFICATION_REASONS.map((reason) => {
+                        const checked = enhancedReasons.includes(reason);
+                        const label = isHebrew ? ENHANCED_REASON_LABELS[reason].he : ENHANCED_REASON_LABELS[reason].en;
+                        return (
+                          <label key={reason} className="flex items-start gap-3 cursor-pointer mb-1">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(c) => {
+                                setEnhancedReasons((prev) =>
+                                  c
+                                    ? Array.from(new Set([...prev, reason]))
+                                    : prev.filter((r) => r !== reason),
+                                );
+                              }}
+                              className="mt-1"
+                              data-testid={`checkbox-enhanced-${reason}`}
+                            />
+                            <span className="text-sm text-blue-900 dark:text-blue-200">{label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {enhancedVerificationRequired && (
+                      <div className="mt-2 p-2 rounded border border-amber-300 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700">
+                        <p className="text-xs text-amber-900 dark:text-amber-200">
+                          ⚠️ {declarationText.enhancedNotice}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Legal Notice - Israeli Law Compliance */}
@@ -1323,10 +1421,11 @@ export default function ProviderOnboarding() {
                     onClick={handleSubmit} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={
-                      loading || 
-                      !backgroundCheckConsent || 
+                      loading ||
+                      !backgroundCheckConsent ||
                       !declarationAccurateInfo ||
                       !declarationAcceptTerms ||
+                      !selfDeclarationNoConvictions ||
                       residentialHistory.filter(addr => addr.trim()).length === 0 ||
                       // Driver-specific declarations (PetTrek)
                       (hasProviderType('driver') && (

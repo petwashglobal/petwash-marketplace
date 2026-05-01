@@ -5074,6 +5074,16 @@ export const providerApplications = pgTable("provider_applications", {
   residentialHistory: text("residential_history"), // JSON: [{address, city, country, fromDate, toDate}] - 10 years
   criminalCheckConsent: boolean("criminal_check_consent").default(false), // Explicit consent to run check
   criminalCheckConsentDate: timestamp("criminal_check_consent_date"),
+
+  // Israel-safe self-declaration (2026 spec). See migration 0019 and
+  // shared/legal/providerDeclaration.ts. Police clearance is OPTIONAL
+  // unless requires_enhanced_verification is true (driver, sitter,
+  // home-access, key-holding, overnight, or pet-transport services).
+  selfDeclarationNoRelevantConvictions: boolean("self_declaration_no_relevant_convictions").notNull().default(false),
+  selfDeclarationAt: timestamp("self_declaration_at"),
+  selfDeclarationIp: varchar("self_declaration_ip", { length: 64 }),
+  requiresEnhancedVerification: boolean("requires_enhanced_verification").notNull().default(false),
+  enhancedVerificationReasons: text("enhanced_verification_reasons").array().notNull().default(sql`ARRAY[]::text[]`),
   
   // Role-Specific Certifications (2026 Spec)
   petFirstAidCertUrl: varchar("pet_first_aid_cert_url"), // Required for sitters/walkers
