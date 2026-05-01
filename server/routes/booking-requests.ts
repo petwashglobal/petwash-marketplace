@@ -48,6 +48,7 @@ import { EmailService } from '../emailService';
 import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
 import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
+import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -749,15 +750,11 @@ router.post('/:requestId/respond', async (req, res) => {
       }
     }
 
-    if (booking.status !== 'pending') {
-      return res.status(400).json({ error: `Cannot respond to booking with status: ${booking.status}` });
-    }
-    
     const statusHistory = (booking.statusHistory as any[]) || [];
-    let newStatus: string;
     let meetGreetDate = null;
     let meetGreetLocation = null;
-    
+    let newStatus: BookingStatus;
+
     switch (data.action) {
       case 'accept':
         if (data.meetGreetDate) {
@@ -774,12 +771,28 @@ router.post('/:requestId/respond', async (req, res) => {
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }
-    
-    statusHistory.push({
-      status: newStatus,
-      timestamp: new Date().toISOString(),
+
+    // Centralised state-machine guard (Phase B2). Replaces the previous
+    // bare `if (booking.status !== 'pending')` check. The machine knows
+    // which actor is allowed to drive each transition AND which terminal
+    // states block any further movement.
+    const transition = applyTransition({
+      from: booking.status,
+      to: newStatus,
+      actor: 'provider',
+      actorId: userId ?? null,
       note: data.response || `Provider ${data.action}ed the request`,
     });
+    if (!transition.result.ok) {
+      logger.warn('[BookingRequests] Provider response rejected by state machine', {
+        requestId, from: booking.status, to: newStatus, code: transition.result.code,
+      });
+      return res.status(transition.result.statusCode).json({
+        error: transition.result.error,
+        code: transition.result.code,
+      });
+    }
+    statusHistory.push(transition.historyEntry);
     
     const updateData: any = {
       status: newStatus,
@@ -2362,19 +2375,35 @@ router.post('/:requestId/cancel', async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to cancel this booking' });
     }
     
-    // Cannot cancel if already in a terminal state
-    if (['completed', 'reviewed', 'cancelled', 'disputed'].includes(booking.status)) {
-      return res.status(400).json({ error: `Cannot cancel booking with status: ${booking.status}` });
-    }
     // If provider_marked_complete, customer should dispute instead of cancel
     if (booking.status === 'provider_marked_complete' && booking.ownerId === userId) {
       return res.status(400).json({
         error: 'The provider has already marked this service as complete. Use /dispute to open a dispute, or /confirm to approve and release payment.',
       });
     }
-    
+
     const cancelledBy = booking.ownerId === userId ? 'owner' : 'provider';
     const statusHistory = (booking.statusHistory as any[]) || [];
+
+    // Centralised state-machine guard (Phase B2). Rejects cancels from
+    // terminal states (cancelled / declined / reviewed) and any actor
+    // not permitted at the current status.
+    const transitionCheck = applyTransition({
+      from: booking.status,
+      to: 'cancelled',
+      actor: cancelledBy,
+      actorId: userId ?? null,
+      note: reason || null,
+    });
+    if (!transitionCheck.result.ok) {
+      logger.warn('[BookingRequests] Cancel rejected by state machine', {
+        requestId, from: booking.status, actor: cancelledBy, code: transitionCheck.result.code,
+      });
+      return res.status(transitionCheck.result.statusCode).json({
+        error: transitionCheck.result.error,
+        code: transitionCheck.result.code,
+      });
+    }
 
     // ── Time-based cancellation policy (blueprint §8) ─────────────────────────
     // Hours until service start (can be negative if service already started or passed)
