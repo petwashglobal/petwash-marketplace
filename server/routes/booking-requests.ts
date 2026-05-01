@@ -32,7 +32,7 @@ import {
   providerBookingResponseSchema,
   type BookingRequest
 } from '@shared/schema';
-import { eq, and, desc, sql, or, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -50,6 +50,7 @@ import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
+import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -851,10 +852,101 @@ router.post('/:requestId/respond', async (req, res) => {
       updateData.meetGreetDate = meetGreetDate;
       updateData.meetGreetLocation = meetGreetLocation;
     }
-    
-    await db.update(bookingRequests)
-      .set(updateData)
-      .where(eq(bookingRequests.requestId, requestId));
+
+    // ── Phase B4 — Provider double-booking lock ──────────────────────────────
+    // Wrap the status flip in a Postgres transaction with SELECT FOR UPDATE
+    // so two parallel /respond accepts can never both succeed against the
+    // same booking AND so we can atomically check whether the provider
+    // already holds a conflicting active booking.
+    //
+    // For 'decline' we skip the overlap check entirely — declining never
+    // conflicts with anything.
+    if (data.action === 'accept') {
+      try {
+        await db.transaction(async (tx) => {
+          // 1. Lock the row we are about to update — prevents a parallel
+          //    accept from beating us to the status flip.
+          const [locked] = await tx.select()
+            .from(bookingRequests)
+            .where(eq(bookingRequests.requestId, requestId))
+            .for('update')
+            .limit(1);
+          if (!locked) throw new Error('BOOKING_NOT_FOUND_AFTER_LOCK');
+          if (locked.status !== 'pending') {
+            // Someone else moved the booking after our state-machine
+            // check above. Re-throw a structured conflict.
+            throw Object.assign(new Error('BOOKING_RACE_CONDITION'), {
+              petwashCode: 'RACE_CONDITION',
+              currentStatus: locked.status,
+            });
+          }
+
+          // 2. Look for other ACTIVE bookings on the same provider whose
+          //    [start, end) overlaps the candidate's [start, end).
+          //    BLOCKING_STATUSES from shared/lib/bookingOverlap.
+          const conflicts = await tx.select({
+              requestId: bookingRequests.requestId,
+              status:    bookingRequests.status,
+              startDate: bookingRequests.startDate,
+              endDate:   bookingRequests.endDate,
+            })
+            .from(bookingRequests)
+            .where(and(
+              eq(bookingRequests.providerId, booking.providerId),
+              ne(bookingRequests.requestId, requestId),
+              inArray(bookingRequests.status, BLOCKING_STATUSES as any),
+              // half-open overlap — ranges touch (cand.end === existing.start)
+              // do NOT count as conflict.
+              sql`${bookingRequests.startDate} < ${locked.endDate}`,
+              sql`${bookingRequests.endDate} > ${locked.startDate}`,
+            ))
+            .limit(1);
+
+          if (conflicts.length > 0) {
+            throw Object.assign(new Error('PROVIDER_DOUBLE_BOOKING'), {
+              petwashCode: 'PROVIDER_DOUBLE_BOOKING',
+              conflictingBookingId: conflicts[0].requestId,
+              conflictingStatus:    conflicts[0].status,
+            });
+          }
+
+          // 3. Status flip — INSIDE the transaction.
+          await tx.update(bookingRequests)
+            .set(updateData)
+            .where(eq(bookingRequests.requestId, requestId));
+        });
+      } catch (lockErr: any) {
+        const code = lockErr?.petwashCode;
+        if (code === 'PROVIDER_DOUBLE_BOOKING') {
+          logger.warn('[BookingRequests] Accept rejected — provider already booked at this time', {
+            requestId,
+            providerId: booking.providerId,
+            conflictingBookingId: lockErr.conflictingBookingId,
+          });
+          return res.status(409).json({
+            error: 'You already have another booking that overlaps this time slot.',
+            code: 'PROVIDER_DOUBLE_BOOKING',
+            conflictingBookingId: lockErr.conflictingBookingId,
+          });
+        }
+        if (code === 'RACE_CONDITION') {
+          logger.warn('[BookingRequests] Accept rejected — booking was modified concurrently', {
+            requestId, currentStatus: lockErr.currentStatus,
+          });
+          return res.status(409).json({
+            error: `Cannot respond — booking is already in status '${lockErr.currentStatus}'.`,
+            code: 'RACE_CONDITION',
+          });
+        }
+        // Anything else propagates up to the outer catch.
+        throw lockErr;
+      }
+    } else {
+      // 'decline' branch — single update, no overlap check.
+      await db.update(bookingRequests)
+        .set(updateData)
+        .where(eq(bookingRequests.requestId, requestId));
+    }
 
     // ── Calendar sync on provider ACCEPT (Phase B1) ──────────────────────────
     // Create a Google Calendar event tagged with petwash_booking_id so:
