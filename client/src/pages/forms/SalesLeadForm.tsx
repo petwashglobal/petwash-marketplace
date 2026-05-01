@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FormLayout, FormSuccess, Field, FormSection, inputCls, textareaCls, selectCls, SubmitButton } from './FormLayout';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 
 export default function SalesLeadForm() {
   const { toast } = useToast();
@@ -9,6 +10,8 @@ export default function SalesLeadForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({
     contactName: '', company: '', email: '', phone: '', address: '', city: '', country: 'Israel / ישראל',
+    // Israel-aware structured address (auto-filled by Google Places autocomplete; optional)
+    apartment: '', postalCode: '', latitude: '', longitude: '', placeId: '',
     inquiryType: '', serviceInterest: '', estimatedVolume: '', numberOfPets: '',
     description: '', bestContactTime: '', referralSource: '',
   });
@@ -46,7 +49,25 @@ export default function SalesLeadForm() {
           <Field label="Company / Organization" labelHe="חברה"><input className={inputCls} value={form.company} onChange={set('company')} placeholder="Company name (optional)" /></Field>
           <Field label="Email Address" labelHe="אימייל" required><input type="email" className={inputCls} value={form.email} onChange={set('email')} placeholder="you@company.com" /></Field>
           <Field label="Phone Number" labelHe="טלפון" required><input className={inputCls} value={form.phone} onChange={set('phone')} placeholder="+972 50 000 0000" /></Field>
-          <Field label="Street Address" labelHe="כתובת"><input className={inputCls} value={form.address} onChange={set('address')} placeholder="Optional" /></Field>
+          <div className="col-span-full">
+            <GooglePlacesAutocomplete
+              value={form.address}
+              onChange={(v) => setForm(f => ({ ...f, address: v }))}
+              onPlaceSelected={(place: PlaceDetails) => setForm(f => ({
+                ...f,
+                address: place.formattedAddress || f.address,
+                city: place.city || f.city,
+                country: place.country || f.country,
+                postalCode: place.postalCode || '',
+                latitude: place.lat != null ? String(place.lat) : '',
+                longitude: place.lng != null ? String(place.lng) : '',
+                placeId: place.placeId || '',
+              }))}
+              label="Street Address / כתובת (Optional)"
+              apartmentLabel="דירה / Apartment"
+              postalCodeLabel="מיקוד / Postal Code"
+            />
+          </div>
           <Field label="City" labelHe="עיר" required><input className={inputCls} value={form.city} onChange={set('city')} placeholder="Tel Aviv" /></Field>
           <Field label="Country" labelHe="מדינה" required>
             <select className={selectCls} value={form.country} onChange={set('country')}>

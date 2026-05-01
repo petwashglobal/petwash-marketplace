@@ -376,11 +376,43 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimit
       return res.status(503).json({ error: 'Address search unavailable', reasonCode: 'MAPS_KEY_MISSING', traceId });
     }
 
-    // Build Places API v1 request body
-    // components arrives as "country:il|country:us" → strip prefix → ["il","us"]
-    const regionCodes = components
-      ? (components as string).split('|').map(c => c.replace(/^country:/i, '')).filter(Boolean)
-      : [];
+    // Build Places API v1 request body.
+    //
+    // SECURITY (Israel-only enforcement):
+    //   The original implementation forwarded the client-supplied
+    //   `components=country:xx` query param verbatim. That meant any
+    //   caller — including an attacker hitting the proxy directly —
+    //   could request worldwide results, bypassing PetWash's Israel-
+    //   only product scope.
+    //
+    //   We now ALWAYS send `includedRegionCodes=['il']` to the Places
+    //   API regardless of what the client sent. The only escape hatch
+    //   is the server-side env flag PLACES_ALLOW_NON_IL=true, which is
+    //   off by default and intended only for ops debugging.
+    //
+    //   Anything the client sent in `components` is logged at debug
+    //   level so we can audit attempts to override.
+    const allowNonIl = process.env.PLACES_ALLOW_NON_IL === 'true';
+    if (components) {
+      const requested = (components as string).split('|')
+        .map(c => c.replace(/^country:/i, '').toLowerCase())
+        .filter(Boolean);
+      const isOverride = requested.length > 0 &&
+        !(requested.length === 1 && requested[0] === 'il');
+      if (isOverride && !allowNonIl) {
+        logger.warn('[Places Proxy] Non-IL components ignored — Israel-only enforced', {
+          traceId,
+          requested,
+          ip: req.ip,
+          origin: req.headers['origin'],
+        });
+      }
+    }
+    const regionCodes: string[] = allowNonIl
+      ? ((components as string | undefined)?.split('|')
+          .map(c => c.replace(/^country:/i, '').toLowerCase())
+          .filter(Boolean) ?? ['il'])
+      : ['il'];
 
     // types arrives as "address|establishment" → ["address","establishment"]
     const primaryTypes = types
@@ -393,8 +425,8 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimit
     const body: Record<string, unknown> = {
       input: input as string,
       languageCode: (language as string) || 'iw',
+      includedRegionCodes: regionCodes,
     };
-    if (regionCodes.length > 0) body.includedRegionCodes = regionCodes;
     if (primaryTypes.length > 0) body.includedPrimaryTypes = primaryTypes;
     if (validSession) body.sessionToken = validSession;
 

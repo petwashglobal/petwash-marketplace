@@ -3,6 +3,7 @@ import { FormLayout, FormSuccess, Field, FormSection, inputCls, textareaCls, sel
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 
 export default function RefundForm() {
   const { toast } = useToast();
@@ -10,6 +11,8 @@ export default function RefundForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({
     fullName: '', email: '', phone: '', address: '', city: '',
+    // Israel-aware structured address (auto-filled by Google Places autocomplete; optional)
+    apartment: '', postalCode: '', latitude: '', longitude: '', placeId: '',
     bookingId: '', serviceType: '', bookingDate: '',
     amountPaid: '', refundAmount: '', reason: '', description: '', refundMethod: '',
   });
@@ -52,7 +55,22 @@ export default function RefundForm() {
           <Field label="Phone Number" labelHe="טלפון" required><input className={inputCls} value={form.phone} onChange={set('phone')} placeholder="+972 50 000 0000" /></Field>
           <Field label="City" labelHe="עיר"><input className={inputCls} value={form.city} onChange={set('city')} placeholder="Tel Aviv" /></Field>
           <div className="col-span-full">
-            <Field label="Street Address" labelHe="כתובת"><input className={inputCls} value={form.address} onChange={set('address')} placeholder="Optional" /></Field>
+            <GooglePlacesAutocomplete
+              value={form.address}
+              onChange={(v) => setForm(f => ({ ...f, address: v }))}
+              onPlaceSelected={(place: PlaceDetails) => setForm(f => ({
+                ...f,
+                address: place.formattedAddress || f.address,
+                city: place.city || f.city,
+                postalCode: place.postalCode || '',
+                latitude: place.lat != null ? String(place.lat) : '',
+                longitude: place.lng != null ? String(place.lng) : '',
+                placeId: place.placeId || '',
+              }))}
+              label="Street Address / כתובת (Optional)"
+              apartmentLabel="דירה / Apartment"
+              postalCodeLabel="מיקוד / Postal Code"
+            />
           </div>
 
           <FormSection title="Booking Details / פרטי ההזמנה" />
