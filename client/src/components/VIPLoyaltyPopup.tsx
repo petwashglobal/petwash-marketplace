@@ -46,7 +46,7 @@ const platforms: Platform[] = [
   {
     id: 'trek',
     name: '⁦PetTrek™⁩',
-    description: 'Uber-style pet transport with live tracking',
+    description: 'On-demand pet transport with live tracking',
     icon: Car,
     gradient: 'from-amber-400 to-orange-500',
     tags: ['Live ETA', 'Dynamic Pricing', 'Safety'],

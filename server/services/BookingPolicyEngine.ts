@@ -1,7 +1,7 @@
 /**
  * BOOKING POLICY ENGINE
  * ====================
- * Automated cancellation and refund processing (like Airbnb/Booking.com)
+ * Automated cancellation and refund processing (like marketplace platform)
  * 
  * Features:
  * - Multi-tier cancellation policies (flexible, moderate, strict)

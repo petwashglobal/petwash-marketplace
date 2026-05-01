@@ -2,7 +2,7 @@
  * Legal Document Templates
  * 
  * Comprehensive legal documents for staff onboarding
- * Modeled after Airbnb, Uber, Booking.com best practices
+ * Modeled on industry-standard marketplace best practices
  * 
  * Templates include:
  * 1. Independent Contractor Agreement
@@ -20,7 +20,7 @@
 export const legalTemplates = {
   /**
    * 1. Independent Contractor Agreement
-   * Based on Uber/Airbnb independent contractor models
+   * Based on on-demand platform/marketplace platform independent contractor models
    */
   independentContractorAgreement: {
     name: 'Independent Contractor Agreement',
@@ -153,7 +153,7 @@ Date: {{DATE}}
 
   /**
    * 2. Background Check Authorization
-   * Based on Uber's background check consent
+   * Based on on-demand platform's background check consent
    */
   backgroundCheckAuthorization: {
     name: 'Background Check Authorization & Consent',
@@ -223,7 +223,7 @@ Date: {{DATE}}
 
   /**
    * 3. Non-Disclosure Agreement
-   * Based on Booking.com/Airbnb NDAs
+   * Based on marketplace platform NDAs
    */
   nda: {
     name: 'Non-Disclosure Agreement (NDA)',

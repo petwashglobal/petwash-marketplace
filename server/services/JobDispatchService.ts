@@ -1,5 +1,5 @@
 /**
- * JOB DISPATCH SERVICE 2026 - Enterprise Uber/Airbnb-Style Job Marketplace
+ * JOB DISPATCH SERVICE 2026 - Enterprise marketplace-style Job Marketplace
  * 
  * Handles job offers for The Sitter Suite, Walk My Pet (PetTrek coming soon)
  * 

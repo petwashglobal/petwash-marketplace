@@ -41,9 +41,9 @@ export default function Disclaimer() {
                   </h2>
                   <p className="text-lg font-bold leading-relaxed">
                     {isHebrew ? (
-                      <>Pet Wash Ltd היא <u>אך ורק פלטפורמת מקשרת</u> (כמו cars.com.au או Booking.com). אנו לא מעסיקים שמרטפים, לא מספקים שירותי טיפול בחיות מחמד, ו<strong>לא נושאים באחריות לאף פעולה, רשלנות, או תוצאה</strong> הנובעת משימוש בפלטפורמה.</>
+                      <>Pet Wash Ltd היא <u>אך ורק פלטפורמת מקשרת</u> — מרקטפלייס דיגיטלי המחבר בין צדדים עצמאיים. אנו לא מעסיקים שמרטפים, לא מספקים שירותי טיפול בחיות מחמד, ו<strong>לא נושאים באחריות לאף פעולה, רשלנות, או תוצאה</strong> הנובעת משימוש בפלטפורמה.</>
                     ) : (
-                      <>Pet Wash Ltd is <u>ONLY a connector platform</u> (like cars.com.au or Booking.com). We do NOT employ sitters, do NOT provide pet care services, and <strong>bear NO responsibility for any action, negligence, or outcome</strong> arising from use of the Platform.</>
+                      <>Pet Wash Ltd is <u>ONLY a connector platform</u> — a digital marketplace that links independent parties. We do NOT employ sitters, do NOT provide pet care services, and <strong>bear NO responsibility for any action, negligence, or outcome</strong> arising from use of the Platform.</>
                     )}
                   </p>
                 </div>
@@ -55,11 +55,11 @@ export default function Disclaimer() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '1. תפקיד הפלטפורמה - מקשר בלבד' : '1. Platform Role - Connector Only'}
               </h2>
-              <p className="leading-relaxed mb-4">{isHebrew ? 'Pet Wash Ltd פועלת במודל עסקי הדומה ל:' : 'Pet Wash Ltd operates in a business model similar to:'}</p>
+              <p className="leading-relaxed mb-4">{isHebrew ? 'Pet Wash Ltd פועלת כמרקטפלייס דיגיטלי לשירותי חיות מחמד:' : 'Pet Wash Ltd operates as a digital marketplace for pet services:'}</p>
               <ul className="list-disc list-inside space-y-2 mr-6">
-                <li><strong>cars.com.au:</strong> {isHebrew ? 'מחבר קונים ומוכרים, לא מוכר מכוניות' : 'Connects buyers and sellers, doesn\'t sell cars'}</li>
-                <li><strong>Airbnb:</strong> {isHebrew ? 'מחבר אורחים ומארחים, לא מפעיל מלונות' : 'Connects guests and hosts, doesn\'t operate hotels'}</li>
-                <li><strong>Booking.com:</strong> {isHebrew ? 'מציג רשימות, לא מנהל נכסים' : 'Lists properties, doesn\'t manage properties'}</li>
+                <li>{isHebrew ? 'אנו מחברים בעלי חיות מחמד עם ספקי שירות עצמאיים — איננו מעסיקים את הספקים' : 'We connect pet owners with independent service providers — we do not employ the providers'}</li>
+                <li>{isHebrew ? 'אנו מספקים את הטכנולוגיה, התשלומים והאמצעי לתקשורת — לא את שירות הטיפול עצמו' : 'We provide the technology, payments and communication tools — not the care service itself'}</li>
+                <li>{isHebrew ? 'אנו מציגים פרופילים ודירוגים — איננו ערבים לתוצאות הספק' : 'We list profiles and ratings — we do not guarantee the provider\'s outcome'}</li>
               </ul>
               <p className="leading-relaxed mt-4 font-bold">
                 {isHebrew ? (

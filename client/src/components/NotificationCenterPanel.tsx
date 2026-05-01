@@ -279,7 +279,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
             )}
           </div>
 
-          {/* Category Tabs — Airbnb-style */}
+          {/* Category Tabs */}
           <div className="flex gap-1 mt-3 -mb-3">
             {TABS.map(tab => (
               <button

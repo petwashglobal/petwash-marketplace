@@ -3,9 +3,9 @@
  * 
  * Complete database schema for 6 independent business platforms:
  * 1. Pet Wash K9000 Stations (PetWash Hub)
- * 2. Walk My Pet (Uber-style dog walking)
- * 3. The Sitter Suite (Airbnb-style pet sitting)
- * 4. PetTrek (Uber-style pet transport)
+ * 2. Walk My Pet (on-demand dog walking)
+ * 3. The Sitter Suite (marketplace-style pet sitting)
+ * 4. PetTrek (on-demand pet transport)
  * 5. Groomers Marketplace
  * 6. Shared Pet Services foundation
  * 
@@ -45,9 +45,9 @@ import { z } from "zod";
 
 export const platformEnum = z.enum([
   'k9000',          // Pet Wash K9000 Stations (PetWash Hub)
-  'walk_my_pet',    // Uber-style dog walking
-  'sitter_suite',   // Airbnb-style pet sitting
-  'pettrek',        // Uber-style pet transport
+  'walk_my_pet',    // on-demand dog walking
+  'sitter_suite',   // marketplace-style pet sitting
+  'pettrek',        // on-demand pet transport
   'groomers',       // Grooming marketplace
   'shared_services' // Shared Pet Services foundation
 ]);

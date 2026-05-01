@@ -27,7 +27,7 @@ export default function PlatformLegalFramework() {
               {isHebrew ? 'מסגרת משפטית של הפלטפורמה' : 'Platform Legal Framework'}
             </h1>
             <p className="luxury-heading-md mb-2">
-              {isHebrew ? '⁦Pet Wash™⁩ - פלטפורמת מקשרת בלבד (כמו Uber)' : '⁦Pet Wash™⁩ - Connector Platform Only (Like Uber)'}
+              {isHebrew ? '⁦Pet Wash™⁩ — פלטפורמת טכנולוגיה מקשרת בלבד' : '⁦Pet Wash™⁩ — Connector Technology Platform Only'}
             </p>
             <p className="luxury-text-small">
               {isHebrew ? 'עודכן לאחרונה: 29 באוקטובר 2025' : 'Last Updated: October 29, 2025'}
@@ -45,9 +45,9 @@ export default function PlatformLegalFramework() {
                 <div className="space-y-3 text-red-800 dark:text-red-300 font-medium">
                   <p className="text-lg leading-relaxed">
                     {isHebrew ? (
-                      <>Pet Wash Ltd היא <strong>פלטפורמת טכנולוגיה בלבד</strong> המקשרת בין לקוחות לספקי שירותים עצמאיים. אנו פועלים בדיוק כמו Uber, Airbnb, או DoorDash.</>
+                      <>Pet Wash Ltd היא <strong>פלטפורמת טכנולוגיה בלבד</strong> המקשרת בין לקוחות לספקי שירותים עצמאיים. אנו פועלים כפלטפורמת מקשרת לפי המודל הסטנדרטי בתעשיית ה-marketplace הדיגיטלי.</>
                     ) : (
-                      <>Pet Wash Ltd is a <strong>TECHNOLOGY PLATFORM ONLY</strong> that connects customers with independent service providers. We operate exactly like Uber, Airbnb, or DoorDash.</>
+                      <>Pet Wash Ltd is a <strong>TECHNOLOGY PLATFORM ONLY</strong> that connects customers with independent service providers. We operate as a connector platform under the standard digital marketplace model.</>
                     )}
                   </p>
                   <p className="text-lg leading-relaxed">
@@ -131,7 +131,7 @@ export default function PlatformLegalFramework() {
                   ⁦The Sitter Suite™⁩
                 </h3>
                 <p className="text-sm text-green-800 dark:text-green-300 mb-4">
-                  {isHebrew ? 'שוק Airbnb - עמלת תיווך 7%' : 'Airbnb-style marketplace - 7% broker commission'}
+                  {isHebrew ? 'שוק שמרטפות מאומתים — עמלת תיווך 7%' : 'Vetted sitter marketplace — 7% broker commission'}
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">

@@ -1,7 +1,7 @@
 /**
  * ISRAELI CONTRACTOR COMPLIANCE SERVICE
  * 
- * Implements marketplace broker model (like Airbnb) to avoid employee misclassification
+ * Implements marketplace broker model (marketplace platform) to avoid employee misclassification
  * Per Israeli Labor Law 2025: Independent contractors must demonstrate true independence
  * 
  * Key Features:
@@ -253,7 +253,7 @@ export class IsraeliContractorComplianceService {
       }
 
       // Calculate amounts (Israeli VAT Law - marketplace broker model)
-      // Commission is VAT-INCLUSIVE (like Airbnb/Uber): Customer payment already includes VAT
+      // Commission is VAT-INCLUSIVE (marketplace platform/on-demand platform): Customer payment already includes VAT
       const grossCommission = parseFloat((customerPaidAmount * (commissionRate / 100)).toFixed(2));
       const providerEarnings = parseFloat((customerPaidAmount - grossCommission).toFixed(2));
 

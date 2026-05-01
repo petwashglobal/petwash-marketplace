@@ -8,7 +8,7 @@
  * - Releases funds back to customer's card
  * - Maintains PCI DSS compliance (no unauthorized holds)
  * 
- * 2025 USA Competitor Standards (Uber, DoorDash, Airbnb):
+ * 2025 USA Competitor Standards (on-demand platform, marketplace platform, marketplace platform):
  * - Auto-release after timeout (typically 10-15 minutes)
  * - Customer notification
  * - Automatic refund processing

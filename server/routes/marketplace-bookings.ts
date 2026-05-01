@@ -1465,7 +1465,7 @@ router.get('/search/providers', async (req, res) => {
           return true;
         }
         // Walkers travel to the customer — match only if customer is within the walker's own service radius
-        // (the "Uber driver is near you" model: walker sets their territory, customer must be inside it)
+        // (the "on-demand platform driver is near you" model: walker sets their territory, customer must be inside it)
         if (r.serviceRadiusKm !== null && r.serviceRadiusKm > 0) {
           return r.distanceKm <= r.serviceRadiusKm;
         }

@@ -62,7 +62,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     id: "transport",
     shortName: "PetTrek",
     fullName: "PetTrek Transport",
-    tagLine: "Uber style pet rides with live tracking.",
+    tagLine: "On-demand pet rides with live tracking.",
     accent: "border-indigo-400 text-indigo-500",
     chipColor: "bg-indigo-50 text-indigo-600",
     description:

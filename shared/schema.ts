@@ -159,7 +159,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// ── User Saved Addresses (Uber-style address book) ──────────────────────────
+// ── User Saved Addresses (on-demand address book) ──────────────────────────
 export const userAddresses = pgTable("user_addresses", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 128 }).notNull(),
@@ -3998,7 +3998,7 @@ export type PetAvatar = typeof petAvatars.$inferSelect;
 // THE SITTER SUITE™ - Pet Sitting Marketplace
 // ========================================
 
-// Sitter Profiles (Marketplace Providers) - DEEP ONBOARDING LIKE AIRBNB
+// Sitter Profiles (Marketplace Providers) - DEEP ONBOARDING MARKETPLACE PLATFORM
 export const sitterProfiles = pgTable("sitter_profiles", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(), // Firebase UID
@@ -4028,7 +4028,7 @@ export const sitterProfiles = pgTable("sitter_profiles", {
   specializations: text("specializations").array(), // ["dogs", "cats", "exotic"]
   languagesSpoken: text("languages_spoken").array(), // ["Hebrew", "English", "Arabic"]
   
-  // Health & Safety (Like Airbnb host details)
+  // Health & Safety (marketplace platform host details)
   personalAllergies: text("personal_allergies"), // Sitter's own allergies (e.g., to certain pet foods)
   smokingStatus: varchar("smoking_status"), // non_smoker | smoker | outdoor_only
   hasOtherPets: boolean("has_other_pets").default(false),
@@ -4090,7 +4090,7 @@ export const sitterProfiles = pgTable("sitter_profiles", {
   
   serviceTypes: text("service_types").array(), // ["boarding", "daycare", "drop_in", "walking"]
   
-  // Availability Calendar (Like Airbnb calendar)
+  // Availability Calendar (marketplace platform calendar)
   availabilityCalendar: jsonb("availability_calendar").$type<Array<{
     date: string; // YYYY-MM-DD
     available: boolean;
@@ -4106,18 +4106,18 @@ export const sitterProfiles = pgTable("sitter_profiles", {
     sunday: { available: boolean; hours?: string };
   }>(),
   
-  // House Policies & Rules (Airbnb-style)
+  // House Policies & Rules (marketplace-style)
   housePolicies: jsonb("house_policies").$type<{
     maxPetsAtOnce: number;
     acceptsUnvaccinatedPets: boolean;
     acceptsPuppies: boolean; // Under 6 months
     acceptsSeniorPets: boolean; // Over 10 years
     acceptsSpecialNeeds: boolean;
-    cancellationPolicy: 'flexible' | 'moderate' | 'strict'; // Like Airbnb
+    cancellationPolicy: 'flexible' | 'moderate' | 'strict'; // marketplace platform
     additionalRules: string[];
   }>(),
   
-  // PROPERTY DETAILS (Airbnb-Level Discretion)
+  // PROPERTY DETAILS (marketplace platform-Level Discretion)
   propertyAmenities: jsonb("property_amenities").$type<{
     // Outdoor Space
     hasBackyard: boolean;
@@ -4172,7 +4172,7 @@ export const sitterProfiles = pgTable("sitter_profiles", {
     otherAnimalsDetails?: string;
   }>(),
   
-  // ENTRY INSTRUCTIONS (Like Airbnb Check-In Details)
+  // ENTRY INSTRUCTIONS (marketplace platform Check-In Details)
   entryInstructions: jsonb("entry_instructions").$type<{
     accessMethod: 'key' | 'lockbox' | 'smart_lock' | 'doorman' | 'host_greeting'; // How to enter property
     
@@ -4214,7 +4214,7 @@ export const sitterProfiles = pgTable("sitter_profiles", {
     additionalInstructions: string; // Free text for any other details
   }>(),
   
-  // HOUSE MANUAL (Like Airbnb Guidebook)
+  // HOUSE MANUAL (marketplace platform Guidebook)
   houseManual: jsonb("house_manual").$type<{
     // Appliances
     applianceInstructions?: string; // How to use washer/dryer, dishwasher, etc.
@@ -4321,7 +4321,7 @@ export const sitterBookings = pgTable("sitter_bookings", {
   sitterPayoutCents: integer("sitter_payout_cents").notNull(), // 85% of base (100% - 15%)
   totalChargeCents: integer("total_charge_cents").notNull(), // base + platform fee
   
-  // Payment Integration (NAYAX ONLY - Like Booking.com/Airbnb)
+  // Payment Integration (NAYAX ONLY - Like marketplace platform)
   nayaxTransactionId: varchar("nayax_transaction_id"), // Nayax payment transaction ID
   nayaxSplitPaymentId: varchar("nayax_split_payment_id"), // Nayax split payment reference
   paymentStatus: varchar("payment_status").default("pending"), // pending, captured, failed, refunded
@@ -4358,7 +4358,7 @@ export const sitterBookings = pgTable("sitter_bookings", {
   lastReassignedAt: timestamp("last_reassigned_at"),
 });
 
-// Sitter Reviews (Uber-style)
+// Sitter Reviews (on-demand)
 export const sitterReviews = pgTable("sitter_reviews", {
   id: serial("id").primaryKey(),
   bookingId: integer("booking_id").references(() => sitterBookings.id).notNull(),
@@ -5002,10 +5002,10 @@ export const insertWalkHealthDataSchema = createInsertSchema(walkHealthData).omi
 export type InsertWalkHealthData = z.infer<typeof insertWalkHealthDataSchema>;
 export type WalkHealthData = typeof walkHealthData.$inferSelect;
 
-// =================== PROVIDER ONBOARDING SYSTEM (UBER-STYLE) ===================
+// =================== PROVIDER ONBOARDING SYSTEM (ON-DEMAND) ===================
 // Invite codes and KYC verification for walkers, sitters, and station operators
 
-// PROVIDER INVITE CODES (Like Uber driver codes)
+// PROVIDER INVITE CODES (on-demand model driver codes)
 export const providerInviteCodes = pgTable("provider_invite_codes", {
   id: serial("id").primaryKey(),
   inviteCode: varchar("invite_code").unique().notNull(), // e.g., "WALKER-A8F3H9K2"
@@ -7246,7 +7246,7 @@ export type HandbookTask = typeof handbookTasks.$inferSelect;
 
 // =================== STAFF ONBOARDING & FRAUD PREVENTION SYSTEM ===================
 // Comprehensive onboarding for pet sitters, trainers, dog walkers, drivers, hosts
-// Modeled after Airbnb, Uber, Booking.com best practices
+// Modeled on industry-standard marketplace best practices
 // Includes fraud prevention, receipt verification, logbook tracking
 
 export const staffApplications = pgTable("staff_applications", {
@@ -7495,7 +7495,7 @@ export const franchiseOrders = pgTable("franchise_orders", {
   orderStatusIdx: index("idx_franchise_orders_order_status").on(table.orderStatus),
 }));
 
-// =================== JOB DISPATCH SYSTEM (UBER-STYLE) ===================
+// =================== JOB DISPATCH SYSTEM (ON-DEMAND) ===================
 
 export const jobOffers = pgTable("job_offers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -7508,7 +7508,7 @@ export const jobOffers = pgTable("job_offers", {
   customerId: varchar("customer_id").notNull(), // Firebase UID of customer
   customerName: varchar("customer_name"),
   
-  // Job Status (Uber-style flow)
+  // Job Status (on-demand flow)
   status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, offered, accepted, rejected, expired, cancelled
   
   // Service Details
@@ -7526,7 +7526,7 @@ export const jobOffers = pgTable("job_offers", {
   operatorPayout: decimal("operator_payout", { precision: 10, scale: 2 }).notNull(), // What operator receives
   currency: varchar("currency", { length: 10 }).default("ILS").notNull(),
   
-  // SLA Timestamps (Airbnb/Uber-level tracking)
+  // SLA Timestamps (marketplace platform/on-demand platform-level tracking)
   createdAt: timestamp("created_at").defaultNow(),
   offeredAt: timestamp("offered_at"),
   acceptedAt: timestamp("accepted_at"),
@@ -9158,7 +9158,7 @@ export const insertInventoryRefillSchema = createInsertSchema(inventoryRefills, 
 }).omit({ id: true, refilledAt: true });
 
 // ============================================================================
-// ISRAELI CONTRACTOR COMPLIANCE SYSTEM - Marketplace Model (Like Airbnb)
+// ISRAELI CONTRACTOR COMPLIANCE SYSTEM - Marketplace Model (marketplace platform)
 // ============================================================================
 
 export const providerTaxCompliance = pgTable("provider_tax_compliance", {

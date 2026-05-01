@@ -430,7 +430,7 @@ export default function SitterBooking() {
                   </div>
                 </div>
 
-                {/* Pricing Breakdown - Like Booking.com */}
+                {/* Pricing Breakdown — line-itemized, no surprises */}
                 {pricing && (
                   <Card className="luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-animate-scale-in luxury-delay-7">
                     <CardHeader>

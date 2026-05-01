@@ -1,7 +1,7 @@
 /**
  * ISRAELI CONTRACTOR COMPLIANCE API
  *
- * Handles marketplace broker model (like Airbnb/Uber) for Israeli contractor compliance
+ * Handles marketplace broker model (marketplace platform/on-demand platform) for Israeli contractor compliance
  * Prevents employee misclassification per Israeli Labor Law 2025
  *
  * AUTH MODEL:

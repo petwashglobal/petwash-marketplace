@@ -10133,7 +10133,7 @@ self.addEventListener('notificationclick', (event) => {
   // Global Special Days Promotions (Black Friday, Cyber Monday, Valentine's, Mother's/Father's Day)
   app.use('/api/promotions', apiLimiter, promotionsRoutes);
 
-  // Provider Flash Deals — limited-time discount windows (Airbnb/dynamic pricing style)
+  // Provider Flash Deals — limited-time discount windows (marketplace platform/dynamic pricing style)
   // Feature flag: FLASH_DEALS_ENABLED=true required to expose this API
   if (process.env.FLASH_DEALS_ENABLED === 'true') {
     app.use('/api/flash-deals', apiLimiter, flashDealsRoutes);
@@ -10454,7 +10454,7 @@ self.addEventListener('notificationclick', (event) => {
   // K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services
   app.use('/api/platforms', optionalFirebaseToken, apiLimiter, superAppBookingsRoutes);
   
-  // Job Offers - Uber/Airbnb-Style Job Dispatch System
+  // Job Offers - marketplace-style Job Dispatch System
   app.use('/api/job-offers', apiLimiter, jobOffersRoutes);
   
   // Provider Management (Sitters, Walkers, Drivers)
@@ -10522,7 +10522,7 @@ self.addEventListener('notificationclick', (event) => {
   const passportRoutes = (await import('./routes/passport')).default;
   app.use('/api/passport', validateFirebaseToken, apiLimiter, passportRoutes);
   
-  // Provider Onboarding (Uber-style invite codes & KYC verification)
+  // Provider Onboarding (on-demand invite codes & KYC verification)
   const providerOnboardingRoutes = (await import('./routes/provider-onboarding')).default;
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
 
@@ -10540,7 +10540,7 @@ self.addEventListener('notificationclick', (event) => {
   const { providerPhoneRouter } = await import('./routes/provider-phone');
   app.use('/api/provider/phone', apiLimiter, providerPhoneRouter);
 
-  // Provider Availability Calendar (Uber-style online/offline per day, bulk block, calendar sync)
+  // Provider Availability Calendar (on-demand online/offline per day, bulk block, calendar sync)
   const providerAvailabilityRoutes = (await import('./routes/provider-availability')).default;
   app.use('/api/provider-availability', validateFirebaseToken, apiLimiter, providerAvailabilityRoutes);
 
@@ -10558,7 +10558,7 @@ self.addEventListener('notificationclick', (event) => {
   // 🇮🇱 Israeli Government-Grade E-Signature (2025 Compliance - ES256, TSA, MFA)
   app.use('/api/israeli-2025-esign', apiLimiter, israeli2025EsignRoutes);
   
-  // Staff Onboarding & Fraud Prevention (Airbnb/Uber/Booking.com style)
+  // Staff Onboarding & Fraud Prevention (industry-standard marketplace style)
   registerStaffOnboardingRoutes(app);
   
   // SEO Routes (Sitemap & Robots.txt)

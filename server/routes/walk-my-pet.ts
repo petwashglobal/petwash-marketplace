@@ -490,7 +490,7 @@ router.post('/walks/book', requireAuth, async (req, res) => {
     // Generate bookingId
     const bookingId = `WALK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
-    // UBER-STYLE: Create booking in pending_provider status
+    // ON-DEMAND: Create booking in pending_provider status
     // Escrow and payment are NOT created until walker accepts
     const bookingData: InsertWalkBooking = {
       bookingId,
@@ -557,7 +557,7 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       console.warn('[Octopus Brain] Failed to record walk booking (non-blocking)', octopusErr);
     }
 
-    // Create alert for walker (Uber-style notification)
+    // Create alert for walker (on-demand notification)
     await db.insert(walkAlerts).values({
       alertId: `ALERT-${crypto.randomUUID()}`,
       bookingId: newBooking.bookingId,
@@ -616,7 +616,7 @@ router.post('/walks/book', requireAuth, async (req, res) => {
 
 /**
  * PATCH /api/walk-my-pet/bookings/:bookingId/provider-respond
- * Uber-style: Walker accepts or declines a walk request
+ * on-demand: Walker accepts or declines a walk request
  */
 router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, res) => {
   try {

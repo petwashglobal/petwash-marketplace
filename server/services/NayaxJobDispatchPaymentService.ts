@@ -1,7 +1,7 @@
 /**
  * NAYAX JOB DISPATCH PAYMENT SERVICE
  * 
- * Two-phase payment flow for Uber/Airbnb-style operator dispatch:
+ * Two-phase payment flow for marketplace-style operator dispatch:
  * 1. AUTHORIZE (Hold): When booking created → Hold customer's card (don't charge yet)
  * 2. CAPTURE: When operator accepts → Actually charge the held amount
  * 3. VOID: If no operator accepts or timeout → Release the hold

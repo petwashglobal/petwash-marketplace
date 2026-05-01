@@ -1,8 +1,8 @@
 /**
- * 🏆 PREMIUM LOYALTY ENGINE
- * 
- * World-class loyalty system with AI-powered personalization, gamification,
- * and multi-dimensional rewards. Inspired by Apple, Tesla, and Airbnb.
+ * 🏆 PETWASH PRESTIGE LOYALTY ENGINE
+ *
+ * Category-defining loyalty system with AI-powered personalization,
+ * gamification, and multi-dimensional rewards.
  */
 
 import { TIER_CONFIGS, type TierConfig } from '@shared/schema-loyalty';

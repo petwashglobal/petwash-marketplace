@@ -284,7 +284,7 @@ export default function WalkBookingFlow() {
       // Mark first booking as complete for push notification permission (Apple compliance)
       localStorage.setItem('petwash_first_booking_complete', 'true');
 
-      // Show pending match step for two-way consent (like Uber/Tinder matching)
+      // Show pending match step — both parties must consent before the walk is confirmed
       setStep("pending_match");
 
       toast({
@@ -715,7 +715,7 @@ export default function WalkBookingFlow() {
           </>
         )}
 
-        {/* Step 3: Pending Match (Two-Way Consent - Like Uber/Tinder) */}
+        {/* Step 3: Pending Match — both parties must consent before the walk is confirmed */}
         {step === "pending_match" && (
           <div className="text-center py-12 luxury-fade-in">
             <div className="w-24 h-24 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl animate-pulse">
@@ -746,7 +746,7 @@ export default function WalkBookingFlow() {
             
             <div className="luxury-glass-card p-4 max-w-sm mx-auto mb-6">
               <p className="luxury-text-small text-amber-700">
-                כמו Uber - שני הצדדים צריכים לאשר. המוליך/ה יקבל/תקבל התראה ויוכל/תוכל לאשר או לסרב. 
+                שני הצדדים צריכים לאשר את ההזמנה. המוליך/ה יקבל/תקבל התראה ויוכל/תוכל לאשר או לסרב.
                 תקבל/י עדכון בהודעה כשיהיה התאמה!
               </p>
             </div>

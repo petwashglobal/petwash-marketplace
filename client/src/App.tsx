@@ -412,7 +412,7 @@ const BookTrip = lazy(() => import("@/pages/pettrek/BookTrip"));
 const TrackTrip = lazy(() => import("@/pages/pettrek/TrackTrip"));
 const ProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard"));
 
-// ⁦The Sitter Suite™⁩ - Legal Documents (Airbnb-style compliance)
+// ⁦The Sitter Suite™⁩ - Legal Documents (marketplace platform compliance)
 const SitterPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const SitterTermsConditions = lazy(() => import("@/pages/legal/TermsConditions"));
 const SitterDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
@@ -1997,13 +1997,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         {/* Common routes available to all users */}
         <Route path="/about">{() => <About language={language} />}</Route>
-        <Route path="/divisions">
-          <Suspense fallback={<PageLoader />}>
-            <StandaloneDivisions />
-          </Suspense>
-        </Route>
-        <Route path="/platform">{() => <PlatformShowcase />}</Route>
-        <Route path="/showcase">{() => <PlatformShowcase />}</Route>
+        {/* Public business-model / comparison pages — withdrawn from public navigation.
+            Old bookmarks land on the homepage instead. The page components remain in the
+            codebase for internal pitch/investor use only. */}
+        <Route path="/divisions">{() => <Redirect to="/" />}</Route>
+        <Route path="/platform">{() => <Redirect to="/" />}</Route>
+        <Route path="/showcase">{() => <Redirect to="/" />}</Route>
         <Route path="/service-status">{() => <ServiceStatus language={language} />}</Route>
         <Route path="/status">{() => <ServiceStatus language={language} />}</Route>
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>

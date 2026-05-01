@@ -531,7 +531,7 @@ export interface FlowDParams {
  *
  * D1 — MARKETPLACE_COMMISSION:
  *   PetWash keeps commission; provider receives gross minus commission.
- *   VAT owed = VAT on commission only (Wolt / Uber model — סוכן בלתי מגולה).
+ *   VAT owed = VAT on commission only (broker model — סוכן בלתי מגולה).
  *
  * D2 — PRINCIPAL:
  *   PetWash is the seller; provider is sub-contractor.

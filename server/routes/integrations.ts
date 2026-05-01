@@ -83,7 +83,7 @@ router.get('/booking-com/listings', validateFirebaseToken, async (req, res) => {
 
     res.json({ success: true, listings });
   } catch (error: any) {
-    console.error('[Integrations] Error fetching Booking.com listings:', error);
+    console.error('[Integrations] Error fetching marketplace platform listings:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch listings' });
   }
 });
@@ -106,7 +106,7 @@ router.get('/booking-com/reservations', validateFirebaseToken, async (req, res) 
 
     res.json({ success: true, reservations });
   } catch (error: any) {
-    console.error('[Integrations] Error fetching Booking.com reservations:', error);
+    console.error('[Integrations] Error fetching marketplace platform reservations:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch reservations' });
   }
 });

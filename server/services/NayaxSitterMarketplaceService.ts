@@ -68,7 +68,7 @@ export class NayaxSitterMarketplaceService {
    * Platform receives: Total amount
    * Platform splits: 15% commission (kept), 85% held for sitter payout
    * 
-   * Like Booking.com/Airbnb model ✨
+   * Like marketplace platform model ✨
    */
   static async processBookingPayment(params: SitterBookingPaymentParams): Promise<{
     success: boolean;

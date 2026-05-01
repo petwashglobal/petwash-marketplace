@@ -1,6 +1,6 @@
 /**
  * Provider Flash Deals — Limited-time discount offers
- * Inspired by Airbnb/dynamic pricing model
+ * Inspired by marketplace platform/dynamic pricing model
  * Providers set a % discount valid for a configurable window (hours/days)
  * with slot limits per pet type (dog/cat/both)
  */

@@ -15,7 +15,7 @@ const router = express.Router();
  *   { mode: "direct", grossCollectedILS: 100 }
  *   → VAT on FULL amount: ₪100 × 18/118 = ₪15.25
  *
- * mode = "marketplace" — provider services (Wolt/Uber model, default)
+ * mode = "marketplace" — provider services (broker model, default)
  *   { mode: "marketplace", grossCollectedILS: 100, commissionRate: 0.15 }
  *   → VAT only on PetWash commission: ₪15 × 18/118 = ₪2.29
  *   → Provider must issue חשבונית מס for their ₪85

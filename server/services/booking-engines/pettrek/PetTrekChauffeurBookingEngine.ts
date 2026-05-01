@@ -1,7 +1,7 @@
 /**
  * PETTREK™ CHAUFFEUR BOOKING ENGINE
  * ==================================
- * Uber-style pet transport with driver matching and real-time dispatch
+ * on-demand pet transport with driver matching and real-time dispatch
  * 
  * Features:
  * - Multi-driver dispatch (top 3 nearest drivers simultaneously)
@@ -194,7 +194,7 @@ class PetTrekPostConfirmationStrategy implements PostConfirmationStrategy {
 
 /**
  * PetTrek™ Chauffeur Booking Engine
- * Uber-style pet transport with luxury features
+ * on-demand pet transport with luxury features
  */
 export class PetTrekChauffeurBookingEngine extends BaseLuxuryBookingEngine {
   constructor() {
@@ -207,7 +207,7 @@ export class PetTrekChauffeurBookingEngine extends BaseLuxuryBookingEngine {
 
   /**
    * Calculate fare estimate for route
-   * Like Uber - show price before booking
+   * on-demand model - show price before booking
    */
   async calculateFareEstimate(
     pickupLatitude: number,

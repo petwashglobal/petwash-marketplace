@@ -8,7 +8,7 @@
  * - Pet Trainers
  * - Station Hosts
  * 
- * Modeled after Airbnb, Uber, Booking.com best practices
+ * Modeled on industry-standard marketplace best practices
  */
 
 import { db } from '../db';

@@ -1,4 +1,4 @@
-// Provider Onboarding API Routes (Uber-style)
+// Provider Onboarding API Routes (on-demand)
 // Invite codes, KYC verification, and application management for walkers, sitters, station operators
 
 import { Router, Request, Response } from 'express';

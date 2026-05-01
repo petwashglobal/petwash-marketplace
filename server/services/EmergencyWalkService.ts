@@ -6,7 +6,7 @@
  * Features:
  * - 90-minute arrival guarantee (or best effort)
  * - Auto-matching with nearby available walkers
- * - Surge pricing during high demand (like Uber/Lyft)
+ * - Surge pricing during high demand (on-demand surge)
  * - WhatsApp Business notifications (Hebrew-first)
  * - Same commission: 15% platform commission, walker gets 85%
  * 
@@ -214,7 +214,7 @@ export class EmergencyWalkService {
   /**
    * Calculate surge pricing based on demand and time
    * 
-   * Surge Multipliers (like Uber/Lyft):
+   * Surge Multipliers (on-demand surge):
    * - Low demand: 1.0x (no surge)
    * - Medium demand: 1.25x
    * - High demand: 1.5x
