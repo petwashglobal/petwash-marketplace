@@ -1087,6 +1087,17 @@ export default function PrestigePassWallet() {
 
   const wallet: WalletData | null = walletData?.ok ? { pass: walletData.pass, balances: walletData.balances } : null;
 
+  // Tier gate — when the server says the user does NOT hold a prestige
+  // pass (ok=false on the wallet endpoint), redirect to /loyalty/join
+  // instead of showing a generic "could not load" error. Auth errors
+  // (401) still go through the existing sign-in path below.
+  useEffect(() => {
+    const is401 = (error as any)?.status === 401 || (error as any)?.message?.includes('401');
+    if (!isLoading && !is401 && walletData && walletData.ok === false) {
+      navigate('/loyalty/join?reason=prestige_required');
+    }
+  }, [isLoading, error, walletData, navigate]);
+
   const { data: loyaltyProfile } = useQuery<{
     currentStreak: number;
     longestStreak: number;

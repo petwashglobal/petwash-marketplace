@@ -63,8 +63,10 @@ interface PromoAdPopupProps {
   delayMs?: number;
 }
 
-// How long until auto-dismiss (ms)
-const AUTO_DISMISS_MS = 3000;
+// How long until auto-dismiss (ms). Was 3 s — too short, customer barely
+// saw the popup before it closed. Now 12 s with pause-on-hover so a user
+// who is reading the popup never gets it yanked away.
+const AUTO_DISMISS_MS = 12000;
 // localStorage key stores the timestamp of last display; skip if < 24 h ago
 const SUPPRESS_DURATION_MS = 24 * 60 * 60 * 1000;
 
@@ -79,6 +81,9 @@ export function PromoAdPopup({
   delayMs = 500 
 }: PromoAdPopupProps) {
   const [isVisible, setIsVisible] = useState(false);
+  // Pause-on-hover — when the cursor or finger is over the popup card,
+  // the auto-dismiss timer is suspended. Restarts when the pointer leaves.
+  const [isHovered, setIsHovered] = useState(false);
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const prefersReducedMotion = useReducedMotion();
@@ -114,7 +119,9 @@ export function PromoAdPopup({
     }
   }, [config.id, showOnce]);
 
-  // Escape key, auto-dismiss, scroll lock — all active while popup is visible
+  // Escape key, auto-dismiss (pause-on-hover), scroll lock — all active
+  // while popup is visible. The auto-dismiss timer is REPLACED whenever
+  // hover state changes, so hovering pauses and unhovering restarts.
   useEffect(() => {
     if (!isVisible) return;
 
@@ -124,8 +131,11 @@ export function PromoAdPopup({
     document.body.style.overflow = 'hidden';
     document.body.style.touchAction = 'none';
 
-    // Auto-dismiss — passes 'auto' so the 24 h localStorage stamp is NOT set
-    const autoDismiss = setTimeout(() => handleClose('auto'), AUTO_DISMISS_MS);
+    // Auto-dismiss — passes 'auto' so the 24 h localStorage stamp is NOT set.
+    // Skipped while user is hovering / touching the card (pause-on-hover).
+    const autoDismiss = isHovered
+      ? null
+      : setTimeout(() => handleClose('auto'), AUTO_DISMISS_MS);
 
     // Keyboard escape — counts as user dismissal
     const onKeyDown = (e: KeyboardEvent) => {
@@ -136,10 +146,10 @@ export function PromoAdPopup({
     return () => {
       document.body.style.overflow = prevOverflow;
       document.body.style.touchAction = prevTouchAction;
-      clearTimeout(autoDismiss);
+      if (autoDismiss) clearTimeout(autoDismiss);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [isVisible, handleClose]);
+  }, [isVisible, isHovered, handleClose]);
 
   const handleCtaClick = () => {
     handleClose();
@@ -196,7 +206,9 @@ export function PromoAdPopup({
             onClick={handleClose}
           />
           
-          {/* Card — full-screen on mobile, floating card on md+ */}
+          {/* Card — full-screen on mobile, floating card on md+
+              Pause-on-hover/touch suspends the auto-dismiss timer so a
+              user reading the popup never gets it yanked away. */}
           <motion.div
             {...cardVariants}
             transition={{ duration: transitionDuration, delay: cardTransitionDelay }}
@@ -205,6 +217,10 @@ export function PromoAdPopup({
             // overflow-y-auto ensures content is reachable in landscape without clipping.
             className="relative w-full h-full md:w-[95%] md:max-w-4xl md:rounded-3xl overflow-y-auto overflow-x-hidden shadow-2xl"
             style={{ maxHeight: '100dvh' }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onTouchStart={() => setIsHovered(true)}
+            onTouchEnd={() => setIsHovered(false)}
           >
             {/* Close button — safe-area aware so it's always tappable */}
             <button
