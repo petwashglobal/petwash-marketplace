@@ -322,7 +322,21 @@ export async function postLoginDecider(req: Request, res: Response) {
       } as PostLoginResponse);
     }
 
-    const { intent } = req.body || {};
+    // Phase A — fall back to the HttpOnly cookie (set by /api/auth/seed-intent
+    // BEFORE the Firebase OAuth redirect) when the body intent is missing.
+    // This survives Safari ITP and slow OAuth roundtrips that wipe localStorage.
+    // Body intent (if present) still wins — explicit caller intent is canonical.
+    const bodyIntent = (req.body || {}).intent;
+    const cookieIntent = (req as any).cookies?.pw_signup_intent;
+    const intent = bodyIntent || cookieIntent || undefined;
+    if (!bodyIntent && cookieIntent) {
+      logger.info('[PostLogin] Intent recovered from HttpOnly cookie (Phase A)', {
+        userId: (user as any).id,
+        intent: cookieIntent,
+      });
+      // Clear the cookie now that it has been consumed.
+      try { (res as any).clearCookie('pw_signup_intent', { path: '/' }); } catch { /* non-fatal */ }
+    }
     let userRole = (user as any).role || null;
 
     if (intent && REJECTED_INTENTS.includes(intent)) {
@@ -728,14 +742,13 @@ export async function chooseRole(req: Request, res: Response) {
       });
     }
 
-    const nextUrl = intent === 'loyalty' ? '/complete-profile' : '/home';
-    return res.json({
-      ok: true,
-      nextUrl,
-      role: assignedRole,
-      userStatus: 'profile_incomplete',
-      reason: 'OK',
-    });
+    // Phase I — for the customer / loyalty paths (no secondary table to
+    // create), delegate to the canonical post-login decider so the
+    // returned nextUrl is computed by ONE function. Provider + staff
+    // paths above already return their own canonical destinations
+    // (the secondary tables they create only make sense from this
+    // handler).
+    return await postLoginDecider(req, res);
   } catch (error: any) {
     logger.error(`[ChooseRole] Error: ${error.message}`, { error });
     return res.status(500).json({ error: "INTERNAL_ERROR" });
@@ -789,6 +802,22 @@ export async function approveAccess(req: Request, res: Response) {
         decidedAt: now,
         decidedBy: approverEmail,
       } as any);
+    }
+
+    // Phase B — sync Firebase customClaims so rbac.ts middleware reads
+    // the correct role on the next request without the user having to
+    // re-login. Non-blocking on Firebase failures.
+    try {
+      const { syncFirebaseClaims } = await import('../lib/syncFirebaseClaims');
+      await syncFirebaseClaims(targetUserId, {
+        role,
+        accountType: 'internal',
+        staffApprovedAt: now.toISOString(),
+      });
+    } catch (claimsErr: any) {
+      logger.warn('[AdminApproval] Firebase claims sync failed (non-blocking)', {
+        targetUserId, error: claimsErr?.message,
+      });
     }
 
     logger.info(`[AdminApproval] ${approverEmail} approved ${targetUserId} as ${role} (userStatus→staff_active, mfaRequired→true)`);
@@ -903,5 +932,44 @@ export async function completeProfile(req: Request, res: Response) {
   } catch (error: any) {
     logger.error(`[CompleteProfile] Error: ${error.message}`, { error });
     return res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+}
+
+/**
+ * Phase A — Seed signup intent in a server-set HttpOnly cookie BEFORE
+ * the Firebase OAuth redirect.
+ *
+ * The only pre-login intent storage today is `localStorage.signup_intent`.
+ * Safari ITP + slow mobile networks can wipe it during the OAuth
+ * roundtrip — user lands on /home instead of /provider-onboarding.
+ *
+ * This endpoint writes the intent to an HttpOnly cookie that survives
+ * the redirect. postLoginDecider reads `req.cookies.pw_signup_intent`
+ * as a FALLBACK when no body intent is provided.
+ *
+ * Public — no auth required (the user is not yet signed in).
+ */
+export async function seedIntent(req: Request, res: Response) {
+  try {
+    const intent = String(((req as any).body || {}).intent || '').trim();
+    if (!ALLOWED_INTENTS.includes(intent as any)) {
+      return res.status(400).json({
+        error: 'INVALID_INTENT',
+        allowed: ALLOWED_INTENTS,
+      });
+    }
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('pw_signup_intent', intent, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      maxAge: 30 * 60 * 1000,
+      path: '/',
+    });
+    logger.info('[SeedIntent] Intent cookie set', { intent, ip: getClientIP(req) });
+    return res.json({ ok: true, intent });
+  } catch (error: any) {
+    logger.error(`[SeedIntent] Error: ${error.message}`, { error });
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 }

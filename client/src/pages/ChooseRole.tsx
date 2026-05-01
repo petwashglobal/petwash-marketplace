@@ -1,31 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2, Paw, Briefcase, ChevronDown } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
+import { SIGNUP_INTENT, type SignupIntent } from "@shared/lib/onboardingIntent";
 
-const AUTO_PROCEED_SECONDS = 10;
+// Phase D — explicit pick. The previous 10-second auto-customer
+// countdown silently assigned `customer` to anyone who paused. Users
+// on slow devices, accessibility readers, or who simply paused to
+// read got the wrong role with no second chance. The page now waits
+// for an explicit click.
 
 export default function ChooseRole() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
   const [showStaff, setShowStaff] = useState(false);
-  const [countdown, setCountdown] = useState(AUTO_PROCEED_SECONDS);
   const lang = localStorage.getItem("i18nextLng") || "he";
   const isHe = lang === "he";
 
-  // Auto-proceed as customer after countdown — 95%+ of new users are customers
-  useEffect(() => {
-    if (loading) return;
-    if (countdown <= 0) {
-      handleChoice("customer");
-      return;
-    }
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown, loading]);
-
-  const handleChoice = async (intent: "customer" | "provider" | "staff_request") => {
+  const handleChoice = async (intent: SignupIntent) => {
     if (loading) return;
     setLoading(intent);
     try {
@@ -69,15 +62,15 @@ export default function ChooseRole() {
           </p>
         </div>
 
-        {/* Primary CTA — Book services */}
+        {/* Primary CTA — Book services. Explicit pick — no countdown. */}
         <button
           disabled={busy}
-          onClick={() => handleChoice("customer")}
+          onClick={() => handleChoice(SIGNUP_INTENT.CUSTOMER)}
           className="w-full group relative bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black rounded-2xl p-5 text-start transition-all shadow-lg hover:shadow-amber-500/20 disabled:opacity-70"
         >
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 bg-black/10 rounded-xl p-3">
-              {loading === "customer"
+              {loading === SIGNUP_INTENT.CUSTOMER
                 ? <Loader2 className="h-7 w-7 animate-spin" />
                 : <span className="text-2xl">🛁</span>}
             </div>
@@ -91,32 +84,18 @@ export default function ChooseRole() {
                   : "Washing · Grooming · Sitting · Walking · and more"}
               </p>
             </div>
-            {!loading && (
-              <span className="text-xs text-black/40 font-medium shrink-0">
-                {isHe ? `${countdown}ש` : `${countdown}s`}
-              </span>
-            )}
           </div>
-          {/* Auto-proceed progress bar */}
-          {!loading && (
-            <div className="absolute bottom-0 left-0 h-1 bg-black/10 rounded-b-2xl overflow-hidden w-full">
-              <div
-                className="h-full bg-black/20 transition-all duration-1000 ease-linear"
-                style={{ width: `${((AUTO_PROCEED_SECONDS - countdown) / AUTO_PROCEED_SECONDS) * 100}%` }}
-              />
-            </div>
-          )}
         </button>
 
         {/* Secondary option — Become a provider */}
         <button
           disabled={busy}
-          onClick={() => handleChoice("provider")}
+          onClick={() => handleChoice(SIGNUP_INTENT.PROVIDER)}
           className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white rounded-2xl p-5 text-start transition-all disabled:opacity-70"
         >
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 bg-white/5 rounded-xl p-3">
-              {loading === "provider"
+              {loading === SIGNUP_INTENT.PROVIDER
                 ? <Loader2 className="h-7 w-7 animate-spin text-white" />
                 : <Briefcase className="h-7 w-7 text-amber-400" />}
             </div>
@@ -135,7 +114,7 @@ export default function ChooseRole() {
         {!showStaff ? (
           <button
             className="w-full text-center text-gray-600 hover:text-gray-400 text-sm py-2 transition-colors"
-            onClick={() => { setCountdown(999); setShowStaff(true); }}
+            onClick={() => setShowStaff(true)}
           >
             <span className="inline-flex items-center gap-1">
               {isHe ? "עובד PetWash? לחץ כאן" : "PetWash employee? Click here"}
@@ -145,12 +124,12 @@ export default function ChooseRole() {
         ) : (
           <button
             disabled={busy}
-            onClick={() => handleChoice("staff_request")}
+            onClick={() => handleChoice(SIGNUP_INTENT.STAFF)}
             className="w-full bg-white/5 hover:bg-white/8 border border-white/5 text-gray-400 rounded-2xl p-4 text-start transition-all disabled:opacity-70"
           >
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 bg-white/5 rounded-xl p-2.5">
-                {loading === "staff_request"
+                {loading === SIGNUP_INTENT.STAFF
                   ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                   : <span className="text-lg">🪪</span>}
               </div>

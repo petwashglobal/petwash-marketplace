@@ -100,27 +100,9 @@ async function saveRefreshToken(userId: string, token: string, deviceId?: string
   });
 }
 
-// POST /api/auth/register - DEPRECATED (2026)
-// All registration goes through Firebase Auth + /api/users/create-profile
-router.post("/register", (_req, res) => {
-  console.warn('[DEPRECATED] /api/auth/register called - endpoint removed. Use Firebase Auth + /api/users/create-profile');
-  return res.status(410).json({
-    error: "ENDPOINT_DEPRECATED",
-    message: "This endpoint is deprecated. Use Firebase Auth for registration, then POST /api/users/create-profile.",
-    redirect: "/signup",
-  });
-});
-
-// POST /api/auth/login - DEPRECATED (2026)
-// All sign-in goes through Firebase Auth + /api/auth/session
-router.post("/login", (_req, res) => {
-  console.warn('[DEPRECATED] /api/auth/login called - endpoint removed. Use Firebase Auth + /api/auth/session');
-  return res.status(410).json({
-    error: "ENDPOINT_DEPRECATED",
-    message: "This endpoint is deprecated. Use Firebase Auth for sign-in.",
-    redirect: "/signin",
-  });
-});
+// Legacy POST /api/auth/register and POST /api/auth/login were 410-stubs
+// pointing at /signup and /signin. They have been removed in Phase F.
+// Frontend uses Firebase Auth client SDK + /api/auth/post-login.
 
 // POST /api/auth/refresh
 // Refresh access token using refresh token (biometric unlock or silent refresh)
