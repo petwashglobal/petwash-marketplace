@@ -18,6 +18,7 @@ import { resolveStationRole } from "../middleware/stationAuth";
 import { bookingLimiter } from "../middleware/rateLimiter";
 import { bookingPolicyEngine } from "../services/BookingPolicyEngine";
 import { dispatchNotifications, buildBookingCancelledSms } from "../services/PetWashNotificationEngine";
+import { calendarIntegrationService } from "../services/CalendarIntegrationService";
 
 const router = express.Router();
 
@@ -738,6 +739,19 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       cancellationReason: reason || "User requested",
       refundAmount: netRefundILS,
       refundPolicy: cancellationResult.policyTier,
+    });
+
+    // 6b. Calendar sync on CANCEL (Phase B1) — remove the Google Calendar
+    // event so the provider's calendar doesn't keep a stale invite.
+    // Non-blocking: any failure is logged and swallowed.
+    setImmediate(async () => {
+      try {
+        await calendarIntegrationService.deleteBookingEvent(bookingId);
+      } catch (calErr: any) {
+        logger.warn("[Bookings] Calendar delete failed on cancel (non-blocking)", {
+          bookingId, error: calErr?.message,
+        });
+      }
     });
 
     // 7. Credit wallet for non-escrow refund (pet-wash-hub and walk-my-pet cash payments — runs only after processor confirmed above)

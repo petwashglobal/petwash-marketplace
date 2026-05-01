@@ -799,6 +799,18 @@ router.post('/:bookingId/cancel', async (req, res) => {
       reason || 'Booking cancelled'
     );
 
+    // Calendar sync on CANCEL (Phase B1) — non-blocking, idempotent.
+    setImmediate(async () => {
+      try {
+        const { calendarIntegrationService } = await import('../services/CalendarIntegrationService');
+        await calendarIntegrationService.deleteBookingEvent(bookingId);
+      } catch (calErr: any) {
+        logger.warn('[MarketplaceBookings] Calendar delete failed on cancel (non-blocking)', {
+          bookingId, error: calErr?.message,
+        });
+      }
+    });
+
     res.json({ success: true, status: 'cancelled' });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Cancel error', { error: error.message });
