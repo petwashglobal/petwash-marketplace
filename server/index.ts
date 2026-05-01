@@ -1176,6 +1176,7 @@ if (isProduction) {
     import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
     import('./services/JobExpiryNotificationService').then(m => m.jobExpiryNotificationService.start()).catch(() => {});
     import('./jobs/booking-expiry').then(m => m.startBookingExpiryPoller()).catch(() => {});
+    import('./jobs/booking-accept-timeout').then(m => m.startAcceptTimeoutPoller()).catch(() => {});
     import('./jobs/rebook-scheduler').then(m => m.startRebookScheduler()).catch(() => {});
     import('./services/providerMonitoring').then(m => m.startProviderMonitoringWatchdog()).catch((e) => console.error('[ProviderWatchdog] Failed to initialize:', e));
     import('./jobs/exception-email').then(m => m.startExceptionEmailJob()).catch((e) => console.error('[ExceptionEmail] Failed to initialize:', e));
