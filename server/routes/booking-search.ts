@@ -36,6 +36,22 @@ import {
 import { eq, and, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { aliasesForCity } from '@shared/lib/address';
+
+/**
+ * Build a Drizzle SQL OR clause that ilikes the given column against every
+ * Hebrew + English spelling of a city. Closes the silent-mismatch bug
+ * where a customer typed 'רמת גן' but the provider's city was stored as
+ * 'Ramat Gan' (or vice versa).
+ *
+ * Returns null when the input is empty (caller should skip the filter).
+ */
+function cityAliasIlike(column: any, raw: string | null | undefined) {
+  const aliases = aliasesForCity(raw);
+  if (aliases.length === 0) return null;
+  const conds = aliases.map(a => ilike(column, `%${a}%`));
+  return conds.length === 1 ? conds[0] : or(...conds);
+}
 
 const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
 const router = Router();
@@ -396,17 +412,17 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
 
     const conditions = [eq(sitterProfiles.isActive, true)];
 
-    // Text-based city/area filter (applied even when coords present, as a secondary constraint)
+    // Text-based city/area filter (applied even when coords present, as a secondary constraint).
+    // Uses Hebrew↔English aliases (e.g. 'רמת גן' === 'Ramat Gan') so a Hebrew
+    // user typing in Hebrew matches providers whose city is stored in English.
     if (!hasCoords && filters.city) {
-      conditions.push(ilike(sitterProfiles.city, `%${filters.city}%`));
+      const cond = cityAliasIlike(sitterProfiles.city, filters.city);
+      if (cond) conditions.push(cond);
     }
     if (!hasCoords && filters.area) {
-      conditions.push(
-        or(
-          ilike(sitterProfiles.city, `%${filters.area}%`),
-          ilike(sitterProfiles.streetAddress, `%${filters.area}%`),
-        )!,
-      );
+      const cityCond = cityAliasIlike(sitterProfiles.city, filters.area);
+      const streetCond = ilike(sitterProfiles.streetAddress, `%${filters.area}%`);
+      conditions.push(cityCond ? or(cityCond, streetCond)! : streetCond);
     }
 
     if (filters.minRating && filters.minRating > 0) {
@@ -594,7 +610,8 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
     const conditions = [eq(walkerProfiles.isActive, true)];
 
     if (!hasCoords && filters.city) {
-      conditions.push(ilike(walkerProfiles.city, `%${filters.city}%`));
+      const cond = cityAliasIlike(walkerProfiles.city, filters.city);
+      if (cond) conditions.push(cond);
     }
 
     if (filters.minRating && filters.minRating > 0) {
