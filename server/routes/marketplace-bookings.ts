@@ -24,8 +24,29 @@ import { requireIdempotency, requireStrictIdempotency } from '../middleware/idem
 import bookingLifecycleService from '../services/BookingLifecycleService';
 import { EmailService } from '../emailService';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
+import type { Request, Response, NextFunction } from 'express';
 
 const router = Router();
+
+/**
+ * Route-level requireAuth (Phase B7).
+ *
+ * Mount middleware on this router is `optionalFirebaseToken` so public
+ * endpoints (`/quote`, `/search/providers`, public rate-cards, public
+ * availability lookups) keep working without a token. Authenticated
+ * endpoints must declare this middleware in their route signature so
+ * the auth check runs in middleware, not as `if (!userId)` inside the
+ * handler. Defense-in-depth: the inside-handler check stays as a
+ * second line of defence.
+ */
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const userId = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+  if (!userId) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  next();
+}
 
 // ---------------------------------------------------------------------------
 // P0-FIX: Booking ownership enforcement
@@ -174,7 +195,7 @@ router.post('/quote', async (req, res) => {
   }
 });
 
-router.post('/create', requireIdempotency, async (req, res) => {
+router.post('/create', requireAuth, requireIdempotency, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -219,7 +240,7 @@ router.post('/create', requireIdempotency, async (req, res) => {
   }
 });
 
-router.post('/:quoteId/checkout', requireStrictIdempotency, async (req, res) => {
+router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (req, res) => {
   try {
     const { quoteId } = req.params;
     const userId = req.user?.uid || req.firebaseUser?.uid;
@@ -560,7 +581,7 @@ router.post('/:quoteId/checkout', requireStrictIdempotency, async (req, res) => 
   }
 });
 
-router.get('/my-bookings', async (req, res) => {
+router.get('/my-bookings', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -583,7 +604,7 @@ router.get('/my-bookings', async (req, res) => {
   }
 });
 
-router.get('/:bookingId', async (req, res) => {
+router.get('/:bookingId', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -608,7 +629,7 @@ router.get('/:bookingId', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/transition', async (req, res) => {
+router.post('/:bookingId/transition', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -655,7 +676,7 @@ router.post('/:bookingId/transition', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/confirm', async (req, res) => {
+router.post('/:bookingId/confirm', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -686,7 +707,7 @@ router.post('/:bookingId/confirm', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/start', async (req, res) => {
+router.post('/:bookingId/start', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -719,7 +740,7 @@ router.post('/:bookingId/start', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/complete', async (req, res) => {
+router.post('/:bookingId/complete', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -776,7 +797,7 @@ router.post('/:bookingId/complete', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/cancel', async (req, res) => {
+router.post('/:bookingId/cancel', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -818,7 +839,7 @@ router.post('/:bookingId/cancel', async (req, res) => {
   }
 });
 
-router.get('/:bookingId/history', async (req, res) => {
+router.get('/:bookingId/history', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -842,7 +863,7 @@ router.get('/:bookingId/history', async (req, res) => {
   }
 });
 
-router.get('/:bookingId/escrow', async (req, res) => {
+router.get('/:bookingId/escrow', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -1457,7 +1478,7 @@ router.get('/provider/:providerId/availability', async (req, res) => {
 });
 
 // Provider updates their availability
-router.post('/provider/:providerId/availability', async (req, res) => {
+router.post('/provider/:providerId/availability', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -1524,7 +1545,7 @@ router.post('/provider/:providerId/availability', async (req, res) => {
 });
 
 // Provider creates/updates their rate card
-router.post('/provider/rate-card', async (req, res) => {
+router.post('/provider/rate-card', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {

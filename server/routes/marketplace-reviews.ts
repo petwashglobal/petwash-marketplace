@@ -30,6 +30,7 @@ import { eq, and, desc, sql, count } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { computeAndPersistRankingScore } from './marketplace-ranking';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 
 const router = Router();
 
@@ -167,7 +168,7 @@ async function computeProviderQualityScore(providerId: string): Promise<{
 }
 
 // ─── POST /api/marketplace-reviews ──────────────────────────────────────────
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const uid = await requireAuth(req, res);
     if (!uid) return;
@@ -387,7 +388,7 @@ router.get('/provider/:providerId', async (req: Request, res: Response) => {
 });
 
 // ─── GET /api/marketplace-reviews/my-reviews ────────────────────────────────
-router.get('/my-reviews', async (req: Request, res: Response) => {
+router.get('/my-reviews', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const uid = await requireAuth(req, res);
     if (!uid) return;
