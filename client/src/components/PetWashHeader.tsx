@@ -240,15 +240,37 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   onLanguageChange: controlledOnLanguageChange 
 }) => {
   const { user, loading, logout } = useFirebaseAuth();
-  const { getAccountRoute } = useAccountNavigation();
+  const { resolveAccountRoute } = useAccountNavigation();
+  const [isResolvingProfile, setIsResolvingProfile] = useState(false);
 
-  /** Navigate to the user's account destination. No-ops while auth is loading
-   *  (getAccountRoute returns '#' during loading) so we never send a logged-in
-   *  user to /signin due to a race between the click and Firebase resolving. */
-  const handleProfileNavigate = () => {
-    const route = getAccountRoute();
-    if (route === '#') return;
-    handleNavigate(route);
+  /**
+   * Navigate to the user's account destination. The gold profile icon must
+   * NEVER feel dead — even before Firebase auth has resolved on iPhone Safari
+   * (where ITP cookie partitioning can delay claim propagation by seconds).
+   *
+   * resolveAccountRoute() returns a real route in every case:
+   *   - waits up to 1.5s for auth to settle
+   *   - tries claims-based fast path
+   *   - falls back to POST /api/auth/post-login (Bearer + cookie)
+   *   - safe default '/home' if everything else fails
+   */
+  const handleProfileNavigate = async () => {
+    if (isResolvingProfile) return; // already in flight — debounce double-tap
+    setIsResolvingProfile(true);
+    try {
+      const route = await resolveAccountRoute();
+      handleNavigate(route);
+    } catch (err) {
+      // resolveAccountRoute is itself failure-tolerant — but belt + braces:
+      // a thrown exception still lands the user somewhere they can navigate.
+      console.error('[handleProfileNavigate] unexpected error', err);
+      handleNavigate('/home');
+    } finally {
+      // window.location.assign typically unloads the page before this runs.
+      // Reset state in case navigation was cancelled (e.g., service-worker
+      // intercept) so a future click is not stuck "in flight" forever.
+      setIsResolvingProfile(false);
+    }
   };
 
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
@@ -489,11 +511,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <button
               type="button"
               className="pw-header-profile-btn"
-              style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+              style={{ touchAction: 'manipulation', cursor: 'pointer' }}
               onClick={handleProfileNavigate}
               aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
-              aria-busy={loading || undefined}
-              aria-disabled={loading || undefined}
+              aria-busy={(loading || isResolvingProfile) || undefined}
               data-testid="button-header-profile"
             >
               <div className="pw-header-profile-circle">
@@ -611,10 +632,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           <button
             type="button"
             className="pw-account-btn"
-            style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={handleProfileNavigate}
-            aria-busy={loading || undefined}
-            aria-disabled={loading || undefined}
+            aria-busy={(loading || isResolvingProfile) || undefined}
+            data-testid="button-mobile-account-gold"
           >
             <div className="pw-account-circle">
               <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
@@ -748,10 +769,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 <button
                   type="button"
                   className="pw-mobile-link"
-                  style={{ touchAction: 'manipulation', cursor: loading ? 'default' : 'pointer' }}
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={handleProfileNavigate}
-                  aria-busy={loading || undefined}
-                  aria-disabled={loading || undefined}
+                  aria-busy={(loading || isResolvingProfile) || undefined}
+                  data-testid="button-mobile-menu-account"
                 >
                   {t("mydashboard", currentLanguage)}
                 </button>
