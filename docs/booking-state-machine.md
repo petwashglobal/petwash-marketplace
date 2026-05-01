@@ -4,6 +4,49 @@ This document is the single source of truth for booking lifecycle in the
 PetWash marketplace. Use it when adding, fixing, or auditing any booking
 endpoint. If the code disagrees with this doc, fix the code.
 
+## What is in scope
+
+This document covers the **marketplace booking lifecycle** for human-
+provided services: pet sitting, dog walking, training, transport, and
+grooming. Each booking has a customer, a provider, a quote, an accept/
+decline cycle, payment escrow, completion, and review.
+
+## What is NOT in scope — K9000 self-service kiosk
+
+K9000 dual-bay Pet Wash stations are **self-service physical kiosks**
+and are **NOT** part of the marketplace booking lifecycle. Do not
+build appointment / accept / cancel / dispute logic for K9000.
+
+   K9000 model (this is the only correct way to describe it):
+   • Customer arrives at a station — no reservation, no scheduling.
+   • Two bays operate independently. "Capacity" = bay availability,
+     not a calendar of bookings.
+   • Public users tap card / Apple Pay / Google Pay at the Nayax
+     terminal mounted on the central column. No PetWash account
+     required (works like a parking meter).
+   • Registered users redeem credit / loyalty / e-gift / voucher
+     by scanning a mobile QR or entering a numeric code on the
+     keypad — fulfilled through the Nayax QR reader.
+   • Wash session is started by the cycle keypad, not by a server-
+     side state-machine transition.
+
+   What this means for code:
+   • K9000 stations live in `k9000_wash_stations` (their own table).
+     They do NOT use `booking_requests`.
+   • The `'k9000'` value in the legacy `providerType` enum exists for
+     reporting only. New marketplace booking code MUST NOT add K9000
+     to its accept / cancel / dispute paths.
+   • Phase B6 customer address snapshot columns on `booking_requests`
+     are deliberately scoped to marketplace flows. K9000 sessions do
+     not need a customer address — the customer is physically at the
+     station, by definition.
+   • Nayax + QR redemption code lives in the wallet/payment service
+     layer (`server/services/WalletService.ts`,
+     `server/routes/credit-wallet.ts`,
+     `server/routes/nayax-payments.ts`). That code path is
+     INTENTIONALLY separate from the booking state machine and must
+     stay separate.
+
 ## Stores
 
 PetWash currently has multiple booking stores. Going forward, **Postgres
@@ -16,6 +59,7 @@ trainer, driver). Other tables exist for historical reasons:
 | `sitter_bookings` (Postgres, `shared/schema.ts:4307`) | Legacy sitter flow | Read-only / migrating |
 | `walk_bookings` (Postgres, `shared/schema.ts:4683`) | Legacy walker flow | Read-only / migrating |
 | `bookings` Firestore collection (`server/routes/bookings.ts`) | Generic | Should be reconciled against Postgres |
+| `k9000_wash_stations` (Postgres) | **Self-service kiosk capacity (NOT bookings)** | Out of scope for this doc |
 
 All conflict checks, availability queries, and reporting **must** consult
 `booking_requests` (and the legacy tables until migration completes).
