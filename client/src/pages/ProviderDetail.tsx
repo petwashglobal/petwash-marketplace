@@ -10,6 +10,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
 import { useProviderDetails, useProviderReviews } from '@/services/marketplace';
+import { InsuranceTrustChip } from '@/components/marketplace/InsuranceTrustChip';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
   Clock, DollarSign, MessageCircle, Phone, Mail,
@@ -285,6 +286,9 @@ export default function ProviderDetail() {
                     </div>
                   </div>
                 </div>
+
+                {/* Insurance trust row — booked through PetWash → automatically covered */}
+                <InsuranceTrustChip variant="row" isHebrew={isHebrew} />
 
                 {/* Trust Metrics Section */}
                 {(trustStats?.trustScore != null || trustStats?.acceptanceRatePct != null || (trustStats?.badges && trustStats.badges.length > 0)) && (

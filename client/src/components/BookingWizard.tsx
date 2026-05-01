@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { cn } from '@/lib/utils';
+import { InsuranceTrustChip } from '@/components/marketplace/InsuranceTrustChip';
 
 export type PlatformType = 'sitter' | 'walker' | 'pettrek';
 
@@ -732,6 +733,9 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                 {isHebrew ? 'המחיר הסופי ייקבע לאחר בחירת קבלן' : 'Final price after contractor selection'}
               </p>
             </div>
+
+            {/* Insurance — every booking through PetWash is automatically covered */}
+            <InsuranceTrustChip variant="card" isHebrew={isHebrew} />
           </div>
         );
 

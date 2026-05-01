@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { InsuranceTrustChip } from "@/components/marketplace/InsuranceTrustChip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1388,6 +1389,8 @@ function ConfirmStep({
         <Shield className="w-3 h-3 inline mr-1" />
         ההזמנה תאושר רק לאחר אישור נותן השירות
       </p>
+
+      <InsuranceTrustChip variant="card" isHebrew={true} />
       </div>
     </div>
   );
