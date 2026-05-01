@@ -1,5 +1,11 @@
 node_modules
 # dist - REMOVED: Must be included in Cloud Run deployments (built before deploy)
+# But: dist/**/*.map source maps publish full server+client source to anyone
+# who reads dist/public/. Block them at .gitignore so future builds do not
+# regress. Vite's `sourcemap: 'hidden'` mode still EMITS .map files; this
+# rule prevents them from being added back to git.
+dist/**/*.map
+dist/server/**/*.map
 .DS_Store
 server/public
 vite.config.ts.*
