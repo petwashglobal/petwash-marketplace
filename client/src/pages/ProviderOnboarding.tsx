@@ -44,10 +44,37 @@ export default function ProviderOnboarding() {
   const [, navigate] = useLocation();
   const isHebrew = language === 'he';
 
-  // Redirect to sign-in if not authenticated
+  // Redirect to sign-in if not authenticated.
+  // Phase C — also gate on role: if a logged-in user lands here who is
+  // NOT trying to become a provider (their role is loyalty / staff /
+  // admin / franchise_owner / approved provider), bounce to the
+  // canonical post-login decider so they end up on the right page
+  // for their actual status. Customers and provider-applicants stay
+  // here so they can fill the KYC form.
   useEffect(() => {
     if (user === null) {
       navigate('/sign-in?redirect=/provider-onboarding');
+      return;
+    }
+    if (user) {
+      const claims = (user as any)?.reloadUserInfo?.customAttributes
+        ? (() => {
+            try { return JSON.parse((user as any).reloadUserInfo.customAttributes); }
+            catch { return {}; }
+          })()
+        : {};
+      const role: string | undefined = claims?.role;
+      // Roles that should NOT see the provider KYC form. Customer +
+      // already-approved provider stay (the latter is harmless: the
+      // form's apply call will return 409 already-applied).
+      const blockedRoles = new Set([
+        'loyalty', 'staff', 'admin', 'super_admin', 'management', 'franchise_owner',
+      ]);
+      if (role && blockedRoles.has(role)) {
+        // Send them through the canonical decider — it'll know exactly
+        // where they belong (admin dashboard, franchise dashboard, etc.).
+        navigate('/post-login');
+      }
     }
   }, [user, navigate]);
 
