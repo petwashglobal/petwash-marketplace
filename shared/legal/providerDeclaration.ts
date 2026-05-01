@@ -49,31 +49,25 @@ export const ENHANCED_REASON_LABELS: Record<
 };
 
 /**
- * Default mapping from provider type → enhanced-verification reasons.
- * Conservative defaults: sitters typically enter customer homes and may
- * hold keys; drivers transport pets. Walkers, trainers, and station
- * operators are NOT flagged by default — they can still trigger enhanced
- * verification per-booking via service options.
+ * Provider-type → enhanced-verification reasons mapping.
+ *
+ * Policy (PetWash 2026 spec):
+ *   No provider type triggers enhanced verification automatically.
+ *   The signed self-declaration is sufficient by default.
+ *   Police clearance is only required when the provider EXPLICITLY
+ *   opts into one of the four high-risk service categories
+ *   (home_access, overnight_sitting, key_holding, pet_transport)
+ *   via the dedicated checkboxes in the onboarding form.
+ *
+ * This function exists for forward compatibility (and to keep the
+ * server's defense-in-depth union-with-defaults logic in one place)
+ * but currently returns an empty array for every provider type.
  */
 export function defaultReasonsForProviderTypes(
-  types: ReadonlyArray<string>,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _types: ReadonlyArray<string>,
 ): EnhancedVerificationReason[] {
-  const reasons = new Set<EnhancedVerificationReason>();
-  for (const t of types) {
-    switch (t) {
-      case 'sitter':
-        reasons.add('home_access');
-        reasons.add('overnight_sitting');
-        reasons.add('key_holding');
-        break;
-      case 'driver':
-      case 'pettrek':
-        reasons.add('pet_transport');
-        break;
-      // walker, trainer, station_operator → no defaults
-    }
-  }
-  return Array.from(reasons);
+  return [];
 }
 
 export function requiresEnhancedVerification(

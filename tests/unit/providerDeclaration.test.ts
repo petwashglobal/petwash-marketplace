@@ -57,42 +57,37 @@ describe('shared/legal/providerDeclaration', () => {
     expect(PROVIDER_DECLARATION_TEXT.en.idRequiredNotice.toLowerCase()).toContain('id');
   });
 
-  describe('defaultReasonsForProviderTypes', () => {
-    it('flags sitter as home access + overnight + key holding', () => {
-      const reasons = defaultReasonsForProviderTypes(['sitter']).sort();
-      expect(reasons).toEqual(['home_access', 'key_holding', 'overnight_sitting']);
+  describe('defaultReasonsForProviderTypes — no auto-defaults policy', () => {
+    // PetWash 2026 spec: no provider type triggers enhanced verification
+    // automatically. Police clearance is only required when the provider
+    // explicitly opts into one of the four high-risk service categories
+    // (home_access, overnight_sitting, key_holding, pet_transport) via
+    // the dedicated checkboxes in the onboarding form.
+
+    it('returns empty for sitter (no auto-default)', () => {
+      expect(defaultReasonsForProviderTypes(['sitter'])).toEqual([]);
     });
 
-    it('flags driver as pet transport', () => {
-      expect(defaultReasonsForProviderTypes(['driver'])).toEqual(['pet_transport']);
-      expect(defaultReasonsForProviderTypes(['pettrek'])).toEqual(['pet_transport']);
+    it('returns empty for driver / pettrek (no auto-default)', () => {
+      expect(defaultReasonsForProviderTypes(['driver'])).toEqual([]);
+      expect(defaultReasonsForProviderTypes(['pettrek'])).toEqual([]);
     });
 
-    it('does NOT flag walker by default (low risk)', () => {
+    it('returns empty for walker', () => {
       expect(defaultReasonsForProviderTypes(['walker'])).toEqual([]);
     });
 
-    it('does NOT flag trainer by default', () => {
+    it('returns empty for trainer', () => {
       expect(defaultReasonsForProviderTypes(['trainer'])).toEqual([]);
     });
 
-    it('does NOT flag station_operator by default', () => {
+    it('returns empty for station_operator', () => {
       expect(defaultReasonsForProviderTypes(['station_operator'])).toEqual([]);
     });
 
-    it('combines reasons across multiple provider types', () => {
-      const reasons = defaultReasonsForProviderTypes(['sitter', 'driver']).sort();
-      expect(reasons).toEqual([
-        'home_access',
-        'key_holding',
-        'overnight_sitting',
-        'pet_transport',
-      ]);
-    });
-
-    it('deduplicates when given the same type twice', () => {
-      const reasons = defaultReasonsForProviderTypes(['driver', 'driver']);
-      expect(reasons).toEqual(['pet_transport']);
+    it('returns empty for any combination of provider types', () => {
+      expect(defaultReasonsForProviderTypes(['sitter', 'driver'])).toEqual([]);
+      expect(defaultReasonsForProviderTypes(['walker', 'trainer'])).toEqual([]);
     });
   });
 
