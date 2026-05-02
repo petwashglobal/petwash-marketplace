@@ -208,9 +208,21 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              <Link href="/admin/brain">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-amber-300 hover:text-amber-200 hover:bg-white/10 backdrop-blur-sm border border-amber-500/30"
+                  title="Operations Brain — live stations, revenue, alerts, approvals"
+                  data-testid="button-header-brain"
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  <span className="hidden md:inline">Brain</span>
+                </Button>
+              </Link>
               <Link href="/admin/stations">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   className="text-purple-300 hover:text-purple-200 hover:bg-white/10 backdrop-blur-sm"
                   title="Manage Stations"
