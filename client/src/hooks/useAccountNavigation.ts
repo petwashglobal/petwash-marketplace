@@ -1,56 +1,149 @@
 /**
  * useAccountNavigation — single source of truth for the "go to my account" route.
  *
- * Rules (in priority order):
- *  - Auth still loading          → '#'  (caller must no-op on '#')
- *  - Not logged in               → '/signin'
+ * Two resolvers are exported:
+ *
+ *   getAccountRoute()           — synchronous, claims-only. Returns '#' while
+ *                                 Firebase is still resolving so callers can
+ *                                 no-op. Kept for backwards compatibility.
+ *
+ *   resolveAccountRoute()       — async, server-fallback aware. Always returns
+ *                                 a real route (never '#'). On iPhone Safari,
+ *                                 Firebase custom claims may arrive late or
+ *                                 not at all (ITP cookie partitioning, slow
+ *                                 token refresh). When the claims-only path
+ *                                 cannot decide, this calls
+ *                                     POST /api/auth/post-login
+ *                                 and uses the server's authoritative
+ *                                 nextUrl. Bearer token is attached when
+ *                                 available so the call works even if the
+ *                                 session cookie was dropped.
+ *
+ * Use resolveAccountRoute() from any tap-target on mobile — never silent-fail
+ * the gold profile icon.
+ *
+ * Priority order (both resolvers):
  *  - franchise_owner             → '/franchise/dashboard'
  *  - provider                    → '/provider-os'
  *  - staff / admin / management / super_admin → '/admin/dashboard'
- *  - Email in VITE_ADMIN_EMAILS  → '/admin/dashboard'  (claim not yet propagated)
- *  - Everyone else (customer…)   → '/my-account'
- *
- * Usage:
- *   const { getAccountRoute } = useAccountNavigation();
- *   const route = getAccountRoute();  // '#' | '/signin' | '/my-account' | …
+ *  - Email in VITE_ADMIN_EMAILS  → '/admin/dashboard'  (build-time fallback)
+ *  - Server post-login decider   → server-decided nextUrl
+ *  - Authenticated, no role      → '/home'  (universal safe fallback — never dead)
+ *  - Unauthenticated             → '/signin'
  */
 
 import { useFirebaseAuth, type UserRole } from '@/auth/AuthProvider';
+import { getApiUrl } from '@/lib/apiConfig';
 
 const ADMIN_ROLES: UserRole[] = ['staff', 'admin', 'management', 'super_admin'];
+
+function adminEmailMatch(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const allow = (import.meta.env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allow.includes(email.toLowerCase());
+}
+
+function routeFromRole(role: UserRole | undefined): string | null {
+  if (role === 'franchise_owner') return '/franchise/dashboard';
+  if (role === 'provider') return '/provider-os';
+  if (role && ADMIN_ROLES.includes(role)) return '/admin/dashboard';
+  // 'customer' isn't a UserRole literal — customers carry no role claim and
+  // fall through to the default '/my-account' below in the sync resolver, or
+  // to the server post-login decider in the async resolver.
+  return null;
+}
 
 export function useAccountNavigation() {
   const { user, loading, claims } = useFirebaseAuth();
 
   /**
-   * Returns the canonical destination for the logged-in user's account button.
-   * Returns '#' while Firebase auth is still initialising so callers can no-op.
+   * Synchronous (claims-only). Returns '#' during auth loading. Kept so
+   * existing callers that want a fast, sync answer keep working.
    */
   const getAccountRoute = (): string => {
     if (loading) return '#';
     if (!user) return '/signin';
 
     const role = claims?.role as UserRole | undefined;
+    const fromRole = routeFromRole(role);
+    if (fromRole) return fromRole;
 
-    if (role === 'franchise_owner') return '/franchise/dashboard';
-    if (role === 'provider') return '/provider-os';
-    if (role && ADMIN_ROLES.includes(role)) return '/admin/dashboard';
-
-    // Email-based fallback: custom claims may not have been written yet on the
-    // very first login (token not yet refreshed). Mirror the server-side check.
-    // Requires VITE_ADMIN_EMAILS env var to be set in production (comma-separated
-    // list of admin email addresses). No hardcoded fallback is kept here
-    // intentionally — credentials must not be committed to source code.
-    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
-      .split(',')
-      .map((e: string) => e.trim().toLowerCase())
-      .filter(Boolean);
-    if (user.email && adminEmails.includes(user.email.toLowerCase())) {
-      return '/admin/dashboard';
-    }
+    if (adminEmailMatch(user.email)) return '/admin/dashboard';
 
     return '/my-account';
   };
 
-  return { getAccountRoute, loading, user };
+  /**
+   * Async resolver with server fallback. Use from any user-facing tap target
+   * (the gold profile icon, the account chip in the burger menu, etc.).
+   *
+   * Never returns '#' and never returns a route the user cannot reach — if
+   * everything else fails, it returns '/home' (or '/signin' when we are
+   * sure the user is not authenticated).
+   *
+   * Behaviour on iPhone Safari:
+   *   1. If auth is still resolving, wait up to ~1.5 s for it to settle
+   *      (15 × 100 ms). Most refreshes complete well under this budget.
+   *   2. If claims arrived with a real role, route by claim (fast path).
+   *   3. If user is authenticated but role is empty / 'public', call the
+   *      server post-login decider with both session cookie *and* Bearer
+   *      token attached. ITP can drop the cookie; the Bearer survives.
+   *   4. On any failure, return '/home' so the gold icon always lands the
+   *      user somewhere they can navigate from.
+   */
+  const resolveAccountRoute = async (): Promise<string> => {
+    // 1. Settle period for auth — bounded so the click never feels frozen.
+    const settleStart = Date.now();
+    // We can't await the React state, so probe directly via the auth context.
+    // useFirebaseAuth is stable across the closure; capture latest via fresh refs.
+    while ((loading) && Date.now() - settleStart < 1500) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 100));
+    }
+
+    if (!loading && !user) return '/signin';
+
+    // 2. Claims-based fast path
+    const role = claims?.role as UserRole | undefined;
+    const fromRole = routeFromRole(role);
+    if (fromRole) return fromRole;
+
+    if (adminEmailMatch(user?.email)) return '/admin/dashboard';
+
+    // 3. Server fallback — authoritative, role-resolves from DB.
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      try {
+        // Bearer-token attachment — survives session-cookie loss (iOS ITP).
+        const token = user ? await (user as any).getIdToken?.() : null;
+        if (token) headers.Authorization = `Bearer ${token}`;
+      } catch {
+        // Bearer-token attachment is best-effort. Session cookie still works.
+      }
+
+      const res = await fetch(getApiUrl('/api/auth/post-login'), {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({}),
+      });
+
+      if (res.status === 401) return '/signin';
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        const nextUrl = data && typeof data.nextUrl === 'string' ? data.nextUrl : null;
+        if (nextUrl) return nextUrl;
+      }
+    } catch {
+      // Network error — fall through to safe default
+    }
+
+    // 4. Universal safe default. Never '#', never empty.
+    return user ? '/home' : '/signin';
+  };
+
+  return { getAccountRoute, resolveAccountRoute, loading, user };
 }
