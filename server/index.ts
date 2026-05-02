@@ -1116,6 +1116,11 @@ if (isProduction) {
         startRecoveryAutomationCron();
         const { startAutoApproveCompletionsCron } = await import('./cron/auto-approve-completions');
         startAutoApproveCompletionsCron();
+        // PR-3 P0-1: Boot auto-void cron. Without this, card holds for
+        // payments stuck in 'authorised' state are never released — customers
+        // see phantom charges for 15+ minutes when an operator doesn't respond.
+        const { startAutoVoidCron } = await import('./cron/auto-void-expired-payments');
+        startAutoVoidCron();
         console.log('[Cron] All cron jobs initialized successfully');
       } catch (e: any) {
         console.error('[Cron] Failed to initialize cron jobs (non-fatal):', e.message);
@@ -1167,6 +1172,11 @@ if (isProduction) {
       startRecoveryAutomationCron();
       const { startAutoApproveCompletionsCron } = await import("./cron/auto-approve-completions");
       startAutoApproveCompletionsCron();
+      // PR-3 P0-1: Boot auto-void cron. Without this, card holds for
+      // payments stuck in 'authorised' state are never released — customers
+      // see phantom charges for 15+ minutes when an operator doesn't respond.
+      const { startAutoVoidCron } = await import("./cron/auto-void-expired-payments");
+      startAutoVoidCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
