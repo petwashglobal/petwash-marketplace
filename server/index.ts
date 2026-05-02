@@ -1121,6 +1121,12 @@ if (isProduction) {
         // see phantom charges for 15+ minutes when an operator doesn't respond.
         const { startAutoVoidCron } = await import('./cron/auto-void-expired-payments');
         startAutoVoidCron();
+        // PR-5: Boot station heartbeat monitor. Scans kiosk_machines every
+        // 2 minutes and inserts an 'offline' station_alert when a kiosk
+        // stops sending heartbeats for >15 minutes. Read-only on
+        // kiosk_machines; bridges to pet_wash_stations via nayax_terminal_id.
+        const { startHeartbeatMonitorCron } = await import('./cron/station-heartbeat-monitor');
+        startHeartbeatMonitorCron();
         console.log('[Cron] All cron jobs initialized successfully');
       } catch (e: any) {
         console.error('[Cron] Failed to initialize cron jobs (non-fatal):', e.message);
@@ -1177,6 +1183,10 @@ if (isProduction) {
       // see phantom charges for 15+ minutes when an operator doesn't respond.
       const { startAutoVoidCron } = await import("./cron/auto-void-expired-payments");
       startAutoVoidCron();
+      // PR-5: Boot station heartbeat monitor. Inserts 'offline' alerts when
+      // a K9000 kiosk stops sending heartbeats for >15 minutes.
+      const { startHeartbeatMonitorCron } = await import("./cron/station-heartbeat-monitor");
+      startHeartbeatMonitorCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);

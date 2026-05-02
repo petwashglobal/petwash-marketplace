@@ -369,4 +369,58 @@ router.get('/summary', async (_req: Request, res: Response) => {
   });
 });
 
+// ─── GET /api/admin/brain/stations/unmapped ─────────────────────────────────
+// PR-5 ops visibility: lists kiosk_machines rows that have NO matching
+// pet_wash_stations row (bridged via nayax_terminal_id). When a kiosk is in
+// this list, station_alerts written for it are dropped by the
+// stationAlertWriter helper — ops needs to backfill the enterprise registry
+// before alerts can flow.
+//
+// Read-only. No FK change, no schema migration. Returns at most 200 rows.
+router.get('/stations/unmapped', async (_req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        k.kiosk_id           AS "kioskId",
+        k.name               AS "name",
+        k.location           AS "location",
+        k.nayax_terminal_id  AS "nayaxTerminalId",
+        k.status             AS "status",
+        k.is_online          AS "isOnline",
+        k.last_heartbeat     AS "lastHeartbeat"
+      FROM kiosk_machines k
+      WHERE k.nayax_terminal_id IS NULL
+         OR NOT EXISTS (
+           SELECT 1
+           FROM pet_wash_stations s
+           WHERE s.nayax_terminal_id = k.nayax_terminal_id
+         )
+      ORDER BY k.last_heartbeat DESC NULLS LAST
+      LIMIT 200
+    `);
+
+    const rows = ((result as any).rows as any[]) ?? [];
+
+    res.json({
+      total: rows.length,
+      kiosks: rows.map(r => ({
+        ...r,
+        bridgeReason: !r.nayaxTerminalId
+          ? 'no_terminal_id'
+          : 'no_pet_wash_stations_row',
+      })),
+      notes: [
+        'Each kiosk in this list cannot receive alerts via the current bridge.',
+        'Fix: insert a pet_wash_stations row with the same nayax_terminal_id ' +
+          'as the kiosk, OR populate kiosk_machines.nayax_terminal_id if it is null.',
+        'After backfill, alerts from station-heartbeat-monitor + nayax-events ' +
+          'will start landing in station_alerts.',
+      ],
+    });
+  } catch (err: any) {
+    logger.error('[Brain] stations/unmapped failed', { error: err?.message ?? String(err) });
+    res.status(500).json({ error: 'UNMAPPED_QUERY_FAILED', message: String(err?.message ?? err).slice(0, 200) });
+  }
+});
+
 export default router;
