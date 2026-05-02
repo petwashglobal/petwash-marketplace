@@ -9657,9 +9657,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminDashboardRoutes);
   app.use('/api/admin/loyalty', adminLimiter, adminLoyaltyRoutes);
-  // Operations Brain (CEO read-only dashboard) — its own router, gated by
-  // requireBrainAccess (super-admin email OR ceo|cfo|ops_lead role). Read-only.
-  app.use('/api/admin/brain', adminLimiter, adminBrainRoutes);
+  // Operations Brain (CEO read-only dashboard).
+  // validateFirebaseToken populates req.firebaseUser so requireBrainAccess
+  // (inside adminBrainRoutes) can check super-admin email + role.
+  // Read-only — no mutations on this router.
+  app.use('/api/admin/brain', validateFirebaseToken, adminLimiter, adminBrainRoutes);
   app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
