@@ -21,7 +21,20 @@ function getSuperAdminEmails(): string[] {
   return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 }
 
-function isSuperAdmin(email: string | undefined): boolean {
+/**
+ * Strict super-admin check.
+ *
+ * PR-A P0-3: Now requires Firebase to have verified the email
+ * (`req.firebaseUser.email_verified === true`) before passing the
+ * allowlist check. Without this gate an attacker who registers an
+ * account with an email matching SUPER_ADMIN_EMAILS but who never
+ * verifies it could approve their own staff access request.
+ */
+function isSuperAdmin(req: { firebaseUser?: { email?: string; email_verified?: boolean } }): boolean {
+  const fu = req.firebaseUser;
+  if (!fu) return false;
+  if (fu.email_verified !== true) return false;
+  const email = fu.email;
   if (!email) return false;
   return getSuperAdminEmails().includes(email.toLowerCase());
 }
@@ -94,8 +107,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const email = req.firebaseUser?.email;
-    if (!isSuperAdmin(email)) {
+    if (!isSuperAdmin(req)) {
       return res.status(403).json({ error: 'Super admin access required' });
     }
 
@@ -109,10 +121,10 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.post('/:id/approve', requireAuth, async (req, res) => {
   try {
-    const email = req.firebaseUser?.email;
-    if (!isSuperAdmin(email)) {
+    if (!isSuperAdmin(req)) {
       return res.status(403).json({ error: 'Super admin access required' });
     }
+    const email = req.firebaseUser?.email;
 
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID' });
@@ -180,10 +192,10 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
 
 router.post('/:id/deny', requireAuth, async (req, res) => {
   try {
-    const email = req.firebaseUser?.email;
-    if (!isSuperAdmin(email)) {
+    if (!isSuperAdmin(req)) {
       return res.status(403).json({ error: 'Super admin access required' });
     }
+    const email = req.firebaseUser?.email;
 
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID' });

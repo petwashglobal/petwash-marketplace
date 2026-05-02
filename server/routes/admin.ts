@@ -1273,8 +1273,13 @@ router.get('/security/platform-monitor', async (_req, res) => {
 /**
  * POST /api/admin/security/platform-monitor/scan
  * Force an immediate Gemini security scan
+ *
+ * PR-A P0-1: was previously unauthenticated. validateFirebaseToken +
+ * requireAdmin chain matches the neighbouring /sms/status route at
+ * line 1291; without these, any anonymous POST could trigger a
+ * privileged Gemini scan run.
  */
-router.post('/security/platform-monitor/scan', async (_req, res) => {
+router.post('/security/platform-monitor/scan', validateFirebaseToken, requireAdmin, async (_req, res) => {
   try {
     const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
     const assessment = await geminiPlatformMonitor.forceScan();
