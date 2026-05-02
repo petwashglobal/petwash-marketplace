@@ -56,11 +56,43 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Check if user is a super admin.
- * Uses SUPER_ADMIN_EMAILS environment variable — no personal emails in source code.
+ * Check if an email matches the SUPER_ADMIN_EMAILS allowlist.
+ *
+ * SECURITY NOTE (PR-A P0-2): This primitive does NOT check
+ * `email_verified`. New code must use {@link isSuperAdminVerified}
+ * which gates on both the allowlist AND Firebase's email_verified
+ * flag. Existing call sites are tracked for follow-up hardening; this
+ * primitive is kept for backwards compatibility while those are
+ * migrated route-by-route.
  */
 export function isSuperAdmin(email: string): boolean {
   return getSuperAdmins().includes(email.toLowerCase());
+}
+
+/**
+ * Strict super-admin check that requires Firebase to have verified the
+ * email address. Use this on any new admin gate — if the user's email
+ * is not yet verified the function returns false even when the email
+ * matches SUPER_ADMIN_EMAILS.
+ *
+ * Why this exists (PR-A P0-2): the legacy primitive {@link isSuperAdmin}
+ * checks only the email string. An attacker who registers an account
+ * with an email matching the allowlist but who has not verified it
+ * could otherwise pass the gate.
+ *
+ * Returns false if any of:
+ *   - req.firebaseUser is missing
+ *   - req.firebaseUser.email is empty
+ *   - req.firebaseUser.email_verified is not strictly true
+ *   - the email does not match SUPER_ADMIN_EMAILS
+ */
+export function isSuperAdminVerified(req: Request): boolean {
+  const fu = req.firebaseUser;
+  if (!fu) return false;
+  if (fu.email_verified !== true) return false;
+  const email = fu.email;
+  if (!email) return false;
+  return isSuperAdmin(email);
 }
 
 /**
