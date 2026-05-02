@@ -252,6 +252,46 @@ router.post('/nayax-events',
       throw err;
     }
 
+    // PR-5: Surface Nayax payment failures as station_alerts so ops can see
+    // them in the Brain Dashboard. Strictly non-blocking: any failure here
+    // is swallowed by the helper and never affects the Nayax response.
+    // Do NOT emit for refunded/cancelled/reversed — those are post-success
+    // states tracked elsewhere; alerts are for declines that block a wash.
+    const failureStatuses = new Set(['declined', 'rejected', 'failed', 'error', 'fail']);
+    if (machineId && failureStatuses.has(approvalStatus.toLowerCase())) {
+      try {
+        const { writeStationAlert } = await import('../lib/stationAlertWriter');
+        const result = await writeStationAlert({
+          kioskId: machineId,
+          alertType: 'payment_declined',
+          severity: 'warning',
+          title: `Nayax payment declined`,
+          message:
+            `Transaction ${externalTransactionId} on ${machineId} returned ` +
+            `status=${approvalStatus} (amount=${amountGross} ${currency}, channel=${paymentChannel})`,
+          triggerValue: approvalStatus,
+          metadata: {
+            externalTransactionId,
+            paymentChannel,
+            amountGross,
+            currency,
+            terminalId: terminalId || null,
+          },
+        });
+        if (!result.inserted && result.reason !== 'duplicate') {
+          logger.info('[NayaxEvents] payment-declined alert skipped', {
+            machineId, reason: result.reason, detail: result.detail,
+          });
+        }
+      } catch (alertErr: any) {
+        // Defensive — writeStationAlert already swallows DB errors. Catch
+        // here protects against import-time failures.
+        logger.warn('[NayaxEvents] payment-declined alert raised exception (non-blocking)', {
+          machineId, error: alertErr?.message ?? String(alertErr),
+        });
+      }
+    }
+
     // 5. Award loyalty if all rules passed
     if (award.canAward && linkedPetwashUser) {
       try {

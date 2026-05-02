@@ -1326,6 +1326,24 @@ router.post('/heartbeat', async (req, res) => {
       } as any)
       .where(eq(kioskMachines.kioskId, kioskId));
 
+    // PR-5: When a kiosk reports a heartbeat, auto-resolve any open
+    // 'offline' station_alerts that were raised by the heartbeat-monitor
+    // cron. Strictly non-blocking + idempotent — if no open alerts exist,
+    // the helper returns resolvedCount=0. Never affects heartbeat response.
+    try {
+      const { resolveStationAlerts } = await import('../lib/stationAlertWriter');
+      const r = await resolveStationAlerts(kioskId, 'offline');
+      if (r.resolvedCount > 0) {
+        logger.info('[K9000 Heartbeat] auto-resolved offline alerts on recovery', {
+          kioskId, resolvedCount: r.resolvedCount,
+        });
+      }
+    } catch (resolveErr: any) {
+      logger.warn('[K9000 Heartbeat] alert auto-resolve raised exception (non-blocking)', {
+        kioskId, error: resolveErr?.message ?? String(resolveErr),
+      });
+    }
+
     // Update per-bay telemetry snapshots.
     // We only update telemetry fields — session-owned fields (status, currentSessionId)
     // are managed by the session lifecycle and must not be overwritten here.
