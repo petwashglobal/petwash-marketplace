@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getAdditionalUserInfo } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { FaGoogle } from 'react-icons/fa';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { type Language, t } from '@/lib/i18n';
 import { getApiUrl } from '@/lib/apiConfig';
+import { isIPhone } from '@/lib/iosAuthHandler';
 
 /** Data returned after a successful Gmail OAuth connection */
 export interface GmailConnectionData {
@@ -66,7 +67,26 @@ export function GmailOAuthButton({ language, onSuccess, onError }: GmailOAuthBut
 
       logger.info('[Gmail OAuth] Showing Google consent screen with Gmail permissions');
 
-      // This will show the beautiful Google permission screen on iPhone! 🎉
+      // PR-4 Safari hardening: iPhone Safari ITP kills popups. Redirect on
+      // iPhone, popup everywhere else (desktop, iPad, Android). Pattern
+      // mirrored from client/src/lib/auth-guardian-2025.ts:148.
+      //
+      // KNOWN LIMITATION on iPhone redirect path: this handler navigates
+      // away on signInWithRedirect(), so the rest of this function (Gmail
+      // access-token capture, /api/gmail/connect save, inbox scan, success
+      // toast) does NOT run. Firebase auth still completes via
+      // AuthProvider.getRedirectResult() on the next page load — the user
+      // is signed in. But the Gmail-specific post-OAuth work needs a
+      // separate post-redirect handler. Tracked for follow-up; out of
+      // scope for PR-4 (Safari fallback only).
+      if (isIPhone()) {
+        logger.info('[Gmail OAuth] iPhone detected — using signInWithRedirect (popup blocked by Safari ITP)');
+        await signInWithRedirect(auth, provider);
+        // Page navigates to Google consent. No code below this line runs.
+        return;
+      }
+
+      // Desktop / iPad / Android — popup flow with full Gmail integration.
       const result = await signInWithPopup(auth, provider);
 
       // Get the OAuth access token from Google
