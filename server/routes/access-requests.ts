@@ -138,6 +138,26 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
       logger.error('[Access Requests] Failed to update user role after approval', { userErr, userId: updated.userId });
     }
 
+    // PR-3 P0-2: Sync Firebase customClaims so the user's ID token reflects
+    // the new 'staff' role on the next request — without this, rbac
+    // middleware sees the old role until the token refreshes (~1 hour) and
+    // newly-approved staff are locked out of admin pages.
+    // Pattern mirrored from server/routes/post-login.ts:807-821.
+    // Non-blocking on Firebase failures: approval has already succeeded.
+    try {
+      const { syncFirebaseClaims } = await import('../lib/syncFirebaseClaims');
+      await syncFirebaseClaims(updated.userId, {
+        role: 'staff',
+        accountType: 'internal',
+        staffApprovedAt: now.toISOString(),
+      });
+    } catch (claimsErr: any) {
+      logger.warn('[Access Requests] Firebase claims sync failed (non-blocking)', {
+        userId: updated.userId,
+        error: claimsErr?.message,
+      });
+    }
+
     await logAuditEvent({
       actorUserId: req.firebaseUser?.uid,
       actorRole: 'super_admin',

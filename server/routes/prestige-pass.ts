@@ -32,6 +32,7 @@ import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 import { z } from 'zod';
 import multer from 'multer';
 import { EmailService } from '../emailService';
@@ -2137,6 +2138,28 @@ router.post('/admin/manual-credit', async (req: Request, res: Response) => {
 
     logger.info('[PrestigePass] Admin manual credit applied', { targetUserId, creditType, amountCents, units, txnId, reason });
 
+    // PR-3 P0-3: Persist admin financial action to audit_events for compliance
+    // trail. Logger output alone is not queryable for "who credited whom, when,
+    // why" — this row is. Pattern lifted from access-requests.ts:141.
+    // Best-effort: an audit-write failure must not roll back the credit.
+    try {
+      await logAuditEvent({
+        actorUserId: adminUserId,
+        actorRole: 'admin',
+        actionType: 'PRESTIGE_MANUAL_CREDIT',
+        targetType: 'user',
+        targetId: targetUserId,
+        ip: (req.ip || (req.headers['x-forwarded-for'] as string)) ?? undefined,
+        userAgent: req.headers['user-agent'],
+        traceId: (req as any).traceId,
+        metadata: { creditType, amountCents, units, txnId, reason },
+      });
+    } catch (auditErr: any) {
+      logger.warn('[PrestigePass] Audit write for manual-credit failed (non-blocking)', {
+        txnId, error: auditErr?.message,
+      });
+    }
+
     const updatedBalances = await getWalletBalances(targetUserId);
 
     return res.json({
@@ -2170,6 +2193,9 @@ router.post('/admin/reissue', async (req: Request, res: Response) => {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
 
+    const session = (req as any).session;
+    const adminUserId = session?.user?.uid || 'admin';
+
     const parsed = adminReissueSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
     const { targetUserId, tier, reason } = parsed.data;
@@ -2198,6 +2224,26 @@ router.post('/admin/reissue', async (req: Request, res: Response) => {
       .where(eq(walletAccounts.userId, targetUserId));
 
     logger.info('[PrestigePass] Pass reissued by admin', { targetUserId, newSerial, tier, reason });
+
+    // PR-3 P0-3: Persist admin reissue action to audit_events for compliance.
+    // Pattern lifted from access-requests.ts:141. Best-effort.
+    try {
+      await logAuditEvent({
+        actorUserId: adminUserId,
+        actorRole: 'admin',
+        actionType: 'PRESTIGE_REISSUE',
+        targetType: 'user',
+        targetId: targetUserId,
+        ip: (req.ip || (req.headers['x-forwarded-for'] as string)) ?? undefined,
+        userAgent: req.headers['user-agent'],
+        traceId: (req as any).traceId,
+        metadata: { newSerial, tier: tier || existingData.tier || 'new', reason: reason ?? null },
+      });
+    } catch (auditErr: any) {
+      logger.warn('[PrestigePass] Audit write for reissue failed (non-blocking)', {
+        targetUserId, newSerial, error: auditErr?.message,
+      });
+    }
 
     return res.json({
       ok:          true,
