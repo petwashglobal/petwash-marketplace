@@ -22,7 +22,7 @@
  *   5. Card fallback (shortfall returned to client)
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { createHash, createHmac, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
@@ -2693,6 +2693,138 @@ router.get('/admin/wallet/user-audit', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to generate user wallet audit' });
   }
 });
+
+// ─── PR-B: Admin wallet mutation audit middleware ─────────────────────────────
+// All POST/PATCH/DELETE handlers under /admin/wallet/* are mounted AFTER this
+// middleware. Every successful mutation response (status < 400) writes one row
+// to audit_events so compliance can reconstruct "who released whom, when, why".
+//
+// Why a middleware instead of per-handler logAuditEvent calls:
+//   - 143 mutation handlers exist under /admin/wallet/*. Per-handler edits
+//     would mean ~143 small try/catch blocks — large diff, high review cost,
+//     easy to miss new handlers added later.
+//   - A middleware runs once and auto-captures every existing + future
+//     handler with no maintenance burden.
+//
+// Hard rules respected:
+//   - GET requests skipped (audit logs are for mutations only)
+//   - Error responses (status >= 400) skipped — failed mutations don't need
+//     "this happened" logs; the request just failed
+//   - Audit write is fire-and-forget AFTER the response is sent — the
+//     mutation's response timing is never affected, and an audit-write
+//     failure never breaks the user-visible flow
+//   - Sensitive fields in req.body are captured raw; this matches the
+//     existing pattern in PR-3's manual-credit handler (lines ~2143).
+//     If specific fields need redaction in future, do it here in ONE place.
+//
+// Already-explicit logs (PR-3): /admin/manual-credit, /admin/reissue, and
+// /admin/send-founder-pass live under /admin/* (NOT /admin/wallet/*) so this
+// middleware does not touch them. No double-logging.
+function adminWalletAuditMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // Skip read-only GET requests — audit logs are only for mutations.
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+
+  // Wrap res.json so we can capture the FINAL outbound response after the
+  // handler has set status + body. We don't change the response itself.
+  const originalJson = res.json.bind(res);
+  res.json = function patchedJson(body: unknown): Response {
+    // Fire audit asynchronously AFTER the response is queued. We do not
+    // await — the mutation's response latency must be unaffected by the
+    // audit write. .catch() swallows errors so a DB failure here never
+    // surfaces to the client.
+    if (res.statusCode < 400) {
+      const adminUserId =
+        ((req as any).session?.user?.uid as string | undefined) ||
+        ((req as any).firebaseUser?.uid as string | undefined) ||
+        'admin';
+
+      // Derive a stable actionType from the route path. Examples:
+      //   POST /admin/wallet/release            → PRESTIGE_WALLET_RELEASE
+      //   POST /admin/wallet/disputes/:caseRef/resolve → PRESTIGE_WALLET_DISPUTES_RESOLVE
+      //   PATCH /admin/wallet/policies/:key     → PRESTIGE_WALLET_POLICIES_UPDATE
+      // Replace path params (start with ':') with empty so the actionType
+      // is stable across different IDs.
+      const routePath: string =
+        (req.route as any)?.path ||
+        (req.baseUrl + (req.path || '')) ||
+        req.originalUrl ||
+        '';
+      const verbSuffix = req.method === 'PATCH' ? 'UPDATE' : req.method === 'DELETE' ? 'DELETE' : '';
+      const segments = routePath
+        .replace(/^\/+|\/+$/g, '')
+        .split('/')
+        .filter(Boolean)
+        .filter((s) => !s.startsWith(':'));
+      const baseType = segments
+        .map((s) => s.replace(/[^A-Za-z0-9]+/g, '_'))
+        .join('_')
+        .toUpperCase();
+      const actionType = verbSuffix && !baseType.endsWith(verbSuffix)
+        ? `PRESTIGE_${baseType}_${verbSuffix}`.replace(/_+/g, '_')
+        : `PRESTIGE_${baseType}`.replace(/_+/g, '_');
+
+      // targetId precedence: a path param named id|caseRef|batchId|policyKey|
+      // ruleId|alertId|stepId|providerUid takes priority; otherwise body.id /
+      // body.targetUserId / body.userId; otherwise the literal 'admin_action'.
+      const params = (req.params || {}) as Record<string, string>;
+      const body = (req.body || {}) as Record<string, unknown>;
+      const targetId =
+        params.id ||
+        params.caseRef ||
+        params.batchId ||
+        params.policyKey ||
+        params.ruleType ||
+        params.ruleKey ||
+        params.alertId ||
+        params.stepId ||
+        params.providerUid ||
+        params.uid ||
+        params.sid ||
+        params.name ||
+        params.date ||
+        (typeof body.id === 'string' && body.id) ||
+        (typeof body.targetUserId === 'string' && body.targetUserId) ||
+        (typeof body.userId === 'string' && body.userId) ||
+        'admin_action';
+
+      // metadata captures the request body + response status. We deliberately
+      // do NOT include the response body — it can be very large (e.g. a list
+      // payload) and audit_events.metadata is JSONB; bloating it slows queries.
+      logAuditEvent({
+        actorUserId: adminUserId,
+        actorRole: 'admin',
+        actionType,
+        targetType: 'wallet',
+        targetId: String(targetId),
+        ip: (req.ip || (req.headers['x-forwarded-for'] as string)) ?? undefined,
+        userAgent: req.headers['user-agent'],
+        traceId: (req as any).traceId,
+        metadata: {
+          method: req.method,
+          path: req.originalUrl,
+          status: res.statusCode,
+          body, // raw request body — same as PR-3 pattern
+        },
+      }).catch((auditErr: unknown) => {
+        const msg = auditErr instanceof Error ? auditErr.message : String(auditErr);
+        logger.warn('[PrestigePass] /admin/wallet audit write failed (non-blocking)', {
+          actionType, targetId, error: msg,
+        });
+      });
+    }
+    return originalJson(body as any);
+  };
+
+  next();
+}
+
+// Mount the middleware. Express resolves middleware in declaration order, so
+// this BUST run BEFORE any /admin/wallet/* route handler. The router.use
+// matches by path prefix, so '/admin/wallet' covers every /admin/wallet/*
+// path including the deepest nested paths like /admin/wallet/disputes/:id/escalate.
+router.use('/admin/wallet', adminWalletAuditMiddleware);
 
 // ─── Admin: Wallet Lifecycle Proof Pass ───────────────────────────────────────
 // POST /api/prestige-pass/admin/wallet/proof-pass
