@@ -24,15 +24,41 @@ import { logger } from '../lib/logger';
 import {
   COWORKER_FAMILIES,
   CoworkerFamilySchema,
+  type CoworkerActor,
   type CoworkerFamily,
 } from '../../shared/coworker-types';
-import { coworkerAgentService } from '../services/CoworkerAgentService';
+import {
+  coworkerAgentService,
+  CoworkerRateLimitError,
+} from '../services/CoworkerAgentService';
 
 const router = Router();
 
 // Every route here is sensitive — gate every request, even GETs, since
 // the responses surface ops + fraud signals.
 router.use(requireBrainAccess);
+
+/**
+ * Build a CoworkerActor from the request. Used to thread actor identity into
+ * the service layer for rate limiting and audit logging. Tolerant of missing
+ * fields — requireBrainAccess guarantees the caller is authenticated, so
+ * actorUserId should always be present in practice.
+ */
+function actorFromRequest(req: Request): CoworkerActor {
+  const fbUid = req.firebaseUser?.uid;
+  const reqUserId = req.userId;
+  const claimRoles = req.firebaseUser?.claims?.roles as string[] | undefined;
+  const claimRole = req.firebaseUser?.claims?.role as string | undefined;
+  const userRole = (req.user as any)?.role as string | undefined;
+  const actorRole = claimRole ?? (Array.isArray(claimRoles) ? claimRoles[0] : undefined) ?? userRole;
+  return {
+    actorUserId: fbUid ?? reqUserId,
+    actorRole,
+    ip: req.ip,
+    userAgent: req.headers['user-agent']?.slice(0, 500),
+    traceId: req.traceId,
+  };
+}
 
 router.get('/families', (_req: Request, res: Response) => {
   res.json({ families: COWORKER_FAMILIES });
@@ -48,9 +74,20 @@ router.get('/:family/summary', async (req: Request, res: Response) => {
   }
   const family: CoworkerFamily = parsed.data;
   try {
-    const output = await coworkerAgentService.runFamily(family);
+    const output = await coworkerAgentService.runFamily(family, {
+      actor: actorFromRequest(req),
+    });
     return res.json(output);
   } catch (err: any) {
+    if (err instanceof CoworkerRateLimitError) {
+      const retryAfterSec = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
+      res.setHeader('Retry-After', String(retryAfterSec));
+      return res.status(429).json({
+        error: 'rate_limited',
+        message: `Coworker rate limit exceeded for family ${family}. Retry after ${retryAfterSec}s.`,
+        retryAfterSec,
+      });
+    }
     logger.error(`[coworker] runFamily(${family}) failed: ${err?.message ?? err}`);
     return res.status(500).json({
       error: 'coworker_run_failed',
