@@ -74,36 +74,47 @@ export default function AdminLoginV2() {
     };
     checkWebAuthn();
 
-    // Handle Google redirect result (fires after signInWithRedirect on mobile)
-    const handleRedirectResult = async () => {
-      try {
-        const { getRedirectResult } = await import("firebase/auth");
-        const { auth } = await import("@/lib/firebase");
-        const result = await getRedirectResult(auth);
-        if (!result) return;
+    // Resume Google sign-in after iOS Safari redirect.
+    // We cannot rely on getRedirectResult here because AuthProvider (mounted
+    // globally) consumes the redirect result first; a second call returns null.
+    // Instead, handleGoogleLogin sets a localStorage flag right before
+    // signInWithRedirect, and we observe onAuthStateChanged to pick up the
+    // post-redirect user. This preserves admin-access enforcement and the
+    // navigation to /admin/dashboard that the redirect-result path used to do.
+    if (localStorage.getItem('pw_admin_google_redirect_pending') !== '1') return;
 
-        setIsGoogleLoading(true);
-        const idToken = await result.user.getIdToken();
-        await createServerSession(idToken);
-        await assertAdminAccess();
-
-        toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
-        setLocation("/admin/dashboard");
-      } catch (err: any) {
-        if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
-        const isAccessDenied = err?.message === 'ACCESS_DENIED';
-        toast({
-          title: "Google Sign-In Failed",
-          description: isAccessDenied
-            ? "This account does not have admin privileges."
-            : "Google sign-in failed. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    };
-    handleRedirectResult();
+    let unsubscribe: (() => void) | undefined;
+    let handled = false;
+    (async () => {
+      const { onAuthStateChanged } = await import("firebase/auth");
+      const { auth } = await import("@/lib/firebase");
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (!user || handled) return;
+        handled = true;
+        localStorage.removeItem('pw_admin_google_redirect_pending');
+        try {
+          setIsGoogleLoading(true);
+          const idToken = await user.getIdToken();
+          await createServerSession(idToken);
+          await assertAdminAccess();
+          toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
+          setLocation("/admin/dashboard");
+        } catch (err: any) {
+          const isAccessDenied = err?.message === 'ACCESS_DENIED';
+          toast({
+            title: "Google Sign-In Failed",
+            description: isAccessDenied
+              ? "This account does not have admin privileges."
+              : "Google sign-in failed. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsGoogleLoading(false);
+          unsubscribe?.();
+        }
+      });
+    })();
+    return () => { unsubscribe?.(); };
   }, []);
 
   const triggerHaptic = () => {
@@ -275,7 +286,10 @@ export default function AdminLoginV2() {
       const provider = new GoogleAuthProvider();
 
       if (isMobileBrowser()) {
-        // Mobile Safari/iOS blocks popups — use redirect flow instead
+        // Mobile Safari/iOS blocks popups — use redirect flow instead.
+        // Set a flag so the post-redirect useEffect knows to pick up the user
+        // via onAuthStateChanged (AuthProvider consumes getRedirectResult first).
+        localStorage.setItem('pw_admin_google_redirect_pending', '1');
         await signInWithRedirect(auth, provider);
         // Page will reload; result is handled in the useEffect above
         return;
@@ -488,7 +502,7 @@ export default function AdminLoginV2() {
             <LuxuryEmoji emoji="👑" material="diamond" size="sm" animate={false} />
           </div>
           <p className="text-xs text-gray-500">
-            OAuth 2.1 Secured • Crown Jewel Protocol v2025
+            Secured admin access
           </p>
         </div>
       </Card>
