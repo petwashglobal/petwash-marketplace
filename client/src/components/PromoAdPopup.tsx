@@ -200,32 +200,33 @@ export function PromoAdPopup({
           role="dialog"
           aria-label="PetWash welcome"
         >
-          {/* Backdrop — tap to close */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          {/* Pure-white shell — tap anywhere outside artwork to close.
+              No dark overlay, no blur, no grey, no card framing on any
+              breakpoint per CEO directive (2026-05-03). */}
+          <div
+            className="absolute inset-0 bg-white"
             onClick={handleClose}
           />
-          
-          {/* Card — full-screen on mobile, floating card on md+
-              Pause-on-hover/touch suspends the auto-dismiss timer so a
-              user reading the popup never gets it yanked away. */}
+
+          {/* Full-screen content layer — image-only on mobile and desktop.
+              No rounded container, no shadow, no max-width card. Pause-on-
+              hover/touch suspends the auto-dismiss timer so a user reading
+              the popup never gets it yanked away. */}
           <motion.div
             {...cardVariants}
             transition={{ duration: transitionDuration, delay: cardTransitionDelay }}
-            // On mobile: fill the entire visual viewport.
-            // On md+: float as a rounded card.
-            // overflow-y-auto ensures content is reachable in landscape without clipping.
-            className="relative w-full h-full md:w-[95%] md:max-w-4xl md:rounded-3xl overflow-y-auto overflow-x-hidden shadow-2xl"
+            className="relative w-full h-full overflow-hidden"
             style={{ maxHeight: '100dvh' }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onTouchStart={() => setIsHovered(true)}
             onTouchEnd={() => setIsHovered(false)}
           >
-            {/* Close button — safe-area aware so it's always tappable */}
+            {/* Single floating X close button — dark glyph on white shell,
+                safe-area aware so it's always tappable. No card framing. */}
             <button
               onClick={handleClose}
-              className="absolute z-20 w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition-all"
+              className="absolute z-20 w-10 h-10 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-100 transition-colors"
               style={{
                 top: 'max(1rem, env(safe-area-inset-top, 1rem))',
                 right: 'max(1rem, env(safe-area-inset-right, 1rem))',
