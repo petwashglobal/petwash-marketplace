@@ -10,7 +10,7 @@
  * GET    /ledger               — recent system-wide ledger (last 200 rows)
  */
 
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { db } from '../db';
 import {
   loyaltyRules,
@@ -31,6 +31,7 @@ import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { adjustLoyaltyBalance } from '../utils/loyaltyLedger';
 import { isSuperAdmin } from '../middleware/rbac';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -41,6 +42,105 @@ function requireAdmin(req: any, res: any, next: any) {
   }
   next();
 }
+
+// ─── PR-C: Admin loyalty mutation audit middleware ────────────────────────────
+// Every successful POST/PATCH/DELETE response on this router writes one row
+// to audit_events so compliance can reconstruct who changed loyalty rules
+// or adjusted balances, when, and why.
+//
+// Why a middleware instead of per-handler logAuditEvent calls:
+//   - 9 mutation handlers exist on this router today (PATCH /rules/:ruleKey,
+//     POST /adjust, /proof-run, /experiment-decisions/{evaluate,promote,
+//     pause-variant,lock}, /proof-scenario, /paid-channel-kill-switch).
+//     A single middleware covers all of them — and any future handler — in
+//     one reviewable place.
+//   - Same pattern just shipped for prestige-pass /admin/wallet/* (PR-B).
+//
+// Hard rules respected:
+//   - GET / HEAD / OPTIONS skipped (audit logs are for mutations only)
+//   - Error responses (status >= 400) skipped
+//   - Audit write is fire-and-forget AFTER the response is sent — the
+//     mutation's response timing is never affected
+//   - No loyalty business logic changes; this only OBSERVES responses
+function adminLoyaltyAuditMiddleware(req: Request, res: Response, next: NextFunction): void {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+
+  const originalJson = res.json.bind(res);
+  res.json = function patchedJson(body: unknown): Response {
+    if (res.statusCode < 400) {
+      const adminUserId =
+        ((req as any).firebaseUser?.uid as string | undefined) ||
+        ((req as any).session?.user?.uid as string | undefined) ||
+        'admin';
+
+      // Derive a stable actionType from the route path. Examples:
+      //   PATCH /rules/:ruleKey                          → LOYALTY_ADMIN_RULES_UPDATE
+      //   POST  /adjust                                  → LOYALTY_ADMIN_ADJUST
+      //   POST  /experiment-decisions/promote            → LOYALTY_ADMIN_EXPERIMENT_DECISIONS_PROMOTE
+      //   POST  /experiment-decisions/pause-variant      → LOYALTY_ADMIN_EXPERIMENT_DECISIONS_PAUSE_VARIANT
+      //   POST  /paid-channel-kill-switch                → LOYALTY_ADMIN_PAID_CHANNEL_KILL_SWITCH
+      const routePath: string =
+        (req.route as any)?.path ||
+        (req.baseUrl + (req.path || '')) ||
+        req.originalUrl ||
+        '';
+      const verbSuffix = req.method === 'PATCH' ? 'UPDATE' : req.method === 'DELETE' ? 'DELETE' : '';
+      const segments = routePath
+        .replace(/^\/+|\/+$/g, '')
+        .split('/')
+        .filter(Boolean)
+        .filter((s) => !s.startsWith(':'));
+      const baseType = segments
+        .map((s) => s.replace(/[^A-Za-z0-9]+/g, '_'))
+        .join('_')
+        .toUpperCase();
+      const actionType = verbSuffix && !baseType.endsWith(verbSuffix)
+        ? `LOYALTY_ADMIN_${baseType}_${verbSuffix}`.replace(/_+/g, '_')
+        : `LOYALTY_ADMIN_${baseType}`.replace(/_+/g, '_');
+
+      const params = (req.params || {}) as Record<string, string>;
+      const reqBody = (req.body || {}) as Record<string, unknown>;
+      const targetId =
+        params.ruleKey ||
+        params.id ||
+        params.variantKey ||
+        (typeof reqBody.ruleKey === 'string' && reqBody.ruleKey) ||
+        (typeof reqBody.userId === 'string' && reqBody.userId) ||
+        (typeof reqBody.targetUserId === 'string' && reqBody.targetUserId) ||
+        'admin_action';
+
+      logAuditEvent({
+        actorUserId: adminUserId,
+        actorRole: 'admin',
+        actionType,
+        targetType: 'loyalty',
+        targetId: String(targetId),
+        ip: (req.ip || (req.headers['x-forwarded-for'] as string)) ?? undefined,
+        userAgent: req.headers['user-agent'],
+        traceId: (req as any).traceId,
+        metadata: {
+          method: req.method,
+          path: req.originalUrl,
+          status: res.statusCode,
+          body: reqBody,
+        },
+      }).catch((auditErr: unknown) => {
+        const msg = auditErr instanceof Error ? auditErr.message : String(auditErr);
+        logger.warn('[AdminLoyalty] audit write failed (non-blocking)', {
+          actionType, targetId, error: msg,
+        });
+      });
+    }
+    return originalJson(body as any);
+  };
+
+  next();
+}
+
+// Mount BEFORE any handler so Express runs it first on every request.
+router.use(adminLoyaltyAuditMiddleware);
 
 // ── GET /rules ────────────────────────────────────────────────────────────────
 router.get('/rules', requireAdmin, async (_req, res) => {
