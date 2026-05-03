@@ -147,6 +147,7 @@ import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import adminBrainRoutes from "./routes/admin-brain";
+import coworkerRoutes from "./routes/coworker";
 import adminNotificationsRoutes from "./routes/admin-notifications";
 import adminPawFinderRoutes from "./routes/admin-paw-finder";
 import systemEventsAdminRoutes from "./routes/system-events";
@@ -9672,6 +9673,10 @@ self.addEventListener('notificationclick', (event) => {
   // (inside adminBrainRoutes) can check super-admin email + role.
   // Read-only — no mutations on this router.
   app.use('/api/admin/brain', validateFirebaseToken, adminLimiter, adminBrainRoutes);
+  // PR-20: AI Coworker Agents scaffold. Same gate as /admin/brain
+  // (validateFirebaseToken at mount + requireBrainAccess inside the router).
+  // Read-only — every family returns wired:false until PR-21+ implements it.
+  app.use('/api/admin/coworker', validateFirebaseToken, adminLimiter, coworkerRoutes);
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', validateFirebaseToken, adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
