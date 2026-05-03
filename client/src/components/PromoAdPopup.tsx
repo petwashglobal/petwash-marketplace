@@ -437,33 +437,34 @@ function MembershipTiersTemplate({ config, title, subtitle, ctaText, onCta }: Te
 }
 
 interface PosterTemplateProps extends TemplateProps {
-  /** Close handler for the secondary "Continue to Site" link.  */
+  /** Close handler — kept on the prop type for backwards compat with the
+   *  call site, even though this template no longer renders a secondary
+   *  close button (the shell already provides the floating X). */
   onClose?: () => void;
 }
 
 /**
- * PosterTemplate — full-bleed approved brand ad image.
+ * PosterTemplate — exact uploaded creative on a transparent background.
  *
- * Pure white background, image centered using object-contain so it
- * stays sharp on every device:
- *   • iPhone (portrait):  image fills almost the full width, minimal
- *                         vertical white space, CTA pinned to the
- *                         safe-area-aware bottom.
- *   • iPad / desktop:     image grows to a comfortable max height,
- *                         floats inside a rounded card.
+ * Per CEO directive (2026-05-03):
+ *   - Display the uploaded artwork EXACTLY as designed. No text overlays,
+ *     no extra CTAs, no white card framing, no padding wrapper, no bottom
+ *     button strip.
+ *   - The popup shell at the parent <PromoAdPopup> already provides
+ *     full-screen presentation, dark+blurred backdrop, safe-area-aware
+ *     X close button, and 100dvh height. This template renders ONLY the
+ *     image, centered, with object-contain so the artwork is never
+ *     distorted across device aspect ratios.
+ *   - If a separate mobile-ratio creative is added later, switch the
+ *     image src here based on viewport. Do NOT distort the existing
+ *     artwork to "fit" mobile.
  *
- * The PetTrek "Coming Soon" tag is expected to be BAKED INTO the image.
- * The popup does not overlay any per-platform text.
- *
- * If the image is missing or fails to load, we render a clean branded
- * fallback card so the popup is never blank.
- *
- * Buttons:
- *   • Primary "Explore Platforms" → onCta (navigates to ctaUrl)
- *   • Secondary "Continue to Site" → onClose (closes popup, stays on
- *     current page — does NOT redirect anywhere)
+ * Fallback: if the configured image fails to load (or is blocked by the
+ * isPublicSafePromoImage guard), render a clean branded gradient card so
+ * the popup is never blank. The fallback is the only place this template
+ * renders extra layout — the primary path is image-only.
  */
-function PosterTemplate({ config, ctaText, onCta, onClose }: PosterTemplateProps) {
+function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
   const [imgFailed, setImgFailed] = useState(false);
 
   // Safety guard: block any image that looks like a backend/dev screenshot
@@ -474,56 +475,34 @@ function PosterTemplate({ config, ctaText, onCta, onClose }: PosterTemplateProps
     console.warn('[PromoAdPopup] Blocked unsafe image URL from public popup:', config.imageUrl);
   }
 
-  return (
-    <div className="relative w-full h-full flex flex-col bg-white">
-      {/* Full-bleed poster image */}
-      {showImage ? (
-        <div className="flex-1 flex items-center justify-center bg-white p-2 sm:p-4 md:p-6 min-h-0">
-          <img
-            src={config.imageUrl}
-            alt="Pet Wash™ Smart Hub"
-            className="w-full h-full object-contain"
-            style={{ maxHeight: '100%' }}
-            onError={() => setImgFailed(true)}
-          />
-        </div>
-      ) : (
-        /* Fallback: branded gradient card so the popup is never blank */
-        <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 via-indigo-700 to-sky-600 p-8 text-white text-center">
-          <img
-            src="/brand/petwash-logo-white-bg.png"
-            alt="Pet Wash™"
-            className="h-16 object-contain mb-6"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-          <h2 className="text-2xl font-bold mb-2">ONE WORLD. EVERY PET.</h2>
-          <p className="text-lg opacity-80 mb-2">⁦Pet Wash™⁩</p>
-          <p className="text-sm opacity-60">www.PetWash.co.il</p>
-        </div>
-      )}
+  if (showImage) {
+    // Primary path: image only. Transparent wrapper lets the shell's dark
+    // backdrop show through letterbox bars when the artwork ratio doesn't
+    // match the device.
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <img
+          src={config.imageUrl}
+          alt="Pet Wash™ Smart Hub"
+          className="max-w-full max-h-full object-contain"
+          onError={() => setImgFailed(true)}
+        />
+      </div>
+    );
+  }
 
-      {/* CTA pinned to bottom, safe-area aware */}
-      {ctaText && (
-        <div
-          className="flex-shrink-0 px-6 py-4 bg-white"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
-        >
-          <button
-            onClick={onCta}
-            className="w-full py-4 bg-black text-white font-semibold text-base rounded-2xl tracking-wide hover:bg-gray-900 active:scale-[0.98] transition-all"
-            data-testid="button-promo-cta"
-          >
-            {ctaText}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
-            data-testid="button-promo-continue-to-site"
-          >
-            Continue to Site →
-          </button>
-        </div>
-      )}
+  // Fallback: branded gradient card so the popup is never blank.
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 via-indigo-700 to-sky-600 p-8 text-white text-center">
+      <img
+        src="/brand/petwash-logo-white-bg.png"
+        alt="Pet Wash™"
+        className="h-16 object-contain mb-6"
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      />
+      <h2 className="text-2xl font-bold mb-2">ONE WORLD. EVERY PET.</h2>
+      <p className="text-lg opacity-80 mb-2">⁦Pet Wash™⁩</p>
+      <p className="text-sm opacity-60">www.PetWash.co.il</p>
     </div>
   );
 }
