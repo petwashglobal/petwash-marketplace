@@ -35,7 +35,18 @@
 import { useFirebaseAuth, type UserRole } from '@/auth/AuthProvider';
 import { getApiUrl } from '@/lib/apiConfig';
 
-const ADMIN_ROLES: UserRole[] = ['staff', 'admin', 'management', 'super_admin'];
+// Keep aligned with `shared/adminRoles.ts` ADMIN_ROLES — ceo/hr/finance/ops
+// must route to the admin dashboard, not /my-account. See P0 audit Bug 1.
+const ADMIN_ROLES: UserRole[] = [
+  'staff',
+  'admin',
+  'management',
+  'super_admin',
+  'ceo',
+  'hr',
+  'finance',
+  'ops',
+];
 
 function adminEmailMatch(email: string | null | undefined): boolean {
   if (!email) return false;
