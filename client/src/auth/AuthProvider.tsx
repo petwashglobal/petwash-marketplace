@@ -23,7 +23,23 @@ export const AUTH_LOCAL_STORAGE_KEYS = [
   'signup_intent',
 ] as const;
 
-export type UserRole = 'public' | 'provider' | 'franchise_owner' | 'staff' | 'admin' | 'management' | 'super_admin';
+// Mirror of `shared/adminRoles.ts` ADMIN_ROLES on the client. The literal must
+// include every role the server may mint as a Firebase custom claim — otherwise
+// `(c.role as UserRole) || 'public'` silently downgrades real admin roles
+// (ceo, hr, finance, ops) to 'public' and routes them to /my-account.
+// See P0 audit (PR #86) Bug 1.
+export type UserRole =
+  | 'public'
+  | 'provider'
+  | 'franchise_owner'
+  | 'staff'
+  | 'admin'
+  | 'management'
+  | 'super_admin'
+  | 'ceo'
+  | 'hr'
+  | 'finance'
+  | 'ops';
 
 export interface UserClaims {
   role: UserRole;

@@ -7,8 +7,12 @@ const ROLE_HIERARCHY: Record<UserRole, number> = {
   provider: 2,
   franchise_owner: 3,
   staff: 4,
+  hr: 5,
+  ops: 5,
+  finance: 6,
   admin: 6,
   management: 8,
+  ceo: 9,
   super_admin: 10,
 };
 

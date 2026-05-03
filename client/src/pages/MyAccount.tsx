@@ -999,7 +999,7 @@ export default function MyAccount() {
                 <div className="pw-avatar-ring">
                   <div className="pw-avatar-ring-inner">
                     <Avatar className="w-28 h-28">
-                      <AvatarImage src={profile.photoURL} alt={profile.displayName} />
+                      <AvatarImage src={profile?.photoURL ?? undefined} alt={profile?.displayName ?? ''} />
                       <AvatarFallback className="text-4xl font-bold bg-[#1a1a24] text-amber-300 w-full h-full flex items-center justify-center">
                         <img src="/gold-user-icon.jpeg" alt="avatar" className="w-full h-full object-cover rounded-full opacity-90" />
                       </AvatarFallback>
@@ -1069,7 +1069,7 @@ export default function MyAccount() {
 
               <div className="flex-1 text-center md:text-start">
                 <h2 className="text-2xl md:text-3xl font-semibold text-white mb-3 tracking-tight">
-                  {profile.displayName || (isHebrew ? 'בעל חיית מחמד' : 'Pet Parent')}
+                  {profile?.displayName || (isHebrew ? 'בעל חיית מחמד' : 'Pet Parent')}
                 </h2>
 
                 {/* Gold tier badge */}
@@ -1863,14 +1863,14 @@ export default function MyAccount() {
                       /* Display mode — show structured address */
                       <div className="space-y-1">
                         {/* Permanent address */}
-                        {(profile.street || profile.city || profile.address) ? (
+                        {(profile?.street || profile?.city || profile?.address) ? (
                           <>
                             <p className="text-gray-900 font-medium">
-                              {[profile.street, (profile as any).streetNumber].filter(Boolean).join(' ')}
-                              {(profile as any).apartment && `, ${(profile as any).apartment}`}
+                              {[profile?.street, (profile as any)?.streetNumber].filter(Boolean).join(' ')}
+                              {(profile as any)?.apartment && `, ${(profile as any).apartment}`}
                             </p>
                             <p className="text-gray-500 text-sm">
-                              {[profile.city, profile.postalCode, profile.country].filter(Boolean).join(' · ')}
+                              {[profile?.city, profile?.postalCode, profile?.country].filter(Boolean).join(' · ')}
                             </p>
                           </>
                         ) : (
@@ -2320,11 +2320,11 @@ export default function MyAccount() {
                         </div>
                       </div>
                       <Switch 
-                        checked={profile.notificationPreferences?.[item.key as keyof typeof profile.notificationPreferences] ?? true}
+                        checked={profile?.notificationPreferences?.[item.key as keyof NonNullable<typeof profile.notificationPreferences>] ?? true}
                         onCheckedChange={(checked) => {
                           updateProfileMutation.mutate({
                             notificationPreferences: {
-                              ...profile.notificationPreferences,
+                              ...(profile?.notificationPreferences ?? {}),
                               [item.key]: checked,
                             }
                           });

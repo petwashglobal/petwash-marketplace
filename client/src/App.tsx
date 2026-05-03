@@ -22,7 +22,7 @@ import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
@@ -463,6 +463,72 @@ const PageLoader = () => (
     </div>
   </div>
 );
+
+/**
+ * Route-scoped error boundary used by /my-account so a render or
+ * lazy-chunk failure on the account page does NOT replace the entire
+ * shell via the global AppErrorBoundary. Renders a small "this section
+ * had an issue" card with a Go-Home CTA. Telemetry is intentionally a
+ * single best-effort POST — the global boundary remains the catch-all
+ * for cross-app crashes. See P0 audit (PR #86) Bug 2.
+ */
+class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
+    try {
+      fetch('/api/errors/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: `RouteErrorBoundary:${this.props.routeName}`,
+          message: error?.message,
+          stack: error?.stack,
+          componentStack: errorInfo?.componentStack,
+          url: typeof window !== 'undefined' ? window.location.href : '',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+          timestamp: new Date().toISOString(),
+        }),
+      }).catch(() => { /* swallow — never throw from a boundary */ });
+    } catch {
+      // noop
+    }
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div className="min-h-[100dvh] bg-white flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">This section had an issue</h2>
+          <p className="text-gray-600">
+            We couldn't load this page right now. Please try again, or head back home.
+          </p>
+          <div className="flex gap-3 justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-md bg-gray-900 text-white text-sm font-medium"
+            >
+              Reload
+            </button>
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/home'; }}
+              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium"
+            >
+              Go Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
 
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
@@ -2043,7 +2109,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/my-account">
           {() => (
             <RequireAuth>
-              <MyAccount />
+              <RouteErrorBoundary routeName="/my-account">
+                <Suspense fallback={<PageLoader />}>
+                  <MyAccount />
+                </Suspense>
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>
