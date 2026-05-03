@@ -9656,14 +9656,24 @@ self.addEventListener('notificationclick', (event) => {
   const adminRoutes = await import('./routes/admin');
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminDashboardRoutes);
-  app.use('/api/admin/loyalty', adminLimiter, adminLoyaltyRoutes);
+  // PR-D: Mount-chain hardening — admin-* routers below previously had
+  // adminLimiter only. Each route inside the routers does its own
+  // requireAdmin / isSuperAdmin check, but if a future handler is added
+  // without that inline check the request would land unauthenticated.
+  // validateFirebaseToken at the mount level enforces "must have a Firebase
+  // token to even reach an /api/admin/* handler" — defense in depth.
+  // Risk-check (per CEO): all routes in admin-loyalty + admin-notifications
+  // have inline requireAdmin; admin-paw-finder routes lacked any inline
+  // auth (docstring claimed aspirational protection that wasn't wired) —
+  // adding validateFirebaseToken here closes that gap.
+  app.use('/api/admin/loyalty', validateFirebaseToken, adminLimiter, adminLoyaltyRoutes);
   // Operations Brain (CEO read-only dashboard).
   // validateFirebaseToken populates req.firebaseUser so requireBrainAccess
   // (inside adminBrainRoutes) can check super-admin email + role.
   // Read-only — no mutations on this router.
   app.use('/api/admin/brain', validateFirebaseToken, adminLimiter, adminBrainRoutes);
-  app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
-  app.use('/api/admin/paw-finder', adminLimiter, adminPawFinderRoutes);
+  app.use('/api/admin', validateFirebaseToken, adminLimiter, adminNotificationsRoutes);
+  app.use('/api/admin/paw-finder', validateFirebaseToken, adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
   app.use('/api/admin/spam-guard', adminLimiter, spamGuardRoutes);
 
