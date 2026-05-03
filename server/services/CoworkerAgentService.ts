@@ -25,10 +25,20 @@ import {
   CoworkerFamilySchema,
   CoworkerOutputSchema,
   notWiredOutput,
+  type CoworkerActor,
   type CoworkerFamily,
   type CoworkerOutput,
 } from '../../shared/coworker-types';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
+import {
+  assertOutputSafe,
+  assertRateLimit,
+  CoworkerRateLimitError,
+  CoworkerUnsafeOutputError,
+  deterministicFallback,
+  type RateLimitConfig,
+} from './coworker/governance';
 
 export interface RunFamilyOptions {
   /** Override the default 60s snapshot cache TTL for this family. */
@@ -37,7 +47,15 @@ export interface RunFamilyOptions {
   noCache?: boolean;
   /** Free-form scope hints a future implementation may use (e.g. station id). */
   scope?: Record<string, string | number | boolean>;
+  /** Who is calling. Threaded through for rate limit + audit logging. */
+  actor?: CoworkerActor;
+  /** Override the default rate limit window for this call (rare). */
+  rateLimit?: RateLimitConfig;
 }
+
+// Re-export governance error types so route handlers can `instanceof`-check
+// them without reaching into the governance module directly.
+export { CoworkerRateLimitError, CoworkerUnsafeOutputError };
 
 interface CacheEntry {
   expiresAt: number;
@@ -78,24 +96,50 @@ export class CoworkerAgentService {
     if (!parsedFamily.success) {
       throw new Error(`CoworkerAgentService: unknown family "${family}"`);
     }
+    const fam = parsedFamily.data;
 
-    const key = cacheKey(parsedFamily.data, options.scope);
+    const key = cacheKey(fam, options.scope);
     if (!options.noCache) {
       const hit = SNAPSHOT_CACHE.get(key);
       if (hit && hit.expiresAt > Date.now()) return hit.output;
     }
 
+    // PR-21: rate limit BEFORE dispatch. Per (actor, family) sliding window.
+    // Cache hits above bypass this on purpose — they don't consume Gemini.
+    assertRateLimit(options.actor?.actorUserId, fam, options.rateLimit);
+
     // PR-20: always not-wired. Family-specific dispatch table lives here in PR-21+.
-    const output = notWiredOutput(parsedFamily.data);
+    const output = notWiredOutput(fam);
 
     // Validate output against the schema. Cheap insurance against future drift.
     const validated = CoworkerOutputSchema.safeParse(output);
     if (!validated.success) {
       logger.error('[coworker] notWiredOutput failed schema validation', {
-        family: parsedFamily.data,
+        family: fam,
         issues: validated.error.issues,
       });
       throw new Error('CoworkerAgentService: scaffold output failed validation');
+    }
+
+    // PR-21: scan output for decision verbs. notWiredOutput is empty so this
+    // is a no-op today, but the hook is in the hot path for PR-22+ when
+    // Gemini-generated text starts flowing through.
+    try {
+      assertOutputSafe(validated.data);
+    } catch (err) {
+      if (err instanceof CoworkerUnsafeOutputError) {
+        logger.warn(`[coworker] unsafe output rejected, returning fallback`, {
+          family: fam,
+          matchedVerb: err.matchedVerb,
+        });
+        const fallback = deterministicFallback(
+          fam,
+          'AI output rejected by safety filter — falling back to live data only.',
+        );
+        await this.auditRun(fam, fallback, options);
+        return fallback;
+      }
+      throw err;
     }
 
     const ttl = options.ttlSeconds ?? DEFAULT_TTL_SECONDS;
@@ -103,7 +147,52 @@ export class CoworkerAgentService {
       expiresAt: Date.now() + ttl * 1000,
       output: validated.data,
     });
+
+    // PR-21: audit-log every coworker invocation. Fire-and-forget — failure
+    // to log must not break the response (matches the auditLog.ts swallow-
+    // and-log-error pattern). Cache hits do NOT log; only fresh runs do.
+    await this.auditRun(fam, validated.data, options);
+
     return validated.data;
+  }
+
+  /**
+   * Audit a coworker run. Best-effort — logAuditEvent already swallows DB
+   * errors internally, but we wrap in try/catch to be extra defensive so a
+   * future change to logAuditEvent can never break the AI response path.
+   */
+  private async auditRun(
+    family: CoworkerFamily,
+    output: CoworkerOutput,
+    options: RunFamilyOptions,
+  ): Promise<void> {
+    try {
+      await logAuditEvent({
+        actorUserId: options.actor?.actorUserId,
+        actorRole: options.actor?.actorRole,
+        actionType: `COWORKER_RUN_${family.toUpperCase()}`,
+        targetType: 'coworker_family',
+        targetId: family,
+        ip: options.actor?.ip,
+        userAgent: options.actor?.userAgent,
+        traceId: options.actor?.traceId,
+        metadata: {
+          wired: output.wired,
+          fallback: output.fallback,
+          ttlSeconds: output.ttlSeconds,
+          generatedAt: output.generatedAt,
+          scope: options.scope ?? null,
+          // Output text deliberately NOT logged here. The Brain dashboard's
+          // own audit view will surface the call; the snapshot itself is
+          // re-derivable from the cache or by re-running the family.
+        },
+      });
+    } catch (err) {
+      logger.warn(`[coworker] auditRun failed (non-fatal)`, {
+        family,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   /** Test / admin-tool helper: clear the snapshot cache. */

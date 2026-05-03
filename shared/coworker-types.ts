@@ -101,3 +101,19 @@ export function notWiredOutput(
     ttlSeconds: 60,
   };
 }
+
+// ─── Actor — who is invoking the coworker ──────────────────────────────────
+// Threaded through from route handlers so the service layer can rate-limit
+// per-actor and emit audit log entries. Kept minimal and JSON-safe — never
+// store the full Firebase token or req object here.
+//
+// Used by PR-21+ governance hooks. Optional fields are filled when available;
+// callers must not fabricate them.
+export const CoworkerActorSchema = z.object({
+  actorUserId: z.string().min(1).optional(),
+  actorRole: z.string().optional(),
+  ip: z.string().optional(),
+  userAgent: z.string().optional(),
+  traceId: z.string().optional(),
+});
+export type CoworkerActor = z.infer<typeof CoworkerActorSchema>;
