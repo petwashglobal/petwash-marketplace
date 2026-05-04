@@ -60,6 +60,7 @@ import {
   PartyPopper,
   Cake,
   Timer,
+  FileText,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -3957,8 +3958,8 @@ export default function MyAccount() {
                     queryClient.invalidateQueries({ queryKey: ['/api/pets/intake-forms'] });
                     toast({ title: isHebrew ? '✅ הצהרת הבריאות הוגשה!' : '✅ Health declaration submitted!' });
                   }}
-                  petName={(pets?.[0] as any)?.name || (isHebrew ? 'חיית המחמד שלי' : 'My Pet')}
-                  petSpecies={(pets?.[0] as any)?.species}
+                  petName={(petsData?.pets?.[0] as any)?.name || (isHebrew ? 'חיית המחמד שלי' : 'My Pet')}
+                  petSpecies={(petsData?.pets?.[0] as any)?.species}
                   language={isHebrew ? 'he' : 'en'}
                 />
               )}

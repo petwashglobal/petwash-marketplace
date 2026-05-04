@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useNetworkGuard } from "@/hooks/useNetworkGuard";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check, CalendarRange, Loader2, CreditCard, Lock } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, CalendarRange, Loader2, CreditCard, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";

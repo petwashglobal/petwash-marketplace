@@ -1767,14 +1767,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RequireAuth>
           )}
         </Route>
-        <Route path="/push-test">
-          {() => (
-            <RequireAuth>
-              <PushNotificationTest />
-            </RequireAuth>
-          )}
-        </Route>
-        
+        {/* Stale reference: PushNotificationTest component does not exist in repo. Route removed to fix TS2304. */}
+
         {/* Protected route - My Devices (Passkey Management) */}
         <Route path="/my-devices">
           {() => (
