@@ -197,7 +197,7 @@ router.patch('/settings/profile', async (req, res) => {
           userAgent: req.headers['user-agent'] || 'unknown',
           changeType: 'identity_update',
         });
-        logger.info('[ProfileSettings] Identity change audit logged for user:', uid, 'fields:', changedFields);
+        logger.info('[ProfileSettings] Identity change audit logged', { userId: uid, changedFields });
       } catch (auditError) {
         logger.error('[ProfileSettings] Failed to log audit:', auditError);
       }
@@ -302,7 +302,7 @@ router.post('/settings/email/request-change', async (req, res) => {
       userAgent: req.headers['user-agent'] || 'unknown',
     });
 
-    logger.info('[ProfileSettings] Email change requested for user:', uid, 'new email:', newEmail);
+    logger.info('[ProfileSettings] Email change requested', { userId: uid, newEmail });
     if (process.env.NODE_ENV === 'development') {
       logger.info('[ProfileSettings] Verification code (DEV ONLY):', verificationCode);
     }
@@ -370,7 +370,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
 
     await firestore.collection('pending_email_changes').doc(uid).delete();
 
-    logger.info('[ProfileSettings] Email changed for user:', uid, 'from:', pending.oldEmail, 'to:', pending.newEmail);
+    logger.info('[ProfileSettings] Email changed', { userId: uid, oldEmail: pending.oldEmail, newEmail: pending.newEmail });
 
     res.json({
       success: true,
@@ -488,7 +488,7 @@ router.post('/settings/phone/confirm-verification', async (req, res) => {
       userAgent: req.headers['user-agent'] || 'unknown',
     });
 
-    logger.info('[ProfileSettings] Phone verified for user:', uid, 'phone:', firebaseUser.phoneNumber);
+    logger.info('[ProfileSettings] Phone verified', { userId: uid, phone: firebaseUser.phoneNumber });
 
     res.json({
       success: true,
