@@ -1602,7 +1602,7 @@ router.get('/provider/:providerId/availability', async (req, res) => {
     // Create date map for easy lookup
     const dateMap: Record<string, { available: boolean; price?: number; bookingsCount?: number }> = {};
     availability.forEach(slot => {
-      const dateStr = slot.date.toISOString().split('T')[0];
+      const dateStr = new Date(slot.date).toISOString().split('T')[0];
       dateMap[dateStr] = {
         available: slot.isAvailable || false,
         price: slot.customPriceCents ? slot.customPriceCents / 100 : undefined,

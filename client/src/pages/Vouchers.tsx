@@ -112,7 +112,7 @@ export default function Vouchers() {
   // Convert DB format to PetWashVoucher2025 format for VoucherCard2025
   const convertToVoucherFormat = (dbVoucher: VoucherWithHistory): PetWashVoucher2025 => ({
     voucher_id: dbVoucher.id,
-    public_code: dbVoucher.publicCode,
+    public_code: dbVoucher.public_code,
     type: dbVoucher.type as any,
     visual: {
       tier: '7star_metal',

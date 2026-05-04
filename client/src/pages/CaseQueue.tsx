@@ -958,7 +958,7 @@ export default function CaseQueue() {
     if (caseFilter === 'all' || !currentUid) return cases;
     if (caseFilter === 'mine') {
       return cases.filter(c => {
-        const a = assignMap.get(`${c.caseType}-${c.caseRefId}`);
+        const a = assignMap.get(`${c.caseType}-${c.caseId}`);
         return a?.assignedToUid === currentUid;
       });
     }
@@ -966,7 +966,7 @@ export default function CaseQueue() {
     const myTeamIds = new Set((myTeamsQ.data?.teams ?? []).map(t => t.id));
     if (myTeamIds.size === 0) return cases;
     return cases.filter(c => {
-      const a = assignMap.get(`${c.caseType}-${c.caseRefId}`);
+      const a = assignMap.get(`${c.caseType}-${c.caseId}`);
       return a?.assignedTeamId != null && myTeamIds.has(a.assignedTeamId);
     });
   }
@@ -1033,7 +1033,7 @@ export default function CaseQueue() {
   // ── Row helper ─────────────────────────────────────────────────────────────
 
   function renderRowExtras(c: BaseCase) {
-    const assignee  = assignMap.get(`${c.caseType}-${c.caseRefId}`);
+    const assignee  = assignMap.get(`${c.caseType}-${c.caseId}`);
     const isExpanded = expandedNotes.has(c.caseId);
     const dispute   = c.caseType === 'dispute' ? (c as DisputeCase) : null;
     const refresh   = () => {
@@ -1101,7 +1101,7 @@ export default function CaseQueue() {
   // ── Shared column: assigned + checkbox ─────────────────────────────────────
 
   function AssignedCell({ c }: { c: BaseCase }) {
-    const assignee = assignMap.get(`${c.caseType}-${c.caseRefId}`);
+    const assignee = assignMap.get(`${c.caseType}-${c.caseId}`);
     if (!assignee) return <TableCell className="py-3"><span className="text-xs text-gray-400">—</span></TableCell>;
     return (
       <TableCell className="py-3 space-y-0.5">
