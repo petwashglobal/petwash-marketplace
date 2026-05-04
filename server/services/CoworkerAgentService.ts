@@ -39,6 +39,11 @@ import {
   deterministicFallback,
   type RateLimitConfig,
 } from './coworker/governance';
+import {
+  buildFallback,
+  coerceErrorToFallback,
+  type CoworkerFallbackResponse,
+} from './coworker/fallback';
 
 export interface RunFamilyOptions {
   /** Override the default 60s snapshot cache TTL for this family. */
@@ -194,6 +199,49 @@ export class CoworkerAgentService {
       });
     }
   }
+
+  /**
+   * Sibling of {@link runFamily} that NEVER throws for known coworker errors.
+   *
+   * PR-23: route handlers may opt into fallback mode when they would rather
+   * surface a `degraded:true` JSON object than a 5xx error. Unknown errors
+   * (programming bugs, DB outages, etc.) are still mapped to a fallback with
+   * `reason:'unknown'` rather than thrown — at this seam we prefer a clean
+   * UI-renderable payload over a stack trace, since the coworker is
+   * advisory-only and admins always have the underlying live data.
+   *
+   * Callers that want the throwing behaviour (audit pipelines, internal
+   * tooling) should keep using {@link runFamily}.
+   */
+  async runFamilyOrFallback(
+    family: CoworkerFamily,
+    options: RunFamilyOptions = {},
+  ): Promise<CoworkerOutput | CoworkerFallbackResponse> {
+    try {
+      return await this.runFamily(family, options);
+    } catch (err) {
+      // Best-effort family-aware fallback. We pass `family` only when the
+      // input was a recognised family code; otherwise we omit it so the
+      // shape stays narrow.
+      const parsedFamily = CoworkerFamilySchema.safeParse(family);
+      const fallback = coerceErrorToFallback(
+        err,
+        parsedFamily.success ? { family: parsedFamily.data } : {},
+      );
+      logger.warn('[coworker] runFamilyOrFallback returning degraded payload', {
+        family,
+        reason: fallback.reason,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return fallback;
+    }
+  }
+
+  /**
+   * Pure helper for callers that already caught an error and just want a
+   * fallback payload back. Keeps the import surface tidy for route handlers.
+   */
+  buildFallback = buildFallback;
 
   /** Test / admin-tool helper: clear the snapshot cache. */
   clearCache(): void {
