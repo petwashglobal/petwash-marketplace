@@ -4,9 +4,10 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { db } from '../db';
-import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger } from '@shared/schema';
+import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdmin } from '../middleware/rbac';
+import { deriveTopupIdempotencyKey } from '../lib/topup-idempotency';
 
 const router = Router();
 
@@ -99,19 +100,114 @@ router.post('/topup', topupRateLimiter, async (req, res) => {
       });
     }
 
-    await walletService.addCredits(
-      userId,
-      'egift',
-      amountCents,
-      'nayax_topup',
+    // ── PR-W4: idempotency guard ─────────────────────────────────────────────
+    // Two POSTs with the same nayaxTxId must NOT result in two credits.
+    // We try-insert the idempotency row BEFORE crediting:
+    //   • If the insert succeeds we have an exclusive lock; do the credit;
+    //     then update the row with the response so future identical
+    //     requests return the cached payload.
+    //   • If the insert hits the unique constraint, look up the existing
+    //     row. If it has a cached response → return it (idempotent hit).
+    //     If status='pending' → first request is still in flight; return
+    //     409 so the client backs off.
+    //   • On error during the credit, delete our idempotency row so the
+    //     client can retry cleanly. Best-effort delete; if it fails, the
+    //     30-day expiry sweeps the row eventually.
+    const idemKey = deriveTopupIdempotencyKey(
       nayaxTxId,
-      description || 'Wallet top-up via Nayax'
+      typeof req.headers['idempotency-key'] === 'string'
+        ? (req.headers['idempotency-key'] as string)
+        : undefined,
     );
+    let idemRowOwned = false;
 
-    const walletSummary = await walletService.getWalletSummary(userId);
+    if (idemKey) {
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const inserted = await db
+        .insert(walletIdempotencyKeys)
+        .values({
+          idempotencyKey: idemKey,
+          endpoint: '/topup',
+          status: 'pending',
+          expiresAt,
+        })
+        .onConflictDoNothing()
+        .returning({ id: walletIdempotencyKeys.id });
+
+      if (inserted.length === 0) {
+        const [existing] = await db
+          .select()
+          .from(walletIdempotencyKeys)
+          .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey))
+          .limit(1);
+        if (existing?.responseJson) {
+          logger.info('[Credit Wallet] Idempotent topup hit — returning cached', {
+            userId, idemKey,
+          });
+          try {
+            return res.json(JSON.parse(existing.responseJson));
+          } catch {
+            // Bad cached JSON — fall through to a clean error.
+          }
+        }
+        logger.warn('[Credit Wallet] Topup race — first request still in flight', {
+          userId, idemKey, existingStatus: existing?.status,
+        });
+        return res.status(409).json({
+          success: false,
+          error: 'Top-up with this transaction id is already being processed.',
+          errorCode: 'IDEMPOTENCY_IN_FLIGHT',
+        });
+      }
+      idemRowOwned = true;
+    }
+
+    let response: { success: true; amountCents: number; walletSummary: unknown };
+    try {
+      await walletService.addCredits(
+        userId,
+        'egift',
+        amountCents,
+        'nayax_topup',
+        nayaxTxId,
+        description || 'Wallet top-up via Nayax'
+      );
+
+      const walletSummary = await walletService.getWalletSummary(userId);
+      response = { success: true, amountCents, walletSummary };
+    } catch (creditErr) {
+      // Roll back the idempotency lock so the client can retry cleanly.
+      if (idemRowOwned && idemKey) {
+        try {
+          await db
+            .delete(walletIdempotencyKeys)
+            .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey));
+        } catch (delErr) {
+          logger.warn('[Credit Wallet] Failed to roll back idempotency row on error', {
+            userId, idemKey, error: String(delErr),
+          });
+        }
+      }
+      throw creditErr;
+    }
+
+    if (idemRowOwned && idemKey) {
+      try {
+        await db
+          .update(walletIdempotencyKeys)
+          .set({ responseJson: JSON.stringify(response), status: 'success' })
+          .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey));
+      } catch (updateErr) {
+        // Non-fatal — the response is sent; future retries will fall through
+        // to the in-flight branch and 409 until the 30-day expiry sweeps.
+        logger.warn('[Credit Wallet] Failed to record idempotency response (non-blocking)', {
+          userId, idemKey, error: String(updateErr),
+        });
+      }
+    }
 
     logger.info('[Credit Wallet] Top-up processed', { userId, amountCents, nayaxTxId });
-    res.json({ success: true, amountCents, walletSummary });
+    res.json(response);
   } catch (error: any) {
     logger.error('[Credit Wallet] Top-up error', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
