@@ -1,0 +1,160 @@
+name: Cache Cleanup
+
+# Stops GitHub Actions cache from filling to the 10GB cap and forcing manual cleanup.
+#
+# Retention rule:
+#   - KEEP all caches whose ref is refs/heads/main AND created within last 14 days.
+#   - KEEP all caches whose ref matches refs/pull/<n>/merge for any OPEN PR.
+#   - DELETE everything else (closed-PR caches, deleted-branch caches, stale main caches > 14 days).
+#
+# Only deletes caches (not artifacts). Uses repo-scoped GITHUB_TOKEN, no new secrets.
+
+on:
+  schedule:
+    # Daily at 03:00 UTC
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (list caches that would be deleted, but do not delete)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  # actions: write is required to delete caches via DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: cache-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Prune stale Actions caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Prune caches according to retention policy
+        uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        with:
+          script: |
+            const dryRun = (process.env.DRY_RUN || 'false').toLowerCase() === 'true';
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const RETENTION_DAYS = 14;
+            const now = Date.now();
+            const maxAgeMs = RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+            core.info(`Cache cleanup starting. dryRun=${dryRun} retentionDays=${RETENTION_DAYS}`);
+
+            // 1) Collect open PR numbers -> set of refs to keep: refs/pull/<n>/merge
+            const openPrRefs = new Set();
+            const prIter = github.paginate.iterator(github.rest.pulls.list, {
+              owner, repo, state: 'open', per_page: 100,
+            });
+            for await (const { data: prs } of prIter) {
+              for (const pr of prs) {
+                openPrRefs.add(`refs/pull/${pr.number}/merge`);
+              }
+            }
+            core.info(`Open PR refs to preserve: ${openPrRefs.size}`);
+
+            // 2) List all caches
+            const caches = [];
+            const cacheIter = github.paginate.iterator(github.rest.actions.getActionsCacheList, {
+              owner, repo, per_page: 100,
+            });
+            for await (const { data } of cacheIter) {
+              // The paginated cache endpoint returns objects keyed differently across versions.
+              // Octokit returns the array of caches directly when paginating this route.
+              const arr = Array.isArray(data) ? data : (data.actions_caches || []);
+              for (const c of arr) caches.push(c);
+            }
+            core.info(`Total caches found: ${caches.length}`);
+
+            let kept = 0;
+            let deleted = 0;
+            let bytesFreed = 0;
+            const deletions = [];
+            const keeps = [];
+
+            for (const c of caches) {
+              const ref = c.ref || '';
+              const createdAt = c.created_at ? new Date(c.created_at).getTime() : 0;
+              const ageMs = now - createdAt;
+              const size = c.size_in_bytes || 0;
+
+              let keep = false;
+              let reason = '';
+
+              if (ref === 'refs/heads/main') {
+                if (ageMs <= maxAgeMs) {
+                  keep = true;
+                  reason = `main cache within ${RETENTION_DAYS}d`;
+                } else {
+                  reason = `main cache older than ${RETENTION_DAYS}d`;
+                }
+              } else if (openPrRefs.has(ref)) {
+                keep = true;
+                reason = 'open PR ref';
+              } else {
+                reason = 'not main and not an open PR';
+              }
+
+              if (keep) {
+                kept++;
+                keeps.push(`KEEP  id=${c.id} ref=${ref} size=${size} key=${c.key} (${reason})`);
+              } else {
+                deletions.push({ id: c.id, ref, size, key: c.key, reason });
+              }
+            }
+
+            // 3) Delete the caches
+            for (const d of deletions) {
+              if (dryRun) {
+                core.info(`DRY-RUN would delete id=${d.id} ref=${d.ref} size=${d.size} key=${d.key} (${d.reason})`);
+              } else {
+                try {
+                  await github.rest.actions.deleteActionsCacheById({
+                    owner, repo, cache_id: d.id,
+                  });
+                  deleted++;
+                  bytesFreed += d.size;
+                  core.info(`DELETED id=${d.id} ref=${d.ref} size=${d.size} key=${d.key} (${d.reason})`);
+                } catch (err) {
+                  core.warning(`Failed to delete cache id=${d.id} ref=${d.ref}: ${err.message}`);
+                }
+              }
+            }
+
+            // 4) Summary
+            const mb = (bytesFreed / (1024 * 1024)).toFixed(2);
+            const summary = core.summary
+              .addHeading('Cache Cleanup Summary')
+              .addRaw(`Mode: ${dryRun ? 'dry-run' : 'live'}`).addBreak()
+              .addRaw(`Open PR refs preserved: ${openPrRefs.size}`).addBreak()
+              .addRaw(`Total caches scanned: ${caches.length}`).addBreak()
+              .addRaw(`Kept: ${kept}`).addBreak()
+              .addRaw(`Deleted: ${dryRun ? deletions.length + ' (would delete)' : deleted}`).addBreak()
+              .addRaw(`Bytes freed: ${bytesFreed} (${mb} MiB)`).addBreak();
+
+            if (deletions.length) {
+              summary.addHeading('Deletions', 3).addCodeBlock(
+                deletions.map(d => `${dryRun ? 'WOULD DELETE' : 'DELETED'} id=${d.id} ref=${d.ref} size=${d.size} key=${d.key} (${d.reason})`).join('\n'),
+                'text'
+              );
+            }
+            if (keeps.length) {
+              summary.addHeading('Kept', 3).addCodeBlock(keeps.join('\n'), 'text');
+            }
+            await summary.write();
+
+            core.info(`SUMMARY kept=${kept} deleted=${dryRun ? 0 : deleted} would_delete=${dryRun ? deletions.length : 0} bytes_freed=${bytesFreed} (${mb} MiB)`);
