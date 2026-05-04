@@ -291,10 +291,10 @@ export default function Inbox() {
         
         <div className="text-center space-y-3 luxury-animate-fade-in">
           <h1 className="luxury-dark-heading-xl">
-            {t('inbox.title', language)}
+            {t('inbox.title')}
           </h1>
           <p className="luxury-dark-text-body">
-            {t('inbox.subtitle', language)}
+            {t('inbox.subtitle')}
           </p>
           {unreadCount > 0 && (
             <span className="inline-flex items-center justify-center luxury-dark-badge-gold px-4 py-1.5">
@@ -326,7 +326,7 @@ export default function Inbox() {
                       <p className="luxury-dark-text-small text-xs">
                         {pet.breed || pet.species}
                         {pet.birthday && getPetAge(pet.birthday) !== null && (
-                          <span className="ml-2">• {getPetAge(pet.birthday)} {t('inbox.years', language)}</span>
+                          <span className="ml-2">• {getPetAge(pet.birthday)} {t('inbox.years')}</span>
                         )}
                       </p>
                     </div>
@@ -335,7 +335,7 @@ export default function Inbox() {
                   {pet.vaccineDates && pet.reminderEnabled && (
                     <div className="space-y-2">
                       <p className="luxury-dark-text-small text-[10px] mb-2">
-                        {t('inbox.vaccineStatus', language)}
+                        {t('inbox.vaccineStatus')}
                       </p>
                       {pet.vaccineDates.rabies && (() => {
                         const status = getVaccineStatus(pet.vaccineDates.rabies);
@@ -343,17 +343,17 @@ export default function Inbox() {
                           <div className={cn('flex items-center justify-between py-2 px-3 rounded-lg', status.bgClass)}>
                             <div className="flex items-center gap-2">
                               <Syringe className={status.textClass} />
-                              <span className="text-sm text-[#1A1A1A]">{t('inbox.rabies', language)}</span>
+                              <span className="text-sm text-[#1A1A1A]">{t('inbox.rabies')}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {status.icon}
                               <span className={cn('text-xs font-medium', status.textClass)}>
                                 {status.days !== null && (
                                   status.days > 0 
-                                    ? t('inbox.inDays', language).replace('{days}', status.days.toString())
+                                    ? t('inbox.inDays').replace('{days}', status.days.toString())
                                     : status.days === 0
-                                      ? t('inbox.today', language)
-                                      : t('inbox.overdue', language)
+                                      ? t('inbox.today')
+                                      : t('inbox.overdue')
                                 )}
                               </span>
                             </div>
@@ -374,10 +374,10 @@ export default function Inbox() {
                               <span className={cn('text-xs font-medium', status.textClass)}>
                                 {status.days !== null && (
                                   status.days > 0 
-                                    ? t('inbox.inDays', language).replace('{days}', status.days.toString())
+                                    ? t('inbox.inDays').replace('{days}', status.days.toString())
                                     : status.days === 0
-                                      ? t('inbox.today', language)
-                                      : t('inbox.overdue', language)
+                                      ? t('inbox.today')
+                                      : t('inbox.overdue')
                                 )}
                               </span>
                             </div>
@@ -392,15 +392,15 @@ export default function Inbox() {
                       <div className="flex items-center gap-2 mb-2">
                         <PartyPopper className="h-5 w-5 text-amber-400" />
                         <p className="luxury-dark-heading-sm text-base text-amber-300">
-                          {t('inbox.happyBirthday', language).replace('{name}', pet.name)}
+                          {t('inbox.happyBirthday').replace('{name}', pet.name)}
                         </p>
                       </div>
                       <p className="luxury-dark-text-small text-xs text-amber-200/70 mb-2">
-                        {t('inbox.birthdayDiscount', language)}
+                        {t('inbox.birthdayDiscount')}
                       </p>
                       {pet.birthdayVoucherCode && (
                         <div className="bg-[#F0EBE0] rounded-lg px-4 py-2.5 flex items-center justify-between">
-                          <span className="luxury-dark-text-small text-xs">{t('inbox.voucherCode', language)}</span>
+                          <span className="luxury-dark-text-small text-xs">{t('inbox.voucherCode')}</span>
                           <code className="text-base font-mono font-semibold tracking-wider text-amber-300">
                             {pet.birthdayVoucherCode}
                           </code>
@@ -423,8 +423,8 @@ export default function Inbox() {
                   <Mail className="w-6 h-6 text-[#d4af37]" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="luxury-dark-heading-md">{t('inbox.title', language)}</h2>
-                  <p className="luxury-dark-text-small text-xs mt-0.5">{t('inbox.subtitle', language)}</p>
+                  <h2 className="luxury-dark-heading-md">{t('inbox.title')}</h2>
+                  <p className="luxury-dark-text-small text-xs mt-0.5">{t('inbox.subtitle')}</p>
                 </div>
               </div>
             </div>
@@ -438,11 +438,11 @@ export default function Inbox() {
                       value={tab} 
                       className="luxury-dark-text-small text-xs px-4 py-2 rounded-lg data-[state=active]:bg-[#F0EBE0] data-[state=active]:text-[#1A1A1A] transition-all"
                     >
-                      {tab === 'all' ? t('inbox.all', language) :
-                       tab === 'receipt' ? t('inbox.receipts', language) :
-                       tab === 'voucher' ? t('inbox.vouchers', language) :
-                       tab === 'promo' ? t('inbox.promotions', language) :
-                       t('inbox.reminders', language)}
+                      {tab === 'all' ? t('inbox.all') :
+                       tab === 'receipt' ? t('inbox.receipts') :
+                       tab === 'voucher' ? t('inbox.vouchers') :
+                       tab === 'promo' ? t('inbox.promotions') :
+                       t('inbox.reminders')}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -457,7 +457,7 @@ export default function Inbox() {
                   ) : filteredMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-96">
                       <Mail className="h-16 w-16 mb-4 text-[#CCCCCC]" />
-                      <p className="luxury-dark-text-body">{t('inbox.noMessages', language)}</p>
+                      <p className="luxury-dark-text-body">{t('inbox.noMessages')}</p>
                     </div>
                   ) : (
                     <div className="p-4 space-y-2">
@@ -545,7 +545,7 @@ export default function Inbox() {
                 
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
                   <div className="mt-6 pt-6 border-t border-[#E8E3D9]">
-                    <h4 className="luxury-dark-heading-sm mb-4">{t('inbox.attachments', language)}</h4>
+                    <h4 className="luxury-dark-heading-sm mb-4">{t('inbox.attachments')}</h4>
                     <div className="space-y-2">
                       {selectedMessage.attachments.map((url, index) => (
                         <Button
@@ -556,7 +556,7 @@ export default function Inbox() {
                           data-testid={`button-attachment-${index}`}
                         >
                           <Receipt className="h-4 w-4 mr-3 text-cyan-400" />
-                          {t('inbox.attachment', language).replace('{index}', (index + 1).toString())}
+                          {t('inbox.attachment').replace('{index}', (index + 1).toString())}
                         </Button>
                       ))}
                     </div>
