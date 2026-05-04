@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { t } from "@/lib/i18n";
+import { useLanguage } from "@/lib/languageStore";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,7 @@ export default function CustomerManagement() {
   });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { language } = useLanguage();
   
   // Admin authentication check
   const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminLoading } = useAdminAuth();
@@ -202,15 +204,15 @@ export default function CustomerManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/admin/customers?page=${currentPage}&pageSize=${pageSize}&sortBy=${sortBy}&sortOrder=${sortOrder}&search=${encodeURIComponent(searchTerm)}&loyaltyTier=${filters.loyaltyTier}&verificationStatus=${filters.verificationStatus}&location=${filters.location}&petType=${filters.petType}`] });
       toast({
-        title: t('customers.toast.updated.title'),
-        description: t('customers.toast.updated.description'),
+        title: t('customers.toast.updated.title', language),
+        description: t('customers.toast.updated.description', language),
       });
       setEditMode(false);
     },
     onError: (error) => {
       toast({
-        title: t('customers.toast.updateFailed.title'),
-        description: t('customers.toast.updateFailed.description'),
+        title: t('customers.toast.updateFailed.title', language),
+        description: t('customers.toast.updateFailed.description', language),
         variant: "destructive",
       });
     },
@@ -227,15 +229,15 @@ export default function CustomerManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/admin/customers/${selectedCustomer?.id}/communications`] });
       toast({
-        title: t('customers.toast.communicationAdded.title'),
-        description: t('customers.toast.communicationAdded.description'),
+        title: t('customers.toast.communicationAdded.title', language),
+        description: t('customers.toast.communicationAdded.description', language),
       });
       setNewCommunication({ type: 'note', subject: '', summary: '', outcome: '' });
     },
     onError: (error) => {
       toast({
-        title: t('customers.toast.addFailed.title'),
-        description: t('customers.toast.addFailed.description'),
+        title: t('customers.toast.addFailed.title', language),
+        description: t('customers.toast.addFailed.description', language),
         variant: "destructive",
       });
     },
@@ -263,10 +265,10 @@ export default function CustomerManagement() {
   // Customer value calculation
   const getCustomerValueTier = (totalSpent: string) => {
     const spent = parseFloat(totalSpent);
-    if (spent >= 5000) return { tier: t('customers.value.vip'), color: 'bg-purple-100 text-purple-800' };
-    if (spent >= 2000) return { tier: t('customers.value.highValue'), color: 'bg-blue-100 text-blue-800' };
-    if (spent >= 500) return { tier: t('customers.value.regular'), color: 'bg-green-100 text-green-800' };
-    return { tier: t('customers.value.new'), color: 'bg-white text-gray-800' };
+    if (spent >= 5000) return { tier: t('customers.value.vip', language), color: 'bg-purple-100 text-purple-800' };
+    if (spent >= 2000) return { tier: t('customers.value.highValue', language), color: 'bg-blue-100 text-blue-800' };
+    if (spent >= 500) return { tier: t('customers.value.regular', language), color: 'bg-green-100 text-green-800' };
+    return { tier: t('customers.value.new', language), color: 'bg-white text-gray-800' };
   };
 
   // Handle customer detail view
@@ -377,7 +379,7 @@ export default function CustomerManagement() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder={t('customers.search.placeholder')}
+                  placeholder={t('customers.search.placeholder', language)}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -400,7 +402,7 @@ export default function CustomerManagement() {
                 <Label className="text-sm font-medium text-slate-700">Loyalty Tier</Label>
                 <Select value={filters.loyaltyTier} onValueChange={(value) => handleFilterChange('loyaltyTier', value)}>
                   <SelectTrigger data-testid="filter-loyalty-tier">
-                    <SelectValue placeholder={t('customers.filters.allTiers')} />
+                    <SelectValue placeholder={t('customers.filters.allTiers', language)} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Tiers</SelectItem>
@@ -417,7 +419,7 @@ export default function CustomerManagement() {
                 <Label className="text-sm font-medium text-slate-700">Customer Value</Label>
                 <Select value={filters.customerValue} onValueChange={(value) => handleFilterChange('customerValue', value)}>
                   <SelectTrigger data-testid="filter-customer-value">
-                    <SelectValue placeholder={t('customers.filters.allValues')} />
+                    <SelectValue placeholder={t('customers.filters.allValues', language)} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Values</SelectItem>
@@ -433,7 +435,7 @@ export default function CustomerManagement() {
                 <Label className="text-sm font-medium text-slate-700">Verification</Label>
                 <Select value={filters.verificationStatus} onValueChange={(value) => handleFilterChange('verificationStatus', value)}>
                   <SelectTrigger data-testid="filter-verification">
-                    <SelectValue placeholder={t('customers.filters.allStatus')} />
+                    <SelectValue placeholder={t('customers.filters.allStatus', language)} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Status</SelectItem>
@@ -447,7 +449,7 @@ export default function CustomerManagement() {
                 <Label className="text-sm font-medium text-slate-700">Location</Label>
                 <Select value={filters.location} onValueChange={(value) => handleFilterChange('location', value)}>
                   <SelectTrigger data-testid="filter-location">
-                    <SelectValue placeholder={t('customers.filters.allLocations')} />
+                    <SelectValue placeholder={t('customers.filters.allLocations', language)} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Locations</SelectItem>
@@ -463,7 +465,7 @@ export default function CustomerManagement() {
                 <Label className="text-sm font-medium text-slate-700">Pet Type</Label>
                 <Select value={filters.petType} onValueChange={(value) => handleFilterChange('petType', value)}>
                   <SelectTrigger data-testid="filter-pet-type">
-                    <SelectValue placeholder={t('customers.filters.allPets')} />
+                    <SelectValue placeholder={t('customers.filters.allPets', language)} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Pets</SelectItem>
@@ -599,7 +601,7 @@ export default function CustomerManagement() {
                           </TableCell>
                           <TableCell>
                             <div className="text-sm text-slate-600">
-                              {customer.lastLogin ? new Date(customer.lastLogin).toLocaleDateString() : t('customers.lastLogin.never')}
+                              {customer.lastLogin ? new Date(customer.lastLogin).toLocaleDateString() : t('customers.lastLogin.never', language)}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -610,7 +612,7 @@ export default function CustomerManagement() {
                                 <AlertTriangle className="w-4 h-4 text-orange-500" />
                               )}
                               <span className={`text-xs font-medium ${customer.isVerified ? 'text-green-700' : 'text-orange-700'}`}>
-                                {customer.isVerified ? t('customers.status.verified') : t('customers.status.pending')}
+                                {customer.isVerified ? t('customers.status.verified', language) : t('customers.status.pending', language)}
                               </span>
                             </div>
                           </TableCell>
@@ -741,7 +743,7 @@ export default function CustomerManagement() {
                         data-testid="edit-customer-info"
                       >
                         <Edit className="w-4 h-4 mr-2" />
-                        {editMode ? t('customers.actions.cancel') : t('customers.actions.edit')}
+                        {editMode ? t('customers.actions.cancel', language) : t('customers.actions.edit', language)}
                       </Button>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -808,7 +810,7 @@ export default function CustomerManagement() {
                         <Label>Country</Label>
                         <div className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">{selectedCustomer.country || t('customers.country.notSpecified')}</span>
+                          <span className="font-medium">{selectedCustomer.country || t('customers.country.notSpecified', language)}</span>
                         </div>
                       </div>
 
@@ -827,7 +829,7 @@ export default function CustomerManagement() {
                             disabled={updateCustomerMutation.isPending}
                             data-testid="save-customer-changes"
                           >
-                            {updateCustomerMutation.isPending ? t('customers.actions.saving') : t('customers.actions.saveChanges')}
+                            {updateCustomerMutation.isPending ? t('customers.actions.saving', language) : t('customers.actions.saveChanges', language)}
                           </Button>
                         </div>
                       )}
@@ -894,7 +896,7 @@ export default function CustomerManagement() {
                               <AlertTriangle className="w-5 h-5 text-orange-500" />
                             )}
                             <span className={`text-sm font-medium ${selectedCustomer.isVerified ? 'text-green-700' : 'text-orange-700'}`}>
-                              {selectedCustomer.isVerified ? t('customers.status.verified') : t('customers.status.unverified')}
+                              {selectedCustomer.isVerified ? t('customers.status.verified', language) : t('customers.status.unverified', language)}
                             </span>
                           </div>
                         </div>
@@ -1019,7 +1021,7 @@ export default function CustomerManagement() {
                           <Input
                             value={newCommunication.subject}
                             onChange={(e) => setNewCommunication(prev => ({ ...prev, subject: e.target.value }))}
-                            placeholder={t('customers.communication.subject.placeholder')}
+                            placeholder={t('customers.communication.subject.placeholder', language)}
                             data-testid="communication-subject"
                           />
                         </div>
@@ -1029,7 +1031,7 @@ export default function CustomerManagement() {
                         <Textarea
                           value={newCommunication.summary}
                           onChange={(e) => setNewCommunication(prev => ({ ...prev, summary: e.target.value }))}
-                          placeholder={t('customers.communication.summary.placeholder')}
+                          placeholder={t('customers.communication.summary.placeholder', language)}
                           rows={3}
                           data-testid="communication-summary"
                         />
@@ -1039,7 +1041,7 @@ export default function CustomerManagement() {
                         <Input
                           value={newCommunication.outcome}
                           onChange={(e) => setNewCommunication(prev => ({ ...prev, outcome: e.target.value }))}
-                          placeholder={t('customers.communication.outcome.placeholder')}
+                          placeholder={t('customers.communication.outcome.placeholder', language)}
                           data-testid="communication-outcome"
                         />
                       </div>
@@ -1058,7 +1060,7 @@ export default function CustomerManagement() {
                         data-testid="add-communication"
                       >
                         <Send className="w-4 h-4 mr-2" />
-                        {addCommunicationMutation.isPending ? t('customers.actions.adding') : t('customers.actions.addCommunication')}
+                        {addCommunicationMutation.isPending ? t('customers.actions.adding', language) : t('customers.actions.addCommunication', language)}
                       </Button>
                     </div>
 
