@@ -23,6 +23,7 @@ import {
   type SitterProvider,
   type MarketplaceSearchResponse,
   type MarketplacePlatformId,
+  type MarketplaceSearchFilters,
 } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc, or, ilike, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';

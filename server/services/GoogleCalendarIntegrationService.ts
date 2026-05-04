@@ -7,6 +7,7 @@ import {
   type InsertCalendarEvent,
 } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
+import { logger } from '../lib/logger';
 
 let connectionSettings: any;
 let serviceAccountAuth: any = null;
