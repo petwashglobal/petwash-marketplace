@@ -297,6 +297,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
+import { legacyGiftCardRedeemHandler } from "./lib/legacy-gift-card-redeem-handler";
 import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
@@ -3594,6 +3595,32 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // LEGACY /api/gift-cards/redeem  —  DISABLED 2026-05  (financial safety)
+  //
+  // The handler below used to increment customers.giftCardBalance, which is a
+  // SEPARATE ledger from walletAccounts.egiftBalanceCents (the modern source
+  // of truth). Continuing to write there orphaned customer balances —
+  // credited shekels could not be spent at K9000, marketplace, or any
+  // modern wallet UI. We replaced the active handler with a 410 GONE
+  // response from server/lib/legacy-gift-card-redeem-handler.ts.
+  //
+  // The original code below is preserved as a comment block FOR FORENSIC
+  // REFERENCE per CEO directive — do not delete in this PR. A separate
+  // future PR will reconcile orphan customers.giftCardBalance rows and
+  // remove this block.
+  //
+  // Modern redemption flow:
+  //   POST /api/gift-cards/purchase                 → creates eVouchers row
+  //   POST /api/gift-cards/:voucherId/activate-wallet → credits walletAccounts.egiftBalanceCents
+  // ─────────────────────────────────────────────────────────────────────────
+  app.post('/api/gift-cards/redeem', requireAuth, requireOnboardingComplete, legacyGiftCardRedeemHandler);
+
+  /* --------------------------------------------------------------------------
+   * ORIGINAL legacy handler — DO NOT RE-ENABLE without admin sign-off.
+   * Preserved for forensic reference (the customers.giftCardBalance writes
+   * here are exactly what produced the orphan balances we are now blocking).
+   * --------------------------------------------------------------------------
   app.post('/api/gift-cards/redeem', requireAuth, requireOnboardingComplete, async (req: any, res) => {
     try {
       const { code } = req.body;
@@ -3602,45 +3629,45 @@ self.addEventListener('notificationclick', (event) => {
       if (!customerId) {
         return res.status(400).json({ message: "Customer session not found. Please sign out and sign in again." });
       }
-      
+
       const giftCard = await storage.getGiftCard(code);
       if (!giftCard) {
         return res.status(404).json({ message: "Gift card not found" });
       }
-      
+
       if (giftCard.status !== 'ACTIVE') {
         return res.status(400).json({ message: "Gift card already redeemed or inactive" });
       }
 
       const redeemedCard = await storage.redeemGiftCard(code, customerId.toString());
-      
+
       if (!redeemedCard) {
         return res.status(500).json({ message: "Failed to redeem gift card" });
       }
-      
+
       // Update customer balance and award loyalty points (TRUE ATOMIC UPDATE at SQL level)
       const customer = await storage.getCustomer(customerId);
       if (customer) {
         const addedAmount = parseFloat(redeemedCard.remainingAmount);
         const pointsEarned = Math.floor(addedAmount);
-        
+
         // TRUE ATOMIC: Use SQL-level increments to prevent race conditions
         // Database performs the addition, not JavaScript (prevents concurrent overwrites)
         await db
           .update(customers)
-          .set({ 
+          .set({
             giftCardBalance: sql`${customers.giftCardBalance} + ${addedAmount}`, // SQL-level increment
             loyaltyPoints: sql`${customers.loyaltyPoints} + ${pointsEarned}`, // SQL-level increment
             updatedAt: new Date()
           })
           .where(eq(customers.id, customerId));
-        
+
         // Fetch updated balances for logging
         const updatedCustomer = await storage.getCustomer(customerId);
-        
-        logger.info(`Gift card redeemed: ${addedAmount} ILS added to gift card balance, ${pointsEarned} loyalty points awarded`, { 
-          customerId, 
-          addedAmount, 
+
+        logger.info(`Gift card redeemed: ${addedAmount} ILS added to gift card balance, ${pointsEarned} loyalty points awarded`, {
+          customerId,
+          addedAmount,
           pointsEarned,
           newGiftCardBalance: updatedCustomer?.giftCardBalance,
           newPointsBalance: updatedCustomer?.loyaltyPoints
@@ -3653,6 +3680,7 @@ self.addEventListener('notificationclick', (event) => {
       res.status(500).json({ message: "Failed to redeem gift card" });
     }
   });
+  */
 
   // Get gift card by ID
   app.get('/api/gift-cards/:id', async (req, res) => {

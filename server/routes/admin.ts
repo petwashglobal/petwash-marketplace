@@ -1454,5 +1454,79 @@ router.post('/sms/kill-switch/activate', validateFirebaseToken, requireAdmin, as
   }
 });
 
+/**
+ * GET /api/admin/wallet/orphan-egift-customers
+ *
+ * READ-ONLY listing of every customers row whose `gift_card_balance > 0`.
+ * That column is the LEGACY ledger that the now-disabled
+ * `POST /api/gift-cards/redeem` route used to write to. Modern wallet
+ * surfaces (K9000 redemption, marketplace booking deduction, the wallet
+ * UI) read from `wallet_accounts.egift_balance_cents` instead, so any
+ * shekels sitting in `customers.gift_card_balance` are ORPHANED — the
+ * customer paid for credit they cannot spend.
+ *
+ * This endpoint exists so an operator can SEE the data on the line
+ * before any reconciliation PR runs. It does NOT move money. It does
+ * NOT zero balances. It writes nothing.
+ *
+ * Response shape:
+ *   {
+ *     totalCustomers: number,
+ *     totalShekels: string,       // sum of giftCardBalance across rows
+ *     rows: Array<{
+ *       customerId: number,
+ *       email: string | null,
+ *       firstName: string | null,
+ *       lastName: string | null,
+ *       giftCardBalance: string,  // decimal shekels, ledger 2
+ *       loyaltyPoints: number,
+ *       createdAt: string | null,
+ *       updatedAt: string | null,
+ *     }>
+ *   }
+ */
+router.get('/wallet/orphan-egift-customers', validateFirebaseToken, requireAdmin, async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        customerId:      customers.id,
+        email:           customers.email,
+        firstName:       customers.firstName,
+        lastName:        customers.lastName,
+        giftCardBalance: customers.giftCardBalance,
+        loyaltyPoints:   customers.loyaltyPoints,
+        createdAt:       customers.createdAt,
+        updatedAt:       customers.updatedAt,
+      })
+      .from(customers)
+      .where(sql`COALESCE(${customers.giftCardBalance}, 0) > 0`)
+      .orderBy(sql`${customers.giftCardBalance} DESC`);
+
+    const totalShekels = rows.reduce(
+      (sum, r) => sum + Number(r.giftCardBalance ?? 0),
+      0,
+    );
+
+    return res.json({
+      totalCustomers: rows.length,
+      totalShekels:   totalShekels.toFixed(2),
+      rows: rows.map((r) => ({
+        customerId:      r.customerId,
+        email:           r.email,
+        firstName:       r.firstName,
+        lastName:        r.lastName,
+        giftCardBalance: r.giftCardBalance,
+        loyaltyPoints:   r.loyaltyPoints,
+        createdAt:       r.createdAt ? r.createdAt.toISOString() : null,
+        updatedAt:       r.updatedAt ? r.updatedAt.toISOString() : null,
+      })),
+      ledgerNote: 'Legacy ledger. These shekels are NOT in walletAccounts.egiftBalanceCents and cannot be spent at K9000 / marketplace today.',
+    });
+  } catch (error: any) {
+    logger.error('[Admin] orphan-egift-customers query failed', { error: error.message });
+    return res.status(500).json({ error: 'Failed to query orphan e-gift customers' });
+  }
+});
+
 export default router;
 
