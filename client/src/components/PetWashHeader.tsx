@@ -220,7 +220,7 @@ const LEGAL_MENU_ITEMS = [
   { id: "egift-policy", labelKey: "egift-policy.label", href: "/legal/egift-policy" },
   { id: "loyalty-terms", labelKey: "loyalty-terms.label", href: "/legal/loyalty-terms" },
   { id: "cookies", labelKey: "cookies.label", href: "/legal/cookies" },
-  { id: "accessibility", labelKey: "accessibility.label", href: "/legal/accessibility" },
+  { id: "accessibility", labelKey: "accessibility.label", href: "/accessibility" }, // PR-NAV-2: canonical path (was /legal/accessibility — now redirects)
 ];
 
 const SUPPORT_MENU_ITEMS = [
