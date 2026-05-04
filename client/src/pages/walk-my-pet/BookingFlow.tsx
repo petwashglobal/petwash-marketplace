@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/lib/languageStore";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
@@ -28,6 +29,8 @@ export default function WalkBookingFlow() {
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
   const { assertConnected } = useNetworkGuard();
+  const { language } = useLanguage();
+  const isHebrew = language === 'he';
 
   const walkerIdNumber = walkerId ? parseInt(walkerId) : undefined;
 
