@@ -21,7 +21,8 @@ import {
   Users,
   X,
   SlidersHorizontal,
-  Sparkles
+  Sparkles,
+  Crown
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { BookingWizard, BookingFilters } from '@/components/BookingWizard';

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useNetworkGuard } from "@/hooks/useNetworkGuard";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake, CreditCard, Lock } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake, CreditCard, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";

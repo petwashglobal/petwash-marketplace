@@ -11,7 +11,7 @@
  *         Audit trail
  */
 
-import { useParams } from 'wouter';
+import { Link, useParams } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {

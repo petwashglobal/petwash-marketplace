@@ -315,6 +315,7 @@ function PendingBookingCard({
   onRefresh: () => void;
 }) {
   const { toast } = useToast();
+  const { language } = useLanguage();
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [meetGreetDate, setMeetGreetDate] = useState<Date | undefined>(undefined);
   const [meetGreetLocation, setMeetGreetLocation] = useState('');

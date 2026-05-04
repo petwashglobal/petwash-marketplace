@@ -5,6 +5,7 @@
 
 import { useLanguage } from "@/lib/languageStore";
 import { Layout } from "@/components/Layout";
+import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone } from "lucide-react";
 
