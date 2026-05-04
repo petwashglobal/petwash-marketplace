@@ -15262,6 +15262,13 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   const { startWalletReconciliationJob } = await import('./jobs/wallet-reconciliation');
   startWalletReconciliationJob();
 
+  // ── PR-W2: nightly wallet-ledger drift DETECTOR — read-only, no auto-heal ─
+  // Compares walletAccounts denormalized balances to the SUM of
+  // creditTransactions per creditType. Logs drift to walletReconciliationRuns
+  // with verdict='WARN'. Never touches walletAccounts or money tables.
+  const { startWalletLedgerDriftDetector } = await import('./jobs/wallet-ledger-drift-detector');
+  startWalletLedgerDriftDetector();
+
   // T06: Dual escrow drift monitor — Firestore vs PostgreSQL, every 30 min ──
   startEscrowDriftMonitor();
 
