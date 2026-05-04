@@ -290,10 +290,37 @@ async function sendPurchaseConfirmationToBuyer(
 // 🎁 PURCHASE E-GIFT CARD (PUBLIC - No Auth Required)
 // SECURITY: Payment MUST complete via Nayax BEFORE voucher creation
 // Vouchers are created by webhook after successful payment
+//
+// FREEZE FLAG (PR-W3 / CEO decision Gap 1, Option C):
+// PETWASH_EGIFT_PURCHASE_ENABLED is the explicit kill switch for the
+// e-gift purchase flow. It defaults to FALSE — purchase is OFF unless
+// an operator opts in. Existing balances and webhook-driven flows are
+// unaffected. This is a cleaner gate than the implicit "no Nayax keys
+// → 503" check that follows: an operator may have keys configured for
+// other Nayax flows (kiosk topup) yet still want to keep e-gift
+// purchase frozen until the two-phase payment-confirmation pattern is
+// fully verified end-to-end.
+//
+// To enable: set PETWASH_EGIFT_PURCHASE_ENABLED=true in env.
+function isEgiftPurchaseEnabled(): boolean {
+  const v = (process.env.PETWASH_EGIFT_PURCHASE_ENABLED || '').trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes' || v === 'on';
+}
+
 router.post('/purchase', paymentLimiter, async (req, res) => {
   const correlationId = crypto.randomUUID();
-  
+
   try {
+    // Kill-switch — explicit operator opt-in required.
+    if (!isEgiftPurchaseEnabled()) {
+      logger.info('[E-Gift] Purchase blocked by kill switch', { correlationId });
+      return res.status(503).json({
+        success: false,
+        error: 'E-gift purchase is temporarily unavailable. Please try again later.',
+        errorCode: 'EGIFT_PURCHASE_DISABLED',
+      });
+    }
+
     // Validate input
     const data = purchaseGiftCardSchema.parse(req.body);
     
