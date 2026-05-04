@@ -1,5 +1,5 @@
 import { getVertexAIConfig } from './lib/gemini-client';
-import express, { type Express } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
