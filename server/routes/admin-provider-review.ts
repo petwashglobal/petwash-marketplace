@@ -270,11 +270,27 @@ router.post('/admin/assign/:id', requireAdmin, async (req: any, res) => {
       req.userId
     );
 
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: req.userId,
+        actorRole: 'admin',
+        actionType: 'PROVIDER_ASSIGN',
+        targetType: 'provider_application',
+        targetId: String(applicationId),
+        ip: req.ip || req.headers?.['x-forwarded-for'],
+        userAgent: req.headers?.['user-agent'],
+        traceId: req.traceId,
+      });
+    } catch (auditErr) {
+      logger.warn('[Admin Review] Audit log failed', auditErr);
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('[Admin Review Routes] Error assigning application', error);
-    res.status(500).json({ 
-      error: 'שגיאה בהקצאת הבקשה' 
+    res.status(500).json({
+      error: 'שגיאה בהקצאת הבקשה'
     });
   }
 });
@@ -292,8 +308,8 @@ router.patch('/admin/checklist/:id', requireAdmin, async (req: any, res) => {
 
     const validation = updateChecklistSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
-        error: validation.error.errors[0]?.message || 'נתונים לא תקינים' 
+      return res.status(400).json({
+        error: validation.error.errors[0]?.message || 'נתונים לא תקינים'
       });
     }
 
@@ -306,6 +322,23 @@ router.patch('/admin/checklist/:id', requireAdmin, async (req: any, res) => {
       req.userId
     );
 
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: req.userId,
+        actorRole: 'admin',
+        actionType: 'PROVIDER_CHECKLIST_UPDATE',
+        targetType: 'provider_application',
+        targetId: String(applicationId),
+        ip: req.ip || req.headers?.['x-forwarded-for'],
+        userAgent: req.headers?.['user-agent'],
+        traceId: req.traceId,
+        metadata: { itemKey, approved },
+      });
+    } catch (auditErr) {
+      logger.warn('[Admin Review] Audit log failed', auditErr);
+    }
+
     res.json({
       ...result,
       messageHe: approved ? `${itemKey} אושר ✓` : `${itemKey} סומן כלא אושר`,
@@ -313,8 +346,8 @@ router.patch('/admin/checklist/:id', requireAdmin, async (req: any, res) => {
     });
   } catch (error: any) {
     logger.error('[Admin Review Routes] Error updating checklist', error);
-    res.status(500).json({ 
-      error: 'שגיאה בעדכון הרשימה' 
+    res.status(500).json({
+      error: 'שגיאה בעדכון הרשימה'
     });
   }
 });
@@ -389,11 +422,28 @@ router.post('/admin/reject/:id', requireAdmin, async (req: any, res) => {
       validation.data.rejectionReason
     );
 
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: req.userId,
+        actorRole: 'admin',
+        actionType: 'PROVIDER_REJECT',
+        targetType: 'provider_application',
+        targetId: String(applicationId),
+        ip: req.ip || req.headers?.['x-forwarded-for'],
+        userAgent: req.headers?.['user-agent'],
+        traceId: req.traceId,
+        metadata: { rejectionReason: validation.data.rejectionReason },
+      });
+    } catch (auditErr) {
+      logger.warn('[Admin Review] Audit log failed', auditErr);
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('[Admin Review Routes] Error rejecting application', error);
-    res.status(500).json({ 
-      error: 'שגיאה בדחיית הבקשה' 
+    res.status(500).json({
+      error: 'שגיאה בדחיית הבקשה'
     });
   }
 });
@@ -422,11 +472,28 @@ router.post('/admin/hold/:id', requireAdmin, async (req: any, res) => {
       validation.data.reason
     );
 
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: req.userId,
+        actorRole: 'admin',
+        actionType: 'PROVIDER_HOLD',
+        targetType: 'provider_application',
+        targetId: String(applicationId),
+        ip: req.ip || req.headers?.['x-forwarded-for'],
+        userAgent: req.headers?.['user-agent'],
+        traceId: req.traceId,
+        metadata: { reason: validation.data.reason },
+      });
+    } catch (auditErr) {
+      logger.warn('[Admin Review] Audit log failed', auditErr);
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('[Admin Review Routes] Error putting on hold', error);
-    res.status(500).json({ 
-      error: 'שגיאה בהעברה להמתנה' 
+    res.status(500).json({
+      error: 'שגיאה בהעברה להמתנה'
     });
   }
 });
