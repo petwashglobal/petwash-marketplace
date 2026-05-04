@@ -453,12 +453,13 @@ router.post('/credits/add', async (req, res) => {
   try {
     // SECURITY: Only super admins (verified server-side via Firebase email) can add credits.
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
+    const adminUserId = (req.firebaseUser as any)?.uid || (req.user as any)?.uid || '';
 
     if (!isSuperAdmin(adminEmail)) {
       logger.warn('[Credit Wallet] Unauthorized credit add attempt', { ip: req.ip, email: adminEmail });
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Admin authorization required to add credits' 
+      return res.status(403).json({
+        success: false,
+        error: 'Admin authorization required to add credits'
       });
     }
     const adminId = adminEmail;
@@ -470,11 +471,11 @@ router.post('/credits/add', async (req, res) => {
 
     const { creditType, amount, sourceType, sourceId, description } = parsed.data;
     const targetUserId = req.body.userId;
-    
+
     if (!targetUserId) {
       return res.status(400).json({ success: false, error: 'Target userId required' });
     }
-    
+
     await walletService.addCredits(
       targetUserId,
       creditType,
@@ -483,14 +484,43 @@ router.post('/credits/add', async (req, res) => {
       sourceId,
       description
     );
-    
-    logger.info('[Credit Wallet] Credits added by admin', { 
+
+    logger.info('[Credit Wallet] Credits added by admin', {
       adminId: adminId || 'internal-service',
       targetUserId,
       creditType,
-      amount 
+      amount
     });
-    
+
+    // PR-W1: write a discrete audit_events row so this older /credits/add
+    // path matches the auditing rigour of /admin/inject. Money-flow logic
+    // is unchanged — this is a pure audit-trail addition. Fire-and-forget;
+    // logAuditEvent already swallows DB errors internally.
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: adminUserId || adminEmail,
+        actorRole: 'super_admin',
+        actionType: 'WALLET_ADMIN_CREDITS_ADD',
+        targetType: 'wallet',
+        targetId: targetUserId,
+        ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+        userAgent: req.headers['user-agent'],
+        traceId: (req as any).traceId,
+        metadata: {
+          adminEmail,
+          creditType,
+          amount,
+          sourceType,
+          sourceId: sourceId ?? null,
+          description: description ?? null,
+          route: '/credits/add',
+        },
+      });
+    } catch (auditErr) {
+      logger.warn('[Credit Wallet] Audit log failed (non-blocking)', { error: String(auditErr) });
+    }
+
     res.json({ success: true, message: 'Credits added successfully' });
   } catch (error: any) {
     logger.error('[Credit Wallet] Add credits error', { error: error.message });
