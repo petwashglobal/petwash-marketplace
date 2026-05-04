@@ -537,9 +537,64 @@ export async function postLoginDecider(req: Request, res: Response) {
     }
 
     if (userStatus === 'provider_active' && effectiveRole !== 'provider') {
+      const previousRole = effectiveRole;
       updates.role = 'provider';
       updates.providerApprovedAt = new Date();
       effectiveRole = 'provider';
+
+      // Sync Firebase custom claims so the client picks up the new role on
+      // its next token refresh — otherwise the user has to log out + back
+      // in to see their approved-provider state. Best-effort + audited.
+      try {
+        const fbAdminModule = await import('../lib/firebase-admin');
+        const fbAuth = fbAdminModule.auth;
+        if (fbAuth) {
+          const userRec = await fbAuth.getUser(userId);
+          const existingClaims = (userRec.customClaims || {}) as Record<string, any>;
+          if (existingClaims.role !== 'provider') {
+            await fbAuth.setCustomUserClaims(userId, {
+              ...existingClaims,
+              role: 'provider',
+            });
+            logger.info('[PostLogin] ✅ Firebase claims synced to role=provider', {
+              userId,
+              previousRole,
+            });
+          }
+        }
+      } catch (claimsErr) {
+        logger.warn('[PostLogin] Failed to sync Firebase claims to provider (non-blocking)', {
+          userId,
+          error: String(claimsErr),
+        });
+      }
+
+      // Audit-log the silent role escalation. Drift between providerApp.status
+      // and users.role had been auto-fixed but never recorded — that gap
+      // hid real provider-onboarding outcomes from the audit trail.
+      try {
+        await logAuditEvent({
+          actorUserId: userId,
+          actorRole: 'provider',
+          actionType: 'POST_LOGIN_ROLE_UPGRADE',
+          targetType: 'user',
+          targetId: userId,
+          ip: getClientIP(req) || req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          traceId: (req as any).traceId || '',
+          metadata: {
+            from: previousRole,
+            to: 'provider',
+            reason: 'provider_application_approved',
+            providerApplicationId: providerApp?.id ?? null,
+          },
+        });
+      } catch (auditErr) {
+        logger.warn('[PostLogin] Failed to audit-log role upgrade (non-blocking)', {
+          userId,
+          error: String(auditErr),
+        });
+      }
     }
 
     // NOTE: Removed automatic staff role escalation that was here.
