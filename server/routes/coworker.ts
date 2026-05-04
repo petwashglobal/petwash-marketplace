@@ -29,6 +29,8 @@ import {
 } from '../../shared/coworker-types';
 import {
   coworkerAgentService,
+  CoworkerActorFamilyRateLimitError,
+  CoworkerDailyBudgetExceededError,
   CoworkerRateLimitError,
 } from '../services/CoworkerAgentService';
 
@@ -79,13 +81,36 @@ router.get('/:family/summary', async (req: Request, res: Response) => {
     });
     return res.json(output);
   } catch (err: any) {
+    // PR-22: fixed-window per-admin / global rate limit.
     if (err instanceof CoworkerRateLimitError) {
       const retryAfterSec = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
       res.setHeader('Retry-After', String(retryAfterSec));
       return res.status(429).json({
         error: 'rate_limited',
+        scope: err.scope,
+        message: `Coworker rate limit exceeded (${err.scope}). Retry after ${retryAfterSec}s.`,
+        retryAfterSec,
+      });
+    }
+    // PR-21: per-(actor, family) sliding-window rate limit.
+    if (err instanceof CoworkerActorFamilyRateLimitError) {
+      const retryAfterSec = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
+      res.setHeader('Retry-After', String(retryAfterSec));
+      return res.status(429).json({
+        error: 'rate_limited',
+        scope: 'actor_family',
         message: `Coworker rate limit exceeded for family ${family}. Retry after ${retryAfterSec}s.`,
         retryAfterSec,
+      });
+    }
+    // PR-22: daily token budget exhausted.
+    if (err instanceof CoworkerDailyBudgetExceededError) {
+      return res.status(429).json({
+        error: 'daily_budget_exhausted',
+        message: `Coworker daily token budget exhausted (used=${err.used}, budget=${err.budget}).`,
+        used: err.used,
+        budget: err.budget,
+        resetAt: err.resetAt,
       });
     }
     logger.error(`[coworker] runFamily(${family}) failed: ${err?.message ?? err}`);
