@@ -84,8 +84,8 @@ export function SmartReceiptViewer() {
     }
   };
 
-  const progressPercentage = receipt.nextTierPoints > 0 
-    ? Math.min(100, (receipt.currentTierPoints / receipt.nextTierPoints) * 100)
+  const progressPercentage = (receipt.nextTierPoints ?? 0) > 0
+    ? Math.min(100, ((receipt.currentTierPoints ?? 0) / (receipt.nextTierPoints ?? 1)) * 100)
     : 100;
 
   return (
@@ -229,7 +229,7 @@ export function SmartReceiptViewer() {
                   ></div>
                 </div>
                 <p className="luxury-text-small text-center">
-                  {receipt.nextTierPoints - receipt.currentTierPoints} points to {receipt.nextTier}
+                  {(receipt.nextTierPoints ?? 0) - (receipt.currentTierPoints ?? 0)} points to {receipt.nextTier}
                 </p>
               </div>
             )}

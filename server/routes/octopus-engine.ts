@@ -1176,6 +1176,7 @@ router.get("/v1/timeline/bay/:bayId", requireAdmin, async (req: Request, res: Re
     }
 
     for (const e of events) {
+      if (!e.occurredAt) continue;
       feedItems.push({
         id:          `event:${e.id}`,
         type:        e.eventType,
@@ -1190,6 +1191,7 @@ router.get("/v1/timeline/bay/:bayId", requireAdmin, async (req: Request, res: Re
     }
 
     for (const f of faults) {
+      if (!f.reportedAt) continue;
       feedItems.push({
         id:          `fault:${f.id}`,
         type:        'fault',

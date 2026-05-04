@@ -216,6 +216,7 @@ router.post('/send', requireFirebaseAuth, async (req, res) => {
     }
 
     const gmail = await getUncachableGmailClient();
+    if (!gmail) throw new Error('Gmail client not initialized');
 
     const emailContent = html || body || '';
     const mimeType = html ? 'text/html' : 'text/plain';
@@ -260,6 +261,7 @@ router.post('/send', requireFirebaseAuth, async (req, res) => {
 router.get('/labels', requireFirebaseAuth, async (_req, res) => {
   try {
     const gmail = await getUncachableGmailClient();
+    if (!gmail) throw new Error('Gmail client not initialized');
 
     const result = await gmail.users.labels.list({
       userId: 'me',
@@ -286,6 +288,7 @@ router.get('/labels', requireFirebaseAuth, async (_req, res) => {
 router.get('/messages', requireFirebaseAuth, async (req, res) => {
   try {
     const gmail = await getUncachableGmailClient();
+    if (!gmail) throw new Error('Gmail client not initialized');
     const maxResults = parseInt(req.query.maxResults as string) || 10;
     const labelIds = req.query.labelIds ? (req.query.labelIds as string).split(',') : undefined;
 
