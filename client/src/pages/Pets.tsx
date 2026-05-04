@@ -380,16 +380,16 @@ export default function Pets() {
       }
       
       toast({
-        title: t('pets.addedSuccess', language),
-        description: t('pets.addedDescription', language),
+        title: t('pets.addedSuccess'),
+        description: t('pets.addedDescription'),
       });
       setIsDialogOpen(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: t('pets.error', language),
-        description: error.message || t('pets.errorAddingPet', language),
+        title: t('pets.error'),
+        description: error.message || t('pets.errorAddingPet'),
         variant: 'destructive',
       });
     },
@@ -417,8 +417,8 @@ export default function Pets() {
       }
       
       toast({
-        title: t('pets.updatedSuccess', language),
-        description: t('pets.updatedDescription', language),
+        title: t('pets.updatedSuccess'),
+        description: t('pets.updatedDescription'),
       });
       setIsDialogOpen(false);
       setEditingPet(null);
@@ -426,8 +426,8 @@ export default function Pets() {
     },
     onError: (error: any) => {
       toast({
-        title: t('pets.error', language),
-        description: error.message || t('pets.errorUpdatingPet', language),
+        title: t('pets.error'),
+        description: error.message || t('pets.errorUpdatingPet'),
         variant: 'destructive',
       });
     },
@@ -453,15 +453,15 @@ export default function Pets() {
       }
       
       toast({
-        title: t('pets.deletedSuccess', language),
-        description: t('pets.deletedDescription', language),
+        title: t('pets.deletedSuccess'),
+        description: t('pets.deletedDescription'),
       });
       setDeletingPet(null);
     },
     onError: (error: any) => {
       toast({
-        title: t('pets.error', language),
-        description: error.message || t('pets.errorDeletingPet', language),
+        title: t('pets.error'),
+        description: error.message || t('pets.errorDeletingPet'),
         variant: 'destructive',
       });
     },
@@ -524,18 +524,18 @@ export default function Pets() {
       
       // Validate that birthdate is a valid date and not in the future
       if (isNaN(birth.getTime()) || birth > today) {
-        return t('pets.invalidDate', language);
+        return t('pets.invalidDate');
       }
       
       const years = today.getFullYear() - birth.getFullYear();
       const months = today.getMonth() - birth.getMonth();
       
       if (years > 0) {
-        return t('pets.yearsOld', language).replace('{years}', years.toString());
+        return t('pets.yearsOld').replace('{years}', years.toString());
       }
-      return t('pets.monthsOld', language).replace('{months}', Math.max(1, months).toString());
+      return t('pets.monthsOld').replace('{months}', Math.max(1, months).toString());
     } catch (error) {
-      return t('pets.error', language);
+      return t('pets.error');
     }
   };
 
@@ -545,7 +545,7 @@ export default function Pets() {
         {/* Hero Section */}
         <div className="text-center mb-8 luxury-animate-slide-up">
           <h1 className="luxury-heading-xl mb-4">
-            {t('pets.title', language)}
+            {t('pets.title')}
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto mb-6">
             {language === 'he' 
@@ -558,7 +558,7 @@ export default function Pets() {
             className="luxury-btn-primary"
           >
             <Plus className="h-4 w-4 mr-2" />
-            {t('pets.addPet', language)}
+            {t('pets.addPet')}
           </Button>
         </div>
 
@@ -572,10 +572,10 @@ export default function Pets() {
               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                 <PawPrint className="h-16 w-16 mb-4 opacity-20" />
                 <p className="text-lg font-medium mb-2">
-                  {t('pets.noPets', language)}
+                  {t('pets.noPets')}
                 </p>
                 <p className="text-sm text-gray-400">
-                  {t('pets.addFirstPet', language)}
+                  {t('pets.addFirstPet')}
                 </p>
               </div>
             ) : (
@@ -620,14 +620,14 @@ export default function Pets() {
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-gray-700 dark:text-black">
-                          {t('pets.age', language)} {getAge(pet.birthdate)}
+                          {t('pets.age')} {getAge(pet.birthdate)}
                         </span>
                       </div>
                       {pet.weight && (
                         <div className="flex items-center gap-2 text-sm">
                           <Heart className="h-4 w-4 text-gray-500" />
                           <span className="text-gray-700 dark:text-black">
-                            {t('pets.weightLabel', language)} {pet.weight} kg
+                            {t('pets.weightLabel')} {pet.weight} kg
                           </span>
                         </div>
                       )}
@@ -635,7 +635,7 @@ export default function Pets() {
                         <div className="flex items-center gap-2 text-sm">
                           <Syringe className="h-4 w-4 text-gray-500" />
                           <span className="text-gray-700 dark:text-black">
-                            {t('pets.nextVaccineLabel', language)}
+                            {t('pets.nextVaccineLabel')}
                             {' '}
                             {format(new Date(pet.nextVaccineDate), 'PP', {
                               locale: language === 'he' ? he : enUS,
@@ -647,7 +647,7 @@ export default function Pets() {
                         <div className="flex items-start gap-2 text-sm">
                           <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
                           <span className="text-gray-700 dark:text-black">
-                            {t('pets.allergiesLabel', language)} {pet.allergies}
+                            {t('pets.allergiesLabel')} {pet.allergies}
                           </span>
                         </div>
                       )}
@@ -692,7 +692,7 @@ export default function Pets() {
           </DialogClose>
           <DialogHeader>
             <DialogTitle>
-              {editingPet ? t('pets.editProfile', language) : t('pets.addNewPet', language)}
+              {editingPet ? t('pets.editProfile') : t('pets.addNewPet')}
             </DialogTitle>
             <DialogDescription>
               {language === 'he' 
@@ -708,9 +708,9 @@ export default function Pets() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('pets.name', language)}</FormLabel>
+                    <FormLabel>{t('pets.name')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('pets.namePlaceholder', language)} {...field} data-testid="input-pet-name" />
+                      <Input placeholder={t('pets.namePlaceholder')} {...field} data-testid="input-pet-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -722,11 +722,11 @@ export default function Pets() {
                   name="species"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('pets.species', language)}</FormLabel>
+                      <FormLabel>{t('pets.species')}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-species">
-                            <SelectValue placeholder={t('pets.selectSpecies', language)} />
+                            <SelectValue placeholder={t('pets.selectSpecies')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -744,9 +744,9 @@ export default function Pets() {
                   name="breed"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('pets.breed', language)}</FormLabel>
+                      <FormLabel>{t('pets.breed')}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('pets.breedPlaceholder', language)} {...field} data-testid="input-breed" />
+                        <Input placeholder={t('pets.breedPlaceholder')} {...field} data-testid="input-breed" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -759,12 +759,12 @@ export default function Pets() {
                   name="birthdate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('pets.birthdate', language)}</FormLabel>
+                      <FormLabel>{t('pets.birthdate')}</FormLabel>
                       <FormControl>
                         <DatePicker
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder={t('pets.birthdate', language)}
+                          placeholder={t('pets.birthdate')}
                           maxDate={new Date()}
                           minDate={new Date(new Date().setFullYear(new Date().getFullYear() - 50))}
                           language={language}
@@ -780,14 +780,14 @@ export default function Pets() {
                   name="weight"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('pets.weight', language)}</FormLabel>
+                      <FormLabel>{t('pets.weight')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.1"
                           min="0.1"
                           max="500"
-                          placeholder={t('pets.weightPlaceholder', language)} 
+                          placeholder={t('pets.weightPlaceholder')} 
                           {...field}
                           onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                           value={field.value || ''}
@@ -804,9 +804,9 @@ export default function Pets() {
                 name="allergies"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('pets.allergies', language)}</FormLabel>
+                    <FormLabel>{t('pets.allergies')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('pets.allergiesPlaceholder', language)} {...field} data-testid="input-allergies" />
+                      <Input placeholder={t('pets.allergiesPlaceholder')} {...field} data-testid="input-allergies" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -817,10 +817,10 @@ export default function Pets() {
                 name="medicalNotes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('pets.medicalNotes', language)}</FormLabel>
+                    <FormLabel>{t('pets.medicalNotes')}</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder={t('pets.medicalNotesPlaceholder', language)} 
+                        placeholder={t('pets.medicalNotesPlaceholder')} 
                         {...field} 
                         data-testid="input-medical-notes"
                       />
@@ -835,12 +835,12 @@ export default function Pets() {
                   name="lastVaccineDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('pets.lastVaccine', language)}</FormLabel>
+                      <FormLabel>{t('pets.lastVaccine')}</FormLabel>
                       <FormControl>
                         <DatePicker
                           value={field.value || ''}
                           onChange={field.onChange}
-                          placeholder={t('pets.lastVaccine', language)}
+                          placeholder={t('pets.lastVaccine')}
                           language={language}
                           testId="input-last-vaccine"
                         />
@@ -854,12 +854,12 @@ export default function Pets() {
                   name="nextVaccineDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('pets.nextVaccine', language)}</FormLabel>
+                      <FormLabel>{t('pets.nextVaccine')}</FormLabel>
                       <FormControl>
                         <DatePicker
                           value={field.value || ''}
                           onChange={field.onChange}
-                          placeholder={t('pets.nextVaccine', language)}
+                          placeholder={t('pets.nextVaccine')}
                           language={language}
                           testId="input-next-vaccine"
                         />
@@ -871,7 +871,7 @@ export default function Pets() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  {t('pets.cancel', language)}
+                  {t('pets.cancel')}
                 </Button>
                 <Button 
                   type="submit" 
@@ -880,8 +880,8 @@ export default function Pets() {
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {(createMutation.isPending || updateMutation.isPending) 
-                    ? t('pets.saving', language) 
-                    : t('pets.save', language)
+                    ? t('pets.saving') 
+                    : t('pets.save')
                   }
                 </Button>
               </DialogFooter>
@@ -897,14 +897,14 @@ export default function Pets() {
             <span className="sr-only">Close</span>
           </DialogClose>
           <DialogHeader>
-            <DialogTitle>{t('pets.deleteTitle', language)}</DialogTitle>
+            <DialogTitle>{t('pets.deleteTitle')}</DialogTitle>
             <DialogDescription>
-              {t('pets.deleteConfirm', language).replace('{name}', deletingPet?.name || '')}
+              {t('pets.deleteConfirm').replace('{name}', deletingPet?.name || '')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletingPet(null)}>
-              {t('pets.cancel', language)}
+              {t('pets.cancel')}
             </Button>
             <Button 
               variant="destructive" 
@@ -913,8 +913,8 @@ export default function Pets() {
               data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending 
-                ? t('pets.deleting', language) 
-                : t('pets.delete', language)
+                ? t('pets.deleting') 
+                : t('pets.delete')
               }
             </Button>
           </DialogFooter>
