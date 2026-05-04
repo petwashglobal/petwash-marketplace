@@ -4,6 +4,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { PhoneInput } from "@/components/PhoneInput";
 import { getApiUrl } from '@/lib/apiConfig';
 import { t } from "@/lib/i18n";
+import { useLanguage } from "@/lib/languageStore";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -146,55 +147,55 @@ const opportunityFormSchema = crmOpportunityCreationSchema;
 
 // Lead status options
 const leadStatuses = [
-  { value: 'new', label: t('leads.status.new') },
-  { value: 'contacted', label: t('leads.status.contacted') },
-  { value: 'qualified', label: t('leads.status.qualified') },
-  { value: 'nurturing', label: t('leads.status.nurturing') },
-  { value: 'converted', label: t('leads.status.converted') },
-  { value: 'lost', label: t('leads.status.lost') },
+  { value: 'new', label: t('leads.status.new', 'en') },
+  { value: 'contacted', label: t('leads.status.contacted', 'en') },
+  { value: 'qualified', label: t('leads.status.qualified', 'en') },
+  { value: 'nurturing', label: t('leads.status.nurturing', 'en') },
+  { value: 'converted', label: t('leads.status.converted', 'en') },
+  { value: 'lost', label: t('leads.status.lost', 'en') },
 ];
 
 const leadSources = [
-  { value: 'website', label: t('leads.source.website') },
-  { value: 'referral', label: t('leads.source.referral') },
-  { value: 'social_media', label: t('leads.source.socialMedia') },
-  { value: 'google_ads', label: t('leads.source.googleAds') },
-  { value: 'facebook_ads', label: t('leads.source.facebookAds') },
-  { value: 'trade_show', label: t('leads.source.tradeShow') },
-  { value: 'cold_call', label: t('leads.source.coldCall') },
-  { value: 'other', label: t('leads.source.other') },
+  { value: 'website', label: t('leads.source.website', 'en') },
+  { value: 'referral', label: t('leads.source.referral', 'en') },
+  { value: 'social_media', label: t('leads.source.socialMedia', 'en') },
+  { value: 'google_ads', label: t('leads.source.googleAds', 'en') },
+  { value: 'facebook_ads', label: t('leads.source.facebookAds', 'en') },
+  { value: 'trade_show', label: t('leads.source.tradeShow', 'en') },
+  { value: 'cold_call', label: t('leads.source.coldCall', 'en') },
+  { value: 'other', label: t('leads.source.other', 'en') },
 ];
 
 const petTypes = [
-  { value: 'dog', label: t('leads.petType.dog') },
-  { value: 'cat', label: t('leads.petType.cat') },
-  { value: 'other', label: t('leads.petType.other') },
+  { value: 'dog', label: t('leads.petType.dog', 'en') },
+  { value: 'cat', label: t('leads.petType.cat', 'en') },
+  { value: 'other', label: t('leads.petType.other', 'en') },
 ];
 
 const priorityLevels = [
-  { value: 'low', label: t('leads.priority.low') },
-  { value: 'medium', label: t('leads.priority.medium') },
-  { value: 'high', label: t('leads.priority.high') },
-  { value: 'urgent', label: t('leads.priority.urgent') },
+  { value: 'low', label: t('leads.priority.low', 'en') },
+  { value: 'medium', label: t('leads.priority.medium', 'en') },
+  { value: 'high', label: t('leads.priority.high', 'en') },
+  { value: 'urgent', label: t('leads.priority.urgent', 'en') },
 ];
 
 const communicationTypes = [
-  { value: 'email', label: t('communications.type.email') },
-  { value: 'phone_call', label: t('communications.type.phoneCall') },
-  { value: 'sms', label: t('communications.type.sms') },
-  { value: 'in_person', label: t('communications.type.inPerson') },
-  { value: 'whatsapp', label: t('communications.type.whatsapp') },
-  { value: 'video_call', label: t('communications.type.videoCall') },
+  { value: 'email', label: t('communications.type.email', 'en') },
+  { value: 'phone_call', label: t('communications.type.phoneCall', 'en') },
+  { value: 'sms', label: t('communications.type.sms', 'en') },
+  { value: 'in_person', label: t('communications.type.inPerson', 'en') },
+  { value: 'whatsapp', label: t('communications.type.whatsapp', 'en') },
+  { value: 'video_call', label: t('communications.type.videoCall', 'en') },
 ];
 
 const taskTypes = [
-  { value: 'call', label: t('tasks.type.call') },
-  { value: 'email', label: t('tasks.type.email') },
-  { value: 'meeting', label: t('tasks.type.meeting') },
-  { value: 'demo', label: t('tasks.type.demo') },
-  { value: 'follow_up', label: t('tasks.type.followUp') },
-  { value: 'research', label: t('tasks.type.research') },
-  { value: 'proposal', label: t('tasks.type.proposal') },
+  { value: 'call', label: t('tasks.type.call', 'en') },
+  { value: 'email', label: t('tasks.type.email', 'en') },
+  { value: 'meeting', label: t('tasks.type.meeting', 'en') },
+  { value: 'demo', label: t('tasks.type.demo', 'en') },
+  { value: 'follow_up', label: t('tasks.type.followUp', 'en') },
+  { value: 'research', label: t('tasks.type.research', 'en') },
+  { value: 'proposal', label: t('tasks.type.proposal', 'en') },
 ];
 
 // Color schemes for charts
@@ -226,6 +227,7 @@ const getPriorityColor = (priority: string) => {
 export default function LeadManagement() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
@@ -377,7 +379,7 @@ export default function LeadManagement() {
       return apiRequest('/api/crm/leads', 'POST', data);
     },
     onSuccess: () => {
-      toast({ title: t('messages.leadCreated'), variant: "default" });
+      toast({ title: t('messages.leadCreated', language), variant: "default" });
       leadForm.reset();
       setLeadFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads'] });
@@ -385,8 +387,8 @@ export default function LeadManagement() {
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.saveFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.saveFailed', language),
         variant: "destructive" 
       });
     }
@@ -397,7 +399,7 @@ export default function LeadManagement() {
       return apiRequest(`/api/crm/leads/${id}`, 'PUT', data);
     },
     onSuccess: () => {
-      toast({ title: t('messages.leadUpdated'), variant: "default" });
+      toast({ title: t('messages.leadUpdated', language), variant: "default" });
       setEditMode(false);
       setLeadDetailOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads'] });
@@ -405,8 +407,8 @@ export default function LeadManagement() {
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.saveFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.saveFailed', language),
         variant: "destructive" 
       });
     }
@@ -417,15 +419,15 @@ export default function LeadManagement() {
       return apiRequest(`/api/crm/leads/${id}`, 'DELETE');
     },
     onSuccess: () => {
-      toast({ title: t('messages.leadDeleted'), variant: "default" });
+      toast({ title: t('messages.leadDeleted', language), variant: "default" });
       setLeadDetailOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads'] });
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads/analytics'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.deleteFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.deleteFailed', language),
         variant: "destructive" 
       });
     }
@@ -436,15 +438,15 @@ export default function LeadManagement() {
       return apiRequest(`/api/crm/leads/${id}/convert`, 'POST', { customerData });
     },
     onSuccess: () => {
-      toast({ title: t('messages.leadConverted'), variant: "default" });
+      toast({ title: t('messages.leadConverted', language), variant: "default" });
       setLeadDetailOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads'] });
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads/analytics'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.conversionFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.conversionFailed', language),
         variant: "destructive" 
       });
     }
@@ -456,15 +458,15 @@ export default function LeadManagement() {
       return apiRequest(`/api/crm/leads/${selectedLead.id}/communications`, 'POST', data);
     },
     onSuccess: () => {
-      toast({ title: t('messages.communicationLogged'), variant: "default" });
+      toast({ title: t('messages.communicationLogged', language), variant: "default" });
       communicationForm.reset();
       setCommunicationFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads', selectedLead?.id] });
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.saveFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.saveFailed', language),
         variant: "destructive" 
       });
     }
@@ -476,15 +478,15 @@ export default function LeadManagement() {
       return apiRequest(`/api/crm/leads/${selectedLead.id}/tasks`, 'POST', data);
     },
     onSuccess: () => {
-      toast({ title: t('messages.taskCreated'), variant: "default" });
+      toast({ title: t('messages.taskCreated', language), variant: "default" });
       taskForm.reset();
       setTaskFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads', selectedLead?.id] });
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.saveFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.saveFailed', language),
         variant: "destructive" 
       });
     }
@@ -496,15 +498,15 @@ export default function LeadManagement() {
       return apiRequest(`/api/crm/leads/${selectedLead.id}/opportunities`, 'POST', data);
     },
     onSuccess: () => {
-      toast({ title: t('messages.opportunityCreated'), variant: "default" });
+      toast({ title: t('messages.opportunityCreated', language), variant: "default" });
       opportunityForm.reset();
       setOpportunityFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/crm/leads', selectedLead?.id] });
     },
     onError: (error: any) => {
       toast({ 
-        title: t('common.error'), 
-        description: error.message || t('errors.saveFailed'),
+        title: t('common.error', language), 
+        description: error.message || t('errors.saveFailed', language),
         variant: "destructive" 
       });
     }
@@ -610,8 +612,8 @@ export default function LeadManagement() {
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto"></div>
-          <h2 className="luxury-heading-lg">{t('leads.title')}</h2>
-          <p className="luxury-text-body">{t('common.loading')}</p>
+          <h2 className="luxury-heading-lg">{t('leads.title', language)}</h2>
+          <p className="luxury-text-body">{t('common.loading', language)}</p>
         </div>
       </div>
     );
@@ -627,10 +629,10 @@ export default function LeadManagement() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
             <h1 className="luxury-heading-xl mb-2" data-testid="page-title">
-              {t('leads.title')}
+              {t('leads.title', language)}
             </h1>
             <p className="luxury-text-body">
-              {t('leads.subtitle')}
+              {t('leads.subtitle', language)}
             </p>
           </div>
           <div className="flex items-center space-x-4 mt-4 lg:mt-0">
@@ -644,7 +646,7 @@ export default function LeadManagement() {
               data-testid="add-lead-button"
             >
               <Plus className="w-4 h-4 mr-2" />
-              {t('actions.addLead')}
+              {t('actions.addLead', language)}
             </Button>
             <Button 
               className="luxury-btn-secondary" 
@@ -652,7 +654,7 @@ export default function LeadManagement() {
               data-testid="refresh-button"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              {t('crm.dashboard.refresh')}
+              {t('crm.dashboard.refresh', language)}
             </Button>
           </div>
         </div>
@@ -662,19 +664,19 @@ export default function LeadManagement() {
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4 mb-6">
             <TabsTrigger value="dashboard" data-testid="dashboard-tab">
               <BarChart3 className="w-4 h-4 mr-2" />
-              {t('leads.dashboard')}
+              {t('leads.dashboard', language)}
             </TabsTrigger>
             <TabsTrigger value="leads" data-testid="leads-tab">
               <Users className="w-4 h-4 mr-2" />
-              {t('leads.list.title')}
+              {t('leads.list.title', language)}
             </TabsTrigger>
             <TabsTrigger value="pipeline" data-testid="pipeline-tab">
               <Target className="w-4 h-4 mr-2" />
-              {t('leads.pipeline')}
+              {t('leads.pipeline', language)}
             </TabsTrigger>
             <TabsTrigger value="analytics" data-testid="analytics-tab">
               <PieChart className="w-4 h-4 mr-2" />
-              {t('leads.analytics')}
+              {t('leads.analytics', language)}
             </TabsTrigger>
           </TabsList>
 
@@ -684,7 +686,7 @@ export default function LeadManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="luxury-heading-sm">{t('metrics.totalLeads')}</CardTitle>
+                  <CardTitle className="luxury-heading-sm">{t('metrics.totalLeads', language)}</CardTitle>
                   <Users className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
@@ -692,14 +694,14 @@ export default function LeadManagement() {
                     {analytics.totalLeads || 0}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {analytics.convertedLeads || 0} {t('metrics.convertedLeads').toLowerCase()}
+                    {analytics.convertedLeads || 0} {t('metrics.convertedLeads', language).toLowerCase()}
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="luxury-heading-sm">{t('metrics.conversionRate')}</CardTitle>
+                  <CardTitle className="luxury-heading-sm">{t('metrics.conversionRate', language)}</CardTitle>
                   <TrendingUp className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
@@ -707,14 +709,14 @@ export default function LeadManagement() {
                     {analytics.conversionRate || 0}%
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {t('period.thisMonth').toLowerCase()}
+                    {t('period.thisMonth', language).toLowerCase()}
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="luxury-heading-sm">{t('metrics.averageDealSize')}</CardTitle>
+                  <CardTitle className="luxury-heading-sm">{t('metrics.averageDealSize', language)}</CardTitle>
                   <DollarSign className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
@@ -722,14 +724,14 @@ export default function LeadManagement() {
                     {formatCurrency(analytics.averageEstimatedValue || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {t('period.thisMonth').toLowerCase()}
+                    {t('period.thisMonth', language).toLowerCase()}
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="luxury-heading-sm">{t('metrics.pipelineValue')}</CardTitle>
+                  <CardTitle className="luxury-heading-sm">{t('metrics.pipelineValue', language)}</CardTitle>
                   <Target className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
@@ -737,7 +739,7 @@ export default function LeadManagement() {
                     {formatCurrency(analytics.totalEstimatedValue || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {t('period.thisMonth').toLowerCase()}
+                    {t('period.thisMonth', language).toLowerCase()}
                   </p>
                 </CardContent>
               </Card>
@@ -748,9 +750,9 @@ export default function LeadManagement() {
               {/* Lead Source Distribution */}
               <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardHeader>
-                  <CardTitle className="luxury-heading-md">{t('analytics.sourcePerformance')}</CardTitle>
+                  <CardTitle className="luxury-heading-md">{t('analytics.sourcePerformance', language)}</CardTitle>
                   <CardDescription className="luxury-text-body">
-                    {t('leads.list.allSources')}
+                    {t('leads.list.allSources', language)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -784,9 +786,9 @@ export default function LeadManagement() {
               {/* Lead Status Distribution */}
               <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardHeader>
-                  <CardTitle className="luxury-heading-md">{t('analytics.conversionFunnel')}</CardTitle>
+                  <CardTitle className="luxury-heading-md">{t('analytics.conversionFunnel', language)}</CardTitle>
                   <CardDescription className="luxury-text-body">
-                    {t('leads.list.allStatuses')}
+                    {t('leads.list.allStatuses', language)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -815,7 +817,7 @@ export default function LeadManagement() {
             {/* Recent Activity */}
             <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="luxury-heading-md">{t('leads.details.activities')}</CardTitle>
+                <CardTitle className="luxury-heading-md">{t('leads.details.activities', language)}</CardTitle>
                 <CardDescription className="luxury-text-body">
                   Recent lead activities and updates
                 </CardDescription>
@@ -848,17 +850,17 @@ export default function LeadManagement() {
             {/* Filters and Search */}
             <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="luxury-heading-md">{t('leads.list.filterBy')}</CardTitle>
+                <CardTitle className="luxury-heading-md">{t('leads.list.filterBy', language)}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="search">{t('common.search')}</Label>
+                    <Label htmlFor="search">{t('common.search', language)}</Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         id="search"
-                        placeholder={t('leads.list.searchPlaceholder')}
+                        placeholder={t('leads.list.searchPlaceholder', language)}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -868,13 +870,13 @@ export default function LeadManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="status-filter">{t('leads.status.new')}</Label>
+                    <Label htmlFor="status-filter">{t('leads.status.new', language)}</Label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger data-testid="status-filter">
-                        <SelectValue placeholder={t('leads.list.allStatuses')} />
+                        <SelectValue placeholder={t('leads.list.allStatuses', language)} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">{t('leads.list.allStatuses')}</SelectItem>
+                        <SelectItem value="">{t('leads.list.allStatuses', language)}</SelectItem>
                         {leadStatuses.map((status) => (
                           <SelectItem key={status.value} value={status.value}>
                             {status.label}
@@ -885,13 +887,13 @@ export default function LeadManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="source-filter">{t('leads.form.leadSource')}</Label>
+                    <Label htmlFor="source-filter">{t('leads.form.leadSource', language)}</Label>
                     <Select value={sourceFilter} onValueChange={setSourceFilter}>
                       <SelectTrigger data-testid="source-filter">
-                        <SelectValue placeholder={t('leads.list.allSources')} />
+                        <SelectValue placeholder={t('leads.list.allSources', language)} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">{t('leads.list.allSources')}</SelectItem>
+                        <SelectItem value="">{t('leads.list.allSources', language)}</SelectItem>
                         {leadSources.map((source) => (
                           <SelectItem key={source.value} value={source.value}>
                             {source.label}
@@ -902,18 +904,18 @@ export default function LeadManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="sort-by">{t('leads.list.sortBy')}</Label>
+                    <Label htmlFor="sort-by">{t('leads.list.sortBy', language)}</Label>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger data-testid="sort-by-filter">
-                        <SelectValue placeholder={t('leads.list.sortBy')} />
+                        <SelectValue placeholder={t('leads.list.sortBy', language)} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="createdAt">{t('leads.list.createdDate')}</SelectItem>
-                        <SelectItem value="name">{t('register.firstName')}</SelectItem>
-                        <SelectItem value="leadScore">{t('leads.list.leadScore')}</SelectItem>
-                        <SelectItem value="estimatedValue">{t('leads.list.estimatedValue')}</SelectItem>
-                        <SelectItem value="lastContactedAt">{t('leads.list.lastContact')}</SelectItem>
-                        <SelectItem value="nextFollowUpAt">{t('leads.list.nextFollowUp')}</SelectItem>
+                        <SelectItem value="createdAt">{t('leads.list.createdDate', language)}</SelectItem>
+                        <SelectItem value="name">{t('register.firstName', language)}</SelectItem>
+                        <SelectItem value="leadScore">{t('leads.list.leadScore', language)}</SelectItem>
+                        <SelectItem value="estimatedValue">{t('leads.list.estimatedValue', language)}</SelectItem>
+                        <SelectItem value="lastContactedAt">{t('leads.list.lastContact', language)}</SelectItem>
+                        <SelectItem value="nextFollowUpAt">{t('leads.list.nextFollowUp', language)}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -930,10 +932,10 @@ export default function LeadManagement() {
                     }}
                     data-testid="clear-filters-button"
                   >
-                    {t('leads.list.clearFilters')}
+                    {t('leads.list.clearFilters', language)}
                   </Button>
                   <div className="text-sm text-muted-foreground">
-                    {leads.length} {t('leads.list.title').toLowerCase()}
+                    {leads.length} {t('leads.list.title', language).toLowerCase()}
                   </div>
                 </div>
               </CardContent>
@@ -942,9 +944,9 @@ export default function LeadManagement() {
             {/* Leads Table */}
             <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="luxury-heading-md">{t('leads.list.title')}</CardTitle>
+                <CardTitle className="luxury-heading-md">{t('leads.list.title', language)}</CardTitle>
                 <CardDescription className="luxury-text-body">
-                  {t('leads.management')}
+                  {t('leads.management', language)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -952,10 +954,10 @@ export default function LeadManagement() {
                   <div className="text-center py-12" data-testid="no-leads-message">
                     <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
-                      {t('leads.list.noLeads')}
+                      {t('leads.list.noLeads', language)}
                     </h3>
                     <p className="text-gray-600 dark:text-black mb-4">
-                      {t('leads.list.createFirst')}
+                      {t('leads.list.createFirst', language)}
                     </p>
                     <Button 
                       onClick={() => {
@@ -966,7 +968,7 @@ export default function LeadManagement() {
                       data-testid="create-first-lead-button"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      {t('actions.addLead')}
+                      {t('actions.addLead', language)}
                     </Button>
                   </div>
                 ) : (
@@ -974,15 +976,15 @@ export default function LeadManagement() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>{t('register.firstName')}</TableHead>
-                          <TableHead>{t('register.email')}</TableHead>
-                          <TableHead>{t('leads.form.company')}</TableHead>
-                          <TableHead>{t('leads.form.leadSource')}</TableHead>
-                          <TableHead>{t('leads.status.new')}</TableHead>
-                          <TableHead>{t('leads.list.leadScore')}</TableHead>
-                          <TableHead>{t('leads.list.estimatedValue')}</TableHead>
-                          <TableHead>{t('leads.list.createdDate')}</TableHead>
-                          <TableHead className="text-right">{t('actions.actions')}</TableHead>
+                          <TableHead>{t('register.firstName', language)}</TableHead>
+                          <TableHead>{t('register.email', language)}</TableHead>
+                          <TableHead>{t('leads.form.company', language)}</TableHead>
+                          <TableHead>{t('leads.form.leadSource', language)}</TableHead>
+                          <TableHead>{t('leads.status.new', language)}</TableHead>
+                          <TableHead>{t('leads.list.leadScore', language)}</TableHead>
+                          <TableHead>{t('leads.list.estimatedValue', language)}</TableHead>
+                          <TableHead>{t('leads.list.createdDate', language)}</TableHead>
+                          <TableHead className="text-right">{t('actions.actions', language)}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1055,9 +1057,9 @@ export default function LeadManagement() {
           <TabsContent value="pipeline" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t('leads.pipeline')}</CardTitle>
+                <CardTitle>{t('leads.pipeline', language)}</CardTitle>
                 <CardDescription>
-                  {t('pipeline.stages.newLead')} → {t('pipeline.stages.qualified')} → {t('pipeline.stages.proposalSent')} → {t('pipeline.stages.negotiating')} → {t('pipeline.stages.won')}/{t('pipeline.stages.lost')}
+                  {t('pipeline.stages.newLead', language)} → {t('pipeline.stages.qualified', language)} → {t('pipeline.stages.proposalSent', language)} → {t('pipeline.stages.negotiating', language)} → {t('pipeline.stages.won', language)}/{t('pipeline.stages.lost', language)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1079,7 +1081,7 @@ export default function LeadManagement() {
             {/* Lead Score Distribution */}
             <Card>
               <CardHeader>
-                <CardTitle>{t('leads.list.leadScore')} Distribution</CardTitle>
+                <CardTitle>{t('leads.list.leadScore', language)} Distribution</CardTitle>
                 <CardDescription>
                   Lead quality scoring breakdown
                 </CardDescription>
@@ -1174,7 +1176,7 @@ export default function LeadManagement() {
             </DialogClose>
             <DialogHeader>
               <DialogTitle>
-                {editMode ? t('leads.details.edit') : t('leads.form.title')}
+                {editMode ? t('leads.details.edit', language) : t('leads.form.title', language)}
               </DialogTitle>
               <DialogDescription>
                 {editMode ? 'Update lead information' : 'Capture new lead information'}
@@ -1189,9 +1191,9 @@ export default function LeadManagement() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.firstName')}</FormLabel>
+                        <FormLabel>{t('leads.form.firstName', language)}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('leads.form.firstName')} {...field} data-testid="lead-first-name" />
+                          <Input placeholder={t('leads.form.firstName', language)} {...field} data-testid="lead-first-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1203,9 +1205,9 @@ export default function LeadManagement() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.lastName')}</FormLabel>
+                        <FormLabel>{t('leads.form.lastName', language)}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('leads.form.lastName')} {...field} data-testid="lead-last-name" />
+                          <Input placeholder={t('leads.form.lastName', language)} {...field} data-testid="lead-last-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1217,9 +1219,9 @@ export default function LeadManagement() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.email')}</FormLabel>
+                        <FormLabel>{t('leads.form.email', language)}</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder={t('leads.form.email')} {...field} data-testid="lead-email" />
+                          <Input type="email" placeholder={t('leads.form.email', language)} {...field} data-testid="lead-email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1231,7 +1233,7 @@ export default function LeadManagement() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.phone')}</FormLabel>
+                        <FormLabel>{t('leads.form.phone', language)}</FormLabel>
                         <FormControl>
                           <PhoneInput value={field.value} onChange={field.onChange} defaultCountry="IL" />
                         </FormControl>
@@ -1245,9 +1247,9 @@ export default function LeadManagement() {
                     name="company"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.company')}</FormLabel>
+                        <FormLabel>{t('leads.form.company', language)}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('leads.form.company')} {...field} data-testid="lead-company" />
+                          <Input placeholder={t('leads.form.company', language)} {...field} data-testid="lead-company" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1259,9 +1261,9 @@ export default function LeadManagement() {
                     name="jobTitle"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.jobTitle')}</FormLabel>
+                        <FormLabel>{t('leads.form.jobTitle', language)}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('leads.form.jobTitle')} {...field} data-testid="lead-job-title" />
+                          <Input placeholder={t('leads.form.jobTitle', language)} {...field} data-testid="lead-job-title" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1273,11 +1275,11 @@ export default function LeadManagement() {
                     name="leadSource"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.leadSource')}</FormLabel>
+                        <FormLabel>{t('leads.form.leadSource', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="lead-source-select">
-                              <SelectValue placeholder={t('leads.form.leadSource')} />
+                              <SelectValue placeholder={t('leads.form.leadSource', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1298,11 +1300,11 @@ export default function LeadManagement() {
                     name="petType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.petType')}</FormLabel>
+                        <FormLabel>{t('leads.form.petType', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="lead-pet-type-select">
-                              <SelectValue placeholder={t('leads.form.petType')} />
+                              <SelectValue placeholder={t('leads.form.petType', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1323,7 +1325,7 @@ export default function LeadManagement() {
                     name="estimatedMonthlyValue"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('leads.form.estimatedValue')}</FormLabel>
+                        <FormLabel>{t('leads.form.estimatedValue', language)}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -1343,9 +1345,9 @@ export default function LeadManagement() {
                   name="sourceDetails"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('leads.form.sourceDetails')}</FormLabel>
+                      <FormLabel>{t('leads.form.sourceDetails', language)}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('leads.form.sourceDetails')} {...field} data-testid="lead-source-details" />
+                        <Input placeholder={t('leads.form.sourceDetails', language)} {...field} data-testid="lead-source-details" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1357,10 +1359,10 @@ export default function LeadManagement() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('leads.form.notes')}</FormLabel>
+                      <FormLabel>{t('leads.form.notes', language)}</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder={t('leads.form.notes')} 
+                          placeholder={t('leads.form.notes', language)} 
                           className="min-h-[100px]" 
                           {...field} 
                           data-testid="lead-notes"
@@ -1378,7 +1380,7 @@ export default function LeadManagement() {
                     onClick={() => setLeadFormOpen(false)}
                     data-testid="cancel-lead-form"
                   >
-                    {t('common.cancel')}
+                    {t('common.cancel', language)}
                   </Button>
                   <Button 
                     type="submit" 
@@ -1388,7 +1390,7 @@ export default function LeadManagement() {
                     {createLeadMutation.isPending || updateLeadMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                     ) : null}
-                    {editMode ? t('leads.form.updateLead') : t('leads.form.createLead')}
+                    {editMode ? t('leads.form.updateLead', language) : t('leads.form.createLead', language)}
                   </Button>
                 </div>
               </form>
@@ -1405,7 +1407,7 @@ export default function LeadManagement() {
             </DialogClose>
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
-                <span>{t('leads.details.title')}</span>
+                <span>{t('leads.details.title', language)}</span>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
@@ -1414,30 +1416,30 @@ export default function LeadManagement() {
                     data-testid="edit-lead-button"
                   >
                     <Edit className="w-4 h-4 mr-2" />
-                    {t('leads.details.edit')}
+                    {t('leads.details.edit', language)}
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm" data-testid="delete-lead-button">
                         <Trash2 className="w-4 h-4 mr-2" />
-                        {t('leads.details.delete')}
+                        {t('leads.details.delete', language)}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{t('confirm.deleteLead')}</AlertDialogTitle>
+                        <AlertDialogTitle>{t('confirm.deleteLead', language)}</AlertDialogTitle>
                         <AlertDialogDescription>
                           This action cannot be undone. The lead will be marked as lost.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel', language)}</AlertDialogCancel>
                         <AlertDialogAction 
                           onClick={handleDeleteLead}
                           className="bg-red-600 hover:bg-red-700"
                           data-testid="confirm-delete-lead"
                         >
-                          {t('leads.details.delete')}
+                          {t('leads.details.delete', language)}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -1465,23 +1467,23 @@ export default function LeadManagement() {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-500">{t('register.email')}</p>
+                        <p className="text-sm font-medium text-gray-500">{t('register.email', language)}</p>
                         <p className="text-sm">{selectedLead.email}</p>
                       </div>
                       {selectedLead.phone && (
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-gray-500">{t('register.phone')}</p>
+                          <p className="text-sm font-medium text-gray-500">{t('register.phone', language)}</p>
                           <p className="text-sm">{selectedLead.phone}</p>
                         </div>
                       )}
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-500">{t('leads.form.leadSource')}</p>
+                        <p className="text-sm font-medium text-gray-500">{t('leads.form.leadSource', language)}</p>
                         <p className="text-sm">
                           {leadSources.find(s => s.value === selectedLead.leadSource)?.label}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-500">{t('leads.details.leadScore')}</p>
+                        <p className="text-sm font-medium text-gray-500">{t('leads.details.leadScore', language)}</p>
                         <div className="flex items-center space-x-2">
                           <span className={`font-medium ${getScoreColor(getLeadScore(selectedLead))}`}>
                             {getLeadScore(selectedLead)}
@@ -1496,21 +1498,21 @@ export default function LeadManagement() {
                       </div>
                       {selectedLead.estimatedMonthlyValue && (
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-gray-500">{t('leads.list.estimatedValue')}</p>
+                          <p className="text-sm font-medium text-gray-500">{t('leads.list.estimatedValue', language)}</p>
                           <p className="text-sm font-semibold">
                             {formatCurrency(selectedLead.estimatedMonthlyValue)}
                           </p>
                         </div>
                       )}
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-500">{t('leads.details.createdOn')}</p>
+                        <p className="text-sm font-medium text-gray-500">{t('leads.details.createdOn', language)}</p>
                         <p className="text-sm">{formatDate(selectedLead.createdAt)}</p>
                       </div>
                     </div>
 
                     {selectedLead.notes && (
                       <div className="mt-4 space-y-1">
-                        <p className="text-sm font-medium text-gray-500">{t('leads.form.notes')}</p>
+                        <p className="text-sm font-medium text-gray-500">{t('leads.form.notes', language)}</p>
                         <p className="text-sm bg-white dark:bg-white p-3 rounded-lg">
                           {selectedLead.notes}
                         </p>
@@ -1525,7 +1527,7 @@ export default function LeadManagement() {
                         data-testid="log-communication-button"
                       >
                         <MessageSquare className="w-4 h-4 mr-2" />
-                        {t('leads.details.logCommunication')}
+                        {t('leads.details.logCommunication', language)}
                       </Button>
                       <Button
                         variant="outline"
@@ -1534,7 +1536,7 @@ export default function LeadManagement() {
                         data-testid="create-task-button"
                       >
                         <Calendar className="w-4 h-4 mr-2" />
-                        {t('actions.createTask')}
+                        {t('actions.createTask', language)}
                       </Button>
                       <Button
                         variant="outline"
@@ -1543,7 +1545,7 @@ export default function LeadManagement() {
                         data-testid="create-opportunity-button"
                       >
                         <Target className="w-4 h-4 mr-2" />
-                        {t('leads.details.createOpportunity')}
+                        {t('leads.details.createOpportunity', language)}
                       </Button>
                       {selectedLead.leadStatus !== 'converted' && (
                         <AlertDialog>
@@ -1554,23 +1556,23 @@ export default function LeadManagement() {
                               data-testid="convert-lead-button"
                             >
                               <UserPlus className="w-4 h-4 mr-2" />
-                              {t('leads.details.convertToCustomer')}
+                              {t('leads.details.convertToCustomer', language)}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>{t('confirm.convertLead')}</AlertDialogTitle>
+                              <AlertDialogTitle>{t('confirm.convertLead', language)}</AlertDialogTitle>
                               <AlertDialogDescription>
                                 This will create a new customer account and mark the lead as converted.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                              <AlertDialogCancel>{t('common.cancel', language)}</AlertDialogCancel>
                               <AlertDialogAction 
                                 onClick={handleConvertLead}
                                 data-testid="confirm-convert-lead"
                               >
-                                {t('leads.details.convertToCustomer')}
+                                {t('leads.details.convertToCustomer', language)}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -1583,16 +1585,16 @@ export default function LeadManagement() {
                 {/* Lead Details Tabs */}
                 <Tabs defaultValue="communications" className="w-full">
                   <TabsList>
-                    <TabsTrigger value="communications">{t('leads.details.communications')}</TabsTrigger>
-                    <TabsTrigger value="activities">{t('leads.details.activities')}</TabsTrigger>
-                    <TabsTrigger value="tasks">{t('leads.details.tasks')}</TabsTrigger>
-                    <TabsTrigger value="opportunities">{t('leads.details.opportunities')}</TabsTrigger>
+                    <TabsTrigger value="communications">{t('leads.details.communications', language)}</TabsTrigger>
+                    <TabsTrigger value="activities">{t('leads.details.activities', language)}</TabsTrigger>
+                    <TabsTrigger value="tasks">{t('leads.details.tasks', language)}</TabsTrigger>
+                    <TabsTrigger value="opportunities">{t('leads.details.opportunities', language)}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="communications" className="mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle>{t('leads.details.communications')}</CardTitle>
+                        <CardTitle>{t('leads.details.communications', language)}</CardTitle>
                         <CardDescription>
                           Communication history and interactions
                         </CardDescription>
@@ -1613,7 +1615,7 @@ export default function LeadManagement() {
                                       {communicationTypes.find(t => t.value === comm.communicationType)?.label}
                                     </Badge>
                                     <Badge variant={comm.direction === 'inbound' ? 'default' : 'secondary'}>
-                                      {comm.direction === 'inbound' ? t('communications.direction.inbound') : t('communications.direction.outbound')}
+                                      {comm.direction === 'inbound' ? t('communications.direction.inbound', language) : t('communications.direction.outbound', language)}
                                     </Badge>
                                   </div>
                                   <span className="text-sm text-gray-500">
@@ -1640,7 +1642,7 @@ export default function LeadManagement() {
                   <TabsContent value="activities" className="mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle>{t('leads.details.activities')}</CardTitle>
+                        <CardTitle>{t('leads.details.activities', language)}</CardTitle>
                         <CardDescription>
                           Activity timeline and history
                         </CardDescription>
@@ -1673,7 +1675,7 @@ export default function LeadManagement() {
                   <TabsContent value="tasks" className="mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle>{t('leads.details.tasks')}</CardTitle>
+                        <CardTitle>{t('leads.details.tasks', language)}</CardTitle>
                         <CardDescription>
                           Scheduled tasks and follow-ups
                         </CardDescription>
@@ -1717,7 +1719,7 @@ export default function LeadManagement() {
                   <TabsContent value="opportunities" className="mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle>{t('leads.details.opportunities')}</CardTitle>
+                        <CardTitle>{t('leads.details.opportunities', language)}</CardTitle>
                         <CardDescription>
                           Sales opportunities and deals
                         </CardDescription>
@@ -1776,7 +1778,7 @@ export default function LeadManagement() {
               <span className="sr-only">Close</span>
             </DialogClose>
             <DialogHeader>
-              <DialogTitle>{t('communications.log')}</DialogTitle>
+              <DialogTitle>{t('communications.log', language)}</DialogTitle>
               <DialogDescription>
                 Record communication with {selectedLead?.firstName} {selectedLead?.lastName}
               </DialogDescription>
@@ -1790,11 +1792,11 @@ export default function LeadManagement() {
                     name="communicationType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('communications.type')}</FormLabel>
+                        <FormLabel>{t('communications.type', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="communication-type-select">
-                              <SelectValue placeholder={t('communications.type')} />
+                              <SelectValue placeholder={t('communications.type', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1815,16 +1817,16 @@ export default function LeadManagement() {
                     name="direction"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('communications.direction')}</FormLabel>
+                        <FormLabel>{t('communications.direction', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="communication-direction-select">
-                              <SelectValue placeholder={t('communications.direction')} />
+                              <SelectValue placeholder={t('communications.direction', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="inbound">{t('communications.direction.inbound')}</SelectItem>
-                            <SelectItem value="outbound">{t('communications.direction.outbound')}</SelectItem>
+                            <SelectItem value="inbound">{t('communications.direction.inbound', language)}</SelectItem>
+                            <SelectItem value="outbound">{t('communications.direction.outbound', language)}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1838,9 +1840,9 @@ export default function LeadManagement() {
                   name="subject"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('communications.subject')}</FormLabel>
+                      <FormLabel>{t('communications.subject', language)}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('communications.subject')} {...field} data-testid="communication-subject" />
+                        <Input placeholder={t('communications.subject', language)} {...field} data-testid="communication-subject" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1852,10 +1854,10 @@ export default function LeadManagement() {
                   name="summary"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('communications.summary')}</FormLabel>
+                      <FormLabel>{t('communications.summary', language)}</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder={t('communications.summary')} 
+                          placeholder={t('communications.summary', language)} 
                           className="min-h-[100px]" 
                           {...field} 
                           data-testid="communication-summary"
@@ -1872,9 +1874,9 @@ export default function LeadManagement() {
                     name="outcome"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('communications.outcome')}</FormLabel>
+                        <FormLabel>{t('communications.outcome', language)}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('communications.outcome')} {...field} data-testid="communication-outcome" />
+                          <Input placeholder={t('communications.outcome', language)} {...field} data-testid="communication-outcome" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1886,7 +1888,7 @@ export default function LeadManagement() {
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('communications.duration')}</FormLabel>
+                        <FormLabel>{t('communications.duration', language)}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -1906,9 +1908,9 @@ export default function LeadManagement() {
                   name="nextAction"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('communications.nextAction')}</FormLabel>
+                      <FormLabel>{t('communications.nextAction', language)}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('communications.nextAction')} {...field} data-testid="communication-next-action" />
+                        <Input placeholder={t('communications.nextAction', language)} {...field} data-testid="communication-next-action" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1920,7 +1922,7 @@ export default function LeadManagement() {
                   name="nextActionDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('communications.nextActionDate')}</FormLabel>
+                      <FormLabel>{t('communications.nextActionDate', language)}</FormLabel>
                       <FormControl>
                         <Input 
                           type="datetime-local" 
@@ -1940,7 +1942,7 @@ export default function LeadManagement() {
                     onClick={() => setCommunicationFormOpen(false)}
                     data-testid="cancel-communication-form"
                   >
-                    {t('common.cancel')}
+                    {t('common.cancel', language)}
                   </Button>
                   <Button 
                     type="submit" 
@@ -1950,7 +1952,7 @@ export default function LeadManagement() {
                     {createCommunicationMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                     ) : null}
-                    {t('communications.log')}
+                    {t('communications.log', language)}
                   </Button>
                 </div>
               </form>
@@ -1966,7 +1968,7 @@ export default function LeadManagement() {
               <span className="sr-only">Close</span>
             </DialogClose>
             <DialogHeader>
-              <DialogTitle>{t('tasks.create')}</DialogTitle>
+              <DialogTitle>{t('tasks.create', language)}</DialogTitle>
               <DialogDescription>
                 Create task for {selectedLead?.firstName} {selectedLead?.lastName}
               </DialogDescription>
@@ -1979,9 +1981,9 @@ export default function LeadManagement() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.taskTitle')}</FormLabel>
+                      <FormLabel>{t('tasks.taskTitle', language)}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('tasks.taskTitle')} {...field} data-testid="task-title" />
+                        <Input placeholder={t('tasks.taskTitle', language)} {...field} data-testid="task-title" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1993,10 +1995,10 @@ export default function LeadManagement() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.taskDescription')}</FormLabel>
+                      <FormLabel>{t('tasks.taskDescription', language)}</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder={t('tasks.taskDescription')} 
+                          placeholder={t('tasks.taskDescription', language)} 
                           className="min-h-[100px]" 
                           {...field} 
                           data-testid="task-description"
@@ -2013,11 +2015,11 @@ export default function LeadManagement() {
                     name="taskType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('tasks.taskType')}</FormLabel>
+                        <FormLabel>{t('tasks.taskType', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="task-type-select">
-                              <SelectValue placeholder={t('tasks.taskType')} />
+                              <SelectValue placeholder={t('tasks.taskType', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -2038,11 +2040,11 @@ export default function LeadManagement() {
                     name="priority"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('tasks.priority')}</FormLabel>
+                        <FormLabel>{t('tasks.priority', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="task-priority-select">
-                              <SelectValue placeholder={t('tasks.priority')} />
+                              <SelectValue placeholder={t('tasks.priority', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -2064,7 +2066,7 @@ export default function LeadManagement() {
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.dueDate')}</FormLabel>
+                      <FormLabel>{t('tasks.dueDate', language)}</FormLabel>
                       <FormControl>
                         <Input 
                           type="datetime-local" 
@@ -2084,7 +2086,7 @@ export default function LeadManagement() {
                     onClick={() => setTaskFormOpen(false)}
                     data-testid="cancel-task-form"
                   >
-                    {t('common.cancel')}
+                    {t('common.cancel', language)}
                   </Button>
                   <Button 
                     type="submit" 
@@ -2094,7 +2096,7 @@ export default function LeadManagement() {
                     {createTaskMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                     ) : null}
-                    {t('tasks.create')}
+                    {t('tasks.create', language)}
                   </Button>
                 </div>
               </form>
@@ -2110,7 +2112,7 @@ export default function LeadManagement() {
               <span className="sr-only">Close</span>
             </DialogClose>
             <DialogHeader>
-              <DialogTitle>{t('opportunities.create')}</DialogTitle>
+              <DialogTitle>{t('opportunities.create', language)}</DialogTitle>
               <DialogDescription>
                 Create opportunity for {selectedLead?.firstName} {selectedLead?.lastName}
               </DialogDescription>
@@ -2123,9 +2125,9 @@ export default function LeadManagement() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('opportunities.name')}</FormLabel>
+                      <FormLabel>{t('opportunities.name', language)}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('opportunities.name')} {...field} data-testid="opportunity-name" />
+                        <Input placeholder={t('opportunities.name', language)} {...field} data-testid="opportunity-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -2137,10 +2139,10 @@ export default function LeadManagement() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('opportunities.description')}</FormLabel>
+                      <FormLabel>{t('opportunities.description', language)}</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder={t('opportunities.description')} 
+                          placeholder={t('opportunities.description', language)} 
                           className="min-h-[100px]" 
                           {...field} 
                           data-testid="opportunity-description"
@@ -2157,11 +2159,11 @@ export default function LeadManagement() {
                     name="dealStageId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('opportunities.stage')}</FormLabel>
+                        <FormLabel>{t('opportunities.stage', language)}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="opportunity-stage-select">
-                              <SelectValue placeholder={t('opportunities.stage')} />
+                              <SelectValue placeholder={t('opportunities.stage', language)} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -2182,7 +2184,7 @@ export default function LeadManagement() {
                     name="estimatedValue"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('opportunities.estimatedValue')}</FormLabel>
+                        <FormLabel>{t('opportunities.estimatedValue', language)}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -2203,7 +2205,7 @@ export default function LeadManagement() {
                     name="winProbability"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('opportunities.winProbability')}</FormLabel>
+                        <FormLabel>{t('opportunities.winProbability', language)}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -2222,12 +2224,12 @@ export default function LeadManagement() {
                     name="expectedCloseDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('opportunities.expectedCloseDate')}</FormLabel>
+                        <FormLabel>{t('opportunities.expectedCloseDate', language)}</FormLabel>
                         <FormControl>
                           <DatePicker
                             value={field.value || ''}
                             onChange={field.onChange}
-                            placeholder={t('opportunities.expectedCloseDate')}
+                            placeholder={t('opportunities.expectedCloseDate', language)}
                             testId="opportunity-expected-close-date"
                           />
                         </FormControl>
@@ -2242,17 +2244,17 @@ export default function LeadManagement() {
                   name="serviceType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('opportunities.serviceType')}</FormLabel>
+                      <FormLabel>{t('opportunities.serviceType', language)}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="opportunity-service-type-select">
-                            <SelectValue placeholder={t('opportunities.serviceType')} />
+                            <SelectValue placeholder={t('opportunities.serviceType', language)} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="individual">{t('opportunities.serviceType.individual')}</SelectItem>
-                          <SelectItem value="corporate">{t('opportunities.serviceType.corporate')}</SelectItem>
-                          <SelectItem value="franchise">{t('opportunities.serviceType.franchise')}</SelectItem>
+                          <SelectItem value="individual">{t('opportunities.serviceType.individual', language)}</SelectItem>
+                          <SelectItem value="corporate">{t('opportunities.serviceType.corporate', language)}</SelectItem>
+                          <SelectItem value="franchise">{t('opportunities.serviceType.franchise', language)}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -2267,7 +2269,7 @@ export default function LeadManagement() {
                     onClick={() => setOpportunityFormOpen(false)}
                     data-testid="cancel-opportunity-form"
                   >
-                    {t('common.cancel')}
+                    {t('common.cancel', language)}
                   </Button>
                   <Button 
                     type="submit" 
@@ -2277,7 +2279,7 @@ export default function LeadManagement() {
                     {createOpportunityMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                     ) : null}
-                    {t('opportunities.create')}
+                    {t('opportunities.create', language)}
                   </Button>
                 </div>
               </form>
