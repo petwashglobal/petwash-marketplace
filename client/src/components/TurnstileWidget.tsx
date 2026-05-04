@@ -81,6 +81,11 @@ export async function executeTurnstileInvisible(action: string = 'submit'): Prom
 
       let widgetId: string;
       try {
+        if (!window.turnstile) {
+          cleanup();
+          reject(new Error('Turnstile script not loaded'));
+          return;
+        }
         widgetId = window.turnstile.render(container, {
           sitekey: SITE_KEY,
           size: 'invisible',

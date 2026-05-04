@@ -187,8 +187,8 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
   };
 
   const generateNayaxQRCode = () => {
-    const redeemAmount = Math.min(10.00, loyaltyData.giftBalance);
-    const uniqueToken = `NAYAX-GIFT-${loyaltyData.tier.toUpperCase()}-${Date.now()}`;
+    const redeemAmount = Math.min(10.00, loyaltyData?.giftBalance ?? 0);
+    const uniqueToken = `NAYAX-GIFT-${(loyaltyData?.tier ?? 'bronze').toUpperCase()}-${Date.now()}`;
     const redeemURL = `https://petwash.co.il/redeem?token=${uniqueToken}&amount=${redeemAmount.toFixed(2)}`;
     
     return {
@@ -199,8 +199,9 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
   };
 
   const downloadCalendarEvent = (petName: string, washDate: string) => {
-    const tierConfig = TIER_CONFIG[loyaltyData.tier];
-    const title = `Wash Due: ${petName} (${loyaltyData.tier.toUpperCase()} Member)`;
+    const tier = loyaltyData?.tier ?? 'bronze';
+    const tierConfig = TIER_CONFIG[tier];
+    const title = `Wash Due: ${petName} (${tier.toUpperCase()} Member)`;
     const details = `Time to look paw-some! Redeem your ${tierConfig.discount}% loyalty discount at the K9000 station.`;
     const dateString = washDate.replace(/-/g, '');
     

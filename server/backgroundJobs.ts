@@ -400,7 +400,9 @@ export class BackgroundJobProcessor {
         try {
           logger.info('[Blockchain] Starting daily Merkle snapshot...');
           const result = await AuditLedgerService.createDailySnapshot();
-          if (result.success) {
+          if (!result) {
+            logger.warn('[Blockchain] Merkle snapshot returned no result');
+          } else if (result.success) {
             logger.info('[Blockchain] Merkle snapshot created', {
               date: result.snapshotDate,
               merkleRoot: result.merkleRoot,
