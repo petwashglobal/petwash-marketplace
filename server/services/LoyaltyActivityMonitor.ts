@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { loyaltyProfiles, pointsTransactions, TIER_CONFIGS, type TierConfig } from '@shared/schema-loyalty';
+import { loyaltyProfiles, pointsTransactions, TIER_CONFIGS, type TierConfig, type LoyaltyTier } from '@shared/schema-loyalty';
 import { loyaltyAnalytics, washHistory, users } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { eq, and, gte, desc, sql, count } from 'drizzle-orm';

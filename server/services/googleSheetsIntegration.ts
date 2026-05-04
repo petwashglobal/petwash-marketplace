@@ -1345,7 +1345,7 @@ export async function logSecurityEventToSheet(event: {
   riskScore: number;
   metadata?: string;
 }): Promise<void> {
-  await appendToSheet(SHEETS.SECURITY_EVENTS, {
+  await appendFormSubmission(SHEETS.SECURITY_EVENTS, {
     timestamp: new Date().toISOString(),
     userId: event.userId,
     eventType: event.eventType,
@@ -1365,7 +1365,7 @@ export async function logConsentEvent(consent: {
   method: string;
   evidenceHash: string;
 }): Promise<void> {
-  await appendToSheet(SHEETS.CONSENT_AUDIT, {
+  await appendFormSubmission(SHEETS.CONSENT_AUDIT, {
     timestamp: new Date().toISOString(),
     userId: consent.userId,
     consentType: consent.consentType,
@@ -1384,7 +1384,7 @@ export async function logOnboardingCase(oCase: {
   status: string;
   currentStep: string;
 }): Promise<void> {
-  await appendToSheet(SHEETS.ONBOARDING_CASES, {
+  await appendFormSubmission(SHEETS.ONBOARDING_CASES, {
     timestamp: new Date().toISOString(),
     userId: oCase.userId,
     caseType: oCase.caseType,

@@ -998,7 +998,7 @@ router.get(
       // Get payment intents for booking
       const { db } = await import('../db');
       const { paymentIntents } = await import('@shared/schema');
-      const { eq } = await import('drizzle-orm');
+      const { eq, sql } = await import('drizzle-orm');
 
       const intents = await db
         .select()

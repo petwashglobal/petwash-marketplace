@@ -32,6 +32,7 @@ import {
 } from "@shared/schema-compliance";
 import { createHash } from "crypto";
 import { nanoid } from "nanoid";
+import { logger } from "../lib/logger";
 
 /**
  * Compliance risk levels
