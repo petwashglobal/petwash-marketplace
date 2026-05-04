@@ -330,9 +330,9 @@ router.post(
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    KYCAccessControl.assignRole(targetUserId, role);
-
     const actorId = (req as any).user?.uid || 'unknown';
+
+    await KYCAccessControl.assignRole(targetUserId, role, actorId);
     kycAuditTrail.record({
       action: 'kyc_admin_access',
       actorId,

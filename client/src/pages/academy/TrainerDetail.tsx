@@ -138,7 +138,7 @@ export default function TrainerDetail() {
   const { user } = useFirebaseAuth();
   const [, navigate] = useLocation();
   
-  const faqItems = getFAQsForPlatform('trainer', language);
+  const faqItems = getFAQsForPlatform('trainer');
 
   const trainerData: ProviderProfileData = {
     id: id || "trainer-1",
