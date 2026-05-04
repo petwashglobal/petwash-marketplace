@@ -34,11 +34,24 @@ import { logAuditEvent } from '../middleware/auditLog';
 import {
   assertOutputSafe,
   assertRateLimit,
-  CoworkerRateLimitError,
+  CoworkerRateLimitError as CoworkerActorFamilyRateLimitError,
   CoworkerUnsafeOutputError,
   deterministicFallback,
   type RateLimitConfig,
 } from './coworker/governance';
+import {
+  assertDailyTokenBudget,
+  assertRequestUnderRateLimits,
+  buildSnapshotCacheKey,
+  CoworkerDailyBudgetExceededError,
+  CoworkerRateLimitError,
+  clearSnapshotCache,
+  DEFAULT_SNAPSHOT_TTL_SECONDS,
+  getSnapshot,
+  putSnapshot,
+  snapshotCacheSize,
+  type FixedWindowConfig,
+} from './coworker/limits';
 
 export interface RunFamilyOptions {
   /** Override the default 60s snapshot cache TTL for this family. */
@@ -49,30 +62,30 @@ export interface RunFamilyOptions {
   scope?: Record<string, string | number | boolean>;
   /** Who is calling. Threaded through for rate limit + audit logging. */
   actor?: CoworkerActor;
-  /** Override the default rate limit window for this call (rare). */
+  /** Override the default per-actor sliding rate limit (PR-21 governance). */
   rateLimit?: RateLimitConfig;
+  /** Override the default per-admin fixed-window rate limit (PR-22 limits). */
+  perAdminRateLimit?: FixedWindowConfig;
+  /** Override the default global fixed-window rate limit (PR-22 limits). */
+  globalRateLimit?: FixedWindowConfig;
+  /**
+   * Token reservation hint for the daily budget. PR-22 always passes 0 (no
+   * Gemini wired). PR-23+ passes the caller's expected token count so the
+   * daily budget check is meaningful.
+   */
+  expectedTokens?: number;
 }
 
-// Re-export governance error types so route handlers can `instanceof`-check
-// them without reaching into the governance module directly.
-export { CoworkerRateLimitError, CoworkerUnsafeOutputError };
+// Re-export error types so route handlers can `instanceof`-check them
+// without reaching into governance / limits modules directly.
+export {
+  CoworkerActorFamilyRateLimitError,
+  CoworkerRateLimitError,
+  CoworkerDailyBudgetExceededError,
+  CoworkerUnsafeOutputError,
+};
 
-interface CacheEntry {
-  expiresAt: number;
-  output: CoworkerOutput;
-}
-
-const SNAPSHOT_CACHE = new Map<string, CacheEntry>();
-const DEFAULT_TTL_SECONDS = 60;
-
-function cacheKey(family: CoworkerFamily, scope?: RunFamilyOptions['scope']): string {
-  if (!scope) return family;
-  const stable = Object.keys(scope)
-    .sort()
-    .map((k) => `${k}=${String(scope[k])}`)
-    .join('&');
-  return `${family}?${stable}`;
-}
+const DEFAULT_TTL_SECONDS = DEFAULT_SNAPSHOT_TTL_SECONDS;
 
 export class CoworkerAgentService {
   /**
@@ -98,14 +111,30 @@ export class CoworkerAgentService {
     }
     const fam = parsedFamily.data;
 
-    const key = cacheKey(fam, options.scope);
+    // PR-22: snapshot cache keyed on (admin id, agent id, scope hash). Cache
+    // hits bypass rate limits + token budget — by definition they don't
+    // consume Gemini. PR-21's per-actor sliding window also stays bypassed.
+    const key = buildSnapshotCacheKey(options.actor?.actorUserId, fam, options.scope);
     if (!options.noCache) {
-      const hit = SNAPSHOT_CACHE.get(key);
-      if (hit && hit.expiresAt > Date.now()) return hit.output;
+      const hit = getSnapshot<CoworkerOutput>(key);
+      if (hit) return hit;
     }
 
-    // PR-21: rate limit BEFORE dispatch. Per (actor, family) sliding window.
-    // Cache hits above bypass this on purpose — they don't consume Gemini.
+    // PR-22: fixed-window rate limit (per-admin + global) BEFORE dispatch.
+    // Throws CoworkerRateLimitError (scope: 'admin' | 'global').
+    assertRequestUnderRateLimits(
+      options.actor?.actorUserId,
+      options.perAdminRateLimit,
+      options.globalRateLimit,
+    );
+
+    // PR-22: daily token budget reservation. PR-22 passes 0 because no
+    // Gemini call is wired; PR-23+ will pass the real estimate.
+    assertDailyTokenBudget(options.expectedTokens ?? 0);
+
+    // PR-21: per-(actor, family) sliding-window rate limit. Layered on top
+    // of PR-22's broader limits — this one prevents a single admin from
+    // spamming a single family even within their fixed-window allowance.
     assertRateLimit(options.actor?.actorUserId, fam, options.rateLimit);
 
     // PR-20: always not-wired. Family-specific dispatch table lives here in PR-21+.
@@ -143,10 +172,7 @@ export class CoworkerAgentService {
     }
 
     const ttl = options.ttlSeconds ?? DEFAULT_TTL_SECONDS;
-    SNAPSHOT_CACHE.set(key, {
-      expiresAt: Date.now() + ttl * 1000,
-      output: validated.data,
-    });
+    putSnapshot<CoworkerOutput>(key, validated.data, ttl);
 
     // PR-21: audit-log every coworker invocation. Fire-and-forget — failure
     // to log must not break the response (matches the auditLog.ts swallow-
@@ -197,12 +223,12 @@ export class CoworkerAgentService {
 
   /** Test / admin-tool helper: clear the snapshot cache. */
   clearCache(): void {
-    SNAPSHOT_CACHE.clear();
+    clearSnapshotCache();
   }
 
   /** Introspection helper for status endpoints. */
   getCacheSize(): number {
-    return SNAPSHOT_CACHE.size;
+    return snapshotCacheSize();
   }
 }
 
