@@ -160,10 +160,10 @@ async function loadContractorComplianceData(contractorId: string) {
           ? new Date(driverProfile.licenseExpiryDate) > new Date()
           : false,
         licenseExpiryDate: driverProfile.licenseExpiryDate
-          ? driverProfile.licenseExpiryDate.toISOString()
+          ? new Date(driverProfile.licenseExpiryDate).toISOString()
           : undefined,
         hasActiveBan: driverProfile.hasActiveBan,
-        banExpiryDate: driverProfile.banExpiryDate ? driverProfile.banExpiryDate.toISOString() : undefined,
+        banExpiryDate: driverProfile.banExpiryDate ? new Date(driverProfile.banExpiryDate).toISOString() : undefined,
         declaresCleanRecord: driverProfile.declaresCleanRecord,
         pointsOnLicense: driverProfile.pointsOnLicense,
       }

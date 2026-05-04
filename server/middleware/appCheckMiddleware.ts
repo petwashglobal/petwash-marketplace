@@ -25,7 +25,7 @@ export const verifyAppCheckToken = async (
     const appCheckClaims = await admin.appCheck().verifyToken(appCheckToken);
     
     req.appCheckToken = appCheckClaims;
-    logger.info('App Check ENFORCED: Token verified', { path: req.path, appId: appCheckClaims.app_id });
+    logger.info('App Check ENFORCED: Token verified', { path: req.path, appId: appCheckClaims.appId });
     next();
   } catch (error) {
     logger.error('App Check ENFORCED: Verification failed', { path: req.path, error });
@@ -51,7 +51,7 @@ export const verifyAppCheckTokenOptional = async (
   try {
     const appCheckClaims = await admin.appCheck().verifyToken(appCheckToken);
     req.appCheckToken = appCheckClaims;
-    logger.info('App Check MONITOR: Token verified', { path: req.path, appId: appCheckClaims.app_id });
+    logger.info('App Check MONITOR: Token verified', { path: req.path, appId: appCheckClaims.appId });
   } catch (error) {
     logger.warn('App Check MONITOR: Verification failed (continuing)', { path: req.path, error });
   }

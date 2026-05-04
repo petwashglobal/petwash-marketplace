@@ -3826,7 +3826,7 @@ self.addEventListener('notificationclick', (event) => {
           // CRITICAL: Preserve first-open timestamp (use stored value, not updates object)
           updates.openedAt = communicationLog.openedAt ?? new Date(timestamp * 1000);
           updates.openCount = (communicationLog.openCount || 0) + 1;
-          updates.lastOpenedAt = new Date(timestamp * 1000);
+          updates.openedAt = new Date(timestamp * 1000);
           break;
           
         case 'click':
@@ -3834,7 +3834,7 @@ self.addEventListener('notificationclick', (event) => {
           // CRITICAL: Preserve first-click timestamp (use stored value, not updates object)
           updates.clickedAt = communicationLog.clickedAt ?? new Date(timestamp * 1000);
           updates.clickCount = (communicationLog.clickCount || 0) + 1;
-          updates.lastClickedAt = new Date(timestamp * 1000);
+          updates.clickedAt = new Date(timestamp * 1000);
           if (url) {
             updates.lastClickedUrl = url;
           }
@@ -12213,7 +12213,7 @@ self.addEventListener('notificationclick', (event) => {
           language as 'he' | 'en'
         );
       } else if (emailType === 'birthday') {
-        success = await EmailService.sendBirthdayDiscountEmail({
+        success = await EmailService.sendBirthdayDiscount({
           email: adminEmail,
           firstName: 'Admin Test',
           dogName: 'Buddy',
@@ -13952,7 +13952,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/oauth/history/:userId', requireAuth, async (req, res) => {
     try {
-      const history = await oauthCertificateMonitor.getConsentHistory(req.params.userId);
+      const history = await oauthCertificateMonitor.getUserConsentHistory(req.params.userId);
       res.json(history);
     } catch (error: any) {
       logger.error('[OAuthMonitor] Get consent history failed', error);
@@ -13993,7 +13993,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.post('/api/monitoring/notifications/revoke/:userId', requireAuth, async (req, res) => {
     try {
-      await notificationConsentManager.revokeAllConsent(req.params.userId);
+      await notificationConsentManager.revokeAllConsents(req.params.userId);
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Revoke all failed', error);

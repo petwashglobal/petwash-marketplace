@@ -133,7 +133,7 @@ router.get('/my-applications', async (req: Request, res: Response) => {
         reviewStage: staffApplications.reviewStage,
         createdAt: staffApplications.createdAt,
         submittedAt: staffApplications.submittedAt,
-        positionTitle: careerPositions.titleEn,
+        positionTitle: careerPositions.title,
         positionTitleHe: careerPositions.titleHe,
         roleType: careerPositions.roleType,
         location: careerPositions.location,
@@ -1621,7 +1621,7 @@ router.get('/admin/applications', async (req: Request, res: Response) => {
         createdAt: staffApplications.createdAt,
         submittedAt: staffApplications.submittedAt,
         reviewedAt: staffApplications.reviewedAt,
-        positionTitle: careerPositions.titleEn,
+        positionTitle: careerPositions.title,
         positionTitleHe: careerPositions.titleHe,
         positionLocation: careerPositions.location,
       })
