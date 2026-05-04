@@ -493,7 +493,14 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
     const hasCoords = filters.latitude != null && filters.longitude != null;
     const radiusKm = filters.radiusKm ?? 50; // Israel ~470 km N–S; 50 km covers any metro
 
-    const conditions = [eq(sitterProfiles.isActive, true)];
+    // Approval gate: only sitters who have completed the strict vetting funnel
+    // (id_verified → criminal_check_passed → training_complete → active) are
+    // eligible to be matched. Pending applicants are NEVER returned to
+    // customers — every provider must be approved before going live.
+    const conditions = [
+      eq(sitterProfiles.isActive, true),
+      eq(sitterProfiles.verificationStatus, 'active'),
+    ];
 
     // Text-based city/area filter (applied even when coords present, as a secondary constraint).
     // Uses Hebrew↔English aliases (e.g. 'רמת גן' === 'Ramat Gan') so a Hebrew
@@ -710,7 +717,15 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
     const hasCoords = filters.latitude != null && filters.longitude != null;
     const radiusKm  = filters.radiusKm ?? 50;
 
-    const conditions = [eq(walkerProfiles.isActive, true)];
+    // Approval gate: walkerProfiles.verificationStatus is one of
+    // pending | verified | rejected | suspended. Only 'verified' walkers
+    // are eligible to be matched. suspendedUntil also excludes walkers
+    // whose suspension is still in force, even if their status is dirty.
+    const conditions = [
+      eq(walkerProfiles.isActive, true),
+      eq(walkerProfiles.verificationStatus, 'verified'),
+      sql`(${walkerProfiles.suspendedUntil} IS NULL OR ${walkerProfiles.suspendedUntil} < NOW())`,
+    ];
 
     if (!hasCoords && filters.city) {
       const cond = cityAliasIlike(walkerProfiles.city, filters.city);
@@ -721,9 +736,9 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
       conditions.push(gte(walkerProfiles.averageRating, filters.minRating.toString()));
     }
 
-    if (filters.verifiedOnly) {
-      conditions.push(eq(walkerProfiles.verificationStatus, 'verified'));
-    }
+    // verifiedOnly is already implied by the unconditional verificationStatus
+    // filter above; keep the flag accepted for backwards compat but it is now
+    // a no-op (kept here so future tightening can be added without renaming).
 
     if (filters.startDate && filters.endDate) {
       const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'WALK_MY_PET');
@@ -895,8 +910,18 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
  */
 async function searchGroomers(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
   try {
+    // Approval gate: trainers.verificationStatus is one of
+    // pending | approved | rejected | suspended. Only 'approved' trainers
+    // are eligible to be matched. isSuspended also excludes anyone whose
+    // suspension is in force.
+    // Note: previous code filtered on 'verified' inside the verifiedOnly
+    // branch — that value is not in the trainers vocabulary, so the filter
+    // had silently been a no-op. The gate below makes approval mandatory
+    // and the verifiedOnly flag becomes informational only.
     const conditions = [
       eq(trainers.isActive, true),
+      eq(trainers.verificationStatus, 'approved'),
+      eq(trainers.isSuspended, false),
       sql`'grooming' = ANY(${trainers.serviceTypes})`,
     ];
 
@@ -906,10 +931,6 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
 
     if (filters.minRating && filters.minRating > 0) {
       conditions.push(gte(trainers.averageRating, filters.minRating.toString()));
-    }
-
-    if (filters.verifiedOnly) {
-      conditions.push(eq(trainers.verificationStatus, 'verified'));
     }
 
     if (filters.startDate && filters.endDate) {
@@ -1033,7 +1054,16 @@ async function searchDrivers(filters: BookingSearchFilters, searchId: string): P
  */
 async function searchTrainers(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
   try {
-    const conditions = [eq(trainers.isActive, true)];
+    // Approval gate: same as searchGroomers — trainers.verificationStatus
+    // is pending|approved|rejected|suspended. Only 'approved' + not
+    // suspended are eligible. The previous `verifiedOnly` filter compared
+    // against the wrong literal ('verified' is not in the trainers
+    // vocabulary) so it had silently been a no-op.
+    const conditions = [
+      eq(trainers.isActive, true),
+      eq(trainers.verificationStatus, 'approved'),
+      eq(trainers.isSuspended, false),
+    ];
 
     if (filters.city) {
       conditions.push(ilike(trainers.serviceArea, `%${filters.city}%`));
@@ -1045,10 +1075,6 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
 
     if (filters.minRating && filters.minRating > 0) {
       conditions.push(gte(trainers.averageRating, filters.minRating.toString()));
-    }
-
-    if (filters.verifiedOnly) {
-      conditions.push(eq(trainers.verificationStatus, 'verified'));
     }
 
     if (filters.startDate && filters.endDate) {
