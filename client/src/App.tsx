@@ -926,7 +926,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/support">
           {() => <Support />}
         </Route>
+        {/* PR-NAV-2: canonical /status (deduped — see removal below near /service-status) */}
         <Route path="/status">
+          {() => <SystemStatus />}
+        </Route>
+        {/* PR-NAV-2: /system-status alias so menu links resolve to the same page */}
+        <Route path="/system-status">
           {() => <SystemStatus />}
         </Route>
         
@@ -960,9 +965,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/legal/cookies">
           {() => <CookiesPolicy />}
         </Route>
-        <Route path="/legal/accessibility">
-          {() => <AccessibilityStatementPage />}
-        </Route>
+        {/* PR-NAV-2: redirect to canonical /accessibility (was 1 of 3 split paths) */}
+        <Route path="/legal/accessibility">{() => <Redirect to="/accessibility" />}</Route>
         <Route path="/legal/marketplace-terms">
           {() => <MarketplaceTerms />}
         </Route>
@@ -2070,7 +2074,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/platform">{() => <Redirect to="/" />}</Route>
         <Route path="/showcase">{() => <Redirect to="/" />}</Route>
         <Route path="/service-status">{() => <ServiceStatus language={language} />}</Route>
-        <Route path="/status">{() => <ServiceStatus language={language} />}</Route>
+        {/* PR-NAV-2: removed duplicate /status registration (was unreachable — wouter takes first match at the SystemStatus route above) */}
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/find-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/lost-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
@@ -2367,8 +2371,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
+        {/* PR-NAV-2: /accessibility is the canonical accessibility page (footer + navigationStructure already use this path) */}
         <Route path="/accessibility" component={Accessibility} />
-        <Route path="/accessibility-statement" component={AccessibilityStatement} />
+        {/* PR-NAV-2: redirect to canonical /accessibility (was 1 of 3 split paths) */}
+        <Route path="/accessibility-statement">{() => <Redirect to="/accessibility" />}</Route>
         
         {/* ═══════════════════════════════════════════════════════════════════════ */}
         {/* PET WASH LTD EXECUTIVE SUITE - Centralized C-Suite Management          */}
