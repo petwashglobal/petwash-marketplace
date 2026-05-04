@@ -969,7 +969,7 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
       pricePerNight: null,
       pricePerHour: trainer.hourlyRate ? parseFloat(trainer.hourlyRate) : null,
       city: trainer.serviceArea || '',
-      isVerified: trainer.verificationStatus === 'verified',
+      isVerified: trainer.verificationStatus === 'approved',
       hasPoliceCheck: false,
       yearsExperience: trainer.yearsOfExperience || 0,
       acceptedPetTypes: ['dog', 'cat'],
@@ -1113,7 +1113,7 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
       pricePerNight: null,
       pricePerHour: trainer.hourlyRate ? parseFloat(trainer.hourlyRate) : null,
       city: trainer.serviceArea || '',
-      isVerified: trainer.verificationStatus === 'verified',
+      isVerified: trainer.verificationStatus === 'approved',
       hasPoliceCheck: false,
       yearsExperience: trainer.yearsOfExperience || 0,
       acceptedPetTypes: ['dog', 'cat'],
@@ -1286,7 +1286,7 @@ async function searchK9000Stations(filters: BookingSearchFilters, searchId: stri
 
 function buildTrainerBadges(trainer: any): string[] {
   const badges: string[] = [];
-  if (trainer.verificationStatus === 'verified') badges.push('verified');
+  if (trainer.verificationStatus === 'approved') badges.push('verified');
   if (trainer.isCertified) badges.push('certified');
   if ((trainer.yearsOfExperience || 0) >= 5) badges.push('experienced');
   if (parseFloat(trainer.averageRating || '0') >= 4.8) badges.push('top_rated');
