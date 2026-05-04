@@ -36,6 +36,26 @@ const HIDDEN_PREFIXES = [
   '/admin', '/internal', '/blocked', '/access-pending', '/provider/pending', '/provider/rejected',
 ];
 
+/**
+ * Paths that represent an "account home" for the role-aware Account tab.
+ * Post-PR-NAV-1 the Account tab no longer routes only to /my-account — it
+ * resolves via useAccountNavigation.resolveAccountRoute() which can return
+ * /admin/dashboard, /franchise/dashboard, /provider-os, or any role-specific
+ * dashboard (e.g. /pet-wash-ltd/executive/ceo). The active-state must match.
+ *
+ * NOTE: prefixes that are also another visible tab path (e.g. /provider-os
+ * is the Provider Home tab) are intentionally excluded here so we don't
+ * double-light Home + Account on the same page. Admin paths are hidden by
+ * HIDDEN_PREFIXES anyway, but listed for completeness.
+ */
+const ACCOUNT_HOME_PREFIXES = [
+  '/my-account',
+  '/franchise/dashboard',
+  '/franchise',
+  '/admin/dashboard',
+  '/pet-wash-ltd',
+];
+
 export function MobileBottomNav() {
   const [location, setLocation] = useLocation();
   const { user, loading } = useFirebaseAuth();
@@ -80,21 +100,31 @@ export function MobileBottomNav() {
       style={{
         background: '#FFFFFF',
         borderTop: '1px solid #E5E7EB',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        // iPhone safe-area: pad below the home-indicator so tap targets aren't
+        // occluded. max() guards browsers that report 0 (Android, desktop) so
+        // we still get the existing 14-row height with no extra blank strip.
+        paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
       }}
     >
       <ul className="flex items-stretch h-14">
         {NAV_ITEMS.map(({ path, labelHe, labelEn, Icon }) => {
-          const pawFinderAliases = ['/find-pet', '/lost-pet', '/paw-finder'];
-          const isActive = location === path
-            || location.startsWith(path + '/')
-            || (path === '/paw-finder' && pawFinderAliases.some(a => location === a || location.startsWith(a + '/')));
-          const label = isRTL ? labelHe : labelEn;
-          const color = isActive ? GOLD : GRAY;
-
           // Account tab: resolve by role instead of hard-routing to /my-account
           // (a CEO / admin / provider should never land on the customer page).
           const isAccountTab = path === '/my-account';
+
+          const pawFinderAliases = ['/find-pet', '/lost-pet', '/paw-finder'];
+          // Active state — for the Account tab we match ANY role-aware account
+          // destination so the gold highlight follows the user wherever the
+          // role resolver lands them, not just /my-account.
+          const isActive = isAccountTab
+            ? ACCOUNT_HOME_PREFIXES.some(p => location === p || location.startsWith(p + '/'))
+            : (
+                location === path
+                || location.startsWith(path + '/')
+                || (path === '/paw-finder' && pawFinderAliases.some(a => location === a || location.startsWith(a + '/')))
+              );
+          const label = isRTL ? labelHe : labelEn;
+          const color = isActive ? GOLD : GRAY;
           const inner = (
             <button
               type="button"
