@@ -7,6 +7,7 @@ import {
   escrowHoldings,
   providerRateCards,
   availabilitySlots,
+  providerAvailability,
   providers,
   quoteRequests,
   pets,

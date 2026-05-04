@@ -105,9 +105,10 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
     }
 
     // AI Image Moderation (background check - relaxed, not harsh)
+    let moderationResult: { isApproved: boolean; flags?: any; explanation?: string; safetyScore?: number } | undefined;
     try {
       const { contentModerationService } = await import('../services/ContentModerationService');
-      const moderationResult = await contentModerationService.moderateImage(
+      moderationResult = await contentModerationService.moderateImage(
         req.file.buffer,
         req.file.mimetype,
         { userId: user.uid, uploadType: 'profile_photo', platform: 'sitter-suite' }
@@ -143,7 +144,7 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
       expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
     });
 
-    logger.info('[Sitter Suite] Profile photo uploaded (AI approved)', { userId: user.uid, fileName, safetyScore: moderationResult.safetyScore });
+    logger.info('[Sitter Suite] Profile photo uploaded (AI approved)', { userId: user.uid, fileName, safetyScore: moderationResult?.safetyScore });
 
     res.json({
       success: true,

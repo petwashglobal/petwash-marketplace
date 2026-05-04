@@ -39,7 +39,7 @@ router.get('/air-quality', async (req, res) => {
 
     logger.info('[Environment API] Fetching air quality', { latitude, longitude });
 
-    const airQuality = await SmartEnvironmentService.getAirQuality(latitude, longitude);
+    const airQuality = await smartEnvironmentService.getAirQuality(latitude, longitude);
 
     if (!airQuality) {
       return res.status(404).json({
@@ -96,7 +96,7 @@ router.get('/pollen', async (req, res) => {
       days: forecastDays 
     });
 
-    const pollen = await SmartEnvironmentService.getPollenForecast(latitude, longitude, forecastDays);
+    const pollen = await smartEnvironmentService.getPollenForecast(latitude, longitude, forecastDays);
 
     if (!pollen) {
       return res.status(404).json({
@@ -170,7 +170,7 @@ router.get('/insights', async (req, res) => {
       };
     }
 
-    const insights = await SmartEnvironmentService.getEnvironmentalInsights(
+    const insights = await smartEnvironmentService.getEnvironmentalInsights(
       latitude,
       longitude,
       weatherData
