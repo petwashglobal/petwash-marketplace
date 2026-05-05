@@ -13,7 +13,9 @@
     "db:migrate": "drizzle-kit migrate",
     "scan:ui": "tsx scripts/petwash-preflight.ts",
     "prebuild": "npm run preflight",
-    "preflight": "tsx scripts/petwash-preflight.ts"
+    "preflight": "tsx scripts/petwash-preflight.ts",
+    "audit:dupes": "tsx scripts/audit-duplicate-constants.ts",
+    "audit:dupes:strict": "tsx scripts/audit-duplicate-constants.ts --strict"
   },
   "dependencies": {
     "@docuseal/api": "^1.0.20",
