@@ -15,7 +15,9 @@
     "prebuild": "npm run preflight",
     "preflight": "tsx scripts/petwash-preflight.ts",
     "audit:dupes": "tsx scripts/audit-duplicate-constants.ts",
-    "audit:dupes:strict": "tsx scripts/audit-duplicate-constants.ts --strict"
+    "audit:dupes:strict": "tsx scripts/audit-duplicate-constants.ts --strict",
+    "audit:dead": "tsx scripts/audit-dead-code.ts",
+    "audit:dead:json": "tsx scripts/audit-dead-code.ts --json"
   },
   "dependencies": {
     "@docuseal/api": "^1.0.20",
