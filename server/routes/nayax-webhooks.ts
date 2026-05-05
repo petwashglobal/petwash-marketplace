@@ -944,11 +944,27 @@ router.post(
         const kycType          = sessionData?.kycType          ?? null;
         const isNewMemberDiscountApplied = sessionData?.hasUsedNewMemberDiscount === true;
 
-        // Atomic balance award (SQL-level to prevent race conditions)
+        // PR-W10: wash-pack credits go to walletAccounts.washPackageCredits
+        // (the kiosk reads ONLY this column — see
+        // server/services/K9000RedemptionService.ts:782). The legacy
+        // users.washBalance was the bleed source: customers paid for packs
+        // they could not redeem at the K9000.
+        const { walletService } = await import('../services/WalletService');
+        await walletService.addCredits(
+          userId,
+          'wash_package',
+          washCount,
+          'wash_package_purchase',
+          String(washHistoryId),
+          `Wash package purchase (${washCount} washes)`,
+        );
+
+        // totalSpent + loyaltyPoints are not part of the bleed — they
+        // drive tier progression and birthday-coupon math, so they
+        // continue to live on the users row.
         await db
           .update(usersTable)
           .set({
-            washBalance:   sql`${usersTable.washBalance} + ${washCount}`,
             totalSpent:    sql`CAST(${usersTable.totalSpent} AS DECIMAL) + ${finalPrice}`,
             loyaltyPoints: sql`${usersTable.loyaltyPoints} + ${pointsEarned}`,
             updatedAt: new Date(),

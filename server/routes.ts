@@ -4107,12 +4107,33 @@ self.addEventListener('notificationclick', (event) => {
 
       const history = await storage.createWashHistory(historyData);
 
-      // Update customer wash balance and spending
-      const newWashBalance = (customer.washBalance || 0) + pkg.washCount;
+      // PR-W10: wash credits go to walletAccounts.washPackageCredits, not
+      // customers.washBalance. The legacy column is invisible at the
+      // K9000 kiosk (server/services/K9000RedemptionService.ts:782 reads
+      // walletAccounts only). Bridge customer → user via email; if no
+      // user record exists yet, log and skip the credit so the customer
+      // can be backfilled rather than orphaning more shekels.
+      if (user) {
+        const { walletService } = await import('./services/WalletService');
+        await walletService.addCredits(
+          user.id,
+          'wash_package',
+          pkg.washCount,
+          'wash_history_create',
+          String(history.id),
+          `Wash history credit (${pkg.washCount} washes)`,
+        );
+      } else {
+        logger.warn('[wash-history] Customer has no linked user — wash-pack credit skipped', {
+          customerId,
+          customerEmail: customer.email,
+          packageId,
+          washCount: pkg.washCount,
+        });
+      }
+
       const newTotalSpent = parseFloat(customer.totalSpent || '0') + finalPrice;
-      
       await storage.updateCustomer(customerId, {
-        washBalance: newWashBalance,
         totalSpent: newTotalSpent.toString(),
       });
 
