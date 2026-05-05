@@ -107,6 +107,12 @@ export function GooglePlacesAutocomplete({
   const [postalCode, setPostalCodeState] = useState('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showManualHint, setShowManualHint] = useState(false);
+  // PR-B P0 fix: surface critical service errors (503 / 403) immediately
+  // instead of waiting for MAX_CONSECUTIVE_FAILURES. A 503 means the API
+  // key is unset on Cloud Run; a 403 means the origin allowlist rejected
+  // this client. Either way, the user should see an actionable message
+  // right away — silent failure is the production blocker we are fixing.
+  const [serviceErrorMessage, setServiceErrorMessage] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const consecutiveFailures = useRef(0);
   const MAX_CONSECUTIVE_FAILURES = 5;
@@ -199,8 +205,28 @@ export function GooglePlacesAutocomplete({
           googleStatus: errorData.googleStatus,
           traceId: errorData.traceId,
         });
-        consecutiveFailures.current++;
-        if (consecutiveFailures.current >= MAX_CONSECUTIVE_FAILURES) setShowManualHint(true);
+
+        // PR-B P0 fix: distinguish hard service failures (503 / 403) from
+        // intermittent Google API issues. Hard failures get an immediate
+        // user-visible message; intermittent failures still rely on the
+        // existing MAX_CONSECUTIVE_FAILURES → manual-hint fallback.
+        if (response.status === 503) {
+          setServiceErrorMessage(
+            'חיפוש כתובות אינו זמין כעת. ניתן להקליד את הכתובת ידנית.',
+          );
+          setShowManualHint(true);
+        } else if (response.status === 403) {
+          setServiceErrorMessage(
+            'שירות חיפוש הכתובות חסום מהדפדפן הנוכחי. ניתן להקליד ידנית או לרענן את העמוד.',
+          );
+          setShowManualHint(true);
+        } else {
+          consecutiveFailures.current++;
+          if (consecutiveFailures.current >= MAX_CONSECUTIVE_FAILURES) {
+            setShowManualHint(true);
+          }
+        }
+
         setPredictions([]);
         setShowDropdown(false);
         return;
@@ -210,6 +236,7 @@ export function GooglePlacesAutocomplete({
       const preds: AutocompletePrediction[] = data.predictions || [];
       consecutiveFailures.current = 0;
       setShowManualHint(false);
+      setServiceErrorMessage(null);
       setPredictions(preds);
       if (preds.length > 0) {
         setShowDropdown(true);
@@ -568,7 +595,11 @@ export function GooglePlacesAutocomplete({
         </div>
       )}
 
-      {showManualHint && value.length >= 3 ? (
+      {serviceErrorMessage ? (
+        <p className="text-xs text-amber-700 mt-1" data-testid="places-service-error">
+          {serviceErrorMessage}
+        </p>
+      ) : showManualHint && value.length >= 3 ? (
         <p className="text-xs text-amber-600 mt-1">
           הצעות כתובת אינן זמינות כעת. ניתן להקליד את הכתובת ידנית.
         </p>
