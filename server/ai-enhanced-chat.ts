@@ -155,12 +155,12 @@ function getOfflineFallbackAnswer(message: string, language: 'he' | 'en' | 'ar' 
 
   const answers: Record<string, Record<string, string>> = {
     pricing: {
-      he: "🐾 מחירון ⁦Pet Wash™⁩ 2026:\n\n💧 שטיפה בודדת: ₪55\n💧 חבילת 3 שטיפות: ₪145 (חיסכון ₪20)\n💧 חבילת 5 שטיפות: ₪225 (חיסכון ₪50)\n💧 חבילת 10 שטיפות: ₪400 (חיסכון ₪150!)\n\nכל חבילה כוללת: שמפו אורגני, מרכך, שטיפת פרעושים, חיטוי, מים חמים ומייבשים 🛁\nבלי עלויות נסתרות, בלי הגבלת זמן! ✨",
-      en: "🐾 ⁦Pet Wash™⁩ 2026 Pricing:\n\n💧 Single wash: ₪55\n💧 3-wash pack: ₪145 (save ₪20)\n💧 5-wash pack: ₪225 (save ₪50)\n💧 10-wash pack: ₪400 (save ₪150!)\n\nAll packs include: organic shampoo, conditioner, flea rinse, disinfectant, warm water & dryers 🛁\nNo hidden fees, no time limits! ✨",
-      ar: "🐾 أسعار ⁦Pet Wash™⁩ 2026:\n\n💧 غسلة واحدة: ₪55\n💧 حزمة 3 غسلات: ₪145 (وفر ₪20)\n💧 حزمة 5 غسلات: ₪225 (وفر ₪50)\n💧 حزمة 10 غسلات: ₪400 (وفر ₪150!)\n\nجميع الحزم تشمل: شامبو عضوي، بلسم، غسول برغوث، مطهر، ماء دافئ ومجففات 🛁",
-      ru: "🐾 Цены ⁦Pet Wash™⁩ 2026:\n\n💧 Одна мойка: ₪55\n💧 Пакет 3 мойки: ₪145 (экономия ₪20)\n💧 Пакет 5 моек: ₪225 (экономия ₪50)\n💧 Пакет 10 моек: ₪400 (экономия ₪150!)\n\nВсе пакеты включают: органический шампунь, кондиционер, средство от блох, дезинфекцию, тёплую воду и сушилки 🛁",
-      fr: "🐾 Tarifs ⁦Pet Wash™⁩ 2026 :\n\n💧 Lavage unique : ₪55\n💧 Pack 3 lavages : ₪145 (économisez ₪20)\n💧 Pack 5 lavages : ₪225 (économisez ₪50)\n💧 Pack 10 lavages : ₪400 (économisez ₪150 !)\n\nTous les packs comprennent : shampooing bio, après-shampooing, rinçage anti-puces, désinfectant, eau chaude et séchoirs 🛁",
-      es: "🐾 Precios ⁦Pet Wash™⁩ 2026:\n\n💧 Lavado único: ₪55\n💧 Paquete 3 lavados: ₪145 (ahorra ₪20)\n💧 Paquete 5 lavados: ₪225 (ahorra ₪50)\n💧 Paquete 10 lavados: ₪400 (¡ahorra ₪150!)\n\nTodos los paquetes incluyen: champú orgánico, acondicionador, enjuague antipulgas, desinfectante, agua caliente y secadores 🛁"
+      he: "🐾 מחירון ⁦Pet Wash™⁩ 2026:\n\n💧 שטיפה בודדת: ₪55\n💧 חבילת 3 שטיפות: ₪150 (חיסכון ₪15)\n💧 חבילת 5 שטיפות: ₪220 (חיסכון ₪55)\n💧 חבילת 10 שטיפות: ₪440 (חיסכון ₪110!)\n\nכל חבילה כוללת: שמפו אורגני, מרכך, שטיפת פרעושים, חיטוי, מים חמים ומייבשים 🛁\nבלי עלויות נסתרות, בלי הגבלת זמן! ✨",
+      en: "🐾 ⁦Pet Wash™⁩ 2026 Pricing:\n\n💧 Single wash: ₪55\n💧 3-wash pack: ₪150 (save ₪15)\n💧 5-wash pack: ₪220 (save ₪55)\n💧 10-wash pack: ₪440 (save ₪110!)\n\nAll packs include: organic shampoo, conditioner, flea rinse, disinfectant, warm water & dryers 🛁\nNo hidden fees, no time limits! ✨",
+      ar: "🐾 أسعار ⁦Pet Wash™⁩ 2026:\n\n💧 غسلة واحدة: ₪55\n💧 حزمة 3 غسلات: ₪150 (وفر ₪15)\n💧 حزمة 5 غسلات: ₪220 (وفر ₪55)\n💧 حزمة 10 غسلات: ₪440 (وفر ₪110!)\n\nجميع الحزم تشمل: شامبو عضوي، بلسم، غسول برغوث، مطهر، ماء دافئ ومجففات 🛁",
+      ru: "🐾 Цены ⁦Pet Wash™⁩ 2026:\n\n💧 Одна мойка: ₪55\n💧 Пакет 3 мойки: ₪150 (экономия ₪15)\n💧 Пакет 5 моек: ₪220 (экономия ₪55)\n💧 Пакет 10 моек: ₪440 (экономия ₪110!)\n\nВсе пакеты включают: органический шампунь, кондиционер, средство от блох, дезинфекцию, тёплую воду и сушилки 🛁",
+      fr: "🐾 Tarifs ⁦Pet Wash™⁩ 2026 :\n\n💧 Lavage unique : ₪55\n💧 Pack 3 lavages : ₪150 (économisez ₪15)\n💧 Pack 5 lavages : ₪220 (économisez ₪55)\n💧 Pack 10 lavages : ₪440 (économisez ₪110 !)\n\nTous les packs comprennent : shampooing bio, après-shampooing, rinçage anti-puces, désinfectant, eau chaude et séchoirs 🛁",
+      es: "🐾 Precios ⁦Pet Wash™⁩ 2026:\n\n💧 Lavado único: ₪55\n💧 Paquete 3 lavados: ₪150 (ahorra ₪15)\n💧 Paquete 5 lavados: ₪220 (ahorra ₪55)\n💧 Paquete 10 lavados: ₪440 (¡ahorra ₪110!)\n\nTodos los paquetes incluyen: champú orgánico, acondicionador, enjuague antipulgas, desinfectante, agua caliente y secadores 🛁"
     },
     loyalty: {
       he: "⭐ תכנית נאמנות VIP של ⁦Pet Wash™⁩ - 7 דרגות:\n\n🥉 ברונזה: 5% הנחה בסיסית\n🥈 כסף (2,500 נק'): 6% הנחה\n🥇 זהב (7,500 נק'): 7% הנחה + שטיפה חינם ביום הולדת\n💎 פלטינום (15,000 נק'): 8% הנחה + תמיכה בעדיפות\n💠 יהלום (25,000 נק'): 9% הנחה + אירועים בלעדיים\n💚 אמרלד (40,000 נק'): 10% הנחה + מנהל חשבון אישי\n👑 רויאל (50,000 נק'): 15% הנחה + שירות קונסיירז׳ VIP!\n\nצוברים נקודה אחת על כל ₪1! 🐾",
@@ -211,12 +211,12 @@ function getOfflineFallbackAnswer(message: string, language: 'he' | 'en' | 'ar' 
       es: "⏱️ Tiempo promedio de lavado: 15-25 minutos según el tamaño del perro.\n\n¡Sin límite de tiempo! 🐾"
     },
     giftCard: {
-      he: "🎁 כרטיסי מתנה של ⁦Pet Wash™⁩:\n\nזמינים בסכומים: ₪50, ₪100, ₪200, ₪500\n\nמתנה מושלמת לכל אוהב חיות! ניתן לרכישה באתר petwash.co.il 🐾✨",
-      en: "🎁 ⁦Pet Wash™⁩ E-Gift Cards:\n\nAvailable in: ₪50, ₪100, ₪200, ₪500\n\nThe perfect gift for any pet lover! Purchase at petwash.co.il 🐾✨",
-      ar: "🎁 بطاقات هدايا ⁦Pet Wash™⁩:\n\nمتوفرة بقيم: ₪50، ₪100، ₪200، ₪500\n\nالهدية المثالية لمحبي الحيوانات! 🐾",
-      ru: "🎁 Подарочные карты ⁦Pet Wash™⁩:\n\nДоступны номиналы: ₪50, ₪100, ₪200, ₪500\n\nИдеальный подарок для любителей животных! 🐾",
-      fr: "🎁 Cartes cadeaux ⁦Pet Wash™⁩ :\n\nDisponibles en : ₪50, ₪100, ₪200, ₪500\n\nLe cadeau parfait ! 🐾",
-      es: "🎁 Tarjetas de regalo ⁦Pet Wash™⁩:\n\nDisponibles en: ₪50, ₪100, ₪200, ₪500\n\n¡El regalo perfecto! 🐾"
+      he: "🎁 כרטיסי מתנה של ⁦Pet Wash™⁩:\n\nזמינים בסכומים: ₪100, ₪250, ₪500, ₪1000\n\nמתנה מושלמת לכל אוהב חיות! ניתן לרכישה באתר petwash.co.il 🐾✨",
+      en: "🎁 ⁦Pet Wash™⁩ E-Gift Cards:\n\nAvailable in: ₪100, ₪250, ₪500, ₪1000\n\nThe perfect gift for any pet lover! Purchase at petwash.co.il 🐾✨",
+      ar: "🎁 بطاقات هدايا ⁦Pet Wash™⁩:\n\nمتوفرة بقيم: ₪100، ₪250، ₪500، ₪1000\n\nالهدية المثالية لمحبي الحيوانات! 🐾",
+      ru: "🎁 Подарочные карты ⁦Pet Wash™⁩:\n\nДоступны номиналы: ₪100, ₪250, ₪500, ₪1000\n\nИдеальный подарок для любителей животных! 🐾",
+      fr: "🎁 Cartes cadeaux ⁦Pet Wash™⁩ :\n\nDisponibles en : ₪100, ₪250, ₪500, ₪1000\n\nLe cadeau parfait ! 🐾",
+      es: "🎁 Tarjetas de regalo ⁦Pet Wash™⁩:\n\nDisponibles en: ₪100, ₪250, ₪500, ₪1000\n\n¡El regalo perfecto! 🐾"
     },
     greeting: {
       he: "שלום! 👋 אני קנזו, הגולדן רטריבר הלבן של ⁦Pet Wash™⁩! 🐾\n\nאני שמח לעזור! אפשר לשאול אותי על:\n💰 מחירים וחבילות\n⭐ תכנית נאמנות VIP\n🏆 טכנולוגיית ⁦K9000™⁩\n🐾 השירותים שלנו\n🎁 הנחות וכרטיסי מתנה\n\nמה תרצו לדעת? ✨",
