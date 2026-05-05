@@ -4,10 +4,46 @@ import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
+import { logAuditEvent } from "../middleware/auditLog";
 
 const SHEETS_DISPUTE_CASES = 'Dispute Cases';
 
 const router = express.Router();
+
+/**
+ * PR-W34a: every escrow money-mutation now writes an audit_events row.
+ * Fire-and-forget (setImmediate) so the customer response isn't blocked
+ * if Postgres is slow. The same pattern the Sheets logging already uses.
+ */
+function emitEscrowAudit(params: {
+  actionType: string;
+  actorUserId: string;
+  actorRole?: string;
+  escrowId: string;
+  bookingId?: string;
+  amountILS?: string | number;
+  reason?: string;
+  ip?: string;
+  userAgent?: string;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId,
+      actorRole: params.actorRole,
+      actionType: params.actionType,
+      targetType: 'escrow',
+      targetId: params.escrowId,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: {
+        escrowId: params.escrowId,
+        bookingId: params.bookingId,
+        amountILS: params.amountILS,
+        reason: params.reason,
+      },
+    }).catch((e) => logger.warn('[Escrow] audit_events write failed (non-blocking)', { error: e?.message }));
+  });
+}
 
 async function assertEscrowParticipant(
   escrowId: string,
@@ -47,6 +83,17 @@ router.post("/create", requireAuth, async (req, res) => {
       metadata
     );
 
+    emitEscrowAudit({
+      actionType: 'ESCROW_CREATE',
+      actorUserId: customerId,
+      actorRole: 'customer',
+      escrowId: (escrow as any)?.id ?? 'unknown',
+      bookingId,
+      amountILS: amount,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
     res.json({ escrow });
   } catch (error: any) {
     logger.error("[Escrow] Error creating", { error: error.message });
@@ -68,6 +115,18 @@ router.post("/:escrowId/release", requireAuth, async (req, res) => {
     }
 
     await EscrowService.releaseEscrowPayment(escrowId, callerId);
+
+    emitEscrowAudit({
+      actionType: 'ESCROW_RELEASE',
+      actorUserId: callerId,
+      actorRole: 'customer',
+      escrowId,
+      bookingId: escrow.bookingId,
+      amountILS: escrow.amount,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
     res.json({ success: true });
 
     // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
@@ -114,6 +173,19 @@ router.post("/:escrowId/refund", requireAuth, async (req, res) => {
     const escrow = await assertEscrowParticipant(escrowId, callerId);
 
     await EscrowService.refundEscrowPayment(escrowId, reason, callerId);
+
+    emitEscrowAudit({
+      actionType: 'ESCROW_REFUND',
+      actorUserId: callerId,
+      actorRole: 'participant',
+      escrowId,
+      bookingId: escrow.bookingId,
+      amountILS: escrow.amount,
+      reason,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
     res.json({ success: true });
 
     // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
@@ -160,6 +232,19 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
     const escrow = await assertEscrowParticipant(escrowId, callerId);
 
     await EscrowService.disputeEscrowPayment(escrowId, reason, callerId);
+
+    emitEscrowAudit({
+      actionType: 'ESCROW_DISPUTE',
+      actorUserId: callerId,
+      actorRole: 'participant',
+      escrowId,
+      bookingId: escrow.bookingId,
+      amountILS: escrow.amount,
+      reason,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
     res.json({ success: true });
 
     // ── Fire-and-forget: Dispute cases sheet + live feed ──────────────────
@@ -244,9 +329,19 @@ router.get("/booking/:bookingId", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/admin/auto-release", requireAdmin, async (req, res) => {
+router.post("/admin/auto-release", requireAdmin, async (req: any, res) => {
   try {
     const releasedCount = await EscrowService.autoReleaseExpiredHolds();
+
+    emitEscrowAudit({
+      actionType: 'ESCROW_AUTO_RELEASE',
+      actorUserId: req.user?.uid || req.firebaseUser?.uid || 'system',
+      actorRole: 'admin',
+      escrowId: 'batch',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
     res.json({ releasedCount });
   } catch (error: any) {
     logger.error("[Escrow] Error auto-releasing", { error: error.message });
