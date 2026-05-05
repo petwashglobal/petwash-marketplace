@@ -630,6 +630,14 @@ export default function MyAccount() {
       const res = await apiRequest('PATCH', '/api/user/profile', updates);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        // PR-C P0 fix: distinguish cold-start 503 (server still booting
+        // after the retry budget is exhausted) from real save failures.
+        // The retry helper in queryClient already burns ~5.6s of backoff
+        // before giving up; if we still see 503 here, it's a true
+        // cold-start condition the user should be told about plainly.
+        if (res.status === 503) {
+          throw new Error('SERVER_WAKING_UP');
+        }
         throw new Error(body?.error || body?.message || 'Save failed');
       }
       return res.json();
@@ -643,9 +651,16 @@ export default function MyAccount() {
       });
     },
     onError: (err: Error) => {
+      const isWaking = err.message === 'SERVER_WAKING_UP';
       toast({
-        title: isHebrew ? 'שגיאה בשמירה' : 'Save Failed',
-        description: err.message || (isHebrew ? 'אנא נסה שנית' : 'Please try again'),
+        title: isWaking
+          ? (isHebrew ? 'השרת מתעורר' : 'Server waking up')
+          : (isHebrew ? 'שגיאה בשמירה' : 'Save Failed'),
+        description: isWaking
+          ? (isHebrew
+              ? 'נסו שוב בעוד מספר שניות. השינויים שלכם לא נמחקו.'
+              : 'Please try again in a few seconds — your changes are still here.')
+          : err.message || (isHebrew ? 'אנא נסה שנית' : 'Please try again'),
         variant: 'destructive',
       });
     },
