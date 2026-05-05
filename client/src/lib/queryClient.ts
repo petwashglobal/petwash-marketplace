@@ -91,27 +91,10 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  retries = 1,
-): Promise<Response> {
-  // Allow only relative URLs or same-origin absolute URLs to prevent SSRF.
-  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-    if (typeof window !== 'undefined') {
-      const parsedUrl = new URL(url);
-      if (parsedUrl.origin !== window.location.origin) {
-        throw new Error(`Blocked request to disallowed external URL: ${parsedUrl.origin}`);
-      }
-    }
-  }
-  const res = await fetch(url, options);
-  if (res.status === 503 && retries > 0) {
-    await new Promise(r => setTimeout(r, 800));
-    return fetchWithRetry(url, options, retries - 1);
-  }
-  return res;
-}
+// Re-export the cold-start 503 retry helper from the standalone module so
+// queryClient consumers keep their existing import surface unchanged.
+export { fetchWithRetry, FETCH_RETRY_503_DELAYS_MS } from './fetchWithRetry';
+import { fetchWithRetry } from './fetchWithRetry';
 
 export async function apiRequest(
   methodOrUrl: string,
