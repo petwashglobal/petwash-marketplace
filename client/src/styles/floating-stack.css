@@ -80,23 +80,35 @@
   opacity: 0.9;
 }
 
+/* PR-D P0 fix: lift floating FABs above the MobileBottomNav (h-14 = 56px,
+   visible below md breakpoint 768px). The bar's `md:hidden` Tailwind rule
+   means the offset variable is 56px on mobile and 0 on tablet/desktop. */
+:root {
+  --pw-bottom-nav-offset: 0px;
+}
+@media (max-width: 767px) {
+  :root {
+    --pw-bottom-nav-offset: 56px;
+  }
+}
+
 /* Accessibility - Top (160px from bottom) - Solid Black */
 #pw-a11y {
-  bottom: 160px;
+  bottom: calc(160px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
   background: #000;
   color: #fff;
 }
 
 /* WhatsApp - Middle (88px from bottom) - Green #25D366 */
 #pw-wa {
-  bottom: 88px;
+  bottom: calc(88px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
   background: #25D366;
   color: #fff;
 }
 
 /* PetWash AI - Bottom (16px from bottom) - Premium Blue Gradient */
 #pw-ai {
-  bottom: 16px;
+  bottom: calc(16px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(135deg, #0B57D0 0%, #4E8DF7 100%);
   color: #fff;
   transition: all 0.2s ease;
@@ -109,7 +121,7 @@
 
 /* VIP Loyalty - Top (232px from bottom) - Premium Gold Gradient */
 #pw-vip {
-  bottom: 232px;
+  bottom: calc(232px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
   color: #fff;
   transition: all 0.2s ease;
@@ -164,17 +176,8 @@
   outline-color: #f59e0b;
 }
 
-/* Safe area insets for iPhone notch/home indicator */
-@supports (bottom: env(safe-area-inset-bottom)) {
-  #pw-a11y {
-    bottom: calc(160px + env(safe-area-inset-bottom, 0px));
-  }
-  
-  #pw-wa {
-    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-  }
-  
-  #pw-ai {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  }
-}
+/* Safe area insets for iPhone notch / home indicator are now folded
+   into each FAB's `bottom: calc(...)` above via env(safe-area-inset-
+   bottom), alongside the --pw-bottom-nav-offset. The earlier
+   @supports block is no longer needed — env() resolves to 0 on
+   browsers that don't support it, which is exactly what we want. */
