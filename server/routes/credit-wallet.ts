@@ -8,6 +8,7 @@ import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedg
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdmin } from '../middleware/rbac';
 import { deriveTopupIdempotencyKey } from '../lib/topup-idempotency';
+import { deriveAdminCreditIdempotencyKey } from '../lib/admin-credit-idempotency';
 
 const router = Router();
 
@@ -572,14 +573,79 @@ router.post('/credits/add', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Target userId required' });
     }
 
-    await walletService.addCredits(
-      targetUserId,
-      creditType,
-      amount,
-      sourceType,
-      sourceId,
-      description
+    // ── PR-W7: idempotency guard (mirrors the PR-W4 /topup pattern) ─────────
+    // Prevents an admin double-click from creating two credit_transactions
+    // rows for the same logical "add credits" action. Uses an explicit
+    // Idempotency-Key header when supplied; otherwise falls back to a
+    // deterministic body fingerprint so even admins who forget the header
+    // are protected against accidental double-submit.
+    const idemKey = deriveAdminCreditIdempotencyKey(
+      'credits-add',
+      typeof req.headers['idempotency-key'] === 'string'
+        ? (req.headers['idempotency-key'] as string)
+        : undefined,
+      `${targetUserId}|${creditType}|${amount}|${sourceType}|${sourceId ?? ''}`,
     );
+    let idemRowOwned = false;
+    {
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const inserted = await db
+        .insert(walletIdempotencyKeys)
+        .values({
+          idempotencyKey: idemKey,
+          endpoint: '/credits/add',
+          status: 'pending',
+          expiresAt,
+        })
+        .onConflictDoNothing()
+        .returning({ id: walletIdempotencyKeys.id });
+
+      if (inserted.length === 0) {
+        const [existing] = await db
+          .select()
+          .from(walletIdempotencyKeys)
+          .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey))
+          .limit(1);
+
+        if (existing?.status === 'success' && existing.responseJson) {
+          logger.info('[Credit Wallet] /credits/add idempotent hit', { idemKey });
+          try {
+            return res.json(JSON.parse(existing.responseJson));
+          } catch {
+            return res.json({ success: true, message: 'Credits added successfully (idempotent)' });
+          }
+        }
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate request in flight or already processed.',
+          code: 'IDEMPOTENCY_IN_FLIGHT',
+        });
+      }
+      idemRowOwned = true;
+    }
+
+    try {
+      await walletService.addCredits(
+        targetUserId,
+        creditType,
+        amount,
+        sourceType,
+        sourceId,
+        description
+      );
+    } catch (creditErr) {
+      // Best-effort: release our idempotency row so the client can retry.
+      if (idemRowOwned) {
+        try {
+          await db
+            .delete(walletIdempotencyKeys)
+            .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey));
+        } catch {
+          // 30-day expiry will sweep this row eventually.
+        }
+      }
+      throw creditErr;
+    }
 
     logger.info('[Credit Wallet] Credits added by admin', {
       adminId: adminId || 'internal-service',
@@ -617,7 +683,22 @@ router.post('/credits/add', async (req, res) => {
       logger.warn('[Credit Wallet] Audit log failed (non-blocking)', { error: String(auditErr) });
     }
 
-    res.json({ success: true, message: 'Credits added successfully' });
+    const responsePayload = { success: true, message: 'Credits added successfully' };
+    // PR-W7: stamp the idempotency row with status='success' + cached
+    // payload so a same-key replay returns the original response instead
+    // of a duplicate credit.
+    try {
+      await db
+        .update(walletIdempotencyKeys)
+        .set({ status: 'success', responseJson: JSON.stringify(responsePayload) })
+        .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey));
+    } catch (idemErr) {
+      logger.warn('[Credit Wallet] /credits/add idempotency stamp failed (non-fatal)', {
+        error: String(idemErr),
+        idemKey,
+      });
+    }
+    res.json(responsePayload);
   } catch (error: any) {
     logger.error('[Credit Wallet] Add credits error', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
@@ -718,26 +799,101 @@ router.post('/admin/inject', async (req, res) => {
 
     const { targetUserId, creditType, amount, reason, expiresAt, ticketId, approvalReference } = parsed.data;
 
-    const result = await walletService.adminInjectCredits({
-      adminUserId,
-      adminEmail,
-      targetUserId,
-      creditType,
-      amount,
-      reason,
-      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
-      ticketId,
-      approvalReference,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-      userAgent: req.headers['user-agent'],
-    });
+    // ── PR-W7: idempotency guard (mirrors PR-W4 /topup) ─────────────────────
+    // Same de-dup mechanic as /credits/add. Reason text is used in the
+    // body fingerprint so two genuinely different injections with the same
+    // (target, type, amount, ticket) are still distinguishable.
+    const idemKey = deriveAdminCreditIdempotencyKey(
+      'admin-inject',
+      typeof req.headers['idempotency-key'] === 'string'
+        ? (req.headers['idempotency-key'] as string)
+        : undefined,
+      `${targetUserId}|${creditType}|${amount}|${ticketId ?? ''}|${approvalReference ?? ''}|${(reason || '').slice(0, 32)}`,
+    );
+    let idemRowOwned = false;
+    {
+      const ttlExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const inserted = await db
+        .insert(walletIdempotencyKeys)
+        .values({
+          idempotencyKey: idemKey,
+          endpoint: '/admin/inject',
+          status: 'pending',
+          expiresAt: ttlExpiresAt,
+        })
+        .onConflictDoNothing()
+        .returning({ id: walletIdempotencyKeys.id });
 
-    res.json({ 
-      success: true, 
+      if (inserted.length === 0) {
+        const [existing] = await db
+          .select()
+          .from(walletIdempotencyKeys)
+          .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey))
+          .limit(1);
+
+        if (existing?.status === 'success' && existing.responseJson) {
+          logger.info('[Credit Wallet] /admin/inject idempotent hit', { idemKey });
+          try {
+            return res.json(JSON.parse(existing.responseJson));
+          } catch {
+            return res.json({ success: true, message: 'Credits injected successfully (idempotent)' });
+          }
+        }
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate injection in flight or already processed.',
+          code: 'IDEMPOTENCY_IN_FLIGHT',
+        });
+      }
+      idemRowOwned = true;
+    }
+
+    let result: { transactionId: string; auditId?: string };
+    try {
+      result = await walletService.adminInjectCredits({
+        adminUserId,
+        adminEmail,
+        targetUserId,
+        creditType,
+        amount,
+        reason,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        ticketId,
+        approvalReference,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'],
+      });
+    } catch (injectErr) {
+      if (idemRowOwned) {
+        try {
+          await db
+            .delete(walletIdempotencyKeys)
+            .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey));
+        } catch {
+          // 30-day expiry will clean up.
+        }
+      }
+      throw injectErr;
+    }
+
+    const responsePayload = {
+      success: true,
       message: 'Credits injected successfully',
       transactionId: result.transactionId,
       auditId: result.auditId,
-    });
+    };
+    try {
+      await db
+        .update(walletIdempotencyKeys)
+        .set({ status: 'success', responseJson: JSON.stringify(responsePayload) })
+        .where(eq(walletIdempotencyKeys.idempotencyKey, idemKey));
+    } catch (idemErr) {
+      logger.warn('[Credit Wallet] /admin/inject idempotency stamp failed (non-fatal)', {
+        error: String(idemErr),
+        idemKey,
+      });
+    }
+    res.json(responsePayload);
   } catch (error: any) {
     logger.error('[Credit Wallet] Admin inject error', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
