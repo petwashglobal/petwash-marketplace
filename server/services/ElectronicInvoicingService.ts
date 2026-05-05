@@ -6,6 +6,7 @@ import { logger } from '../lib/logger';
 import IsraeliTaxAPIService, { type InvoiceSubmissionPayload } from './IsraeliTaxAPIService';
 import { GoogleSheetsService } from './googleSheetsIntegration';
 import { requiresAllocationNumber } from './LegalThresholdConfig';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 /**
  * THRESHOLD NOTE — Israeli Digital Invoice Law (חוק חשבוניות דיגיטליות):
@@ -64,7 +65,7 @@ class ElectronicInvoicingService {
   }
 
   private calculateAmounts(params: CreateInvoiceParams) {
-    const { totalAmount, vatRate = 0.18, lineItems, vatAmount: providedVatAmount, amountBeforeVAT: providedAmountBeforeVAT } = params;
+    const { totalAmount, vatRate = ISRAEL_VAT_RATE, lineItems, vatAmount: providedVatAmount, amountBeforeVAT: providedAmountBeforeVAT } = params;
 
     const calculatedLineItems = lineItems.map(item => {
       const itemVatRate = item.vatRate ?? vatRate;
@@ -146,7 +147,7 @@ class ElectronicInvoicingService {
         amountBeforeVat: amounts.amountBeforeVat.toString(),
         vatAmount: amounts.vatAmount.toString(),
         totalAmount: amounts.totalAmount.toString(),
-        vatRate: (params.vatRate || 0.18).toString(),
+        vatRate: (params.vatRate || ISRAEL_VAT_RATE).toString(),
         currency: 'ILS',
         lineItems: amounts.lineItems,
         paymentMethod: params.paymentMethod || 'other',
@@ -353,7 +354,7 @@ class ElectronicInvoicingService {
     const b2bRequiringAllocation = filtered.filter(inv => {
       if (inv.invoiceType !== 'B2B') return false;
       const invDate = new Date(inv.invoiceDate);
-      const amountBeforeVat = parseFloat(inv.amountBeforeVat ?? inv.totalAmount) / (1 + 0.18);
+      const amountBeforeVat = parseFloat(inv.amountBeforeVat ?? inv.totalAmount) / (1 + ISRAEL_VAT_RATE);
       return requiresAllocationNumber(amountBeforeVat, true, invDate);
     });
 

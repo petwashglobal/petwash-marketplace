@@ -21,9 +21,11 @@ import { calendarIntegrationService, type BookingCalendarEvent } from './Calenda
 import { GoogleDriveBackupService } from './googleDriveBackupService';
 import { GoogleSheetsService } from './googleSheetsIntegration';
 import { EmailService } from '../emailService';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 const driveService = new GoogleDriveBackupService();
-const VAT_RATE = 0.18;
+// PR-W13: single source of truth — shared/israel-compliance-config.ts
+const VAT_RATE = ISRAEL_VAT_RATE;
 const COMPANY = {
   nameEn: 'PetWash™ Ltd.',
   nameHe: 'פט ווש בע"מ',

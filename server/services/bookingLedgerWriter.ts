@@ -21,8 +21,9 @@ import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
-const VAT_RATE = 0.18;
+const VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const COMMISSION_RATE = '0.15';
 const PLATFORM_FEE_PERCENT = 0.15;
 

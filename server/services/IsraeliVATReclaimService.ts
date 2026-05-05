@@ -17,8 +17,9 @@ import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import { IsraeliTaxAuthorityAPI } from './IsraeliTaxAuthorityAPI';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
-const VAT_RATE = 0.18; // 18% Israeli VAT (standard rate as of 2025)
+const VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 
 export interface VATCalculationResult {
   periodStart: Date;

@@ -24,8 +24,10 @@ import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import { createHash } from 'crypto';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
-const ISRAELI_VAT_RATE = 0.18;
+// PR-W13: derived from the single source of truth.
+const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE;
 const VAT_TOLERANCE_AGOROT = 1; // ±0.01 ILS tolerance
 
 // ── Types ─────────────────────────────────────────────────────────────────────

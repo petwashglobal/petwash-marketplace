@@ -14,6 +14,8 @@
  *   → NO provider. NO provider payout. NO provider tax explanation.
  */
 
+import { ISRAEL_VAT_RATE } from './israel-compliance-config';
+
 // ── Transaction Types ─────────────────────────────────────────────────────────
 
 export const TRANSACTION_TYPES = {
@@ -198,7 +200,7 @@ export interface MoneyFlowSummary {
 // ── Israeli Tax Constants 2026 ────────────────────────────────────────────────
 
 export const ISRAELI_TAX_2026 = {
-  VAT_RATE: 0.18,                  // מע"מ — 18%
+  VAT_RATE: ISRAEL_VAT_RATE,       // PR-W13: shared/israel-compliance-config.ts
   CORPORATE_TAX_RATE: 0.23,        // מס חברות — 23%
 
   // Income tax brackets (for PROVIDER information only — NOT collected by platform)

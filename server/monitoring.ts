@@ -9,6 +9,7 @@ import { logger } from './lib/logger';
 import { db as adminDb } from './lib/firebase-admin';
 import sgMail from './lib/sendgrid';
 import { getStationAnalyticsFor24Hours } from './stationsService';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const ALERT_EMAIL = process.env.REPORTS_EMAIL_TO || 'admin@petwash.co.il';
@@ -771,7 +772,7 @@ export async function sendDailyNayaxReport() {
     let completedPayments = 0;
     
     const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055');
-    const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate from env
+    const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israeli VAT rate from env
     
     let totalVAT = 0;
     let totalNetBeforeFees = 0;

@@ -5668,7 +5668,7 @@ async function recordFinanceAction(
   }
 }
 
-const VAT_RATE = 0.18;
+const VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const COLLECTED_EVENTS = `('redeem_kiosk','redeem_online','hold_capture')`;
 
 // GET /api/prestige-pass/admin/wallet/settlement-summary
@@ -11380,6 +11380,7 @@ router.get('/admin/wallet/archive/artifacts', async (req: Request, res: Response
 // ══════════════════════════════════════════════════════════════════════════════
 
 import { createHash } from 'crypto';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // POST /admin/wallet/replay/request-execute — request approval for latest dry-run of given type
 router.post('/admin/wallet/replay/request-execute', async (req: Request, res: Response) => {

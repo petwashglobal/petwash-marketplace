@@ -18,11 +18,11 @@ import {
   dispatchNotifications,
   buildBookingConfirmedSms,
 } from './PetWashNotificationEngine';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = 'Pet Wash™';
 const SITE_URL = 'https://petwash.co.il';
-const ISRAEL_VAT_RATE = 0.18;
 const COMPANY_NAME_HE = 'פט וואש בע"מ';
 const COMPANY_TAX_ID = '517145033';
 

@@ -17,8 +17,9 @@ import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import { GoogleSheetsService } from './googleSheetsIntegration';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
-const VAT_RATE = 0.18;
+const VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const ESCROW_HOURS = 72;
 
 const PLATFORM_ADDON_PRICING: Record<string, number> = {

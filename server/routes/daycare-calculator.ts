@@ -11,6 +11,7 @@ import { getVertexAIConfig } from '../lib/gemini-client';
 import express, { type Router } from 'express';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 const router: Router = express.Router();
 
@@ -27,7 +28,7 @@ const MULTI_PET_DISCOUNTS: Record<number, number> = {
   4: 0.18,   // 18% for 4+
 };
 
-const VAT_RATE = 0.18;
+const VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const WEEKLY_DISCOUNT = 0.12; // 12% for booking 7+ days
 
 const petSchema = z.object({

@@ -19,6 +19,7 @@ import { logger } from '../../../lib/logger';
 import { getLoyaltyStatus, type LoyaltyUser } from '../../loyalty';
 import { bookingPolicyEngine, type CancellationResult } from '../../BookingPolicyEngine';
 import escrowService from '../../EscrowService';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // Strategy Interfaces
 export interface AvailabilityStrategy {
@@ -429,7 +430,7 @@ export abstract class BaseLuxuryBookingEngine {
    */
   private getTaxRate(ipAddress: string): number {
     // TODO: Use globalConfig.getLocalSettings(ipAddress) for country-specific VAT
-    return parseFloat(process.env.VAT_RATE || '0.18'); // Israel VAT 18% (updated Jan 2025)
+    return parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israel VAT 18% (updated Jan 2025)
   }
 
   /**

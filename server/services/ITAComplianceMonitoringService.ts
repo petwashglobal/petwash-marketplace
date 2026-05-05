@@ -1,6 +1,7 @@
 import { logger } from '../lib/logger';
 import axios from 'axios';
 import IsraeliTaxAPIService from './IsraeliTaxAPIService';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 interface ComplianceUpdate {
   type: 'vat_format' | 'invoice_format' | 'threshold_change' | 'regulation_change';
@@ -49,7 +50,7 @@ class ITAComplianceMonitoringService {
         { from: '2027-01-01', thresholdNIS: 0,       note: 'All B2B from 1 Jan 2027' },
       ],
     },
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
   };
 
   private formatVersions = {

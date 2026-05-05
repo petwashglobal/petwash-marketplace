@@ -313,6 +313,7 @@ import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClie
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -6297,7 +6298,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/nayax/config', requireAdmin, async (req: any, res) => {
     try {
       const merchantFeeRate = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055');
-      const vatRate = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate (18% as of Jan 2025)
+      const vatRate = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israeli VAT rate (18% as of Jan 2025)
       
       res.json({
         merchantFeeRate,
@@ -6625,7 +6626,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { db } = await import('./lib/firebase-admin');
       
-      const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18');
+      const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
       const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055');
       
       logger.info('[NAYAX BACKFILL] Starting metadata backfill', { 

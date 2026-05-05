@@ -19,6 +19,8 @@
  * Without the allocation number, the buyer cannot deduct input VAT.
  */
 
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+
 export interface ThresholdRule {
   effectiveFrom: Date;
   thresholdNIS: number;       // Amount before VAT in NIS (not agorot)
@@ -88,7 +90,7 @@ export function requiresAllocationNumberFromAgorot(
   return requiresAllocationNumber(subtotalAgorot / 100, isB2B, issueDate);
 }
 
-export const ISRAELI_VAT_RATE = 0.18;
+export const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 
 /**
  * Calculate VAT and totals from a gross amount (ILS × 100 agorot).

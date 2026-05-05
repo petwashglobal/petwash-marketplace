@@ -8,6 +8,7 @@ import { sendLuxuryEmail } from '../email/luxury-email-service';
 import LuxuryInvoiceService from './LuxuryInvoiceService';
 import GeminiEmailMonitor from './GeminiEmailMonitor';
 import sgMail from '../lib/sendgrid';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 interface SampleDocuments {
   invoice: string;
@@ -35,7 +36,7 @@ class LuxuryDocumentEmailService {
           descriptionHe: 'K9000 תחנת רחצה - חבילת פרמיום',
           quantity: 2,
           unitPrice: 150.00,
-          vatRate: 0.18,
+          vatRate: ISRAEL_VAT_RATE,
           commission: 15.00,
           operationCode: 'K9K-PREM-001'
         },
@@ -44,7 +45,7 @@ class LuxuryDocumentEmailService {
           descriptionHe: '⁦Walk My Pet™⁩ - טיול פרמיום שעה',
           quantity: 5,
           unitPrice: 80.00,
-          vatRate: 0.18,
+          vatRate: ISRAEL_VAT_RATE,
           commission: 12.00, // 15% commission
           operationCode: 'WMP-WALK-002'
         },
@@ -53,7 +54,7 @@ class LuxuryDocumentEmailService {
           descriptionHe: '⁦PetTrek™⁩ הובלה - שדה תעופה לבית',
           quantity: 1,
           unitPrice: 250.00,
-          vatRate: 0.18,
+          vatRate: ISRAEL_VAT_RATE,
           commission: 37.50, // 15% commission
           operationCode: 'PTK-TRANS-003'
         },
@@ -62,7 +63,7 @@ class LuxuryDocumentEmailService {
           descriptionHe: '⁦The Sitter Suite™⁩ - שמירה ללילה',
           quantity: 3,
           unitPrice: 120.00,
-          vatRate: 0.18,
+          vatRate: ISRAEL_VAT_RATE,
           commission: 54.00, // 15% commission (3 nights × ₪120 × 15%)
           operationCode: 'TSS-CARE-004'
         }
