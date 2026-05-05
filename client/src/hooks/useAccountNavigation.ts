@@ -34,6 +34,7 @@
 
 import { useFirebaseAuth, type UserRole } from '@/auth/AuthProvider';
 import { getApiUrl } from '@/lib/apiConfig';
+import { isStickyAccountPath } from '@/lib/sticky-account-paths';
 
 // Keep aligned with `shared/adminRoles.ts` ADMIN_ROLES — ceo/hr/finance/ops
 // must route to the admin dashboard, not /my-account. See P0 audit Bug 1.
@@ -106,6 +107,22 @@ export function useAccountNavigation() {
    *      user somewhere they can navigate from.
    */
   const resolveAccountRoute = async (): Promise<string> => {
+    // 0. STICKY-PATH GUARD (P0 production blocker fix — Issue A).
+    //    If the user is currently inside an onboarding / signup-flow page
+    //    (e.g. /provider-onboarding), DO NOT call the post-login decider
+    //    and DO NOT redirect away. The decider can return /home or
+    //    /provider/pending depending on application state, which kicks
+    //    the user out of their form. The current path is sticky until
+    //    the form itself navigates the user forward.
+    //
+    //    Affected sticky paths: see client/src/lib/sticky-account-paths.ts
+    if (typeof window !== 'undefined') {
+      const here = window.location.pathname;
+      if (isStickyAccountPath(here)) {
+        return here;
+      }
+    }
+
     // 1. Settle period for auth — bounded so the click never feels frozen.
     const settleStart = Date.now();
     // We can't await the React state, so probe directly via the auth context.
