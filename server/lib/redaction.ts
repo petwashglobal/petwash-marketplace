@@ -3,6 +3,8 @@
  * Ensures sensitive data is not logged or exposed
  */
 
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+
 /**
  * Redact Primary Account Number (PAN) - credit card numbers
  * Shows only last 4 digits
