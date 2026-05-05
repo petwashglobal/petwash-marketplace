@@ -8,6 +8,10 @@ import { QRCodeService } from '../qrCode';
 import { EmailService } from '../emailService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { logger } from '../lib/logger';
+import {
+  parseEgiftDenomination,
+  describeAllowedDenominations,
+} from '../lib/egift-denominations';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { paymentLimiter } from '../middleware/rateLimiter';
@@ -48,7 +52,24 @@ const purchaseGiftCardSchema = z.object({
   country: z.string().default('Israel'),
   
   // Gift details
-  amount: z.string().or(z.number()).transform(val => Number(val)),
+  // PR-W6 P0 fix: e-gift purchases are restricted to the four CEO-confirmed
+  // denominations advertised on petwash.co.il (Classic ₪100, Plus ₪250,
+  // Premium ₪500, Mazon ₪1000). Free-form amounts were a
+  // revenue-leak / accounting-drift vector. The single source of truth is
+  // server/lib/egift-denominations.ts.
+  amount: z
+    .union([z.string(), z.number()])
+    .transform((v, ctx) => {
+      const parsed = parseEgiftDenomination(v);
+      if (parsed === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Amount must be one of ${describeAllowedDenominations()}.`,
+        });
+        return z.NEVER;
+      }
+      return parsed;
+    }),
   message: z.string().max(500).optional(),
   deliveryDate: z.string().optional(),
   deliveryMethod: z.enum(['email', 'whatsapp', 'both']).default('email'),
