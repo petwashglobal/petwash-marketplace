@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { eVouchers, eVoucherRedemptions } from '@shared/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { walletService } from '../services/WalletService';
 import { QRCodeService } from '../qrCode';
@@ -1023,7 +1023,12 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
 
     const { voucherId } = req.params;
 
-    // Atomically mark as REDEEMED — returns the updated row or nothing
+    // Atomically mark as REDEEMED — returns the updated row or nothing.
+    // PR-W11: accept both 'ISSUED' (canonical default) AND 'ACTIVE'
+    // (legacy state written by older Nayax payment-approval handlers).
+    // Existing in-flight vouchers must remain redeemable; once we move
+    // to REDEEMED on success the row exits the activatable set
+    // regardless of which entry status it had.
     const updateResult = await db
       .update(eVouchers)
       .set({
@@ -1034,7 +1039,7 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
       .where(
         and(
           eq(eVouchers.id, voucherId),
-          eq(eVouchers.status, 'ISSUED'),
+          inArray(eVouchers.status, ['ISSUED', 'ACTIVE']),
           sql`(${eVouchers.expiresAt} IS NULL OR ${eVouchers.expiresAt} > NOW())`,
         ),
       )
