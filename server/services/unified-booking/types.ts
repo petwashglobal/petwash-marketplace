@@ -10,6 +10,8 @@
  * - Human and Machine are both Resources
  */
 
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+
 export type Role =
   | "PUBLIC"
   | "USER"
@@ -126,7 +128,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "MINUTES",
     basePrice: 35,
     currency: "ILS",
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
     rules: {
       requiresStation: true,
       allowAdminFreeRun: true,
@@ -139,7 +141,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "SESSION",
     basePrice: 200,
     currency: "ILS",
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
     rules: {
       requiresProvider: true
     }
@@ -150,7 +152,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "HOURLY",
     basePrice: 50,
     currency: "ILS",
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
     rules: {
       requiresProvider: true,
       maxHours: 168
@@ -162,7 +164,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "HOURLY",
     basePrice: 40,
     currency: "ILS",
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
     rules: {
       requiresProvider: true,
       maxHours: 4
@@ -174,7 +176,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "DISTANCE",
     basePrice: 15,
     currency: "ILS",
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
     rules: {
       requiresProvider: true,
       maxHours: 12

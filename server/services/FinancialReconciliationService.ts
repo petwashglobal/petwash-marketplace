@@ -26,8 +26,9 @@ import { logger } from '../lib/logger';
 import { createHash } from 'crypto';
 import { nanoid } from 'nanoid';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
-const ISRAELI_VAT_RATE = 0.18;
+const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const PLATFORM_COMMISSION_RATE = 0.15;
 const B2B_ELECTRONIC_THRESHOLD = 25000;
 const CURRENCY = 'ILS';

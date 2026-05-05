@@ -8,6 +8,7 @@ import {
   syncTransactionStatusToPostgres,
   syncTerminalToPostgres,
 } from './services/nayaxSyncBridge';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 // =====================================
 // TYPES & INTERFACES
@@ -129,7 +130,7 @@ const WEBHOOK_SECRET = requireEnvSecret('NAYAX_WEBHOOK_SECRET','dev-only-webhook
 
 // Merchant Fee and VAT Configuration (live from environment)
 const NAYAX_MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055'); // 5.5% default
-const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate (18% as of Jan 2025)
+const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israeli VAT rate (18% as of Jan 2025)
 
 // K9000 Configuration
 const PAYMENTS_PROVIDER = process.env.PAYMENTS_PROVIDER || 'NAYAX';

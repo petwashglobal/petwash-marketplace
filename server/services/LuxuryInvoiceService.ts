@@ -8,6 +8,7 @@ import { logger } from '../lib/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -75,7 +76,8 @@ const COMPANY_DETAILS: CompanyDetails = {
   email: 'noreply@petwash.co.il'
 };
 
-const VAT_RATE = 0.18; // 18% מע"מ ישראלי
+// PR-W13: single source of truth — shared/israel-compliance-config.ts
+const VAT_RATE = ISRAEL_VAT_RATE;
 
 class LuxuryInvoiceService {
   private logoBase64Cache: string | null = null;

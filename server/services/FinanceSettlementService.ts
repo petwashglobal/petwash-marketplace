@@ -24,6 +24,7 @@ import {
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 interface RevenueCalculationResult {
   grossRevenue: string;
@@ -210,7 +211,7 @@ export class FinanceSettlementService {
       const petwashShareAmount = grossRevenue - partnerShareAmount;
 
       // 4. Calculate VAT (18% Israeli VAT on partner share - updated Jan 2025)
-      const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate from environment
+      const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israeli VAT rate from environment
       const vatAmount = partnerShareAmount * VAT_RATE;
 
       return {

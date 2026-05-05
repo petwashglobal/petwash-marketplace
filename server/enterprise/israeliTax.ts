@@ -16,12 +16,13 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import IsraeliTaxAPIService from '../services/IsraeliTaxAPIService';
 import ElectronicInvoicingService from '../services/ElectronicInvoicingService';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // LEGACY RASA ENDPOINTS - KEPT FOR BACKWARDS COMPATIBILITY
 const RASA_API_ENDPOINT = process.env.RASA_API_ENDPOINT || 'https://api.taxes.gov.il/shaam/production/Invoices';
 const SUPPLIER_API_KEY = process.env.RASA_SUPPLIER_API_KEY;
 const COMPANY_ID = '517145033'; // PetWash Ltd. Company ID
-const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18'); // 18% VAT in Israel
+const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // 18% VAT in Israel
 
 interface InvoiceData {
   invoiceNumber: string;

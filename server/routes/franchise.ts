@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { db } from '../db';
 import { bookings, payments, stations } from '@shared/super-app-schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 const router = Router();
 
@@ -328,7 +329,7 @@ router.get('/reports/financial', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Calculate totals (VAT rate 18% in Israel - updated Jan 2025)
-    const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18');
+    const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
     const totalRevenue = transactionRecords.reduce((sum, tx) => 
       sum + parseFloat(String(tx.amount)), 0
     );
@@ -420,7 +421,7 @@ router.get('/reports/export/excel', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Add transaction rows with VAT calculations
-    const VAT_RATE_EXCEL = parseFloat(process.env.VAT_RATE || '0.18');
+    const VAT_RATE_EXCEL = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
     transactionRecords.forEach(tx => {
       const amount = parseFloat(String(tx.amount));
       const vat = amount * VAT_RATE_EXCEL;
@@ -521,7 +522,7 @@ router.get('/reports/export/pdf', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Add transaction summary
-    const VAT_RATE_PDF = parseFloat(process.env.VAT_RATE || '0.18');
+    const VAT_RATE_PDF = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
     const totalRevenue = transactionRecords.reduce((sum, tx) => 
       sum + parseFloat(String(tx.amount)), 0
     );

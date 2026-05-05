@@ -30,6 +30,7 @@ import { computeDeductionOrder } from './WalletEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import type { OrderType, ActiveBenefits } from './CouponService';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -106,8 +107,9 @@ export interface ConfirmResult {
   ledgerEntryIds: string[];
 }
 
-// VAT 18% applies to platform service fees only
-const VAT_RATE = 0.18;
+// VAT applies to platform service fees only.
+// PR-W13: single source of truth — shared/israel-compliance-config.ts
+const VAT_RATE = ISRAEL_VAT_RATE;
 
 // ─────────────────────────────────────────────────────────────
 // SERVICE

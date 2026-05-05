@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Router, Request, Response } from "express";
 import { db } from "../db";
 import { z } from "zod";
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { 
   israeliExpenses, 
   israeliVatDeclarations,
@@ -83,7 +84,7 @@ router.post("/expenses/employee-submit", async (req: Request, res: Response) => 
       amountBeforeVat: String(amountBeforeVat),
       vatAmount: vatAmount ? String(vatAmount) : "0",
       totalAmount: String(totalAmount),
-      vatRate: "0.18",
+      vatRate: String(ISRAEL_VAT_RATE),
       paymentMethod,
       receiptNumber: receiptNumber || null,
       invoiceNumber: invoiceNumber || null,

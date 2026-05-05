@@ -119,7 +119,7 @@ export interface VATCalculation {
 }
 
 export function calculateVAT(grossAmount: number): VATCalculation {
-  const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate from env
+  const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israeli VAT rate from env
   
   // Gross = Net + VAT
   // Gross = Net * (1 + VAT_RATE)

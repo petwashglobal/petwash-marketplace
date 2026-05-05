@@ -19,6 +19,7 @@
  */
 
 import { SUPPORT_EMAIL, SUPPORT_PHONE as SUPPORT_PHONE_CONST, SUPPORT_WHATSAPP_URL } from '../../../shared/support-contact';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const GOLD       = '#B8941F';   // readable on white AND dark
@@ -37,7 +38,7 @@ const TEXT_DIM   = '#888888';   // tertiary / English labels
 const GOLD_FADE  = '#F5EDD8';   // background of total row highlight
 
 // ─── Israeli legal constants ──────────────────────────────────────────────────
-const VAT_RATE      = 0.18;
+const VAT_RATE      = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const BUSINESS_REG  = '515895671';
 const BUSINESS_HE   = 'פט ווש בע"מ';
 const BUSINESS_EN   = 'Pet Wash Ltd';

@@ -313,6 +313,7 @@ import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClie
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -4107,12 +4108,33 @@ self.addEventListener('notificationclick', (event) => {
 
       const history = await storage.createWashHistory(historyData);
 
-      // Update customer wash balance and spending
-      const newWashBalance = (customer.washBalance || 0) + pkg.washCount;
+      // PR-W10: wash credits go to walletAccounts.washPackageCredits, not
+      // customers.washBalance. The legacy column is invisible at the
+      // K9000 kiosk (server/services/K9000RedemptionService.ts:782 reads
+      // walletAccounts only). Bridge customer → user via email; if no
+      // user record exists yet, log and skip the credit so the customer
+      // can be backfilled rather than orphaning more shekels.
+      if (user) {
+        const { walletService } = await import('./services/WalletService');
+        await walletService.addCredits(
+          user.id,
+          'wash_package',
+          pkg.washCount,
+          'wash_history_create',
+          String(history.id),
+          `Wash history credit (${pkg.washCount} washes)`,
+        );
+      } else {
+        logger.warn('[wash-history] Customer has no linked user — wash-pack credit skipped', {
+          customerId,
+          customerEmail: customer.email,
+          packageId,
+          washCount: pkg.washCount,
+        });
+      }
+
       const newTotalSpent = parseFloat(customer.totalSpent || '0') + finalPrice;
-      
       await storage.updateCustomer(customerId, {
-        washBalance: newWashBalance,
         totalSpent: newTotalSpent.toString(),
       });
 
@@ -6276,7 +6298,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/nayax/config', requireAdmin, async (req: any, res) => {
     try {
       const merchantFeeRate = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055');
-      const vatRate = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate (18% as of Jan 2025)
+      const vatRate = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); // Israeli VAT rate (18% as of Jan 2025)
       
       res.json({
         merchantFeeRate,
@@ -6604,7 +6626,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { db } = await import('./lib/firebase-admin');
       
-      const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18');
+      const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
       const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE || '0.055');
       
       logger.info('[NAYAX BACKFILL] Starting metadata backfill', { 

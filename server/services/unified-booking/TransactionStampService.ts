@@ -15,8 +15,8 @@ import { db } from '../../db';
 import { superAppPayments } from '@shared/schema';
 import { logger } from '../../lib/logger';
 import type { UnifiedTransaction, TransactionType, Currency } from './types';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
-const ISRAEL_VAT_RATE = 0.18;
 
 export class TransactionStampService {
   

@@ -1528,5 +1528,107 @@ router.get('/wallet/orphan-egift-customers', validateFirebaseToken, requireAdmin
   }
 });
 
+/**
+ * GET /api/admin/wallet/legacy-balance-report
+ *
+ * PR-W12. Aggregate read-only counts + totals for every legacy wallet
+ * column that still holds spendable balance but is invisible to the
+ * modern surfaces (K9000 kiosk reads walletAccounts.washPackageCredits
+ * and walletAccounts.egiftBalanceCents — never the legacy columns).
+ *
+ * Reports four sources:
+ *   • users.gift_card_balance      (decimal ILS, e-gift)
+ *   • customers.gift_card_balance  (decimal ILS, e-gift)
+ *   • users.wash_balance           (integer washes, wash-pack)
+ *   • customers.wash_balance       (integer washes, wash-pack)
+ *
+ * NO migration. NO money movement. Writes nothing. Pure SELECT-COUNT-SUM.
+ * The CEO uses this to size the orphan migration before approving the
+ * dry-run plan.
+ *
+ * Response shape:
+ *   {
+ *     generatedAt: string,
+ *     ledgerNote: string,
+ *     sources: {
+ *       usersEgift:      { rows: number, totalIls: string },
+ *       customersEgift:  { rows: number, totalIls: string },
+ *       usersWashPack:   { rows: number, totalWashes: number },
+ *       customersWashPack: { rows: number, totalWashes: number },
+ *     },
+ *     totals: {
+ *       legacyEgiftIls:    string,   // usersEgift + customersEgift
+ *       legacyWashPacks:   number,   // usersWashPack + customersWashPack
+ *     },
+ *   }
+ */
+router.get('/wallet/legacy-balance-report', validateFirebaseToken, requireAdmin, async (_req, res) => {
+  try {
+    const [
+      [usersEgift],
+      [customersEgift],
+      [usersWashPack],
+      [customersWashPack],
+    ] = await Promise.all([
+      db.select({
+        rows:     sql<number>`COUNT(*)::int`,
+        totalIls: sql<string>`COALESCE(SUM(${users.giftCardBalance}), 0)::text`,
+      }).from(users).where(sql`COALESCE(${users.giftCardBalance}, 0) > 0`),
+
+      db.select({
+        rows:     sql<number>`COUNT(*)::int`,
+        totalIls: sql<string>`COALESCE(SUM(${customers.giftCardBalance}), 0)::text`,
+      }).from(customers).where(sql`COALESCE(${customers.giftCardBalance}, 0) > 0`),
+
+      db.select({
+        rows:        sql<number>`COUNT(*)::int`,
+        totalWashes: sql<number>`COALESCE(SUM(${users.washBalance}), 0)::int`,
+      }).from(users).where(sql`COALESCE(${users.washBalance}, 0) > 0`),
+
+      db.select({
+        rows:        sql<number>`COUNT(*)::int`,
+        totalWashes: sql<number>`COALESCE(SUM(${customers.washBalance}), 0)::int`,
+      }).from(customers).where(sql`COALESCE(${customers.washBalance}, 0) > 0`),
+    ]);
+
+    const legacyEgiftIls = (
+      Number(usersEgift?.totalIls ?? 0) + Number(customersEgift?.totalIls ?? 0)
+    ).toFixed(2);
+    const legacyWashPacks =
+      Number(usersWashPack?.totalWashes ?? 0) + Number(customersWashPack?.totalWashes ?? 0);
+
+    return res.json({
+      generatedAt: new Date().toISOString(),
+      ledgerNote:
+        'Legacy wallet columns. These balances are NOT in walletAccounts and cannot be spent at K9000 / marketplace today. Read-only — no money moved.',
+      sources: {
+        usersEgift: {
+          rows:     Number(usersEgift?.rows ?? 0),
+          totalIls: Number(usersEgift?.totalIls ?? 0).toFixed(2),
+        },
+        customersEgift: {
+          rows:     Number(customersEgift?.rows ?? 0),
+          totalIls: Number(customersEgift?.totalIls ?? 0).toFixed(2),
+        },
+        usersWashPack: {
+          rows:        Number(usersWashPack?.rows ?? 0),
+          totalWashes: Number(usersWashPack?.totalWashes ?? 0),
+        },
+        customersWashPack: {
+          rows:        Number(customersWashPack?.rows ?? 0),
+          totalWashes: Number(customersWashPack?.totalWashes ?? 0),
+        },
+      },
+      totals: {
+        legacyEgiftIls,
+        legacyWashPacks,
+      },
+    });
+  } catch (error: any) {
+    logger.error('[Admin] legacy-balance-report query failed', { error: error.message });
+    return res.status(500).json({ error: 'Failed to query legacy balance report' });
+  }
+});
+
 export default router;
 

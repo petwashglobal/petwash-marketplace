@@ -23,7 +23,7 @@
  * Withholding Tax Default: 20% (ניכוי מס במקור)
  */
 
-const ISRAELI_VAT_RATE = 0.18;
+const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 
 export interface TransparentFeeCalculation {
   pricePerDayCents: number;

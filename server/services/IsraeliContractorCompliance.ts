@@ -33,6 +33,7 @@ import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -261,7 +262,7 @@ export class IsraeliContractorComplianceService {
       // The commission already includes VAT. We extract the VAT portion for tax reporting.
       // Formula: VAT = GrossAmount / 1.18 * 0.18 (reverse calculation)
       const includesVat = true;
-      const vatRate = 0.18;
+      const vatRate = ISRAEL_VAT_RATE;
       const vatAmount = parseFloat((grossCommission / (1 + vatRate) * vatRate).toFixed(2));
       const commissionAmount = grossCommission; // Gross commission (includes VAT)
       const netCommission = parseFloat((grossCommission - vatAmount).toFixed(2)); // Net commission (without VAT)

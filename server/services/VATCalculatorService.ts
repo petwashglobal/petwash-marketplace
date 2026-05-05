@@ -43,8 +43,12 @@ import { digitalReceipts } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
-export const ISRAELI_VAT_RATE = 0.18;
+// Re-exported for downstream consumers that already import this name from
+// VATCalculatorService. The single source of truth is
+// shared/israel-compliance-config.ts (PR-W13).
+export const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE;
 export const PLATFORM_COMMISSION_RATE = 0.15;
 
 const PLATFORM_COMMISSION_RATES: Record<string, number> = {

@@ -1,3 +1,5 @@
+import { ISRAEL_VAT_RATE } from './israel-compliance-config';
+
 export interface IsraeliTaxConfig {
   VAT_RATE: number; // 18% current Israeli VAT rate
   PROCESSING_FEE_RATE: number; // 1.75% Nayax transaction fee
@@ -8,7 +10,7 @@ export interface IsraeliTaxConfig {
 }
 
 export const ISRAELI_TAX_CONFIG: IsraeliTaxConfig = {
-  VAT_RATE: 0.18, // 18% Israeli VAT (מע״מ)
+  VAT_RATE: ISRAEL_VAT_RATE, // PR-W13: shared/israel-compliance-config.ts
   PROCESSING_FEE_RATE: 0.0175, // 1.75% Nayax transaction fee
   COMPANY_TAX_ID: process.env.COMPANY_TAX_ID || '516047073', // פט ווש בע"מ — ח.פ. 516047073
   COMPANY_NAME: 'פט ווש בע"מ / PetWash Ltd',

@@ -421,6 +421,13 @@ export class NayaxPaymentService {
 
       // Create voucher
       const voucherId = nanoid(16);
+      // PR-W11: write the canonical "purchased, awaiting recipient claim"
+      // status. The schema documents the lifecycle as
+      // ISSUED → CLAIMED/ACTIVE → REDEEMED → EXPIRED/CANCELLED, with
+      // ISSUED as the .default(). The activate-wallet route
+      // (server/routes/gift-cards.ts) and the K9000 redeem route both
+      // atomic-update on status='ISSUED'; writing 'ACTIVE' here orphaned
+      // every freshly-purchased voucher because no activation path matched.
       await db.insert(eVouchers).values({
         id: voucherId,
         codeHash: crypto.createHash('sha256').update(pending.voucherCode || '').digest('hex'),
@@ -429,7 +436,7 @@ export class NayaxPaymentService {
         currency: pending.currency,
         initialAmount: pending.amount,
         remainingAmount: pending.amount,
-        status: 'ACTIVE',
+        status: 'ISSUED',
         purchaserEmail: pending.customerEmail,
         recipientEmail: pending.recipientEmail || pending.customerEmail,
         nayaxTxId: pending.id,

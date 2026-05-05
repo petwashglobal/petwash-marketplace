@@ -27,6 +27,8 @@
  * - Payment: Nayax (preferred Israeli payment gateway)
  */
 
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+
 export interface WalkFeeCalculation {
   basePriceCents: number;
   
@@ -201,7 +203,7 @@ export function getWalkCommissionBreakdown(): {
     ownerFeeRate: 0.15,
     walkerFeeRate: 0.15,
     walkerPayoutRate: 0.85,
-    vatRate: 0.18,
+    vatRate: ISRAEL_VAT_RATE,
     currency: 'ILS',
   };
 }

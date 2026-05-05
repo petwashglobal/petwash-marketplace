@@ -37,8 +37,8 @@ import type {
   CreditBreakdown,
   CompletionReceiptData
 } from './types';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
-const ISRAEL_VAT_RATE = 0.18;
 
 /**
  * Generate unique booking number: PWB-YYYYMMDD-XXXXXX

@@ -17,6 +17,7 @@
 import { logger } from './lib/logger';
 import { EmailService } from './emailService';
 import { db } from './lib/firebase-admin';
+import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 export interface ComplianceCheck {
   id: string;
@@ -95,7 +96,7 @@ export class IsraeliComplianceMonitor {
     
     try {
       // Check VAT rate (currently 18% as of 2025)
-      const currentVATRate = process.env.VAT_RATE || '0.18';
+      const currentVATRate = process.env.VAT_RATE || String(ISRAEL_VAT_RATE);
       if (parseFloat(currentVATRate) !== 0.18) {
         alerts.push({
           severity: 'critical',
