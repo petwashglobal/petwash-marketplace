@@ -5,6 +5,7 @@ import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
 import { logAuditEvent } from "../middleware/auditLog";
+import { runWithIdempotency } from "../lib/idempotency-helper";
 
 const SHEETS_DISPUTE_CASES = 'Dispute Cases';
 
@@ -74,27 +75,42 @@ router.post("/create", requireAuth, async (req, res) => {
     const { bookingId, providerId, amount, nayaxTransactionId, metadata } = req.body;
     const customerId = req.user!.uid;
 
-    const escrow = await EscrowService.createEscrowPayment(
-      bookingId,
-      customerId,
-      providerId,
-      amount,
-      nayaxTransactionId,
-      metadata
-    );
-
-    emitEscrowAudit({
-      actionType: 'ESCROW_CREATE',
-      actorUserId: customerId,
-      actorRole: 'customer',
-      escrowId: (escrow as any)?.id ?? 'unknown',
-      bookingId,
-      amountILS: amount,
-      ip: req.ip,
-      userAgent: req.headers['user-agent'] as string | undefined,
+    // PR-W45: replay-safe via walletIdempotencyKeys. Body fingerprint
+    // hashes the fields that determine money flow; identical retries
+    // return the original {escrow:...} payload instead of creating a
+    // second row. Honours `Idempotency-Key` header if present.
+    const result = await runWithIdempotency({
+      endpoint: 'escrow:create',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ bookingId, customerId, providerId, amount, nayaxTransactionId }) =>
+        `${bookingId}:${customerId}:${providerId}:${amount}:${nayaxTransactionId ?? ''}`,
+      body: { bookingId, customerId, providerId, amount, nayaxTransactionId },
+      logContext: { customerId, bookingId },
+      operation: async () => {
+        const escrow = await EscrowService.createEscrowPayment(
+          bookingId, customerId, providerId, amount, nayaxTransactionId, metadata,
+        );
+        emitEscrowAudit({
+          actionType: 'ESCROW_CREATE',
+          actorUserId: customerId,
+          actorRole: 'customer',
+          escrowId: (escrow as any)?.id ?? 'unknown',
+          bookingId,
+          amountILS: amount,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'] as string | undefined,
+        });
+        return { escrow };
+      },
     });
 
-    res.json({ escrow });
+    if (result.kind === 'in_flight') {
+      return res.status(409).json({
+        error: 'Escrow create with same body is already being processed.',
+        errorCode: 'IDEMPOTENCY_IN_FLIGHT',
+      });
+    }
+    res.json(result.response);
   } catch (error: any) {
     logger.error("[Escrow] Error creating", { error: error.message });
     res.status(error.status ?? 500).json({ error: error.message });
@@ -114,20 +130,35 @@ router.post("/:escrowId/release", requireAuth, async (req, res) => {
       });
     }
 
-    await EscrowService.releaseEscrowPayment(escrowId, callerId);
-
-    emitEscrowAudit({
-      actionType: 'ESCROW_RELEASE',
-      actorUserId: callerId,
-      actorRole: 'customer',
-      escrowId,
-      bookingId: escrow.bookingId,
-      amountILS: escrow.amount,
-      ip: req.ip,
-      userAgent: req.headers['user-agent'] as string | undefined,
+    // PR-W45: idempotency-cache. Replay returns the same {success:true}
+    // instead of bubbling up a "already released" 500.
+    const result = await runWithIdempotency({
+      endpoint: 'escrow:release',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ escrowId, callerId }) => `${escrowId}:${callerId}`,
+      body: { escrowId, callerId },
+      logContext: { escrowId, callerId },
+      operation: async () => {
+        await EscrowService.releaseEscrowPayment(escrowId, callerId);
+        emitEscrowAudit({
+          actionType: 'ESCROW_RELEASE',
+          actorUserId: callerId,
+          actorRole: 'customer',
+          escrowId,
+          bookingId: escrow.bookingId,
+          amountILS: escrow.amount,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'] as string | undefined,
+        });
+        return { success: true };
+      },
     });
 
-    res.json({ success: true });
+    if (result.kind === 'in_flight') {
+      return res.status(409).json({ error: 'Release in progress', errorCode: 'IDEMPOTENCY_IN_FLIGHT' });
+    }
+
+    res.json(result.response);
 
     // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
     setImmediate(() => {
@@ -172,21 +203,34 @@ router.post("/:escrowId/refund", requireAuth, async (req, res) => {
 
     const escrow = await assertEscrowParticipant(escrowId, callerId);
 
-    await EscrowService.refundEscrowPayment(escrowId, reason, callerId);
-
-    emitEscrowAudit({
-      actionType: 'ESCROW_REFUND',
-      actorUserId: callerId,
-      actorRole: 'participant',
-      escrowId,
-      bookingId: escrow.bookingId,
-      amountILS: escrow.amount,
-      reason,
-      ip: req.ip,
-      userAgent: req.headers['user-agent'] as string | undefined,
+    const result = await runWithIdempotency({
+      endpoint: 'escrow:refund',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ escrowId, callerId, reason }) => `${escrowId}:${callerId}:${reason ?? ''}`,
+      body: { escrowId, callerId, reason },
+      logContext: { escrowId, callerId },
+      operation: async () => {
+        await EscrowService.refundEscrowPayment(escrowId, reason, callerId);
+        emitEscrowAudit({
+          actionType: 'ESCROW_REFUND',
+          actorUserId: callerId,
+          actorRole: 'participant',
+          escrowId,
+          bookingId: escrow.bookingId,
+          amountILS: escrow.amount,
+          reason,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'] as string | undefined,
+        });
+        return { success: true };
+      },
     });
 
-    res.json({ success: true });
+    if (result.kind === 'in_flight') {
+      return res.status(409).json({ error: 'Refund in progress', errorCode: 'IDEMPOTENCY_IN_FLIGHT' });
+    }
+
+    res.json(result.response);
 
     // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
     setImmediate(() => {
@@ -231,21 +275,34 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
 
     const escrow = await assertEscrowParticipant(escrowId, callerId);
 
-    await EscrowService.disputeEscrowPayment(escrowId, reason, callerId);
-
-    emitEscrowAudit({
-      actionType: 'ESCROW_DISPUTE',
-      actorUserId: callerId,
-      actorRole: 'participant',
-      escrowId,
-      bookingId: escrow.bookingId,
-      amountILS: escrow.amount,
-      reason,
-      ip: req.ip,
-      userAgent: req.headers['user-agent'] as string | undefined,
+    const result = await runWithIdempotency({
+      endpoint: 'escrow:dispute',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ escrowId, callerId, reason }) => `${escrowId}:${callerId}:${reason ?? ''}`,
+      body: { escrowId, callerId, reason },
+      logContext: { escrowId, callerId },
+      operation: async () => {
+        await EscrowService.disputeEscrowPayment(escrowId, reason, callerId);
+        emitEscrowAudit({
+          actionType: 'ESCROW_DISPUTE',
+          actorUserId: callerId,
+          actorRole: 'participant',
+          escrowId,
+          bookingId: escrow.bookingId,
+          amountILS: escrow.amount,
+          reason,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'] as string | undefined,
+        });
+        return { success: true };
+      },
     });
 
-    res.json({ success: true });
+    if (result.kind === 'in_flight') {
+      return res.status(409).json({ error: 'Dispute in progress', errorCode: 'IDEMPOTENCY_IN_FLIGHT' });
+    }
+
+    res.json(result.response);
 
     // ── Fire-and-forget: Dispute cases sheet + live feed ──────────────────
     setImmediate(() => {
