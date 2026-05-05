@@ -382,48 +382,53 @@ router.get('/marketing/campaigns/:id/performance', requireAuth, async (req: any,
   }
 });
 
-/**
- * Add funds to wallet
- */
-router.post('/wallet/add-funds', requireAuth, requireActive, async (req: any, res) => {
-  try {
-    const userId = req.user.uid;
-    const { amount, platform, description } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
-    }
-    
-    const transaction = await unifiedWallet.addFunds(userId, amount, platform || 'system', description || 'Funds added');
-    res.json(transaction);
-  } catch (error) {
-    logger.error('[Wallet API] Failed to add funds', error);
-    res.status(500).json({ error: 'Failed to add funds' });
-  }
+// ─────────────────────────────────────────────────────────────────────────
+// PR-W47 — DISABLED 2026-05  (financial safety / no live caller)
+//
+// Both /wallet/add-funds and /wallet/deduct-funds were defined here but
+// never wired from any client (grep over client/ + server/ returned zero
+// callers). They allowed an authenticated user to:
+//   • credit themselves arbitrary promo balance (add-funds — no payment proof)
+//   • debit their wallet with no booking-id, no idempotency, no ledger row
+//     (deduct-funds — UnifiedWalletService.deductFunds writes wallet but NOT
+//      credit_transactions, so the drift detector would WARN every call)
+//
+// Both routes now return 410 GONE with a forensic message. The
+// UnifiedWalletService class itself is left intact (no breaking imports);
+// it remains usable internally when callers wire it through
+// walletService.addCredits + walletIdempotencyKeys.
+//
+// If a legitimate use-case emerges, the replacement endpoint must:
+//   1. specify an explicit source (booking, voucher activation, etc.)
+//   2. write a credit_transactions row via walletService / WalletLedger
+//   3. require an Idempotency-Key header (PR-W4 pattern)
+//   4. emit an audit_events row when admin-initiated
+//   5. ship with idempotency-replay tests
+// ─────────────────────────────────────────────────────────────────────────
+
+router.post('/wallet/add-funds', requireAuth, requireActive, async (_req, res) => {
+  return res.status(410).json({
+    error: 'GONE',
+    code: 'UNIFIED_WALLET_ADD_FUNDS_DISABLED',
+    message:
+      'This endpoint has been disabled. Wallet credits must come from a verified payment source. ' +
+      'Use POST /api/credit-wallet/topup with a Nayax transaction ID.',
+    messageHe:
+      'הנקודה הזו הושבתה. זיכויי ארנק חייבים להגיע ממקור תשלום מאומת. ' +
+      'השתמש ב-POST /api/credit-wallet/topup עם מזהה עסקת Nayax.',
+  });
 });
 
-/**
- * Deduct funds from wallet
- */
-router.post('/wallet/deduct-funds', requireAuth, requireActive, async (req: any, res) => {
-  try {
-    const userId = req.user.uid;
-    const { amount, platform, description, referenceId } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
-    }
-    
-    const transaction = await unifiedWallet.deductFunds(userId, amount, platform || 'system', description || 'Funds deducted', referenceId);
-    res.json(transaction);
-  } catch (error: any) {
-    logger.error('[Wallet API] Failed to deduct funds', error);
-    if (error.message === 'Insufficient balance') {
-      res.status(400).json({ error: 'Insufficient balance' });
-    } else {
-      res.status(500).json({ error: 'Failed to deduct funds' });
-    }
-  }
+router.post('/wallet/deduct-funds', requireAuth, requireActive, async (_req, res) => {
+  return res.status(410).json({
+    error: 'GONE',
+    code: 'UNIFIED_WALLET_DEDUCT_FUNDS_DISABLED',
+    message:
+      'This endpoint has been disabled. Wallet debits must reference a booking, ' +
+      'voucher, or kiosk redemption. Use the booking checkout or K9000 redeem path.',
+    messageHe:
+      'הנקודה הזו הושבתה. חיובי ארנק חייבים להפנות להזמנה, שובר או מימוש קיוסק.',
+  });
 });
 
 /**
