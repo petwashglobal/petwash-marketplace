@@ -76,35 +76,47 @@
   opacity: 0.9;
 }
 
-/* PR-D P0 fix: lift floating FABs above the MobileBottomNav (h-14 = 56px,
-   visible below md breakpoint 768px). The bar's `md:hidden` Tailwind rule
-   means the offset variable is 56px on mobile and 0 on tablet/desktop. */
+/* PR-W54 — single floating-stack manager (CEO directive 2026-05).
+ *
+ * One base + one step. Every FAB derives its `bottom` from these
+ * variables, so safe-area inset, bottom-nav presence, and keyboard
+ * offset are all handled in ONE place.
+ *
+ * Layout invariants (the CEO's mandate):
+ *   • One vertical stack
+ *   • Equal spacing (16px minimum between widgets)
+ *   • Safe-area aware (env(safe-area-inset-bottom))
+ *   • Above the bottom nav (var(--pw-bottom-nav-height))
+ *   • 24px gap above the nav for breathing room
+ *
+ * Bottom offset for the LOWEST FAB = the CEO formula:
+ *   calc(env(safe-area-inset-bottom) + var(--pw-bottom-nav-height) + 24px)
+ * Each FAB above adds N * (button height + gap) on top.
+ *
+ * --pw-keyboard-offset is updated by FloatingStack.tsx when the iOS
+ * keyboard appears; default 0 keeps the FAB at rest. This replaces the
+ * earlier `style.bottom = …` override that was incompatible with the
+ * CSS calc(). */
 :root {
-  --pw-bottom-nav-offset: 0px;
+  /* MobileBottomNav is `h-14` = 56px and `md:hidden` so it's only
+     present below 768px. On tablet/desktop the bar isn't there, so the
+     height collapses to 0. */
+  --pw-bottom-nav-height: 0px;
+  --pw-fab-button-size: 56px;
+  --pw-fab-gap: 16px;
+  --pw-fab-step: calc(var(--pw-fab-button-size) + var(--pw-fab-gap));
+  --pw-fab-base: calc(env(safe-area-inset-bottom, 0px) + var(--pw-bottom-nav-height) + 24px);
+  --pw-keyboard-offset: 0px;
 }
 @media (max-width: 767px) {
   :root {
-    --pw-bottom-nav-offset: 56px;
+    --pw-bottom-nav-height: 56px;
   }
 }
 
-/* Accessibility - Top (160px from bottom) - Solid Black */
-#pw-a11y {
-  bottom: calc(160px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
-  background: #000;
-  color: #fff;
-}
-
-/* WhatsApp - Middle (88px from bottom) - Green #25D366 */
-#pw-wa {
-  bottom: calc(88px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
-  background: #25D366;
-  color: #fff;
-}
-
-/* PetWash AI - Bottom (16px from bottom) - Premium Blue Gradient */
+/* PetWash AI — index 0 (closest to bottom-nav) */
 #pw-ai {
-  bottom: calc(16px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--pw-fab-base) + var(--pw-keyboard-offset));
   background: linear-gradient(135deg, #0B57D0 0%, #4E8DF7 100%);
   color: #fff;
   transition: all 0.2s ease;
@@ -115,9 +127,23 @@
   transform: scale(1.08);
 }
 
-/* VIP Loyalty - Top (232px from bottom) - Premium Gold Gradient */
+/* WhatsApp — index 1 */
+#pw-wa {
+  bottom: calc(var(--pw-fab-base) + 1 * var(--pw-fab-step) + var(--pw-keyboard-offset));
+  background: #25D366;
+  color: #fff;
+}
+
+/* Accessibility — index 2 */
+#pw-a11y {
+  bottom: calc(var(--pw-fab-base) + 2 * var(--pw-fab-step) + var(--pw-keyboard-offset));
+  background: #000;
+  color: #fff;
+}
+
+/* VIP Loyalty — index 3 (top of the canonical 4-stack when present) */
 #pw-vip {
-  bottom: calc(232px + var(--pw-bottom-nav-offset) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--pw-fab-base) + 3 * var(--pw-fab-step) + var(--pw-keyboard-offset));
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
   color: #fff;
   transition: all 0.2s ease;

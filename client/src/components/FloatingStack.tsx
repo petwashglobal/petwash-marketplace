@@ -34,6 +34,9 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
   }, [onAIClick]);
 
   useEffect(() => {
+    // Singleton guard. Only the first FloatingStack ever mounted runs
+    // the global listeners; a second mount (route remount, hot reload)
+    // is a no-op so we never get duplicate keyboard handlers.
     if ((window as any).__PW_FLOAT_STACK_LOADED__) {
       return;
     }
@@ -41,19 +44,22 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
 
     const stack = stackRef.current;
 
+    /**
+     * PR-W54: keyboard offset is now a CSS variable, not a per-button
+     * inline style override. Each FAB's `bottom` is computed by the CSS
+     * (`var(--pw-fab-base) + N * var(--pw-fab-step) + var(--pw-keyboard-offset)`),
+     * so updating ONE variable lifts the whole stack atomically.
+     * This restores compatibility with the safe-area calc() in the CSS.
+     */
     function adjustForKeyboard() {
-      if (!window.visualViewport || !stack) return;
-      
+      if (!window.visualViewport) return;
       const vv = window.visualViewport;
       const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
       const extraOffset = keyboardHeight > 120 ? keyboardHeight - 8 : 0;
-      
-      const buttons = stack.querySelectorAll('.pw-float');
-      buttons.forEach((btn: Element) => {
-        const htmlBtn = btn as HTMLElement;
-        const baseBottom = parseInt(htmlBtn.getAttribute('data-base-bottom') || '0');
-        htmlBtn.style.bottom = `${baseBottom + extraOffset}px`;
-      });
+      document.documentElement.style.setProperty(
+        '--pw-keyboard-offset',
+        `${extraOffset}px`,
+      );
     }
 
     if (window.visualViewport) {
@@ -96,11 +102,15 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
   return (
     <>
       <div ref={stackRef} className="pw-float-stack" dir="ltr">
+        {/* Position is computed entirely by CSS using --pw-fab-base /
+            --pw-fab-step / --pw-keyboard-offset (PR-W54). No
+            data-base-bottom attribute — that approach was retired
+            because per-button inline `style.bottom` overrides
+            shadowed the safe-area calc(). */}
         <button
           id="pw-a11y"
           className="pw-float"
           type="button"
-          data-base-bottom="160"
           aria-label={accessibilityLabel}
           aria-expanded={isAccessibilityMenuOpen}
           aria-controls="pw-accessibility-menu"
@@ -114,7 +124,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           id="pw-wa"
           className="pw-float"
           type="button"
-          data-base-bottom="88"
           aria-label={whatsappLabel}
           onClick={handleWhatsAppClick}
           data-testid="fab-whatsapp"
@@ -128,7 +137,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           id="pw-ai"
           className="pw-float pw-ai-btn"
           type="button"
-          data-base-bottom="16"
           aria-label={aiLabel}
           onClick={handleAIClick}
           data-testid="fab-ai"
