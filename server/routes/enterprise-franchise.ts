@@ -7,6 +7,31 @@ import {
   insertFranchiseRoyaltyPaymentSchema,
 } from "@shared/schema-franchise";
 import { NotFoundError } from "../errors";
+import { logAuditEvent } from "../middleware/auditLog";
+
+/** PR-W34v: enterprise-franchise admin audit. */
+function emitFranchiseAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = express.Router();
 
@@ -63,10 +88,17 @@ router.get("/franchisees/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/franchise/franchisees - Create new franchisee
-router.post("/franchisees", requireAdmin, async (req, res) => {
+router.post("/franchisees", requireAdmin, async (req: any, res) => {
   try {
     const validated = insertFranchiseeSchema.parse(req.body);
     const franchisee = await storage.createFranchisee(validated);
+    emitFranchiseAdminAudit({
+      actionType: 'FRANCHISEE_CREATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'franchisee', targetId: (franchisee as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { country: (validated as any)?.country, businessName: (validated as any)?.businessName },
+    });
     res.status(201).json(franchisee);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -78,12 +110,19 @@ router.post("/franchisees", requireAdmin, async (req, res) => {
 });
 
 // PUT /api/enterprise/franchise/franchisees/:id - Update franchisee
-router.put("/franchisees/:id", requireAdmin, async (req, res) => {
+router.put("/franchisees/:id", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const updateSchema = insertFranchiseeSchema.partial();
     const validated = updateSchema.parse(req.body);
     const franchisee = await storage.updateFranchisee(id, validated);
+    emitFranchiseAdminAudit({
+      actionType: 'FRANCHISEE_UPDATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'franchisee', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validated) },
+    });
     res.json(franchisee);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -161,10 +200,17 @@ router.get("/royalty-payments/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/franchise/royalty-payments - Create new royalty payment
-router.post("/royalty-payments", requireAdmin, async (req, res) => {
+router.post("/royalty-payments", requireAdmin, async (req: any, res) => {
   try {
     const validated = insertFranchiseRoyaltyPaymentSchema.parse(req.body);
     const payment = await storage.createRoyaltyPayment(validated);
+    emitFranchiseAdminAudit({
+      actionType: 'ROYALTY_PAYMENT_CREATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'royalty_payment', targetId: (payment as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { franchiseeId: (validated as any)?.franchiseeId, amount: (validated as any)?.amount, period: (validated as any)?.period },
+    });
     res.status(201).json(payment);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -176,12 +222,19 @@ router.post("/royalty-payments", requireAdmin, async (req, res) => {
 });
 
 // PUT /api/enterprise/franchise/royalty-payments/:id - Update royalty payment
-router.put("/royalty-payments/:id", requireAdmin, async (req, res) => {
+router.put("/royalty-payments/:id", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const updateSchema = insertFranchiseRoyaltyPaymentSchema.partial();
     const validated = updateSchema.parse(req.body);
     const payment = await storage.updateRoyaltyPayment(id, validated);
+    emitFranchiseAdminAudit({
+      actionType: 'ROYALTY_PAYMENT_UPDATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'royalty_payment', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validated) },
+    });
     res.json(payment);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -196,7 +249,7 @@ router.put("/royalty-payments/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/franchise/royalty-payments/:id/record-payment - Record a royalty payment
-router.post("/royalty-payments/:id/record-payment", requireAdmin, async (req, res) => {
+router.post("/royalty-payments/:id/record-payment", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const paymentDataSchema = z.object({
@@ -206,6 +259,18 @@ router.post("/royalty-payments/:id/record-payment", requireAdmin, async (req, re
     });
     const validated = paymentDataSchema.parse(req.body);
     const payment = await storage.recordRoyaltyPayment(id, validated);
+    emitFranchiseAdminAudit({
+      actionType: 'ROYALTY_PAYMENT_RECORD',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'royalty_payment', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        paidDate: validated.paidDate,
+        paymentMethod: validated.paymentMethod,
+        // payment reference can be a bank-side identifier — store last4 only
+        paymentReferenceLast4: validated.paymentReference ? validated.paymentReference.slice(-4) : null,
+      },
+    });
     res.json(payment);
   } catch (error: any) {
     if (error instanceof z.ZodError) {

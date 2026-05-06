@@ -1,46 +1,59 @@
 import { Router, type Request, type Response } from 'express';
-import { 
+import {
   getFranchiseCommandCenter,
   createQualityAudit,
   deployMandatoryUpdate,
   getFranchiseeSupport,
   APPROVED_SUPPLIERS,
-  type MandatoryUpdate 
+  type MandatoryUpdate
 } from '../utils/franchiseControls';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
-/**
- * GET /api/franchise/command-center - Get real-time franchise dashboard
- */
 router.get('/command-center', requireAdmin, (req: Request, res: Response) => {
   const data = getFranchiseCommandCenter();
   res.json(data);
 });
 
-/**
- * POST /api/franchise/quality-audit - Create quality audit
- */
-router.post('/quality-audit', requireAdmin, (req: Request, res: Response) => {
+router.post('/quality-audit', requireAdmin, (req: any, res: Response) => {
   const { stationId } = req.body;
   const audit = createQualityAudit(stationId);
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: req.firebaseUser?.uid,
+      actorRole: 'admin',
+      actionType: 'FRANCHISE_QUALITY_AUDIT_CREATE',
+      targetType: 'franchise_audit',
+      targetId: (audit as any)?.id ?? stationId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stationId },
+    }).catch(() => {});
+  });
   res.json(audit);
 });
 
-/**
- * POST /api/franchise/deploy-update - Deploy mandatory update
- */
-router.post('/deploy-update', requireAdmin, (req: Request, res: Response) => {
+router.post('/deploy-update', requireAdmin, (req: any, res: Response) => {
   const update: MandatoryUpdate = req.body;
   const deployment = deployMandatoryUpdate(update);
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: req.firebaseUser?.uid,
+      actorRole: 'admin',
+      actionType: 'FRANCHISE_MANDATORY_UPDATE_DEPLOY',
+      targetType: 'franchise_update',
+      targetId: (deployment as any)?.id ?? (update as any)?.id ?? 'unknown',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { updateType: (update as any)?.type, version: (update as any)?.version },
+    }).catch(() => {});
+  });
   res.json(deployment);
 });
 
-/**
- * GET /api/franchise/support - Get franchisee support info
- */
 router.get('/support', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.firebaseUser!.uid;
@@ -51,9 +64,6 @@ router.get('/support', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-/**
- * GET /api/franchise/suppliers - Get approved suppliers list
- */
 router.get('/suppliers', (req: Request, res: Response) => {
   res.json(APPROVED_SUPPLIERS);
 });

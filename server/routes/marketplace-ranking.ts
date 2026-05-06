@@ -26,6 +26,7 @@ import {
 import { eq, and, gte, lt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -307,6 +308,18 @@ router.post('/recompute', async (req, res) => {
     }
 
     logger.info('[Ranking] Batch recompute complete', { refreshed, errors });
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: (req as any).firebaseUser?.uid,
+        actorRole: 'admin',
+        actionType: 'RANKING_BATCH_RECOMPUTE',
+        targetType: 'provider_ranking',
+        targetId: 'batch',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        metadata: { total: profiles.length, refreshed, errors },
+      }).catch(() => {});
+    });
     res.json({ ok: true, refreshed, errors, total: profiles.length });
   } catch (err: any) {
     logger.error('[Ranking] Batch recompute failed', { error: err.message });
@@ -446,6 +459,18 @@ router.patch('/:userId', async (req, res) => {
     }
 
     logger.info('[Ranking] Admin override applied', { userId, action, adminUid });
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: adminUid,
+        actorRole: 'admin',
+        actionType: 'RANKING_ADMIN_OVERRIDE',
+        targetType: 'provider_ranking',
+        targetId: userId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        metadata: { action, hasNote: !!note },
+      }).catch(() => {});
+    });
     res.json({ ok: true, userId, action });
   } catch (err: any) {
     logger.error('[Ranking] Admin override failed', { userId, error: err.message });
