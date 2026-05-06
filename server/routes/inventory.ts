@@ -10,6 +10,31 @@ import {
 } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34o: inventory admin audit. */
+function emitInventoryAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = express.Router();
 
@@ -18,12 +43,17 @@ const router = express.Router();
  * Create a new supply in the master catalog
  * Requires admin authentication
  */
-router.post('/supplies', requireAdmin, async (req, res) => {
+router.post('/supplies', requireAdmin, async (req: any, res) => {
   try {
     const validatedData = insertSupplySchema.parse(req.body);
-    
     const supply = await inventoryService.createSupply(validatedData);
-    
+    emitInventoryAudit({
+      actionType: 'INVENTORY_SUPPLY_CREATE',
+      actorUserId: req.adminUser?.id || req.userId,
+      targetType: 'supply', targetId: (supply as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { name: (supply as any)?.name, category: (supply as any)?.category },
+    });
     res.json(supply);
   } catch (error: any) {
     logger.error('[Inventory Routes] Failed to create supply', {
@@ -105,18 +135,19 @@ router.get('/supplies/:id', requireAuth, async (req, res) => {
  * Update a supply
  * Requires admin authentication
  */
-router.patch('/supplies/:id', requireAdmin, async (req, res) => {
+router.patch('/supplies/:id', requireAdmin, async (req: any, res) => {
   try {
     const supplyId = parseInt(req.params.id);
-    
-    if (isNaN(supplyId)) {
-      return res.status(400).json({ error: 'Invalid supply ID' });
-    }
-    
+    if (isNaN(supplyId)) return res.status(400).json({ error: 'Invalid supply ID' });
     const validatedData = updateSupplySchema.parse(req.body);
-    
     const updatedSupply = await inventoryService.updateSupply(supplyId, validatedData);
-    
+    emitInventoryAudit({
+      actionType: 'INVENTORY_SUPPLY_UPDATE',
+      actorUserId: req.adminUser?.id || req.userId,
+      targetType: 'supply', targetId: supplyId,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validatedData) },
+    });
     res.json(updatedSupply);
   } catch (error: any) {
     logger.error('[Inventory Routes] Failed to update supply', {
@@ -142,27 +173,20 @@ router.patch('/supplies/:id', requireAdmin, async (req, res) => {
  * Add a supply to a station
  * Requires admin authentication
  */
-router.post('/station/:stationId/supplies', requireAdmin, async (req, res) => {
+router.post('/station/:stationId/supplies', requireAdmin, async (req: any, res) => {
   try {
     const stationId = parseInt(req.params.stationId);
-    
-    if (isNaN(stationId)) {
-      return res.status(400).json({ error: 'Invalid station ID' });
-    }
-    
-    const schema = z.object({
-      supplyId: z.number(),
-      initialLevel: z.number().min(0).optional(),
-    });
-    
+    if (isNaN(stationId)) return res.status(400).json({ error: 'Invalid station ID' });
+    const schema = z.object({ supplyId: z.number(), initialLevel: z.number().min(0).optional() });
     const { supplyId, initialLevel } = schema.parse(req.body);
-    
-    const stationSupply = await inventoryService.addStationSupply(
-      stationId,
-      supplyId,
-      initialLevel
-    );
-    
+    const stationSupply = await inventoryService.addStationSupply(stationId, supplyId, initialLevel);
+    emitInventoryAudit({
+      actionType: 'INVENTORY_STATION_SUPPLY_ADD',
+      actorUserId: req.adminUser?.id || req.userId,
+      targetType: 'station_supply', targetId: (stationSupply as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stationId, supplyId, initialLevel: initialLevel ?? null },
+    });
     res.json(stationSupply);
   } catch (error: any) {
     logger.error('[Inventory Routes] Failed to add station supply', {
@@ -214,27 +238,21 @@ router.get('/station/:stationId/supplies', requireAuth, async (req, res) => {
  * Update station supply level (manual adjustment)
  * Requires admin authentication
  */
-router.patch('/station-supplies/:id/level', requireAdmin, async (req, res) => {
+router.patch('/station-supplies/:id/level', requireAdmin, async (req: any, res) => {
   try {
     const stationSupplyId = parseInt(req.params.id);
-    
-    if (isNaN(stationSupplyId)) {
-      return res.status(400).json({ error: 'Invalid station supply ID' });
-    }
-    
-    const schema = z.object({
-      newLevel: z.number().min(0),
-    });
-    
+    if (isNaN(stationSupplyId)) return res.status(400).json({ error: 'Invalid station supply ID' });
+    const schema = z.object({ newLevel: z.number().min(0) });
     const { newLevel } = schema.parse(req.body);
-    const userId = (req as any).userId || 'system';
-    
-    const updated = await inventoryService.updateStationSupplyLevel(
-      stationSupplyId,
-      newLevel,
-      userId
-    );
-    
+    const userId = req.userId || 'system';
+    const updated = await inventoryService.updateStationSupplyLevel(stationSupplyId, newLevel, userId);
+    emitInventoryAudit({
+      actionType: 'INVENTORY_STATION_SUPPLY_LEVEL_UPDATE',
+      actorUserId: req.adminUser?.id || userId,
+      targetType: 'station_supply', targetId: stationSupplyId,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { newLevel },
+    });
     res.json(updated);
   } catch (error: any) {
     logger.error('[Inventory Routes] Failed to update station supply level', {
@@ -260,29 +278,21 @@ router.patch('/station-supplies/:id/level', requireAdmin, async (req, res) => {
  * Record a refill for a station supply
  * Requires admin authentication
  */
-router.post('/station-supplies/:id/refill', requireAdmin, async (req, res) => {
+router.post('/station-supplies/:id/refill', requireAdmin, async (req: any, res) => {
   try {
     const stationSupplyId = parseInt(req.params.id);
-    
-    if (isNaN(stationSupplyId)) {
-      return res.status(400).json({ error: 'Invalid station supply ID' });
-    }
-    
-    const schema = z.object({
-      amount: z.number().min(1),
-      notes: z.string().max(1000).optional(),
-    });
-    
+    if (isNaN(stationSupplyId)) return res.status(400).json({ error: 'Invalid station supply ID' });
+    const schema = z.object({ amount: z.number().min(1), notes: z.string().max(1000).optional() });
     const { amount, notes } = schema.parse(req.body);
-    const userId = (req as any).userId || 'system';
-    
-    const refill = await inventoryService.refillStationSupply(
-      stationSupplyId,
-      amount,
-      userId,
-      notes
-    );
-    
+    const userId = req.userId || 'system';
+    const refill = await inventoryService.refillStationSupply(stationSupplyId, amount, userId, notes);
+    emitInventoryAudit({
+      actionType: 'INVENTORY_STATION_SUPPLY_REFILL',
+      actorUserId: req.adminUser?.id || userId,
+      targetType: 'station_supply', targetId: stationSupplyId,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { amount, hasNotes: !!notes },
+    });
     res.json(refill);
   } catch (error: any) {
     logger.error('[Inventory Routes] Failed to refill station supply', {
