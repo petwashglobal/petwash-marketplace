@@ -16,6 +16,31 @@ import { requireAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { UserDeviceService, type DeviceTelemetry } from '../services/UserDeviceService';
 import { z } from 'zod';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34s: devices admin audit (revoke only). */
+function emitDevicesAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = Router();
 
@@ -392,7 +417,17 @@ router.post('/admin/:id/revoke', requireAdmin, async (req: Request, res: Respons
     if (!success) {
       return res.status(500).json({ error: 'Failed to revoke device' });
     }
-    
+
+    emitDevicesAdminAudit({
+      actionType: 'DEVICE_ADMIN_REVOKE',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'user_device',
+      targetId: deviceId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { targetUserId: device.userId, reason },
+    });
+
     res.json({
       success: true,
       message: 'Device revoked by admin',
