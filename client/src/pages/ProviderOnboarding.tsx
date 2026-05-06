@@ -51,31 +51,55 @@ export default function ProviderOnboarding() {
   // canonical post-login decider so they end up on the right page
   // for their actual status. Customers and provider-applicants stay
   // here so they can fill the KYC form.
+  //
+  // Issue #148 P1: the post-login decider lives on the SERVER at
+  // /api/auth/post-login — it is NOT a client <Route>. The previous code
+  // tried to navigate to a client path with the same name, which had no
+  // <Route> match in App.tsx and caused this page to render briefly and
+  // then disappear. We now POST to the API and navigate to the returned
+  // nextUrl, mirroring the pattern in SignIn.tsx:160.
   useEffect(() => {
     if (user === null) {
       navigate('/sign-in?redirect=/provider-onboarding');
       return;
     }
-    if (user) {
-      const claims = (user as any)?.reloadUserInfo?.customAttributes
-        ? (() => {
-            try { return JSON.parse((user as any).reloadUserInfo.customAttributes); }
-            catch { return {}; }
-          })()
-        : {};
-      const role: string | undefined = claims?.role;
-      // Roles that should NOT see the provider KYC form. Customer +
-      // already-approved provider stay (the latter is harmless: the
-      // form's apply call will return 409 already-applied).
-      const blockedRoles = new Set([
-        'loyalty', 'staff', 'admin', 'super_admin', 'management', 'franchise_owner',
-      ]);
-      if (role && blockedRoles.has(role)) {
-        // Send them through the canonical decider — it'll know exactly
-        // where they belong (admin dashboard, franchise dashboard, etc.).
-        navigate('/post-login');
+    if (!user) return;
+
+    const claims = (user as any)?.reloadUserInfo?.customAttributes
+      ? (() => {
+          try { return JSON.parse((user as any).reloadUserInfo.customAttributes); }
+          catch { return {}; }
+        })()
+      : {};
+    const role: string | undefined = claims?.role;
+    // Roles that should NOT see the provider KYC form. Customer +
+    // already-approved provider stay (the latter is harmless: the
+    // form's apply call will return 409 already-applied).
+    const blockedRoles = new Set([
+      'loyalty', 'staff', 'admin', 'super_admin', 'management', 'franchise_owner',
+    ]);
+    if (!role || !blockedRoles.has(role)) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl('/api/auth/post-login'), {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await res.json().catch(() => ({} as any));
+        if (cancelled) return;
+        const nextUrl: string =
+          (typeof data?.nextUrl === 'string' && data.nextUrl) ||
+          (typeof data?.redirectTo === 'string' && data.redirectTo) ||
+          '/home';
+        navigate(nextUrl);
+      } catch {
+        if (cancelled) return;
+        navigate('/home');
       }
-    }
+    })();
+    return () => { cancelled = true; };
   }, [user, navigate]);
 
   // Form state
