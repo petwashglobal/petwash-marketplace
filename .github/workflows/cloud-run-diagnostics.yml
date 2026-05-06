@@ -1,0 +1,199 @@
+name: Cloud Run Failure Diagnostics
+
+on:
+  workflow_run:
+    workflows:
+      - "PetWash CI 2026 — Production Deploy"
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: "Cloud Run revision to inspect, e.g. petwash-api-00551-746. Leave empty to inspect latest ready/failed revision."
+        required: false
+        type: string
+      service:
+        description: "Cloud Run service name"
+        required: false
+        default: "petwash-api"
+        type: string
+      region:
+        description: "Cloud Run region"
+        required: false
+        default: "me-west1"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: signinpetwash
+  DEFAULT_REGION: me-west1
+  DEFAULT_SERVICE_NAME: petwash-api
+
+jobs:
+  cloud-run-diagnostics:
+    name: Diagnose Cloud Run revision
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure')
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve target revision
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVICE="${{ inputs.service || env.DEFAULT_SERVICE_NAME }}"
+          REGION="${{ inputs.region || env.DEFAULT_REGION }}"
+          REVISION="${{ inputs.revision || '' }}"
+
+          echo "service=$SERVICE" >> "$GITHUB_OUTPUT"
+          echo "region=$REGION" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$REVISION" ]; then
+            echo "No revision input supplied. Looking for most recent non-ready or latest revision for $SERVICE in $REGION..."
+            REVISION=$(gcloud run revisions list \
+              --project="$PROJECT_ID" \
+              --region="$REGION" \
+              --service="$SERVICE" \
+              --sort-by="~metadata.creationTimestamp" \
+              --limit=1 \
+              --format="value(metadata.name)")
+          fi
+
+          if [ -z "$REVISION" ]; then
+            echo "::error::Could not resolve a Cloud Run revision name."
+            exit 1
+          fi
+
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "Resolved Cloud Run revision: $REVISION"
+
+      - name: Print service summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE="${{ steps.resolve.outputs.service }}"
+          REGION="${{ steps.resolve.outputs.region }}"
+          REVISION="${{ steps.resolve.outputs.revision }}"
+
+          echo "## Cloud Run diagnostics" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Project: $PROJECT_ID" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Region: $REGION" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Service: $SERVICE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Revision: $REVISION" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### Service traffic" >> "$GITHUB_STEP_SUMMARY"
+          gcloud run services describe "$SERVICE" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --format="table(status.traffic.revisionName,status.traffic.percent,status.traffic.tag,status.url)" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Describe revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE="${{ steps.resolve.outputs.service }}"
+          REGION="${{ steps.resolve.outputs.region }}"
+          REVISION="${{ steps.resolve.outputs.revision }}"
+
+          echo "### Revision describe" >> "$GITHUB_STEP_SUMMARY"
+          echo '```yaml' >> "$GITHUB_STEP_SUMMARY"
+          gcloud run revisions describe "$REVISION" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --format="yaml(metadata.name,metadata.creationTimestamp,status.conditions,status.imageDigest,status.logUrl,spec.containers[0].image,spec.containers[0].ports,spec.containers[0].startupProbe,spec.containers[0].env)" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Print revision logs across all severities
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE="${{ steps.resolve.outputs.service }}"
+          REVISION="${{ steps.resolve.outputs.revision }}"
+
+          FILTER="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SERVICE\" AND resource.labels.revision_name=\"$REVISION\""
+
+          echo "### Last 100 logs for revision, all severities" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          gcloud logging read "$FILTER" \
+            --project="$PROJECT_ID" \
+            --limit=100 \
+            --order=desc \
+            --format="value(timestamp,severity,logName,textPayload,jsonPayload.message,protoPayload.status.message)" \
+            | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Print Cloud Run system event logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE="${{ steps.resolve.outputs.service }}"
+          REVISION="${{ steps.resolve.outputs.revision }}"
+
+          FILTER="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SERVICE\" AND resource.labels.revision_name=\"$REVISION\" AND logName=\"projects/$PROJECT_ID/logs/cloudaudit.googleapis.com%2Fsystem_event\""
+
+          echo "### Last 100 Cloud Run system events" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          gcloud logging read "$FILTER" \
+            --project="$PROJECT_ID" \
+            --limit=100 \
+            --order=desc \
+            --format="value(timestamp,severity,protoPayload.methodName,protoPayload.status.message)" \
+            | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test currently routed service URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE="${{ steps.resolve.outputs.service }}"
+          REGION="${{ steps.resolve.outputs.region }}"
+          URL=$(gcloud run services describe "$SERVICE" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --format="value(status.url)")
+
+          echo "### Smoke test currently routed service" >> "$GITHUB_STEP_SUMMARY"
+          echo "Service URL: $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+
+          for PATH in /health /health/strict /api/health; do
+            echo "GET $URL$PATH"
+            HTTP=$(curl -sS -o /tmp/petwash-smoke-body -w "%{http_code}" --max-time 20 "$URL$PATH" || true)
+            echo "HTTP $HTTP"
+            head -c 800 /tmp/petwash-smoke-body || true
+            echo
+            echo "---"
+          done | tee -a "$GITHUB_STEP_SUMMARY"
+
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Operator instructions
+        shell: bash
+        run: |
+          REVISION="${{ steps.resolve.outputs.revision }}"
+          SERVICE="${{ steps.resolve.outputs.service }}"
+          echo "### Operator note" >> "$GITHUB_STEP_SUMMARY"
+          echo "If Cloud Console is used manually, do not filter only severity=ERROR. Use:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          echo "resource.type=\"cloud_run_revision\"" >> "$GITHUB_STEP_SUMMARY"
+          echo "resource.labels.service_name=\"$SERVICE\"" >> "$GITHUB_STEP_SUMMARY"
+          echo "resource.labels.revision_name=\"$REVISION\"" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
