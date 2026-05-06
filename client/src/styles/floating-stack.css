@@ -110,7 +110,9 @@
 }
 @media (max-width: 767px) {
   :root {
-    --pw-bottom-nav-height: 56px;
+    /* PR-W55: 56px (h-14) → 64px (h-16) for nav breathing room.
+       FloatingStack base offset now clears the taller bar. */
+    --pw-bottom-nav-height: 64px;
   }
 }
 

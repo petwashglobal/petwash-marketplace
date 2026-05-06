@@ -109,7 +109,13 @@ export function MobileBottomNav() {
         paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
       }}
     >
-      <ul className="flex items-stretch h-14">
+      {/* PR-W55: bumped from h-14 (56px) → h-16 (64px) for breathing
+          room, gap-0.5 → gap-1 between icon and label, +px-1 so labels
+          never crowd the edges on iPhone SE / 320px viewports. The
+          paired `--pw-bottom-nav-height` CSS variable (used by the
+          FloatingStack base offset) is bumped to 64px in
+          floating-stack.css to match. */}
+      <ul className="flex items-stretch h-16">
         {NAV_ITEMS.map(({ path, labelHe, labelEn, Icon }) => {
           // Account tab: resolve by role instead of hard-routing to /my-account
           // (a CEO / admin / provider should never land on the customer page).
@@ -135,7 +141,7 @@ export function MobileBottomNav() {
               aria-current={isActive ? 'page' : undefined}
               aria-busy={isAccountTab && isResolvingAccount ? true : undefined}
               onClick={isAccountTab ? handleAccountTap : undefined}
-              className="flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors"
+              className="flex flex-col items-center justify-center w-full h-full gap-1 px-1 transition-colors"
             >
               <Icon
                 size={22}
@@ -143,7 +149,7 @@ export function MobileBottomNav() {
                 style={{ color }}
               />
               <span
-                className="text-[10px] font-medium leading-none"
+                className="text-[11px] font-medium leading-none truncate max-w-full"
                 style={{ color }}
               >
                 {label}

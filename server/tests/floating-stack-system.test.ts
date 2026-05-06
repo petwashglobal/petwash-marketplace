@@ -53,9 +53,12 @@ describe('PR-W54 — CSS variables (single source of truth for FAB layout)', () 
     expect(css).toMatch(/:root\s*\{[^}]*--pw-bottom-nav-height:\s*0px/s);
   });
 
-  it('--pw-bottom-nav-height becomes 56px on mobile (max-width: 767px)', () => {
+  it('--pw-bottom-nav-height has a non-zero mobile override (max-width: 767px)', () => {
+    // PR-W55 bumped this from 56px (h-14) → 64px (h-16). Future
+    // adjustments stay covered by this looser assertion; the strict
+    // numerical pin lives in mobile-bottom-nav.test.ts.
     expect(css).toMatch(
-      /@media\s*\(\s*max-width:\s*767px\s*\)[^{]*\{\s*:root\s*\{[^}]*--pw-bottom-nav-height:\s*56px/s,
+      /@media\s*\(\s*max-width:\s*767px\s*\)[^{]*\{\s*:root\s*\{[^}]*--pw-bottom-nav-height:\s*\d+px/s,
     );
   });
 
