@@ -46,6 +46,31 @@ import { requireAdmin } from "../adminAuth";
 import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
 import { ZodError } from "zod";
+import { logAuditEvent } from "../middleware/auditLog";
+
+/** PR-W34k: enterprise admin audit. Fire-and-forget. */
+function emitEnterpriseAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = Router();
 
@@ -63,17 +88,18 @@ router.get("/countries", requireAdmin, async (req, res) => {
 });
 
 // Create country
-router.post("/countries", requireAdmin, async (req, res) => {
+router.post("/countries", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertCountrySchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newCountry] = await db.insert(countries).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_COUNTRY_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'country',
+      targetId: (newCountry as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { code: (newCountry as any)?.code, name: (newCountry as any)?.name },
+    });
     res.json(newCountry);
   } catch (error) {
     logger.error("Error creating country:", error);
@@ -101,17 +127,18 @@ router.get("/territories", requireAdmin, async (req, res) => {
 });
 
 // Create territory
-router.post("/territories", requireAdmin, async (req, res) => {
+router.post("/territories", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertFranchiseTerritorySchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newTerritory] = await db.insert(franchiseTerritories).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_TERRITORY_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'territory',
+      targetId: (newTerritory as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { name: (newTerritory as any)?.name, countryId: (newTerritory as any)?.countryId },
+    });
     res.json(newTerritory);
   } catch (error) {
     logger.error("Error creating territory:", error);
@@ -162,17 +189,18 @@ router.get("/franchisees/:id", requireAdmin, async (req, res) => {
 });
 
 // Create franchisee
-router.post("/franchisees", requireAdmin, async (req, res) => {
+router.post("/franchisees", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertFranchiseeSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newFranchisee] = await db.insert(franchisees).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_FRANCHISEE_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'franchisee',
+      targetId: (newFranchisee as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { name: (newFranchisee as any)?.businessName, countryId: (newFranchisee as any)?.countryId },
+    });
     res.json(newFranchisee);
   } catch (error) {
     logger.error("Error creating franchisee:", error);
@@ -181,26 +209,19 @@ router.post("/franchisees", requireAdmin, async (req, res) => {
 });
 
 // Update franchisee
-router.put("/franchisees/:id", requireAdmin, async (req, res) => {
+router.put("/franchisees/:id", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertFranchiseeSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
-    const [updated] = await db
-      .update(franchisees)
-      .set({ ...validation.data, updatedAt: new Date() })
-      .where(eq(franchisees.id, Number(req.params.id)))
-      .returning();
-    
-    if (!updated) {
-      return res.status(404).json({ error: "Franchisee not found" });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
+    const id = Number(req.params.id);
+    const [updated] = await db.update(franchisees).set({ ...validation.data, updatedAt: new Date() }).where(eq(franchisees.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: "Franchisee not found" });
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_FRANCHISEE_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'franchisee', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validation.data) },
+    });
     res.json(updated);
   } catch (error) {
     logger.error("Error updating franchisee:", error);
@@ -280,17 +301,18 @@ router.get("/stations/:id", requireAdmin, async (req, res) => {
 });
 
 // Create station
-router.post("/stations", requireAdmin, async (req, res) => {
+router.post("/stations", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertPetWashStationSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newStation] = await db.insert(petWashStations).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_STATION_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'station',
+      targetId: (newStation as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stationCode: (newStation as any)?.stationCode, franchiseeId: (newStation as any)?.franchiseeId },
+    });
     res.json(newStation);
   } catch (error) {
     logger.error("Error creating station:", error);
@@ -299,26 +321,19 @@ router.post("/stations", requireAdmin, async (req, res) => {
 });
 
 // Update station
-router.put("/stations/:id", requireAdmin, async (req, res) => {
+router.put("/stations/:id", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertPetWashStationSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
-    const [updated] = await db
-      .update(petWashStations)
-      .set({ ...validation.data, updatedAt: new Date() })
-      .where(eq(petWashStations.id, Number(req.params.id)))
-      .returning();
-    
-    if (!updated) {
-      return res.status(404).json({ error: "Station not found" });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
+    const id = Number(req.params.id);
+    const [updated] = await db.update(petWashStations).set({ ...validation.data, updatedAt: new Date() }).where(eq(petWashStations.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: "Station not found" });
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_STATION_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'station', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validation.data) },
+    });
     res.json(updated);
   } catch (error) {
     logger.error("Error updating station:", error);
@@ -344,20 +359,19 @@ router.get("/stations/:id/bills", requireAdmin, async (req, res) => {
 });
 
 // Create bill
-router.post("/stations/:id/bills", requireAdmin, async (req, res) => {
+router.post("/stations/:id/bills", requireAdmin, async (req: any, res) => {
   try {
-    const validation = insertStationBillSchema.safeParse({
-      ...req.body,
-      stationId: Number(req.params.id)
-    });
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    const stationId = Number(req.params.id);
+    const validation = insertStationBillSchema.safeParse({ ...req.body, stationId });
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newBill] = await db.insert(stationBills).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_BILL_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'station_bill',
+      targetId: (newBill as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stationId, billType: (newBill as any)?.billType, amount: (newBill as any)?.amount, dueDate: (newBill as any)?.dueDate },
+    });
     res.json(newBill);
   } catch (error) {
     logger.error("Error creating bill:", error);
@@ -366,22 +380,18 @@ router.post("/stations/:id/bills", requireAdmin, async (req, res) => {
 });
 
 // Update bill
-router.put("/bills/:id", requireAdmin, async (req, res) => {
+router.put("/bills/:id", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertStationBillSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
-    const [updated] = await db
-      .update(stationBills)
-      .set({ ...validation.data, updatedAt: new Date() })
-      .where(eq(stationBills.id, Number(req.params.id)))
-      .returning();
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
+    const id = Number(req.params.id);
+    const [updated] = await db.update(stationBills).set({ ...validation.data, updatedAt: new Date() }).where(eq(stationBills.id, id)).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_BILL_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'station_bill', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validation.data) },
+    });
     res.json(updated);
   } catch (error) {
     logger.error("Error updating bill:", error);
@@ -405,20 +415,19 @@ router.get("/stations/:id/assets", requireAdmin, async (req, res) => {
 });
 
 // Create asset
-router.post("/stations/:id/assets", requireAdmin, async (req, res) => {
+router.post("/stations/:id/assets", requireAdmin, async (req: any, res) => {
   try {
-    const validation = insertStationAssetSchema.safeParse({
-      ...req.body,
-      stationId: Number(req.params.id)
-    });
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    const stationId = Number(req.params.id);
+    const validation = insertStationAssetSchema.safeParse({ ...req.body, stationId });
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newAsset] = await db.insert(stationAssets).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_ASSET_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'station_asset',
+      targetId: (newAsset as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stationId, assetType: (newAsset as any)?.assetType },
+    });
     res.json(newAsset);
   } catch (error) {
     logger.error("Error creating asset:", error);
@@ -427,22 +436,18 @@ router.post("/stations/:id/assets", requireAdmin, async (req, res) => {
 });
 
 // Update asset
-router.put("/assets/:id", requireAdmin, async (req, res) => {
+router.put("/assets/:id", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertStationAssetSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
-    const [updated] = await db
-      .update(stationAssets)
-      .set({ ...validation.data, updatedAt: new Date() })
-      .where(eq(stationAssets.id, Number(req.params.id)))
-      .returning();
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
+    const id = Number(req.params.id);
+    const [updated] = await db.update(stationAssets).set({ ...validation.data, updatedAt: new Date() }).where(eq(stationAssets.id, id)).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_ASSET_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'station_asset', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validation.data) },
+    });
     res.json(updated);
   } catch (error) {
     logger.error("Error updating asset:", error);
@@ -477,17 +482,18 @@ router.get("/spare-parts", requireAdmin, async (req, res) => {
 });
 
 // Create spare part
-router.post("/spare-parts", requireAdmin, async (req, res) => {
+router.post("/spare-parts", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertSparePartSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newPart] = await db.insert(spareParts).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_SPAREPART_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'spare_part',
+      targetId: (newPart as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { partNumber: (newPart as any)?.partNumber, category: (newPart as any)?.category },
+    });
     res.json(newPart);
   } catch (error) {
     logger.error("Error creating spare part:", error);
@@ -496,23 +502,18 @@ router.post("/spare-parts", requireAdmin, async (req, res) => {
 });
 
 // Update spare part
-router.put("/spare-parts/:id", requireAdmin, async (req, res) => {
+router.put("/spare-parts/:id", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertSparePartSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
-    const data = validation.data;
-    const [updated] = await db
-      .update(spareParts)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(spareParts.id, Number(req.params.id)))
-      .returning();
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
+    const id = Number(req.params.id);
+    const [updated] = await db.update(spareParts).set({ ...validation.data, updatedAt: new Date() }).where(eq(spareParts.id, id)).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_SPAREPART_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'spare_part', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validation.data) },
+    });
     res.json(updated);
   } catch (error) {
     logger.error("Error updating spare part:", error);
@@ -570,17 +571,18 @@ router.get("/work-orders", requireAdmin, async (req, res) => {
 });
 
 // Create work order
-router.post("/work-orders", requireAdmin, async (req, res) => {
+router.post("/work-orders", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertMaintenanceWorkOrderSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
     const [newOrder] = await db.insert(maintenanceWorkOrders).values(validation.data).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_WORKORDER_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'work_order',
+      targetId: (newOrder as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stationId: (newOrder as any)?.stationId, priority: (newOrder as any)?.priority },
+    });
     res.json(newOrder);
   } catch (error) {
     logger.error("Error creating work order:", error);
@@ -589,22 +591,18 @@ router.post("/work-orders", requireAdmin, async (req, res) => {
 });
 
 // Update work order
-router.put("/work-orders/:id", requireAdmin, async (req, res) => {
+router.put("/work-orders/:id", requireAdmin, async (req: any, res) => {
   try {
     const validation = insertMaintenanceWorkOrderSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validation.error.errors 
-      });
-    }
-    
-    const [updated] = await db
-      .update(maintenanceWorkOrders)
-      .set({ ...validation.data, updatedAt: new Date() })
-      .where(eq(maintenanceWorkOrders.id, Number(req.params.id)))
-      .returning();
-    
+    if (!validation.success) return res.status(400).json({ error: "Validation failed", details: validation.error.errors });
+    const id = Number(req.params.id);
+    const [updated] = await db.update(maintenanceWorkOrders).set({ ...validation.data, updatedAt: new Date() }).where(eq(maintenanceWorkOrders.id, id)).returning();
+    emitEnterpriseAudit({
+      actionType: 'ENTERPRISE_WORKORDER_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'work_order', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(validation.data) },
+    });
     res.json(updated);
   } catch (error) {
     logger.error("Error updating work order:", error);
