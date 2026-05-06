@@ -11,6 +11,19 @@ import {
   treasuryWarnings,
   forecastVsActual,
 } from '../lib/treasury-forecast';
+import { runWithIdempotency } from '../lib/idempotency-helper';
+
+/**
+ * PR-W46: shared 409 IN_FLIGHT body. Treasury endpoints use the same
+ * walletIdempotencyKeys table the wallet endpoints do; the only
+ * difference is the `endpoint` namespace prefix (treasury:*).
+ */
+function inFlightResponse(res: Response, op: string) {
+  return res.status(409).json({
+    error: `${op} is already being processed.`,
+    errorCode: 'IDEMPOTENCY_IN_FLIGHT',
+  });
+}
 
 const router = Router();
 
@@ -115,47 +128,66 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
       return res.status(400).json({ error: 'settlement_ids required' });
     }
 
-    // Sum up the settlements
-    const ids = settlement_ids.map(Number).filter(Boolean);
-    const idList = sql.join(ids.map((id: number) => sql`${id}`), sql`, `);
-    const settlements = await db.execute(sql`
-      SELECT id, station_amount_cents, held_in_reserve, payout_hold_reason
-      FROM station_settlements
-      WHERE id IN (${idList})
-    `);
+    // PR-W46: replay-safe via walletIdempotencyKeys.
+    // Body fingerprint includes the deterministic settlement set + the
+    // owner scope so the same request → same cached batch row instead
+    // of two different BATCH-<timestamp> identifiers.
+    const ids = settlement_ids.map(Number).filter(Boolean).sort((a: number, b: number) => a - b);
+    const result = await runWithIdempotency({
+      endpoint: 'treasury:batches:create',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ owner_scope, owner_id, ids }) =>
+        `${owner_scope}:${owner_id ?? ''}:${ids.join(',')}`,
+      body: { owner_scope, owner_id, ids },
+      logContext: { ownerScope: owner_scope },
+      operation: async () => {
+        const idList = sql.join(ids.map((id: number) => sql`${id}`), sql`, `);
+        const settlements = await db.execute(sql`
+          SELECT id, station_amount_cents, held_in_reserve, payout_hold_reason
+          FROM station_settlements
+          WHERE id IN (${idList})
+        `);
 
-    const blocked = (settlements.rows as any[]).filter(s => s.held_in_reserve || s.payout_hold_reason);
-    if (blocked.length) {
-      return res.status(400).json({
-        error: 'Cannot batch settlements with active holds or reserves',
-        blocked: blocked.map(b => ({ id: b.id, reason: b.payout_hold_reason ?? 'held_in_reserve' })),
-      });
-    }
+        const blocked = (settlements.rows as any[]).filter(s => s.held_in_reserve || s.payout_hold_reason);
+        if (blocked.length) {
+          throw Object.assign(new Error('Cannot batch settlements with active holds or reserves'), {
+            statusCode: 400,
+            blocked: blocked.map(b => ({ id: b.id, reason: b.payout_hold_reason ?? 'held_in_reserve' })),
+          });
+        }
 
-    const total = (settlements.rows as any[]).reduce((sum, s) => sum + (s.station_amount_cents ?? 0), 0);
-    const batchRef = `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+        const total = (settlements.rows as any[]).reduce((sum, s) => sum + (s.station_amount_cents ?? 0), 0);
+        const batchRef = `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
-    const user = (req as any).firebaseUser;
-    const createdByUid = user?.uid ?? user?.email ?? 'admin';
-    const batchRaw = await db.execute(sql`
-      INSERT INTO payout_batches
-        (batch_id, owner_scope, owner_id, total_net_cents, currency, status, notes, created_by_uid, total_providers)
-      VALUES
-        (${batchRef}, ${owner_scope}, ${owner_id ?? null}, ${total}, 'ILS', 'pending', ${notes ?? ''}, ${createdByUid}, ${ids.length})
-      RETURNING *
-    `);
-    const batch = batchRaw.rows[0] as any;
+        const user = (req as any).firebaseUser;
+        const createdByUid = user?.uid ?? user?.email ?? 'admin';
+        const batchRaw = await db.execute(sql`
+          INSERT INTO payout_batches
+            (batch_id, owner_scope, owner_id, total_net_cents, currency, status, notes, created_by_uid, total_providers)
+          VALUES
+            (${batchRef}, ${owner_scope}, ${owner_id ?? null}, ${total}, 'ILS', 'pending', ${notes ?? ''}, ${createdByUid}, ${ids.length})
+          RETURNING *
+        `);
+        const batch = batchRaw.rows[0] as any;
 
-    // Insert batch items
-    for (const s of settlements.rows as any[]) {
-      await db.execute(sql`
-        INSERT INTO payout_batch_items (batch_id, settlement_id, amount_cents)
-        VALUES (${batch.id}, ${s.id}, ${s.station_amount_cents})
-      `);
-    }
+        // Insert batch items
+        for (const s of settlements.rows as any[]) {
+          await db.execute(sql`
+            INSERT INTO payout_batch_items (batch_id, settlement_id, amount_cents)
+            VALUES (${batch.id}, ${s.id}, ${s.station_amount_cents})
+          `);
+        }
 
-    return res.status(201).json({ batch, items: settlements.rows.length });
+        return { batch, items: settlements.rows.length };
+      },
+    });
+
+    if (result.kind === 'in_flight') return inFlightResponse(res, 'Batch create');
+    return res.status(201).json(result.response);
   } catch (err: any) {
+    if (err?.statusCode === 400) {
+      return res.status(400).json({ error: err.message, blocked: err.blocked });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
@@ -164,19 +196,33 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
 router.post('/batches/:id/submit', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const result = await db.execute(sql`
-      UPDATE payout_batches SET status = 'submitted', submitted_at = NOW()
-      WHERE id = ${id} AND status = 'approved'
-      RETURNING *
-    `);
-    if (!result.rows[0]) {
-      return res.status(400).json({ error: 'Batch not found or not in approved state' });
-    }
-    await db.execute(sql`
-      UPDATE payout_batch_items SET status = 'submitted' WHERE batch_id = ${id}
-    `);
-    return res.json({ batch: result.rows[0] });
+
+    const result = await runWithIdempotency({
+      endpoint: 'treasury:batches:submit',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ id }) => String(id),
+      body: { id },
+      logContext: { batchId: id },
+      operation: async () => {
+        const r = await db.execute(sql`
+          UPDATE payout_batches SET status = 'submitted', submitted_at = NOW()
+          WHERE id = ${id} AND status = 'approved'
+          RETURNING *
+        `);
+        if (!r.rows[0]) {
+          throw Object.assign(new Error('Batch not found or not in approved state'), { statusCode: 400 });
+        }
+        await db.execute(sql`
+          UPDATE payout_batch_items SET status = 'submitted' WHERE batch_id = ${id}
+        `);
+        return { batch: r.rows[0] };
+      },
+    });
+
+    if (result.kind === 'in_flight') return inFlightResponse(res, 'Submit batch');
+    return res.json(result.response);
   } catch (err: any) {
+    if (err?.statusCode === 400) return res.status(400).json({ error: err.message });
     return res.status(500).json({ error: err.message });
   }
 });
@@ -185,21 +231,36 @@ router.post('/batches/:id/submit', requireTreasuryAdmin, async (req: Request, re
 router.post('/batches/:id/mark-paid', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const result = await db.execute(sql`
-      UPDATE payout_batches SET status = 'paid', paid_at = NOW()
-      WHERE id = ${id} AND status = 'submitted'
-      RETURNING *
-    `);
-    if (!result.rows[0]) {
-      return res.status(400).json({ error: 'Batch not found or not in submitted state' });
-    }
-    await db.execute(sql`
-      UPDATE payout_batch_items SET status = 'paid' WHERE batch_id = ${id}
-    `);
-    // Trigger reconciliation immediately
-    try { await reconcileBatch(id); } catch { /* reconciliation runs async — non-blocking */ }
-    return res.json({ batch: result.rows[0] });
+
+    const result = await runWithIdempotency({
+      endpoint: 'treasury:batches:mark-paid',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ id }) => String(id),
+      body: { id },
+      logContext: { batchId: id },
+      operation: async () => {
+        const r = await db.execute(sql`
+          UPDATE payout_batches SET status = 'paid', paid_at = NOW()
+          WHERE id = ${id} AND status = 'submitted'
+          RETURNING *
+        `);
+        if (!r.rows[0]) {
+          throw Object.assign(new Error('Batch not found or not in submitted state'), { statusCode: 400 });
+        }
+        await db.execute(sql`
+          UPDATE payout_batch_items SET status = 'paid' WHERE batch_id = ${id}
+        `);
+        // Trigger reconciliation immediately. Failure is non-blocking — the
+        // sweep cron runs hourly anyway.
+        try { await reconcileBatch(id); } catch { /* non-blocking */ }
+        return { batch: r.rows[0] };
+      },
+    });
+
+    if (result.kind === 'in_flight') return inFlightResponse(res, 'Mark paid');
+    return res.json(result.response);
   } catch (err: any) {
+    if (err?.statusCode === 400) return res.status(400).json({ error: err.message });
     return res.status(500).json({ error: err.message });
   }
 });
@@ -227,9 +288,24 @@ router.post('/import-bank-transactions', requireTreasuryAdmin, async (req: Reque
       return res.status(400).json({ error: 'transactions array required' });
     }
 
-    let imported = 0, skipped = 0;
+    // PR-W46: replay-safe. Body fingerprint is the sorted list of
+    // bank_refs + their amounts so an admin double-click doesn't
+    // duplicate-import. The per-row dedup-by-reference_number INSIDE
+    // the loop is belt-and-braces (existed before this PR).
+    const fingerprint = transactions
+      .map(t => `${t.bank_ref ?? '∅'}:${t.amount_cents}:${t.direction}`)
+      .sort()
+      .join('|');
 
-    for (const tx of transactions) {
+    const result = await runWithIdempotency({
+      endpoint: 'treasury:import-bank-transactions',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: () => fingerprint,
+      body: {},
+      logContext: { txCount: transactions.length },
+      operation: async () => {
+        let imported = 0, skipped = 0;
+        for (const tx of transactions) {
       // Map to existing bank_transactions schema
       const amountILS = tx.amount_cents / 100;
       const debit = tx.direction === 'outgoing' ? amountILS : null;
@@ -270,9 +346,13 @@ router.post('/import-bank-transactions', requireTreasuryAdmin, async (req: Reque
            'pending', ${'IMPORT-' + Date.now()}, NOW())
       `);
       imported++;
-    }
+        }
+        return { imported, skipped, total: transactions.length };
+      },
+    });
 
-    return res.json({ imported, skipped, total: transactions.length });
+    if (result.kind === 'in_flight') return inFlightResponse(res, 'Bank import');
+    return res.json(result.response);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -318,8 +398,18 @@ router.get('/bank-transactions', async (req: Request, res: Response) => {
 router.post('/reconcile/:batchId', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const batchId = parseInt(req.params.batchId, 10);
-    const result = await reconcileBatch(batchId);
-    return res.json(result);
+
+    const idem = await runWithIdempotency({
+      endpoint: 'treasury:reconcile:batch',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ batchId }) => String(batchId),
+      body: { batchId },
+      logContext: { batchId },
+      operation: async () => await reconcileBatch(batchId),
+    });
+
+    if (idem.kind === 'in_flight') return inFlightResponse(res, 'Reconcile batch');
+    return res.json(idem.response);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -328,8 +418,22 @@ router.post('/reconcile/:batchId', requireTreasuryAdmin, async (req: Request, re
 // POST /api/treasury/reconcile-sweep  — manual trigger for sweep
 router.post('/reconcile-sweep', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
-    const result = await runReconciliationSweep();
-    return res.json(result);
+    // PR-W46: replay-safe within a 60s window. The sweep is meant to
+    // be idempotent at the DB level (it skips already-matched rows),
+    // but caching the response gives ops a deterministic answer when
+    // they retry due to network blip — instead of a 500 from a half-
+    // executed sweep.
+    const idem = await runWithIdempotency({
+      endpoint: 'treasury:reconcile:sweep',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: () => 'sweep:' + Math.floor(Date.now() / 60_000), // 1-min bucket
+      body: {},
+      ttlMs: 5 * 60 * 1000, // short — operator may legitimately re-sweep after 5 min
+      operation: async () => await runReconciliationSweep(),
+    });
+
+    if (idem.kind === 'in_flight') return inFlightResponse(res, 'Reconcile sweep');
+    return res.json(idem.response);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -377,28 +481,44 @@ router.get('/failures', async (req: Request, res: Response) => {
 router.post('/failures/:id/retry', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const failure = await db.execute(sql`
-      SELECT pf.*, pb.status AS batch_status
-      FROM payout_failures pf
-      LEFT JOIN payout_batches pb ON pb.id = pf.batch_id
-      WHERE pf.id = ${id}
-    `);
-    const f = failure.rows[0] as any;
-    if (!f) return res.status(404).json({ error: 'Failure not found' });
 
-    // Reset batch to submitted for retry
-    await db.execute(sql`
-      UPDATE payout_batches SET status = 'submitted', failed_at = NULL WHERE id = ${f.batch_id}
-    `);
-    await db.execute(sql`
-      UPDATE payout_failures SET retry_count = retry_count + 1, last_retry_at = NOW() WHERE id = ${id}
-    `);
-    await db.execute(sql`
-      DELETE FROM reconciliation_results WHERE batch_id = ${f.batch_id}
-    `);
+    const idem = await runWithIdempotency({
+      endpoint: 'treasury:failures:retry',
+      headerKey: req.headers['idempotency-key'],
+      // Include retry_count so a SECOND legitimate retry re-runs.
+      // First-time fingerprint = id:0; after retry it becomes id:1; etc.
+      bodyFingerprint: ({ id }) => `${id}:${Date.now()}`,
+      body: { id },
+      logContext: { failureId: id },
+      ttlMs: 30 * 1000, // 30s replay window — short, retries are intentional
+      operation: async () => {
+        const failure = await db.execute(sql`
+          SELECT pf.*, pb.status AS batch_status
+          FROM payout_failures pf
+          LEFT JOIN payout_batches pb ON pb.id = pf.batch_id
+          WHERE pf.id = ${id}
+        `);
+        const f = failure.rows[0] as any;
+        if (!f) {
+          throw Object.assign(new Error('Failure not found'), { statusCode: 404 });
+        }
+        await db.execute(sql`
+          UPDATE payout_batches SET status = 'submitted', failed_at = NULL WHERE id = ${f.batch_id}
+        `);
+        await db.execute(sql`
+          UPDATE payout_failures SET retry_count = retry_count + 1, last_retry_at = NOW() WHERE id = ${id}
+        `);
+        await db.execute(sql`
+          DELETE FROM reconciliation_results WHERE batch_id = ${f.batch_id}
+        `);
+        return { ok: true, message: 'Batch reset to submitted — run reconciliation again' };
+      },
+    });
 
-    return res.json({ ok: true, message: 'Batch reset to submitted — run reconciliation again' });
+    if (idem.kind === 'in_flight') return inFlightResponse(res, 'Failure retry');
+    return res.json(idem.response);
   } catch (err: any) {
+    if (err?.statusCode === 404) return res.status(404).json({ error: err.message });
     return res.status(500).json({ error: err.message });
   }
 });
@@ -407,8 +527,21 @@ router.post('/failures/:id/retry', requireTreasuryAdmin, async (req: Request, re
 router.post('/failures/:id/resolve', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    await db.execute(sql`UPDATE payout_failures SET resolved = true WHERE id = ${id}`);
-    return res.json({ ok: true });
+
+    const idem = await runWithIdempotency({
+      endpoint: 'treasury:failures:resolve',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ id }) => String(id),
+      body: { id },
+      logContext: { failureId: id },
+      operation: async () => {
+        await db.execute(sql`UPDATE payout_failures SET resolved = true WHERE id = ${id}`);
+        return { ok: true };
+      },
+    });
+
+    if (idem.kind === 'in_flight') return inFlightResponse(res, 'Failure resolve');
+    return res.json(idem.response);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
