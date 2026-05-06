@@ -1,9 +1,9 @@
 /**
  * Tests for fetchWithRetry — covers the cold-start 503 retry budget.
  *
- * P0 production blocker fix (PR-C). The server gates /api/* with a
+ * P0 production blocker fix. The server gates /api/* with a
  * startup-readiness middleware that returns 503 until routes finish
- * mounting on a Cloud-Run cold start. The client must absorb this
+ * mounting on a Cloud Run cold start. The client must absorb this
  * with bounded retries instead of surfacing the raw 503 immediately.
  */
 
@@ -23,13 +23,13 @@ describe('fetchWithRetry', () => {
     vi.useRealTimers();
   });
 
-  it('retry budget is 3 attempts with exponential backoff', () => {
-    expect(FETCH_RETRY_503_DELAYS_MS).toEqual([800, 1600, 3200]);
+  it('retry budget is 5 attempts with bounded exponential backoff', () => {
+    expect(FETCH_RETRY_503_DELAYS_MS).toEqual([800, 1600, 3200, 6400, 10000]);
   });
 
-  it('total retry budget under 6 seconds', () => {
+  it('total retry budget is under 25 seconds', () => {
     const total = FETCH_RETRY_503_DELAYS_MS.reduce((s, d) => s + d, 0);
-    expect(total).toBeLessThanOrEqual(6000);
+    expect(total).toBeLessThanOrEqual(25000);
   });
 
   it('returns immediately on a 200 response (no retries)', async () => {
@@ -56,7 +56,7 @@ describe('fetchWithRetry', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('retries up to 3 times on persistent 503 then surfaces the 503', async () => {
+  it('retries up to 5 times on persistent 503 then surfaces the 503', async () => {
     const fetchSpy = vi
       .fn()
       .mockResolvedValue(new Response('starting', { status: 503 }));
@@ -70,7 +70,7 @@ describe('fetchWithRetry', () => {
     const res = await promise;
 
     expect(res.status).toBe(503);
-    // 1 initial + 3 retries
+    // 1 initial + configured retries
     expect(fetchSpy).toHaveBeenCalledTimes(1 + FETCH_RETRY_503_DELAYS_MS.length);
   });
 
