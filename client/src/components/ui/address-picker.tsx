@@ -267,7 +267,6 @@ export function AddressPicker({
             onPlaceSelected={handlePlaceSelected}
             placeholder={placeholder ?? (isHebrew ? "חפש כתובת..." : "Search address...")}
             country={["IL"]}
-            types={["address"]}
           />
         </div>
       ) : (
