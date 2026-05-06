@@ -14,6 +14,36 @@ import { kycMemoryProcessor, kycAnomalyDetector } from '../services/KYC2026';
 import sgMail, { isSendGridConfigured } from '../lib/sendgrid';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/**
+ * PR-W34g: every admin/support decision on a provider application
+ * writes a hash-chained audit_events row. Existing writeProviderAudit
+ * domain log is preserved alongside the canonical log. Fire-and-forget.
+ */
+function emitProviderOnboardingAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  applicationId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: 'provider_application',
+      targetId: params.applicationId != null ? String(params.applicationId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[ProviderOnboarding] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 import { resubmitLimiter } from '../middleware/rateLimiter';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import multer from 'multer';
@@ -327,11 +357,28 @@ router.post('/admin/invite-codes/generate', requireAdmin, async (req: Request, r
 
     logger.info(`[Provider Onboarding] Invite code generated: ${inviteCode} by admin ${adminUid}`);
 
-    res.json({ 
-      success: true, 
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_INVITE_CODE_GENERATE',
+      actorUserId: adminUid,
+      applicationId: code.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        providerType,
+        maxUses: maxUses || 1,
+        campaignName: campaignName || null,
+        // intentionally omitting full inviteCode — store only last-4 to avoid
+        // leaking redeemable secrets into the audit log.
+        codeLast4: inviteCode.slice(-4),
+        expiresAt: expiresAt ?? null,
+      },
+    });
+
+    res.json({
+      success: true,
       inviteCode: code.inviteCode,
       providerType: code.providerType,
-      expiresAt: code.expiresAt 
+      expiresAt: code.expiresAt
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Generate invite code error', error);
@@ -1588,8 +1635,24 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
 
     logger.info(`[Provider Onboarding] Application approved: ${applicationId} by admin ${adminUid}`);
 
-    res.json({ 
-      success: true, 
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_APPLICATION_APPROVE',
+      actorUserId: adminUid,
+      applicationId: (application as any).id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        applicationCode: applicationId,
+        providerId,
+        providerType: application.providerType,
+        priorStatus: application.status,
+        userId: application.userId,
+        hasInternalNotes: !!internalNotes,
+      },
+    });
+
+    res.json({
+      success: true,
       message: 'Application approved successfully',
       providerId
     });
@@ -1681,8 +1744,22 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
 
     logger.info(`[Provider Onboarding] Application rejected: ${applicationId} by admin ${adminUid}`);
 
-    res.json({ 
-      success: true, 
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_APPLICATION_REJECT',
+      actorUserId: adminUid,
+      applicationId: (application as any).id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        applicationCode: applicationId,
+        rejectionReason,
+        priorStatus: application.status,
+        providerType: application.providerType,
+      },
+    });
+
+    res.json({
+      success: true,
       message: 'Application rejected'
     });
   } catch (error: any) {
@@ -1772,6 +1849,20 @@ router.post('/admin/applications/:numericId/promote-trainee', requireAdmin, asyn
       providerVisible: false,
     }).catch(() => {});
 
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_TRAINEE_PROMOTE',
+      actorUserId: adminUid,
+      applicationId: numericId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        applicationCode: app.application_id,
+        providerId: app.approved_as_provider_id,
+        userId: app.user_id,
+        promotedBy: adminEmail,
+      },
+    });
+
     res.json({ success: true, message: 'Trainee promoted to full provider' });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] promote-trainee error', { error: err.message });
@@ -1788,6 +1879,14 @@ router.post('/admin/applications/:numericId/assign', requireSupport, async (req:
     if (!assignedTo) return res.status(400).json({ error: 'assignedTo required' });
     await (await import('../services/providerQueue')).assignQueueItem({ applicationId, assignedTo });
     writeProviderAudit({ applicationId, eventType: 'queue_assigned', actorUserId: adminUid, actorRole: 'admin', payload: { assignedTo } }).catch(() => {});
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_APPLICATION_ASSIGN',
+      actorUserId: adminUid,
+      applicationId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { assignedTo },
+    });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1877,6 +1976,23 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
       }).catch(() => {});
     }
 
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_RESUBMIT_REQUEST',
+      actorUserId: adminUid,
+      applicationId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        applicationCode: app.application_id,
+        reasons,
+        resubmissionCount: (app.resubmission_count || 0) + 1,
+        expiresAt: expiresAt.toISOString(),
+        // intentionally omitting full token; only first 8 chars (also in
+        // writeProviderAudit, also non-redeemable on its own)
+        tokenPrefix: token.slice(0, 8),
+      },
+    });
+
     res.json({ success: true, expiresAt: expiresAt.toISOString() });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] Resubmit request error', { error: err.message });
@@ -1948,6 +2064,21 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
     }
 
     writeProviderAudit({ applicationId, eventType: 'message_sent', actorUserId: adminUid, actorRole: 'admin', payload: { direction, channel, providerVisible } }).catch(() => {});
+    emitProviderOnboardingAudit({
+      actionType: 'PROVIDER_ADMIN_MESSAGE',
+      actorUserId: adminUid,
+      applicationId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        direction,
+        channel,
+        providerVisible: !!providerVisible,
+        bodyLength: body?.length ?? 0,
+        // intentionally NOT logging the message body itself — could contain
+        // sensitive applicant info; the message log table has the body
+      },
+    });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
