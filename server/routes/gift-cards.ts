@@ -4,6 +4,7 @@ import { eVouchers, eVoucherRedemptions } from '@shared/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { walletService } from '../services/WalletService';
+import { runWithIdempotency } from '../lib/idempotency-helper';
 import { QRCodeService } from '../qrCode';
 import { EmailService } from '../emailService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
@@ -1023,69 +1024,109 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
 
     const { voucherId } = req.params;
 
-    // Atomically mark as REDEEMED — returns the updated row or nothing.
-    // PR-W11: accept both 'ISSUED' (canonical default) AND 'ACTIVE'
-    // (legacy state written by older Nayax payment-approval handlers).
-    // Existing in-flight vouchers must remain redeemable; once we move
-    // to REDEEMED on success the row exits the activatable set
-    // regardless of which entry status it had.
-    const updateResult = await db
-      .update(eVouchers)
-      .set({
-        status:      'REDEEMED',
-        ownerUid:    userId,
-        activatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(eVouchers.id, voucherId),
-          inArray(eVouchers.status, ['ISSUED', 'ACTIVE']),
-          sql`(${eVouchers.expiresAt} IS NULL OR ${eVouchers.expiresAt} > NOW())`,
-        ),
-      )
-      .returning({
-        id:            eVouchers.id,
-        initialAmount: eVouchers.initialAmount,
-      });
+    // PR-W44: replay-safe via walletIdempotencyKeys.
+    //
+    // Pre-PR-W44, the atomic UPDATE-WHERE-status was the ONLY replay
+    // protection. A network retry from a flaky mobile client hit the
+    // empty-result branch and returned 400 "already activated" — even
+    // though the wallet HAD been credited on the first request.
+    //
+    // The helper now caches the success payload so a retry within TTL
+    // returns the same {success, amountIls, amountCents, message}.
+    // First-time errors (not found / expired) still throw and bypass
+    // the cache so legitimate failures are not memoised.
+    //
+    // Fingerprint = voucherId:userId. Same caller, same gift = same
+    // cached row regardless of how many times mobile retries.
+    const result = await runWithIdempotency({
+      endpoint: 'gift-cards:activate-wallet',
+      headerKey: req.headers['idempotency-key'],
+      bodyFingerprint: ({ voucherId, userId }) => `${voucherId}:${userId}`,
+      body: { voucherId, userId },
+      logContext: { correlationId, voucherId, userId },
+      operation: async () => {
+        // Atomically mark as REDEEMED — PR-W11 keeps the inArray guard
+        // (accepts both 'ISSUED' and 'ACTIVE' entry states).
+        const updateResult = await db
+          .update(eVouchers)
+          .set({
+            status:      'REDEEMED',
+            ownerUid:    userId,
+            activatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(eVouchers.id, voucherId),
+              inArray(eVouchers.status, ['ISSUED', 'ACTIVE']),
+              sql`(${eVouchers.expiresAt} IS NULL OR ${eVouchers.expiresAt} > NOW())`,
+            ),
+          )
+          .returning({
+            id:            eVouchers.id,
+            initialAmount: eVouchers.initialAmount,
+          });
 
-    if (updateResult.length === 0) {
-      // Either already redeemed, expired, or not found
-      const [voucher] = await db
-        .select({ status: eVouchers.status })
-        .from(eVouchers)
-        .where(eq(eVouchers.id, voucherId));
-      const reason = !voucher
-        ? 'Gift card not found'
-        : voucher.status === 'REDEEMED'
-        ? 'This gift card has already been activated'
-        : 'Gift card is expired or invalid';
-      return res.status(400).json({ error: reason });
+        if (updateResult.length === 0) {
+          // Look up actual state to give the operator a precise error.
+          const [voucher] = await db
+            .select({ status: eVouchers.status })
+            .from(eVouchers)
+            .where(eq(eVouchers.id, voucherId));
+          const reason = !voucher
+            ? 'Gift card not found'
+            : voucher.status === 'REDEEMED'
+            ? 'This gift card has already been activated'
+            : 'Gift card is expired or invalid';
+          // THROW so the helper rolls back the lock — first-call errors
+          // must NOT be cached. A subsequent retry will re-evaluate the
+          // voucher (possibly with a different outcome).
+          throw Object.assign(new Error(reason), { statusCode: 400 });
+        }
+
+        const amountIls  = parseFloat(updateResult[0].initialAmount);
+        const amountCents = Math.round(amountIls * 100);
+
+        await walletService.addCredits(
+          userId,
+          'egift',
+          amountCents,
+          'gift_activation',
+          voucherId,
+          `Gift card #${updateResult[0].id} activated`,
+        );
+
+        logger.info('[E-Gift] Gift activated → wallet credited', {
+          correlationId, voucherId, userId, amountIls,
+        });
+
+        return {
+          success:    true,
+          amountIls,
+          amountCents,
+          message:    `₪${amountIls.toFixed(2)} credited to your wallet`,
+        };
+      },
+    });
+
+    if (result.kind === 'in_flight') {
+      return res.status(409).json({
+        error: 'Activation already in progress',
+        errorCode: 'IDEMPOTENCY_IN_FLIGHT',
+      });
     }
 
-    const amountIls  = parseFloat(updateResult[0].initialAmount);
-    const amountCents = Math.round(amountIls * 100);
+    if (result.kind === 'replay') {
+      // Mobile retry hit. Same payload as the original request.
+      logger.info('[E-Gift] activate-wallet replay-cache hit (no double-credit)', {
+        correlationId, voucherId, userId,
+      });
+    }
 
-    // Credit the recipient's wallet
-    await walletService.addCredits(
-      userId,
-      'egift',
-      amountCents,
-      'gift_activation',
-      voucherId,
-      `Gift card #${updateResult[0].id} activated`,
-    );
-
-    logger.info('[E-Gift] Gift activated → wallet credited', {
-      correlationId, voucherId, userId, amountIls,
-    });
-
-    res.json({
-      success:    true,
-      amountIls,
-      amountCents,
-      message:    `₪${amountIls.toFixed(2)} credited to your wallet`,
-    });
+    res.json(result.response);
   } catch (err: any) {
+    if (err?.statusCode === 400) {
+      return res.status(400).json({ error: err.message });
+    }
     logger.error('[E-Gift] activate-wallet error', { error: err.message, correlationId });
     res.status(500).json({ error: 'Failed to activate gift card' });
   }
