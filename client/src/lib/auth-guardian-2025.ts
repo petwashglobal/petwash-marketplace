@@ -36,6 +36,38 @@ const EXPECTED = {
   platformName: '⁦Pet Wash™⁩',
 };
 
+const PROVIDER_INTENT_PATHS = [
+  '/become-provider',
+  '/provider-onboarding',
+  '/join',
+  '/join/walker',
+  '/join/sitter',
+  '/join/trainer',
+];
+
+/**
+ * Preserve provider intent before OAuth.
+ *
+ * The join pages are public entry points. On iOS redirect OAuth, the page
+ * unloads immediately after signInWithRedirect(), so the chosen provider
+ * intent must be written before the OAuth hop. Without this, post-login may
+ * treat the new Google/Gmail user as a normal customer and send them to /home.
+ */
+function preserveProviderIntentForCurrentPath(): void {
+  try {
+    const path = window.location.pathname;
+    const isProviderPath = PROVIDER_INTENT_PATHS.some(
+      p => path === p || path.startsWith(`${p}/`),
+    );
+    if (!isProviderPath) return;
+    localStorage.setItem('signup_intent', 'provider');
+    localStorage.setItem('pw_provider_entry_path', path);
+    beacon('auth.provider_intent_preserved', { path });
+  } catch {
+    // Non-fatal. OAuth must still proceed.
+  }
+}
+
 /**
  * Lightweight UI banner for auth feedback
  */
@@ -148,6 +180,8 @@ function friendlyAuthError(codeOrMsg: string): string {
 export async function signInWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+
+  preserveProviderIntentForCurrentPath();
 
   const strategy = getAuthStrategy();
   if (strategy === 'redirect') {
