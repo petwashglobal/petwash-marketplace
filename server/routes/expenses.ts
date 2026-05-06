@@ -8,6 +8,37 @@ import { receiptOCRService } from "../services/ReceiptOCRService";
 import { requireAdmin } from "../adminAuth";
 import { z } from "zod";
 import multer from "multer";
+import { logAuditEvent } from "../middleware/auditLog";
+import { logger } from "../lib/logger";
+
+/**
+ * PR-W34c: every expense admin mutation now writes a hash-chained
+ * audit_events row. Fire-and-forget so a slow Postgres write never
+ * blocks the admin response.
+ */
+function emitExpenseAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  expenseId: number | string | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: 'expense',
+      targetId: params.expenseId != null ? String(params.expenseId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[Expenses] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -162,6 +193,21 @@ router.post("/", async (req: Request, res: Response) => {
       approvedAt: isCEO && validation.isValid ? new Date() : null,
     } as any).returning();
 
+    emitExpenseAudit({
+      actionType: 'EXPENSE_CREATE',
+      actorUserId: user.id,
+      expenseId: newExpense[0]?.id ?? null,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      metadata: {
+        category: expenseData.category,
+        totalAmountILS: totalAmount,
+        finalStatus,
+        isCEO: !!isCEO,
+        policyValid: validation.isValid,
+      },
+    });
+
     res.status(201).json({
       success: true,
       data: newExpense[0],
@@ -314,6 +360,19 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
       .where(eq(expenses.id, expenseId))
       .returning();
 
+    emitExpenseAudit({
+      actionType: 'EXPENSE_APPROVE',
+      actorUserId: user.id,
+      expenseId,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      metadata: {
+        totalAmountILS: expense[0].totalAmountILS,
+        category: expense[0].category,
+        priorStatus: expense[0].status,
+      },
+    });
+
     res.json({
       success: true,
       data: updated[0],
@@ -379,6 +438,19 @@ router.patch("/:id/reject", async (req: Request, res: Response) => {
       .where(eq(expenses.id, expenseId))
       .returning();
 
+    emitExpenseAudit({
+      actionType: 'EXPENSE_REJECT',
+      actorUserId: user.id,
+      expenseId,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      metadata: {
+        rejectionReason,
+        totalAmountILS: expense[0].totalAmountILS,
+        category: expense[0].category,
+      },
+    });
+
     res.json({
       success: true,
       data: updated[0],
@@ -392,10 +464,18 @@ router.patch("/:id/reject", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/seed-tax-rates", requireAdmin, async (req: Request, res: Response) => {
+router.post("/seed-tax-rates", requireAdmin, async (req: any, res: Response) => {
   try {
     await taxRateService.seedInitialTaxRates();
-    
+
+    emitExpenseAudit({
+      actionType: 'EXPENSE_SEED_TAX_RATES',
+      actorUserId: req.user?.uid || req.firebaseUser?.uid,
+      expenseId: 'tax-rates-seed',
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     res.json({
       success: true,
       message: "Tax rates seeded successfully",
