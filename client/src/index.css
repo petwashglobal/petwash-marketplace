@@ -3927,6 +3927,48 @@ body {
   direction: ltr;
 }
 
+/* PR-W53 — canonical z-index scale (CSS variables).
+ *
+ * Single source of truth for stacking order. Use these variables
+ * everywhere instead of magic numbers. New surfaces MUST pick from
+ * the scale; do NOT introduce ad-hoc values like z-[9050].
+ *
+ * Layer reference (CEO directive 2026-05):
+ *   1   content                       — default flow
+ *   100 sticky nav / footer            — MobileBottomNav, top header
+ *   200 floating widgets               — FloatingStack (FAB/WA/A11y)
+ *   300 dropdowns / popovers           — Radix popover, AccessibilityMenu
+ *   500 modal overlay                  — Dialog backdrop + content
+ *   700 toast / alerts                 — Toast container, banner alerts
+ *   900 critical dialogs               — confirm-destructive, payment errors
+ *
+ * Usage in CSS:    z-index: var(--pw-z-floating);
+ * Usage in JSX:    style={{ zIndex: 'var(--pw-z-floating)' }}
+ *                  or via the .pw-z-* utility classes below.
+ *
+ * Migration policy: existing z-[N] hacks stay until per-component
+ * migration PRs (PR-W56+). The two CRITICAL surfaces (sticky nav +
+ * floating stack) are migrated in this PR. */
+:root {
+  --pw-z-content:        1;
+  --pw-z-sticky:         100;
+  --pw-z-floating:       200;
+  --pw-z-popover:        300;
+  --pw-z-modal-overlay:  500;
+  --pw-z-toast:          700;
+  --pw-z-critical:       900;
+}
+
+/* Tailwind-friendly utility classes — drop-in replacements for z-40 / z-50
+ * when migrating individual components to the canonical scale. */
+.pw-z-content       { z-index: var(--pw-z-content); }
+.pw-z-sticky        { z-index: var(--pw-z-sticky); }
+.pw-z-floating      { z-index: var(--pw-z-floating); }
+.pw-z-popover       { z-index: var(--pw-z-popover); }
+.pw-z-modal-overlay { z-index: var(--pw-z-modal-overlay); }
+.pw-z-toast         { z-index: var(--pw-z-toast); }
+.pw-z-critical      { z-index: var(--pw-z-critical); }
+
 /* PR-W52 — canonical LTR isolation utility.
  *
  * Force any inline string to render LTR regardless of the parent's

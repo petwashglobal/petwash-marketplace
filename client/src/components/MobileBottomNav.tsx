@@ -96,7 +96,10 @@ export function MobileBottomNav() {
     <nav
       aria-label={isRTL ? 'ניווט ראשי' : 'Main navigation'}
       dir={isRTL ? 'rtl' : 'ltr'}
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
+      // PR-W53: --pw-z-sticky (canonical scale). Floating widgets live
+      // at --pw-z-floating, which is higher, so the FAB stack always
+      // sits above this bar.
+      className="fixed bottom-0 left-0 right-0 pw-z-sticky md:hidden"
       style={{
         background: '#FFFFFF',
         borderTop: '1px solid #E5E7EB',

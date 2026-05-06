@@ -1,19 +1,15 @@
 /* Pet Wash Floating Icons - 3 Widget Stack */
 /* Order: Accessibility (top), WhatsApp (middle), PetWash AI (bottom) */
-/* Z-INDEX REGISTRY: 
-   - Header/Navigation: 1000-1099
-   - Modals/Dialogs: 1100-1199
-   - Dropdowns/Popovers: 1200-1299
-   - Floating FABs: 9000-9099 (below AI chat)
-   - AI Chat Panel: 9100-9199
-   - Toast Notifications: 9200-9299
-*/
+/* PR-W53: z-index references the canonical scale defined in
+   client/src/index.css (--pw-z-*). DO NOT add new ad-hoc values; pick
+   from the scale: content / sticky / floating / popover / modal-overlay
+   / toast / critical. The old 9000-9999 registry is retired. */
 
 .pw-float-stack {
   position: fixed;
   right: 16px;
   bottom: 0;
-  z-index: 9050;
+  z-index: var(--pw-z-floating);
   transition: opacity 0.2s ease;
   pointer-events: none;
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -22,7 +18,7 @@
 .pw-float {
   position: fixed;
   right: 16px;
-  z-index: 9050;
+  z-index: var(--pw-z-floating);
   width: 56px;
   height: 56px;
   min-width: 48px;
