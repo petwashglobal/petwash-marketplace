@@ -27,6 +27,31 @@ import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walletService } from '../services/WalletService';
 import { dispatchAcademySms } from '../services/academySmsHelper';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34m: academy admin audit. */
+function emitAcademyAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = Router();
 
@@ -667,7 +692,15 @@ router.post('/admin/trainers', async (req, res) => {
       trainerId: newTrainer.trainerId,
       email: newTrainer.email,
     });
-    
+    emitAcademyAdminAudit({
+      actionType: 'ACADEMY_TRAINER_CREATE',
+      actorUserId: (req as any).user?.uid,
+      targetType: 'trainer',
+      targetId: newTrainer.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { trainerId: newTrainer.trainerId, hasEmail: !!newTrainer.email },
+    });
     res.status(201).json(newTrainer);
   } catch (error) {
     logger.error('[Academy] Error creating trainer', error);
@@ -706,7 +739,15 @@ router.patch('/admin/trainers/:id/verify', async (req, res) => {
       status,
       verifiedBy: req.user.uid,
     });
-    
+    emitAcademyAdminAudit({
+      actionType: 'ACADEMY_TRAINER_VERIFY',
+      actorUserId: req.user?.uid,
+      targetType: 'trainer',
+      targetId: trainerId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { newStatus: status, hasReason: !!reason },
+    });
     res.json(updatedTrainer);
   } catch (error) {
     logger.error('[Academy] Error verifying trainer', error);
@@ -761,7 +802,15 @@ router.delete('/admin/trainers/:id', async (req, res) => {
       trainerId,
       deletedBy: req.user.uid,
     });
-    
+    emitAcademyAdminAudit({
+      actionType: 'ACADEMY_TRAINER_DELETE',
+      actorUserId: req.user?.uid,
+      targetType: 'trainer',
+      targetId: trainerId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
     res.json({ success: true });
   } catch (error) {
     logger.error('[Academy] Error deleting trainer', error);
