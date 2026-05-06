@@ -5,6 +5,31 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
 import { createAllForms, FORMS_DEFINITIONS } from '../services/GoogleFormsCreatorService';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34r: google-forms admin audit. */
+function emitGoogleFormsAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = Router();
 
@@ -66,23 +91,24 @@ router.get('/api/google-forms/list', async (_req: Request, res: Response) => {
   }
 });
 
-router.post('/api/google-forms/create-all', requireAdmin, async (_req: Request, res: Response) => {
+router.post('/api/google-forms/create-all', requireAdmin, async (req: Request, res: Response) => {
   try {
     logger.info('[GoogleForms] Starting bulk form creation...');
     const results = await createAllForms();
     const succeeded = results.filter(r => r.formId);
     const failed = FORMS_DEFINITIONS.length - succeeded.length;
-
+    emitGoogleFormsAudit({
+      actionType: 'GOOGLE_FORMS_CREATE_ALL',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'google_forms_batch', targetId: 'all',
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { created: succeeded.length, failed },
+    });
     res.json({
       success: true,
       created: succeeded.length,
       failed,
-      forms: succeeded.map(r => ({
-        formType: r.formType,
-        title: r.title,
-        url: r.responderUri,
-        sheetTab: r.sheetTab,
-      })),
+      forms: succeeded.map(r => ({ formType: r.formType, title: r.title, url: r.responderUri, sheetTab: r.sheetTab })),
     });
   } catch (error: any) {
     logger.error('[GoogleForms] Bulk creation error', error);
@@ -103,6 +129,13 @@ router.post('/api/google-forms/create/:formType', requireAdmin, async (req: Requ
     if (!result) {
       return res.status(500).json({ error: 'Form creation failed' });
     }
+    emitGoogleFormsAudit({
+      actionType: 'GOOGLE_FORMS_CREATE_SINGLE',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'google_form', targetId: formType,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { formType, formId: result.formId },
+    });
     res.json({ success: true, form: result });
   } catch (error: any) {
     logger.error('[GoogleForms] Single form creation error', error);
@@ -138,6 +171,13 @@ router.post('/api/google-forms/config', requireAdmin, async (req: Request, res: 
         .returning();
 
       logger.info('[GoogleForms] Updated form config', { formType });
+      emitGoogleFormsAudit({
+        actionType: 'GOOGLE_FORMS_CONFIG_UPDATE',
+        actorUserId: (req as any).firebaseUser?.uid,
+        targetType: 'google_forms_config', targetId: formType,
+        ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+        metadata: { formType, enabled: !!enabled },
+      });
       return res.json(updated);
     }
 
@@ -151,6 +191,13 @@ router.post('/api/google-forms/config', requireAdmin, async (req: Request, res: 
     }).returning();
 
     logger.info('[GoogleForms] Created form config', { formType });
+    emitGoogleFormsAudit({
+      actionType: 'GOOGLE_FORMS_CONFIG_CREATE',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'google_forms_config', targetId: formType,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { formType, enabled: !!enabled },
+    });
     res.status(201).json(created);
   } catch (error) {
     logger.error('[GoogleForms] Error saving form config', error);
@@ -169,6 +216,13 @@ router.patch('/api/google-forms/config/:formType/toggle', requireAdmin, async (r
       .where(eq(googleFormsConfig.formType, formType))
       .returning();
 
+    emitGoogleFormsAudit({
+      actionType: 'GOOGLE_FORMS_CONFIG_TOGGLE',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'google_forms_config', targetId: formType,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { newEnabled: updated?.enabled },
+    });
     res.json(updated);
   } catch (error) {
     logger.error('[GoogleForms] Toggle error', error);
@@ -180,6 +234,12 @@ router.delete('/api/google-forms/config/:formType', requireAdmin, async (req: Re
   try {
     const { formType } = req.params;
     await db.delete(googleFormsConfig).where(eq(googleFormsConfig.formType, formType));
+    emitGoogleFormsAudit({
+      actionType: 'GOOGLE_FORMS_CONFIG_DELETE',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'google_forms_config', targetId: formType,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+    });
     logger.info('[GoogleForms] Deleted form config', { formType });
     res.json({ success: true });
   } catch (error) {
