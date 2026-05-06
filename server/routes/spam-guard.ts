@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { geminiSpamGuard } from '../services/GeminiSpamGuard';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 // Admin auth is applied globally to all /api/admin/* routes in routes.ts
@@ -49,23 +50,25 @@ router.get('/detections', (req, res) => {
  * POST /api/admin/spam-guard/sweep
  * Manually trigger a spam sweep immediately (admin only)
  */
-router.post('/sweep', async (req, res) => {
-  logger.info('[SpamGuard] Manual sweep triggered by admin', {
-    adminUid: (req as any).user?.uid,
-  });
+router.post('/sweep', async (req: any, res) => {
+  logger.info('[SpamGuard] Manual sweep triggered by admin', { adminUid: req.user?.uid });
 
-  // Run async, return immediately with sweep ID
   const sweepStarted = Date.now();
   geminiSpamGuard.runSweep()
-    .then(report => {
-      logger.info('[SpamGuard] Manual sweep complete', {
-        sweepId: report.sweepId,
-        detections: report.detectionsFound,
-      });
-    })
-    .catch(err => {
-      logger.error('[SpamGuard] Manual sweep failed', { error: err?.message });
-    });
+    .then(report => logger.info('[SpamGuard] Manual sweep complete', { sweepId: report.sweepId, detections: report.detectionsFound }))
+    .catch(err => logger.error('[SpamGuard] Manual sweep failed', { error: err?.message }));
+
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: req.firebaseUser?.uid || req.user?.uid,
+      actorRole: 'admin',
+      actionType: 'SPAMGUARD_MANUAL_SWEEP',
+      targetType: 'spam_sweep',
+      targetId: `manual_${sweepStarted}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    }).catch(() => {});
+  });
 
   res.json({
     ok: true,
@@ -80,7 +83,7 @@ router.post('/sweep', async (req, res) => {
  * Ad-hoc content analysis — check any text right now
  * Body: { content, contentType, userId?, entityId? }
  */
-router.post('/analyze', async (req, res) => {
+router.post('/analyze', async (req: any, res) => {
   const { content, contentType = 'message', userId, entityId } = req.body;
 
   if (!content || typeof content !== 'string') {
@@ -89,6 +92,19 @@ router.post('/analyze', async (req, res) => {
 
   try {
     const detection = await geminiSpamGuard.analyzeContent(content, contentType, userId, entityId);
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.user?.uid,
+        actorRole: 'admin',
+        actionType: 'SPAMGUARD_ANALYZE',
+        targetType: 'spam_detection',
+        targetId: (detection as any)?.id ?? entityId ?? 'ad-hoc',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        // bodyLength only — never log raw user content
+        metadata: { contentType, contentLength: content.length, isSpam: !!detection },
+      }).catch(() => {});
+    });
     res.json({
       ok: true,
       isSpam: !!detection,
@@ -104,11 +120,22 @@ router.post('/analyze', async (req, res) => {
  * PATCH /api/admin/spam-guard/detections/:id/resolve
  * Mark a detection as resolved (dismissed by admin)
  */
-router.patch('/detections/:id/resolve', (req, res) => {
+router.patch('/detections/:id/resolve', (req: any, res) => {
   const resolved = geminiSpamGuard.resolveDetection(req.params.id);
   if (!resolved) {
     return res.status(404).json({ ok: false, error: 'Detection not found' });
   }
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: req.firebaseUser?.uid || req.user?.uid,
+      actorRole: 'admin',
+      actionType: 'SPAMGUARD_DETECTION_RESOLVE',
+      targetType: 'spam_detection',
+      targetId: req.params.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    }).catch(() => {});
+  });
   res.json({ ok: true, message: 'Detection marked resolved' });
 });
 

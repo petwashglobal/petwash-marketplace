@@ -10,6 +10,7 @@ import IsraeliCPIService from '../services/IsraeliCPIService';
 import { requireAdmin } from '../middleware/rbac';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = express.Router();
 
@@ -253,6 +254,19 @@ router.post('/add', requireAdmin, async (req: Request, res: Response) => {
       adminId: req.firebaseUser?.uid || req.user?.uid,
     });
 
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.user?.uid,
+        actorRole: 'admin',
+        actionType: 'CPI_INDEX_ADD',
+        targetType: 'cpi_index',
+        targetId: month,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        metadata: { month, indexValue, source: source || 'Manual' },
+      }).catch(() => {});
+    });
+
     res.status(201).json({
       success: true,
       data: {
@@ -308,12 +322,24 @@ router.get('/status', requireAdmin, async (req: Request, res: Response) => {
  * נתונים ראשוניים של המדד
  * Admin only - One-time setup
  */
-router.post('/seed', requireAdmin, async (req: Request, res: Response) => {
+router.post('/seed', requireAdmin, async (req: any, res: Response) => {
   try {
     await IsraeliCPIService.seedInitialData();
 
     logger.info('[CPI API] CPI data seeded successfully', {
       adminId: req.firebaseUser?.uid || req.user?.uid,
+    });
+
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.user?.uid,
+        actorRole: 'admin',
+        actionType: 'CPI_SEED',
+        targetType: 'cpi_index',
+        targetId: 'seed',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+      }).catch(() => {});
     });
 
     res.json({

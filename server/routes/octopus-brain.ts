@@ -9,6 +9,7 @@ import { Router, Request, Response } from 'express';
 import { octopusBrain } from '../services/OctopusBrainService';
 import { requireAdmin } from '../adminAuth';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -170,18 +171,30 @@ router.get('/alerts', async (req: Request, res: Response) => {
  * POST /api/octopus-brain/alerts/:alertId/resolve
  * Resolve an alert (Admin only)
  */
-router.post('/alerts/:alertId/resolve', requireAdmin, async (req: Request, res: Response) => {
+router.post('/alerts/:alertId/resolve', requireAdmin, async (req: any, res: Response) => {
   try {
     const { alertId } = req.params;
     const resolved = octopusBrain.resolveAlert(alertId);
-    
+
     if (!resolved) {
       return res.status(404).json({
         success: false,
         error: `Alert ${alertId} not found`
       });
     }
-    
+
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.adminUser?.id,
+        actorRole: 'admin',
+        actionType: 'OCTOPUS_ALERT_RESOLVE',
+        targetType: 'octopus_alert',
+        targetId: alertId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+      }).catch(() => {});
+    });
+
     res.json({
       success: true,
       message: 'Alert resolved successfully'
@@ -199,10 +212,22 @@ router.post('/alerts/:alertId/resolve', requireAdmin, async (req: Request, res: 
  * POST /api/octopus-brain/analyze
  * Trigger manual Gemini AI analysis (Admin only)
  */
-router.post('/analyze', requireAdmin, async (req: Request, res: Response) => {
+router.post('/analyze', requireAdmin, async (req: any, res: Response) => {
   try {
     const result = await octopusBrain.triggerManualAnalysis();
-    
+
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.adminUser?.id,
+        actorRole: 'admin',
+        actionType: 'OCTOPUS_MANUAL_ANALYZE',
+        targetType: 'octopus_analysis',
+        targetId: 'manual',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+      }).catch(() => {});
+    });
+
     res.json({
       success: true,
       message: result,
@@ -221,17 +246,31 @@ router.post('/analyze', requireAdmin, async (req: Request, res: Response) => {
  * POST /api/octopus-brain/platforms/:platformId/certify
  * Renew platform certification (Admin only)
  */
-router.post('/platforms/:platformId/certify', requireAdmin, async (req: Request, res: Response) => {
+router.post('/platforms/:platformId/certify', requireAdmin, async (req: any, res: Response) => {
   try {
     const { platformId } = req.params;
     const newStamp = await octopusBrain.renewCertification(platformId);
-    
+
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.adminUser?.id,
+        actorRole: 'admin',
+        actionType: 'OCTOPUS_PLATFORM_CERTIFY',
+        targetType: 'octopus_platform',
+        targetId: platformId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        // never log full stamp; first 8 chars suffice
+        metadata: { stampPrefix: typeof newStamp === 'string' ? newStamp.slice(0, 8) : null },
+      }).catch(() => {});
+    });
+
     res.json({
       success: true,
       platformId,
       newCertificationStamp: newStamp,
       certifiedAt: new Date().toISOString(),
-      certifiedBy: (req as any).adminUser?.email || 'admin'
+      certifiedBy: req.adminUser?.email || 'admin'
     });
   } catch (error: any) {
     logger.error('[🐙 API] Error renewing certification:', error);
