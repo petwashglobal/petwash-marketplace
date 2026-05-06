@@ -3,20 +3,23 @@
  *
  * Cloud Run cold starts gate /api/* with a startup-readiness middleware
  * that returns 503 ("Server is initializing routes…") until route
- * registration completes. The client absorbs this with a small,
- * bounded retry budget so the user does not see a raw 503 toast for
- * a transient warmup. A real 60-120 s cold start is a Cloud Run min-
- * instances issue — the client retry buys ~5.6 s of warm-grace only.
+ * registration completes. The client absorbs this with a bounded retry
+ * budget so the user does not see a raw 503 toast for a transient warmup.
+ *
+ * Mobile Safari/iOS often hits the API immediately after the app shell loads,
+ * while Cloud Run is still waking. The previous 5.6 s retry budget was too
+ * short for production cold starts. This keeps retries bounded, but gives the
+ * backend about 22 s to become ready before surfacing the error.
  *
  * Pure module — no Firebase imports — so tests can import this without
  * pulling the entire app boot chain.
  */
 
 /**
- * Backoff schedule. Three retries, exponential. Total max wait
- * before giving up: 800 + 1600 + 3200 = 5_600 ms.
+ * Backoff schedule. Five retries, exponential-ish. Total max wait
+ * before giving up: 800 + 1600 + 3200 + 6400 + 10000 = 22_000 ms.
  */
-export const FETCH_RETRY_503_DELAYS_MS: readonly number[] = [800, 1600, 3200];
+export const FETCH_RETRY_503_DELAYS_MS: readonly number[] = [800, 1600, 3200, 6400, 10000];
 
 export async function fetchWithRetry(
   url: string,

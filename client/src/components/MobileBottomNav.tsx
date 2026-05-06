@@ -33,12 +33,15 @@ const PROVIDER_NAV: NavItem[] = [
 
 const HIDDEN_PREFIXES = [
   '/signin', '/sign-in', '/login', '/signup', '/sign-up', '/register',
-  '/admin', '/internal', '/blocked', '/access-pending', '/provider/pending', '/provider/rejected',
+  '/complete-profile', '/choose-role', '/verify-email',
+  '/admin', '/internal', '/blocked', '/access-pending',
+  '/provider-onboarding', '/become-provider', '/provider-application/status',
+  '/provider/pending', '/provider/rejected',
 ];
 
 /**
  * Paths that represent an "account home" for the role-aware Account tab.
- * Post-PR-NAV-1 the Account tab no longer routes only to /my-account — it
+ * Post-PR-NAV-1 the Account tab no longer routes only to /my-account. It
  * resolves via useAccountNavigation.resolveAccountRoute() which can return
  * /admin/dashboard, /franchise/dashboard, /provider-os, or any role-specific
  * dashboard (e.g. /pet-wash-ltd/executive/ceo). The active-state must match.
@@ -68,9 +71,9 @@ export function MobileBottomNav() {
   if (loading || roleLoading || !user) return null;
 
   /**
-   * The Account tab must route by role — CEO / admin / provider / franchise
-   * should NEVER land on /my-account. Use the same resolver the gold profile
-   * icon uses (P0 audit, Bug 1 + Bonus). Falls back to '/home' on any error.
+   * The Account tab must route by role. CEO / admin / provider / franchise
+   * should never land on /my-account. Use the same resolver the gold profile
+   * icon uses. Falls back to '/home' on any error.
    */
   const handleAccountTap = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -100,22 +103,14 @@ export function MobileBottomNav() {
       style={{
         background: '#FFFFFF',
         borderTop: '1px solid #E5E7EB',
-        // iPhone safe-area: pad below the home-indicator so tap targets aren't
-        // occluded. max() guards browsers that report 0 (Android, desktop) so
-        // we still get the existing 14-row height with no extra blank strip.
         paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
       }}
     >
       <ul className="flex items-stretch h-14">
         {NAV_ITEMS.map(({ path, labelHe, labelEn, Icon }) => {
-          // Account tab: resolve by role instead of hard-routing to /my-account
-          // (a CEO / admin / provider should never land on the customer page).
           const isAccountTab = path === '/my-account';
 
           const pawFinderAliases = ['/find-pet', '/lost-pet', '/paw-finder'];
-          // Active state — for the Account tab we match ANY role-aware account
-          // destination so the gold highlight follows the user wherever the
-          // role resolver lands them, not just /my-account.
           const isActive = isAccountTab
             ? ACCOUNT_HOME_PREFIXES.some(p => location === p || location.startsWith(p + '/'))
             : (

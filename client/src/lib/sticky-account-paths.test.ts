@@ -35,9 +35,17 @@ describe('isStickyAccountPath', () => {
     expect(isStickyAccountPath('/provider-onboarding/identity')).toBe(true);
   });
 
+  it('returns true for provider join sub-paths', () => {
+    expect(isStickyAccountPath('/join')).toBe(true);
+    expect(isStickyAccountPath('/join/walker')).toBe(true);
+    expect(isStickyAccountPath('/join/sitter')).toBe(true);
+    expect(isStickyAccountPath('/join/trainer')).toBe(true);
+  });
+
   it('returns true for trailing-slash variants', () => {
     expect(isStickyAccountPath('/provider-onboarding/')).toBe(true);
     expect(isStickyAccountPath('/complete-profile/')).toBe(true);
+    expect(isStickyAccountPath('/join/walker/')).toBe(true);
   });
 
   it('returns true for every entry in the canonical list', () => {
@@ -51,13 +59,19 @@ describe('isStickyAccountPath', () => {
     expect(isStickyAccountPath('/provider')).toBe(false);
     // /signinabc should NOT match /signin
     expect(isStickyAccountPath('/signinabc')).toBe(false);
+    // /joined should NOT match /join
+    expect(isStickyAccountPath('/joined')).toBe(false);
   });
 
-  it('canonical list contains the four critical onboarding paths', () => {
+  it('canonical list contains the critical onboarding and provider-join paths', () => {
     expect(STICKY_ACCOUNT_PATHS).toContain('/provider-onboarding');
     expect(STICKY_ACCOUNT_PATHS).toContain('/become-provider');
     expect(STICKY_ACCOUNT_PATHS).toContain('/complete-profile');
     expect(STICKY_ACCOUNT_PATHS).toContain('/choose-role');
+    expect(STICKY_ACCOUNT_PATHS).toContain('/join');
+    expect(STICKY_ACCOUNT_PATHS).toContain('/join/walker');
+    expect(STICKY_ACCOUNT_PATHS).toContain('/join/sitter');
+    expect(STICKY_ACCOUNT_PATHS).toContain('/join/trainer');
   });
 
   it('handles non-string input safely', () => {

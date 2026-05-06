@@ -12,8 +12,7 @@
  *   user is in the middle of /provider-onboarding (or similar), nextUrl
  *   often resolves to a different page (e.g. `/home` if no draft
  *   provider_application exists yet), kicking the user out of their
- *   form. P0 production blocker — see audit "Issue A" / "Become מטפל
- *   disappears".
+ *   form. P0 production blocker — "Become מטפל disappears".
  *
  * Pure function. No I/O. Safe to unit-test in isolation. Exported with
  * its sticky path list so tests can assert the canonical set.
@@ -26,6 +25,10 @@ export const STICKY_ACCOUNT_PATHS: readonly string[] = [
   '/provider/pending',
   '/provider-application/status',
   '/provider/rejected',
+  '/join',
+  '/join/walker',
+  '/join/sitter',
+  '/join/trainer',
   // Customer onboarding flows
   '/complete-profile',
   '/choose-role',
