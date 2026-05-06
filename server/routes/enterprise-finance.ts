@@ -11,6 +11,43 @@ import {
   insertTaxAuditLogSchema,
 } from "@shared/schema-finance";
 import TaxComplianceService from "../services/TaxComplianceService";
+import { logAuditEvent } from "../middleware/auditLog";
+import { logger } from "../lib/logger";
+
+/**
+ * PR-W34e: every admin finance mutation writes a hash-chained
+ * audit_events row in addition to the domain tax_audit_logs writes
+ * (which already exist for tax-* paths). Fire-and-forget — never
+ * blocks the admin response.
+ *
+ * `targetType` varies: 'accounts_payable' / 'accounts_receivable' /
+ * 'general_ledger' / 'tax_return' / 'tax_payment' / 'tax_audit_log'
+ * — the most-precise label for each handler.
+ */
+function emitFinanceAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[Enterprise/Finance] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 
 const router = Router();
 
@@ -69,37 +106,63 @@ router.get("/accounts-payable/:id", async (req, res, next) => {
   }
 });
 
-router.post("/accounts-payable", async (req, res, next) => {
+router.post("/accounts-payable", async (req: any, res, next) => {
   try {
     const data = insertAccountsPayableSchema.parse(req.body);
     const payable = await storage.createAccountsPayable(data);
+    emitFinanceAudit({
+      actionType: 'AP_CREATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_payable',
+      targetId: (payable as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { supplierId: data.supplierId, amountILS: (data as any)?.amountILS },
+    });
     res.status(201).json(payable);
   } catch (error) {
     next(error);
   }
 });
 
-router.patch("/accounts-payable/:id", async (req, res, next) => {
+router.patch("/accounts-payable/:id", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const payable = await storage.updateAccountsPayable(id, req.body);
+    emitFinanceAudit({
+      actionType: 'AP_UPDATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_payable',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(payable);
   } catch (error) {
     next(error);
   }
 });
 
-router.delete("/accounts-payable/:id", async (req, res, next) => {
+router.delete("/accounts-payable/:id", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     await storage.deleteAccountsPayable(id);
+    emitFinanceAudit({
+      actionType: 'AP_DELETE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_payable',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.status(204).send();
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/accounts-payable/:id/pay", async (req, res, next) => {
+router.post("/accounts-payable/:id/pay", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const schema = z.object({
@@ -109,6 +172,19 @@ router.post("/accounts-payable/:id/pay", async (req, res, next) => {
     });
     const { paymentDate, paymentMethod, paymentReference } = schema.parse(req.body);
     const payable = await storage.markPayableAsPaid(id, paymentDate, paymentMethod, paymentReference);
+    emitFinanceAudit({
+      actionType: 'AP_PAY',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_payable',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        paymentDate: paymentDate instanceof Date ? paymentDate.toISOString() : String(paymentDate),
+        paymentMethod,
+        paymentReference: paymentReference ?? null,
+      },
+    });
     res.json(payable);
   } catch (error) {
     next(error);
@@ -166,37 +242,63 @@ router.get("/accounts-receivable/:id", async (req, res, next) => {
   }
 });
 
-router.post("/accounts-receivable", async (req, res, next) => {
+router.post("/accounts-receivable", async (req: any, res, next) => {
   try {
     const data = insertAccountsReceivableSchema.parse(req.body);
     const receivable = await storage.createAccountsReceivable(data);
+    emitFinanceAudit({
+      actionType: 'AR_CREATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_receivable',
+      targetId: (receivable as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { customerId: (data as any)?.customerId, amountILS: (data as any)?.amountILS },
+    });
     res.status(201).json(receivable);
   } catch (error) {
     next(error);
   }
 });
 
-router.patch("/accounts-receivable/:id", async (req, res, next) => {
+router.patch("/accounts-receivable/:id", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const receivable = await storage.updateAccountsReceivable(id, req.body);
+    emitFinanceAudit({
+      actionType: 'AR_UPDATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_receivable',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(receivable);
   } catch (error) {
     next(error);
   }
 });
 
-router.delete("/accounts-receivable/:id", async (req, res, next) => {
+router.delete("/accounts-receivable/:id", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     await storage.deleteAccountsReceivable(id);
+    emitFinanceAudit({
+      actionType: 'AR_DELETE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_receivable',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.status(204).send();
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/accounts-receivable/:id/payment", async (req, res, next) => {
+router.post("/accounts-receivable/:id/payment", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const schema = z.object({
@@ -206,6 +308,19 @@ router.post("/accounts-receivable/:id/payment", async (req, res, next) => {
     });
     const { amount, paymentDate, paymentMethod } = schema.parse(req.body);
     const receivable = await storage.recordReceivablePayment(id, amount, paymentDate, paymentMethod);
+    emitFinanceAudit({
+      actionType: 'AR_RECORD_PAYMENT',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'accounts_receivable',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        amount,
+        paymentDate: paymentDate instanceof Date ? paymentDate.toISOString() : String(paymentDate),
+        paymentMethod,
+      },
+    });
     res.json(receivable);
   } catch (error) {
     next(error);
@@ -267,20 +382,41 @@ router.get("/general-ledger/:id", async (req, res, next) => {
   }
 });
 
-router.post("/general-ledger", async (req, res, next) => {
+router.post("/general-ledger", async (req: any, res, next) => {
   try {
     const data = insertGeneralLedgerSchema.parse(req.body);
     const entry = await storage.createGeneralLedgerEntry(data);
+    emitFinanceAudit({
+      actionType: 'GL_CREATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'general_ledger',
+      targetId: (entry as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        accountCode: (data as any)?.accountCode,
+        debit: (data as any)?.debit,
+        credit: (data as any)?.credit,
+      },
+    });
     res.status(201).json(entry);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/general-ledger/:id/reconcile", async (req, res, next) => {
+router.post("/general-ledger/:id/reconcile", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const entry = await storage.reconcileEntry(id);
+    emitFinanceAudit({
+      actionType: 'GL_RECONCILE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'general_ledger',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.json(entry);
   } catch (error) {
     next(error);
@@ -350,7 +486,7 @@ router.post("/tax-returns", async (req, res, next) => {
     
     // Save to database
     const taxReturn = await storage.createTaxReturn(result.taxReturn);
-    
+
     // Create audit log entry
     await storage.createTaxAuditLog({
       entityType: 'tax_return',
@@ -364,7 +500,21 @@ router.post("/tax-returns", async (req, res, next) => {
       ipAddress,
       userAgent,
     });
-    
+    emitFinanceAudit({
+      actionType: 'TAX_RETURN_CREATE',
+      actorUserId: userId.toString(),
+      targetType: 'tax_return',
+      targetId: taxReturn.id,
+      ip: ipAddress ?? undefined,
+      userAgent: userAgent ?? undefined,
+      metadata: {
+        auditId: result.auditId,
+        auditHash: result.auditHash,
+        period: (data as any)?.period,
+        year: (data as any)?.year,
+      },
+    });
+
     res.status(201).json({
       ...taxReturn,
       auditId: result.auditId,
@@ -375,10 +525,19 @@ router.post("/tax-returns", async (req, res, next) => {
   }
 });
 
-router.patch("/tax-returns/:id", async (req, res, next) => {
+router.patch("/tax-returns/:id", async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const taxReturn = await storage.updateTaxReturn(id, req.body);
+    emitFinanceAudit({
+      actionType: 'TAX_RETURN_UPDATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'tax_return',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(taxReturn);
   } catch (error) {
     next(error);
@@ -424,16 +583,29 @@ router.post("/tax-returns/:id/submit", async (req, res, next) => {
       action: submissionResult.success ? 'submitted_to_ita' : 'submission_failed',
       userId: userId.toString(),
       previousValue: JSON.stringify({ status: taxReturn.status }),
-      newValue: JSON.stringify({ 
+      newValue: JSON.stringify({
         status: updatedTaxReturn.status,
-        itaReference: submissionResult.itaReference 
+        itaReference: submissionResult.itaReference
       }),
       timestamp: new Date(),
       auditHash: null,
       ipAddress,
       userAgent,
     });
-    
+    emitFinanceAudit({
+      actionType: submissionResult.success ? 'TAX_RETURN_SUBMIT' : 'TAX_RETURN_SUBMIT_FAILED',
+      actorUserId: userId.toString(),
+      targetType: 'tax_return',
+      targetId: id,
+      ip: ipAddress ?? undefined,
+      userAgent: userAgent ?? undefined,
+      metadata: {
+        previousStatus: taxReturn.status,
+        newStatus: updatedTaxReturn.status,
+        itaReference: submissionResult.itaReference,
+      },
+    });
+
     res.json({
       ...updatedTaxReturn,
       submissionResult,
@@ -505,7 +677,7 @@ router.post("/tax-payments", async (req, res, next) => {
     
     // Save to database
     const payment = await storage.createTaxPayment(result.payment);
-    
+
     // Create audit log entry
     await storage.createTaxAuditLog({
       entityType: 'tax_payment',
@@ -519,7 +691,21 @@ router.post("/tax-payments", async (req, res, next) => {
       ipAddress,
       userAgent,
     });
-    
+    emitFinanceAudit({
+      actionType: 'TAX_PAYMENT_CREATE',
+      actorUserId: userId.toString(),
+      targetType: 'tax_payment',
+      targetId: payment.id,
+      ip: ipAddress ?? undefined,
+      userAgent: userAgent ?? undefined,
+      metadata: {
+        auditId: result.auditId,
+        auditHash: result.auditHash,
+        amount: (data as any)?.amount,
+        taxReturnId: (data as any)?.taxReturnId,
+      },
+    });
+
     res.status(201).json({
       ...payment,
       auditId: result.auditId,
@@ -584,10 +770,23 @@ router.get("/tax-audit-logs/:id", async (req, res, next) => {
   }
 });
 
-router.post("/tax-audit-logs", async (req, res, next) => {
+router.post("/tax-audit-logs", async (req: any, res, next) => {
   try {
     const data = insertTaxAuditLogSchema.parse(req.body);
     const log = await storage.createTaxAuditLog(data);
+    emitFinanceAudit({
+      actionType: 'TAX_AUDIT_LOG_CREATE',
+      actorUserId: req.adminUser?.id || req.firebaseUser?.uid,
+      targetType: 'tax_audit_log',
+      targetId: (log as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        entityType: (data as any)?.entityType,
+        entityId: (data as any)?.entityId,
+        action: (data as any)?.action,
+      },
+    });
     res.status(201).json(log);
   } catch (error) {
     next(error);
