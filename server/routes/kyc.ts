@@ -24,6 +24,31 @@ import { logger } from '../lib/logger';
 import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34p: kyc admin audit. */
+function emitKycAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = Router();
 
@@ -336,6 +361,16 @@ router.post('/admin/approve', requireAdmin, async (req: Request, res: Response) 
 
     logger.info(`KYC approved for user ${uid} by ${reviewerUid}`);
 
+    emitKycAdminAudit({
+      actionType: 'KYC_APPROVE',
+      actorUserId: reviewerUid,
+      targetType: 'kyc_subject',
+      targetId: uid,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { expiresAt: expiresAt?.toISOString() ?? null, deletedFileCount: docPathsToDelete.length },
+    });
+
     res.json({ success: true, message: 'KYC approved successfully' });
   } catch (error: any) {
     logger.error('Approve KYC error', error);
@@ -409,6 +444,16 @@ router.post('/admin/reject', requireAdmin, async (req: Request, res: Response) =
     }
 
     logger.info(`KYC rejected for user ${uid} by ${reviewerUid}: ${reason}`);
+
+    emitKycAdminAudit({
+      actionType: 'KYC_REJECT',
+      actorUserId: reviewerUid,
+      targetType: 'kyc_subject',
+      targetId: uid,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { reason, deletedFileCount: docPathsToDeleteOnReject.length },
+    });
 
     res.json({ success: true, message: 'KYC rejected' });
   } catch (error: any) {
