@@ -15,6 +15,31 @@ import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { bookings } from '@shared/schema';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34q: unified-booking admin audit (refund + admin free-wash). */
+function emitUnifiedBookingAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 import { eq } from 'drizzle-orm';
 import {
   unifiedBookingEngine,
@@ -507,6 +532,21 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
       isPartial
     );
 
+    emitUnifiedBookingAdminAudit({
+      actionType: 'BOOKING_REFUND',
+      actorUserId: processedBy,
+      targetType: 'booking',
+      targetId: bookingId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        refundAmount: Number(refundAmount),
+        isPartial: !!isPartial,
+        reason,
+        refundTransactionId: result.refundTransactionId,
+      },
+    });
+
     res.json({
       success: true,
       booking: result.booking,
@@ -552,6 +592,16 @@ router.post('/admin/free-wash', requireAuth, requireAdmin, async (req: Request, 
       bookingId: result.booking.id,
       machineId,
       minutes
+    });
+
+    emitUnifiedBookingAdminAudit({
+      actionType: 'BOOKING_ADMIN_FREE_WASH',
+      actorUserId: adminId,
+      targetType: 'booking',
+      targetId: result.booking.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { machineId, bay, minutes: Number(minutes), reason: reason ?? null, transactionId: result.transactionId },
     });
 
     res.json({
