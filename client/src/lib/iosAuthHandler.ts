@@ -36,7 +36,11 @@ export function isIOSSafari(): boolean {
 }
 
 /**
- * Detects if running on any iOS device (for broader compatibility)
+ * Detects if running on any iOS/iPadOS browser.
+ *
+ * iPadOS 13+ may report platform=MacIntel, so maxTouchPoints is required.
+ * Chrome/Edge/Firefox on iOS still use WebKit under the hood and can suffer
+ * the same popup/session-state problems as Safari.
  */
 export function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -45,7 +49,8 @@ export function isIOS(): boolean {
 
 /**
  * Returns true only for iPhone/iPod (not iPad).
- * iPad Safari handles popups correctly so redirect is not needed there.
+ * Kept for compatibility, but auth routing now uses isIOS() because iPad and
+ * Chrome iOS also lose popup/redirect state in production.
  */
 export function isIPhone(): boolean {
   return /iPhone|iPod/.test(navigator.userAgent);
@@ -53,15 +58,25 @@ export function isIPhone(): boolean {
 
 /**
  * Single canonical auth strategy resolver.
- * iPhone/iPod → redirect (popup window is too small and often blocked by Safari).
- * Everything else (iPad, Android, desktop) → popup.
+ *
+ * iOS/iPadOS, including Safari, Chrome iOS and installed iOS web-app shells:
+ *   redirect
+ *
+ * Everything else:
+ *   popup
+ *
+ * Why redirect for all iOS:
+ *   - iOS browsers are WebKit-based.
+ *   - popup windows are commonly blocked, tiny, or lose Firebase state.
+ *   - OAuth provider redirects are more stable for Google/Gmail signup and
+ *     for post-login session creation on iPhone/iPad.
  *
  * IMPORTANT: The caller must call signInWithPopup() or signInWithRedirect()
- * as the very next statement after receiving 'popup' — no awaits in between,
- * or Safari may block the popup as a non-user-initiated window.
+ * as the very next statement after receiving the strategy. Avoid awaits in
+ * between, or Safari may treat it as no longer user-initiated.
  */
 export function getAuthStrategy(): 'popup' | 'redirect' {
-  return /iPhone|iPod/.test(navigator.userAgent) ? 'redirect' : 'popup';
+  return isIOS() ? 'redirect' : 'popup';
 }
 
 /**
@@ -76,16 +91,17 @@ export function getAuthStrategy(): 'popup' | 'redirect' {
 export async function signInWithBestMethod(
   auth: Auth,
   provider: AuthProvider,
-  _preferredMethod?: 'popup' | 'redirect'
+  preferredMethod?: 'popup' | 'redirect'
 ): Promise<UserCredential | null> {
-  if (isIPhone()) {
-    // iPhone only: use redirect because popup windows are too small and often blocked
-    console.log('[Auth] iPhone detected — using redirect-based sign-in');
+  const method = preferredMethod || getAuthStrategy();
+
+  if (method === 'redirect') {
+    console.log('[Auth] iOS/mobile-safe redirect sign-in selected');
     await signInWithRedirect(auth, provider);
-    return null; // Page will redirect; result handled by getRedirectResult in useEffect
+    return null; // Page will redirect; result handled by getRedirectResult in auth flow
   }
-  // iPad and desktop: popup works correctly when triggered by a direct user tap
-  console.log('[Auth] iPad/Desktop — using popup-based sign-in');
+
+  console.log('[Auth] Desktop/Android popup sign-in selected');
   return await signInWithPopup(auth, provider);
 }
 
@@ -163,6 +179,6 @@ export function getDeviceInfo(): {
     os: /Mac/.test(navigator.platform) ? 'macOS/iOS' : 'Other',
     isIOS: isIOS(),
     isIOSSafari: isIOSSafari(),
-    shouldUseRedirect: isIPhone(), // iPad uses popup; only iPhone uses redirect
+    shouldUseRedirect: isIOS(),
   };
 }
