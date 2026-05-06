@@ -33,7 +33,45 @@ import { coupons, couponEligibilityRules } from '../../shared/schema';
 import { notificationPreferences } from '../../shared/schema-unified-platform';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 import type { AuthenticatedRequest } from '../middleware/rbac';
+
+/**
+ * PR-W34b: every admin coupon mutation now writes a hash-chained
+ * audit_events row in addition to the existing coupon_audit_log entry.
+ * coupon_audit_log is operational (queryable per-coupon); audit_events
+ * is the legal forensic log and the canonical record of admin actions.
+ *
+ * Fire-and-forget so a slow Postgres write never blocks the admin's
+ * response (matches the pattern from PR-W34a escrow).
+ */
+function emitCouponAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  couponId: number | string | null | undefined;
+  couponCode?: string | null;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: 'coupon',
+      targetId: params.couponId != null ? String(params.couponId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: {
+        couponCode: params.couponCode,
+        ...params.metadata,
+      },
+    }).catch((e) =>
+      logger.warn('[Coupons/Admin] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 import { requireAdmin } from '../middleware/rbac';
 
 const router = Router();
@@ -359,6 +397,22 @@ adminCouponRouter.post('/', async (req: AuthenticatedRequest, res: Response) => 
       [coupon.id, adminId, JSON.stringify({ code: coupon.code, discountType: d.discountType, campaignName: d.campaignName })]
     );
 
+    emitCouponAudit({
+      actionType: 'COUPON_CREATE',
+      actorUserId: adminId,
+      couponId: coupon.id,
+      couponCode: coupon.code,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        discountType: d.discountType,
+        discountValue: d.discountValue,
+        campaignName: d.campaignName,
+        scopeType: d.scopeType,
+        maxTotalRedemptions: d.maxTotalRedemptions ?? null,
+      },
+    });
+
     logger.info('[Coupons/Admin] ✅ Coupon created', { couponId: coupon.id, code: coupon.code });
     return res.status(201).json({ success: true, coupon });
   } catch (err: any) {
@@ -401,6 +455,14 @@ adminCouponRouter.patch('/:id', async (req: AuthenticatedRequest, res: Response)
       `INSERT INTO coupon_audit_log (coupon_id, admin_user_id, action, details) VALUES ($1, $2, 'updated', $3)`,
       [couponId, adminId, JSON.stringify(updates)]
     );
+    emitCouponAudit({
+      actionType: 'COUPON_UPDATE',
+      actorUserId: adminId,
+      couponId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(updates) },
+    });
     return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'שגיאה בעדכון קופון' });
@@ -418,6 +480,14 @@ adminCouponRouter.post('/:id/deactivate', async (req: AuthenticatedRequest, res:
   const adminId = req.firebaseUser?.uid ?? 'unknown';
   try {
     await couponService.deactivateWithReason(couponId, reason.trim(), adminId);
+    emitCouponAudit({
+      actionType: 'COUPON_DEACTIVATE',
+      actorUserId: adminId,
+      couponId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { reason: reason.trim() },
+    });
     return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'שגיאה בביטול קופון' });
@@ -434,6 +504,15 @@ adminCouponRouter.post('/:id/clone', async (req: AuthenticatedRequest, res: Resp
   const adminId = req.firebaseUser?.uid ?? 'unknown';
   try {
     const result = await couponService.cloneCampaign(couponId, newCode, adminId);
+    emitCouponAudit({
+      actionType: 'COUPON_CLONE',
+      actorUserId: adminId,
+      couponId: result.newCouponId,
+      couponCode: newCode,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { sourceCouponId: couponId },
+    });
     return res.status(201).json({ success: true, newCouponId: result.newCouponId });
   } catch (err: any) {
     if (err?.code === '23505') return res.status(409).json({ error: `קוד '${newCode}' כבר קיים`, errorCode: 'DUPLICATE_CODE' });
@@ -452,6 +531,14 @@ adminCouponRouter.post('/:id/issue-to-user', async (req: AuthenticatedRequest, r
   const adminId = req.firebaseUser?.uid ?? 'unknown';
   try {
     const result = await couponService.issueToUser(couponId, userId, adminId, expiresAt);
+    emitCouponAudit({
+      actionType: 'COUPON_ISSUE_TO_USER',
+      actorUserId: adminId,
+      couponId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { targetUserId: userId, issuanceId: result.issuanceId, expiresAt: expiresAt?.toISOString() ?? null },
+    });
     return res.status(201).json({ success: true, issuanceId: result.issuanceId });
   } catch (err: any) {
     return res.status(500).json({ error: 'שגיאה בהנפקה' });
@@ -465,8 +552,21 @@ adminCouponRouter.post('/restore/:id', async (req: AuthenticatedRequest, res: Re
   const parsed = restoreSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'בקשה לא תקינה' });
 
+  const adminId = req.firebaseUser?.uid ?? null;
   try {
     const result = await couponService.restoreRedemption(redemptionId, parsed.data.cancelReason, parsed.data.adminNote);
+    emitCouponAudit({
+      actionType: 'COUPON_RESTORE_REDEMPTION',
+      actorUserId: adminId,
+      couponId: redemptionId, // we audit by redemption id; not the coupon id
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        redemptionId,
+        cancelReason: parsed.data.cancelReason,
+        adminNote: parsed.data.adminNote,
+      },
+    });
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ error: 'שגיאה בשחזור קופון' });
