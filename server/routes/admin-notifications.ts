@@ -1,7 +1,12 @@
 /**
  * Admin Notification & Financial Document Observability Routes — PetWash™
  *
- * All routes require admin auth.
+ * Issue #148 P5: every handler now sits behind `router.use(requireAdmin)`
+ * for defense-in-depth. The mount in routes.ts already runs
+ * `validateFirebaseToken`; this router-level guard adds the role check
+ * once at the top instead of repeating it on every route signature.
+ * The single mutation (`POST /notifications/retry-sweep`) emits a
+ * canonical audit_events row.
  *
  * GET /api/admin/notifications/stats
  *   Aggregated counts by channel, eventType, status
@@ -13,7 +18,7 @@
  *   Search financial_documents by userId, bookingId, transactionId, documentType
  *
  * POST /api/admin/notifications/retry-sweep
- *   Manually trigger one retry sweep cycle
+ *   Manually trigger one retry sweep cycle (audited)
  */
 
 import { Router } from 'express';
@@ -24,6 +29,7 @@ import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { NotificationRetryService } from '../services/NotificationRetryService';
 import { EVENT_MATRIX, DOCUMENT_PREFIXES, EVENT_MATRIX_LOCKED_AT, EVENT_MATRIX_COMMIT, TOTAL_EVENTS, TOTAL_DOCUMENT_TYPES } from '../lib/eventMatrix';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -47,6 +53,11 @@ async function requireAdmin(req: any, res: any, next: any) {
   }
 }
 
+// Issue #148 P5 — every handler below requires admin role. Replaces the
+// per-handler `requireAdmin` arg that was repeated 8× — this is one
+// blanket guard, identical behaviour, fewer per-request token verifies.
+router.use(requireAdmin);
+
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
 /**
@@ -54,7 +65,7 @@ async function requireAdmin(req: any, res: any, next: any) {
  * Returns counts grouped by channel × eventType × status
  * Also returns dead-letter (permanently_failed) count and total queued count.
  */
-router.get('/notifications/stats', requireAdmin, async (_req, res) => {
+router.get('/notifications/stats', async (_req, res) => {
   try {
     const [byChannelStatus, byEventType, totals] = await Promise.all([
       // Counts per channel × status
@@ -111,7 +122,7 @@ router.get('/notifications/stats', requireAdmin, async (_req, res) => {
  * Query params: bookingId, transactionId, userId, templateKey, channel, status,
  *               eventType, limit (max 200), offset
  */
-router.get('/notifications/search', requireAdmin, async (req, res) => {
+router.get('/notifications/search', async (req, res) => {
   try {
     const {
       bookingId,
@@ -170,7 +181,7 @@ router.get('/notifications/search', requireAdmin, async (req, res) => {
  * Query params: userId, bookingId, transactionId, documentType,
  *               documentReference, limit (max 200), offset
  */
-router.get('/financial-documents/search', requireAdmin, async (req, res) => {
+router.get('/financial-documents/search', async (req, res) => {
   try {
     const {
       userId,
@@ -235,10 +246,22 @@ router.get('/financial-documents/search', requireAdmin, async (req, res) => {
  * POST /api/admin/notifications/retry-sweep
  * Manually trigger one sweep cycle (useful for testing + ops).
  */
-router.post('/notifications/retry-sweep', requireAdmin, async (_req, res) => {
+router.post('/notifications/retry-sweep', async (req: any, res) => {
   try {
     logger.info('[AdminNotifications] Manual retry sweep triggered');
     await NotificationRetryService.runOnce();
+    // Issue #148 P5: canonical audit_events for every admin mutation.
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.adminUid || undefined,
+        actorRole: 'admin',
+        actionType: 'NOTIFICATION_RETRY_SWEEP',
+        targetType: 'notification_retry_queue',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        metadata: {},
+      }).catch(() => {});
+    });
     res.json({ success: true, message: 'Retry sweep completed' });
   } catch (err: any) {
     logger.error('[AdminNotifications] Manual retry sweep failed', { error: err?.message });
@@ -257,7 +280,7 @@ router.post('/notifications/retry-sweep', requireAdmin, async (_req, res) => {
  *   3. Idempotent hit rate — duplicate idempotency key hits per event type (last 24 h)
  *   4. Provider rejection gaps — rejected providers with no PW-REJ document
  */
-router.get('/notifications/health', requireAdmin, async (_req, res) => {
+router.get('/notifications/health', async (_req, res) => {
   try {
     const now = new Date();
     const todayStart = new Date(now);
@@ -391,7 +414,7 @@ router.get('/notifications/health', requireAdmin, async (_req, res) => {
  * Returns all permanently_failed notification logs for ops/support triage.
  * Query params: eventType, channel, userId, limit (max 200), offset
  */
-router.get('/notifications/dead-letter', requireAdmin, async (req, res) => {
+router.get('/notifications/dead-letter', async (req, res) => {
   try {
     const {
       eventType,
@@ -471,7 +494,7 @@ router.get('/notifications/dead-letter', requireAdmin, async (req, res) => {
  * grouped by document reference prefix (PW-RCP, PW-CAN, PW-RFD, etc.).
  * Query params: prefix (optional — filter to one prefix), limit, offset
  */
-router.get('/financial-documents/by-prefix', requireAdmin, async (req, res) => {
+router.get('/financial-documents/by-prefix', async (req, res) => {
   try {
     const { prefix, limit: limitStr = '20', offset: offsetStr = '0' } = req.query as Record<string, string>;
     const limit = Math.min(parseInt(limitStr) || 20, 100);
@@ -556,7 +579,7 @@ router.get('/financial-documents/by-prefix', requireAdmin, async (req, res) => {
  * GET /api/admin/event-matrix
  * Returns the frozen event matrix and document prefix registry as JSON.
  */
-router.get('/event-matrix', requireAdmin, (_req, res) => {
+router.get('/event-matrix', (_req, res) => {
   res.json({
     lockedAt: EVENT_MATRIX_LOCKED_AT,
     commit: EVENT_MATRIX_COMMIT,
