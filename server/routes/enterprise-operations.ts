@@ -3,6 +3,38 @@ import { storage } from "../storage";
 import { insertOpsTaskSchema, insertOpsIncidentSchema, insertOpsSlaTrackingSchema } from "@shared/schema-operations";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
+import { logAuditEvent } from "../middleware/auditLog";
+
+/**
+ * PR-W34h: every enterprise-operations admin mutation writes a
+ * hash-chained audit_events row. Fire-and-forget. Covers tasks,
+ * incidents, SLA tracking — operational state changes the operator
+ * needs to see in the canonical audit log.
+ */
+function emitOpsAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[Enterprise/Operations] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 
 const router = Router();
 
@@ -83,12 +115,21 @@ router.get("/tasks/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/operations/tasks - Create new task
-router.post("/tasks", requireAdmin, async (req, res) => {
+router.post("/tasks", requireAdmin, async (req: any, res) => {
   try {
     const validatedData = insertOpsTaskSchema.parse(req.body);
     const task = await storage.createOpsTask(validatedData);
-    
+
     logger.info("[Operations API] Task created", { taskId: task.id, taskType: task.category });
+    emitOpsAudit({
+      actionType: 'OPS_TASK_CREATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_task',
+      targetId: (task as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { category: (task as any)?.category, priority: (task as any)?.priority, stationId: (task as any)?.stationId },
+    });
     res.status(201).json(task);
   } catch (error) {
     logger.error("[Operations API] Error creating task", error);
@@ -97,41 +138,59 @@ router.post("/tasks", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/operations/tasks/:id - Update task
-router.patch("/tasks/:id", requireAdmin, async (req, res) => {
+router.patch("/tasks/:id", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const task = await storage.updateOpsTask(id, req.body);
-    
+
     logger.info("[Operations API] Task updated", { taskId: id });
+    emitOpsAudit({
+      actionType: 'OPS_TASK_UPDATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_task',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(task);
   } catch (error) {
     logger.error("[Operations API] Error updating task", error);
-    
+
     if (error instanceof Error && error.message === "Task not found") {
       return res.status(404).json({ error: "Task not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to update task" });
   }
 });
 
 // POST /api/enterprise/operations/tasks/:id/complete - Complete task
-router.post("/tasks/:id/complete", requireAdmin, async (req, res) => {
+router.post("/tasks/:id/complete", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const { completedBy, notes } = req.body;
-    
+
     const task = await storage.completeOpsTask(id, completedBy, notes);
-    
+
     logger.info("[Operations API] Task completed", { taskId: id, completedBy });
+    emitOpsAudit({
+      actionType: 'OPS_TASK_COMPLETE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_task',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { completedBy, hasNotes: !!notes },
+    });
     res.json(task);
   } catch (error) {
     logger.error("[Operations API] Error completing task", error);
-    
+
     if (error instanceof Error && error.message === "Task not found") {
       return res.status(404).json({ error: "Task not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to complete task" });
   }
 });
@@ -202,12 +261,21 @@ router.get("/incidents/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/operations/incidents - Create new incident
-router.post("/incidents", requireAdmin, async (req, res) => {
+router.post("/incidents", requireAdmin, async (req: any, res) => {
   try {
     const validatedData = insertOpsIncidentSchema.parse(req.body);
     const incident = await storage.createIncident(validatedData);
-    
+
     logger.info("[Operations API] Incident created", { incidentId: incident.id, severity: incident.severity });
+    emitOpsAudit({
+      actionType: 'OPS_INCIDENT_CREATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_incident',
+      targetId: (incident as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { severity: (incident as any)?.severity, category: (incident as any)?.category, stationId: (incident as any)?.stationId },
+    });
     res.status(201).json(incident);
   } catch (error) {
     logger.error("[Operations API] Error creating incident", error);
@@ -216,83 +284,119 @@ router.post("/incidents", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/operations/incidents/:id - Update incident
-router.patch("/incidents/:id", requireAdmin, async (req, res) => {
+router.patch("/incidents/:id", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const incident = await storage.updateIncident(id, req.body);
-    
+
     logger.info("[Operations API] Incident updated", { incidentId: id });
+    emitOpsAudit({
+      actionType: 'OPS_INCIDENT_UPDATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_incident',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(incident);
   } catch (error) {
     logger.error("[Operations API] Error updating incident", error);
-    
+
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to update incident" });
   }
 });
 
 // POST /api/enterprise/operations/incidents/:id/resolve - Resolve incident
-router.post("/incidents/:id/resolve", requireAdmin, async (req, res) => {
+router.post("/incidents/:id/resolve", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const { resolvedBy, resolution, preventiveMeasures } = req.body;
-    
+
     const incident = await storage.resolveIncident(id, resolvedBy, resolution, preventiveMeasures);
-    
+
     logger.info("[Operations API] Incident resolved", { incidentId: id, resolvedBy });
+    emitOpsAudit({
+      actionType: 'OPS_INCIDENT_RESOLVE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_incident',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { resolvedBy, hasResolution: !!resolution, hasPreventiveMeasures: !!preventiveMeasures },
+    });
     res.json(incident);
   } catch (error) {
     logger.error("[Operations API] Error resolving incident", error);
-    
+
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to resolve incident" });
   }
 });
 
 // POST /api/enterprise/operations/incidents/:id/close - Close incident
-router.post("/incidents/:id/close", requireAdmin, async (req, res) => {
+router.post("/incidents/:id/close", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const { closedBy } = req.body;
-    
+
     const incident = await storage.closeIncident(id, closedBy);
-    
+
     logger.info("[Operations API] Incident closed", { incidentId: id, closedBy });
+    emitOpsAudit({
+      actionType: 'OPS_INCIDENT_CLOSE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_incident',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { closedBy },
+    });
     res.json(incident);
   } catch (error) {
     logger.error("[Operations API] Error closing incident", error);
-    
+
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to close incident" });
   }
 });
 
 // POST /api/enterprise/operations/incidents/:id/escalate - Escalate incident
-router.post("/incidents/:id/escalate", requireAdmin, async (req, res) => {
+router.post("/incidents/:id/escalate", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const { escalatedBy, escalationNotes } = req.body;
-    
+
     const incident = await storage.escalateIncident(id, escalatedBy, escalationNotes);
-    
+
     logger.info("[Operations API] Incident escalated", { incidentId: id, escalatedBy });
+    emitOpsAudit({
+      actionType: 'OPS_INCIDENT_ESCALATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_incident',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { escalatedBy, hasEscalationNotes: !!escalationNotes },
+    });
     res.json(incident);
   } catch (error) {
     logger.error("[Operations API] Error escalating incident", error);
-    
+
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to escalate incident" });
   }
 });
@@ -362,12 +466,21 @@ router.get("/sla/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/operations/sla - Create SLA tracking
-router.post("/sla", requireAdmin, async (req, res) => {
+router.post("/sla", requireAdmin, async (req: any, res) => {
   try {
     const validatedData = insertOpsSlaTrackingSchema.parse(req.body);
     const tracking = await storage.createSlaTracking(validatedData);
-    
+
     logger.info("[Operations API] SLA tracking created", { id: tracking.id, entityType: tracking.entityType });
+    emitOpsAudit({
+      actionType: 'OPS_SLA_CREATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_sla',
+      targetId: (tracking as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { entityType: (tracking as any)?.entityType, entityId: (tracking as any)?.entityId },
+    });
     res.status(201).json(tracking);
   } catch (error) {
     logger.error("[Operations API] Error creating SLA tracking", error);
@@ -376,20 +489,29 @@ router.post("/sla", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/operations/sla/:id - Update SLA tracking
-router.patch("/sla/:id", requireAdmin, async (req, res) => {
+router.patch("/sla/:id", requireAdmin, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const tracking = await storage.updateSlaTracking(id, req.body);
-    
+
     logger.info("[Operations API] SLA tracking updated", { id });
+    emitOpsAudit({
+      actionType: 'OPS_SLA_UPDATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'ops_sla',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(tracking);
   } catch (error) {
     logger.error("[Operations API] Error updating SLA tracking", error);
-    
+
     if (error instanceof Error && error.message === "SLA tracking not found") {
       return res.status(404).json({ error: "SLA tracking not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to update SLA tracking" });
   }
 });
