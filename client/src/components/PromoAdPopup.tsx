@@ -181,9 +181,9 @@ export function PromoAdPopup({
     : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
   const cardVariants = prefersReducedMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : { initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.95, opacity: 0 } };
-  const transitionDuration = prefersReducedMotion ? 0.15 : 0.3;
-  const cardTransitionDelay = prefersReducedMotion ? 0 : 0.08;
+    : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+  const transitionDuration = prefersReducedMotion ? 0.15 : 0.25;
+  const cardTransitionDelay = 0;
 
   return (
     <AnimatePresence>
@@ -191,42 +191,39 @@ export function PromoAdPopup({
         <motion.div
           {...backdropVariants}
           transition={{ duration: transitionDuration }}
-          // Use inset-0 + fixed for true full-screen on all browsers/devices.
-          // 100dvh is set inline to properly handle Safari dynamic toolbar.
-          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          // True full-screen popup. No centered card, no outer padding.
+          // 100dvh handles Safari dynamic toolbar.
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
           style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
           data-testid="promo-ad-popup"
           aria-modal="true"
           role="dialog"
           aria-label="PetWash welcome"
         >
-          {/* Pure-white shell — tap anywhere outside artwork to close.
-              No dark overlay, no blur, no grey, no card framing on any
-              breakpoint per CEO directive (2026-05-03). */}
+          {/* Invisible click-catcher only. Do not paint white or grey behind
+              the artwork because it creates fake padding/letterbox bars. */}
           <div
-            className="absolute inset-0 bg-white"
-            onClick={handleClose}
+            className="absolute inset-0 bg-black"
+            onClick={() => handleClose('user')}
           />
 
-          {/* Full-screen content layer — image-only on mobile and desktop.
-              No rounded container, no shadow, no max-width card. Pause-on-
-              hover/touch suspends the auto-dismiss timer so a user reading
-              the popup never gets it yanked away. */}
+          {/* Full-screen content layer. Poster template fills the viewport.
+              Legacy templates can still render their own layouts. */}
           <motion.div
             {...cardVariants}
             transition={{ duration: transitionDuration, delay: cardTransitionDelay }}
-            className="relative w-full h-full overflow-hidden"
+            className="relative w-full h-full overflow-hidden bg-black"
             style={{ maxHeight: '100dvh' }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onTouchStart={() => setIsHovered(true)}
             onTouchEnd={() => setIsHovered(false)}
           >
-            {/* Single floating X close button — dark glyph on white shell,
-                safe-area aware so it's always tappable. No card framing. */}
+            {/* Single floating close button. Glass/dark treatment so it does
+                not create a white circle inside luxury artwork. */}
             <button
-              onClick={handleClose}
-              className="absolute z-20 w-10 h-10 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-100 transition-colors"
+              onClick={() => handleClose('user')}
+              className="absolute z-20 w-11 h-11 rounded-full flex items-center justify-center text-white bg-black/45 hover:bg-black/65 backdrop-blur-md border border-white/20 transition-colors"
               style={{
                 top: 'max(1rem, env(safe-area-inset-top, 1rem))',
                 right: 'max(1rem, env(safe-area-inset-right, 1rem))',
@@ -445,25 +442,20 @@ interface PosterTemplateProps extends TemplateProps {
 }
 
 /**
- * PosterTemplate — exact uploaded creative on a transparent background.
+ * PosterTemplate — exact uploaded creative as true full-screen artwork.
  *
- * Per CEO directive (2026-05-03):
- *   - Display the uploaded artwork EXACTLY as designed. No text overlays,
- *     no extra CTAs, no white card framing, no padding wrapper, no bottom
- *     button strip.
- *   - The popup shell at the parent <PromoAdPopup> already provides
- *     full-screen presentation, dark+blurred backdrop, safe-area-aware
- *     X close button, and 100dvh height. This template renders ONLY the
- *     image, centered, with object-contain so the artwork is never
- *     distorted across device aspect ratios.
- *   - If a separate mobile-ratio creative is added later, switch the
- *     image src here based on viewport. Do NOT distort the existing
- *     artwork to "fit" mobile.
+ * Per CEO directive:
+ *   - No outer padding.
+ *   - No white shell.
+ *   - No card frame.
+ *   - No extra CTA or bottom strip.
+ *   - Fill every screen size like a luxury campaign splash.
  *
- * Fallback: if the configured image fails to load (or is blocked by the
- * isPublicSafePromoImage guard), render a clean branded gradient card so
- * the popup is never blank. The fallback is the only place this template
- * renders extra layout — the primary path is image-only.
+ * Trade-off: object-cover can crop the edges when the artwork ratio does
+ * not match the device. That is intentional for the default public popup
+ * because the requirement is true full-screen artwork with no white bars.
+ * If the creative contains critical text at the edges, provide separate
+ * mobile and desktop assets instead of reintroducing padding.
  */
 function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -477,15 +469,12 @@ function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
   }
 
   if (showImage) {
-    // Primary path: image only. Transparent wrapper lets the shell's dark
-    // backdrop show through letterbox bars when the artwork ratio doesn't
-    // match the device.
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <div className="absolute inset-0 bg-black">
         <img
           src={config.imageUrl}
           alt="Pet Wash™ Smart Hub"
-          className="max-w-full max-h-full object-contain"
+          className="w-full h-full object-cover"
           onError={() => setImgFailed(true)}
         />
       </div>
