@@ -3,16 +3,55 @@ import { storage } from "../storage";
 import { insertLogisticsWarehouseSchema, insertLogisticsInventorySchema, insertLogisticsFulfillmentOrderSchema } from "@shared/schema-logistics";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
+import { logAuditEvent } from "../middleware/auditLog";
+
+/**
+ * PR-W34i: every enterprise-logistics admin mutation writes a hash-
+ * chained audit_events row. Fire-and-forget; never blocks request.
+ */
+function emitLogisticsAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[Enterprise/Logistics] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 
 const router = Router();
 
 // =================== LOGISTICS WAREHOUSES ===================
 
-router.post("/warehouses", requireAdmin, async (req, res, next) => {
+router.post("/warehouses", requireAdmin, async (req: any, res, next) => {
   try {
     const validated = insertLogisticsWarehouseSchema.parse(req.body);
     const warehouse = await storage.createWarehouse(validated);
     logger.info(`[Logistics] Warehouse created: ${warehouse.warehouseId}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_WAREHOUSE_CREATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'warehouse',
+      targetId: (warehouse as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { warehouseId: (warehouse as any)?.warehouseId, country: (warehouse as any)?.country },
+    });
     res.status(201).json(warehouse);
   } catch (error) {
     next(error);
@@ -56,22 +95,39 @@ router.get("/warehouses/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.patch("/warehouses/:id", requireAdmin, async (req, res, next) => {
+router.patch("/warehouses/:id", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const updated = await storage.updateWarehouse(id, req.body);
     logger.info(`[Logistics] Warehouse updated: ${id}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_WAREHOUSE_UPDATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'warehouse',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(updated);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/warehouses/:id/deactivate", requireAdmin, async (req, res, next) => {
+router.post("/warehouses/:id/deactivate", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const deactivated = await storage.deactivateWarehouse(id);
     logger.info(`[Logistics] Warehouse deactivated: ${id}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_WAREHOUSE_DEACTIVATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'warehouse',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.json(deactivated);
   } catch (error) {
     next(error);
@@ -80,11 +136,20 @@ router.post("/warehouses/:id/deactivate", requireAdmin, async (req, res, next) =
 
 // =================== LOGISTICS INVENTORY ===================
 
-router.post("/inventory", requireAdmin, async (req, res, next) => {
+router.post("/inventory", requireAdmin, async (req: any, res, next) => {
   try {
     const validated = insertLogisticsInventorySchema.parse(req.body);
     const item = await storage.createInventoryItem(validated);
     logger.info(`[Logistics] Inventory item created: ${item.sku}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_INVENTORY_CREATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'inventory_item',
+      targetId: (item as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { sku: (item as any)?.sku, warehouseId: (item as any)?.warehouseId },
+    });
     res.status(201).json(item);
   } catch (error) {
     next(error);
@@ -161,23 +226,41 @@ router.get("/inventory/warehouse/:warehouseId", requireAdmin, async (req, res, n
   }
 });
 
-router.patch("/inventory/:id", requireAdmin, async (req, res, next) => {
+router.patch("/inventory/:id", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const updated = await storage.updateInventoryItem(id, req.body);
     logger.info(`[Logistics] Inventory item updated: ${id}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_INVENTORY_UPDATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'inventory_item',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(updated);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/inventory/:id/adjust", requireAdmin, async (req, res, next) => {
+router.post("/inventory/:id/adjust", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const { quantityChange, notes } = req.body;
     const updated = await storage.adjustInventoryQuantity(id, quantityChange, notes);
     logger.info(`[Logistics] Inventory adjusted: ${id}, change: ${quantityChange}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_INVENTORY_ADJUST',
+      actorUserId: req.adminUser?.id,
+      targetType: 'inventory_item',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { quantityChange, hasNotes: !!notes },
+    });
     res.json(updated);
   } catch (error) {
     next(error);
@@ -186,11 +269,20 @@ router.post("/inventory/:id/adjust", requireAdmin, async (req, res, next) => {
 
 // =================== LOGISTICS FULFILLMENT ORDERS ===================
 
-router.post("/fulfillment-orders", requireAdmin, async (req, res, next) => {
+router.post("/fulfillment-orders", requireAdmin, async (req: any, res, next) => {
   try {
     const validated = insertLogisticsFulfillmentOrderSchema.parse(req.body);
     const order = await storage.createFulfillmentOrder(validated);
     logger.info(`[Logistics] Fulfillment order created: ${order.orderId}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_ORDER_CREATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'fulfillment_order',
+      targetId: (order as any)?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { orderId: (order as any)?.orderId, orderType: (order as any)?.orderType, stationId: (order as any)?.stationId },
+    });
     res.status(201).json(order);
   } catch (error) {
     next(error);
@@ -246,18 +338,27 @@ router.get("/fulfillment-orders/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.patch("/fulfillment-orders/:id", requireAdmin, async (req, res, next) => {
+router.patch("/fulfillment-orders/:id", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const updated = await storage.updateFulfillmentOrder(id, req.body);
     logger.info(`[Logistics] Fulfillment order updated: ${id}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_ORDER_UPDATE',
+      actorUserId: req.adminUser?.id,
+      targetType: 'fulfillment_order',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(updated);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/fulfillment-orders/:id/ship", requireAdmin, async (req, res, next) => {
+router.post("/fulfillment-orders/:id/ship", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const { trackingNumber, carrier } = req.body;
@@ -266,29 +367,60 @@ router.post("/fulfillment-orders/:id/ship", requireAdmin, async (req, res, next)
     }
     const shipped = await storage.shipFulfillmentOrder(id, trackingNumber, carrier);
     logger.info(`[Logistics] Order shipped: ${id}, tracking: ${trackingNumber}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_ORDER_SHIP',
+      actorUserId: req.adminUser?.id,
+      targetType: 'fulfillment_order',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        carrier,
+        // mask tracking number — store last 6 chars only (full number is
+        // a customer-shareable secret in some carriers)
+        trackingLast6: typeof trackingNumber === 'string' ? trackingNumber.slice(-6) : undefined,
+      },
+    });
     res.json(shipped);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/fulfillment-orders/:id/deliver", requireAdmin, async (req, res, next) => {
+router.post("/fulfillment-orders/:id/deliver", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const delivered = await storage.deliverFulfillmentOrder(id);
     logger.info(`[Logistics] Order delivered: ${id}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_ORDER_DELIVER',
+      actorUserId: req.adminUser?.id,
+      targetType: 'fulfillment_order',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.json(delivered);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/fulfillment-orders/:id/cancel", requireAdmin, async (req, res, next) => {
+router.post("/fulfillment-orders/:id/cancel", requireAdmin, async (req: any, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const { reason } = req.body;
     const cancelled = await storage.cancelFulfillmentOrder(id, reason);
     logger.info(`[Logistics] Order cancelled: ${id}, reason: ${reason}`);
+    emitLogisticsAudit({
+      actionType: 'LOGISTICS_ORDER_CANCEL',
+      actorUserId: req.adminUser?.id,
+      targetType: 'fulfillment_order',
+      targetId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { reason },
+    });
     res.json(cancelled);
   } catch (error) {
     next(error);
