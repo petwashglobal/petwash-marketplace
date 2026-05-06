@@ -38,7 +38,40 @@ import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
+
+/**
+ * PR-W34d: every admin-initiated loyalty mutation writes an
+ * audit_events row. Fire-and-forget; covers the 4 requireAdmin
+ * handlers in this file. Customer-facing mutators (claim / redeem /
+ * profile / auto-enroll) are NOT covered here — they're not admin
+ * actions, and the wallet ledger captures their money side via
+ * pointsTransactions / userRedemptions.
+ */
+function emitLoyaltyAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetUserId?: string | null;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: 'loyalty_user',
+      targetId: params.targetUserId ?? undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[Loyalty/Admin] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { logLoyaltyEnrollment } from '../services/googleSheetsIntegration';
@@ -505,6 +538,24 @@ router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: 
       logger.error('[Loyalty] Failed to send points email (non-blocking)', { emailErr, userId });
     }
 
+    emitLoyaltyAdminAudit({
+      actionType: 'LOYALTY_POINTS_ADD',
+      actorUserId: req.firebaseUser?.uid,
+      targetUserId: userId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        amount,
+        newBalance,
+        source,
+        sourceId,
+        description,
+        tierUpgraded: tierCheck.upgraded,
+        previousTier: tierCheck.previousTier,
+        newTier: tierCheck.newTier,
+      },
+    });
+
     res.json({ ...transaction, tierUpgrade: tierCheck.upgraded ? tierCheck : undefined });
   } catch (error) {
     logger.error('Error adding points:', error);
@@ -640,6 +691,20 @@ router.post('/badges/unlock', requireAdmin, async (req: AuthenticatedRequest, re
         }
       }
     }
+
+    emitLoyaltyAdminAudit({
+      actionType: 'LOYALTY_BADGE_UNLOCK',
+      actorUserId: req.firebaseUser?.uid,
+      targetUserId: userId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        badgeId,
+        badgeName: badge.name,
+        pointsReward: badge.pointsReward,
+        xpReward: badge.xpReward,
+      },
+    });
 
     res.json({ unlocked, badge });
   } catch (error) {
@@ -1265,6 +1330,18 @@ router.post('/membership/renew', requireAdmin, async (req: AuthenticatedRequest,
       }
     })();
 
+    emitLoyaltyAdminAudit({
+      actionType: 'LOYALTY_MEMBERSHIP_RENEW',
+      actorUserId: req.firebaseUser?.uid,
+      targetUserId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        tier: profile.tier,
+        renewedUntil: renewedUntilDate.toISOString(),
+      },
+    });
+
     res.json({ success: true, renewedUntil: renewedUntilStr, tier: profile.tier });
   } catch (error) {
     logger.error('Error renewing membership:', error);
@@ -1368,6 +1445,18 @@ router.post('/membership/cancel', requireAdmin, async (req: AuthenticatedRequest
         logger.error('[Loyalty] Post-cancellation notification failed silently', { error: notifErr?.message });
       }
     })();
+
+    emitLoyaltyAdminAudit({
+      actionType: 'LOYALTY_MEMBERSHIP_CANCEL',
+      actorUserId: req.firebaseUser?.uid,
+      targetUserId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        tier: profile.tier,
+        effectiveDate: effectiveDate.toISOString(),
+      },
+    });
 
     res.json({ success: true, effectiveDate: effectiveDateStr, tier: profile.tier });
   } catch (error) {
