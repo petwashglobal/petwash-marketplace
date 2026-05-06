@@ -99,22 +99,27 @@ export function AddressPicker({
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         try {
+          // Use the route that actually accepts lat/lng. The old code called
+          // /api/google/places-details?latlng=... but that route requires a
+          // placeId, so current-location address lookup failed by design.
+          const params = new URLSearchParams({
+            lat: String(latitude),
+            lng: String(longitude),
+            language: isHebrew ? "iw" : "en",
+          });
           const res = await fetch(
-            `/api/google/places-details?latlng=${latitude},${longitude}`,
+            `/api/google/reverse-geocode?${params}`,
             { credentials: "include" }
           );
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           const formatted =
-            data?.result?.formatted_address ||
+            data?.formattedAddress ||
+            data?.name ||
             `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-          const postal =
-            data?.result?.address_components?.find((c: any) =>
-              c.types.includes("postal_code")
-            )?.long_name || "";
 
           const place: PlaceDetails = {
             formattedAddress: formatted,
-            postalCode: postal,
+            city: data?.name,
             lat: latitude,
             lng: longitude,
           };
@@ -126,7 +131,7 @@ export function AddressPicker({
           if (autoSave && user?.uid) {
             saveMutation.mutate({
               address: formatted,
-              postalCode: postal,
+              city: data?.name,
               lat: latitude as any,
               lng: longitude as any,
               label: "other",
@@ -142,7 +147,7 @@ export function AddressPicker({
       },
       () => setGeoLoading(false)
     );
-  }, [onChange, onPlaceSelected, autoSave, user?.uid]);
+  }, [onChange, onPlaceSelected, autoSave, user?.uid, isHebrew]);
 
   // ── Select a saved address ────────────────────────────────────────────────
   const selectSaved = useCallback(
@@ -171,7 +176,7 @@ export function AddressPicker({
         });
       }
     },
-    [onChange, onPlaceSelected, user?.uid]
+    [onChange, onPlaceSelected, user?.uid, saveMutation]
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
