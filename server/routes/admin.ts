@@ -17,6 +17,40 @@ import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
 import { isSuperAdmin } from '../middleware/rbac';
 import { SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/**
+ * PR-W34f: every admin / CEO mutation in this file writes a hash-
+ * chained audit_events row. Fire-and-forget so a slow Postgres write
+ * never blocks the admin response. The 14 mutators span: broadcast,
+ * marketing campaigns + assets, vaccine-reminder test fire, CEO
+ * voucher actions (money-touching), security scans, SMS kill-switch,
+ * financial check.
+ */
+function emitAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch((e) =>
+      logger.warn('[Admin] audit_events write failed (non-blocking)', { error: e?.message }),
+    );
+  });
+}
 
 const router = Router();
 
@@ -200,14 +234,29 @@ router.post('/broadcast/users', validateFirebaseToken, requireAdmin, async (req,
       timestamp: new Date(),
     });
 
-    logger.info('Admin broadcast sent to users', { 
-      adminUid: req.firebaseUser!.uid, 
+    logger.info('Admin broadcast sent to users', {
+      adminUid: req.firebaseUser!.uid,
       userCount: userIds.length,
       segmentType,
     });
 
-    res.json({ 
-      success: true, 
+    emitAdminAudit({
+      actionType: 'BROADCAST_USERS',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'user_segment',
+      targetId: segmentType ?? 'custom',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        title,
+        type,
+        userCount: userIds.length,
+        isMarketingBroadcast,
+      },
+    });
+
+    res.json({
+      success: true,
       messagesSent: userIds.length,
       targetUsers: userIds.length,
     });
@@ -288,13 +337,23 @@ router.post('/broadcast/franchises', validateFirebaseToken, requireAdmin, async 
       timestamp: new Date(),
     });
 
-    logger.info('Admin broadcast sent to franchises', { 
-      adminUid: req.firebaseUser!.uid, 
+    logger.info('Admin broadcast sent to franchises', {
+      adminUid: req.firebaseUser!.uid,
       franchiseCount: franchiseIds.length,
     });
 
-    res.json({ 
-      success: true, 
+    emitAdminAudit({
+      actionType: 'BROADCAST_FRANCHISES',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'franchise_segment',
+      targetId: targetFranchiseIds ? 'specific' : 'all',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { title, category, franchiseCount: franchiseIds.length, requiresAck: !!requiresAck },
+    });
+
+    res.json({
+      success: true,
       messagesSent: franchiseIds.length,
       targetFranchises: franchiseIds.length,
     });
@@ -342,13 +401,23 @@ router.post('/campaigns', validateFirebaseToken, requireAdmin, async (req, res) 
       timestamp: new Date(),
     });
 
-    logger.info('Campaign created', { 
-      adminUid: req.firebaseUser!.uid, 
+    logger.info('Campaign created', {
+      adminUid: req.firebaseUser!.uid,
       campaignId: campaignRef.id,
     });
 
-    res.status(201).json({ 
-      success: true, 
+    emitAdminAudit({
+      actionType: 'CAMPAIGN_CREATE',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'campaign',
+      targetId: campaignRef.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { name: campaignData.name, eligibleSegment: campaignData.eligibleSegment },
+    });
+
+    res.status(201).json({
+      success: true,
       campaignId: campaignRef.id,
     });
   } catch (error) {
@@ -415,9 +484,23 @@ router.post('/campaigns/:campaignId/start', validateFirebaseToken, requireAdmin,
       timestamp: new Date(),
     });
 
-    logger.info('Campaign started', { 
-      adminUid: req.firebaseUser!.uid, 
+    logger.info('Campaign started', {
+      adminUid: req.firebaseUser!.uid,
       campaignId,
+    });
+
+    emitAdminAudit({
+      actionType: 'CAMPAIGN_START',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'campaign',
+      targetId: campaignId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        name: campaign?.name,
+        eligibleSegment: campaign?.eligibleSegment,
+        voucherEnabled: !!campaign?.voucherEnabled,
+      },
     });
 
     res.json({ success: true });
@@ -459,9 +542,19 @@ router.post('/campaigns/:campaignId/stop', validateFirebaseToken, requireAdmin, 
       timestamp: new Date(),
     });
 
-    logger.info('Campaign stopped', { 
-      adminUid: req.firebaseUser!.uid, 
+    logger.info('Campaign stopped', {
+      adminUid: req.firebaseUser!.uid,
       campaignId,
+    });
+
+    emitAdminAudit({
+      actionType: 'CAMPAIGN_STOP',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'campaign',
+      targetId: campaignId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { name: doc.data()?.name },
     });
 
     res.json({ success: true });
@@ -518,6 +611,16 @@ router.patch('/campaigns/:campaignId/metrics', validateFirebaseToken, requireAdm
 
     await campaignRef.update(updateData);
 
+    emitAdminAudit({
+      actionType: 'CAMPAIGN_METRICS_UPDATE',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'campaign',
+      targetId: campaignId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(updateData) },
+    });
+
     res.json({ success: true });
   } catch (error) {
     logger.error('Error updating campaign metrics', error);
@@ -572,13 +675,23 @@ router.post('/marketing/assets', validateFirebaseToken, requireAdmin, async (req
     const assetRef = firestore.collection(FIRESTORE_PATHS.MARKETING_ASSETS()).doc();
     await assetRef.set(assetData);
 
-    logger.info('Marketing asset uploaded', { 
-      adminUid: req.firebaseUser!.uid, 
+    logger.info('Marketing asset uploaded', {
+      adminUid: req.firebaseUser!.uid,
       assetId: assetRef.id,
     });
 
-    res.status(201).json({ 
-      success: true, 
+    emitAdminAudit({
+      actionType: 'MARKETING_ASSET_UPLOAD',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'marketing_asset',
+      targetId: assetRef.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { type: assetData.type, category: assetData.category, name: assetData.name },
+    });
+
+    res.status(201).json({
+      success: true,
       assetId: assetRef.id,
     });
   } catch (error) {
@@ -923,6 +1036,21 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
       timestamp: new Date(),
     });
     
+    emitAdminAudit({
+      actionType: 'TEST_VACCINE_REMINDER',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'system',
+      targetId: 'vaccine_reminder_test',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        daysAhead,
+        targetDate: targetDateStr,
+        petsFound: matchingPets.length,
+        ownersAffected: remindersByOwner.size,
+      },
+    });
+
     res.json({
       success: true,
       simulation: {
@@ -1022,6 +1150,21 @@ router.post('/ceo/request-voucher', validateFirebaseToken, requireCEO, async (re
       logger.error('[CEO Security] Failed to send 2FA WhatsApp', whatsappError);
       // Continue anyway - user can still use the code if they received it
     }
+
+    emitAdminAudit({
+      actionType: 'CEO_REQUEST_VOUCHER',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'voucher_request',
+      targetId: requestRef.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        recipientEmail,
+        recipientName,
+        amount: Number(amount),
+        // verificationCode intentionally NOT included — never log secrets.
+      },
+    });
 
     res.json({
       success: true,
@@ -1227,6 +1370,23 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
 
     logger.info('[CEO] Free voucher issued', { voucherId: voucherRef.id, recipientEmail, amount });
 
+    emitAdminAudit({
+      actionType: 'CEO_ISSUE_FREE_VOUCHER',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'voucher',
+      targetId: voucherRef.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        requestId,
+        recipientEmail,
+        recipientName,
+        amount: Number(amount),
+        codeLast4: code.slice(-4),
+        expiresAt: expiresAt.toISOString(),
+      },
+    });
+
     res.json({
       success: true,
       voucher: {
@@ -1279,10 +1439,18 @@ router.get('/security/platform-monitor', async (_req, res) => {
  * line 1291; without these, any anonymous POST could trigger a
  * privileged Gemini scan run.
  */
-router.post('/security/platform-monitor/scan', validateFirebaseToken, requireAdmin, async (_req, res) => {
+router.post('/security/platform-monitor/scan', validateFirebaseToken, requireAdmin, async (req: any, res) => {
   try {
     const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
     const assessment = await geminiPlatformMonitor.forceScan();
+    emitAdminAudit({
+      actionType: 'SECURITY_PLATFORM_SCAN_FORCE',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'platform_monitor',
+      targetId: 'force_scan',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.json({ ok: true, assessment });
   } catch (error) {
     res.status(500).json({ error: 'Scan failed', details: error instanceof Error ? error.message : 'Unknown' });
@@ -1307,11 +1475,19 @@ router.get('/sms/status', validateFirebaseToken, requireAdmin, async (_req, res)
  * POST /api/admin/sms/kill-switch/clear
  * Re-enable SMS after an emergency kill switch event (SUPER_ADMIN only)
  */
-router.post('/sms/kill-switch/clear', validateFirebaseToken, requireAdmin, async (_req, res) => {
+router.post('/sms/kill-switch/clear', validateFirebaseToken, requireAdmin, async (req: any, res) => {
   try {
     const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
     await smsAbuseDetector.clearKillSwitch();
     const status = await smsAbuseDetector.getStatus();
+    emitAdminAudit({
+      actionType: 'SMS_KILL_SWITCH_CLEAR',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'sms_kill_switch',
+      targetId: 'clear',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.json({ ok: true, message: 'SMS kill switch cleared — SMS re-enabled', ...status });
   } catch (error) {
     res.status(500).json({ error: 'Failed to clear kill switch' });
@@ -1430,6 +1606,24 @@ Keep it factual, professional, Hebrew business context. No markdown, plain text 
       recommendation,
       timestamp: new Date().toISOString(),
     });
+
+    emitAdminAudit({
+      actionType: 'FINANCIAL_CHECK_RUN',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'transaction',
+      targetId: transactionId ?? null,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: {
+        baseAmount,
+        verdict,
+        riskScore,
+        anomalyCount: anomalies.length,
+        vatCorrect,
+        totalCorrect,
+        commissionCorrect,
+      },
+    });
   } catch (error) {
     logger.error('[Admin FinancialCheck] Error', error);
     res.status(500).json({ error: 'Financial check failed' });
@@ -1440,14 +1634,23 @@ Keep it factual, professional, Hebrew business context. No markdown, plain text 
  * POST /api/admin/sms/kill-switch/activate
  * Manually trigger the SMS kill switch (emergency stop)
  */
-router.post('/sms/kill-switch/activate', validateFirebaseToken, requireAdmin, async (req, res) => {
+router.post('/sms/kill-switch/activate', validateFirebaseToken, requireAdmin, async (req: any, res) => {
   try {
     const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
     const { redis } = await import('../services/redis');
     await redis.setRaw('sms_abuse:kill', '1', 7 * 24 * 3600);
     process.env.SMS_EMERGENCY_DISABLED = 'true';
-    const reason = (req as any).body?.reason || 'Manual admin activation';
-    logger.warn('[Admin] SMS kill switch manually activated', { reason, by: (req as any).user?.uid });
+    const reason = req.body?.reason || 'Manual admin activation';
+    logger.warn('[Admin] SMS kill switch manually activated', { reason, by: req.user?.uid });
+    emitAdminAudit({
+      actionType: 'SMS_KILL_SWITCH_ACTIVATE',
+      actorUserId: req.firebaseUser?.uid,
+      targetType: 'sms_kill_switch',
+      targetId: 'activate',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { reason },
+    });
     res.json({ ok: true, message: 'SMS kill switch activated — all SMS blocked', reason });
   } catch (error) {
     res.status(500).json({ error: 'Failed to activate kill switch' });
