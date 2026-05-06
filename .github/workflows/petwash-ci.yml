@@ -809,7 +809,12 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Deploy to Cloud Run
+      # Issue #143 — deploy with --no-traffic + a unique --tag.
+      # The new revision gets a per-tag URL (https://<tag>---<service-host>) but
+      # 0% production traffic until smoke tests pass below. Previous revision
+      # continues serving 100% traffic, so a failed deploy never breaks prod and
+      # rollback is implicit (just don't promote).
+      - name: Deploy to Cloud Run (no-traffic candidate)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -827,7 +832,84 @@ jobs:
             --execution-environment=gen2
             --ingress=all
             --set-env-vars=NODE_ENV=production
+            --no-traffic
+            --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
           secrets: ${{ steps.build-cloudrun-secrets.outputs.secret_mappings }}
+
+      # Issue #143 — capture everything operators need to diagnose a bad revision
+      # without leaving GitHub Actions: revision name, tagged URL, image digest,
+      # and the full revision describe (incl. startup/liveness/readiness probes).
+      - name: Capture new revision metadata
+        id: revision
+        env:
+          TAG: cand-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          SVC="${{ env.SERVICE_NAME }}"
+          REGION="${{ env.REGION }}"
+          PROJECT="${{ env.PROJECT_ID }}"
+
+          REV_NAME=$(gcloud run services describe "$SVC" \
+            --region "$REGION" --project "$PROJECT" \
+            --format='value(status.latestCreatedRevisionName)')
+
+          if [ -z "$REV_NAME" ]; then
+            echo "❌ Could not resolve latestCreatedRevisionName — aborting before promote."
+            exit 1
+          fi
+
+          gcloud run services describe "$SVC" \
+            --region "$REGION" --project "$PROJECT" --format=json > /tmp/svc.json
+          CAND_URL=$(python3 -c "
+          import json, os
+          tag = os.environ['TAG']
+          d = json.load(open('/tmp/svc.json'))
+          for t in d.get('status', {}).get('traffic', []):
+              if t.get('tag') == tag:
+                  print(t.get('url', ''))
+                  break
+          ")
+          SERVICE_URL=$(python3 -c "
+          import json
+          d = json.load(open('/tmp/svc.json'))
+          print(d.get('status', {}).get('url', ''))
+          ")
+
+          if [ -z "$CAND_URL" ]; then
+            echo "❌ No tagged URL found for tag=$TAG. The candidate cannot be smoke-tested in isolation."
+            echo "   Service URL still points to the previous revision (production unaffected)."
+            exit 1
+          fi
+
+          IMAGE_REF=$(gcloud run revisions describe "$REV_NAME" \
+            --region "$REGION" --project "$PROJECT" \
+            --format='value(spec.containers[0].image)' 2>/dev/null || echo "")
+
+          {
+            echo "revision_name=$REV_NAME"
+            echo "candidate_url=$CAND_URL"
+            echo "service_url=$SERVICE_URL"
+            echo "image_digest=$IMAGE_REF"
+            echo "tag=$TAG"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "🆕 New revision deployed with NO traffic"
+          echo "   service:   $SVC"
+          echo "   region:    $REGION"
+          echo "   revision:  $REV_NAME"
+          echo "   tag:       $TAG"
+          echo "   image:     $IMAGE_REF"
+          echo "   candidate: $CAND_URL"
+          echo "   prod URL:  $SERVICE_URL  (still serving previous revision)"
+          echo ""
+          echo "── Startup / liveness / readiness probes ───────────────────────"
+          gcloud run revisions describe "$REV_NAME" \
+            --region "$REGION" --project "$PROJECT" \
+            --format='yaml(spec.containers[0].startupProbe,spec.containers[0].livenessProbe,spec.containers[0].readinessProbe)' \
+            || echo "(probes not configured)"
+          echo "── Revision describe (full) ────────────────────────────────────"
+          gcloud run revisions describe "$REV_NAME" \
+            --region "$REGION" --project "$PROJECT" || true
 
       - name: Grant public access (allow unauthenticated)
         continue-on-error: true
@@ -841,14 +923,63 @@ jobs:
 
       - name: Output Cloud Run service URL
         run: |
-          echo "🌐 Real Cloud Run URL: ${{ steps.deploy.outputs.url }}"
-          echo "   Direct backend health: ${{ steps.deploy.outputs.url }}/api/health"
-          echo "   Via Firebase Hosting:  https://petwash.co.il/api/health"
-          echo "☁️  Cloud Run service URL: ${{ steps.deploy.outputs.url }}"
+          echo "🌐 Production service URL (still on previous revision until promote):"
+          echo "   ${{ steps.deploy.outputs.url }}"
+          echo ""
+          echo "🧪 Candidate URL (new revision, no traffic yet — smoke tests target this):"
+          echo "   ${{ steps.revision.outputs.candidate_url }}"
+
+      # Issue #143 — root health endpoints (server/index.ts:616, :650). These are
+      # dirt-cheap, route-table-independent, and answer before /api/health does
+      # because they don't wait for the route registration phase.
+      - name: Smoke test — root /health and /health/strict (candidate)
+        run: |
+          set -uo pipefail
+          URL="${{ steps.revision.outputs.candidate_url }}"
+
+          if [ -z "$URL" ]; then
+            echo "❌ candidate_url empty — cannot smoke-test isolated revision."
+            exit 1
+          fi
+
+          OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null \
+            || gcloud auth print-identity-token 2>/dev/null || echo "")
+
+          probe() {
+            local PATH_="$1"
+            local ENDPOINT="$URL$PATH_"
+            echo "── $ENDPOINT ──"
+            local STATUS="000"
+            for attempt in 1 2 3 4 5; do
+              STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+              if [ "$STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
+                STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 \
+                  -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+              fi
+              [ "$STATUS" = "200" ] && break
+              [ "$STATUS" = "000" ] || [ "$STATUS" = "503" ] || break
+              echo "   attempt $attempt: HTTP $STATUS — retrying in 15s..."
+              sleep 15
+            done
+            if [ "$STATUS" = "200" ]; then
+              echo "   ✅ HTTP $STATUS"
+              head -c 400 /tmp/probe.body || true
+              echo ""
+            else
+              echo "   ❌ HTTP $STATUS"
+              head -c 400 /tmp/probe.body || true
+              echo ""
+              return 1
+            fi
+          }
+
+          probe "/health"          || exit 1
+          probe "/health/strict"   || exit 1
+          echo "✅ Root health endpoints passed on candidate revision"
 
       - name: Smoke test — backend health check
         run: |
-          URL="${{ steps.deploy.outputs.url }}"
+          URL="${{ steps.revision.outputs.candidate_url }}"
           ENDPOINT="$URL/api/health"
 
           echo "Testing: $ENDPOINT"
@@ -890,7 +1021,7 @@ jobs:
 
       - name: Smoke test — Places API key validation
         run: |
-          URL="${{ steps.deploy.outputs.url }}"
+          URL="${{ steps.revision.outputs.candidate_url }}"
           ENDPOINT="$URL/api/google/places-health"
           echo "Testing: $ENDPOINT"
 
@@ -997,6 +1128,133 @@ jobs:
               exit 1
               ;;
           esac
+
+      # Issue #143 — only now do we promote production traffic. All smoke tests
+      # passed against the tagged candidate URL while the previous revision
+      # continued serving 100% of real users.
+      - name: Promote traffic to new revision
+        run: |
+          set -euo pipefail
+          SVC="${{ env.SERVICE_NAME }}"
+          REGION="${{ env.REGION }}"
+          PROJECT="${{ env.PROJECT_ID }}"
+          REV_NAME="${{ steps.revision.outputs.revision_name }}"
+
+          echo "🚦 Promoting $REV_NAME to 100% traffic on $SVC ($REGION)"
+          gcloud run services update-traffic "$SVC" \
+            --region "$REGION" --project "$PROJECT" \
+            --to-latest \
+            --quiet
+
+          echo "✅ Traffic promoted to latest revision: $REV_NAME"
+          echo "   Tagged candidate URL remains accessible for verification:"
+          echo "   ${{ steps.revision.outputs.candidate_url }}"
+
+      # Issue #143 — failure path: dump diagnostics from inside GitHub Actions
+      # so operators don't need to switch to the GCP console to triage. CRITICAL:
+      # this query intentionally does NOT filter by severity=ERROR. Cloud Run
+      # startup failures (probe timeouts, ENOENT secrets, bind errors, container
+      # crashes) frequently log at DEFAULT/INFO/WARNING and would be hidden by
+      # the default Logs Explorer ERROR filter.
+      - name: Diagnose failed revision (logs at ALL severities)
+        if: failure()
+        run: |
+          set +e
+          SVC="${{ env.SERVICE_NAME }}"
+          REGION="${{ env.REGION }}"
+          PROJECT="${{ env.PROJECT_ID }}"
+          REV_NAME="${{ steps.revision.outputs.revision_name }}"
+          TAG="${{ steps.revision.outputs.tag }}"
+          CAND_URL="${{ steps.revision.outputs.candidate_url }}"
+
+          if [ -z "$REV_NAME" ]; then
+            REV_NAME=$(gcloud run services describe "$SVC" \
+              --region "$REGION" --project "$PROJECT" \
+              --format='value(status.latestCreatedRevisionName)' 2>/dev/null || echo "")
+          fi
+
+          echo "════════════════════════════════════════════════════════════════"
+          echo " 🩺 FAILED REVISION DIAGNOSTICS — Issue #143 path"
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  service:   $SVC"
+          echo "  region:    $REGION"
+          echo "  revision:  $REV_NAME"
+          echo "  tag:       $TAG"
+          echo "  candidate: $CAND_URL"
+          echo "  ✅ production traffic UNCHANGED — previous revision still serves 100%"
+          echo ""
+
+          if [ -z "$REV_NAME" ]; then
+            echo "⚠️  Could not resolve revision name — emitting service-level logs only."
+          fi
+
+          echo "── Revision describe (status, conditions, container spec) ──────"
+          if [ -n "$REV_NAME" ]; then
+            gcloud run revisions describe "$REV_NAME" \
+              --region "$REGION" --project "$PROJECT" \
+              --format='yaml(metadata.name,status.conditions,status.observedGeneration,spec.containers[0].image,spec.containers[0].startupProbe,spec.containers[0].resources)' \
+              2>&1 || true
+          fi
+
+          echo ""
+          echo "── Last 200 application log lines (ALL severities — DEFAULT/DEBUG/INFO/NOTICE/WARNING/ERROR/CRITICAL/ALERT/EMERGENCY) ──"
+          if [ -n "$REV_NAME" ]; then
+            gcloud logging read \
+              "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SVC\" AND resource.labels.revision_name=\"$REV_NAME\"" \
+              --project "$PROJECT" --limit=200 --order=desc --freshness=1h \
+              --format='table(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.error)' \
+              2>&1 || echo "(log read failed — check IAM: roles/logging.viewer)"
+          fi
+
+          echo ""
+          echo "── Cloud Run system event logs (container start/stop, probe failures) ──"
+          if [ -n "$REV_NAME" ]; then
+            gcloud logging read \
+              "logName=\"projects/$PROJECT/logs/run.googleapis.com%2Fstderr\" AND resource.labels.revision_name=\"$REV_NAME\"" \
+              --project "$PROJECT" --limit=100 --order=desc --freshness=1h \
+              --format='value(timestamp,textPayload)' \
+              2>&1 || true
+            echo "----"
+            gcloud logging read \
+              "resource.type=\"cloud_run_revision\" AND resource.labels.revision_name=\"$REV_NAME\" AND (logName:\"system\" OR logName:\"requests\" OR protoPayload.@type:\"AuditLog\")" \
+              --project "$PROJECT" --limit=50 --order=desc --freshness=1h \
+              --format='value(timestamp,severity,textPayload,jsonPayload.message,protoPayload.methodName,protoPayload.status.message)' \
+              2>&1 || true
+          fi
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo " 📋 OPERATOR INSTRUCTIONS — Logs Explorer (do NOT filter severity=ERROR)"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "Many Cloud Run startup failures log at INFO or WARNING. Filtering"
+          echo "Logs Explorer by severity=ERROR will hide them. Use this query:"
+          echo ""
+          echo "  resource.type=\"cloud_run_revision\""
+          echo "  resource.labels.service_name=\"$SVC\""
+          echo "  resource.labels.revision_name=\"$REV_NAME\""
+          echo ""
+          echo "Direct console link (already encoded):"
+          QUERY="resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22${SVC}%22%0Aresource.labels.revision_name%3D%22${REV_NAME}%22"
+          echo "  https://console.cloud.google.com/logs/query;query=${QUERY};duration=PT1H?project=${PROJECT}"
+          echo ""
+          echo "To see system-level events (container starts, probe results):"
+          echo "  resource.type=\"cloud_run_revision\""
+          echo "  resource.labels.revision_name=\"$REV_NAME\""
+          echo "  logName=\"projects/${PROJECT}/logs/run.googleapis.com%2Fstderr\""
+          echo ""
+          echo "To re-pull these same logs locally:"
+          echo "  gcloud logging read \\"
+          echo "    'resource.type=\"cloud_run_revision\" AND resource.labels.revision_name=\"$REV_NAME\"' \\"
+          echo "    --project=$PROJECT --limit=200 --order=desc --freshness=1h"
+          echo ""
+          echo "🔁 Rollback: nothing to do. The failed revision never received"
+          echo "    traffic. The previous revision is still live. To delete the"
+          echo "    failed candidate (optional cleanup):"
+          echo ""
+          echo "    gcloud run revisions delete $REV_NAME \\"
+          echo "      --region=$REGION --project=$PROJECT --quiet"
+          echo ""
 
   deploy-frontend:
     name: Build & Deploy Frontend (Firebase Hosting)
