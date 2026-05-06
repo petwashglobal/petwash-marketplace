@@ -161,8 +161,8 @@ export default function AccessibilityStatement() {
                     <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <div>
                       <p className="font-semibold">טלפון:</p>
-                      <a href="tel:+972501234567" className="text-blue-600 dark:text-blue-400 underline">
-                        050-123-4567
+                      <a href="tel:+972501234567" className="text-blue-600 dark:text-blue-400 underline ltr-inline" dir="ltr">
+                        +972 50-123-4567
                       </a>
                       <p className="text-sm text-gray-600 dark:text-gray-400">(א׳-ה׳, 9:00-17:00)</p>
                     </div>
@@ -365,8 +365,8 @@ export default function AccessibilityStatement() {
                   <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   <div>
                     <p className="font-semibold">Phone:</p>
-                    <a href="tel:+972501234567" className="text-blue-600 dark:text-blue-400 underline">
-                      +972-50-123-4567
+                    <a href="tel:+972501234567" className="text-blue-600 dark:text-blue-400 underline ltr-inline" dir="ltr">
+                      +972 50-123-4567
                     </a>
                     <p className="text-sm text-gray-600 dark:text-gray-400">(Sun-Thu, 9:00-17:00 IST)</p>
                   </div>

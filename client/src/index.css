@@ -3927,6 +3927,28 @@ body {
   direction: ltr;
 }
 
+/* PR-W52 — canonical LTR isolation utility.
+ *
+ * Force any inline string to render LTR regardless of the parent's
+ * direction. Use for: phone numbers, emails, URLs, voucher codes,
+ * company IDs (ח.פ.), VAT numbers, IBAN, SHA / token strings — any
+ * mixed-script content the bidi algorithm reorders incorrectly.
+ *
+ * `unicode-bidi: isolate` creates a hard boundary so the outer RTL
+ * context cannot leak into the contents. The `<Ltr>` React component
+ * (client/src/components/ui/ltr.tsx) wraps this for ergonomic use. */
+.ltr-inline {
+  direction: ltr !important;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+/* Phone-anchor convenience — every <a href="tel:..."> renders LTR.
+ * Tailwind classes can override `text-align` per-component when needed. */
+a[href^="tel:"], a[href^="mailto:"] {
+  unicode-bidi: isolate;
+}
+
 /* Language toggle maintains center position */
 [dir="rtl"] .lang-row {
   justify-content: center;

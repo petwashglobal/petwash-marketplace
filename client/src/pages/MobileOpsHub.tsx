@@ -243,8 +243,8 @@ export default function MobileOpsHub() {
                 Emergency Contacts
               </h3>
               <div className="space-y-1 text-xs luxury-text-small">
-                <div>Support: <a href="tel:+972123456789" className="font-mono underline luxury-text-gradient">+972-12-345-6789</a></div>
-                <div>Tech: <a href="tel:+972987654321" className="font-mono underline luxury-text-gradient">+972-98-765-4321</a></div>
+                <div>Support: <a href="tel:+972123456789" className="font-mono underline luxury-text-gradient ltr-inline" dir="ltr">+972 12-345-6789</a></div>
+                <div>Tech: <a href="tel:+972987654321" className="font-mono underline luxury-text-gradient ltr-inline" dir="ltr">+972 98-765-4321</a></div>
               </div>
             </div>
           </div>

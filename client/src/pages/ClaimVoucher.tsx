@@ -295,10 +295,10 @@ export default function ClaimVoucher() {
                 <div>
                   <p className="font-medium">{isRTL ? 'צריכים עזרה?' : 'Need Help?'}</p>
                   <p className="text-purple-700 dark:text-purple-300 mt-1">
-                    {isRTL ? 'צרו קשר' : 'Contact us'}: 
-                    <a href="mailto:Support@PetWash.co.il" className="underline mx-1">Support@PetWash.co.il</a>
+                    {isRTL ? 'צרו קשר' : 'Contact us'}:
+                    <a href="mailto:Support@PetWash.co.il" className="underline mx-1 ltr-inline" dir="ltr">Support@PetWash.co.il</a>
                     {isRTL ? 'או' : 'or'}
-                    <a href="tel:+972549833355" className="underline mx-1">+972-54-983-3355</a>
+                    <a href="tel:+972549833355" className="underline mx-1 ltr-inline" dir="ltr">+972 54-983-3355</a>
                   </p>
                 </div>
               </div>
