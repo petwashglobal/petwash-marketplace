@@ -8,6 +8,31 @@ import {
   insertCrmTaskSchema,
   insertCrmActivitySchema,
 } from "@shared/schema";
+import { logAuditEvent } from "../middleware/auditLog";
+
+/** PR-W34l — sales-crm admin audit. */
+function emitCrmAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = express.Router();
 
@@ -49,10 +74,19 @@ router.get("/communications/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/sales/crm/communications - Create new communication
-router.post("/communications", requireAdmin, async (req, res) => {
+router.post("/communications", requireAdmin, async (req: any, res) => {
   try {
     const validated = insertCrmCommunicationSchema.parse(req.body);
     const communication = await storage.createCommunication(validated);
+    emitCrmAudit({
+      actionType: 'CRM_COMMUNICATION_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_communication',
+      targetId: (communication as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      // intentionally NOT logging body content; communications may include
+      // PII or sensitive lead data
+      metadata: { type: (validated as any)?.type, direction: (validated as any)?.direction, leadId: (validated as any)?.leadId, hasContent: !!(validated as any)?.content },
+    });
     res.status(201).json(communication);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating communication:", error);
@@ -61,14 +95,18 @@ router.post("/communications", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/sales/crm/communications/:id - Update communication
-router.patch("/communications/:id", requireAdmin, async (req, res) => {
+router.patch("/communications/:id", requireAdmin, async (req: any, res) => {
   try {
-    const communication = await storage.getCommunication(parseInt(req.params.id));
-    if (!communication) {
-      return res.status(404).json({ error: "Communication not found" });
-    }
-    
-    const updated = await storage.updateCommunication(parseInt(req.params.id), req.body);
+    const id = parseInt(req.params.id);
+    const communication = await storage.getCommunication(id);
+    if (!communication) return res.status(404).json({ error: "Communication not found" });
+    const updated = await storage.updateCommunication(id, req.body);
+    emitCrmAudit({
+      actionType: 'CRM_COMMUNICATION_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_communication', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(updated);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error updating communication:", error);
@@ -104,10 +142,17 @@ router.get("/deal-stages/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/sales/crm/deal-stages - Create new deal stage
-router.post("/deal-stages", requireAdmin, async (req, res) => {
+router.post("/deal-stages", requireAdmin, async (req: any, res) => {
   try {
     const validated = insertCrmDealStageSchema.parse(req.body);
     const stage = await storage.createDealStage(validated);
+    emitCrmAudit({
+      actionType: 'CRM_DEAL_STAGE_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_deal_stage',
+      targetId: (stage as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { name: (validated as any)?.name, order: (validated as any)?.order },
+    });
     res.status(201).json(stage);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating deal stage:", error);
@@ -116,14 +161,18 @@ router.post("/deal-stages", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/sales/crm/deal-stages/:id - Update deal stage
-router.patch("/deal-stages/:id", requireAdmin, async (req, res) => {
+router.patch("/deal-stages/:id", requireAdmin, async (req: any, res) => {
   try {
-    const stage = await storage.getDealStage(parseInt(req.params.id));
-    if (!stage) {
-      return res.status(404).json({ error: "Deal stage not found" });
-    }
-    
-    const updated = await storage.updateDealStage(parseInt(req.params.id), req.body);
+    const id = parseInt(req.params.id);
+    const stage = await storage.getDealStage(id);
+    if (!stage) return res.status(404).json({ error: "Deal stage not found" });
+    const updated = await storage.updateDealStage(id, req.body);
+    emitCrmAudit({
+      actionType: 'CRM_DEAL_STAGE_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_deal_stage', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(updated);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error updating deal stage:", error);
@@ -132,17 +181,19 @@ router.patch("/deal-stages/:id", requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/enterprise/sales/crm/deal-stages/:id - Delete deal stage
-router.delete("/deal-stages/:id", requireAdmin, async (req, res) => {
+router.delete("/deal-stages/:id", requireAdmin, async (req: any, res) => {
   try {
-    const stage = await storage.getDealStage(parseInt(req.params.id));
-    if (!stage) {
-      return res.status(404).json({ error: "Deal stage not found" });
-    }
-    
-    const deleted = await storage.deleteDealStage(parseInt(req.params.id));
-    if (!deleted) {
-      return res.status(400).json({ error: "Failed to delete deal stage" });
-    }
+    const id = parseInt(req.params.id);
+    const stage = await storage.getDealStage(id);
+    if (!stage) return res.status(404).json({ error: "Deal stage not found" });
+    const deleted = await storage.deleteDealStage(id);
+    if (!deleted) return res.status(400).json({ error: "Failed to delete deal stage" });
+    emitCrmAudit({
+      actionType: 'CRM_DEAL_STAGE_DELETE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_deal_stage', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { stageName: (stage as any)?.name },
+    });
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error deleting deal stage:", error);
@@ -215,10 +266,17 @@ router.get("/tasks/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/sales/crm/tasks - Create new task
-router.post("/tasks", requireAdmin, async (req, res) => {
+router.post("/tasks", requireAdmin, async (req: any, res) => {
   try {
     const validated = insertCrmTaskSchema.parse(req.body);
     const task = await storage.createTask(validated);
+    emitCrmAudit({
+      actionType: 'CRM_TASK_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_task',
+      targetId: (task as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { assignedTo: (validated as any)?.assignedTo, priority: (validated as any)?.priority, leadId: (validated as any)?.leadId },
+    });
     res.status(201).json(task);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating task:", error);
@@ -227,14 +285,18 @@ router.post("/tasks", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/sales/crm/tasks/:id - Update task
-router.patch("/tasks/:id", requireAdmin, async (req, res) => {
+router.patch("/tasks/:id", requireAdmin, async (req: any, res) => {
   try {
-    const task = await storage.getTask(parseInt(req.params.id));
-    if (!task) {
-      return res.status(404).json({ error: "Task not found" });
-    }
-    
-    const updated = await storage.updateTask(parseInt(req.params.id), req.body);
+    const id = parseInt(req.params.id);
+    const task = await storage.getTask(id);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    const updated = await storage.updateTask(id, req.body);
+    emitCrmAudit({
+      actionType: 'CRM_TASK_UPDATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_task', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { fields: Object.keys(req.body || {}) },
+    });
     res.json(updated);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error updating task:", error);
@@ -243,20 +305,19 @@ router.patch("/tasks/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/sales/crm/tasks/:id/complete - Complete task
-router.post("/tasks/:id/complete", requireAdmin, async (req, res) => {
+router.post("/tasks/:id/complete", requireAdmin, async (req: any, res) => {
   try {
-    const task = await storage.getTask(parseInt(req.params.id));
-    if (!task) {
-      return res.status(404).json({ error: "Task not found" });
-    }
-    
+    const id = parseInt(req.params.id);
+    const task = await storage.getTask(id);
+    if (!task) return res.status(404).json({ error: "Task not found" });
     const { completedBy, outcome, notes } = req.body;
-    const completed = await storage.completeTask(
-      parseInt(req.params.id),
-      completedBy,
-      outcome,
-      notes
-    );
+    const completed = await storage.completeTask(id, completedBy, outcome, notes);
+    emitCrmAudit({
+      actionType: 'CRM_TASK_COMPLETE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_task', targetId: id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { completedBy, outcome, hasNotes: !!notes },
+    });
     res.json(completed);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error completing task:", error);
@@ -302,10 +363,17 @@ router.get("/activities/:id", requireAdmin, async (req, res) => {
 });
 
 // POST /api/enterprise/sales/crm/activities - Create new activity
-router.post("/activities", requireAdmin, async (req, res) => {
+router.post("/activities", requireAdmin, async (req: any, res) => {
   try {
     const validated = insertCrmActivitySchema.parse(req.body);
     const activity = await storage.createActivity(validated);
+    emitCrmAudit({
+      actionType: 'CRM_ACTIVITY_CREATE',
+      actorUserId: req.adminUser?.id, targetType: 'crm_activity',
+      targetId: (activity as any)?.id,
+      ip: req.ip, userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { activityType: (validated as any)?.activityType, leadId: (validated as any)?.leadId, userId: (validated as any)?.userId },
+    });
     res.status(201).json(activity);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating activity:", error);
