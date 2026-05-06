@@ -11,6 +11,33 @@ import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { logAuditEvent } from '../middleware/auditLog';
+
+/** PR-W34n: audit-routes admin audit. Only the snapshot endpoint is
+ *  admin-mutating; the record-* endpoints are domain audit-data
+ *  ingestion (not admin actions on business state). */
+function emitAuditAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | null | undefined;
+  targetType: string;
+  targetId: string | number | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId ?? undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: params.targetType,
+      targetId: params.targetId != null ? String(params.targetId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
+}
 
 const router = Router();
 
@@ -126,13 +153,23 @@ router.post('/create-snapshot', requireAdmin, async (req: Request, res: Response
     const date = validation.data.date ? new Date(validation.data.date) : new Date();
     
     const snapshot = await AuditLedgerService.createDailySnapshot(date);
-    
+
     if (!snapshot) {
       return res.status(404).json({ error: 'No records found for this date' });
     }
-    
+
+    emitAuditAdminAudit({
+      actionType: 'AUDIT_SNAPSHOT_CREATE',
+      actorUserId: (req as any).firebaseUser?.uid,
+      targetType: 'audit_snapshot',
+      targetId: (snapshot as any)?.id ?? date.toISOString().slice(0, 10),
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { date: date.toISOString().slice(0, 10) },
+    });
+
     res.json(snapshot);
-    
+
   } catch (error) {
     logger.error('[Audit API] Snapshot creation failed:', error);
     res.status(500).json({ error: 'Snapshot creation failed' });
