@@ -7059,10 +7059,29 @@ self.addEventListener('notificationclick', (event) => {
       const allUsers = await storage.getAllUsers();
       const totalSpent = allUsers.reduce((sum, user) => sum + parseFloat(user.totalSpent || '0'), 0);
       const avgLifetimeValue = totalSpent / allUsers.length || 0;
-      
+
+      // PR-W15: engagement now reads walletAccounts.washPackageCredits,
+      // NOT users.washBalance. The legacy column has been zero for new
+      // wash-pack purchases since PR-W10 (bleed sealed) and surfacing
+      // it under-counts engagement for every customer who bought a
+      // pack since 2026-05.
+      //
+      // Single bulk SELECT (NOT getOrCreateWallet per user — that
+      // would create N empty wallets as a read-side side-effect).
+      const { walletAccounts } = await import('@shared/schema');
+      const walletRows = await db
+        .select({
+          userId: walletAccounts.userId,
+          washPackageCredits: walletAccounts.washPackageCredits,
+        })
+        .from(walletAccounts);
+      const washCreditsByUser = new Map<string, number>(
+        walletRows.map((w) => [w.userId, w.washPackageCredits ?? 0]),
+      );
+
       // Customer satisfaction calculated from real user engagement metrics
       const totalEngagement = allUsers.reduce((sum, user) => {
-        const washCount = user.washBalance || 0;
+        const washCount = washCreditsByUser.get(user.id) ?? 0;
         const totalSpentNum = parseFloat(user.totalSpent || '0');
         // Higher engagement = more washes + higher spending
         const engagementScore = Math.min(5, (washCount * 0.5) + (totalSpentNum / 100));
@@ -14700,10 +14719,31 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      
+
       // For authenticated users without database records, return default profile
       const user = userData.length > 0 ? userData[0] : null;
-      const giftBalance = user ? parseFloat(user.giftCardBalance?.toString() || '0') : 0;
+
+      // PR-W15: surface gift-balance from walletAccounts.egiftBalanceCents,
+      // NOT the legacy users.giftCardBalance column. The legacy column
+      // is no longer written (PR #123 disabled the redeem path) and any
+      // shekels still on it are orphaned (PR-W14 audit). Modern e-gift
+      // activations credit walletAccounts via PR-W11/W44; that is the
+      // single source of truth the K9000 + marketplace can spend from.
+      let giftBalance = 0;
+      if (user) {
+        try {
+          const { walletService } = await import('./services/WalletService');
+          const summary = await walletService.getWalletSummary(userId);
+          giftBalance = (summary.egiftBalanceCents || 0) / 100;
+        } catch (walletErr: any) {
+          // Best-effort. A failure here shouldn't break the whole profile
+          // response — fall back to 0 (the legacy column is being retired
+          // and is not safe to surface).
+          logger.warn('[Loyalty] Wallet summary unavailable, returning 0 giftBalance', {
+            userId, error: walletErr?.message,
+          });
+        }
+      }
       
       // Count REAL total washes from wash history (returns empty array if no history)
       const washesCountResult = await db
