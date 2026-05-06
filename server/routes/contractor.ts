@@ -11,6 +11,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
 import { calculateTrustScores, updateContractorTrustScores } from '../services/trustScoring';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -117,6 +118,18 @@ router.post('/:contractorId/update-trust-score', requireAdmin, async (req: any, 
     const { contractorId } = req.params;
 
     await updateContractorTrustScores(contractorId);
+
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.user?.uid,
+        actorRole: 'admin',
+        actionType: 'CONTRACTOR_TRUST_SCORE_UPDATE',
+        targetType: 'contractor',
+        targetId: contractorId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+      }).catch(() => {});
+    });
 
     res.json({
       success: true,

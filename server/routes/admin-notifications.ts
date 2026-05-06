@@ -24,6 +24,7 @@ import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { NotificationRetryService } from '../services/NotificationRetryService';
 import { EVENT_MATRIX, DOCUMENT_PREFIXES, EVENT_MATRIX_LOCKED_AT, EVENT_MATRIX_COMMIT, TOTAL_EVENTS, TOTAL_DOCUMENT_TYPES } from '../lib/eventMatrix';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -235,10 +236,21 @@ router.get('/financial-documents/search', requireAdmin, async (req, res) => {
  * POST /api/admin/notifications/retry-sweep
  * Manually trigger one sweep cycle (useful for testing + ops).
  */
-router.post('/notifications/retry-sweep', requireAdmin, async (_req, res) => {
+router.post('/notifications/retry-sweep', requireAdmin, async (req: any, res) => {
   try {
     logger.info('[AdminNotifications] Manual retry sweep triggered');
     await NotificationRetryService.runOnce();
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid,
+        actorRole: 'admin',
+        actionType: 'NOTIFICATION_RETRY_SWEEP',
+        targetType: 'notification_sweep',
+        targetId: 'manual',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+      }).catch(() => {});
+    });
     res.json({ success: true, message: 'Retry sweep completed' });
   } catch (err: any) {
     logger.error('[AdminNotifications] Manual retry sweep failed', { error: err?.message });

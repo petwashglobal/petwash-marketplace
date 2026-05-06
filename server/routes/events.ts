@@ -6,6 +6,7 @@ import { eq, desc, and, gte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { eventPublisher } from '../services/EventPublisher';
 import { z } from 'zod';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -139,13 +140,25 @@ router.get('/type/:type', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/replay/:id', requireAdmin, async (req, res) => {
+router.post('/replay/:id', requireAdmin, async (req: any, res) => {
   try {
     const { id } = req.params;
 
     logger.info('[Events API] Replaying event', { eventId: id });
 
     await eventPublisher.replayEvent(id);
+
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: req.firebaseUser?.uid || req.user?.uid,
+        actorRole: 'admin',
+        actionType: 'DOMAIN_EVENT_REPLAY',
+        targetType: 'domain_event',
+        targetId: id,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+      }).catch(() => {});
+    });
 
     res.json({
       success: true,
