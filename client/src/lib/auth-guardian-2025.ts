@@ -18,7 +18,7 @@ import {
   signInWithRedirect,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { isIOSSafari } from '@/lib/iosAuthHandler';
+import { getAuthStrategy } from '@/lib/iosAuthHandler';
 import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
 
@@ -137,19 +137,24 @@ function friendlyAuthError(codeOrMsg: string): string {
 }
 
 /**
- * Normalized Google Sign-In
- * iOS Safari: uses signInWithRedirect (popups are killed by ITP)
- * All other browsers: uses signInWithPopup (better UX, no full-page reload)
+ * Normalized Google Sign-In.
+ *
+ * IMPORTANT: Use the same canonical platform strategy as the main sign-in
+ * screen. Previously this file used `isIOSSafari()` while the main auth
+ * handler used a broader iOS strategy. That created two competing auth brains:
+ * iPad / Chrome iOS could use popup here and redirect elsewhere, causing lost
+ * provider intent, Firebase state loss, and inconsistent Google/Gmail signup.
  */
 export async function signInWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  if (isIOSSafari()) {
+  const strategy = getAuthStrategy();
+  if (strategy === 'redirect') {
     // Redirect flow — returns via getRedirectResult() after the page reloads.
     // AuthProvider.tsx handles getRedirectResult() on mount.
-    logger.info('[Auth Guardian] iOS Safari detected — using signInWithRedirect');
-    beacon('auth.signin_google_redirect_start', {});
+    logger.info('[Auth Guardian] OAuth strategy=redirect — using signInWithRedirect');
+    beacon('auth.signin_google_redirect_start', { strategy });
     await signInWithRedirect(auth, provider);
     return; // Page will navigate away; code below is unreachable
   }
@@ -157,12 +162,12 @@ export async function signInWithGoogle(): Promise<void> {
   try {
     const result = await signInWithPopup(auth, provider);
     await refreshClaims();
-    beacon('auth.signin_google_popup_ok', { uid: result.user.uid });
+    beacon('auth.signin_google_popup_ok', { uid: result.user.uid, strategy });
     logger.info('[Auth Guardian] Google sign-in successful (popup)', { uid: result.user.uid });
   } catch (error: any) {
     const errorMsg = friendlyAuthError(String(error?.code || error?.message || error));
     banner.show(errorMsg);
-    beacon('auth.signin_google_error', { error: String(error?.code || error?.message || error) });
+    beacon('auth.signin_google_error', { error: String(error?.code || error?.message || error), strategy });
     logger.error('[Auth Guardian] Google sign-in failed', error);
     throw error;
   }
