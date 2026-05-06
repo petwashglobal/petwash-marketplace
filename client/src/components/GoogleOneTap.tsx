@@ -13,9 +13,41 @@ interface GoogleOneTapProps {
   onError?: (error: Error) => void;
 }
 
+function adminEmailMatch(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const allow = (import.meta.env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allow.includes(email.toLowerCase());
+}
+
+function getSignupIntent(): string | undefined {
+  try {
+    return localStorage.getItem('signup_intent') || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function clearConsumedSignupIntent(): void {
+  try {
+    localStorage.removeItem('signup_intent');
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Google One Tap Sign-In Component
- * Shows the modern "One Tap" UI for seamless Google authentication
+ * Shows the modern "One Tap" UI for seamless Google authentication.
+ *
+ * Important: One Tap is a third Google login path. It must follow the same
+ * routing contract as normal Google sign-in:
+ *   - create session with credentials included
+ *   - attach Bearer token to post-login so iOS/Safari cookie loss does not break routing
+ *   - pass signup_intent when present so provider/loyalty flows do not become normal customer flows
+ *   - use admin email fast-path so allowlisted internal users do not get trapped at /home
  */
 export function GoogleOneTap({ 
   enabled = true, 
@@ -118,7 +150,9 @@ export function GoogleOneTap({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${firebaseIdToken}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ idToken: firebaseIdToken }),
       });
 
@@ -138,15 +172,35 @@ export function GoogleOneTap({
       if (onSuccess) {
         onSuccess();
       } else {
-        // Use post-login decider so providers go to /provider-os, staff to /admin/dashboard, etc.
+        // Allowlisted admin emails must not wait for server role sync. If the
+        // server post-login decider still sees a new/customer DB row, it can
+        // return /home. Client fast-path keeps admin access usable after OAuth.
+        if (adminEmailMatch(userCredential.user.email)) {
+          clearConsumedSignupIntent();
+          navigate('/admin/dashboard');
+          return;
+        }
+
+        // Use post-login decider so providers go to provider flow, staff to admin, etc.
+        // Attach both session cookie and Bearer token. Also pass signup_intent so
+        // provider/loyalty One Tap signup does not collapse into a normal customer path.
         setTimeout(async () => {
           try {
+            const intent = getSignupIntent();
+            const headers: Record<string, string> = {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${firebaseIdToken}`,
+            };
             const res = await fetch(getApiUrl('/api/auth/post-login'), {
               method: 'POST',
               credentials: 'include',
+              headers,
+              body: JSON.stringify(intent ? { intent } : {}),
             });
-            const data = await res.json();
-            navigate(data.nextUrl || data.redirectTo || '/home');
+            const data = await res.json().catch(() => null);
+            const nextUrl = data?.nextUrl || data?.redirectTo || '/home';
+            clearConsumedSignupIntent();
+            navigate(nextUrl);
           } catch {
             navigate('/home');
           }
