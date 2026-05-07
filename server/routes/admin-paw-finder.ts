@@ -1,17 +1,57 @@
 /**
  * Paw Finder™ Admin / Moderation Routes
- * Protected by /api/admin/ middleware: requireRole + requireStaffApproved + requireMfaEnrolled
+ *
+ * Issue #148 P5: this file's old docstring claimed protection by
+ * "/api/admin/ middleware: requireRole + requireStaffApproved +
+ * requireMfaEnrolled" — that was aspirational. The mount in routes.ts
+ * only ran `validateFirebaseToken`, so any authenticated Firebase
+ * user (customer, walker, sitter, etc.) could approve / reject /
+ * archive paw-finder posts and read the full moderation queue.
+ *
+ * We now apply `requireAdmin` as router-level middleware so every
+ * handler — list, mutation, and analytics — requires admin role
+ * before it executes. Mutations (approve / reject / archive) also
+ * emit canonical `audit_events` via `logAuditEvent` alongside the
+ * existing `paw_finder_events` domain log.
  */
 
 import { Router } from 'express';
 import { pool } from '../db';
 import { refreshMatchesForPost } from '../services/PawFinderMatchService';
 import { logger } from '../lib/logger';
+import { requireAdmin } from '../adminAuth';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
+// Issue #148 P5 — every handler below requires admin role.
+router.use(requireAdmin);
+
 function uid(req: any): string {
   return req.user?.uid || req.firebaseUser?.uid || '';
+}
+
+/** Emit canonical audit_events alongside the local paw_finder_events log. */
+function emitPawFinderAdminAudit(params: {
+  actionType: string;
+  actorUserId: string | undefined;
+  postId: number | string | null | undefined;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}): void {
+  setImmediate(() => {
+    logAuditEvent({
+      actorUserId: params.actorUserId || undefined,
+      actorRole: 'admin',
+      actionType: params.actionType,
+      targetType: 'paw_finder_post',
+      targetId: params.postId != null ? String(params.postId) : undefined,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: params.metadata ?? {},
+    }).catch(() => {});
+  });
 }
 
 async function logEvent(
@@ -80,7 +120,7 @@ router.get('/posts', async (req, res) => {
 });
 
 /** POST /api/admin/paw-finder/posts/:id/approve — manually approve */
-router.post('/posts/:id/approve', async (req, res) => {
+router.post('/posts/:id/approve', async (req: any, res) => {
   try {
     const id = Number(req.params.id);
     const actorId = uid(req);
@@ -104,6 +144,13 @@ router.post('/posts/:id/approve', async (req, res) => {
     );
 
     await logEvent(id, 'paw_finder_post_approved_by_support', actorId);
+    emitPawFinderAdminAudit({
+      actionType: 'PAW_FINDER_POST_APPROVE',
+      actorUserId: actorId,
+      postId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     setImmediate(() => refreshMatchesForPost(pool, id));
 
     res.json({ ok: true });
@@ -114,7 +161,7 @@ router.post('/posts/:id/approve', async (req, res) => {
 });
 
 /** POST /api/admin/paw-finder/posts/:id/reject — manually reject */
-router.post('/posts/:id/reject', async (req, res) => {
+router.post('/posts/:id/reject', async (req: any, res) => {
   try {
     const id = Number(req.params.id);
     const actorId = uid(req);
@@ -138,6 +185,14 @@ router.post('/posts/:id/reject', async (req, res) => {
     );
 
     await logEvent(id, 'paw_finder_post_rejected_by_support', actorId, { reason }, 'warning');
+    emitPawFinderAdminAudit({
+      actionType: 'PAW_FINDER_POST_REJECT',
+      actorUserId: actorId,
+      postId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      metadata: { reasonLength: reason.length },
+    });
     res.json({ ok: true });
   } catch (err: any) {
     logger.error('[AdminPawFinder] reject failed', { error: err.message });
@@ -146,7 +201,7 @@ router.post('/posts/:id/reject', async (req, res) => {
 });
 
 /** POST /api/admin/paw-finder/posts/:id/archive — archive a post */
-router.post('/posts/:id/archive', async (req, res) => {
+router.post('/posts/:id/archive', async (req: any, res) => {
   try {
     const id = Number(req.params.id);
     const actorId = uid(req);
@@ -159,6 +214,13 @@ router.post('/posts/:id/archive', async (req, res) => {
     );
 
     await logEvent(id, 'paw_finder_post_archived', actorId);
+    emitPawFinderAdminAudit({
+      actionType: 'PAW_FINDER_POST_ARCHIVE',
+      actorUserId: actorId,
+      postId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     res.json({ ok: true });
   } catch (err: any) {
     logger.error('[AdminPawFinder] archive failed', { error: err.message });
