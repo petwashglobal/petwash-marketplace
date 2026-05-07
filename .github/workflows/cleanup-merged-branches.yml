@@ -1,0 +1,79 @@
+name: Cleanup merged branches
+
+# Issue #158 — CLEAN-1.
+# Defense-in-depth fallback for the GitHub repo setting
+# "Settings → General → Pull Requests → Automatically delete head branches".
+# If that setting is enabled, GitHub deletes the branch first and this
+# workflow finds nothing (no-op, harmless). If it's disabled, this
+# workflow keeps the policy enforced.
+#
+# Hard rules:
+#   - only fires when a PR is MERGED (not just closed)
+#   - only deletes branches that live in THIS repo (no fork branches)
+#   - never deletes `main`
+#   - skips branches that are still the head of another open PR
+#   - skips branches with branch protection rules
+#   - logs what it did or skipped, never fails the workflow on errors
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  delete-branch:
+    if: |
+      github.event.pull_request.merged == true
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref != github.event.repository.default_branch
+      && github.event.pull_request.head.ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged head branch (with safety checks)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+
+          echo "── Cleanup candidate ──"
+          echo "  branch: $BRANCH"
+          echo "  repo:   $REPO"
+          echo "  PR:     #${{ github.event.pull_request.number }} (merged)"
+
+          # Safety 1: skip if other open PRs target this same head branch.
+          # The GitHub API counts open PRs whose head matches BRANCH.
+          OPEN_PRS=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number --jq 'length' 2>/dev/null || echo "0")
+          if [ "$OPEN_PRS" -gt 0 ]; then
+            echo "  → SKIP: $OPEN_PRS open PR(s) still use $BRANCH"
+            exit 0
+          fi
+
+          # Safety 2: skip if branch has protection rules.
+          # `gh api` returns 200 for protected, 404 for unprotected. We
+          # treat any non-404 success as "protected, do not touch".
+          if gh api "repos/$REPO/branches/$BRANCH/protection" --silent 2>/dev/null; then
+            echo "  → SKIP: $BRANCH is protected"
+            exit 0
+          fi
+
+          # Safety 3: confirm the ref still exists before trying to delete.
+          # GitHub's auto-delete setting may have already removed it.
+          if ! gh api "repos/$REPO/git/refs/heads/$BRANCH" --silent 2>/dev/null; then
+            echo "  → SKIP: $BRANCH no longer exists (likely auto-deleted by GitHub setting)"
+            exit 0
+          fi
+
+          # Delete.
+          echo "  → DELETE $BRANCH"
+          if gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH" --silent; then
+            echo "  ✅ Deleted $BRANCH"
+          else
+            echo "  ⚠ Deletion call failed (non-blocking — branch may need manual removal)"
+            # Do not fail the workflow — branch cleanup is housekeeping,
+            # not a release-blocking gate.
+          fi
