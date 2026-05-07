@@ -146,6 +146,10 @@ interface Booking {
   walletHoldCents?: number;
   walletDebitedCents?: number;
   walletRefundedCents?: number;
+  // Issue #153 priority 4 (OPT-A): tag a booking's source so the UI can
+  // render a small badge ("Marketplace") and avoid sending invalid
+  // booking_requests-only mutations to marketplace rows.
+  kind?: 'request' | 'marketplace';
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -486,7 +490,13 @@ function BookingCard({
   const nights      = calcNights(booking.startDate, booking.endDate);
   const daysTil     = daysUntil(booking.startDate);
   const isUpcoming  = STATUS_TO_TAB[booking.status] === 'upcoming';
-  const canCancel   = CANCELLABLE_STATUSES.has(booking.status) && !!onCancel;
+  // Issue #153 priority 4 (OPT-A): the UI cancel mutation hits
+  // POST /api/booking-requests/:requestId/cancel which only knows the
+  // legacy booking_requests table. Marketplace bookings live in `bookings`
+  // and have a different cancel path; we intentionally hide the cancel
+  // button on those rows for now (read-only bridge — no booking-state
+  // mutation in this PR per the OPT-A constraints).
+  const canCancel   = CANCELLABLE_STATUSES.has(booking.status) && !!onCancel && booking.kind !== 'marketplace';
   const hasRefund   = (booking.refundCents ?? 0) > 0;
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
   const canReview   = booking.status === 'completed';
@@ -566,6 +576,14 @@ function BookingCard({
                   )}
                   <p className={`text-xs text-gray-500 ${!booking.providerName ? 'font-bold text-gray-900 text-sm' : 'mt-0.5'}`}>
                     {service.emoji} {isRTL ? service.labelHe : service.labelEn}
+                    {booking.kind === 'marketplace' && (
+                      <span
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                        data-testid="badge-marketplace-source"
+                      >
+                        {isRTL ? 'מרקטפלייס' : 'Marketplace'}
+                      </span>
+                    )}
                   </p>
                 </div>
                 {/* Status badge with icon */}
@@ -784,6 +802,63 @@ export default function CustomerBookings() {
     enabled: !!user,
   });
 
+  // ── Issue #153 priority 4 (OPT-A): bridge customer visibility for marketplace
+  //    bookings stored in `bookings` (PG). Read-only second query, customer-scoped
+  //    by token (`req.user.uid` server-side). On error or unavailable endpoint
+  //    the legacy booking_requests view continues to render — partial failure
+  //    is intentionally graceful.
+  //
+  //    SAFE-FIELD ALLOWLIST: only the keys in `marketplaceFromRow` below are
+  //    forwarded to the UI. Provider payout, platform fee, payment intent,
+  //    payout status, platform data, and other internals are NEVER copied.
+  //    Out of scope for launch: Firestore K9000 station washes (separate
+  //    Firestore source, not safe to merge in a UI bridge per #153 OPT-C).
+  type MarketplaceRow = {
+    id?: string;
+    bookingNumber?: string;
+    status?: string;
+    serviceType?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    total?: string | number | null;
+    currency?: string | null;
+    createdAt?: string | null;
+    providerId?: string | null;
+    cancellationReason?: string | null;
+    cancelledBy?: string | null;
+    refundAmountCents?: number | null;
+  };
+
+  const decimalToCents = (v: string | number | null | undefined): number => {
+    if (v == null) return 0;
+    const n = typeof v === 'string' ? parseFloat(v) : v;
+    return Number.isFinite(n) ? Math.round(n * 100) : 0;
+  };
+
+  const marketplaceFromRow = (row: MarketplaceRow): Booking => ({
+    requestId: row.bookingNumber || row.id || '',
+    status: row.status || 'pending',
+    serviceType: row.serviceType || 'unknown',
+    startDate: row.startTime || row.createdAt || '',
+    endDate: row.endTime || row.startTime || row.createdAt || '',
+    petCount: 1,
+    totalCents: decimalToCents(row.total),
+    currency: row.currency || 'ILS',
+    createdAt: row.createdAt || '',
+    providerId: row.providerId || undefined,
+    providerName: null,
+    cancellationReason: row.cancellationReason || null,
+    cancelledBy: row.cancelledBy || null,
+    refundCents: row.refundAmountCents ?? undefined,
+    kind: 'marketplace',
+  });
+
+  const marketplaceQuery = useQuery<{ success: boolean; bookings: MarketplaceRow[] }>({
+    queryKey: ['/api/marketplace-bookings/my-bookings'],
+    enabled: !!user,
+    retry: false,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) =>
       apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { reason }),
@@ -805,7 +880,22 @@ export default function CustomerBookings() {
     },
   });
 
-  const allBookings = data?.bookings ?? [];
+  const legacyBookings = data?.bookings ?? [];
+  const marketplaceRows = marketplaceQuery.data?.bookings ?? [];
+  const marketplaceBookings = useMemo(
+    () => marketplaceRows.map(marketplaceFromRow),
+    [marketplaceRows],
+  );
+  const allBookings = useMemo(() => {
+    // Tag legacy rows so the UI can distinguish them from marketplace rows.
+    const tagged = legacyBookings.map((b) => ({ ...b, kind: b.kind ?? ('request' as const) }));
+    const combined = [...tagged, ...marketplaceBookings];
+    return combined.sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+  }, [legacyBookings, marketplaceBookings]);
 
   const filtered = useMemo(() =>
     allBookings.filter(b => {
