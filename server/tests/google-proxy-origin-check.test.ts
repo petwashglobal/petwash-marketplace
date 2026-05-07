@@ -29,12 +29,25 @@ const SRC = fs.readFileSync(
 );
 
 /**
+ * Escape every regex metacharacter (including backslash) so an arbitrary
+ * caller-supplied string can be embedded into a `new RegExp(...)` literal
+ * safely. The previous helper only escaped forward slashes via
+ * `replace(/\//g, '\\/')`, which CodeQL flagged as "Incomplete string
+ * escaping or encoding" — a `.` or `*` in the input would have remained
+ * a metacharacter. This helper escapes the full set:
+ *   . * + ? ^ $ { } ( ) | [ ] \
+ */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Slice the body of a router handler from `router.<verb>('<path>', ...) =>`
  * up to the next top-level `router.` declaration. Used to scope assertions
  * to a specific handler so we don't accidentally pass on a sibling's check.
  */
 function sliceHandler(verb: string, routePath: string): string {
-  const needle = new RegExp(`router\\.${verb}\\(\\s*['"]${routePath.replace(/\//g, '\\/')}['"]`);
+  const needle = new RegExp(`router\\.${escapeRegExp(verb)}\\(\\s*['"]${escapeRegExp(routePath)}['"]`);
   const start = SRC.search(needle);
   if (start < 0) return '';
   // Find the next `\nrouter.` after the start (handler boundary).
