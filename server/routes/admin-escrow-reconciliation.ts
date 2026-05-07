@@ -26,9 +26,32 @@ import { logger } from '../lib/logger';
 import { desc, eq, gte, lte, and, or } from 'drizzle-orm';
 import { requireAuth } from '../middleware/gates';
 import { logAuditEvent } from '../middleware/auditLog';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 const firestore = admin.firestore();
+
+// Issue #153 — escrow role-check shape fix.
+// The previous inline checks read `req.user.admin` / `req.user.role`, but
+// `bridgeFirebaseUser()` only populates `req.user.{uid,id,email}` —
+// neither `.admin` nor `.role`. Result: legitimate admins received 403.
+// We now read the role from the canonical source `req.firebaseUser.claims.role`
+// (populated by `validateFirebaseToken` on the mount) and consult
+// `isSuperAdmin(email)` for the super-admin email allowlist. The split
+// between read-endpoints (allow 'finance') and the sync mutation
+// (admin/super_admin only) is preserved exactly.
+function callerHasRole(req: Request, allowedRoles: readonly string[]): boolean {
+  const fb = (req as any).firebaseUser;
+  const claims = fb?.claims || {};
+  const email = (fb?.email || '').toLowerCase();
+  if (email && isSuperAdmin(email)) return true;
+  const role = typeof claims.role === 'string' ? claims.role : undefined;
+  if (role && allowedRoles.includes(role)) return true;
+  return false;
+}
+
+const READ_ROLES = ['super_admin', 'admin', 'finance'] as const;
+const SYNC_ROLES = ['super_admin', 'admin'] as const;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -86,8 +109,7 @@ function assessDrift(pgStatus: string | null, fsStatus: string | null, fsAutoRel
  * Each row includes a `drift` field: 'ok' | 'warn' | 'critical'.
  */
 router.get('/reconciliation', requireAuth, async (req: Request, res: Response) => {
-  const caller = (req as any).user;
-  if (!caller?.admin && !['super_admin', 'admin', 'finance'].includes(caller?.role)) {
+  if (!callerHasRole(req, READ_ROLES)) {
     return res.status(403).json({ error: 'FORBIDDEN', message: 'Admin access required' });
   }
 
@@ -243,7 +265,7 @@ router.get('/reconciliation', requireAuth, async (req: Request, res: Response) =
     };
 
     logger.info('[EscrowRecon] Reconciliation view served', {
-      callerId: caller.uid,
+      callerId: (req as any).firebaseUser?.uid,
       rowsReturned: statusFiltered.length,
       criticalDrift: summary.critical,
     });
@@ -267,8 +289,7 @@ router.get('/reconciliation', requireAuth, async (req: Request, res: Response) =
  * both systems associated with this bookingId, including any orphaned FS records.
  */
 router.get('/reconciliation/booking/:bookingId', requireAuth, async (req: Request, res: Response) => {
-  const caller = (req as any).user;
-  if (!caller?.admin && !['super_admin', 'admin', 'finance'].includes(caller?.role)) {
+  if (!callerHasRole(req, READ_ROLES)) {
     return res.status(403).json({ error: 'FORBIDDEN' });
   }
 
@@ -330,8 +351,7 @@ router.get('/reconciliation/booking/:bookingId', requireAuth, async (req: Reques
  * It never overrides a "released" PG record with a lesser FS status.
  */
 router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, res: Response) => {
-  const caller = (req as any).user;
-  if (!caller?.admin && !['super_admin', 'admin'].includes(caller?.role)) {
+  if (!callerHasRole(req, SYNC_ROLES)) {
     return res.status(403).json({ error: 'FORBIDDEN' });
   }
 
@@ -375,14 +395,14 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
       logger.warn('[EscrowRecon] ⚠ Created missing PG escrow_holdings row from Firestore', {
         escrowId,
         bookingId: fs.bookingId,
-        syncedBy: caller.uid,
+        syncedBy: (req as any).firebaseUser?.uid,
       });
 
       // Issue #148/#153 P5: canonical audit row for this money-path mutation.
       // Money math is unchanged — we only observe and record the sync action.
       setImmediate(() => {
         logAuditEvent({
-          actorUserId: caller?.uid,
+          actorUserId: (req as any).firebaseUser?.uid,
           actorRole: 'admin',
           actionType: 'ESCROW_RECONCILIATION_SYNC_CREATE',
           targetType: 'escrow_holding',
@@ -424,14 +444,14 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
       escrowId,
       from:    pg.status,
       to:      fs.status,
-      syncedBy: caller.uid,
+      syncedBy: (req as any).firebaseUser?.uid,
     });
 
     // Issue #148/#153 P5: canonical audit row for this money-path mutation.
     // Money math is unchanged — only the status column moves to match FS.
     setImmediate(() => {
       logAuditEvent({
-        actorUserId: caller?.uid,
+        actorUserId: (req as any).firebaseUser?.uid,
         actorRole: 'admin',
         actionType: 'ESCROW_RECONCILIATION_SYNC_UPDATE',
         targetType: 'escrow_holding',
