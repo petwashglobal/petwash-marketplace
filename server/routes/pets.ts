@@ -417,19 +417,18 @@ router.delete('/:petId/health-events/:eventId', validateFirebaseToken, async (re
   }
 });
 
-// GET /api/pets/:petId/health-events/:eventId/ics — public, no auth (share-friendly)
-router.get('/:petId/health-events/:eventId/ics', async (req, res) => {
+// GET /api/pets/:petId/health-events/:eventId/ics — auth required.
+// Issue #153 Mission-3 PR-2: previously this route was mounted with no
+// middleware and accepted `uid` from the query string, returning a private
+// medical-event iCal payload (pet name + event title/date) for any UID an
+// attacker could guess. The route now uses validateFirebaseToken and reads
+// the UID from the verified token, scoping the read to the caller's own
+// pet. The earlier dead collectionGroup probe at this site is removed —
+// it never used its result.
+router.get('/:petId/health-events/:eventId/ics', validateFirebaseToken, async (req, res) => {
   try {
     const { petId, eventId } = req.params;
-    // We need uid — encode it in the event's stored data, or look it up via Firestore Group query
-    const snap = await firestore.collectionGroup('health_events')
-      .where(firestore.FieldPath.documentId(), '==',
-        firestore.collection('placeholder').doc(eventId).id.length > 0 ? eventId : eventId)
-      .limit(1)
-      .get();
-    // Fallback: let caller include uid as query param (lightweight approach)
-    const uid = req.query.uid as string;
-    if (!uid) return res.status(400).json({ error: 'uid required' });
+    const uid = req.firebaseUser!.uid;
     const doc = await firestore.doc(`users/${uid}/pets/${petId}/health_events/${eventId}`).get();
     if (!doc.exists) return res.status(404).send('Event not found');
     const ev = doc.data()!;
