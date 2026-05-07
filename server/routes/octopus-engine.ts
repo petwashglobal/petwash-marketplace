@@ -67,12 +67,15 @@ function generateId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
 }
 
-// ─── SECURITY: V1 Booking & Provider Routes — HTTP 410 Gone ─────────────────
+// ─── SECURITY: V1 Booking, Provider, Wallet & Ledger Routes — HTTP 410 Gone ─
 // These V1 endpoints are fully superseded and must no longer accept requests.
 // Returning 410 (Gone — permanent removal) rather than 404 (Not Found) signals
 // to callers that they MUST migrate; their retry will never succeed.
-// Wallet (/v1/wallet*), ledger (/v1/ledger*) and egift routes are NOT deprecated
-// and remain active — this interceptor only covers booking & provider paths.
+// Issue #153 PR-A: wallet (/v1/wallet*) and ledger (/v1/ledger*) were
+// previously left active despite being mounted with apiLimiter only and
+// trusting client-supplied body.userId/body.amount — a public money-mutation
+// surface. Audit confirmed zero legitimate callers in client/ or server/.
+// Egift routes (/v1/egift*) remain active by design.
 router.all('/v1/bookings*', (_req: Request, res: Response) => {
   return res.status(410).json({
     error: 'Gone',
@@ -100,6 +103,32 @@ router.all('/v1/providers*', (_req: Request, res: Response) => {
   });
 });
 
+router.all('/v1/wallet*', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'Gone',
+    code: 'V1_DEPRECATED',
+    message: 'Octopus V1 wallet routes have been permanently removed. Migrate to the canonical wallet API.',
+    migration: {
+      balance: 'GET    /api/wallet  (Bearer token required)',
+      credits: 'GET    /api/credit-wallet  (Bearer token required)',
+      topup:   'POST   /api/credit-wallet/topup  (Bearer token + Idempotency-Key required)',
+      redeem:  'POST   /api/v2/vouchers/redeem  (Bearer token required)',
+    },
+  });
+});
+
+router.all('/v1/ledger*', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'Gone',
+    code: 'V1_DEPRECATED',
+    message: 'Octopus V1 ledger routes have been permanently removed. Migrate to the canonical ledger surface.',
+    migration: {
+      walletEntries: 'GET /api/finance/transaction-audit  (admin only)',
+      moneyFlow:     'GET /api/finance/money-flow  (admin only)',
+    },
+  });
+});
+
 // =================== CREATE BOOKING ===================
 const createBookingSchema = z.object({
   userId: z.string().min(1),
@@ -109,9 +138,10 @@ const createBookingSchema = z.object({
   idempotencyKey: z.string().optional(),
 });
 
-// [DEAD CODE] The router.all handlers above intercept all /v1/bookings* and
-// /v1/providers* requests — these handlers can never be reached. Kept for
-// reference until a future cleanup sprint removes them entirely.
+// [DEAD CODE] The router.all handlers above intercept all /v1/bookings*,
+// /v1/providers*, /v1/wallet* and /v1/ledger* requests — these handlers can
+// never be reached. Kept for reference until a future cleanup sprint removes
+// them entirely. The /v1/egift* handlers below remain active by design.
 router.post("/v1/bookings", async (req: Request, res: Response) => {
   logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings called — migrate to POST /api/booking-requests');
   try {
