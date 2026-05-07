@@ -24,6 +24,19 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
     }
   }, []);
 
+  // Issue #166: while the consent panel is visible, signal the rest of the
+  // app (specifically FloatingStack at z-9050) to step out of the way so its
+  // WhatsApp / accessibility / AI buttons cannot cover the consent buttons
+  // on iPhone. The CSS rule lives in `client/src/styles/floating-stack.css`
+  // (`body[data-cookie-consent-active="true"] .pw-float-stack`).
+  useEffect(() => {
+    if (!isVisible) return;
+    document.body.setAttribute('data-cookie-consent-active', 'true');
+    return () => {
+      document.body.removeAttribute('data-cookie-consent-active');
+    };
+  }, [isVisible]);
+
   const handleAcceptAll = async () => {
     await saveConsentPreferences(createAcceptAllConsent());
     setIsAnimatingOut(true);
@@ -111,21 +124,29 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
   const isRTL = language === 'he' || language === 'ar';
   
   return (
-    <div 
+    <div
       data-testid="cookie-consent-banner"
-      className={`fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md z-40 transition-all duration-400 ${
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md z-[9100] transition-all duration-400 ${
         isAnimatingOut ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100'
       }`}
       style={{
         animation: isAnimatingOut ? 'none' : 'slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+        // Issue #166: keep the panel fully visible above iPhone home indicator
+        // by adding the safe-area inset; cap height so long copy doesn't push
+        // the action buttons offscreen (panel scrolls internally instead).
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      <div 
-        className="backdrop-blur-xl rounded-2xl p-5 shadow-2xl"
+      <div
+        className="backdrop-blur-xl rounded-2xl p-5 shadow-2xl overflow-y-auto"
         style={{
           background: '#FFFFFF',
           border: '1px solid #000000',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
+          // Issue #166: cap the inner panel height to the viewport minus
+          // safe-area inset and external padding so the Accept / Reject /
+          // Manage buttons are always visible without zooming on iPhone.
+          maxHeight: 'calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px))',
         }}
       >
         <div className="flex gap-4">
@@ -189,7 +210,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
                 {t.acceptAll}
               </button>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={handleRejectAll}
                   className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
@@ -201,7 +222,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
                 >
                   {t.rejectAll}
                 </button>
-                
+
                 <button
                   onClick={handleManagePreferences}
                   className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"

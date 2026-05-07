@@ -19,6 +19,19 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* Issue #166: while the cookie-consent panel is visible (CookieConsent
+   component sets `data-cookie-consent-active="true"` on document.body),
+   suppress the FloatingStack so its WhatsApp / accessibility / AI
+   buttons cannot cover the consent panel's action buttons on iPhone.
+   The stack returns to normal opacity/pointer-events as soon as the
+   user dismisses the consent. CookieConsent's own z-index (9100) is
+   above this stack (9050) for additional defense. */
+body[data-cookie-consent-active="true"] .pw-float-stack,
+body[data-cookie-consent-active="true"] .pw-float {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .pw-float {
   position: fixed;
   right: 16px;
