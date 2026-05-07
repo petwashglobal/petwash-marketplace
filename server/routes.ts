@@ -10478,7 +10478,17 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/ita', adminLimiter, itaApiRoutes);
   
   // Luxury Documents (Invoices, Receipts, Statements)
-  app.use('/api/luxury-documents', validateFirebaseToken, adminLimiter, luxuryDocumentsRoutes);
+  // Issue #153 PR-TAX-1 (Israeli tax/invoice/receipt/payout audit): the
+  // /send-samples handler at routes/luxury-documents.ts:18 had no per-handler
+  // auth and the mount previously ran only validateFirebaseToken+adminLimiter,
+  // letting ANY authenticated user email "luxury sample documents" to an
+  // arbitrary address — data exfiltration + brand abuse vector. Bring the
+  // mount in line with every other admin document surface in this file by
+  // adding requireAdmin. Order: validateFirebaseToken (reject anon before
+  // burning rate-limit budget) → adminLimiter → requireAdmin → router.
+  // No legal text, numbering, VAT math, SHAAM/RASA, schema, payment
+  // processor, or K9000/Nayax/Tranzila changes.
+  app.use('/api/luxury-documents', validateFirebaseToken, adminLimiter, requireAdmin, luxuryDocumentsRoutes);
   
   
   // Launch Event Notifications (WhatsApp notifications for Kfar Saba pilot launch)
