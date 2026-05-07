@@ -25,6 +25,7 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { desc, eq, gte, lte, and, or } from 'drizzle-orm';
 import { requireAuth } from '../middleware/gates';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 const firestore = admin.firestore();
@@ -377,6 +378,21 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
         syncedBy: caller.uid,
       });
 
+      // Issue #148/#153 P5: canonical audit row for this money-path mutation.
+      // Money math is unchanged — we only observe and record the sync action.
+      setImmediate(() => {
+        logAuditEvent({
+          actorUserId: caller?.uid,
+          actorRole: 'admin',
+          actionType: 'ESCROW_RECONCILIATION_SYNC_CREATE',
+          targetType: 'escrow_holding',
+          targetId: String(escrowId),
+          ip: req.ip,
+          userAgent: req.headers['user-agent'] as string | undefined,
+          metadata: { bookingId: fs.bookingId, source: 'firestore' },
+        }).catch(() => {});
+      });
+
       return res.json({ synced: true, action: 'created', escrowId, bookingId: fs.bookingId });
     }
 
@@ -409,6 +425,21 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
       from:    pg.status,
       to:      fs.status,
       syncedBy: caller.uid,
+    });
+
+    // Issue #148/#153 P5: canonical audit row for this money-path mutation.
+    // Money math is unchanged — only the status column moves to match FS.
+    setImmediate(() => {
+      logAuditEvent({
+        actorUserId: caller?.uid,
+        actorRole: 'admin',
+        actionType: 'ESCROW_RECONCILIATION_SYNC_UPDATE',
+        targetType: 'escrow_holding',
+        targetId: String(escrowId),
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        metadata: { from: pg.status, to: fs.status, source: 'firestore' },
+      }).catch(() => {});
     });
 
     return res.json({ synced: true, action: 'updated', from: pg.status, to: fs.status, escrowId });

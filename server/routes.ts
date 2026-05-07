@@ -10333,7 +10333,12 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/finance/israel-compliance', adminLimiter, israelComplianceRoutes);
   // Treasury settings — super_admin / finance / ceo only (role enforced inside the router)
   app.use('/api/admin/finance/treasury', adminLimiter, treasurySettingsRoutes);
-  app.use('/api/admin/escrow', adminLimiter, adminEscrowReconciliationRoutes);
+  // Issue #148/#153 P5: add validateFirebaseToken at mount so req.firebaseUser
+  // is populated and bridgeFirebaseUser sets req.user.uid/.id/.email — matches
+  // the pattern used by every other /api/admin/* mount in this file. Per-handler
+  // role checks inside admin-escrow-reconciliation.ts are kept (they allow
+  // 'finance' role on read endpoints, which is intentional business logic).
+  app.use('/api/admin/escrow', validateFirebaseToken, adminLimiter, adminEscrowReconciliationRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
