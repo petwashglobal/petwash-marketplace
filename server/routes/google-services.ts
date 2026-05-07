@@ -506,6 +506,21 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimit
 router.get('/places-details', placesDetailsLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
+    // Issue #153 Mission 5 PR-A: enforce the same origin allowlist that
+    // /places-autocomplete already runs at line 339. Without this gate,
+    // any external caller could enumerate placeIds and harvest
+    // structured addresses through PetWash's API key budget — a
+    // billing-abuse vector independent of rate limiting.
+    if (!isAllowedPlacesOrigin(req)) {
+      logger.warn('[Places Proxy] /places-details rejected - origin not in allowlist', {
+        traceId,
+        origin: req.headers['origin'],
+        referer: req.headers['referer'],
+        ip: req.ip,
+      });
+      return res.status(403).json({ error: 'Forbidden', reasonCode: 'ORIGIN_NOT_ALLOWED', traceId });
+    }
+
     const { placeId, language } = req.query;
 
     if (!placeId || typeof placeId !== 'string') {
@@ -654,6 +669,20 @@ router.get('/places-details', placesDetailsLimiter, async (req, res) => {
 router.get('/reverse-geocode', placesDetailsLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
+    // Issue #153 Mission 5 PR-A: same origin allowlist as
+    // /places-autocomplete and /places-details. Without this gate,
+    // any external caller could reverse-geocode arbitrary lat/lng
+    // pairs through PetWash's API key budget.
+    if (!isAllowedPlacesOrigin(req)) {
+      logger.warn('[Places Proxy] /reverse-geocode rejected - origin not in allowlist', {
+        traceId,
+        origin: req.headers['origin'],
+        referer: req.headers['referer'],
+        ip: req.ip,
+      });
+      return res.status(403).json({ error: 'Forbidden', reasonCode: 'ORIGIN_NOT_ALLOWED', traceId });
+    }
+
     const { lat, lng, language } = req.query;
 
     if (!lat || !lng) {
