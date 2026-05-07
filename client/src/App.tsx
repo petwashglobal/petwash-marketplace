@@ -36,6 +36,7 @@ import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ActivationBanner } from "@/components/ActivationBanner";
 import { PromoAdPopup } from "@/components/PromoAdPopup";
 import { Layout } from "@/components/Layout";
+import { isStickyAccountPath } from "@/lib/sticky-account-paths";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -3020,15 +3021,29 @@ function App() {
 
   // Regex pattern covering all non-marketing route prefixes.
   // The promo popup must never auto-open on functional, auth, or operational pages.
+  //
+  // Issue #148 P3: this hand-maintained regex matches `/provider/*` (with
+  // slash) but missed `/provider-onboarding`, `/become-provider`, `/join*`,
+  // and `/verify-email` (no slash separator after the prefix). On those
+  // sticky onboarding routes the z-9999 popup mounted on top of the form
+  // and blocked the bottom-edge "Complete" CTAs on iPhone Safari. We now
+  // additionally consult the canonical sticky-account-paths list so any
+  // route added there is automatically suppressed here too — no more drift.
   const PROMO_EXCLUDED_PATTERN =
     /^\/(paw-finder|admin|provider|dashboard|booking|signin|signup|sign-in|sign-up|verify|account-activation|choose-role|complete-profile|provider-pending|provider-rejected|staff-pending|staff-rejected|access-pending|blocked|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|forms|legal-agreement)(\/|$)/;
 
-  const showPromoPopup = !PROMO_EXCLUDED_PATTERN.test(currentPath);
+  const showPromoPopup =
+    !PROMO_EXCLUDED_PATTERN.test(currentPath) &&
+    !isStickyAccountPath(currentPath);
 
-  // Routes where floating FABs/widgets must be suppressed (auth/admin critical flows)
+  // Routes where floating FABs/widgets must be suppressed (auth/admin critical flows).
+  // Same Issue #148 P3 fix: AND with sticky-account-paths so onboarding flows
+  // never get a floating button stack covering form CTAs.
   const FLOATING_WIDGETS_EXCLUDED_PATTERN =
     /^\/(paw-finder|signin|signup|sign-in|sign-up|login|register|admin|auth\/action|__\/auth\/action)(\/|$)/;
-  const showFloatingStack = !FLOATING_WIDGETS_EXCLUDED_PATTERN.test(currentPath);
+  const showFloatingStack =
+    !FLOATING_WIDGETS_EXCLUDED_PATTERN.test(currentPath) &&
+    !isStickyAccountPath(currentPath);
 
 
   useKeyboardNavigation();
