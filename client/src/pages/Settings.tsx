@@ -307,7 +307,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
 
 export default function Settings() {
   const { user: firebaseUser, loading: authLoading } = useFirebaseAuth();
-  const { role: serverRole, isLoading: whoamiLoading } = useWhoami();
+  const { role: serverRole, isLoading: whoamiLoading, whoami } = useWhoami();
   const { language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -636,13 +636,63 @@ export default function Settings() {
                 </h2>
                 <div className="space-y-6">
                   <div className="luxury-animate-fade-in luxury-delay-1">
-                    <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.email', language)}</Label>
-                    <Input value={firebaseUser?.email || ''} disabled className="mt-2 h-12 bg-white border-[#E8E3D9] text-[#1A1A1A]" />
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.email', language)}</Label>
+                      {whoami?.emailVerified ? (
+                        <Badge
+                          data-testid="badge-email-verified"
+                          aria-label={language === 'he' ? 'אימייל מאומת' : 'Email verified'}
+                          className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          {language === 'he' ? 'מאומת' : 'Verified'}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          data-testid="badge-email-unverified"
+                          aria-label={language === 'he' ? 'אימייל לא מאומת' : 'Email not verified'}
+                          className="bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-50"
+                        >
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          {language === 'he' ? 'לא מאומת' : 'Not verified'}
+                        </Badge>
+                      )}
+                    </div>
+                    <Input value={firebaseUser?.email || ''} disabled className="h-12 bg-white border-[#E8E3D9] text-[#1A1A1A]" />
                   </div>
                   <div className="luxury-animate-fade-in luxury-delay-2">
                     <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.name', language)}</Label>
                     <Input value={firebaseUser?.displayName || ''} disabled className="mt-2 h-12 bg-white border-[#E8E3D9] text-[#1A1A1A]" />
                   </div>
+                  {whoami?.phone && (
+                    <div className="luxury-animate-fade-in luxury-delay-2" data-testid="row-phone-verification">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">
+                          {language === 'he' ? 'טלפון' : 'Phone'}
+                        </Label>
+                        {whoami?.phoneVerified ? (
+                          <Badge
+                            data-testid="badge-phone-verified"
+                            aria-label={language === 'he' ? 'טלפון מאומת' : 'Phone verified'}
+                            className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            {language === 'he' ? 'מאומת' : 'Verified'}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            data-testid="badge-phone-unverified"
+                            aria-label={language === 'he' ? 'טלפון לא מאומת' : 'Phone not verified'}
+                            className="bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-50"
+                          >
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {language === 'he' ? 'לא מאומת' : 'Not verified'}
+                          </Badge>
+                        )}
+                      </div>
+                      <Input value={whoami.phone} disabled className="h-12 bg-white border-[#E8E3D9] text-[#1A1A1A]" />
+                    </div>
+                  )}
                 </div>
               </div>
 
