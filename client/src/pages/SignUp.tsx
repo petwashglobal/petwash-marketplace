@@ -858,9 +858,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               type="button"
               variant="outline"
               onClick={() => performOAuthSignup('google')}
-              disabled={!!socialLoading || loading}
+              disabled={!!socialLoading || loading || webviewBlocked}
               className="w-full h-13 !bg-white hover:!bg-white !text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-google-signup"
+              aria-disabled={webviewBlocked || undefined}
+              title={webviewBlocked ? (language === 'he' ? 'פתח/י באפליקציית Safari או Chrome' : 'Open in Safari or Chrome') : undefined}
             >
               {socialLoading === 'google' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaGoogle className="h-5 w-5 text-[#4285F4]" />}
               {language === 'he' ? 'המשך עם Google' : language === 'ar' ? 'تسجيل باستخدام Google' : 'Continue with Google'}
@@ -871,9 +873,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               type="button"
               variant="outline"
               onClick={() => performOAuthSignup('apple')}
-              disabled={!!socialLoading || loading}
+              disabled={!!socialLoading || loading || webviewBlocked}
               className="w-full h-13 !bg-black hover:!bg-gray-900 !text-white border border-black shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-apple-signup"
+              aria-disabled={webviewBlocked || undefined}
+              title={webviewBlocked ? (language === 'he' ? 'פתח/י באפליקציית Safari או Chrome' : 'Open in Safari or Chrome') : undefined}
             >
               {socialLoading === 'apple' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaApple className="h-5 w-5" />}
               {language === 'he' ? 'המשך עם Apple' : 'Continue with Apple'}
@@ -884,9 +888,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               type="button"
               variant="outline"
               onClick={() => performOAuthSignup('facebook')}
-              disabled={!!socialLoading || loading}
+              disabled={!!socialLoading || loading || webviewBlocked}
               className="w-full h-13 !bg-[#1877F2] hover:!bg-[#166fe5] !text-white border border-[#1877F2] shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
               data-testid="button-facebook-signup"
+              aria-disabled={webviewBlocked || undefined}
+              title={webviewBlocked ? (language === 'he' ? 'פתח/י באפליקציית Safari או Chrome' : 'Open in Safari or Chrome') : undefined}
             >
               {socialLoading === 'facebook' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FaFacebook className="h-5 w-5" />}
               {language === 'he' ? 'המשך עם Facebook' : 'Continue with Facebook'}
@@ -898,9 +904,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 type="button"
                 variant="outline"
                 onClick={() => handleExternalOAuth('tiktok')}
-                disabled={!!socialLoading || loading}
+                disabled={!!socialLoading || loading || webviewBlocked}
                 className="h-11 !bg-black hover:!bg-gray-900 !text-white border border-black font-medium text-sm flex items-center justify-center gap-2 rounded-2xl transition-all"
                 data-testid="button-tiktok-signup"
+                aria-disabled={webviewBlocked || undefined}
+                title={webviewBlocked ? (language === 'he' ? 'פתח/י באפליקציית Safari או Chrome' : 'Open in Safari or Chrome') : undefined}
               >
                 {socialLoading === 'tiktok' ? <Loader2 className="h-4 w-4 animate-spin" /> : <SiTiktok className="h-4 w-4" />}
                 TikTok
@@ -909,9 +917,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 type="button"
                 variant="outline"
                 onClick={() => handleExternalOAuth('instagram')}
-                disabled={!!socialLoading || loading}
+                disabled={!!socialLoading || loading || webviewBlocked}
                 className="h-11 !bg-gradient-to-r !from-purple-500 !via-pink-500 !to-orange-400 hover:opacity-90 !text-white border-0 font-medium text-sm flex items-center justify-center gap-2 rounded-2xl transition-all"
                 data-testid="button-instagram-signup"
+                aria-disabled={webviewBlocked || undefined}
+                title={webviewBlocked ? (language === 'he' ? 'פתח/י באפליקציית Safari או Chrome' : 'Open in Safari or Chrome') : undefined}
               >
                 {socialLoading === 'instagram' ? <Loader2 className="h-4 w-4 animate-spin" /> : <SiInstagram className="h-4 w-4" />}
                 Instagram
