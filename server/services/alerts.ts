@@ -4,6 +4,7 @@
  */
 
 import sgMail from '../lib/sendgrid';
+import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
@@ -22,13 +23,24 @@ export async function sendSecurityAlert(subject: string, html: string): Promise<
   }
 
   try {
-    await sgMail.send({
-      from: FROM,
-      to: TO,
-      subject: `🚨 PetWash Security Alert: ${subject}`,
-      html,
+    // PR-EMAIL-3: route through guarded helper. Security alerts go to a
+    // small fixed admin recipient, but unguarded retries during an
+    // incident could still spike SendGrid spend — the circuit breaker
+    // bounds that.
+    const r = await sendGuardedEmail({
+      service: 'internal:security-alert',
+      msg: {
+        from: FROM,
+        to: TO,
+        subject: `🚨 PetWash Security Alert: ${subject}`,
+        html,
+      },
     });
 
+    if (!r.ok) {
+      logger.warn('[Alerts] Security alert send blocked or failed', { subject, reason: r.reason });
+      return;
+    }
     logger.info('[Alerts] Security alert sent', { subject });
   } catch (error) {
     logger.error('[Alerts] Failed to send security alert', error, { subject });

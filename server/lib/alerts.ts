@@ -1,5 +1,6 @@
 import { logger } from './observability';
 import sgMail from './sendgrid';
+import { sendGuardedEmail } from './guarded-sendgrid';
 
 interface AlertConfig {
   name: string;
@@ -142,7 +143,15 @@ class AlertManager {
         `
       };
 
-      await sgMail.send(msg);
+      // PR-EMAIL-3: route through guarded helper.
+      const r = await sendGuardedEmail({
+        service: 'internal:ops-alert',
+        msg,
+      });
+      if (!r.ok) {
+        logger.warn('Email alert blocked or failed', { alertName: alert.name, reason: r.reason });
+        return;
+      }
       logger.info('Email alert sent', { alertName: alert.name, recipient: toEmail });
     } catch (error) {
       logger.error('Failed to send email alert', error);

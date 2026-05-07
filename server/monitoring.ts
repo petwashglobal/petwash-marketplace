@@ -8,6 +8,7 @@
 import { logger } from './lib/logger';
 import { db as adminDb } from './lib/firebase-admin';
 import sgMail from './lib/sendgrid';
+import { sendGuardedEmail } from './lib/guarded-sendgrid';
 import { getStationAnalyticsFor24Hours } from './stationsService';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
@@ -502,14 +503,21 @@ async function sendAlert(alert: Alert): Promise<void> {
         <p><strong>Timestamp:</strong> ${timestamp}</p>
       `;
 
-      await sgMail.send({
-        to: ALERT_EMAIL,
-        from: 'alerts@petwash.co.il',
-        subject: `${severityEmoji} Pet Wash Alert: ${alert.message}`,
-        html: emailContent
+      // PR-EMAIL-3: guarded helper. Internal monitoring alert send.
+      const r = await sendGuardedEmail({
+        service: 'monitoring:system-alert',
+        msg: {
+          to: ALERT_EMAIL,
+          from: 'alerts@petwash.co.il',
+          subject: `${severityEmoji} Pet Wash Alert: ${alert.message}`,
+          html: emailContent
+        },
       });
-      
-      logger.info('[ALERT] Email sent successfully');
+      if (!r.ok) {
+        logger.warn('[ALERT] Email blocked or failed', { reason: r.reason });
+      } else {
+        logger.info('[ALERT] Email sent successfully');
+      }
     } catch (error) {
       logger.error('[ALERT] Failed to send email', error);
     }
@@ -1057,9 +1065,20 @@ export async function sendDailyNayaxReport() {
       subject: `🐾 ⁦Pet Wash™⁩ Daily Nayax Report - ${reportDate}`,
       html: htmlContent
     };
-    
-    await sgMail.send(msg);
-    
+
+    // PR-EMAIL-3: guarded helper. This is the EMAIL TRANSPORT only —
+    // the Nayax data collection / reporting query upstream is unchanged.
+    // Per #153 Mission F rules: no Nayax runtime change, only the email
+    // path that already existed is now wrapped in EmailSpendGuard.
+    const r = await sendGuardedEmail({
+      service: 'monitoring:nayax-daily-report',
+      msg,
+    });
+    if (!r.ok) {
+      logger.warn('[NAYAX REPORT] Daily report email blocked or failed', { reason: r.reason });
+      return;
+    }
+
     logger.info('[NAYAX REPORT] Daily report sent successfully', {
       date: reportDate,
       totalWashes,
