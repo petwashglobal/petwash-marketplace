@@ -43,6 +43,14 @@ function requireAdmin(req: any, res: any, next: any) {
   next();
 }
 
+// Issue #148 P5 — every handler below requires admin role. Replaces the
+// per-handler `requireAdmin` arg that was repeated 16× — one blanket
+// guard, identical behaviour, and any future handler added to this file
+// is protected by default. The audit middleware below filters mutations
+// by status code (skips status >= 400), so the role check happens here
+// first and unauthorized attempts never reach the audit write.
+router.use(requireAdmin);
+
 // ─── PR-C: Admin loyalty mutation audit middleware ────────────────────────────
 // Every successful POST/PATCH/DELETE response on this router writes one row
 // to audit_events so compliance can reconstruct who changed loyalty rules
@@ -143,7 +151,7 @@ function adminLoyaltyAuditMiddleware(req: Request, res: Response, next: NextFunc
 router.use(adminLoyaltyAuditMiddleware);
 
 // ── GET /rules ────────────────────────────────────────────────────────────────
-router.get('/rules', requireAdmin, async (_req, res) => {
+router.get('/rules', async (_req, res) => {
   try {
     const rules = await db
       .select()
@@ -169,7 +177,7 @@ const patchRuleSchema = z.object({
   dailySendCap:   z.number().int().min(1).nullable().optional(),
 });
 
-router.patch('/rules/:ruleKey', requireAdmin, async (req, res) => {
+router.patch('/rules/:ruleKey', async (req, res) => {
   try {
     const { ruleKey } = req.params;
     const body = patchRuleSchema.parse(req.body);
@@ -203,7 +211,7 @@ router.patch('/rules/:ruleKey', requireAdmin, async (req, res) => {
 
 // ── GET /stats ─────────────────────────────────────────────────────────────────
 // Conversion funnel: event counts + redemption totals + experiment variant breakdown
-router.get('/stats', requireAdmin, async (_req, res) => {
+router.get('/stats', async (_req, res) => {
   try {
     // Event-type totals (last 90 days)
     const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
@@ -274,7 +282,7 @@ router.get('/stats', requireAdmin, async (_req, res) => {
 });
 
 // ── GET /winback ───────────────────────────────────────────────────────────────
-router.get('/winback', requireAdmin, async (_req, res) => {
+router.get('/winback', async (_req, res) => {
   try {
     // Status breakdown
     const statusBreakdown = await db
@@ -426,7 +434,7 @@ const adjustSchema = z.object({
   reason:      z.string().min(3).max(300),
 });
 
-router.post('/adjust', requireAdmin, async (req: any, res) => {
+router.post('/adjust', async (req: any, res) => {
   try {
     const { userId, amountCents, reason } = adjustSchema.parse(req.body);
 
@@ -465,7 +473,7 @@ router.post('/adjust', requireAdmin, async (req: any, res) => {
 
 // ── GET /ledger ────────────────────────────────────────────────────────────────
 // Recent system-wide ledger — last 200 rows with user email/name joined
-router.get('/ledger', requireAdmin, async (req, res) => {
+router.get('/ledger', async (req, res) => {
   try {
     const limit = Math.min(parseInt((req.query.limit as string) || '100', 10), 200);
 
@@ -504,7 +512,7 @@ const proofRunSchema = z.object({
   scenario: z.enum(['low_sample', 'losing_variant', 'winner_ready', 'frequency_cap', 'admin_pause']),
 });
 
-router.post('/proof-run', requireAdmin, async (req: any, res) => {
+router.post('/proof-run', async (req: any, res) => {
   try {
     const { scenario } = proofRunSchema.parse(req.body);
     const adminEmail = req.firebaseUser?.email ?? 'admin';
@@ -677,7 +685,7 @@ router.post('/proof-run', requireAdmin, async (req: any, res) => {
 // ── GET /experiment-decisions ────────────────────────────────────────────────
 // Returns all rows from experiment_decisions joined with per-variant funnel counts
 // plus runtimeInfo (first notification sent → now) for auto-promote eligibility display.
-router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
+router.get('/experiment-decisions', async (_req, res) => {
   try {
     const decisions = await db
       .select()
@@ -743,7 +751,7 @@ router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
 
 // ── POST /experiment-decisions/evaluate ─────────────────────────────────────
 // Manually trigger the decision job (for admin testing / forcing a re-evaluation).
-router.post('/experiment-decisions/evaluate', requireAdmin, async (_req, res) => {
+router.post('/experiment-decisions/evaluate', async (_req, res) => {
   try {
     await runExperimentDecisionJob();
     res.json({ ok: true });
@@ -761,7 +769,7 @@ const promoteSchema = z.object({
   notes:         z.string().max(500).optional(),
 });
 
-router.post('/experiment-decisions/promote', requireAdmin, async (req: any, res) => {
+router.post('/experiment-decisions/promote', async (req: any, res) => {
   try {
     const { experimentKey, notes } = promoteSchema.parse(req.body);
     const adminEmail = req.firebaseUser?.email ?? 'admin';
@@ -804,7 +812,7 @@ const pauseVariantSchema = z.object({
   notes:         z.string().max(500).optional(),
 });
 
-router.post('/experiment-decisions/pause-variant', requireAdmin, async (req: any, res) => {
+router.post('/experiment-decisions/pause-variant', async (req: any, res) => {
   try {
     const { experimentKey, variant, paused, notes } = pauseVariantSchema.parse(req.body);
     const adminEmail = req.firebaseUser?.email ?? 'admin';
@@ -872,7 +880,7 @@ router.post('/experiment-decisions/pause-variant', requireAdmin, async (req: any
 
 // ── GET /queue-health ─────────────────────────────────────────────────────────
 // Phase 6.15: Returns queue health checks + daily ops indicators + channel ROI detail.
-router.get('/queue-health', requireAdmin, async (_req, res) => {
+router.get('/queue-health', async (_req, res) => {
   try {
     const [health, roiDetail, killActive] = await Promise.all([
       loadQueueHealth(),
@@ -892,7 +900,7 @@ router.get('/queue-health', requireAdmin, async (_req, res) => {
 
 // ── GET /deployment-checklist ─────────────────────────────────────────────────
 // Phase 6.15: Returns a live readiness checklist for production deployment.
-router.get('/deployment-checklist', requireAdmin, async (_req, res) => {
+router.get('/deployment-checklist', async (_req, res) => {
   try {
     const [ruleRows, expData, killRow] = await Promise.all([
       db.select({
@@ -992,7 +1000,7 @@ const proofSchema = z.object({
   scenario: z.enum(['auto_promote', 'lock_blocks', 'roi_gate', 'budget_order']),
 });
 
-router.post('/proof-scenario', requireAdmin, async (req, res) => {
+router.post('/proof-scenario', async (req, res) => {
   try {
     const { scenario } = proofSchema.parse(req.body);
 
@@ -1122,7 +1130,7 @@ router.post('/proof-scenario', requireAdmin, async (req, res) => {
 // Creates or updates a loyalty_rules row with ruleKey = PAID_KILL_SWITCH_RULE.
 const killSwitchSchema = z.object({ active: z.boolean() });
 
-router.post('/paid-channel-kill-switch', requireAdmin, async (req: any, res) => {
+router.post('/paid-channel-kill-switch', async (req: any, res) => {
   try {
     const { active } = killSwitchSchema.parse(req.body);
     const adminEmail = req.firebaseUser?.email ?? 'admin';
@@ -1161,7 +1169,7 @@ const lockSchema = z.object({
   notes:         z.string().max(500).optional(),
 });
 
-router.post('/experiment-decisions/lock', requireAdmin, async (req: any, res) => {
+router.post('/experiment-decisions/lock', async (req: any, res) => {
   try {
     const { experimentKey, locked, notes } = lockSchema.parse(req.body);
     const adminEmail = req.firebaseUser?.email ?? 'admin';
