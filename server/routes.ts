@@ -9730,7 +9730,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', validateFirebaseToken, adminLimiter, adminPawFinderRoutes);
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
-  app.use('/api/admin/spam-guard', adminLimiter, spamGuardRoutes);
+  app.use('/api/admin/spam-guard', validateFirebaseToken, adminLimiter, spamGuardRoutes);
 
   // ─── AI Status (Gemini quota, backend type, usage) — super-admin only ──────
   app.get('/api/admin/ai-status', requireAdmin, async (_req, res) => {
