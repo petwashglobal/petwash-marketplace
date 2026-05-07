@@ -14,6 +14,7 @@ import sgMail from '@sendgrid/mail';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 
 const SENDGRID_API_KEY    = process.env.SENDGRID_API_KEY    ?? '';
 const FINANCE_ALERT_EMAIL = process.env.FINANCE_ALERT_EMAIL ?? '';
@@ -139,11 +140,16 @@ ${allClear
 </body></html>`;
 
   sgMail.setApiKey(SENDGRID_API_KEY);
-  await sgMail.send({
-    to:      FINANCE_ALERT_EMAIL,
-    from:    process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
-    subject,
-    html,
+  // PR-EMAIL-2: route through guarded helper. EmailSpendGuard tracks
+  // this send under service tag 'cron:daily-close-reminder'.
+  await sendGuardedEmail({
+    service: 'cron:daily-close-reminder',
+    msg: {
+      to:      FINANCE_ALERT_EMAIL,
+      from:    process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
+      subject,
+      html,
+    },
   });
 
   logger.info('[DailyCloseReminder] Reminder sent', { dateIso, checkpoint, blocked });
@@ -256,11 +262,15 @@ async function sendDailyAlertDigest(): Promise<void> {
 </table>
 <p>Log in to the Admin Wallet Dashboard to acknowledge and action these alerts.</p>`;
 
-    await sgMail.send({
-      to: FINANCE_ALERT_EMAIL,
-      from: FINANCE_ALERT_EMAIL,
-      subject: `[PetWash Finance] Daily Alert Digest — ${todayIso()} — ${alerts.length} alert(s)`,
-      html,
+    // PR-EMAIL-2: guarded helper. Daily aggregated alert digest.
+    await sendGuardedEmail({
+      service: 'cron:daily-close-alert-digest',
+      msg: {
+        to: FINANCE_ALERT_EMAIL,
+        from: FINANCE_ALERT_EMAIL,
+        subject: `[PetWash Finance] Daily Alert Digest — ${todayIso()} — ${alerts.length} alert(s)`,
+        html,
+      },
     });
 
     // Record delivery
@@ -315,13 +325,17 @@ async function runEscalationLadder(): Promise<void> {
         // Send escalation email if configured
         if (SENDGRID_API_KEY && FINANCE_ALERT_EMAIL) {
           sgMail.setApiKey(SENDGRID_API_KEY);
-          await sgMail.send({
-            to: FINANCE_ALERT_EMAIL,
-            from: FINANCE_ALERT_EMAIL,
-            subject: `[PetWash Finance] CRITICAL Alert Escalation Level ${level} — ${a.alert_type}`,
-            html: `<h2>Critical Finance Alert — Escalation Level ${level}</h2>
+          // PR-EMAIL-2: guarded helper. Critical alert escalation send.
+          await sendGuardedEmail({
+            service: 'cron:daily-close-critical-escalation',
+            msg: {
+              to: FINANCE_ALERT_EMAIL,
+              from: FINANCE_ALERT_EMAIL,
+              subject: `[PetWash Finance] CRITICAL Alert Escalation Level ${level} — ${a.alert_type}`,
+              html: `<h2>Critical Finance Alert — Escalation Level ${level}</h2>
 <p>Alert <strong>${a.alert_type}</strong> (entity: ${a.entity_type} / ${a.entity_id}) remains unacknowledged after ${minMinutes} minutes.</p>
 <p>Please log in immediately to review and acknowledge this alert.</p>`,
+            },
           });
         }
       }
@@ -427,12 +441,22 @@ async function sendExecutiveDigestJob(): Promise<void> {
     // Send email if configured
     if (SENDGRID_API_KEY && recipients.length > 0) {
       sgMail.setApiKey(SENDGRID_API_KEY);
-      await sgMail.send({
-        to: recipients,
-        from: process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
-        subject: `[PetWash Finance] Executive Weekly Digest — ${fromDate} to ${toDate}`,
-        html: `<h2>PetWash Finance — Executive Weekly Digest</h2><p>Week: <strong>${fromDate}</strong> to <strong>${toDate}</strong></p><p>Log in to the Admin Wallet Dashboard → Executive tab to view the full KPI snapshot.</p>`,
-      }).catch((e: any) => logger.warn('[ExecDigest] Email send failed', { error: e.message }));
+      // PR-EMAIL-2: guarded helper. Existing .catch fire-and-forget
+      // pattern is preserved by checking r.ok — sendGuardedEmail does
+      // NOT throw on send failure (it returns { ok:false, reason }),
+      // so we log the same warn that the previous .catch did.
+      const r = await sendGuardedEmail({
+        service: 'cron:weekly-finance-exec-digest',
+        msg: {
+          to: recipients,
+          from: process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
+          subject: `[PetWash Finance] Executive Weekly Digest — ${fromDate} to ${toDate}`,
+          html: `<h2>PetWash Finance — Executive Weekly Digest</h2><p>Week: <strong>${fromDate}</strong> to <strong>${toDate}</strong></p><p>Log in to the Admin Wallet Dashboard → Executive tab to view the full KPI snapshot.</p>`,
+        },
+      });
+      if (!r.ok) {
+        logger.warn('[ExecDigest] Email send failed', { reason: r.reason });
+      }
     }
 
     logger.info('[ExecDigest] Weekly digest sent', { fromDate, toDate, recipients: recipients.length });

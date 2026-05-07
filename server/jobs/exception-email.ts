@@ -14,6 +14,7 @@ import sgMail from '@sendgrid/mail';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY ?? '';
 const FINANCE_ALERT_EMAIL = process.env.FINANCE_ALERT_EMAIL ?? '';
@@ -183,12 +184,20 @@ async function sendExceptionEmail(): Promise<void> {
     const html = buildHtml(summary, asOf);
 
     sgMail.setApiKey(SENDGRID_API_KEY);
-    await sgMail.send({
-      to: FINANCE_ALERT_EMAIL,
-      from: 'noreply@petwash.co.il',
-      subject: `PetWash Finance Exception Report — ${new Date().toISOString().split('T')[0]}`,
-      html,
+    // PR-EMAIL-2: guarded helper. Daily exception report digest.
+    const r = await sendGuardedEmail({
+      service: 'cron:exception-email',
+      msg: {
+        to: FINANCE_ALERT_EMAIL,
+        from: 'noreply@petwash.co.il',
+        subject: `PetWash Finance Exception Report — ${new Date().toISOString().split('T')[0]}`,
+        html,
+      },
     });
+    if (!r.ok) {
+      logger.warn('[ExceptionEmail] Send blocked or failed', { reason: r.reason });
+      return;
+    }
     logger.info('[ExceptionEmail] Sent successfully', { to: FINANCE_ALERT_EMAIL, asOf });
   } catch (err: any) {
     logger.error('[ExceptionEmail] Failed to send', { error: err.message });
