@@ -22,6 +22,7 @@ import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { assignProviderMembership } from '../services/MembershipService';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const submissionRateMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_SUBMISSIONS_PER_IP_PER_HOUR = 3;
@@ -997,12 +998,36 @@ router.post('/withdraw', async (req: Request, res: Response) => {
 
 // =================== ADMIN ROUTES ===================
 
+// Issue #153 — admin role-shape fix.
+// The previous inline checks read `firebaseUser.accountType` directly,
+// but `extractFirebaseUser()` (server/middleware/firebase-auth.ts) puts
+// every custom claim INSIDE `firebaseUser.claims` — the top level only
+// holds `{ uid, email, email_verified, claims }`. So `user.accountType`
+// was always undefined and every admin received 403 on these endpoints.
+// Same class of bug as the escrow shape fix (Issue #153 escrow follow-up).
+//
+// We now read from `firebaseUser.claims.accountType` (canonical) AND
+// consult `isSuperAdmin(email)` for the super-admin email allowlist.
+// `'internal'` and `'admin'` accountType values stay accepted exactly
+// as the previous (broken) check intended.
+const ADMIN_ACCOUNT_TYPES = ['internal', 'admin'] as const;
+
+function callerIsAdmin(req: Request): boolean {
+  const fb = (req as any).firebaseUser;
+  const claims = fb?.claims || {};
+  const email = (fb?.email || '').toLowerCase();
+  if (email && isSuperAdmin(email)) return true;
+  const accountType = typeof claims.accountType === 'string' ? claims.accountType : undefined;
+  if (accountType && (ADMIN_ACCOUNT_TYPES as readonly string[]).includes(accountType)) return true;
+  return false;
+}
+
 // GET /api/provider-applications/admin/list - List all applications (admin only)
 router.get('/admin/list', async (req: Request, res: Response) => {
   try {
     // Check admin access
     const user = (req as any).firebaseUser;
-    if (!user?.accountType || !['internal', 'admin'].includes(user.accountType)) {
+    if (!callerIsAdmin(req)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -1067,7 +1092,7 @@ router.get('/admin/list', async (req: Request, res: Response) => {
 router.get('/admin/:id', async (req: Request, res: Response) => {
   try {
     const user = (req as any).firebaseUser;
-    if (!user?.accountType || !['internal', 'admin'].includes(user.accountType)) {
+    if (!callerIsAdmin(req)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -1161,7 +1186,7 @@ router.get('/admin/:id', async (req: Request, res: Response) => {
 router.post('/admin/:id/approve', async (req: Request, res: Response) => {
   try {
     const user = (req as any).firebaseUser;
-    if (!user?.accountType || !['internal', 'admin'].includes(user.accountType)) {
+    if (!callerIsAdmin(req)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -1342,7 +1367,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
 router.post('/admin/:id/reject', async (req: Request, res: Response) => {
   try {
     const user = (req as any).firebaseUser;
-    if (!user?.accountType || !['internal', 'admin'].includes(user.accountType)) {
+    if (!callerIsAdmin(req)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -1457,7 +1482,7 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
 router.post('/admin/:id/advance-stage', async (req: Request, res: Response) => {
   try {
     const user = (req as any).firebaseUser;
-    if (!user?.accountType || !['internal', 'admin'].includes(user.accountType)) {
+    if (!callerIsAdmin(req)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
