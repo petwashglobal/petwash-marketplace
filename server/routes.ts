@@ -2151,6 +2151,12 @@ self.addEventListener('notificationclick', (event) => {
       const userRecord = await fbAdminAuth.getUser(decoded.uid);
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
+      // Issue #153 Mission-3 PR-1: surface phoneVerified + language from Postgres
+      // so Settings.tsx can render verification state and the app can sync language
+      // across devices instead of being localStorage-only. Read-only — no behavior
+      // change to auth, role, MFA, KYC, or session decisions.
+      const pgUser = await storage.getUser(decoded.uid).catch(() => null);
+
       let role = claims.role || 'public';
       const accountType = claims.accountType || 'pet_parent';
 
@@ -2219,6 +2225,9 @@ self.addEventListener('notificationclick', (event) => {
         uid: decoded.uid,
         email: decoded.email || '',
         emailVerified: decoded.email_verified || false,
+        phoneVerified: (pgUser as any)?.phoneVerified === true,
+        phone: (pgUser as any)?.phone || null,
+        language: (pgUser as any)?.language || null,
         displayName: userRecord.displayName || '',
         role,
         accountType,

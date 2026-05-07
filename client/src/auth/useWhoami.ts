@@ -7,6 +7,9 @@ export interface WhoamiResponse {
   uid: string;
   email: string;
   emailVerified: boolean;
+  phoneVerified: boolean;
+  phone: string | null;
+  language: string | null;
   displayName: string;
   role: string;
   accountType: string;
