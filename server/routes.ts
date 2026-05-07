@@ -9660,7 +9660,15 @@ self.addEventListener('notificationclick', (event) => {
 
   // Billing Engine — payment capture / escrow release / refund / dispute
   const billingRoutes = await import('./routes/billing');
-  app.use('/api/billing', adminLimiter, billingRoutes.default);
+  // Issue #153 PR-B (Money Brain Audit): the file header at server/routes/
+  // billing.ts:1-15 claims "All routes require admin role (payment events
+  // are system-internal)" — but the mount previously ran adminLimiter only,
+  // with no Firebase token validation and no requireAdmin. POST /payment-
+  // captured trusted req.body.grossAgorot to mint ITA tax invoices. Bring
+  // the mount in line with the file's documented contract. Mirrors the
+  // pattern at /api/admin/coupons (line ~9535). No billing logic / VAT /
+  // invoice / payment-processor / schema changes.
+  app.use('/api/billing', validateFirebaseToken, adminLimiter, requireAdmin, billingRoutes.default);
 
   // Phase 12.19 — Profitability, Unit Economics & Capital Allocation
   // P0-SEC: Added validateFirebaseToken (was: apiLimiter only — P&L / unit economics readable by anyone).
