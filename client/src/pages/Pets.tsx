@@ -259,7 +259,36 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
               const icon = typeInfo?.icon || '📅';
               const calUrl = ev.calendarLink ||
                 `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${icon} ${petName} — ${ev.title}`)}&dates=${ev.date.replace(/-/g,'')}/${ev.date.replace(/-/g,'')}`;
-              const icsUrl = `/api/pets/${petId}/health-events/${ev.id}/ics?uid=${userId || ''}`;
+              // Issue #153 Mission-3 PR-2: the ICS endpoint no longer accepts
+              // ?uid= and requires a Firebase Bearer token. We fetch the file
+              // with Authorization, then trigger the browser download from a
+              // blob URL. This also avoids leaking medical event data to
+              // anyone who guessed UIDs from URLs that might land in logs or
+              // referrer headers.
+              const downloadIcs = async () => {
+                if (!authToken) {
+                  toast({ variant: 'destructive', title: isHe ? 'יש להתחבר מחדש' : 'Please sign in again' });
+                  return;
+                }
+                try {
+                  const res = await fetch(
+                    `/api/pets/${petId}/health-events/${ev.id}/ics`,
+                    { headers: { Authorization: `Bearer ${authToken}` }, credentials: 'include' },
+                  );
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  const blob = await res.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = blobUrl;
+                  a.download = `${petName}-health.ics`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                } catch (e: any) {
+                  toast({ variant: 'destructive', title: isHe ? 'הורדה נכשלה' : 'Download failed', description: e.message });
+                }
+              };
               return (
                 <div key={ev.id} className="flex items-start gap-2 text-sm group">
                   <span className="mt-0.5 shrink-0">{icon}</span>
@@ -281,14 +310,15 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
-                    <a
-                      href={icsUrl}
-                      download={`${petName}-health.ics`}
+                    <button
+                      type="button"
+                      onClick={downloadIcs}
+                      data-testid={`button-download-ics-${ev.id}`}
                       title={isHe ? 'הורד לאייפון (.ics)' : 'Download for iPhone (.ics)'}
                       className="p-1 rounded hover:bg-white text-slate-500 hover:text-blue-600"
                     >
                       <Download className="w-3.5 h-3.5" />
-                    </a>
+                    </button>
                     <button
                       onClick={() => deleteMutation.mutate(ev.id)}
                       className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500"
