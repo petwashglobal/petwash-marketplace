@@ -922,6 +922,104 @@ h1, h2, h3, h4, h5, h6,
   color-scheme: light;
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+ * PR-IMMERSIVE-CSS — keyboard-safe immersive flow shell
+ *
+ * Driven by `<html data-immersive="true">` (set by App.tsx when
+ * isImmersiveRoute(currentPath) is truthy — see client/src/App.tsx).
+ *
+ * Goals (CEO directive after the iOS keyboard screenshot):
+ *   • 100dvh shell that respects the dynamic viewport (visualViewport API
+ *     resizes correctly when the iOS keyboard opens — vh would crop).
+ *   • safe-area-inset on top + bottom for notched devices.
+ *   • dedicated internal scroll container so the keyboard doesn't shove
+ *     the parent scroller and clip CTAs.
+ *   • last-resort safety net: any leaked position:fixed bottom-anchored
+ *     element gets hidden under data-immersive (#187 already centralizes
+ *     suppression; this is the belt-and-braces rule for future strays).
+ *
+ * Scope discipline (locked):
+ *   - no z-index changes to existing modals/popups (PromoAdPopup,
+ *     AiChatWidget, FloatingStack remain authoritative).
+ *   - no animation / transition rewrites.
+ *   - no global selector pollution — every rule scoped under
+ *     [data-immersive="true"].
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* 1. Lock the document to the dynamic viewport (Safari ITP keyboard-aware). */
+html[data-immersive="true"],
+html[data-immersive="true"] body {
+  min-height: 100dvh;
+  /* Avoid double scrolling: the immersive layout scrolls inside .immersive-flow */
+  overflow: hidden;
+  /* Let CSS adapt to RTL Hebrew */
+  scroll-behavior: smooth;
+}
+
+/* 2. The flow container — applies whether the page uses .immersive-flow OR
+ *    is rendered inside the global root. Pages already using .immersive-flow
+ *    inherit; pages without get sane defaults from the body rule above. */
+[data-immersive="true"] .immersive-flow {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  width: 100%;
+  /* Top + bottom safe-area insets (notch / home indicator). Pages can
+   * override per-section if their hero needs to bleed under the notch. */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* 3. Scrollable content region inside the flow. Use overscroll-behavior to
+ *    prevent the iOS rubber-band leaking to the parent and to keep the
+ *    keyboard from shoving the wrong scroller. */
+[data-immersive="true"] .immersive-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Bottom padding so the last form field clears the on-screen keyboard
+   * when focused. 80px ≈ a touch-friendly Submit button height. */
+  padding-bottom: max(80px, env(safe-area-inset-bottom, 0px));
+}
+
+/* 4. Bottom-pinned CTA bar (used by /sign-in, /signup, /provider-onboarding
+ *    multi-step forms). Sticks above the safe-area inset; never hidden by
+ *    the keyboard because it lives outside .immersive-scroll. */
+[data-immersive="true"] .immersive-cta-bar {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--immersive-cta-bg, #ffffff);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* 5. SAFETY NET — suppress any *leaked* fixed-bottom global chrome that
+ *    isn't already filtered by isImmersiveRoute() at the App.tsx mount.
+ *    Specifically targets nav-shaped containers; modals/dialogs (with
+ *    role="dialog") are intentionally left visible so KYC/auth dialogs
+ *    keep working. See Issue #153 PR-SHELL-IMMERSIVE for the primary
+ *    centralized boundary.
+ *    Scope is intentionally narrow: only nav + role="navigation" +
+ *    [data-floating-stack] elements. */
+html[data-immersive="true"] body > nav[class*="bottom"],
+html[data-immersive="true"] body > [role="navigation"][class*="bottom"],
+html[data-immersive="true"] body > [data-floating-stack] {
+  display: none !important;
+}
+
+/* 6. Keep the on-screen keyboard from causing layout shift on iOS by
+ *    hinting the visualViewport-aware sizing. Inputs inside the flow
+ *    get a comfortable touch target. */
+[data-immersive="true"] input,
+[data-immersive="true"] textarea,
+[data-immersive="true"] select {
+  font-size: 16px; /* prevents iOS Safari auto-zoom on focus */
+  min-height: 44px;
+}
+
 /* Accessibility - Focus Visible Styles */
 button:focus-visible,
 a:focus-visible,
