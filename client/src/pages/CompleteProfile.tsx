@@ -9,6 +9,7 @@ import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/goo
 import { PhoneInput } from "@/components/PhoneInput";
 import { Loader2, UserCircle, Gift, Crown } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
+import { resolvePostLogin } from "@/lib/postLoginCoordinator";
 import { useToast } from "@/hooks/use-toast";
 
 interface WhoamiUser {
@@ -189,11 +190,10 @@ export default function CompleteProfile() {
       const data = await res.json();
       if (res.ok) {
         toast({ title: isHe ? "הפרופיל נשמר בהצלחה!" : "Profile saved!" });
-        const postLoginRes = await fetch(getApiUrl("/api/auth/post-login"), {
-          method: "POST",
-          credentials: "include",
-        });
-        const postLoginData = await postLoginRes.json();
+        // PR-FRES-B: routed through postLoginCoordinator so completion of
+        // profile during a concurrent OneTap/Account-tap flow does not
+        // double-fire post-login.
+        const postLoginData = await resolvePostLogin();
         // Restore booking or page context that was interrupted by the profile-completion redirect.
         // ?from= param is set by post-login when it redirects here (e.g. /booking/123).
         // Server nextUrl takes priority only if it is not /complete-profile itself (avoid loops).

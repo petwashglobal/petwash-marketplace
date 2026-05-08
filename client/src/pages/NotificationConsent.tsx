@@ -4,7 +4,7 @@ import { Bell, BellOff, Sparkles } from 'lucide-react';
 import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
-import { getApiUrl } from '@/lib/apiConfig';
+import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import type { Language } from '@/lib/i18n';
 
 interface NotificationConsentProps {
@@ -26,12 +26,10 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
       navigate('/provider-os');
       return;
     }
+    // PR-FRES-B: route through postLoginCoordinator so the consent gate's
+    // post-login does not race against a concurrent SignUp/SignIn/OneTap call.
     try {
-      const res = await fetch(getApiUrl('/api/auth/post-login'), {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
+      const data = await resolvePostLogin();
       navigate(data.nextUrl || data.redirectTo || '/home');
     } catch {
       navigate('/home');

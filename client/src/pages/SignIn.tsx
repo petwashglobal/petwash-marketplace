@@ -5,6 +5,7 @@ import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFaceb
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
 import { seedSignupIntentCookie } from "@/lib/seedIntent";
+import { resolvePostLogin } from "@/lib/postLoginCoordinator";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useSEO, pageSEO } from "@/lib/seo";
@@ -161,13 +162,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const navigatePostLogin = async (fallback = '/home') => {
     try {
       const intent = localStorage.getItem('signup_intent') || undefined;
-      const res = await fetch(getApiUrl('/api/auth/post-login'), {
-        method: 'POST',
-        headers: intent ? { 'Content-Type': 'application/json' } : {},
-        credentials: 'include',
-        body: intent ? JSON.stringify({ intent }) : undefined,
-      });
-      const data = await res.json();
+      // PR-FRES-B: route through coordinator (single-flight + 30s cache)
+      // so concurrent already-signed-in effects + GoogleOneTap + Account-tap
+      // collapse to a single network request and a single nextUrl.
+      const data = await resolvePostLogin({ body: intent ? { intent } : undefined });
       const postLoginPath = data.nextUrl || data.redirectTo || fallback;
       localStorage.removeItem('signup_intent');
       window.scrollTo(0, 0);

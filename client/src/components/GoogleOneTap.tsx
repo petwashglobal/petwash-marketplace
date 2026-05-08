@@ -4,6 +4,7 @@ import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
+import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { useLocation } from 'wouter';
 
 interface GoogleOneTapProps {
@@ -181,30 +182,26 @@ export function GoogleOneTap({
           return;
         }
 
-        // Use post-login decider so providers go to provider flow, staff to admin, etc.
-        // Attach both session cookie and Bearer token. Also pass signup_intent so
-        // provider/loyalty One Tap signup does not collapse into a normal customer path.
-        setTimeout(async () => {
-          try {
-            const intent = getSignupIntent();
-            const headers: Record<string, string> = {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${firebaseIdToken}`,
-            };
-            const res = await fetch(getApiUrl('/api/auth/post-login'), {
-              method: 'POST',
-              credentials: 'include',
-              headers,
-              body: JSON.stringify(intent ? { intent } : {}),
-            });
-            const data = await res.json().catch(() => null);
-            const nextUrl = data?.nextUrl || data?.redirectTo || '/home';
-            clearConsumedSignupIntent();
-            navigate(nextUrl);
-          } catch {
-            navigate('/home');
-          }
-        }, 500);
+        // PR-FRES-B: removed arbitrary setTimeout(500ms) and raw fetch.
+        // Route through postLoginCoordinator so One Tap, SignUp, SignIn,
+        // useAccountNavigation, NotificationConsent and CompleteProfile
+        // share ONE in-flight Promise + ONE nextUrl — no more
+        // "Become Provider appears for ~1s then bounces to /home".
+        // Intent + Bearer token are preserved through the coordinator's
+        // body / idToken contract so provider/loyalty One Tap signup
+        // does not collapse into a normal customer path.
+        try {
+          const intent = getSignupIntent();
+          const data = await resolvePostLogin({
+            idToken: firebaseIdToken,
+            body: intent ? { intent } : undefined,
+          });
+          const nextUrl = data.nextUrl || data.redirectTo || '/home';
+          clearConsumedSignupIntent();
+          navigate(nextUrl);
+        } catch {
+          navigate('/home');
+        }
       }
     } catch (error: any) {
       logger.error('[Google One Tap] Sign-in failed:', error);
