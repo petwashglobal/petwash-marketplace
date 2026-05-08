@@ -394,8 +394,21 @@ export async function postLoginDecider(req: Request, res: Response) {
       const safeIntent = (intent && (ALLOWED_INTENTS as readonly string[]).includes(intent)) ? intent : null;
 
       if (userRole && userRole !== 'new') {
-        // Social auto-assign succeeded above — skip the intent block, let the
-        // flow continue to the refreshedUser check and profile completion below.
+        // Social auto-assign succeeded above — skip the role-assignment
+        // branch below. BUT: a returning customer who explicitly declared
+        // signup_intent='provider' (e.g. by tapping the Become Provider
+        // CTA on /sign-in) must still have their intent persisted, so the
+        // hoisted provider-draft block below + buildRoutingResponse at
+        // line 508 see it and route to /provider-onboarding instead of
+        // /home (Issue #153 PR-BPV-2 — closes diagnostic V3 root cause).
+        // We DO NOT change role assignment here. Only signupIntent.
+        if (safeIntent === 'provider') {
+          await storage.updateUser(userId, { signupIntent: 'provider' } as any)
+            .catch((err: any) => logger.warn(
+              '[PostLogin] PR-BPV-2 signupIntent persist failed (non-blocking)',
+              { userId, error: String(err) },
+            ));
+        }
       } else if (safeIntent) {
         const assignedRole = intentToRole(safeIntent);
         await storage.updateUser(userId, {
@@ -405,76 +418,6 @@ export async function postLoginDecider(req: Request, res: Response) {
           userStatus: 'profile_incomplete',
         } as any);
         userRole = assignedRole;
-
-        if (safeIntent === 'provider') {
-          const existingApp = await storage.getProviderApplicationByUser(userId);
-          if (!existingApp) {
-            try {
-              await storage.createProviderApplicationDraft(userId, {
-                email: user?.email || '',
-                firstName: user?.firstName || '',
-                lastName: user?.lastName || '',
-                phoneNumber: user?.phone || '',
-                city: (user as any)?.city || '',
-                country: (user as any)?.country || 'IL',
-              } as any);
-            } catch (draftErr: any) {
-              logger.error('[PostLogin] Failed to create provider application draft', { userId, error: String(draftErr) });
-              // Return a clean error — do NOT fall through to the outer catch which would return 500
-              // and cause the client to silently navigate to /home.
-              return res.status(500).json({
-                error: 'PROVIDER_DRAFT_FAILED',
-                nextUrl: '/provider-onboarding',
-                message: 'Unable to start provider registration. Please try again.',
-              });
-            }
-
-            // Send provider welcome email
-            const providerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'שותף חדש';
-            const providerEmail = user?.email;
-            if (providerEmail) {
-              const welcomeHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#000;">
-                <table width="100%" cellpadding="0" cellspacing="0" style="background:#000;">
-                  <tr><td align="center" style="padding:32px 20px;">
-                    <table width="520" cellpadding="0" cellspacing="0">
-                      <tr><td style="text-align:center;padding-bottom:28px;">
-                        <h1 style="color:#E7C978;font-size:28px;font-weight:300;letter-spacing:0.15em;margin:0;">🐾 PetWash™</h1>
-                        <p style="color:#666;font-size:12px;letter-spacing:0.1em;margin:6px 0 0;">PROVIDER NETWORK</p>
-                      </td></tr>
-                      <tr><td style="background:linear-gradient(135deg,#1a1a1a,#0d0d0d);border:1px solid #2a2a2a;border-radius:16px;padding:32px;">
-                        <p style="color:#ccc;font-size:15px;margin:0 0 8px;">Hi <strong style="color:#fff;">${providerName}</strong>,</p>
-                        <p style="color:#888;font-size:13px;margin:0 0 24px;" dir="rtl">ברוך הבא לרשת הספקים של PetWash™ — תודה שנרשמת!</p>
-                        <div style="background:#111;border-radius:12px;padding:20px;margin-bottom:24px;">
-                          <p style="color:#E7C978;font-size:13px;font-weight:600;margin:0 0 12px;letter-spacing:0.05em;">📋 הצעדים הבאים שלך:</p>
-                          <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr><td style="padding:6px 0;"><span style="color:#00C851;font-weight:700;">✅</span> <span style="color:#ccc;font-size:13px;">נרשמת בהצלחה</span></td></tr>
-                            <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">📱</span> <span style="color:#ccc;font-size:13px;">אמת את מספר הטלפון שלך (SMS)</span></td></tr>
-                            <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">📄</span> <span style="color:#ccc;font-size:13px;">השלם את פרופיל הספק שלך</span></td></tr>
-                            <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">🪪</span> <span style="color:#ccc;font-size:13px;">העלה תעודת זהות ואישורים</span></td></tr>
-                            <tr><td style="padding:6px 0;"><span style="color:#C6A35B;font-weight:700;">⏳</span> <span style="color:#888;font-size:13px;">המתן לאישור הצוות שלנו (24–48 שעות)</span></td></tr>
-                          </table>
-                        </div>
-                        <p style="text-align:center;">
-                          <a href="https://petwash.co.il/provider-onboarding" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:14px 32px;border-radius:24px;text-decoration:none;display:inline-block;font-size:14px;">השלם את הפרופיל שלך ←</a>
-                        </p>
-                        <p style="color:#555;font-size:12px;text-align:center;margin:20px 0 0;">שאלות? שלח מייל ל-<a href="mailto:providers@petwash.co.il" style="color:#C6A35B;">providers@petwash.co.il</a> או התקשר ל-1-800-PETWASH</p>
-                      </td></tr>
-                      <tr><td style="text-align:center;padding-top:20px;">
-                        <p style="color:#333;font-size:11px;margin:0;">PetWash™ Ltd · 1 Rothschild Blvd, Tel Aviv · petwash.co.il</p>
-                      </td></tr>
-                    </table>
-                  </td></tr>
-                </table>
-              </body></html>`;
-
-              EmailService.send({
-                to: providerEmail,
-                subject: `🐾 ברוך הבא לרשת הספקים של PetWash™, ${providerName}!`,
-                html: welcomeHtml,
-              }).catch(err => logger.warn('[PostLogin] Provider welcome email failed', { err: String(err), providerEmail }));
-            }
-          }
-        }
 
         if (safeIntent === 'staff_request') {
           const existingReq = await storage.getStaffAccessRequestByUser(userId);
@@ -494,6 +437,86 @@ export async function postLoginDecider(req: Request, res: Response) {
           role: 'customer',
           userStatus: 'new',
         } as PostLoginResponse);
+      }
+
+      // Issue #153 PR-BPV-2: HOISTED provider-draft + welcome-email block.
+      // Previously this lived inside the `else if (safeIntent)` arm above,
+      // which meant a returning customer (userRole !== 'new') with
+      // signup_intent='provider' got the entire intent block skipped — no
+      // draft created, buildRoutingResponse fell through to /home, the
+      // visible Become-Provider flash. By hoisting it here and gating
+      // ONLY on `safeIntent === 'provider' && !existingApp`, the draft
+      // path runs for BOTH branches (new user just-assigned + returning
+      // customer keeping their existing role). Role assignment stays in
+      // the `else if` branch above — not touched.
+      if (safeIntent === 'provider') {
+        const existingApp = await storage.getProviderApplicationByUser(userId);
+        if (!existingApp) {
+          try {
+            await storage.createProviderApplicationDraft(userId, {
+              email: user?.email || '',
+              firstName: user?.firstName || '',
+              lastName: user?.lastName || '',
+              phoneNumber: user?.phone || '',
+              city: (user as any)?.city || '',
+              country: (user as any)?.country || 'IL',
+            } as any);
+          } catch (draftErr: any) {
+            logger.error('[PostLogin] Failed to create provider application draft', { userId, error: String(draftErr) });
+            // Return a clean error — do NOT fall through to the outer catch which would return 500
+            // and cause the client to silently navigate to /home.
+            return res.status(500).json({
+              error: 'PROVIDER_DRAFT_FAILED',
+              nextUrl: '/provider-onboarding',
+              message: 'Unable to start provider registration. Please try again.',
+            });
+          }
+
+          // Send provider welcome email
+          const providerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'שותף חדש';
+          const providerEmail = user?.email;
+          if (providerEmail) {
+            const welcomeHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#000;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#000;">
+                <tr><td align="center" style="padding:32px 20px;">
+                  <table width="520" cellpadding="0" cellspacing="0">
+                    <tr><td style="text-align:center;padding-bottom:28px;">
+                      <h1 style="color:#E7C978;font-size:28px;font-weight:300;letter-spacing:0.15em;margin:0;">🐾 PetWash™</h1>
+                      <p style="color:#666;font-size:12px;letter-spacing:0.1em;margin:6px 0 0;">PROVIDER NETWORK</p>
+                    </td></tr>
+                    <tr><td style="background:linear-gradient(135deg,#1a1a1a,#0d0d0d);border:1px solid #2a2a2a;border-radius:16px;padding:32px;">
+                      <p style="color:#ccc;font-size:15px;margin:0 0 8px;">Hi <strong style="color:#fff;">${providerName}</strong>,</p>
+                      <p style="color:#888;font-size:13px;margin:0 0 24px;" dir="rtl">ברוך הבא לרשת הספקים של PetWash™ — תודה שנרשמת!</p>
+                      <div style="background:#111;border-radius:12px;padding:20px;margin-bottom:24px;">
+                        <p style="color:#E7C978;font-size:13px;font-weight:600;margin:0 0 12px;letter-spacing:0.05em;">📋 הצעדים הבאים שלך:</p>
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr><td style="padding:6px 0;"><span style="color:#00C851;font-weight:700;">✅</span> <span style="color:#ccc;font-size:13px;">נרשמת בהצלחה</span></td></tr>
+                          <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">📱</span> <span style="color:#ccc;font-size:13px;">אמת את מספר הטלפון שלך (SMS)</span></td></tr>
+                          <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">📄</span> <span style="color:#ccc;font-size:13px;">השלם את פרופיל הספק שלך</span></td></tr>
+                          <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">🪪</span> <span style="color:#ccc;font-size:13px;">העלה תעודת זהות ואישורים</span></td></tr>
+                          <tr><td style="padding:6px 0;"><span style="color:#C6A35B;font-weight:700;">⏳</span> <span style="color:#888;font-size:13px;">המתן לאישור הצוות שלנו (24–48 שעות)</span></td></tr>
+                        </table>
+                      </div>
+                      <p style="text-align:center;">
+                        <a href="https://petwash.co.il/provider-onboarding" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:14px 32px;border-radius:24px;text-decoration:none;display:inline-block;font-size:14px;">השלם את הפרופיל שלך ←</a>
+                      </p>
+                      <p style="color:#555;font-size:12px;text-align:center;margin:20px 0 0;">שאלות? שלח מייל ל-<a href="mailto:providers@petwash.co.il" style="color:#C6A35B;">providers@petwash.co.il</a> או התקשר ל-1-800-PETWASH</p>
+                    </td></tr>
+                    <tr><td style="text-align:center;padding-top:20px;">
+                      <p style="color:#333;font-size:11px;margin:0;">PetWash™ Ltd · 1 Rothschild Blvd, Tel Aviv · petwash.co.il</p>
+                    </td></tr>
+                  </table>
+                </td></tr>
+              </table>
+            </body></html>`;
+
+            EmailService.send({
+              to: providerEmail,
+              subject: `🐾 ברוך הבא לרשת הספקים של PetWash™, ${providerName}!`,
+              html: welcomeHtml,
+            }).catch(err => logger.warn('[PostLogin] Provider welcome email failed', { err: String(err), providerEmail }));
+          }
+        }
       }
     }
 
