@@ -5,6 +5,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
+import { isImmersiveRoute } from '@/lib/immersive-routes';
 
 const GOLD = '#C5A55A';
 const GRAY = '#9CA3AF';
@@ -31,13 +32,21 @@ const PROVIDER_NAV: NavItem[] = [
   { path: '/my-account',                    labelHe: 'חשבון',  labelEn: 'Account',  Icon: User },
 ];
 
-const HIDDEN_PREFIXES = [
-  '/signin', '/sign-in', '/login', '/signup', '/sign-up', '/register',
-  '/complete-profile', '/choose-role', '/verify-email',
-  '/admin', '/internal', '/blocked', '/access-pending',
-  '/provider-onboarding', '/become-provider', '/provider-application/status',
-  '/provider/pending', '/provider/rejected',
-];
+/**
+ * PR-SHELL-IMMERSIVE: HIDDEN_PREFIXES retired in favour of the canonical
+ * `isImmersiveRoute(pathname)` helper at @/lib/immersive-routes. The old
+ * list drifted from sticky-account-paths and PROMO_EXCLUDED_PATTERN —
+ * missing /loyalty/join, /apply-provider, /join-team, /join/walker (and
+ * siblings), /kyc, /admin/kyc, /activate-account, /consent-onboarding,
+ * /forms/onboarding — which is why the CEO's screenshot showed the nav
+ * bleeding into KYC/onboarding flows. Internal /admin /internal hides
+ * are absorbed into the immersive list.
+ *
+ * The component-level path check below is kept as defence-in-depth —
+ * App.tsx ALSO wraps the mount with `!isImmersiveRoute(currentPath)`.
+ * Either layer alone hides the nav; the double-check survives a future
+ * App.tsx refactor that drops the wrap.
+ */
 
 /**
  * Paths that represent an "account home" for the role-aware Account tab.
@@ -89,8 +98,7 @@ export function MobileBottomNav() {
     }
   };
 
-  const isHidden = HIDDEN_PREFIXES.some(p => location.startsWith(p));
-  if (isHidden) return null;
+  if (isImmersiveRoute(location)) return null;
 
   const isProvider = role === 'provider';
   const NAV_ITEMS = isProvider ? PROVIDER_NAV : CUSTOMER_NAV;
