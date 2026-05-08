@@ -4536,6 +4536,24 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // PR-CONFIG-HEALTH: read-only admin endpoint exposing the env-var
+  // manifest as presence-only booleans. NEVER returns a value. The
+  // canonical manifest lives in server/lib/configHealth.ts and is
+  // shared with the boot-time diagnostic so the two cannot drift.
+  // Required-missing entries surface as non-empty `missingRequired`,
+  // recommended-missing as `missingRecommended`. Useful for ops/CEO
+  // health checks without console access.
+  app.get('/api/admin/config-health', requireAdmin, async (_req: any, res) => {
+    try {
+      const { buildConfigHealthReport } = await import('./lib/configHealth');
+      const report = buildConfigHealthReport();
+      res.json(report);
+    } catch (error: any) {
+      logger.error('[ConfigHealth endpoint] failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to build config-health report' });
+    }
+  });
+
   // PR-W-RETRY: read-only admin endpoint exposing K9000 permanent-failure
   // and compensation-failure alerts. The MachineCommandService writes these
   // rows when a wallet-funded session times out after all retries (severity

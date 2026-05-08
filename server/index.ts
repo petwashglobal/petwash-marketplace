@@ -865,6 +865,16 @@ if (isProduction) {
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log('--------------------------------------------------');
     console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
+    // PR-CONFIG-HEALTH: log the canonical env-var manifest snapshot.
+    // Names only — never values. Surfaces missing required/recommended
+    // vars in deploy logs so the next misconfiguration fails LOUD,
+    // not silent.
+    try {
+      const { logStartupConfigDiagnostic } = require('./lib/configHealth');
+      logStartupConfigDiagnostic();
+    } catch (e) {
+      console.error('[Server] config-health diagnostic failed (non-fatal):', e);
+    }
     if (_startupConfigErrors.length > 0) {
       console.error(`⚠️  [Server] ${_startupConfigErrors.length} startup config error(s) detected:`);
       _startupConfigErrors.forEach(e => console.error('   ' + e));
@@ -1080,6 +1090,13 @@ if (isProduction) {
         console.log(`✅ [Server] listening on port ${PORT} in development mode`);
         console.log(`📁 [Server] Using Vite dev server (source files with HMR)`);
         console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
+        // PR-CONFIG-HEALTH: dev-mode env-var manifest log too, names only.
+        try {
+          const { logStartupConfigDiagnostic } = require('./lib/configHealth');
+          logStartupConfigDiagnostic();
+        } catch (e) {
+          console.error('[Server] config-health diagnostic failed (non-fatal):', e);
+        }
         console.log(`--------------------------------------------------`);
       });
       await setupVite(app, server);
