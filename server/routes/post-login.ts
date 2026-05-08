@@ -568,20 +568,30 @@ export async function postLoginDecider(req: Request, res: Response) {
       // Sync Firebase custom claims so the client picks up the new role on
       // its next token refresh — otherwise the user has to log out + back
       // in to see their approved-provider state. Best-effort + audited.
+      // PR-CLAIMS-SYNC: also write `accountType: 'provider'` so the client
+      // ID token + RBAC middleware (provider-applications.ts:1015-1023)
+      // both see a consistent shape. Lane B-B audit found this gap caused
+      // 403s and stale UI for hours after server-side approval.
+      let claimsWritten = false;
       try {
         const fbAdminModule = await import('../lib/firebase-admin');
         const fbAuth = fbAdminModule.auth;
         if (fbAuth) {
           const userRec = await fbAuth.getUser(userId);
           const existingClaims = (userRec.customClaims || {}) as Record<string, any>;
-          if (existingClaims.role !== 'provider') {
+          const needsUpdate = existingClaims.role !== 'provider'
+            || existingClaims.accountType !== 'provider';
+          if (needsUpdate) {
             await fbAuth.setCustomUserClaims(userId, {
               ...existingClaims,
               role: 'provider',
+              accountType: 'provider',
             });
-            logger.info('[PostLogin] ✅ Firebase claims synced to role=provider', {
+            claimsWritten = true;
+            logger.info('[PostLogin] ✅ Firebase claims synced to role=provider, accountType=provider', {
               userId,
               previousRole,
+              previousAccountType: existingClaims.accountType,
             });
           }
         }
@@ -590,6 +600,28 @@ export async function postLoginDecider(req: Request, res: Response) {
           userId,
           error: String(claimsErr),
         });
+      }
+
+      // PR-CLAIMS-SYNC: push force_token_refresh notification so the
+      // client refreshes its ID token within ~100ms instead of waiting
+      // for the natural Firebase ~1h refresh window. Closes the
+      // visible "approved on server but UI still shows customer" gap.
+      // Fail-soft: notification helper swallows errors internally.
+      if (claimsWritten) {
+        try {
+          const { sendForceTokenRefreshNotification } = await import('../lib/sendForceTokenRefresh');
+          await sendForceTokenRefreshNotification({
+            userId,
+            reason: 'provider_approved',
+            actionUrl: '/provider/dashboard',
+            preferredLanguage: (u as any)?.preferredLanguage,
+          });
+        } catch (notifErr) {
+          logger.warn('[PostLogin] force_token_refresh notification failed (non-blocking)', {
+            userId,
+            error: String(notifErr),
+          });
+        }
       }
 
       // Audit-log the silent role escalation. Drift between providerApp.status
@@ -885,6 +917,7 @@ export async function approveAccess(req: Request, res: Response) {
     // Phase B — sync Firebase customClaims so rbac.ts middleware reads
     // the correct role on the next request without the user having to
     // re-login. Non-blocking on Firebase failures.
+    let staffClaimsWritten = false;
     try {
       const { syncFirebaseClaims } = await import('../lib/syncFirebaseClaims');
       await syncFirebaseClaims(targetUserId, {
@@ -892,10 +925,30 @@ export async function approveAccess(req: Request, res: Response) {
         accountType: 'internal',
         staffApprovedAt: now.toISOString(),
       });
+      staffClaimsWritten = true;
     } catch (claimsErr: any) {
       logger.warn('[AdminApproval] Firebase claims sync failed (non-blocking)', {
         targetUserId, error: claimsErr?.message,
       });
+    }
+
+    // PR-CLAIMS-SYNC: push force_token_refresh notification so the
+    // freshly-approved staff member sees their new role within ~100ms
+    // instead of waiting for the natural Firebase token refresh.
+    // Lane B-B audit P1 #3 closes this gap.
+    if (staffClaimsWritten) {
+      try {
+        const { sendForceTokenRefreshNotification } = await import('../lib/sendForceTokenRefresh');
+        await sendForceTokenRefreshNotification({
+          userId: targetUserId,
+          reason: 'staff_approved',
+          actionUrl: '/admin/dashboard',
+        });
+      } catch (notifErr) {
+        logger.warn('[AdminApproval] force_token_refresh notification failed (non-blocking)', {
+          targetUserId, error: String(notifErr),
+        });
+      }
     }
 
     logger.info(`[AdminApproval] ${approverEmail} approved ${targetUserId} as ${role} (userStatus→staff_active, mfaRequired→true)`);
