@@ -74,6 +74,23 @@ describe('isStickyAccountPath', () => {
     expect(STICKY_ACCOUNT_PATHS).toContain('/join/trainer');
   });
 
+  // PR-FRES-4 — App.tsx:2244 /apply-provider and App.tsx:2253 /join-team
+  // both render <ProviderApplicationForm/>. They must be sticky so an
+  // Account-tab tap mid-form does not bounce returning users to /home.
+  it('PR-FRES-4: canonical list contains /apply-provider and /join-team', () => {
+    expect(STICKY_ACCOUNT_PATHS).toContain('/apply-provider');
+    expect(STICKY_ACCOUNT_PATHS).toContain('/join-team');
+  });
+
+  it('PR-FRES-4: /apply-provider and /join-team match including sub-paths', () => {
+    expect(isStickyAccountPath('/apply-provider')).toBe(true);
+    expect(isStickyAccountPath('/apply-provider/')).toBe(true);
+    expect(isStickyAccountPath('/apply-provider/step-2')).toBe(true);
+    expect(isStickyAccountPath('/join-team')).toBe(true);
+    expect(isStickyAccountPath('/join-team/')).toBe(true);
+    expect(isStickyAccountPath('/join-team/walker')).toBe(true);
+  });
+
   it('handles non-string input safely', () => {
     expect(isStickyAccountPath(123 as any)).toBe(false);
     expect(isStickyAccountPath({} as any)).toBe(false);

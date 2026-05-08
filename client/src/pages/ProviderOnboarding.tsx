@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
+import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import {
   PROVIDER_DECLARATION_TEXT,
   ENHANCED_REASON_LABELS,
@@ -83,16 +84,12 @@ export default function ProviderOnboarding() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(getApiUrl('/api/auth/post-login'), {
-          method: 'POST',
-          credentials: 'include',
-        });
-        const data = await res.json().catch(() => ({} as any));
+        // PR-FRES-B: route through postLoginCoordinator so this blocked-role
+        // bounce shares the in-flight Promise with any concurrent SignIn /
+        // OneTap / Account-tap call instead of firing a duplicate request.
+        const data = await resolvePostLogin();
         if (cancelled) return;
-        const nextUrl: string =
-          (typeof data?.nextUrl === 'string' && data.nextUrl) ||
-          (typeof data?.redirectTo === 'string' && data.redirectTo) ||
-          '/home';
+        const nextUrl = data.nextUrl || data.redirectTo || '/home';
         navigate(nextUrl);
       } catch {
         if (cancelled) return;

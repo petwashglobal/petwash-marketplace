@@ -33,8 +33,8 @@
  */
 
 import { useFirebaseAuth, type UserRole } from '@/auth/AuthProvider';
-import { getApiUrl } from '@/lib/apiConfig';
 import { isStickyAccountPath } from '@/lib/sticky-account-paths';
+import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 
 // Keep aligned with `shared/adminRoles.ts` ADMIN_ROLES — ceo/hr/finance/ops
 // must route to the admin dashboard, not /my-account. See P0 audit Bug 1.
@@ -142,29 +142,21 @@ export function useAccountNavigation() {
     if (adminEmailMatch(user?.email)) return '/admin/dashboard';
 
     // 3. Server fallback — authoritative, role-resolves from DB.
+    //    PR-FRES-B: routed through postLoginCoordinator so a tap on the
+    //    Account icon during a concurrent SignIn/SignUp/GoogleOneTap
+    //    flow shares the same in-flight Promise instead of firing a
+    //    second POST /api/auth/post-login.
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      let token: string | undefined;
       try {
-        // Bearer-token attachment — survives session-cookie loss (iOS ITP).
-        const token = user ? await (user as any).getIdToken?.() : null;
-        if (token) headers.Authorization = `Bearer ${token}`;
+        token = user ? await (user as any).getIdToken?.() : undefined;
       } catch {
         // Bearer-token attachment is best-effort. Session cookie still works.
       }
 
-      const res = await fetch(getApiUrl('/api/auth/post-login'), {
-        method: 'POST',
-        credentials: 'include',
-        headers,
-        body: JSON.stringify({}),
-      });
-
-      if (res.status === 401) return '/signin';
-      if (res.ok) {
-        const data = await res.json().catch(() => null);
-        const nextUrl = data && typeof data.nextUrl === 'string' ? data.nextUrl : null;
-        if (nextUrl) return nextUrl;
-      }
+      const data = await resolvePostLogin({ idToken: token });
+      if (data.status === 401) return '/signin';
+      if (data.ok && data.nextUrl) return data.nextUrl;
     } catch {
       // Network error — fall through to safe default
     }

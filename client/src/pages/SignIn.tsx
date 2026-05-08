@@ -4,6 +4,8 @@ import type { OAuthCredential } from "firebase/auth";
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
+import { seedSignupIntentCookie } from "@/lib/seedIntent";
+import { resolvePostLogin } from "@/lib/postLoginCoordinator";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useSEO, pageSEO } from "@/lib/seo";
@@ -160,13 +162,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const navigatePostLogin = async (fallback = '/home') => {
     try {
       const intent = localStorage.getItem('signup_intent') || undefined;
-      const res = await fetch(getApiUrl('/api/auth/post-login'), {
-        method: 'POST',
-        headers: intent ? { 'Content-Type': 'application/json' } : {},
-        credentials: 'include',
-        body: intent ? JSON.stringify({ intent }) : undefined,
-      });
-      const data = await res.json();
+      // PR-FRES-B: route through coordinator (single-flight + 30s cache)
+      // so concurrent already-signed-in effects + GoogleOneTap + Account-tap
+      // collapse to a single network request and a single nextUrl.
+      const data = await resolvePostLogin({ body: intent ? { intent } : undefined });
       const postLoginPath = data.nextUrl || data.redirectTo || fallback;
       localStorage.removeItem('signup_intent');
       window.scrollTo(0, 0);
@@ -489,10 +488,19 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   useEffect(() => {
     if (user && !switchingAccount && !loading) {
+      // Issue #153 PR-BPV-1 — short-circuit when an explicit ?redirect= is
+      // present. Without this guard, the FIRST already-signed-in effect
+      // (above) navigates to customRedirect (e.g. /provider-onboarding)
+      // while THIS effect's async navigatePostLogin() resolves ~300-1000ms
+      // later and overwrites the destination with /home — the visible
+      // "Become Provider appears for ~1s then disappears" symptom.
+      // The first effect already handles the customRedirect path; this
+      // effect remains responsible for the default /home routing only.
+      if (customRedirect) return;
       logger.info("User already logged in, auto-redirecting to homepage");
       navigatePostLogin();
     }
-  }, [user, switchingAccount, loading, navigate]);
+  }, [user, switchingAccount, loading, navigate, customRedirect]);
 
   // Fire-and-forget: report a structured auth failure to /api/auth/client-event
   // so it lands in the auth_events table for admin visibility.
@@ -965,6 +973,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (authStrategy === 'redirect') {
         logger.info(`[Auth] iPhone detected — using redirect for ${provider}`);
         setRedirectMarker(provider);
+        // PR-FRES-2: Seed signup_intent into HttpOnly cookie BEFORE the OAuth
+        // redirect so iPhone Safari ITP cannot wipe localStorage during the
+        // roundtrip and drop returning customers onto /home instead of
+        // /provider-onboarding. Server fallback path: post-login.ts:325.
+        await seedSignupIntentCookie();
         await signInWithRedirect(auth, authProvider);
         setSocialLoading(null);
         return;

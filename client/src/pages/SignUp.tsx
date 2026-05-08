@@ -34,6 +34,8 @@ import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/a
 import { storePasskeyEmail } from "@/hooks/useAutoFaceID";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
+import { seedSignupIntentCookie } from '@/lib/seedIntent';
+import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { executeReCaptcha, preloadReCaptcha } from '@/components/ReCaptcha';
@@ -51,19 +53,16 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const { user, loading: authLoading } = useFirebaseAuth();
 
   // Role-aware post-login navigation — always routes providers to /provider-os
+  // PR-FRES-B: routed through postLoginCoordinator so multiple SignUp
+  // entry points (auto-redirect effect, OAuth, phone) cannot fire
+  // duplicate POST /api/auth/post-login calls and race each other's nextUrl.
   const navigatePostLogin = async (fallback = '/home') => {
     try {
       const intent = localStorage.getItem('signup_intent') || undefined;
-      const res = await fetch(getApiUrl('/api/auth/post-login'), {
-        method: 'POST',
-        headers: intent ? { 'Content-Type': 'application/json' } : {},
-        credentials: 'include',
-        body: intent ? JSON.stringify({ intent }) : undefined,
-      });
-      const data = res.ok ? await res.json() : null;
+      const data = await resolvePostLogin({ body: intent ? { intent } : undefined });
       localStorage.removeItem('signup_intent');
       window.scrollTo(0, 0);
-      navigate(data?.nextUrl || data?.redirectTo || fallback);
+      navigate(data.nextUrl || data.redirectTo || fallback);
     } catch {
       window.scrollTo(0, 0);
       navigate(fallback);
@@ -222,6 +221,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
       const strategy = getAuthStrategy();
       const { signInWithPopup, signInWithRedirect } = await import('firebase/auth');
+      if (strategy === 'redirect') {
+        // PR-FRES-2: Seed signup_intent into HttpOnly cookie BEFORE redirect.
+        await seedSignupIntentCookie();
+      }
       const result = strategy === 'redirect'
         ? await signInWithRedirect(auth, authProvider).then(() => null)
         : await signInWithPopup(auth, authProvider);
@@ -249,21 +252,22 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
       if (isNewUser) {
         try {
-          const postLoginRes = await fetch(getApiUrl('/api/auth/post-login'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-            credentials: 'include',
-            body: JSON.stringify({
+          // PR-FRES-B: profile-write path. Body is non-cacheable (multiple
+          // fields beyond intent), so coordinator runs a fresh request but
+          // still de-dupes if a concurrent identical call is in flight.
+          const postLoginData = await resolvePostLogin({
+            idToken,
+            body: {
               uid: result.user.uid,
               email: result.user.email || '',
               displayName: result.user.displayName || '',
               photoURL: result.user.photoURL || '',
               provider,
               isNewUser: true,
-            }),
+            },
           });
-          if (!postLoginRes.ok) {
-            logger.error('[Auth] post-login profile sync failed', { status: postLoginRes.status, provider });
+          if (!postLoginData.ok) {
+            logger.error('[Auth] post-login profile sync failed', { status: postLoginData.status, provider });
           }
         } catch (postLoginErr: any) {
           logger.error('[Auth] post-login profile sync network error', { error: postLoginErr.message, provider });
@@ -415,21 +419,20 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     }
     setPhoneLoading(true);
     try {
-      const res = await fetch(getApiUrl('/api/auth/post-login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      // PR-FRES-B: phone-signup name-submit profile write through coordinator.
+      // Non-cacheable body (firstName/lastName) so a fresh request is issued,
+      // but concurrent duplicate clicks de-dup to one network call.
+      const data = await resolvePostLogin({
+        body: {
           firstName: phoneFirstName.trim(),
           lastName: phoneLastName.trim(),
           intent: localStorage.getItem('signup_intent') || 'customer',
-        }),
+        },
       });
       localStorage.removeItem('signup_intent');
-      const data = res.ok ? await res.json() : null;
       toast({ title: language === 'he' ? 'ברוך הבא! 🎉' : 'Welcome! 🎉', description: language === 'he' ? 'ההרשמה הצליחה' : 'Sign-up successful' });
       window.scrollTo(0, 0);
-      navigate(data?.nextUrl || data?.redirectTo || '/home');
+      navigate(data.nextUrl || data.redirectTo || '/home');
     } catch (err: any) {
       logger.error('[PhoneAuth] Name submission failed:', err);
       // Non-blocking: use role-aware navigation even if post-login API errors
