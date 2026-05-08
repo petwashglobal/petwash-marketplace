@@ -3091,6 +3091,25 @@ function App() {
   const showFloatingStack = !isImmersive;
   const showMobileNav = !isImmersive;
 
+  // PR-IMMERSIVE-CSS: drive the [data-immersive] attribute on <html> so
+  // the keyboard-safe shell CSS in client/src/index.css applies
+  // automatically. Single source: isImmersiveRoute() — no per-page
+  // hacks. Cleanup runs on every path change AND on unmount so we
+  // never leave the attribute set after navigating to a non-immersive
+  // page.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const html = document.documentElement;
+    if (isImmersive) {
+      html.setAttribute('data-immersive', 'true');
+    } else {
+      html.removeAttribute('data-immersive');
+    }
+    return () => {
+      // Be conservative — only clear if WE set it for this route.
+      if (isImmersive) html.removeAttribute('data-immersive');
+    };
+  }, [isImmersive]);
 
   useKeyboardNavigation();
 
