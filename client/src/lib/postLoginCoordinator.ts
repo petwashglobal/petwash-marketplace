@@ -97,6 +97,26 @@ interface InFlightEntry {
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, InFlightEntry>();
 
+/**
+ * PR-FRES-5: After every successful post-login resolution, the coordinator
+ * notifies a registered listener so AuthProvider can invalidate the
+ * `/api/session/whoami` query. Without this, useWhoami's 2 min staleTime
+ * (client/src/auth/useWhoami.ts) leaves a freshly-promoted provider seeing
+ * customer chrome until the next background refetch.
+ *
+ * Single-listener pattern (not pub/sub) — exactly one observer is needed
+ * (AuthProvider) and it cleans up on unmount via registerPostLoginResolved
+ * (null).
+ */
+type PostLoginResolvedHandler = (result: PostLoginResult) => void;
+let onResolved: PostLoginResolvedHandler | null = null;
+
+export function registerPostLoginResolvedHandler(
+  fn: PostLoginResolvedHandler | null,
+): void {
+  onResolved = fn;
+}
+
 function bodySignature(body: PostLoginRequestBody | undefined): string {
   if (!body) return '';
   const keys = Object.keys(body).sort();
@@ -174,6 +194,15 @@ export async function resolvePostLogin(
         cache.set(key, { result, expiresAt: Date.now() + POST_LOGIN_CACHE_TTL_MS });
       }
 
+      // PR-FRES-5: notify the whoami invalidator so role escalations
+      // (customer → provider, etc.) propagate immediately instead of
+      // waiting up to 2 min for the next staleTime tick.
+      if (res.ok && onResolved) {
+        try { onResolved(result); } catch (e) {
+          logger.warn('[postLoginCoordinator] resolved-handler threw', { e: String(e) });
+        }
+      }
+
       return result;
     } catch (err: any) {
       logger.warn('[postLoginCoordinator] network error', { err: String(err?.message || err) });
@@ -195,4 +224,5 @@ export function invalidatePostLoginCache(): void {
 export function __postLoginCoordinatorTestReset(): void {
   cache.clear();
   inFlight.clear();
+  onResolved = null;
 }

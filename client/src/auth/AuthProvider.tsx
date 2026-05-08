@@ -14,6 +14,10 @@ import { trackLogout } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 import { getApiUrl } from "@/lib/apiConfig";
 import { queryClient } from "@/lib/queryClient";
+import {
+  invalidatePostLoginCache,
+  registerPostLoginResolvedHandler,
+} from "@/lib/postLoginCoordinator";
 
 /** All localStorage keys that are user-session-specific and must be wiped on logout. */
 export const AUTH_LOCAL_STORAGE_KEYS = [
@@ -171,6 +175,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logger.info("Dev mode disabled");
   };
 
+  // PR-FRES-5: After every successful POST /api/auth/post-login, invalidate
+  // /api/session/whoami so role escalations (customer → provider, customer →
+  // staff approval) propagate immediately. Without this, useWhoami's 2 min
+  // staleTime leaves the freshly-promoted user seeing stale role chrome.
+  useEffect(() => {
+    registerPostLoginResolvedHandler(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/session/whoami'] });
+    });
+    return () => registerPostLoginResolvedHandler(null);
+  }, []);
+
   useEffect(() => {
     if (!import.meta.env.DEV && isDevMode) {
       disableDevMode();
@@ -248,6 +263,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     // Always clear the React Query cache first, regardless of mode, so no
     // cached user data survives the logout even if subsequent steps fail.
+    // PR-FRES-5: also clear the postLoginCoordinator (#182) module-level
+    // cache so the next user on this device cannot inherit the previous
+    // user's nextUrl. The React Query clear below does not reach the
+    // coordinator's module-level Maps.
+    invalidatePostLoginCache();
     queryClient.clear();
 
     // Dev-mode: just toggle off the fake user, no server calls or redirect needed.
@@ -283,7 +303,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.info("Logout successful", { userId });
     } catch (error) {
       logger.error("Logout failed:", error);
-      // Ensure the query cache is cleared even when the signout throws.
+      // Ensure both caches are cleared even when the signout throws.
+      invalidatePostLoginCache();
       queryClient.clear();
     } finally {
       // 5. Hard-redirect to root. Using window.location.replace ensures a full
