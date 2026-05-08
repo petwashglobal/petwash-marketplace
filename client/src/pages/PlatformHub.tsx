@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
+import { becomeProviderHref, setProviderSignupIntent } from '@/lib/becomeProvider';
 import { 
   Search, MapPin, Calendar, 
   Home, Car, GraduationCap, Droplets,
@@ -733,19 +734,24 @@ export default function PlatformHub() {
               >
                 {isHebrew ? 'מצא נותן שירות' : 'Find a Provider'}
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 px-12 rounded-none text-sm font-medium tracking-widest uppercase transition-all duration-300 hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A]"
-                style={{
-                  borderColor: '#D1D5DB',
-                  color: '#374151',
-                  fontFamily: sans,
-                }}
-                data-testid="cta-become-provider"
-              >
-                {isHebrew ? 'הפוך לנותן שירות' : 'Become a Provider'}
-              </Button>
+              {/* PR-FRES-3: dead Become Provider button now wired through
+                  the canonical becomeProvider helper so the provider intent
+                  is set BEFORE navigation and post-login routes correctly. */}
+              <Link href={becomeProviderHref()} onClick={setProviderSignupIntent}>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-14 px-12 rounded-none text-sm font-medium tracking-widest uppercase transition-all duration-300 hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A]"
+                  style={{
+                    borderColor: '#D1D5DB',
+                    color: '#374151',
+                    fontFamily: sans,
+                  }}
+                  data-testid="cta-become-provider"
+                >
+                  {isHebrew ? 'הפוך לנותן שירות' : 'Become a Provider'}
+                </Button>
+              </Link>
             </div>
           </div>
         </section>

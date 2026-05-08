@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
+import { onClickBecomeProvider } from "@/lib/becomeProvider";
 import { Clock, CheckCircle, XCircle, RefreshCw, Upload, FileCheck, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -178,7 +179,7 @@ export default function ProviderPending() {
             <p className="text-muted-foreground text-sm">
               {he ? "לא נמצאה בקשה. אנא מלא את טופס ההרשמה." : "No application found. Please complete the registration form."}
             </p>
-            <Button onClick={() => setLocation("/become-provider")} className="w-full">
+            <Button onClick={() => onClickBecomeProvider(setLocation)} className="w-full">
               {he ? "הגש בקשה" : "Apply Now"}
             </Button>
           </CardContent>

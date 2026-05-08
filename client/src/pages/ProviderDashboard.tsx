@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
+import { becomeProviderHref, setProviderSignupIntent } from '@/lib/becomeProvider';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1338,8 +1339,13 @@ export default function ProviderDashboard() {
                   </div>
                   <h3 className="text-lg font-serif text-gray-800 mb-2">{'\u05DC\u05D0 \u05E0\u05DE\u05E6\u05D0\u05D5 \u05E4\u05E8\u05D5\u05E4\u05D9\u05DC\u05D9\u05DD'}</h3>
                   <p className="text-sm text-gray-400 mb-6">{'\u05D4\u05D2\u05E9 \u05D1\u05E7\u05E9\u05D4 \u05DC\u05D4\u05E6\u05D8\u05E8\u05E4\u05D5\u05EA \u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05DC\u05E2\u05D1\u05D5\u05D3'}</p>
+                  {/* PR-FRES-3: was <a href> full reload (kills SPA state).
+                      Now Link + canonical helper sets provider intent before
+                      navigation so post-login coordinator routes correctly. */}
                   <Button asChild className="bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-sm" style={{ borderRadius: '2px' }}>
-                    <a href="/become-provider">{'\u05D4\u05E6\u05D8\u05E8\u05E3 \u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA'}</a>
+                    <Link href={becomeProviderHref()} onClick={setProviderSignupIntent}>
+                      {'\u05D4\u05E6\u05D8\u05E8\u05E3 \u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA'}
+                    </Link>
                   </Button>
                 </div>
               )}

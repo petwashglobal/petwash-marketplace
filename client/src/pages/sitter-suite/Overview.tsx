@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { becomeProviderHref, setProviderSignupIntent } from "@/lib/becomeProvider";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
@@ -121,7 +122,7 @@ export default function SitterSuiteOverview() {
                   {t('sitterSuite.findSitter')}
                 </Button>
               </Link>
-              <Link href="/become-provider">
+              <Link href={becomeProviderHref('sitter')} onClick={setProviderSignupIntent}>
                 <Button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-become-sitter">
                   <Home className="h-5 w-5" />
                   {t('sitterSuite.becomeSitter')}
