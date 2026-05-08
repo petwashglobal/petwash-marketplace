@@ -37,6 +37,7 @@ import { ActivationBanner } from "@/components/ActivationBanner";
 import { PromoAdPopup } from "@/components/PromoAdPopup";
 import { Layout } from "@/components/Layout";
 import { isStickyAccountPath } from "@/lib/sticky-account-paths";
+import { isImmersiveRoute } from "@/lib/immersive-routes";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -3070,21 +3071,25 @@ function App() {
   // and blocked the bottom-edge "Complete" CTAs on iPhone Safari. We now
   // additionally consult the canonical sticky-account-paths list so any
   // route added there is automatically suppressed here too — no more drift.
-  const PROMO_EXCLUDED_PATTERN =
-    /^\/(paw-finder|admin|provider|dashboard|booking|signin|signup|sign-in|sign-up|verify|account-activation|choose-role|complete-profile|provider-pending|provider-rejected|staff-pending|staff-rejected|access-pending|blocked|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|forms|legal-agreement)(\/|$)/;
+  // PR-SHELL-IMMERSIVE: shell-chrome suppression collapsed to ONE canonical
+  // boundary. isImmersiveRoute() is the authoritative answer to "should the
+  // global shell chrome be hidden on this route?" — replacing the four
+  // four drifting lists (the legacy MobileBottomNav prefix list, two App.tsx
+  // regex exclude patterns, and the sticky-account-paths fallback) that the
+  // CEO's screenshot showed leaking the bottom nav into KYC/onboarding.
+  //
+  // Non-immersive admin / dashboard / booking pages still need the marketing
+  // popup suppressed — they're not auth flows but they're also not where
+  // we want a "Welcome to Pet Wash!" splash. PROMO_OPERATIONAL_PATTERN
+  // captures that broader operational-page suppression. floating widgets
+  // (WhatsApp / AI / accessibility) stay visible on operational pages.
+  const PROMO_OPERATIONAL_PATTERN =
+    /^\/(paw-finder|admin|provider|dashboard|booking|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|legal-agreement)(\/|$)/;
 
-  const showPromoPopup =
-    !PROMO_EXCLUDED_PATTERN.test(currentPath) &&
-    !isStickyAccountPath(currentPath);
-
-  // Routes where floating FABs/widgets must be suppressed (auth/admin critical flows).
-  // Same Issue #148 P3 fix: AND with sticky-account-paths so onboarding flows
-  // never get a floating button stack covering form CTAs.
-  const FLOATING_WIDGETS_EXCLUDED_PATTERN =
-    /^\/(paw-finder|signin|signup|sign-in|sign-up|login|register|admin|auth\/action|__\/auth\/action)(\/|$)/;
-  const showFloatingStack =
-    !FLOATING_WIDGETS_EXCLUDED_PATTERN.test(currentPath) &&
-    !isStickyAccountPath(currentPath);
+  const isImmersive = isImmersiveRoute(currentPath);
+  const showPromoPopup = !isImmersive && !PROMO_OPERATIONAL_PATTERN.test(currentPath);
+  const showFloatingStack = !isImmersive;
+  const showMobileNav = !isImmersive;
 
 
   useKeyboardNavigation();
@@ -3247,7 +3252,12 @@ console.log("Build: 1769350182889");
                 document.documentElement.lang = newLang;
               }} />
               <NotificationPermissionPrompt />
-              <MobileBottomNav />
+              {/* PR-SHELL-IMMERSIVE: centralized boundary. Bottom nav must
+                  NOT render on auth / onboarding / KYC / verification /
+                  loyalty-join routes — the CEO's screenshot showed it
+                  bleeding behind the iOS keyboard, capturing taps meant
+                  for form fields. */}
+              {showMobileNav && <MobileBottomNav />}
           </AuthProvider>
           
           {/* PWA Install Prompt disabled by user preference */}
