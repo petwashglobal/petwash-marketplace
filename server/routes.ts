@@ -10327,7 +10327,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/webhooks/tranzila', tranzilaEventWebhookRoutes);
 
   // Tranzila Admin (read-only processor monitoring, settlement import)
-  app.use('/api/admin/finance/tranzila', adminLimiter, tranzilaAdminRoutes);
+  // Issue #153 PR-TAX-2: validateFirebaseToken added at mount so req.user is
+  // populated before the inner role checks run. Pattern matches every other
+  // /api/admin/* mount in this file. No finance logic / VAT / numbering /
+  // payment-processor / schema changes.
+  app.use('/api/admin/finance/tranzila', validateFirebaseToken, adminLimiter, tranzilaAdminRoutes);
   
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
@@ -10345,11 +10349,19 @@ self.addEventListener('notificationclick', (event) => {
   // Finance Settlements API (automated revenue sharing for partners/municipalities)
   app.use('/api/finance/settlements', apiLimiter, financeSettlementsRoutes);
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
-  app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
-  app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
-  app.use('/api/admin/finance/israel-compliance', adminLimiter, israelComplianceRoutes);
+  // Issue #153 PR-TAX-2 — Israeli Tax/Invoice/Receipt/Payout audit P0-4:
+  // these four /api/admin/finance/* mounts previously ran adminLimiter only.
+  // Inner role checks (requireAdmin / isAdmin() / requireTreasuryRole) read
+  // req.user?.role; without validateFirebaseToken at mount, req.user is not
+  // reliably populated before those checks run. Adding validateFirebaseToken
+  // at mount mirrors every other /api/admin/* mount in this file. No finance
+  // logic, VAT math, invoice/receipt numbering, payment-processor, schema,
+  // or K9000/Nayax/Tranzila changes. Existing inner role checks preserved.
+  app.use('/api/admin/finance/adjustment', validateFirebaseToken, adminLimiter, manualAdjustmentRoutes);
+  app.use('/api/admin/finance/payout-reconciliation', validateFirebaseToken, adminLimiter, payoutReconciliationRoutes);
+  app.use('/api/admin/finance/israel-compliance', validateFirebaseToken, adminLimiter, israelComplianceRoutes);
   // Treasury settings — super_admin / finance / ceo only (role enforced inside the router)
-  app.use('/api/admin/finance/treasury', adminLimiter, treasurySettingsRoutes);
+  app.use('/api/admin/finance/treasury', validateFirebaseToken, adminLimiter, treasurySettingsRoutes);
   // Issue #148/#153 P5: add validateFirebaseToken at mount so req.firebaseUser
   // is populated and bridgeFirebaseUser sets req.user.uid/.id/.email — matches
   // the pattern used by every other /api/admin/* mount in this file. Per-handler
