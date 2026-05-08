@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { applyIntentFromUrl } from '@/lib/intentParam';
 
 export default function AuthAction() {
   const [, setLocation] = useLocation();
@@ -24,6 +25,13 @@ export default function AuthAction() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   useEffect(() => {
+    // PR-FRES-6: email-link return flows (verifyEmail, resetPassword,
+    // signIn) carry the same ?intent= URL contract. Recover signup_intent
+    // before any post-login routing fires so users who started as
+    // ?intent=provider in their email link land on /provider-onboarding,
+    // not /home as customers.
+    applyIntentFromUrl();
+
     const urlParams = new URLSearchParams(window.location.search);
     const modeParam = urlParams.get('mode');
     const codeParam = urlParams.get('oobCode');

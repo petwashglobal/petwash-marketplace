@@ -35,6 +35,7 @@ import { storePasskeyEmail } from "@/hooks/useAutoFaceID";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { seedSignupIntentCookie } from '@/lib/seedIntent';
+import { applyIntentFromUrl } from '@/lib/intentParam';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
@@ -125,6 +126,14 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
   // Pre-warm reCAPTCHA on page mount so script is already loaded when user submits
   useEffect(() => { preloadReCaptcha(); }, []);
+
+  // PR-FRES-6: honor explicit ?intent= URL param on /signup. Marketing
+  // campaigns and deep links land here directly (not via /become-provider)
+  // and the contract must be the same: signup_intent gets set BEFORE any
+  // post-login fetch, so the canonical pipeline (#182 coordinator + #183
+  // CTA helper) routes correctly. Allowed values: customer / loyalty /
+  // provider / staff_request, plus the 'prestige' alias → 'loyalty'.
+  useEffect(() => { applyIntentFromUrl(); }, []);
 
   // Auto-redirect logged-in users — use role-aware post-login to avoid sending providers to /dashboard
   useEffect(() => {

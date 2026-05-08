@@ -5,6 +5,7 @@ import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFaceb
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
 import { seedSignupIntentCookie } from "@/lib/seedIntent";
+import { applyIntentFromUrl } from "@/lib/intentParam";
 import { resolvePostLogin } from "@/lib/postLoginCoordinator";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
@@ -214,8 +215,18 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     };
   }, []);
 
-  // If redirected from provider-onboarding, auto-set intent so post-login routes correctly
+  // PR-FRES-6: honor explicit ?intent= URL param BEFORE the
+  // ?redirect=…provider-onboarding heuristic. The URL contract is the
+  // authoritative source — marketing campaigns and deep links rely on it.
+  // Allowed values: customer / loyalty / provider / staff_request, plus the
+  // 'prestige' alias mapped to 'loyalty'. Non-allowlisted values dropped
+  // silently (no XSS / open-redirect surface).
   useEffect(() => {
+    const applied = applyIntentFromUrl();
+    if (applied) {
+      setSelectedIntent(applied);
+      return;
+    }
     if (customRedirect && customRedirect.includes('provider-onboarding') && !selectedIntent) {
       localStorage.setItem('signup_intent', 'provider');
       setSelectedIntent('provider');
