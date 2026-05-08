@@ -35,8 +35,21 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf8');
 describe('PR-IMMERSIVE-CSS — index.css rules', () => {
   const css = read('client/src/index.css');
 
-  it('1. 100dvh shell rule scoped under html[data-immersive="true"]', () => {
-    expect(css).toMatch(/html\[data-immersive="true"\][\s\S]{0,400}min-height:\s*100dvh/);
+  it('1. P0 PR-IMMERSIVE-HOTFIX: NO html/body overflow:hidden under data-immersive', () => {
+    // Original PR #190 set `overflow: hidden` on html + body whenever
+    // data-immersive was set, predicated on every immersive page
+    // adopting the `.immersive-flow` / `.immersive-scroll` container.
+    // No page adopted those containers — the rule froze iPhone Safari
+    // at /sign-in (CEO production screenshot 2026-05-08).
+    // The rule is now reverted; this assertion locks it from coming
+    // back. Companion fuller suite at
+    // client/src/__tests__/immersiveScrollLockHotfix.regression.test.ts.
+    const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const ruleRegex = /(html\[data-immersive="true"\][^\{]*)\{([^\}]*)\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = ruleRegex.exec(noComments)) !== null) {
+      expect(m[2]).not.toMatch(/overflow\s*:\s*hidden/i);
+    }
   });
 
   it('2. .immersive-flow container honours safe-area-inset on all four sides', () => {
@@ -53,9 +66,13 @@ describe('PR-IMMERSIVE-CSS — index.css rules', () => {
   });
 
   it('4. .immersive-scroll padding-bottom clears the on-screen keyboard with safe-area-inset', () => {
-    const idx = css.indexOf('.immersive-scroll');
+    // Strip comments first so we anchor on the real selector, not the
+    // post-hotfix retirement-comment text that mentions
+    // `.immersive-scroll` by name.
+    const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const idx = noComments.indexOf('[data-immersive="true"] .immersive-scroll');
     expect(idx).toBeGreaterThan(0);
-    const window_ = css.slice(idx, idx + 800);
+    const window_ = noComments.slice(idx, idx + 800);
     // padding-bottom uses max(80px, env(safe-area-inset-bottom)) so
     // bottom CTA + the iOS home indicator both clear correctly.
     expect(window_).toMatch(/padding-bottom:\s*max\(\s*80px\s*,\s*env\(safe-area-inset-bottom/);
@@ -63,8 +80,10 @@ describe('PR-IMMERSIVE-CSS — index.css rules', () => {
 
   it('5. .immersive-cta-bar is bottom-pinned and lives outside scroll (keyboard-resilient)', () => {
     expect(css).toMatch(/\[data-immersive="true"\]\s*\.immersive-cta-bar/);
-    const idx = css.indexOf('.immersive-cta-bar');
-    const window_ = css.slice(idx, idx + 600);
+    const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const idx = noComments.indexOf('[data-immersive="true"] .immersive-cta-bar');
+    expect(idx).toBeGreaterThan(0);
+    const window_ = noComments.slice(idx, idx + 600);
     expect(window_).toMatch(/padding-bottom:\s*calc\(\s*\d+px\s*\+\s*env\(safe-area-inset-bottom/);
     // The CTA bar is flex:0 0 auto so it never collapses under the
     // keyboard.
@@ -85,8 +104,15 @@ describe('PR-IMMERSIVE-CSS — index.css rules', () => {
     expect(css).toMatch(/\[data-floating-stack\]/);
   });
 
-  it('8. Body min-height: 100dvh is set under data-immersive (Safari iOS keyboard-aware)', () => {
-    expect(css).toMatch(/html\[data-immersive="true"\][\s\S]{0,400}body\s*\{[\s\S]{0,300}min-height:\s*100dvh/);
+  it('8. PR-IMMERSIVE-HOTFIX retirement comment documents the iPhone Safari freeze + revert', () => {
+    // Replaces the original "body min-height:100dvh" assertion. That
+    // rule was deleted as part of the hotfix because it was paired
+    // with `overflow: hidden` and pages that haven't adopted
+    // .immersive-flow get default browser scroll behaviour. The
+    // retirement comment must remain so future readers know WHY.
+    expect(css).toMatch(/PR-IMMERSIVE-HOTFIX/);
+    expect(css).toMatch(/iPhone Safari/i);
+    expect(css).toMatch(/no page adopted|NO PAGE adopted|none do/i);
   });
 });
 
