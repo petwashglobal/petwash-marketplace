@@ -12,6 +12,14 @@ declare global {
   }
 }
 
+/**
+ * Severity levels for audit_events.severity column.
+ * The schema defaults to 'info' if absent — pass an explicit value for
+ * operationally-actionable rows so admin dashboards can filter on
+ * severity = 'critical' without scanning every event.
+ */
+export type AuditSeverity = 'info' | 'warning' | 'error' | 'critical';
+
 export interface LogAuditEventParams {
   actorUserId?: string;
   actorRole?: string;
@@ -22,6 +30,12 @@ export interface LogAuditEventParams {
   userAgent?: string;
   traceId?: string;
   metadata?: Record<string, any>;
+  /**
+   * PR-W-RETRY: optional severity tag. When omitted the schema default
+   * ('info') is used. K9000 permanent failures + compensation failures
+   * emit 'critical' so /api/admin/k9000/alerts can filter cheaply.
+   */
+  severity?: AuditSeverity;
 }
 
 /**
@@ -52,6 +66,7 @@ export async function logAuditEvent(params: LogAuditEventParams): Promise<void> 
       userAgent: params.userAgent,
       traceId: params.traceId,
       metadata: params.metadata || {},
+      ...(params.severity ? { severity: params.severity } : {}),
     });
   } catch (error) {
     console.error('[AuditLog] Failed to log audit event:', {
