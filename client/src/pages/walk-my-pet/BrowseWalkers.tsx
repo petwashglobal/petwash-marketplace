@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { onClickBecomeProvider } from "@/lib/becomeProvider";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -613,7 +614,7 @@ export default function BrowseWalkers() {
             <div className="text-center mt-10">
               <Button 
                 className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-full px-8"
-                onClick={() => setLocation('/become-provider')}
+                onClick={() => onClickBecomeProvider(setLocation, 'walker')}
                 data-testid="button-become-walker"
               >
                 <Users className="h-5 w-5 me-2" />

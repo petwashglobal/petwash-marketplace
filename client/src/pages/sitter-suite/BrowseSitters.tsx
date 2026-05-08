@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Star, MapPin, Shield, Heart, Sparkles, ArrowRight, CheckCircle, Camera, Users, Wallet, Briefcase, SlidersHorizontal, X, ArrowUpDown, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
+import { onClickBecomeProvider } from "@/lib/becomeProvider";
 import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
 import { ProviderSearch, ProviderCard, SearchEmptyState, type SearchParams } from "@/components/marketplace/ProviderSearch";
@@ -559,7 +560,7 @@ export default function BrowseSitters() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
                     className="bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600 text-white rounded-full px-8 shadow-lg shadow-fuchsia-500/25"
-                    onClick={() => setLocation('/become-provider')}
+                    onClick={() => onClickBecomeProvider(setLocation, 'sitter')}
                     data-testid="button-become-sitter"
                   >
                     <Users className="h-5 w-5 me-2" />

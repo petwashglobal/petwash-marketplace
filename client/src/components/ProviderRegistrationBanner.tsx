@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { setProviderSignupIntent } from "@/lib/becomeProvider";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles,
@@ -46,6 +47,11 @@ export default function ProviderRegistrationBanner({
   };
 
   const navigateToOnboarding = (specificType?: string) => {
+    // PR-FRES-3: every banner CTA now sets provider intent BEFORE
+    // navigating so post-login coordinator (#182) routes correctly even
+    // if the user lands on /sign-in via the canonical /become-provider
+    // helper or deep-links to /join/walker etc.
+    setProviderSignupIntent();
     const type = specificType || (platform !== 'all' ? platform : null);
     const route = type ? (dedicatedJoinRoutes[type] || '/become-provider') : '/become-provider';
     setLocation(route);

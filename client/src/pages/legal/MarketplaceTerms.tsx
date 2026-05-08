@@ -22,6 +22,7 @@ import {
   Scale
 } from "lucide-react";
 import { Link } from "wouter";
+import { becomeProviderHref, setProviderSignupIntent } from "@/lib/becomeProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -218,7 +219,7 @@ export default function MarketplaceTerms() {
                 {isHebrew ? "צור קשר" : "Contact Us"}
               </Button>
             </Link>
-            <Link href="/become-provider">
+            <Link href={becomeProviderHref()} onClick={setProviderSignupIntent}>
               <Button className="bg-white text-black hover:bg-white/90">
                 {isHebrew ? "הצטרף כספק" : "Join as Provider"}
               </Button>

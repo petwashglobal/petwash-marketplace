@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
 import { X, Rocket, Briefcase, Star } from 'lucide-react';
 import { Link } from 'wouter';
+import { becomeProviderHref, setProviderSignupIntent } from '@/lib/becomeProvider';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -73,7 +74,8 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
           {/* Bottom row — join CTAs */}
           <div className="flex items-center justify-center gap-2 pb-2 px-4 flex-wrap">
             <Link
-              href="/become-provider"
+              href={becomeProviderHref()}
+              onClick={setProviderSignupIntent}
               className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1 text-xs font-semibold text-white"
             >
               <Briefcase className="w-3.5 h-3.5" />
