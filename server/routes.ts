@@ -4543,6 +4543,149 @@ self.addEventListener('notificationclick', (event) => {
   // companion K9000_COMPENSATION_TRIGGERED rows (severity 'warning') give
   // ops visibility that the customer was made whole automatically.
   // Visibility only — does NOT change any K9000 runtime contract.
+  // ════════════════════════════════════════════════════════════════════
+  // PR-FINANCE-DASH — read-only finance visibility (Pillar D step 1)
+  //
+  // CEO-approved scope (locked):
+  //   • pending_transfer queue        →  /api/admin/finance/pending-payouts
+  //   • wallet drift status           →  /api/admin/finance/wallet-drift
+  //   • escrow audit trail            →  /api/admin/finance/escrow-audit
+  //   • CSV export                    →  /api/admin/finance/pending-payouts.csv
+  //
+  // No money movement. No payout/refund execution. No bank/Nayax runtime.
+  // Every handler is pure SELECT — no INSERT / UPDATE / DELETE. Locked
+  // by source-pin tests (server/tests/financeDash.regression.test.ts).
+  //
+  // Exists so finance + ops can SEE the queue while the real payout
+  // rails (Nayax payout API, Masav, ITA OAuth) are being obtained as
+  // separate Track-B-D dependencies.
+  // ════════════════════════════════════════════════════════════════════
+
+  // 1. PENDING PAYOUTS QUEUE (JSON)
+  app.get('/api/admin/finance/pending-payouts', requireAdmin, async (req: any, res) => {
+    try {
+      const { superAppPayouts } = await import('@shared/schema');
+      const { db } = await import('./db');
+      const { inArray, desc } = await import('drizzle-orm');
+      const limit = Math.min(Number(req.query.limit) || 200, 1000);
+      const rows = await db
+        .select()
+        .from(superAppPayouts)
+        .where(inArray(superAppPayouts.status, ['pending_transfer', 'pending', 'processing']))
+        .orderBy(desc(superAppPayouts.createdAt))
+        .limit(limit);
+      res.json({ count: rows.length, payouts: rows });
+    } catch (error: any) {
+      logger.error('[FinanceDash] pending-payouts query failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to fetch pending payouts' });
+    }
+  });
+
+  // 2. PENDING PAYOUTS CSV EXPORT (for finance team)
+  app.get('/api/admin/finance/pending-payouts.csv', requireAdmin, async (req: any, res) => {
+    try {
+      const { superAppPayouts } = await import('@shared/schema');
+      const { db } = await import('./db');
+      const { inArray, desc } = await import('drizzle-orm');
+      const limit = Math.min(Number(req.query.limit) || 1000, 5000);
+      const rows = await db
+        .select()
+        .from(superAppPayouts)
+        .where(inArray(superAppPayouts.status, ['pending_transfer', 'pending', 'processing']))
+        .orderBy(desc(superAppPayouts.createdAt))
+        .limit(limit);
+      const header = [
+        'id', 'providerId', 'bookingId', 'status', 'amount', 'netAmount',
+        'currency', 'providerBankName', 'providerBankIban', 'createdAt',
+      ];
+      const escape = (v: unknown): string => {
+        if (v === null || v === undefined) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = [header.join(',')];
+      for (const r of rows) {
+        lines.push([
+          r.id, r.providerId, r.bookingId ?? '', r.status ?? '',
+          r.amount ?? '', r.netAmount ?? '', r.currency ?? '',
+          r.providerBankName ?? '', r.providerBankIban ?? '',
+          r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt ?? ''),
+        ].map(escape).join(','));
+      }
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="pending-payouts-${Date.now()}.csv"`);
+      res.send(lines.join('\n'));
+    } catch (error: any) {
+      logger.error('[FinanceDash] pending-payouts.csv export failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to export pending payouts' });
+    }
+  });
+
+  // 3. WALLET DRIFT STATUS (recent reconciliation runs)
+  app.get('/api/admin/finance/wallet-drift', requireAdmin, async (req: any, res) => {
+    try {
+      const { walletReconciliationRuns } = await import('@shared/schema');
+      const { db } = await import('./db');
+      const { desc } = await import('drizzle-orm');
+      const limit = Math.min(Number(req.query.limit) || 50, 200);
+      const runs = await db
+        .select()
+        .from(walletReconciliationRuns)
+        .orderBy(desc(walletReconciliationRuns.createdAt))
+        .limit(limit);
+      const latest = runs[0] ?? null;
+      const driftedTotal = runs.reduce((acc, r) => acc + (r.drifted || 0), 0);
+      const healedTotal = runs.reduce((acc, r) => acc + (r.healed || 0), 0);
+      const failedTotal = runs.reduce((acc, r) => acc + (r.failedCount || 0), 0);
+      res.json({
+        latest,
+        windowSummary: {
+          runs: runs.length,
+          driftedTotal,
+          healedTotal,
+          failedTotal,
+        },
+        runs,
+      });
+    } catch (error: any) {
+      logger.error('[FinanceDash] wallet-drift query failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to fetch wallet drift status' });
+    }
+  });
+
+  // 4. ESCROW AUDIT TRAIL (recent state-transition audit_events)
+  app.get('/api/admin/finance/escrow-audit', requireAdmin, async (req: any, res) => {
+    try {
+      const { auditEvents } = await import('@shared/schema');
+      const { db } = await import('./db');
+      const { inArray, desc, and, gte } = await import('drizzle-orm');
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30d window
+      const limit = Math.min(Number(req.query.limit) || 200, 1000);
+      const rows = await db
+        .select()
+        .from(auditEvents)
+        .where(and(
+          inArray(auditEvents.actionType, [
+            'ESCROW_HOLD',
+            'ESCROW_RELEASE',
+            'ESCROW_REFUND',
+            'ESCROW_CANCEL',
+            'PAYOUT_CREATED',
+            'PAYOUT_RELEASED',
+            'PAYOUT_FAILED',
+            'PAYOUT_PENDING_TRANSFER',
+          ]),
+          gte(auditEvents.createdAt, since),
+        ))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(limit);
+      res.json({ since: since.toISOString(), count: rows.length, events: rows });
+    } catch (error: any) {
+      logger.error('[FinanceDash] escrow-audit query failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to fetch escrow audit trail' });
+    }
+  });
+
   app.get('/api/admin/k9000/alerts', requireAdmin, async (req: any, res) => {
     try {
       const { auditEvents } = await import('@shared/schema');
