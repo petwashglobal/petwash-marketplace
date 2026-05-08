@@ -489,10 +489,19 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   useEffect(() => {
     if (user && !switchingAccount && !loading) {
+      // Issue #153 PR-BPV-1 — short-circuit when an explicit ?redirect= is
+      // present. Without this guard, the FIRST already-signed-in effect
+      // (above) navigates to customRedirect (e.g. /provider-onboarding)
+      // while THIS effect's async navigatePostLogin() resolves ~300-1000ms
+      // later and overwrites the destination with /home — the visible
+      // "Become Provider appears for ~1s then disappears" symptom.
+      // The first effect already handles the customRedirect path; this
+      // effect remains responsible for the default /home routing only.
+      if (customRedirect) return;
       logger.info("User already logged in, auto-redirecting to homepage");
       navigatePostLogin();
     }
-  }, [user, switchingAccount, loading, navigate]);
+  }, [user, switchingAccount, loading, navigate, customRedirect]);
 
   // Fire-and-forget: report a structured auth failure to /api/auth/client-event
   // so it lands in the auth_events table for admin visibility.

@@ -531,6 +531,42 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
   }
 }
 
+/**
+ * Issue #153 PR-BPV-1 — Become Provider straight-through redirect helper.
+ *
+ * Replaces the inline closure that unconditionally redirected to
+ * /sign-in?redirect=/provider-onboarding regardless of auth state.
+ * That pattern caused a visible flash to the SignIn chrome and fed
+ * into the post-login decider race (diagnostic 4404078588 V3).
+ *
+ * Behaviour:
+ *   • loading      → render nothing for ~50ms while auth resolves
+ *                    (better than flashing /sign-in to a signed-in user)
+ *   • user signed-in → Redirect directly to /provider-onboarding
+ *   • anonymous    → Redirect to /sign-in?redirect=… (canonical anon flow)
+ *
+ * Routing-only. No auth contract change, no whoami change, no schema,
+ * no money, no BookingEngine, no K9000/Nayax/Tranzila.
+ */
+function BecomeProviderRedirect() {
+  const { user, loading } = useFirebaseAuth();
+  const allowedTypes = new Set([
+    "walker", "sitter", "driver", "trainer", "station_operator", "pet_trek",
+  ]);
+  const rawType =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("type")
+      : null;
+  const safeType = rawType && allowedTypes.has(rawType) ? rawType : null;
+  const redirectTarget = safeType
+    ? `/provider-onboarding?type=${encodeURIComponent(safeType)}`
+    : "/provider-onboarding";
+
+  if (loading) return null;
+  if (user) return <Redirect to={redirectTarget} />;
+  return <Redirect to={`/sign-in?redirect=${encodeURIComponent(redirectTarget)}`} />;
+}
+
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
   const { trackLanguageChange } = useAnalytics();
@@ -2181,15 +2217,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/become-provider">
           {() => {
-            const allowedTypes = new Set(["walker", "sitter", "driver", "trainer", "station_operator", "pet_trek"]);
-            const rawType = typeof window !== "undefined"
-              ? new URLSearchParams(window.location.search).get("type")
-              : null;
-            const safeType = rawType && allowedTypes.has(rawType) ? rawType : null;
-            const redirectTarget = safeType
-              ? `/provider-onboarding?type=${encodeURIComponent(safeType)}`
-              : "/provider-onboarding";
-            return <Redirect to={`/sign-in?redirect=${encodeURIComponent(redirectTarget)}`} />;
+            // Issue #153 PR-BPV-1 — Become Provider straight-through.
+            // BEFORE: this handler unconditionally returned a Redirect to
+            // /sign-in?redirect=/provider-onboarding for EVERY visitor,
+            // including signed-in users. The /sign-in chrome flashed,
+            // then SignIn forwarded back to /provider-onboarding, then
+            // the post-login decider race (V3 in diagnostic 4404078588)
+            // overwrote that to /home. The result on iPhone Safari was
+            // "Become Provider appears for ~1s then disappears."
+            // AFTER: branch on auth state — signed-in users redirect
+            // directly to /provider-onboarding (no /sign-in detour),
+            // anonymous users still get the SignIn flow with the
+            // canonical ?redirect= param. Routing-only fix; no auth
+            // contract change, no whoami change, no schema, no money.
+            return <BecomeProviderRedirect />;
           }}
         </Route>
         <Route path="/provider-onboarding">
