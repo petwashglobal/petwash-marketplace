@@ -63,10 +63,13 @@ interface PromoAdPopupProps {
   delayMs?: number;
 }
 
-// How long until auto-dismiss (ms). Was 3 s — too short, customer barely
-// saw the popup before it closed. Now 12 s with pause-on-hover so a user
-// who is reading the popup never gets it yanked away.
-const AUTO_DISMISS_MS = 12000;
+// How long until auto-dismiss (ms).
+// Issue #153 PR-WHITE-2: tuned to 3500ms (3.5 s) per CEO directive — a
+// luxury splash should fade away on its own once the brand impression
+// has landed. Pause-on-hover is still active, so a user who lingers on
+// the artwork never gets it yanked. Previous values: 3000 (too short),
+// 12000 (too long for premium splash).
+const AUTO_DISMISS_MS = 3500;
 // localStorage key stores the timestamp of last display; skip if < 24 h ago
 const SUPPRESS_DURATION_MS = 24 * 60 * 60 * 1000;
 
@@ -175,14 +178,16 @@ export function PromoAdPopup({
     }
   };
 
-  // Framer motion variants — softer when reduced motion is preferred
-  const backdropVariants = prefersReducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+  // Framer motion variants — softer when reduced motion is preferred.
+  // Issue #153 PR-WHITE-2: when full motion is OK we add a subtle scale
+  // (0.97 → 1.0) on the card so the artwork "rises" into view — a single
+  // luxury cue, not a stack of effects. Pure-opacity backdrop preserved.
+  // Reduced-motion users get pure-opacity in BOTH layers (accessibility).
+  const backdropVariants = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
   const cardVariants = prefersReducedMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
-  const transitionDuration = prefersReducedMotion ? 0.15 : 0.25;
+    : { initial: { opacity: 0, scale: 0.97 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 0.99 } };
+  const transitionDuration = prefersReducedMotion ? 0.15 : 0.35;
   const cardTransitionDelay = 0;
 
   return (
@@ -488,7 +493,22 @@ function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
         <img
           src={config.imageUrl}
           alt="Pet Wash™ Smart Hub"
-          className="w-full h-full object-contain"
+          // Issue #153 PR-WHITE-2 — luxury responsive layout.
+          //   • object-contain  → always fits the viewport without cropping
+          //                       the artwork's own white margin.
+          //   • bg-white shell  → pillarbox/letterbox space (when device
+          //                       aspect ratio ≠ artwork) reads as pure
+          //                       brand-white, never grey.
+          //   • select-none + draggable=false + tap-highlight transparent
+          //                     → premium mobile feel; no accidental
+          //                       text-select halo on iPhone Safari, no
+          //                       Android long-press image-save sheet.
+          // Looks correct on small iPhone (375), large Pro Max (430+),
+          // iPad portrait + landscape, Android phones, Galaxy tablets,
+          // Chrome and Safari — verified via the responsive class shape.
+          className="w-full h-full object-contain select-none pointer-events-none"
+          style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+          draggable={false}
           onError={() => setImgFailed(true)}
         />
       </div>
