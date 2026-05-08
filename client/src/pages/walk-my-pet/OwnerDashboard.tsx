@@ -49,10 +49,16 @@ export default function WalkMyPetOwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
+  // Issue #153 PR-WALK-1 — switched from /users/${user.id}/walks (path-uid
+  // anti-pattern, now hardened on the server but still legacy) to the
+  // canonical safe alias /api/walk-my-pet/walks/mine. Server reads the uid
+  // from the verified Firebase session, so the client no longer leaks the
+  // uid in the URL (which previously appeared in referrer headers and
+  // browser history).
   const { data: walksData, isLoading } = useQuery<{ success: boolean; bookings: WalkBooking[] }>({
-    queryKey: ['/api/walk-my-pet/users', user?.id, 'walks'],
+    queryKey: ['/api/walk-my-pet/walks/mine'],
     queryFn: () =>
-      fetch(`/api/walk-my-pet/users/${user?.id}/walks`, { credentials: 'include' })
+      fetch('/api/walk-my-pet/walks/mine', { credentials: 'include' })
         .then(r => r.json()),
     enabled: !!user?.id,
   });

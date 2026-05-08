@@ -1531,10 +1531,79 @@ router.get('/walkers/:walkerId/reviews', async (req, res) => {
 
 // =================== USER BOOKINGS ===================
 
-// Get user's bookings (as owner)
-router.get('/users/:userId/walks', async (req, res) => {
+// Issue #153 PR-WALK-1 — Walk-My-Pet owner walks security bridge.
+//
+// PR-3 (CustomerBookings unified aggregator) needs a customer-scoped
+// owner-walks endpoint. The pre-existing handler at this site trusted
+// req.params.userId as the source of truth and ran with NO auth
+// middleware — the same anti-pattern PR #173 already closed for the
+// pet ICS endpoint. Audit (issue #153 stop-and-report) confirmed only
+// one legitimate caller (client/src/pages/walk-my-pet/OwnerDashboard
+// .tsx:53,55), so the leak surface is small but live.
+//
+// Fix shape (mirrors PR #173):
+//   1. NEW canonical route: GET /api/walk-my-pet/walks/mine
+//      • requireAuth at the route
+//      • UID read from req.user.uid (verified Firebase token)
+//      • same response shape as the legacy route
+//   2. LEGACY route /users/:userId/walks now requires auth AND the path
+//      uid must match the verified token uid (or caller must be admin).
+//      Mismatch → 403. Anonymous → 401. Backwards compatible for any
+//      caller that was already passing a valid session cookie + correct
+//      uid; abusive callers blocked.
+//
+// Out of scope: schema, booking writes, BookingEngine, payments, schema,
+// state machines, walker scoping, K9000/Nayax/Tranzila.
+
+// Canonical safe route — read by CustomerBookings aggregator (PR-3).
+router.get('/walks/mine', requireAuth, async (req: any, res) => {
   try {
+    const userId: string = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const { status } = req.query;
+
+    let query = db
+      .select()
+      .from(walkBookings)
+      .where(eq(walkBookings.ownerId, userId))
+      .orderBy(desc(walkBookings.createdAt));
+
+    if (status) {
+      query = query.where(eq(walkBookings.status, status as string)) as any;
+    }
+
+    const bookings = await query;
+    res.json({ success: true, bookings });
+  } catch (error: any) {
+    console.error('[Walk My Pet] Get owner walks (mine) error:', error);
+    res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
+// Legacy route — kept for backwards compatibility with existing clients.
+// Issue #153 PR-WALK-1 added requireAuth + path-uid match check; mismatch
+// returns 403. Admin callers (super_admin / management / staff via
+// req.user.role) bypass the match check so internal tools can still
+// read another user's walks for support flows.
+router.get('/users/:userId/walks', requireAuth, async (req: any, res) => {
+  try {
+    const callerUid: string = req.user?.uid || req.firebaseUser?.uid;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     const { userId } = req.params;
+    const callerRole: string = req.user?.role || req.userRole?.role?.name || '';
+    const isAdmin = ['super_admin', 'management', 'staff', 'admin'].includes(
+      String(callerRole).toLowerCase(),
+    );
+    if (callerUid !== userId && !isAdmin) {
+      console.warn('[Walk My Pet] BOLA blocked on legacy /users/:userId/walks', {
+        callerUid, requestedUserId: userId,
+      });
+      return res.status(403).json({ error: 'Cannot read another user\'s walks' });
+    }
     const { status } = req.query;
 
     let query = db
