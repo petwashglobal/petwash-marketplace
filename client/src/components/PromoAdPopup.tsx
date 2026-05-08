@@ -191,39 +191,47 @@ export function PromoAdPopup({
         <motion.div
           {...backdropVariants}
           transition={{ duration: transitionDuration }}
-          // True full-screen popup. No centered card, no outer padding.
-          // 100dvh handles Safari dynamic toolbar.
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+          // Issue #153 PR-WHITE-1 — Pure-white luxury popup shell.
+          // Previously `bg-black` framed the brand artwork in a black
+          // letterbox; on iPhone Safari that read as dirty grey instead
+          // of luxury white. The four bg-black surfaces below (backdrop,
+          // click-catcher, card, image panel) are now bg-white. Combined
+          // with object-contain on the image, the artwork sits on
+          // pure #FFFFFF on every device. 100dvh handles Safari toolbar.
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-white"
           style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
           data-testid="promo-ad-popup"
           aria-modal="true"
           role="dialog"
           aria-label="PetWash welcome"
         >
-          {/* Invisible click-catcher only. Do not paint white or grey behind
-              the artwork because it creates fake padding/letterbox bars. */}
+          {/* Invisible click-catcher only. Pure white so any letterbox/
+              pillarbox space around the artwork is luxury-clean and
+              never reveals a grey or off-white frame. */}
           <div
-            className="absolute inset-0 bg-black"
+            className="absolute inset-0 bg-white"
             onClick={() => handleClose('user')}
           />
 
           {/* Full-screen content layer. Poster template fills the viewport.
-              Legacy templates can still render their own layouts. */}
+              Background is pure white so object-contain letterbox bars are
+              brand-white instead of black. */}
           <motion.div
             {...cardVariants}
             transition={{ duration: transitionDuration, delay: cardTransitionDelay }}
-            className="relative w-full h-full overflow-hidden bg-black"
+            className="relative w-full h-full overflow-hidden bg-white"
             style={{ maxHeight: '100dvh' }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onTouchStart={() => setIsHovered(true)}
             onTouchEnd={() => setIsHovered(false)}
           >
-            {/* Single floating close button. Glass/dark treatment so it does
-                not create a white circle inside luxury artwork. */}
+            {/* Single floating close button. Dark-on-white glass treatment
+                so the X is high-contrast against the new pure-white shell
+                without painting a heavy dark blob on luxury artwork. */}
             <button
               onClick={() => handleClose('user')}
-              className="absolute z-20 w-11 h-11 rounded-full flex items-center justify-center text-white bg-black/45 hover:bg-black/65 backdrop-blur-md border border-white/20 transition-colors"
+              className="absolute z-20 w-11 h-11 rounded-full flex items-center justify-center text-black bg-white/90 hover:bg-white backdrop-blur-md border border-black/10 shadow-sm transition-colors"
               style={{
                 top: 'max(1rem, env(safe-area-inset-top, 1rem))',
                 right: 'max(1rem, env(safe-area-inset-right, 1rem))',
@@ -442,20 +450,26 @@ interface PosterTemplateProps extends TemplateProps {
 }
 
 /**
- * PosterTemplate — exact uploaded creative as true full-screen artwork.
+ * PosterTemplate — exact uploaded creative as full-screen artwork on a
+ * pure-white luxury shell.
  *
- * Per CEO directive:
- *   - No outer padding.
- *   - No white shell.
- *   - No card frame.
- *   - No extra CTA or bottom strip.
- *   - Fill every screen size like a luxury campaign splash.
+ * Per CEO directive (Issue #153 PR-WHITE-1):
+ *   - No outer padding, no card frame, no extra CTA, no bottom strip.
+ *   - Background is pure #FFFFFF (the shell already paints white).
+ *   - object-contain so the artwork is shown in full and any letterbox
+ *     space reads as luxury white — never black or grey.
  *
- * Trade-off: object-cover can crop the edges when the artwork ratio does
- * not match the device. That is intentional for the default public popup
- * because the requirement is true full-screen artwork with no white bars.
- * If the creative contains critical text at the edges, provide separate
- * mobile and desktop assets instead of reintroducing padding.
+ * Previous trade-off (object-cover + black shell) caused two problems on
+ * iPhone Safari: (a) the cover crop ate into the artwork's own white
+ * margin, exposing colored or textured pixels at the edges; (b) the
+ * black shell read as a dirty grey frame around the artwork. Switching
+ * to object-contain on a white shell solves both: the brand image is
+ * presented exactly as designed, with pure-white pillarbox/letterbox.
+ *
+ * If the source artwork itself is not pure white at the edges, that is
+ * an asset-side concern — the container is still pure-white, so any
+ * tinted edge sits cleanly on a brand-white field instead of a black
+ * frame. Pixel-level audit of the asset is intentionally separate.
  */
 function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -470,11 +484,11 @@ function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
 
   if (showImage) {
     return (
-      <div className="absolute inset-0 bg-black">
+      <div className="absolute inset-0 bg-white">
         <img
           src={config.imageUrl}
           alt="Pet Wash™ Smart Hub"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           onError={() => setImgFailed(true)}
         />
       </div>
