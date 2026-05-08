@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Crown, Sparkles, Dog, MapPin, Heart, Car, Search, Monitor, Building2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { isImmersiveRoute } from '@/lib/immersive-routes';
 
 interface Platform {
   id: string;
@@ -95,6 +96,31 @@ export function VIPLoyaltyPopup({ isOpen, onClose }: VIPLoyaltyPopupProps) {
   const [email, setEmail] = useState('');
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // PR-VIP-LOYALTY-MOBILE-GUARD (latent risk flagged by deep scroll-lock
+    // audit, post-#194):
+    //   This popup is `fixed inset-0 z-[9999] bg-white overflow-y-auto`
+    //   (line 121) — a full-screen opaque overlay with its own scroller.
+    //   Locking body scroll is only useful on NORMAL pages (where the
+    //   page behind would otherwise scroll under the modal). On
+    //   immersive routes (auth, signup, KYC, onboarding, loyalty join,
+    //   provider lifecycle) locking body produces the same iPhone Safari
+    //   freeze pattern that PR #194 hot-fixed in the immersive CSS:
+    //   if anything else (or this popup itself) mounts on /sign-in and
+    //   the user dismisses it without the cleanup running, body remains
+    //   permanently locked.
+    //
+    //   Smallest safe fix: defer to the canonical isImmersiveRoute()
+    //   helper. On immersive routes, NEVER touch body scroll. On other
+    //   routes, preserve the original modal-lock behaviour exactly.
+    if (isImmersiveRoute(window.location.pathname)) {
+      // On immersive routes the popup is a full-screen overlay anyway;
+      // the underlying form / page must remain scrollable in case the
+      // popup ever closes (or the user dismisses it). Defensive cleanup
+      // ensures any prior body lock left by another mount is cleared.
+      document.body.style.overflow = '';
+      return;
+    }
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
