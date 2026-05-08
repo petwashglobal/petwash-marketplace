@@ -4731,6 +4731,102 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  // PR-AUDIT-CHAIN-VERIFY — wire EXISTING chain verifiers into admin HTTP.
+  //
+  // Discovery: 5 chain-verifier functions had been implemented across
+  // the codebase, NONE of them exposed via an admin endpoint:
+  //   server/services/AuditLedgerService.ts:417  verifyChainIntegrity
+  //   server/services/WalletLedger.ts:803         verifyChainIntegrity
+  //   server/services/KYC2026/KYCAuditTrail.ts:177 verifyChain
+  //   server/services/storage.ts:5522              verifyLedgerChain
+  //   server/services/ImmutableStampService.ts:305 verifyChain
+  //
+  // Without an HTTP surface, a regulator or admin asking "prove your
+  // audit / wallet / KYC chain is intact" had no way to trigger the
+  // check. The chain was tamper-evident only if a developer manually
+  // ran the function from a script. Half-built integrity system.
+  //
+  // This PR is FINISHING work — pure read-only wiring of existing
+  // logic. No INSERT / UPDATE / DELETE in any handler.
+  // No new chain logic. No money movement. No new contracts.
+  // Source-pin tests assert read-only invariants.
+  // ════════════════════════════════════════════════════════════════════
+
+  // 1. KYC audit chain integrity (legal / compliance gold — Israeli
+  //    Privacy Law 2025 evidence path)
+  app.get('/api/admin/integrity/kyc-audit', requireAdmin, async (_req: any, res) => {
+    try {
+      const { kycAuditTrail } = await import('./services/KYC2026/KYCAuditTrail');
+      const result = await kycAuditTrail.verifyChain();
+      res.json({ chain: 'kyc_audit_log', ...result });
+    } catch (error: any) {
+      logger.error('[Integrity] kyc-audit verify failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to verify KYC chain' });
+    }
+  });
+
+  // 2. Generic audit ledger chain integrity (covers cross-system events)
+  app.get('/api/admin/integrity/audit-ledger', requireAdmin, async (req: any, res) => {
+    try {
+      const { AuditLedgerService } = await import('./services/AuditLedgerService');
+      const startBlock = req.query.startBlock ? Number(req.query.startBlock) : undefined;
+      const endBlock = req.query.endBlock ? Number(req.query.endBlock) : undefined;
+      const result = await AuditLedgerService.verifyChainIntegrity(startBlock, endBlock);
+      res.json({ chain: 'audit_ledger', ...result });
+    } catch (error: any) {
+      logger.error('[Integrity] audit-ledger verify failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to verify audit ledger chain' });
+    }
+  });
+
+  // 3. Wallet ledger chain integrity (per wallet — financial truth)
+  app.get('/api/admin/integrity/wallet-ledger', requireAdmin, async (req: any, res) => {
+    try {
+      const walletId = String(req.query.walletId || '').trim();
+      if (!walletId) {
+        return res.status(400).json({ success: false, message: 'walletId query param required' });
+      }
+      const { verifyChainIntegrity } = await import('./services/WalletLedger');
+      const result = await verifyChainIntegrity(walletId);
+      res.json({ chain: 'wallet_ledger_entries', walletId, ...result });
+    } catch (error: any) {
+      logger.error('[Integrity] wallet-ledger verify failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to verify wallet ledger chain' });
+    }
+  });
+
+  // 4. Combined health card — runs the two parameter-less verifiers in
+  //    parallel and returns a single health summary. Walls off any one
+  //    failure so a single broken chain cannot deny visibility into the
+  //    others.
+  app.get('/api/admin/integrity/summary', requireAdmin, async (_req: any, res) => {
+    const safe = async <T,>(fn: () => Promise<T>): Promise<{ ok: true; data: T } | { ok: false; error: string }> => {
+      try {
+        return { ok: true as const, data: await fn() };
+      } catch (e: any) {
+        return { ok: false as const, error: e?.message ?? String(e) };
+      }
+    };
+    const [kyc, audit] = await Promise.all([
+      safe(async () => {
+        const { kycAuditTrail } = await import('./services/KYC2026/KYCAuditTrail');
+        return kycAuditTrail.verifyChain();
+      }),
+      safe(async () => {
+        const { AuditLedgerService } = await import('./services/AuditLedgerService');
+        return AuditLedgerService.verifyChainIntegrity();
+      }),
+    ]);
+    res.json({
+      generatedAt: new Date().toISOString(),
+      checks: {
+        kyc_audit_log: kyc,
+        audit_ledger: audit,
+      },
+    });
+  });
+
   // GET /api/admin/stations/:stationId/faults - Get fault log
   app.get('/api/admin/stations/:stationId/faults', requireAdmin, async (req: any, res) => {
     try {
