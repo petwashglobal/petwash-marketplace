@@ -4536,6 +4536,40 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // PR-W-RETRY: read-only admin endpoint exposing K9000 permanent-failure
+  // and compensation-failure alerts. The MachineCommandService writes these
+  // rows when a wallet-funded session times out after all retries (severity
+  // 'critical') or when auto-compensation fails (severity 'critical'). The
+  // companion K9000_COMPENSATION_TRIGGERED rows (severity 'warning') give
+  // ops visibility that the customer was made whole automatically.
+  // Visibility only — does NOT change any K9000 runtime contract.
+  app.get('/api/admin/k9000/alerts', requireAdmin, async (req: any, res) => {
+    try {
+      const { auditEvents } = await import('@shared/schema');
+      const { db } = await import('./db');
+      const { inArray, desc, and, gte } = await import('drizzle-orm');
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const limit = Math.min(Number(req.query.limit) || 100, 500);
+      const rows = await db
+        .select()
+        .from(auditEvents)
+        .where(and(
+          inArray(auditEvents.actionType, [
+            'K9000_COMMAND_PERMANENT_FAIL',
+            'K9000_COMPENSATION_TRIGGERED',
+            'K9000_COMPENSATION_FAILED',
+          ]),
+          gte(auditEvents.createdAt, since),
+        ))
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(limit);
+      res.json({ since: since.toISOString(), count: rows.length, alerts: rows });
+    } catch (error: any) {
+      logger.error('[K9000 alerts] Query failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to fetch K9000 alerts' });
+    }
+  });
+
   // GET /api/admin/stations/:stationId/faults - Get fault log
   app.get('/api/admin/stations/:stationId/faults', requireAdmin, async (req: any, res) => {
     try {

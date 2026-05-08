@@ -28,6 +28,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { eventPublisher } from './EventPublisher';
 import { DomainEventType } from '@shared/events';
+import { logAuditEvent } from '../middleware/auditLog';
 
 // ─── Timeouts (ms) before a command is considered timed-out ─────────────────
 const COMMAND_TIMEOUT_MS: Record<string, number> = {
@@ -442,6 +443,30 @@ async function _handleTimeout(cmd: MachineCommand): Promise<void> {
       needsCompensation,
     });
 
+    // PR-W-RETRY: persistent admin alert for permanent K9000 command failure.
+    // Visibility-only — does NOT change retry / dispatch / response contract.
+    // The bay event already exists for the ops dashboard; this row lives in
+    // audit_events so finance/admin can filter severity='critical' cheaply
+    // and a future alerting hook can subscribe without walking bay_events.
+    logAuditEvent({
+      actionType: 'K9000_COMMAND_PERMANENT_FAIL',
+      targetType: 'machine_command',
+      targetId:   cmd.commandId,
+      severity:   'critical',
+      metadata: {
+        commandType:        cmd.commandType,
+        stationId:          cmd.stationId,
+        bayId:              cmd.bayId,
+        side:               cmd.side,
+        sessionId:          cmd.sessionId,
+        retryCount:         cmd.retryCount,
+        maxRetries:         cmd.maxRetries,
+        needsCompensation,
+        firstAttemptAt:     cmd.createdAt,
+        finalAttemptAt:     now.toISOString(),
+      },
+    }).catch(() => { /* logAuditEvent already swallows; double-guard */ });
+
     if (needsCompensation) {
       // Log a dedicated compensation_required bay event so the ops team and
       // any future refund automation can pick it up.
@@ -489,12 +514,45 @@ async function _handleTimeout(cmd: MachineCommand): Promise<void> {
           commandId: cmd.commandId,
           sessionId: cmd.sessionId,
         });
+        // PR-W-RETRY: persist a 'warning' audit row so admins can confirm
+        // the customer was made whole. No contract change; observability only.
+        logAuditEvent({
+          actionType: 'K9000_COMPENSATION_TRIGGERED',
+          targetType: 'wash_session',
+          targetId:   cmd.sessionId!,
+          severity:   'warning',
+          metadata: {
+            commandId:   cmd.commandId,
+            commandType: cmd.commandType,
+            stationId:   cmd.stationId,
+            bayId:       cmd.bayId,
+            triggeredAt: new Date().toISOString(),
+          },
+        }).catch(() => { /* swallowed by helper, double-guard */ });
       }).catch((e: any) => {
         logger.error('[MachineCmd] Auto-compensation failed — manual review required', {
           commandId:  cmd.commandId,
           sessionId:  cmd.sessionId,
           error:      e?.message,
         });
+        // PR-W-RETRY: this is the silent-failure path the Lane-3 audit
+        // flagged — auto-compensation threw, customer is charged, no
+        // automatic refund. Persist a 'critical' alert so finance/ops
+        // can intervene manually. Visibility only — does NOT retry.
+        logAuditEvent({
+          actionType: 'K9000_COMPENSATION_FAILED',
+          targetType: 'wash_session',
+          targetId:   cmd.sessionId!,
+          severity:   'critical',
+          metadata: {
+            commandId:   cmd.commandId,
+            commandType: cmd.commandType,
+            stationId:   cmd.stationId,
+            bayId:       cmd.bayId,
+            error:       e?.message ?? String(e),
+            failedAt:    new Date().toISOString(),
+          },
+        }).catch(() => { /* swallowed by helper, double-guard */ });
       });
     }
   }
