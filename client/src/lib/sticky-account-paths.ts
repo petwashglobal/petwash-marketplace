@@ -38,6 +38,19 @@ export const STICKY_ACCOUNT_PATHS: readonly string[] = [
   '/sign-in',
   '/signup',
   '/sign-up',
+  // Issue #153 PR-BPV-2 — Prestige / loyalty join flows. Diagnostic
+  // 4404078588 V4: PromoAdPopup (z-9999, 100dvh shell, body scroll-lock
+  // for 3.5s) was mounting on these routes and covering the join CTA
+  // for the first 3.5s of every visit, creating the "Prestige hidden
+  // blocker" symptom. Adding them here means the popup is suppressed
+  // (matches /become-provider behaviour) so first-tap hits the join
+  // button, not the white click-catcher. Display gate only — popup
+  // internals (z-index, AUTO_DISMISS_MS, scroll-lock) unchanged.
+  '/prestige-club',
+  '/prestige-pass',
+  '/privilege',
+  '/loyalty',
+  '/loyalty/join',
 ] as const;
 
 /**
