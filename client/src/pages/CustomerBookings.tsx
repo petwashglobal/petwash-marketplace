@@ -149,7 +149,13 @@ interface Booking {
   // Issue #153 priority 4 (OPT-A): tag a booking's source so the UI can
   // render a small badge ("Marketplace") and avoid sending invalid
   // booking_requests-only mutations to marketplace rows.
-  kind?: 'request' | 'marketplace';
+  // Issue #153 PR-3: extend the source-tag enum to cover the three NEWLY
+  // aggregated platforms — sitter (Sitter Suite), walker (Walk My Pet
+  // canonical /walks/mine post-#179), academy (Pet Wash Academy). Each
+  // source goes through a SAFE-FIELD ALLOWLIST mapper below so internal
+  // fields (payouts, payment intents, internal status_history, etc.)
+  // are NEVER forwarded to the UI.
+  kind?: 'request' | 'marketplace' | 'sitter' | 'walker' | 'academy';
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -496,7 +502,15 @@ function BookingCard({
   // and have a different cancel path; we intentionally hide the cancel
   // button on those rows for now (read-only bridge — no booking-state
   // mutation in this PR per the OPT-A constraints).
-  const canCancel   = CANCELLABLE_STATUSES.has(booking.status) && !!onCancel && booking.kind !== 'marketplace';
+  // Issue #153 PR-3: cancel is wired only for the legacy /api/booking-requests
+  // path. Marketplace, Sitter, Walker, and Academy rows use platform-specific
+  // cancel flows (handled on each platform's own page) — disable the inline
+  // cancel button for those kinds so we don't fire an invalid mutation.
+  const canCancel   = CANCELLABLE_STATUSES.has(booking.status) && !!onCancel
+                      && booking.kind !== 'marketplace'
+                      && booking.kind !== 'sitter'
+                      && booking.kind !== 'walker'
+                      && booking.kind !== 'academy';
   const hasRefund   = (booking.refundCents ?? 0) > 0;
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
   const canReview   = booking.status === 'completed';
@@ -582,6 +596,30 @@ function BookingCard({
                         data-testid="badge-marketplace-source"
                       >
                         {isRTL ? 'מרקטפלייס' : 'Marketplace'}
+                      </span>
+                    )}
+                    {booking.kind === 'sitter' && (
+                      <span
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200"
+                        data-testid="badge-sitter-source"
+                      >
+                        {isRTL ? 'פטסיטר' : 'Sitter'}
+                      </span>
+                    )}
+                    {booking.kind === 'walker' && (
+                      <span
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                        data-testid="badge-walker-source"
+                      >
+                        {isRTL ? 'הולך' : 'Walker'}
+                      </span>
+                    )}
+                    {booking.kind === 'academy' && (
+                      <span
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                        data-testid="badge-academy-source"
+                      >
+                        {isRTL ? 'אקדמיה' : 'Academy'}
                       </span>
                     )}
                   </p>
@@ -859,6 +897,146 @@ export default function CustomerBookings() {
     retry: false,
   });
 
+  // ── Issue #153 PR-3: unified CustomerBookings aggregator ────────────────────
+  // Three NEW read-only sources (verified safe in cross-platform trust-boundary
+  // audit, comment 4403888370): Sitter Suite, Walk My Pet canonical /walks/mine
+  // (post-#179), Pet Wash Academy. Each query is isolated — `retry: false` so
+  // a single endpoint failure (network blip, server hiccup) does NOT blank
+  // the page; the other four sources keep rendering.
+  //
+  // Excluded by the audit (CEO-locked): legacy /api/walk-my-pet/users/:userId
+  // /walks (URL-uid pattern, kept for back-compat with admin bypass), K9000
+  // (no customer-scoped GET endpoint exists), PawFinder (community bulletin
+  // board, semantic mismatch), PetTrek (legally blocked at router level).
+  //
+  // SAFE-FIELD ALLOWLIST: each mapper below lists EXACTLY the keys forwarded
+  // to the UI. Internal fields (provider payout, platform fee, payment
+  // intent, escrow ids, internal status_history) are NEVER copied.
+
+  type SitterRow = {
+    id?: string;
+    bookingId?: string;
+    status?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    totalAmount?: string | number | null;
+    currency?: string | null;
+    createdAt?: string | null;
+    sitterId?: string | null;
+    sitterName?: string | null;
+  };
+
+  const sitterFromRow = (row: SitterRow): Booking => ({
+    requestId: row.bookingId || row.id || '',
+    status: row.status || 'pending',
+    serviceType: 'pet_sitting',
+    startDate: row.startDate || row.createdAt || '',
+    endDate: row.endDate || row.startDate || row.createdAt || '',
+    petCount: 1,
+    totalCents: decimalToCents(row.totalAmount),
+    currency: row.currency || 'ILS',
+    createdAt: row.createdAt || '',
+    providerId: row.sitterId || undefined,
+    providerName: row.sitterName ?? null,
+    cancellationReason: null,
+    cancelledBy: null,
+    kind: 'sitter',
+  });
+
+  type WalkerRow = {
+    id?: number | string;
+    bookingId?: string;
+    status?: string;
+    scheduledDate?: string | null;
+    scheduledStartTime?: string | null;
+    durationMinutes?: number | null;
+    totalCost?: string | number | null;
+    currency?: string | null;
+    createdAt?: string | null;
+    walkerId?: string | null;
+  };
+
+  const walkerFromRow = (row: WalkerRow): Booking => ({
+    requestId: String(row.bookingId || row.id || ''),
+    status: row.status || 'pending',
+    serviceType: 'dog_walking',
+    startDate: row.scheduledDate || row.createdAt || '',
+    endDate: row.scheduledDate || row.createdAt || '',
+    petCount: 1,
+    totalCents: decimalToCents(row.totalCost),
+    currency: row.currency || 'ILS',
+    createdAt: row.createdAt || row.scheduledDate || '',
+    providerId: row.walkerId || undefined,
+    providerName: null,
+    cancellationReason: null,
+    cancelledBy: null,
+    kind: 'walker',
+  });
+
+  type AcademyRow = {
+    id?: string;
+    bookingId?: string;
+    status?: string;
+    scheduledDate?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    totalAmount?: string | number | null;
+    currency?: string | null;
+    createdAt?: string | null;
+    trainerId?: string | null;
+    trainer?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
+  };
+
+  const academyFromRow = (row: AcademyRow): Booking => {
+    const trainerName =
+      row.trainer && (row.trainer.firstName || row.trainer.lastName)
+        ? `${row.trainer.firstName ?? ''} ${row.trainer.lastName ?? ''}`.trim()
+        : null;
+    return {
+      requestId: row.bookingId || row.id || '',
+      status: row.status || 'pending',
+      serviceType: 'training',
+      startDate: row.startTime || row.scheduledDate || row.createdAt || '',
+      endDate: row.endTime || row.startTime || row.scheduledDate || row.createdAt || '',
+      petCount: 1,
+      totalCents: decimalToCents(row.totalAmount),
+      currency: row.currency || 'ILS',
+      createdAt: row.createdAt || row.scheduledDate || '',
+      providerId: row.trainerId || row.trainer?.id || undefined,
+      providerName: trainerName,
+      cancellationReason: null,
+      cancelledBy: null,
+      kind: 'academy',
+    };
+  };
+
+  const sitterQuery = useQuery<SitterRow[] | { bookings?: SitterRow[] }>({
+    queryKey: ['/api/sitter-suite/bookings', { role: 'owner' }],
+    queryFn: () =>
+      fetch('/api/sitter-suite/bookings?role=owner', { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : [])),
+    enabled: !!user,
+    retry: false,
+  });
+
+  const walkerQuery = useQuery<{ success: boolean; bookings: WalkerRow[] }>({
+    queryKey: ['/api/walk-my-pet/walks/mine'],
+    queryFn: () =>
+      fetch('/api/walk-my-pet/walks/mine', { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : { success: false, bookings: [] })),
+    enabled: !!user,
+    retry: false,
+  });
+
+  const academyQuery = useQuery<AcademyRow[]>({
+    queryKey: ['/api/academy/bookings'],
+    queryFn: () =>
+      fetch('/api/academy/bookings', { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : [])),
+    enabled: !!user,
+    retry: false,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) =>
       apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { reason }),
@@ -886,16 +1064,45 @@ export default function CustomerBookings() {
     () => marketplaceRows.map(marketplaceFromRow),
     [marketplaceRows],
   );
+
+  // Issue #153 PR-3 — defensive unwrap. Each new source can return either an
+  // array directly OR an envelope { bookings: [...] }. We accept both shapes
+  // so the legacy walker {success, bookings} envelope and the simpler sitter
+  // / academy array responses BOTH work.
+  const sitterRows: SitterRow[] = useMemo(() => {
+    const d = sitterQuery.data;
+    if (Array.isArray(d)) return d;
+    if (d && Array.isArray((d as any).bookings)) return (d as any).bookings;
+    return [];
+  }, [sitterQuery.data]);
+  const walkerRows: WalkerRow[] = walkerQuery.data?.bookings ?? [];
+  const academyRows: AcademyRow[] = useMemo(() => {
+    const d = academyQuery.data;
+    if (Array.isArray(d)) return d;
+    if (d && Array.isArray((d as any).bookings)) return (d as any).bookings;
+    return [];
+  }, [academyQuery.data]);
+
+  const sitterBookings = useMemo(() => sitterRows.map(sitterFromRow), [sitterRows]);
+  const walkerBookings = useMemo(() => walkerRows.map(walkerFromRow), [walkerRows]);
+  const academyBookings = useMemo(() => academyRows.map(academyFromRow), [academyRows]);
+
   const allBookings = useMemo(() => {
-    // Tag legacy rows so the UI can distinguish them from marketplace rows.
+    // Tag legacy rows so the UI can distinguish them from the four other sources.
     const tagged = legacyBookings.map((b) => ({ ...b, kind: b.kind ?? ('request' as const) }));
-    const combined = [...tagged, ...marketplaceBookings];
+    const combined = [
+      ...tagged,
+      ...marketplaceBookings,
+      ...sitterBookings,
+      ...walkerBookings,
+      ...academyBookings,
+    ];
     return combined.sort((a, b) => {
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return tb - ta;
     });
-  }, [legacyBookings, marketplaceBookings]);
+  }, [legacyBookings, marketplaceBookings, sitterBookings, walkerBookings, academyBookings]);
 
   const filtered = useMemo(() =>
     allBookings.filter(b => {
