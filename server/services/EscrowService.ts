@@ -7,6 +7,11 @@
 import admin from "../lib/firebase-admin";
 import crypto from "crypto";
 import NotificationService from "./NotificationService";
+// Issue #153 PR-TAX-3 — forensic audit. logAuditEvent is fail-soft (catches
+// internal errors and logs without throwing) so a write to audit_events
+// never blocks an escrow transition. No new dependency: this module already
+// ships in server/middleware/auditLog.ts.
+import { logAuditEvent } from "../middleware/auditLog";
 
 export interface CreditPaymentBreakdown {
   egiftCents: number;
@@ -182,6 +187,27 @@ class EscrowService {
       return e;
     });
 
+    // Issue #153 PR-TAX-3 — forensic audit row, AFTER the tx commits and
+    // BEFORE notifications. logAuditEvent is fail-soft so this never
+    // blocks the release. No money math change, no schema change.
+    await logAuditEvent({
+      actorUserId: releasedBy,
+      actionType: "ESCROW_RELEASED",
+      targetType: "escrow_payment",
+      targetId: escrowId,
+      metadata: {
+        bookingId: escrow.bookingId,
+        customerId: escrow.customerId,
+        providerId: escrow.providerId,
+        amount: escrow.amount,
+        currency: escrow.currency,
+        platformCommissionCents: escrow.platformCommissionCents,
+        providerPayoutCents: escrow.providerPayoutCents,
+        nayaxTransactionId: escrow.nayaxTransactionId,
+        prevStatus: "held",
+      },
+    });
+
     const providerPayout = escrow.providerPayoutCents
       ? (escrow.providerPayoutCents / 100).toFixed(2)
       : escrow.amount.toFixed(2);
@@ -247,6 +273,27 @@ class EscrowService {
       return e;
     });
 
+    // Issue #153 PR-TAX-3 — forensic audit row, AFTER the tx commits and
+    // BEFORE notifications. Money math NOT changed; this is observability
+    // only. The legal credit-note (חשבונית זיכוי) wiring remains in the
+    // CEO + CPA approval queue.
+    await logAuditEvent({
+      actorUserId: refundedBy,
+      actionType: "ESCROW_REFUNDED",
+      targetType: "escrow_payment",
+      targetId: escrowId,
+      metadata: {
+        bookingId: escrow.bookingId,
+        customerId: escrow.customerId,
+        providerId: escrow.providerId,
+        amount: escrow.amount,
+        currency: escrow.currency,
+        nayaxTransactionId: escrow.nayaxTransactionId,
+        reason,
+        prevStatus: "held",
+      },
+    });
+
     await NotificationService.sendNotification({
       userId: escrow.customerId,
       type: "payment",
@@ -295,6 +342,27 @@ class EscrowService {
         autoReleaseBlocked: true, // FREEZE: cron must NOT auto-release disputed funds (Section 10)
       });
       return e;
+    });
+
+    // Issue #153 PR-TAX-3 — forensic audit row, AFTER the tx commits and
+    // BEFORE notifications. Section-10 autoReleaseBlocked freeze remains
+    // canonical inside the tx; the audit row records the dispute event
+    // for the same booking so a forensic timeline can be reconstructed.
+    await logAuditEvent({
+      actorUserId: disputedBy,
+      actionType: "ESCROW_DISPUTED",
+      targetType: "escrow_payment",
+      targetId: escrowId,
+      metadata: {
+        bookingId: escrow.bookingId,
+        customerId: escrow.customerId,
+        providerId: escrow.providerId,
+        amount: escrow.amount,
+        currency: escrow.currency,
+        nayaxTransactionId: escrow.nayaxTransactionId,
+        disputeReason,
+        prevStatus: escrow.status,
+      },
     });
 
     await NotificationService.sendNotification({
