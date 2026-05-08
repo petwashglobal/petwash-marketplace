@@ -80,9 +80,15 @@ describe('Issue #153 PR-WHITE-1 — pure-white popup shell', () => {
 
   it('image uses object-contain (not object-cover) so brand artwork is never cropped', () => {
     // The <img> tag inside PosterTemplate must be object-contain. We
-    // anchor the assertion on the alt text so we hit the right <img>.
-    const imgTag =
-      SRC.match(/<img\s+[\s\S]{0,400}alt="Pet Wash™ Smart Hub"[\s\S]{0,400}\/>/)?.[0] ?? '';
+    // walk the file by anchor index because the in-tag comment block
+    // can be long (PR-WHITE-2 added documentation inside the tag).
+    const altIdx = SRC.indexOf('alt="Pet Wash™ Smart Hub"');
+    expect(altIdx).toBeGreaterThan(0);
+    const tagStart = SRC.lastIndexOf('<img', altIdx);
+    expect(tagStart).toBeGreaterThan(0);
+    const tagEnd = SRC.indexOf('/>', altIdx);
+    expect(tagEnd).toBeGreaterThan(altIdx);
+    const imgTag = SRC.slice(tagStart, tagEnd + 2);
     expect(imgTag).toMatch(/object-contain/);
     expect(imgTag).not.toMatch(/object-cover/);
   });
@@ -106,11 +112,17 @@ describe('Issue #153 PR-WHITE-1 — pure-white popup shell', () => {
     expect(openingTag).not.toMatch(/border-white\/20/);
   });
 
-  it('popup business logic preserved (timing, suppression, pause-on-hover, close button)', () => {
+  it('popup business logic preserved (suppression, pause-on-hover, close button, safety guard)', () => {
     // Regression guards: a future "white-luxury polish" PR must not
     // accidentally weaken the show-once, 24 h suppression, or pause-on-
     // hover semantics that PR-WHITE-1 explicitly does not touch.
-    expect(SRC).toMatch(/AUTO_DISMISS_MS\s*=\s*12000/);
+    //
+    // NOTE: AUTO_DISMISS_MS was 12000 in PR-WHITE-1 era; PR-WHITE-2
+    // intentionally retunes it to 3500 (luxury splash timing). The
+    // dedicated PR-WHITE-2 source-pin holds the exact value; this PR
+    // -WHITE-1 test now only asserts the constant is DEFINED, leaving
+    // the value to PR-WHITE-2.
+    expect(SRC).toMatch(/AUTO_DISMISS_MS\s*=\s*\d+/);
     expect(SRC).toMatch(/SUPPRESS_DURATION_MS\s*=\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
     expect(SRC).toMatch(/setIsHovered\(true\)/);
     expect(SRC).toMatch(/data-testid="button-close-promo"/);
