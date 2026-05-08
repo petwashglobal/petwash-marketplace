@@ -4,6 +4,7 @@ import type { OAuthCredential } from "firebase/auth";
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
+import { seedSignupIntentCookie } from "@/lib/seedIntent";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useSEO, pageSEO } from "@/lib/seo";
@@ -974,6 +975,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (authStrategy === 'redirect') {
         logger.info(`[Auth] iPhone detected — using redirect for ${provider}`);
         setRedirectMarker(provider);
+        // PR-FRES-2: Seed signup_intent into HttpOnly cookie BEFORE the OAuth
+        // redirect so iPhone Safari ITP cannot wipe localStorage during the
+        // roundtrip and drop returning customers onto /home instead of
+        // /provider-onboarding. Server fallback path: post-login.ts:325.
+        await seedSignupIntentCookie();
         await signInWithRedirect(auth, authProvider);
         setSocialLoading(null);
         return;

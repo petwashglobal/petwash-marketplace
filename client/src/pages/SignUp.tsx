@@ -34,6 +34,7 @@ import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/a
 import { storePasskeyEmail } from "@/hooks/useAutoFaceID";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
+import { seedSignupIntentCookie } from '@/lib/seedIntent';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { executeReCaptcha, preloadReCaptcha } from '@/components/ReCaptcha';
@@ -222,6 +223,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
       const strategy = getAuthStrategy();
       const { signInWithPopup, signInWithRedirect } = await import('firebase/auth');
+      if (strategy === 'redirect') {
+        // PR-FRES-2: Seed signup_intent into HttpOnly cookie BEFORE redirect.
+        await seedSignupIntentCookie();
+      }
       const result = strategy === 'redirect'
         ? await signInWithRedirect(auth, authProvider).then(() => null)
         : await signInWithPopup(auth, authProvider);
