@@ -946,15 +946,21 @@ h1, h2, h3, h4, h5, h6,
  *     [data-immersive="true"].
  * ════════════════════════════════════════════════════════════════════════ */
 
-/* 1. Lock the document to the dynamic viewport (Safari ITP keyboard-aware). */
-html[data-immersive="true"],
-html[data-immersive="true"] body {
-  min-height: 100dvh;
-  /* Avoid double scrolling: the immersive layout scrolls inside .immersive-flow */
-  overflow: hidden;
-  /* Let CSS adapt to RTL Hebrew */
-  scroll-behavior: smooth;
-}
+/* 1. P0 PR-IMMERSIVE-HOTFIX (post-#190): the original PR-IMMERSIVE-CSS
+ *    rule set `overflow: hidden` on html + body whenever data-immersive
+ *    was set, ASSUMING every immersive page would adopt the
+ *    `.immersive-flow` / `.immersive-scroll` internal scroller below.
+ *    NO PAGE adopted those containers — the SignIn / SignUp /
+ *    ProviderOnboarding / VerifyEmail layouts all rely on the natural
+ *    body scroll. The combination locked iPhone Safari at /sign-in mid-
+ *    render with no internal scroller (CEO screenshot 2026-05-08).
+ *    The dangerous html/body rule is removed. The dormant
+ *    .immersive-flow / .immersive-scroll / .immersive-cta-bar rules
+ *    below remain (they only apply if a page opts in by adding the
+ *    class; today none do, so they are inert). The input font-size
+ *    iOS auto-zoom prevention and the safety-net display:none for
+ *    leaked nav remain — those are scoped to specific selectors and
+ *    do not affect the document scroller. */
 
 /* 2. The flow container — applies whether the page uses .immersive-flow OR
  *    is rendered inside the global root. Pages already using .immersive-flow
