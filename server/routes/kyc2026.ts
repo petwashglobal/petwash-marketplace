@@ -158,14 +158,24 @@ router.post(
         processingDurationMs: result.processingDurationMs,
       });
 
+      // PR-KYC-LABEL-TRUTH: KYC v2 is intentionally a zero-storage
+      // pipeline (buffers processed in memory, then zeroed at lines
+      // 135-137 above). The previous label '[Firebase Storage]' was
+      // misleading — no persistent URL exists for v2 submissions.
+      // The orchestrator only uses these fields as truthy sentinels
+      // ("did the user submit a selfie / ID?"), so a truthful marker
+      // preserves behaviour while removing the audit/legal misleading.
+      // Documents persistence (if any) lives in the legacy v1 path
+      // (server/routes/kyc.ts) — out of scope for this label fix.
+      const KYC_V2_MEMORY_ONLY_MARKER = '[kyc-v2-memory-only]';
       setImmediate(() => petWashOrchestrator.handleKYCSubmission({
         userId,
         fullName: req.body.fullName || userId,
         email: req.body.email || 'noreply@petwash.co.il',
         docType: req.body.documentType || 'national_id',
         countryCode: req.body.documentCountry || 'IL',
-        selfieUrl: '[Firebase Storage]',
-        idDocUrl: '[Firebase Storage]',
+        selfieUrl: KYC_V2_MEMORY_ONLY_MARKER,
+        idDocUrl: KYC_V2_MEMORY_ONLY_MARKER,
         status: result.status === 'blocked' ? 'blocked'
           : result.status === 'auto_approved' ? 'auto_approved'
           : result.success ? 'submitted' : 'manual_review',
