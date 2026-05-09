@@ -634,10 +634,18 @@ jobs:
         #     must never be promoted to Cloud Run traffic.
         run: |
           echo "🔍 Starting container smoke test (no real secrets — testing boot + security only)..."
+          # PR-CI-PAYMENT-MODE: PAYMENT_PROVIDER_MODE=mock + NAYAX/SUMIT_ENABLED=false
+          # ensures the production container image boots in CI without real payment-vendor
+          # credentials. Per Rule H ("no fake success"), mock providers return ok:false
+          # for any payment call. Live deploy to Cloud Run uses PAYMENT_PROVIDER_MODE=live
+          # (default) and real GCP Secret Manager values.
           docker run -d --name petwash-smoke \
             -p 18080:8080 \
             -e PORT=8080 \
             -e NODE_ENV=production \
+            -e PAYMENT_PROVIDER_MODE=mock \
+            -e NAYAX_ENABLED=false \
+            -e SUMIT_ENABLED=false \
             "${{ env.IMAGE }}:${{ github.sha }}"
 
           # ── Phase 1: wait for /health to return 200 ──────────────────────────

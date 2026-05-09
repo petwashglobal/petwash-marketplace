@@ -221,6 +221,29 @@ const _startupSecurityViolations: string[] = [];
   }
 })();
 
+import { validateProductionPaymentSecrets as _validatePaymentSecrets } from './lib/payment-provider-mode';
+
+// ── Payment provider mode + production secret validation ────────────────────
+// PR-CI-PAYMENT-MODE: refuse to operate live in production when an enabled
+// payment provider (Nayax, SUMIT/UPay) lacks its required secrets. Mock mode
+// (PAYMENT_PROVIDER_MODE=mock) short-circuits all secret requirements so CI
+// smoke and unit tests boot without real vendor credentials. Stripe and
+// Tranzila are deprecated; their env vars trigger a deprecation warning
+// here but do NOT crash the boot — Tranzila code paths are flag-gated OFF
+// in payment-flags.ts and Stripe is no longer wired. See
+// server/lib/payment-provider-mode.ts for the canonical contract.
+(function validatePaymentProviderSecrets() {
+  const result = _validatePaymentSecrets(process.env);
+  for (const err of result.errors) {
+    console.error('🚨 [PaymentProvider] ' + err);
+    _startupConfigErrors.push('[PaymentProvider] ' + err);
+  }
+  for (const warn of result.deprecationWarnings) {
+    console.warn('⚠️  [PaymentProvider] ' + warn);
+  }
+  console.info(`[PaymentProvider] mode=${result.mode} errors=${result.errors.length} deprecationWarnings=${result.deprecationWarnings.length}`);
+})();
+
 import path from "node:path";
 import crypto from "node:crypto";
 import fs from "node:fs";
