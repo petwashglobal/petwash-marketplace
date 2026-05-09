@@ -27,6 +27,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
+import { bookingLimiter } from '../middleware/rateLimiter';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
@@ -1037,10 +1038,17 @@ router.get('/walks/bookings/:bookingId/status', async (req, res) => {
 });
 
 // Walker confirms booking
-router.post('/walks/:bookingId/confirm', async (req, res) => {
+// PR-F: requireAuth + ownership check. Caller must be the assigned walker
+// (looked up via walkerProfiles.userId, since walkBookings.walkerId stores
+// the WALKER-UUID — not a Firebase UID). Body-supplied walkerId is no
+// longer trusted.
+router.post('/walks/:bookingId/confirm', requireAuth, async (req, res) => {
   try {
+    const callerUid = (req as any).user?.uid as string | undefined;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     const { bookingId } = req.params;
-    const walkerId = req.body.walkerId;
 
     const [booking] = await db
       .select()
@@ -1052,8 +1060,15 @@ router.post('/walks/:bookingId/confirm', async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    if (booking.walkerId !== walkerId) {
-      return res.status(403).json({ error: 'Unauthorized' });
+    // Resolve the walker's Firebase UID via walkerProfiles.
+    const [walker] = await db
+      .select({ userId: walkerProfiles.userId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, booking.walkerId))
+      .limit(1);
+
+    if (!walker || walker.userId !== callerUid) {
+      return res.status(403).json({ error: 'Forbidden: only the assigned walker may confirm this booking' });
     }
 
     if (booking.status !== 'pending') {
@@ -1100,8 +1115,15 @@ router.post('/walks/:bookingId/confirm', async (req, res) => {
 });
 
 // Start walk (walker initiates)
-router.post('/walks/:bookingId/start', async (req, res) => {
+// PR-F: requireAuth + ownership check + per-user bookingLimiter rate limit
+// (caps brute-force attempts on the 6-digit confirmationCode at 20/15min
+// per Firebase UID — combined with auth this defeats enumeration).
+router.post('/walks/:bookingId/start', requireAuth, bookingLimiter, async (req, res) => {
   try {
+    const callerUid = (req as any).user?.uid as string | undefined;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     const { bookingId } = req.params;
     const { confirmationCode, latitude, longitude } = req.body;
 
@@ -1113,6 +1135,17 @@ router.post('/walks/:bookingId/start', async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Resolve the walker's Firebase UID via walkerProfiles.
+    const [walker] = await db
+      .select({ userId: walkerProfiles.userId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, booking.walkerId))
+      .limit(1);
+
+    if (!walker || walker.userId !== callerUid) {
+      return res.status(403).json({ error: 'Forbidden: only the assigned walker may start this walk' });
     }
 
     if (booking.confirmationCode !== confirmationCode) {
