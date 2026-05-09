@@ -253,6 +253,15 @@ import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
+// PR-CI-SMOKE-HOTFIX: top-level ESM-correct imports. These were previously
+// inline `require(...)` calls that throw ReferenceError in this ESM module
+// (broke /health and would have broken startup config diagnostic + uncaught
+// exception / unhandled rejection handlers once smoke got past the Nayax fix).
+// Top-level imports load eagerly; call-site try/catch still protects against
+// runtime errors inside the called functions.
+import { getBuildInfo as _getBuildInfo } from "./lib/buildInfo";
+import { logStartupConfigDiagnostic as _logStartupConfigDiagnostic } from "./lib/configHealth";
+import { SystemEventService as _SystemEventService } from "./services/SystemEventService";
 
 import cookieParser from "cookie-parser";
 import session from "express-session";
@@ -645,13 +654,12 @@ app.get('/health', (_req, res) => {
   // identifiers (K_SERVICE / K_REVISION / K_CONFIGURATION from Cloud
   // Run, GIT_SHA / COMMIT_SHA / GITHUB_SHA from CI). Never throws.
   // See server/lib/buildInfo.ts.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { getBuildInfo } = require('./lib/buildInfo');
+  // PR-CI-SMOKE-HOTFIX: imported at module top (ESM-correct).
   res.status(200).json({
     status: isDegraded ? 'DEGRADED' : 'OK',
     timestamp: new Date().toISOString(),
     bootTs: healthState.bootTs,
-    build: getBuildInfo(),
+    build: _getBuildInfo(),
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
@@ -902,8 +910,7 @@ if (isProduction) {
     // vars in deploy logs so the next misconfiguration fails LOUD,
     // not silent.
     try {
-      const { logStartupConfigDiagnostic } = require('./lib/configHealth');
-      logStartupConfigDiagnostic();
+      _logStartupConfigDiagnostic();
     } catch (e) {
       console.error('[Server] config-health diagnostic failed (non-fatal):', e);
     }
@@ -1124,8 +1131,7 @@ if (isProduction) {
         console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
         // PR-CONFIG-HEALTH: dev-mode env-var manifest log too, names only.
         try {
-          const { logStartupConfigDiagnostic } = require('./lib/configHealth');
-          logStartupConfigDiagnostic();
+          _logStartupConfigDiagnostic();
         } catch (e) {
           console.error('[Server] config-health diagnostic failed (non-fatal):', e);
         }
@@ -1437,8 +1443,7 @@ process.on('uncaughtException', (err) => {
   console.error('--------------------------------------------------');
   // Stamp to system_events — best-effort, fire-and-forget
   try {
-    const { SystemEventService } = require('./services/SystemEventService');
-    SystemEventService.stamp({
+    _SystemEventService.stamp({
       eventType: 'process_uncaught_exception',
       severity: 'critical',
       source: 'process',
@@ -1458,9 +1463,8 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('--------------------------------------------------');
   // Stamp to system_events — best-effort, fire-and-forget
   try {
-    const { SystemEventService } = require('./services/SystemEventService');
     const msg = reason instanceof Error ? reason.message : String(reason);
-    SystemEventService.stamp({
+    _SystemEventService.stamp({
       eventType: 'process_unhandled_rejection',
       severity: 'error',
       source: 'process',
