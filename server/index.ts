@@ -616,10 +616,19 @@ async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string 
 app.get('/health', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
   const isDegraded = _startupConfigErrors.length > 0 || _startupSecurityViolations.length > 0;
+  // PR-HEALTH-BUILD-SHA: surface PUBLIC deploy identifiers so the CEO /
+  // ops can confirm the production build matches the latest merge from
+  // any device with no GCP auth. Helper reads ONLY non-secret deploy
+  // identifiers (K_SERVICE / K_REVISION / K_CONFIGURATION from Cloud
+  // Run, GIT_SHA / COMMIT_SHA / GITHUB_SHA from CI). Never throws.
+  // See server/lib/buildInfo.ts.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getBuildInfo } = require('./lib/buildInfo');
   res.status(200).json({
     status: isDegraded ? 'DEGRADED' : 'OK',
     timestamp: new Date().toISOString(),
     bootTs: healthState.bootTs,
+    build: getBuildInfo(),
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
