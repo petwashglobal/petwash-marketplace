@@ -11,6 +11,7 @@ import { sitterBookings, sitterProfiles } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { getLoyaltyStatus, type LoyaltyUser } from './loyalty';
 import { bookingPolicyEngine, type CancellationResult } from './BookingPolicyEngine';
+import { countCalendarDays } from '../lib/calendar-days';
 
 interface AvailabilityResult {
   available: boolean;
@@ -277,18 +278,30 @@ export class SitterAdvancedBookingEngine {
   }
 
   /**
-   * Calculate duration based on service type
+   * Calculate duration based on service type.
+   *
+   * PR-I (forensic audit finding #10 + CEO Tel Aviv multi-day report):
+   * For overnight services we now count Asia/Jerusalem CALENDAR DAYS,
+   * not Math.ceil(ms / 86_400_000). The prior ms-ratio approach
+   * overbilled by a full night when a booking window crossed
+   * Asia/Jerusalem fall-back DST (last Sunday of October) — that day
+   * spans 25 wall-clock hours, so e.g. a 3-night stay measured ~73 h
+   * and ceil(73/24)=4. Calendar-day boundaries are DST-immune by
+   * construction. Helper lives in server/lib/calendar-days.ts.
+   *
+   * Hourly services (drop-in, walking) keep raw ms-hour math: those
+   * are billed by wall-clock hours of care actually delivered, and
+   * the question of DST adjustment for hourly billing is a separate
+   * concern (out of scope for PR-I).
    */
   private calculateDuration(startDate: Date, endDate: Date, serviceType: string): number {
-    const diffMs = endDate.getTime() - startDate.getTime();
-    
-    // For overnight services (boarding, house sitting), count days
     if (serviceType === 'Boarding' || serviceType === 'boarding' || serviceType === 'House Sitting') {
-      return Math.ceil(diffMs / (1000 * 60 * 60 * 24)); // Days
+      return countCalendarDays(startDate, endDate, 'Asia/Jerusalem');
     }
-    
-    // For hourly services (drop-in, walking), count hours
-    return Math.ceil(diffMs / (1000 * 60 * 60)); // Hours
+
+    // Hourly services (drop-in, walking) — wall-clock hours.
+    const diffMs = endDate.getTime() - startDate.getTime();
+    return Math.ceil(diffMs / (1000 * 60 * 60));
   }
 
   /**
