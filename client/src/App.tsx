@@ -146,6 +146,11 @@ const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
 const Pets = lazy(() => import("@/pages/Pets"));
+// PR-PET-4: pet onboarding luxury shell. Mounted only when
+// VITE_PET_ONBOARDING_SHELL_ENABLED='true'. Local-state only, no
+// backend persistence, no schema writes. See
+// client/src/pages/onboarding/PetOnboardingShell.tsx.
+const PetOnboardingShell = lazy(() => import("@/pages/onboarding/PetOnboardingShell"));
 const PetCarePlanner = lazy(() => import("@/pages/PetCarePlanner"));
 const EnterpriseFeaturesShowcase = lazy(() => import("@/pages/EnterpriseFeaturesShowcase"));
 const PetWashCircle = lazy(() => import("@/pages/PetWashCircle"));
@@ -1047,7 +1052,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RequireAuth>
           )}
         </Route>
-        
+
+        {/* PR-PET-4 — pet onboarding luxury shell (immersive). */}
+        {/* Feature flag: VITE_PET_ONBOARDING_SHELL_ENABLED='true' required. */}
+        {/* Default off → production users see no change. */}
+        {/* Local-state only, no backend persistence, no schema writes. */}
+        {import.meta.env.VITE_PET_ONBOARDING_SHELL_ENABLED === 'true' && (
+          <Route path="/onboarding/pet/:step?">
+            {() => (
+              <RequireAuth>
+                <Suspense fallback={<PageLoader />}>
+                  <PetOnboardingShell />
+                </Suspense>
+              </RequireAuth>
+            )}
+          </Route>
+        )}
+
+
         {/* SEO SERVICE LANDING PAGES — /services/dog-walking, /services/pet-sitting/tel-aviv, etc. */}
         <Route path="/services/:service/:city">
           {() => (

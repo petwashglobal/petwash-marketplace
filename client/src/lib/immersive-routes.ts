@@ -82,6 +82,12 @@ export const IMMERSIVE_ROUTES: readonly string[] = [
   '/internal/onboard',
   '/internal/onboarding',
   '/forms/onboarding',
+  // PR-PET-4: pet onboarding luxury shell. Feature-flagged via
+  // VITE_PET_ONBOARDING_SHELL_ENABLED at the App.tsx <Route> mount.
+  // Listing the prefix here is safe even when the flag is off: the
+  // helper is a pure prefix matcher and the route never resolves
+  // without the flag, so no live page is affected.
+  '/onboarding/pet',
 
   // ── Provider lifecycle (every form / pending / rejected screen) ────────
   '/provider-onboarding',
