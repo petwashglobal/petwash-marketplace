@@ -9,6 +9,7 @@ import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdmin } from '../middleware/rbac';
 import { deriveTopupIdempotencyKey } from '../lib/topup-idempotency';
 import { deriveAdminCreditIdempotencyKey } from '../lib/admin-credit-idempotency';
+import { verifyNayaxTopup, type WalletTopupVerifyReason } from '../lib/wallet-topup-verify';
 
 const router = Router();
 
@@ -99,6 +100,28 @@ router.post('/topup', topupRateLimiter, async (req, res) => {
         userId,
         amountCents,
       });
+    }
+
+    // ── PR-J: Nayax verification (forensic audit F-05) ─────────────────────
+    // Reject any non-admin top-up whose (nayaxTxId, amountCents, userId)
+    // tuple does not match the locally-recorded nayaxTransactions row.
+    // Runs BEFORE the idempotency lock so we don't burn an idempotency
+    // row on a rejected txn. Admin manual top-ups (no nayaxTxId) skip
+    // verification — that path is logged + audited above.
+    if (!isAdminUser && nayaxTxId) {
+      const verify = await verifyNayaxTopup({ userId, nayaxTxId, claimedAmountCents: amountCents });
+      if (!verify.ok) {
+        const reason: WalletTopupVerifyReason = verify.reason;
+        logger.warn('[Credit Wallet] Top-up verification rejected', {
+          userId, nayaxTxId, amountCents, reason,
+        });
+        return res.status(402).json({
+          success: false,
+          error: 'Top-up could not be verified against the Nayax transaction record.',
+          errorCode: 'PAYMENT_NOT_VERIFIED',
+          reason,
+        });
+      }
     }
 
     // ── PR-W4: idempotency guard ─────────────────────────────────────────────
