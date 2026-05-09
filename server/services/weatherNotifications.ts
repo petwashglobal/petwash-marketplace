@@ -1,11 +1,40 @@
 /**
  * Smart Weather Notification Service
- * 
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * STATUS — PR-B-WEATHER-DISABLE (CEO-approved 2026-05-08)
+ *
+ *   Engine is REAL: geocoding, weather forecast, severity classification,
+ *   per-user cooldown, and FCM dispatch are all production-grade code.
+ *
+ *   User-targeting queries are TODO STUBS (search "TODO" below at
+ *   lines 177, 184, 191, 233, 236, 239). Until those queries are
+ *   implemented, the service walks an empty targetUsers array and
+ *   sends NO actual notifications.
+ *
+ *   The cron schedule that called this service is intentionally DISABLED
+ *   in server/backgroundJobs.ts (search the marker phrase below).
+ *   Marker: WEATHER ALERTS DISABLED UNTIL USER TARGETING QUERIES ARE IMPLEMENTED
+ *   The disable was made in PR-B-WEATHER-DISABLE to stop fake operational
+ *   readiness + unnecessary Google Weather / Open-Meteo / geocode quota cost.
+ *
+ *   The cron is COMMENTED OUT, NOT DELETED, so a future product spec
+ *   for the user-targeting queries can re-enable it verbatim.
+ *
+ *   To finish wiring (separate, future PR after product spec):
+ *     1. Implement queries for active dog walkers, pet sitters,
+ *        wash users, walk sessions, and stations (lines listed above).
+ *     2. Confirm consent + opt-out compliance per audience.
+ *     3. Uncomment the cron schedule in backgroundJobs.ts.
+ *     4. Add e2e + source-pin tests for the targeting queries.
+ *   Do NOT guess SQL for these queries.
+ * ════════════════════════════════════════════════════════════════════
+ *
  * Sends intelligent weather alerts to platform users:
  * - Dog walkers (⁦Walk My Pet™⁩)
- * - Drivers (⁦PetTrek™⁩)  
+ * - Drivers (⁦PetTrek™⁩)
  * - Pet wash hub users
- * 
+ *
  * Rules: NOT TOO MANY notifications (intelligent timing)
  */
 
