@@ -12,6 +12,7 @@ import { Plus, Trash2, Calculator, Sparkles, ChevronLeft, Info } from 'lucide-re
 import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { COMPANY_TAX_ID } from '@shared/finance-identity';
 
 type PetType = 'dog' | 'cat';
 type PetSize = 'small' | 'medium' | 'large' | 'giant';
@@ -375,7 +376,7 @@ export default function DaycareCalculator() {
                   </div>
 
                   <p className="text-[10px] text-gray-400 mt-3 text-center">
-                    ₪{result.breakdown.pricePerDayPerPet} per pet / per day · VAT included · Reg. 516788400
+                    ₪{result.breakdown.pricePerDayPerPet} per pet / per day · VAT included · Reg. {COMPANY_TAX_ID}
                   </p>
                 </div>
               </div>

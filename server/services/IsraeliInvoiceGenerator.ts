@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import { db } from "../db";
+import { getCompanyVatLineHe, getCompanyVatLineEn } from "@shared/finance-identity";
 import {
   providerCommissions,
   contractorProfiles,
@@ -110,7 +111,7 @@ export class IsraeliInvoiceGenerator {
       .font("Helvetica")
       .moveDown(0.5)
       .text("ח.פ: 517145033", { align: "right" })
-      .text("עוסק מורשה: 516788400", { align: "right" })
+      .text(getCompanyVatLineHe(), { align: "right" })
       .text("ישראל", { align: "right" })
       .text("טלפון: 03-1234567", { align: "right" })
       .text("דוא\"ל: invoices@petwash.co.il", { align: "right" });
@@ -233,7 +234,7 @@ export class IsraeliInvoiceGenerator {
       .font("Helvetica")
       .moveDown(0.5)
       .text("Company No: 517145033", { align: "left" })
-      .text("VAT No: 516788400", { align: "left" })
+      .text(getCompanyVatLineEn(), { align: "left" })
       .text("Israel", { align: "left" })
       .text("Phone: +972-3-1234567", { align: "left" })
       .text("Email: invoices@petwash.co.il", { align: "left" });

@@ -2,7 +2,7 @@
  * VAT Calculator Service — Israeli Tax Compliance (מע"מ)
  * ========================================================
  * Israeli VAT rate: 18% (effective 1 January 2025, per Tax Authority circular)
- * Company VAT number: 516788400  (Pet Wash Ltd)
+ * Company VAT number: read from shared/finance-identity (canonical: 517145033)
  *
  * TWO LEGALLY DISTINCT SALE MODES:
  *
@@ -44,6 +44,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { COMPANY_TAX_ID } from '@shared/finance-identity';
 
 // Re-exported for downstream consumers that already import this name from
 // VATCalculatorService. The single source of truth is
@@ -248,7 +249,7 @@ class VATCalculatorService {
         vatOnPlatformFee: calc.vatOnPlatformFee,
         platformFeeGross: calc.platformFeeGross,
         issuedAt: issuedAt.toISOString(),
-        companyTaxId: '516788400',
+        companyTaxId: COMPANY_TAX_ID,
       })).digest('hex');
 
       await db.insert(digitalReceipts).values({
@@ -271,7 +272,7 @@ class VATCalculatorService {
         paymentMethod: 'internal_ledger',
         paymentStatus: 'completed',
         companyName: 'Pet Wash Ltd',
-        companyTaxId: '516788400',
+        companyTaxId: COMPANY_TAX_ID,
         companyAddress: 'ישראל',
         auditHash,
         accountingRecorded: true,
@@ -366,7 +367,7 @@ class VATCalculatorService {
         vatOnPlatformFee: calc.vatOnPlatformFee,
         platformFeeGross: calc.platformFeeGross,
         issuedAt: issuedAt.toISOString(),
-        companyTaxId: '516788400',
+        companyTaxId: COMPANY_TAX_ID,
       })).digest('hex');
 
       await db.insert(digitalReceipts).values({
@@ -389,7 +390,7 @@ class VATCalculatorService {
         paymentMethod: 'internal_ledger',
         paymentStatus: 'completed',
         companyName: 'Pet Wash Ltd',
-        companyTaxId: '516788400',
+        companyTaxId: COMPANY_TAX_ID,
         companyAddress: 'ישראל',
         auditHash,
         accountingRecorded: true,

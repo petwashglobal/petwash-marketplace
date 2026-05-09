@@ -16,12 +16,13 @@
  *   - One document per financial event (never skip)
  *   - Documents are immutable once issued (void + reissue pattern)
  *   - Sequence number is monotonically assigned per document type per year
- *   - vatNumber must be confirmed with accountant (current: 516788400)
+ *   - vatNumber sourced from shared/finance-identity (canonical: 517145033)
  */
 
 import { nanoid } from 'nanoid';
 import { db } from '../db';
 import { pwTaxDocuments } from '@shared/schema-payments';
+import { COMPANY_TAX_ID } from '@shared/finance-identity';
 import { sql, eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { allocateTaxSequenceNumber, getTaxSeqLockKey } from './TaxSequenceService';
@@ -50,7 +51,7 @@ export interface IssueTaxDocumentParams {
   payload?: Record<string, unknown>;
 }
 
-const COMPANY_VAT_NUMBER = process.env.COMPANY_VAT_NUMBER || '516788400';
+const COMPANY_VAT_NUMBER = process.env.COMPANY_VAT_NUMBER || COMPANY_TAX_ID;
 
 function genTaxDocId(): string {
   return `TAX-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
