@@ -30,10 +30,76 @@ import {
   sitterProfiles,
   providers,
   providerOperationalSettings,
+  bookings,
 } from "../../shared/schema";
-import { and, eq, or, inArray } from "drizzle-orm";
+import { and, eq, or, inArray, gte, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { eventBus } from "./EventBus";
+
+// ── Availability truth helper (PR-E-AVAILABILITY-FLAG-TRUTH) ───────────────
+//
+// Existing canonical source: bookings-table overlap with the same blocking
+// statuses used by booking-service.ts:checkAvailability. This is the
+// CONSERVATIVE layer (does NOT require an availability_slots row to exist),
+// so no provider is hidden unfairly when slot data is sparse — it only
+// flips to false when there is a real, on-record booking conflict.
+//
+// Out of scope for this PR: availability_slots existence check (slot
+// population must come first; tracked in a future PR).
+
+const BOOKING_BLOCKING_STATUSES = [
+  "draft",
+  "pending_payment",
+  "pending_provider",
+  "confirmed",
+  "in_progress",
+] as const;
+
+function parseRequestedRange(
+  filters: ProviderSearchFilters
+): { start: Date; end: Date } | null {
+  if (!filters.startDate || !filters.endDate) return null;
+  const start = new Date(filters.startDate);
+  const end = new Date(filters.endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+  if (end <= start) return null;
+  return { start, end };
+}
+
+async function getConflictedProviderIds(
+  platformId: string,
+  providerIdsAsStrings: string[],
+  range: { start: Date; end: Date }
+): Promise<Set<string>> {
+  if (providerIdsAsStrings.length === 0) return new Set();
+  try {
+    const rows = await db
+      .select({ providerId: bookings.providerId })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.platformId, platformId),
+          inArray(bookings.providerId, providerIdsAsStrings),
+          inArray(bookings.status, BOOKING_BLOCKING_STATUSES as unknown as string[]),
+          // Overlap: existing booking starts before requested end
+          //          AND existing booking ends after requested start
+          lte(bookings.startTime, range.end),
+          gte(bookings.endTime, range.start)
+        )
+      );
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.providerId) set.add(r.providerId);
+    }
+    return set;
+  } catch (err: any) {
+    logger.warn("[ProviderSearch] Conflict query failed; treating as no conflict", {
+      platformId,
+      error: err.message,
+    });
+    return new Set();
+  }
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -167,6 +233,15 @@ async function fetchDogWalkers(
     .where(eq(walkerProfiles.verificationStatus, "verified"))
     .limit(200);
 
+  const range = parseRequestedRange(filters);
+  const conflictSet = range
+    ? await getConflictedProviderIds(
+        "walk_my_pet",
+        rows.map((r) => String(r.providerId)),
+        range
+      )
+    : new Set<string>();
+
   return rows.map((w) => {
     const displayName =
       w.walkerDisplay ||
@@ -181,8 +256,9 @@ async function fetchDogWalkers(
     if (w.instantBooking) badges.push("הזמנה מיידית");
     if (rating >= 4.8) badges.push("מדורג גבוה");
 
+    const providerIdStr = String(w.providerId);
     return {
-      providerId: String(w.providerId),
+      providerId: providerIdStr,
       providerSlug: slug(`${displayName}-${w.city || "il"}`),
       displayName,
       avatarUrl: w.walkerPhoto ?? w.providerPhoto ?? undefined,
@@ -201,7 +277,7 @@ async function fetchDogWalkers(
       startingPrice: price,
       currency: w.currency ?? "ILS",
       priceLabel: price > 0 ? `מ-₪${price}` : "לפי פנייה",
-      availableForRequestedDates: true,
+      availableForRequestedDates: !conflictSet.has(providerIdStr),
       rankingScore: 0,
       badges,
     };
@@ -209,7 +285,8 @@ async function fetchDogWalkers(
 }
 
 async function fetchSitters(
-  serviceType: "pet_sitting" | "daycare" | null
+  serviceType: "pet_sitting" | "daycare" | null,
+  filters: ProviderSearchFilters
 ): Promise<ProviderSearchItem[]> {
   // Map marketplace serviceType to the values stored in sitter_profiles.service_types[]
   const SITTER_SERVICE_MAP: Record<string, string[]> = {
@@ -264,6 +341,15 @@ async function fetchSitters(
     )
     .limit(200);
 
+  const range = parseRequestedRange(filters);
+  const conflictSet = range
+    ? await getConflictedProviderIds(
+        "sitter_suite",
+        rows.map((r) => String(r.providerId)),
+        range
+      )
+    : new Set<string>();
+
   const results: ProviderSearchItem[] = [];
   for (const s of rows) {
     const services = s.sitterServices ?? [];
@@ -290,8 +376,9 @@ async function fetchSitters(
     if (s.verificationLevel === "gold") badges.push("פרמיום");
     if (rating >= 4.8) badges.push("מדורג גבוה");
 
+    const providerIdStr = String(s.providerId);
     results.push({
-      providerId: String(s.providerId),
+      providerId: providerIdStr,
       providerSlug: slug(`${displayName}-${s.city || "il"}`),
       displayName,
       avatarUrl: s.avatarUrl ?? undefined,
@@ -310,7 +397,7 @@ async function fetchSitters(
       startingPrice: price,
       currency: "ILS",
       priceLabel: price > 0 ? `מ-₪${price}` : "לפי פנייה",
-      availableForRequestedDates: true,
+      availableForRequestedDates: !conflictSet.has(providerIdStr),
       rankingScore: 0,
       badges,
     });
@@ -320,7 +407,8 @@ async function fetchSitters(
 
 async function fetchByPlatform(
   platformId: string,
-  serviceType: MarketplaceServiceType
+  serviceType: MarketplaceServiceType,
+  filters: ProviderSearchFilters
 ): Promise<ProviderSearchItem[]> {
   const rows = await db
     .select({
@@ -349,6 +437,15 @@ async function fetchByPlatform(
     )
     .limit(200);
 
+  const range = parseRequestedRange(filters);
+  const conflictSet = range
+    ? await getConflictedProviderIds(
+        platformId,
+        rows.map((r) => String(r.providerId)),
+        range
+      )
+    : new Set<string>();
+
   return rows.map((p) => {
     const displayName = p.businessName || "ספק שירות";
     const rating = parseDec(p.rating);
@@ -360,8 +457,9 @@ async function fetchByPlatform(
     if (p.instantBooking) badges.push("הזמנה מיידית");
     if (rating >= 4.8) badges.push("מדורג גבוה");
 
+    const providerIdStr = String(p.providerId);
     return {
-      providerId: String(p.providerId),
+      providerId: providerIdStr,
       providerSlug: slug(`${displayName}-il`),
       displayName,
       avatarUrl: p.photoUrl ?? undefined,
@@ -376,7 +474,7 @@ async function fetchByPlatform(
       startingPrice: 0,
       currency: "ILS",
       priceLabel: "לפי פנייה",
-      availableForRequestedDates: true,
+      availableForRequestedDates: !conflictSet.has(providerIdStr),
       rankingScore: 0,
       badges,
     };
@@ -392,21 +490,21 @@ async function fetchMarketplaceProviders(
 
   try {
     if (serviceType === "dog_walking") return fetchDogWalkers(filters);
-    if (serviceType === "pet_sitting") return fetchSitters("pet_sitting");
-    if (serviceType === "daycare") return fetchSitters("daycare");
+    if (serviceType === "pet_sitting") return fetchSitters("pet_sitting", filters);
+    if (serviceType === "daycare") return fetchSitters("daycare", filters);
     if (serviceType === "grooming")
-      return fetchByPlatform("groomers", "grooming");
+      return fetchByPlatform("groomers", "grooming", filters);
     if (serviceType === "transport")
-      return fetchByPlatform("pet_trek", "transport");
+      return fetchByPlatform("pet_trek", "transport", filters);
 
     // No filter → union all domains
     const [walkers, petSitters, daycares, groomers, transport] =
       await Promise.all([
         fetchDogWalkers(filters),
-        fetchSitters("pet_sitting"),
-        fetchSitters("daycare"),
-        fetchByPlatform("groomers", "grooming"),
-        fetchByPlatform("pet_trek", "transport"),
+        fetchSitters("pet_sitting", filters),
+        fetchSitters("daycare", filters),
+        fetchByPlatform("groomers", "grooming", filters),
+        fetchByPlatform("pet_trek", "transport", filters),
       ]);
 
     // Deduplicate by providerId — sitter may appear in both pet_sitting & daycare
