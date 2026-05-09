@@ -59,6 +59,7 @@ import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k90
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { isK9000MachineConfigured } from '../lib/k9000-env-guard';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -261,21 +262,18 @@ router.post('/wash/start_cycle', async (req, res) => {
     const washId = `wash_${Date.now()}_${nanoid(12)}`;
     let machineCommandSent = false;
 
-    // INTEGRATION STATUS: The K9000 machine activation command is not yet implemented.
-    // Set MACHINE_ACTIVATION_URL in environment variables to enable real machine control.
-    // Until then, all activations are demo-mode only — no physical machine is commanded.
-    //
-    // To complete the integration:
-    //   1. Set MACHINE_ACTIVATION_URL=http://<k9000-controller-ip>/api/start
-    //   2. Set MACHINE_SECRET_KEY (already configured as env var)
-    //   3. Remove this comment and test with real hardware
+    // PR-K env-presence guard: refuse activation in ANY environment when
+    // MACHINE_ACTIVATION_URL is unset. The prior production-only guard left
+    // dev/staging in a "fake machine success" state where Nayax was already
+    // authorized but no physical machine was commanded. Per Rule H ("no fake
+    // success") this is forbidden everywhere. Developers wishing to exercise
+    // the path locally must point MACHINE_ACTIVATION_URL at a local stub.
+    // Auto-refund of the pre-authorised Nayax charge for blocked activations
+    // is a separate concern owned by Part 7 (Nayax) of the Financial Core
+    // Architecture Spec — out of scope for PR-K.
     const machineActivationUrl = process.env.MACHINE_ACTIVATION_URL;
-
-    // PRODUCTION GUARD: if no machine URL is set and we are in production,
-    // block the activation entirely — we cannot charge a customer without
-    // being able to command the physical machine.
-    if (!machineActivationUrl && process.env.NODE_ENV === 'production') {
-      logger.error('[K9000 Wash] FATAL: MACHINE_ACTIVATION_URL not set in production — blocking wash activation', {
+    if (!isK9000MachineConfigured()) {
+      logger.error('[K9000 Wash] FATAL: MACHINE_ACTIVATION_URL not set — blocking wash activation', {
         washId, machineId, transactionId,
       });
       return res.status(503).json({
@@ -285,7 +283,7 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     }
 
-    if (machineActivationUrl) {
+    {
       // Validate the URL is a legitimate HTTP/HTTPS URL and matches the
       // configured base to prevent SSRF if the env var is tampered with.
       let parsedMachineUrl: URL;
@@ -358,10 +356,6 @@ router.post('/wash/start_cycle', async (req, res) => {
           washId, machineId, error: machineErr.message,
         });
       }
-    } else {
-      logger.warn('[K9000 Wash] DEMO MODE — MACHINE_ACTIVATION_URL not set. Physical machine was NOT commanded. Set MACHINE_ACTIVATION_URL to enable real machine control.', {
-        washId, machineId, transactionId,
-      });
     }
     
     // === STEP 2.5: BAY LOOKUP — find the specific bay record for this side ===
@@ -851,28 +845,22 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
       codeLen: scannedCode.length,
     });
 
-    // ── PRODUCTION GUARD: block wallet debit when machine is not configured ──
-    // In production, MACHINE_ACTIVATION_URL must be set. Without it, the wallet
-    // debit would succeed but the physical machine would never start — customers
-    // would pay without receiving a wash.  This matches the same guard in
-    // the wash/start_cycle route (line ~278) for terminal-based payments.
-    //
-    // In development / staging, we allow the call through with a warning so that
-    // QR-code flow can be tested without real hardware.
-    if (!process.env.MACHINE_ACTIVATION_URL && process.env.NODE_ENV === 'production') {
-      logger.error('[K9000 Redeem] FATAL: MACHINE_ACTIVATION_URL not set in production — blocking wallet redemption to prevent charging without wash delivery', {
+    // ── PR-K env-presence guard ─────────────────────────────────────────────
+    // Block wallet debit in ANY environment when MACHINE_ACTIVATION_URL is
+    // unset. Without it the debit would succeed but the physical machine
+    // would never start — customers would pay without receiving a wash.
+    // Per Rule H ("no fake success") this is forbidden across all envs;
+    // developers exercising the QR flow locally must point
+    // MACHINE_ACTIVATION_URL at a local stub.
+    if (!isK9000MachineConfigured()) {
+      logger.error('[K9000 Redeem] FATAL: MACHINE_ACTIVATION_URL not set — blocking wallet redemption to prevent charging without wash delivery', {
         kioskId, correlationId,
       });
       return res.status(503).json({
         error: 'עמדת השטיפה אינה מוגדרת לעבודה. לא בוצע חיוב. אנא פנה לצוות.',
-        errorEn: 'Wash station is not configured for production. No charge was made. Contact staff.',
+        errorEn: 'Wash station is not configured. No charge was made. Contact staff.',
         status: 'MACHINE_NOT_CONFIGURED',
         correlationId,
-      });
-    }
-    if (!process.env.MACHINE_ACTIVATION_URL) {
-      logger.warn('[K9000 Redeem] DEMO MODE — MACHINE_ACTIVATION_URL not set. Wallet will be debited but physical machine will NOT start. Set MACHINE_ACTIVATION_URL before going live.', {
-        kioskId, correlationId,
       });
     }
 
