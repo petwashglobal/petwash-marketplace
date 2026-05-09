@@ -321,23 +321,48 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Weather Notifications: Smart weather alerts for dog walkers, drivers, and wash users
-    // Runs every 2 hours with 4-hour user cooldown (not too many notifications!)
-    cron.schedule('0 */2 * * *', async () => {
-      if (await this.acquireLock('weatherNotifications')) {
-        try {
-          await this.processWeatherNotifications();
-        } catch (error) {
-          logger.error('[WeatherNotifications] Failed to process weather notifications', { 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          });
-        } finally {
-          this.releaseLock('weatherNotifications');
-        }
-      }
-    }, {
-      timezone: 'Asia/Jerusalem'
-    });
+    // ════════════════════════════════════════════════════════════════════
+    // WEATHER ALERTS DISABLED UNTIL USER TARGETING QUERIES ARE IMPLEMENTED
+    // (PR-B-WEATHER-DISABLE — CEO-approved 2026-05-08)
+    //
+    // The weather-notification engine in server/services/weatherNotifications.ts
+    // is REAL — geocoding, forecast, severity classification, cooldown, and
+    // FCM dispatch all work. BUT the user-targeting queries are TODO stubs
+    // (lines 177, 184, 191, 233, 236, 239 of that file). Result: when this
+    // cron fired every 2 hours, it geocoded + fetched weather + classified
+    // severity, then walked an EMPTY targetUsers array and sent NO actual
+    // notifications. Silent no-op every 2 hours, real Google Weather +
+    // Open-Meteo + geocode quota cost, fake operational readiness.
+    //
+    // The schedule is intentionally COMMENTED OUT (not deleted) so a
+    // future product spec for the targeting queries can re-enable it
+    // verbatim by un-commenting. The service file at
+    // server/services/weatherNotifications.ts is preserved intact.
+    //
+    // To re-enable: uncomment the cron.schedule block below AFTER the
+    // user-targeting queries in weatherNotifications.ts are implemented
+    // per a real product spec (active dog walkers / pet sitters /
+    // wash users / walk sessions / stations).
+    // ════════════════════════════════════════════════════════════════════
+    // -- BEGIN DISABLED WEATHER CRON (do not remove — uncomment to re-enable) --
+    // // Weather Notifications: Smart weather alerts for dog walkers, drivers, and wash users
+    // // Runs every 2 hours with 4-hour user cooldown (not too many notifications!)
+    // cron.schedule('0 */2 * * *', async () => {
+    //   if (await this.acquireLock('weatherNotifications')) {
+    //     try {
+    //       await this.processWeatherNotifications();
+    //     } catch (error) {
+    //       logger.error('[WeatherNotifications] Failed to process weather notifications', {
+    //         error: error instanceof Error ? error.message : 'Unknown error'
+    //       });
+    //     } finally {
+    //       this.releaseLock('weatherNotifications');
+    //     }
+    //   }
+    // }, {
+    //   timezone: 'Asia/Jerusalem'
+    // });
+    // -- END DISABLED WEATHER CRON --
 
     // GCS Backup: Weekly code backup on Sunday at 2 AM Israel time
     cron.schedule('0 2 * * 0', async () => {
