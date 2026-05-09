@@ -27,6 +27,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
+import { isMockModeActive, isNayaxEnabled } from "../lib/payment-provider-mode";
 
 // ==================== CONFIGURATION ====================
 
@@ -38,14 +39,30 @@ const NAYAX_TERMINAL_ID_SECONDARY = process.env.NAYAX_TERMINAL_ID_SECONDARY;
 // DEMO MODE: Only allowed in explicit non-production environments.
 // In production, missing NAYAX_API_KEY is a fatal startup error — payments must never
 // silently fall back to demo mode (free-service risk).
+//
+// PR-CI-SMOKE-HOTFIX: the FATAL throw additionally honours the canonical
+// payment-provider-mode flags introduced in PR-CI-PAYMENT-MODE (#203):
+//   • PAYMENT_PROVIDER_MODE=mock — CI smoke / unit tests boot without
+//     real Nayax credentials. Module loads; runtime call sites still
+//     cannot reach Nayax (NAYAX_API_KEY undefined). Per Rule H, the
+//     mock provider returns ok:false from every call.
+//   • NAYAX_ENABLED=false — Nayax explicitly disabled at the platform
+//     level (default in non-Nayax deploys). Module loads; calls degrade.
+// In live production with Nayax enabled, the original FATAL guard fires
+// unchanged.
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DEMO_MODE_REQUESTED = process.env.NAYAX_DEMO_MODE === 'true';
+const MOCK_MODE = isMockModeActive();
+const NAYAX_FLAG_DISABLED = !isNayaxEnabled();
 
-if (IS_PRODUCTION && !NAYAX_API_KEY) {
-  // Fatal: cannot run payment service without credentials in production.
+if (IS_PRODUCTION && !NAYAX_API_KEY && !MOCK_MODE && !NAYAX_FLAG_DISABLED) {
+  // Fatal: cannot run payment service without credentials in production
+  // when Nayax is the active provider. Mock mode and NAYAX_ENABLED=false
+  // are explicit opt-outs that bypass this check (handled above).
   throw new Error(
     '[Nayax] FATAL: NAYAX_API_KEY is not set in production environment. ' +
-    'Payment service cannot start. Set NAYAX_API_KEY before deploying.'
+    'Payment service cannot start. Set NAYAX_API_KEY before deploying, ' +
+    'or set PAYMENT_PROVIDER_MODE=mock / NAYAX_ENABLED=false for non-Nayax envs.'
   );
 }
 
