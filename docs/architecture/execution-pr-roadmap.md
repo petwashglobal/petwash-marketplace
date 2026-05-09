@@ -663,3 +663,297 @@ Each PR is single-purpose and individually reversible. Per CEO's "Fast, but clea
 - **tsc baseline preserved:** `npx tsc --noEmit | grep -c "error TS"` must not increase
 - **Out-of-scope declared:** every PR explicitly lists what it does NOT change
 - **Audit trail:** PR body footer carries `Implements: docs/architecture/<NN>.md §X.Y`
+
+---
+
+## Amendments — Quality Review Round 001
+
+The original sections above remain authoritative. This appendix captures
+the 12 docs-only amendments produced by the roadmap quality review on
+PR #211 before merge. Each item is a delta against the section + PR
+identified; each is in-scope of this same docs-only PR.
+
+### A1 — Cross-section PR dependency table
+
+The original entries declare some inter-section dependencies prose-style
+("blocks", "is blocked by"). For implementation sequencing, the table
+below makes the cross-section blockers explicit at the PR granularity:
+
+| Downstream PR | Hard-blocked by | Reason |
+|---|---|---|
+| `PR-COMPLIANCE-3` (refund credit-note lineage) | `PR-NAYAX-2a` (refund/reversal pathway) | A credit note is the document side of a refund; the money side must exist + be tested first |
+| `PR-COMPLIANCE-3-PARTIAL` (NEW — see A10) | `PR-NAYAX-2a` + `PR-COMPLIANCE-3` | Partial refund needs full-refund lineage already proven |
+| `PR-PAYOUT-2..PR-PAYOUT-12` (any payout work) | `PR-NAYAX-1b` + `PR-NAYAX-1c` (reconciliation jobs collecting + matching settlements) | Payouts must NOT release from unreconciled funds |
+| `PR-PAYOUT-9a` / `PR-PAYOUT-9b` (bank cutover) | `PR-NAYAX-1f` (act-mode reconciliation) + `PR-PAYOUT-10` (per-batch reconciliation) | First live outbound requires both inbound + outbound reconciliation green |
+| `PR-PAYOUT-CLAWBACK` (NEW — see A11) | `PR-PAYOUT-9b` (live cutover) | No clawback needed before any outbound has happened |
+| `PR-UPAY-5` (invoice / receipt lifecycle) | `PR-COMPLIANCE-1` (numbering gap-detector) + `PR-UPAY-3a/3b/3c` (adapter set) | Issuance requires verified numbering + adapter result |
+| `PR-UPAY-7` (wallet top-up via SUMIT) | `PR-WALLET-1c` (bucket-aware methods) + `PR-UPAY-4` (webhook receiver) | Top-up needs the bucket destination + the webhook to confirm |
+| `PR-FRAUD-2` (velocity caps wallet top-up) | `PR-FRAUD-1` (`risk_signal` schema) | Velocity tracking writes to risk_signal |
+| `PR-FRAUD-6` (per-batch payout fraud gate) | `PR-FRAUD-3` + `PR-FRAUD-4` (caps in place) + `PR-PAYOUT-2` (lifecycle schema) | Gate composes prior signals |
+
+This table is appended to (not replaces) the per-PR `Rollout order` field.
+
+### A2 — `PR-FRAUD-5` canonical ownership
+
+`PR-FRAUD-5` (webhook event-id de-dup) appears in BOTH Section 03 and
+Section 09 of the original prose. Resolution: **Section 09 is the
+canonical owner.** Section 03's `PR-NAYAX-1d` table row is annotated
+`(see PR-FRAUD-5 — canonical owner)`; the actual schema + runtime work
+ships under PR-FRAUD-5 and Section 03 references it.
+
+Effect: one PR ships, two sections reference it. No duplicated work.
+
+### A3 — `PR-PAYOUT-3` + `PR-PAYOUT-4` ship-now flag
+
+Both fixes are surgical, no-schema, no-money-flow-change runtime
+corrections (close audit findings #4 + #7 — hardcoded 7.5% commission
+and pro-rata loyalty payout reduction). They have no dependency on
+`PR-PAYOUT-1` (snapshot table) or `PR-PAYOUT-2` (lifecycle schema).
+
+**Annotation added:** PR-PAYOUT-3 + PR-PAYOUT-4 are flagged
+`ship-now-in-section`. They MAY ship as soon as their Gate-1 reports
+are approved, ahead of the section's schema sub-PRs.
+
+### A4 — Split `PR-UPAY-3` into 3a / 3b / 3c
+
+The original `PR-UPAY-3` (client/service abstraction) bundles three
+distinct risk profiles into one PR. Split:
+
+| PR | Scope |
+|---|---|
+| `PR-UPAY-3a` | The `PaymentProvider` interface + `getPaymentProvider()` resolver + capability descriptor + per-channel routing config. NO concrete adapters touched. |
+| `PR-UPAY-3b` | `NayaxSparkProvider` concrete adapter wrapping the existing `NayaxSparkService`. ZERO behaviour change in the Nayax path; refactor-only. |
+| `PR-UPAY-3c` | `SumitProvider` concrete adapter (mock-mode only — every method returns `ok:false` until SUMIT credentials and live wiring exist). |
+
+Each is single-purpose and source-pin tested. PR-UPAY-3a is the
+prerequisite for 3b and 3c.
+
+### A5 — `PR-WALLET-1c` split-if-needed annotation
+
+`PR-WALLET-1c` (walletService bucket-aware methods + redemption order
+helper) may grow large depending on how many existing call sites need
+updating. Annotation:
+
+> **Split-if-needed:** if the diff exceeds ~600 lines or touches more
+> than one feature surface, split into:
+> - `PR-WALLET-1c-cash` — `wallet.cash` + `wallet.escrow_pending` (the
+>   real-money buckets) + redemption order helper
+> - `PR-WALLET-1c-promo` — `wallet.promotional` +
+>   `wallet.non_refundable_bonus` (the marketing-funded buckets)
+> - `PR-WALLET-1c-gift` — `wallet.gift_card_received` +
+>   `wallet.refund_credit` (the deferred-liability buckets)
+>
+> The decision is made at Gate 1 of the PR with the actual diff in hand.
+> Loyalty points (`wallet.loyalty_points`) is NOT money-additive and is
+> handled in a separate non-WALLET-1 PR class.
+
+### A6 — Split `PR-PAYOUT-9` into 9a / 9b
+
+The original `PR-PAYOUT-9` (bank submission cutover) is the single
+highest-risk PR in the entire roadmap (first time outbound money moves
+through Pet Wash automation). Split:
+
+| PR | Scope |
+|---|---|
+| `PR-PAYOUT-9a` | Dry-run cutover: Masav file generation + bank-API submission against a Pet Wash internal test account ONLY. No provider funds move. Soak time. Reconciliation verified end-to-end against the bank's response file. |
+| `PR-PAYOUT-9b` | Live cutover: feature-flag flip routes the SAME pipeline to real provider IBANs. Ships only after PR-PAYOUT-9a has soaked AND PR-PAYOUT-10 (per-batch reconciliation) has had at least one full reporting cycle without variance. |
+
+### A7 — `PR-PAYOUT-9b` explicit bank rollback protocol
+
+The original `PR-PAYOUT-9` rollback strategy said "feature flag" — that
+prevents future batches but does not address an already-submitted batch.
+Amendment:
+
+> **PR-PAYOUT-9b rollback protocol:**
+>
+> 1. Cannot un-send a Masav file once accepted by Mizrahi-Tefahot.
+>    Document this constraint in the PR body so the reviewer is not
+>    misled.
+> 2. Per-line per-batch state tracking: every line records `submitted`
+>    → `accepted_by_bank` → `funds_moved` → `reconciled` (or `failed`
+>    at any step).
+> 3. **Rollback path A** (before bank acceptance): admin click cancels
+>    the in-flight batch; lines flip to `cancelled`; no money moved.
+> 4. **Rollback path B** (after bank acceptance, before funds moved):
+>    contact bank for recall via the documented Mizrahi-Tefahot
+>    operational channel; success → flip to `recalled`. This window is
+>    typically minutes-to-hours and is not guaranteed.
+> 5. **Rollback path C** (after funds moved): cannot reverse. Issue
+>    offsetting line on the next batch, debiting from the affected
+>    provider's account. Audit + Provider Master Agreement clawback
+>    clause governs.
+> 6. Feature flag flip stops NEW batches but does NOT roll back any
+>    already-submitted batch. Operators must understand this.
+>
+> All rollback paths are audit-logged with admin actor + reason.
+
+### A8 — `PR-UPAY-5` explicit "no document issuance in mock"
+
+`PR-UPAY-5` (invoice / receipt lifecycle) issues real SHAAM-numbered
+documents. Failure mode: if the adapter result is faked or mock-mode
+is mis-configured, real SHAAM numbers could be consumed against zero
+real money.
+
+Amendment to PR-UPAY-5 spec:
+
+> **Issuance gate (locked):** invoice / receipt issuance MUST NOT fire
+> when ANY of the following are true:
+> - `getPaymentProviderMode() === 'mock'`
+> - The originating adapter call returned `ok: false`
+> - The numbering authority (Part 2.4) cannot allocate the next number
+>   in a transaction (allocation failure → no issuance, alert)
+>
+> Source-pin test asserts the gate exists at every issuance call site.
+
+### A9 — `PR-NAYAX-1f` auto-action scope clarification
+
+`PR-NAYAX-1f` flips the reconciliation jobs to act-mode. The original
+spec implies "auto-void abandoned auths". This is correct ONLY for
+pre-capture states. Amendment:
+
+> **Auto-action scope (PR-NAYAX-1f):**
+> - Auto-action is permitted on transactions whose status is
+>   `authorized` or `machine_ack` (pre-capture states).
+> - Auto-action is FORBIDDEN on `captured` / `settled` / `running` /
+>   `completed` / `reversed` / `reconciled`. These require:
+>     - admin click for any state change, AND
+>     - the refund/reversal pathway from PR-NAYAX-2a (which routes
+>       through the `PaymentProvider` adapter and pairs with
+>       PR-COMPLIANCE-3 credit-note issuance).
+> - Source-pin test asserts the state-allowlist at every auto-action
+>   call site.
+
+This also propagates to Section 03 §3.4 ("Reversal / refund pathway")
+prose; the canonical text lives here. Section 03 §3.4 is annotated to
+reference this amendment.
+
+### A10 — Add `PR-COMPLIANCE-3-PARTIAL`
+
+Original Section 04 PR sequence has only `PR-COMPLIANCE-3` (full credit
+note). Mid-cycle / partial refunds (e.g. a 3-night boarding cancelled
+after night 1) need a partial credit-note lineage.
+
+```
+PR-COMPLIANCE-3-PARTIAL: partial refund credit-note lineage
+  Objective:                  Issue partial credit notes for mid-cycle
+                              cancellations, partial completions, and
+                              goodwill credits. Lineage chain:
+                                original invoice → partial credit note
+                                → partial refund → optional payout
+                                adjustment.
+  Exact scope:                TaxDocumentService partial-credit-note
+                              issuance branch + ledger pair-write helper
+                              + tests.
+  Explicit out-of-scope:      no schema change (uses existing
+                              pwTaxDocuments); no live refund money
+                              movement (PR-NAYAX-2a owns that).
+  Runtime risk:               medium — issues real documents
+  Fraud risk:                 medium — partial-refund abuse vector;
+                              gated by refund-policy rules engine
+                              (Part 6.1) + PR-FRAUD velocity caps
+  Migration risk:             none
+  Rollback strategy:          feature flag the partial issuance branch;
+                              full-credit-note path unaffected
+  Monitoring requirements:    partial-vs-full credit-note ratio metric;
+                              alert on anomalous spikes
+  Rollout order:              prerequisite: PR-COMPLIANCE-3 + PR-NAYAX-2a
+                              blocks: any UI surface offering partial
+                              refunds
+  Dependency graph:           Part 6 partial-refund policy signed off
+                              by counsel + CPA
+  Docs-only vs runtime PR:    runtime
+  Estimated blast radius:     issuance branch + ledger pair-writes
+```
+
+### A11 — Add `PR-PAYOUT-CLAWBACK`
+
+Original Section 05 PR sequence does NOT include post-payout chargeback
+recovery. The Open Question (§7) flagged it but the PR list omitted it.
+
+```
+PR-PAYOUT-CLAWBACK: post-payout chargeback recovery
+  Objective:                  When a chargeback is received AFTER the
+                              provider has been paid out, recover the
+                              funds by offsetting the next payout batch
+                              and audit-logging the clawback per Provider
+                              Master Agreement clawback clause.
+  Exact scope:                payout-batch composer reads pending
+                              clawbacks; per-line offset entry; provider
+                              statement reflects the offset.
+  Explicit out-of-scope:      not the chargeback INGESTION (that is
+                              PR-NAYAX-1f auto-action / Section 03
+                              chargeback row); only the OUTBOUND-side
+                              recovery.
+  Runtime risk:               high — direct provider payout reduction
+  Fraud risk:                 medium — protects platform from chargeback
+                              abuse but creates clawback-abuse vector
+                              if mis-applied
+  Migration risk:             schema (clawback_queue table) — separate
+                              schema-migration sub-PR if not already
+                              covered by PR-PAYOUT-2 lifecycle schema
+  Rollback strategy:          feature flag the offset application;
+                              clawback queue still accumulates;
+                              admin-manual application path remains
+  Monitoring requirements:    per-clawback amount, application latency,
+                              dispute rate from providers
+  Rollout order:              prerequisite: PR-PAYOUT-9b (live cutover) +
+                              PR-PAYOUT-10 (per-batch reconciliation) +
+                              Provider Master Agreement clawback clause
+                              signed
+  Dependency graph:           counsel-confirmed clawback rights;
+                              CPA-confirmed accounting treatment
+  Docs-only vs runtime PR:    runtime (+ schema sub-PR if needed)
+  Estimated blast radius:     payout-batch composer + statement
+                              renderer
+```
+
+### A12 — `PR-HARDEN-1..N` CVE prioritization rule
+
+Original spec said "one PR per package or cohort" — too vague.
+Amendment:
+
+> **CVE prioritization (PR-HARDEN-1..N):**
+> - **Critical** CVEs: patched within 7 days. Each as its own
+>   single-purpose PR.
+> - **High** CVEs: patched within 14 days. May cohort with related
+>   high CVEs in the same package family.
+> - **Moderate** CVEs: patched within 30 days. May cohort more
+>   liberally.
+> - **Low** CVEs: rolled into the next routine dependency-update PR.
+>
+> Patch order: critical first (paged on-call). Each cohort PR cites
+> the CVE ids it addresses in the PR body.
+>
+> Per-PR test plan: full family suite must remain green; any test
+> regression blocks the patch and triggers vendor-side investigation.
+
+---
+
+## Amendments approval
+
+The 12 amendments above are docs-only and bring no runtime, schema,
+dependency, or deploy change. They strengthen the PR contract before
+merge by:
+
+- Closing cross-section dependency gaps (A1)
+- Clarifying single-canonical ownership (A2)
+- Flagging ship-now safe surgical fixes (A3)
+- Splitting too-large PRs (A4 UPAY-3 → 3a/3b/3c; A6 PAYOUT-9 → 9a/9b)
+  and pre-flagging WALLET-1c (A5)
+- Adding missing PRs (A10 COMPLIANCE-3-PARTIAL; A11 PAYOUT-CLAWBACK)
+- Pinning auto-action scope (A9 NAYAX-1f) so it cannot drift into
+  refund territory without the explicit refund pathway
+- Adding bank-rollback protocol detail (A7 PAYOUT-9b) so reviewers are
+  not misled about what "feature flag rollback" means once funds have
+  left the bank
+- Pinning the issuance gate (A8 UPAY-5) so SHAAM numbers cannot be
+  burned against mock or rejected adapter results
+- Adding CVE prioritization (A12 HARDEN) so the patch order is not
+  ambiguous
+
+If any amendment requires further refinement before merge, the
+correction is a follow-up commit on this same docs-only PR.
+
+---
+
+_End of Amendments — Quality Review Round 001._
