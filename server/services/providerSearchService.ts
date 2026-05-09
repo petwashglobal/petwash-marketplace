@@ -32,7 +32,7 @@ import {
   providerOperationalSettings,
   bookings,
 } from "../../shared/schema";
-import { and, eq, or, inArray, gte, lte } from "drizzle-orm";
+import { and, eq, or, inArray, gte, lte, ne } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { eventBus } from "./EventBus";
 
@@ -184,7 +184,8 @@ async function resolveSearchLocation(filters: ProviderSearchFilters): Promise<{
 // ── DB Queries ─────────────────────────────────────────────────────────────
 
 async function fetchDogWalkers(
-  filters: ProviderSearchFilters
+  filters: ProviderSearchFilters,
+  callerUserId?: string,
 ): Promise<ProviderSearchItem[]> {
   const rows = await db
     .select({
@@ -230,7 +231,13 @@ async function fetchDogWalkers(
       providerOperationalSettings,
       eq(providerOperationalSettings.providerUid, providers.userId)
     )
-    .where(eq(walkerProfiles.verificationStatus, "verified"))
+    .where(
+      and(
+        eq(walkerProfiles.verificationStatus, "verified"),
+        // PR-H self-exclusion: caller never appears in their own results.
+        callerUserId ? ne(providers.userId, callerUserId) : undefined,
+      ),
+    )
     .limit(200);
 
   const range = parseRequestedRange(filters);
@@ -286,7 +293,8 @@ async function fetchDogWalkers(
 
 async function fetchSitters(
   serviceType: "pet_sitting" | "daycare" | null,
-  filters: ProviderSearchFilters
+  filters: ProviderSearchFilters,
+  callerUserId?: string,
 ): Promise<ProviderSearchItem[]> {
   // Map marketplace serviceType to the values stored in sitter_profiles.service_types[]
   const SITTER_SERVICE_MAP: Record<string, string[]> = {
@@ -333,11 +341,15 @@ async function fetchSitters(
       eq(providerOperationalSettings.providerUid, providers.userId)
     )
     .where(
-      or(
-        eq(sitterProfiles.verificationLevel, "bronze"),
-        eq(sitterProfiles.verificationLevel, "silver"),
-        eq(sitterProfiles.verificationLevel, "gold")
-      )
+      and(
+        or(
+          eq(sitterProfiles.verificationLevel, "bronze"),
+          eq(sitterProfiles.verificationLevel, "silver"),
+          eq(sitterProfiles.verificationLevel, "gold"),
+        ),
+        // PR-H self-exclusion: caller never appears in their own results.
+        callerUserId ? ne(providers.userId, callerUserId) : undefined,
+      ),
     )
     .limit(200);
 
@@ -408,7 +420,8 @@ async function fetchSitters(
 async function fetchByPlatform(
   platformId: string,
   serviceType: MarketplaceServiceType,
-  filters: ProviderSearchFilters
+  filters: ProviderSearchFilters,
+  callerUserId?: string,
 ): Promise<ProviderSearchItem[]> {
   const rows = await db
     .select({
@@ -432,8 +445,10 @@ async function fetchByPlatform(
     .where(
       and(
         eq(providers.platformId, platformId),
-        eq(providers.isActive, true)
-      )
+        eq(providers.isActive, true),
+        // PR-H self-exclusion: caller never appears in their own results.
+        callerUserId ? ne(providers.userId, callerUserId) : undefined,
+      ),
     )
     .limit(200);
 
@@ -484,27 +499,28 @@ async function fetchByPlatform(
 // ── Main fetch ─────────────────────────────────────────────────────────────
 
 async function fetchMarketplaceProviders(
-  filters: ProviderSearchFilters
+  filters: ProviderSearchFilters,
+  callerUserId?: string,
 ): Promise<ProviderSearchItem[]> {
   const { serviceType } = filters;
 
   try {
-    if (serviceType === "dog_walking") return fetchDogWalkers(filters);
-    if (serviceType === "pet_sitting") return fetchSitters("pet_sitting", filters);
-    if (serviceType === "daycare") return fetchSitters("daycare", filters);
+    if (serviceType === "dog_walking") return fetchDogWalkers(filters, callerUserId);
+    if (serviceType === "pet_sitting") return fetchSitters("pet_sitting", filters, callerUserId);
+    if (serviceType === "daycare") return fetchSitters("daycare", filters, callerUserId);
     if (serviceType === "grooming")
-      return fetchByPlatform("groomers", "grooming", filters);
+      return fetchByPlatform("groomers", "grooming", filters, callerUserId);
     if (serviceType === "transport")
-      return fetchByPlatform("pet_trek", "transport", filters);
+      return fetchByPlatform("pet_trek", "transport", filters, callerUserId);
 
     // No filter → union all domains
     const [walkers, petSitters, daycares, groomers, transport] =
       await Promise.all([
-        fetchDogWalkers(filters),
-        fetchSitters("pet_sitting", filters),
-        fetchSitters("daycare", filters),
-        fetchByPlatform("groomers", "grooming", filters),
-        fetchByPlatform("pet_trek", "transport", filters),
+        fetchDogWalkers(filters, callerUserId),
+        fetchSitters("pet_sitting", filters, callerUserId),
+        fetchSitters("daycare", filters, callerUserId),
+        fetchByPlatform("groomers", "grooming", filters, callerUserId),
+        fetchByPlatform("pet_trek", "transport", filters, callerUserId),
       ]);
 
     // Deduplicate by providerId — sitter may appear in both pet_sitting & daycare
@@ -545,7 +561,12 @@ export async function runProviderSearch(
   callerUserId?: string,
 ) {
   const location = await resolveSearchLocation(filters);
-  const providerList = await fetchMarketplaceProviders(filters);
+  // PR-H self-exclusion: callerUserId plumbed into the SQL WHERE of every
+  // fetch path so the caller never appears in their own search results
+  // (audit finding F-06: "next door matched me to me"). Defence-in-depth
+  // — by removing self at the DB layer the result count is truthful and
+  // the self-row is never serialised over the network.
+  const providerList = await fetchMarketplaceProviders(filters, callerUserId);
 
   // Real-time event — matching.started (spec §6.2)
   eventBus.publish({
