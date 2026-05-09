@@ -1422,25 +1422,41 @@ router.get('/bookings', requireAuth, async (req, res) => {
  * PATCH /api/sitter-suite/bookings/:id/complete - Complete booking and trigger sitter payout
  * Israeli Law 2026: Applies withholding tax (ניכוי מס במקור), records commission, generates settlement
  * Subcontractor broker model — providers are independent contractors
+ *
+ * PR-F: requireAuth + ownership check. Caller must be the assigned sitter
+ * (sitterProfiles.userId) OR the booking owner (sitterBookings.ownerId).
+ * No money-flow change — only adds the auth gate that was missing.
  */
-router.patch('/bookings/:id/complete', async (req, res) => {
+router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
   try {
+    const callerUid = (req as any).user?.uid as string | undefined;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     const bookingId = parseInt(req.params.id);
-    
+
     const [booking] = await db
       .select()
       .from(sitterBookings)
       .where(eq(sitterBookings.id, bookingId));
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Fetch sitter profile for tax info
+    // Fetch sitter profile for tax info AND for ownership verification.
     const [sitter] = await db
       .select()
       .from(sitterProfiles)
       .where(eq(sitterProfiles.id, booking.sitterId));
+
+    const isAssignedSitter = !!sitter && sitter.userId === callerUid;
+    const isBookingOwner = booking.ownerId === callerUid;
+    if (!isAssignedSitter && !isBookingOwner) {
+      return res.status(403).json({
+        error: 'Forbidden: only the assigned sitter or the booking owner may complete this booking',
+      });
+    }
 
     // STEP 1: Calculate provider settlement with Israeli law deductions
     const grossPayoutCents = booking.sitterPayoutCents;
