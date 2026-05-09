@@ -33,6 +33,304 @@
 
 ---
 
+## §0 — NON-NEGOTIABLE CRM / HUBSPOT RULES
+
+> These rules are binding. Every PR-CRM-* PR (and every HubSpot
+> configuration change made by a human operator outside of code) must
+> comply. They were promoted to the top of this document so a reviewer
+> cannot miss them. Their detailed reasoning + rollout-phase mapping
+> lives in **Appendix S — CEO Additions, Round 001** at the end of
+> this document; that appendix is the **source being promoted, not
+> replaced**, and it remains intact as the historical audit trail.
+>
+> Cross-reference convention: items below are tagged `[→ S.x]` to point
+> at the matching Appendix S section.
+
+### Rule 1 — Source-of-truth precedence  [→ S.1]
+
+The PetWash app and database remain the **source of truth** for every
+canonical fact about the business:
+
+- bookings
+- wallet (every bucket per `docs/architecture/02-wallet-redesign.md`)
+- payments (charges, captures, settlements, refunds, chargebacks)
+- invoices / receipts / credit notes (per `docs/finance/02-money-object-model.md` numbering authority)
+- pet profiles (per `docs/product/pet-profile-luxury-onboarding-master-plan.md`)
+- providers (`providers`, `walkerProfiles`, `sitterProfiles`)
+- stations / machines (K9000) and station heartbeats
+- territory state
+- audit logs (hash-chained `audit_events`, Part 9 of Financial Core Spec)
+- KYC / compliance state (provider verification, biometric, document)
+- financial events (P&L, VAT timing, withholding, Masav batches)
+
+HubSpot is an **operating mirror and relationship cockpit**. It may
+display, organise, score, summarise, and help manage relationships. It
+**must not override** canonical platform truth on any field above.
+Conflict resolution: PetWash database wins; HubSpot mirror is
+reconciled to match; reconciliation is auditable.
+
+### Rule 2 — Money firewall  [→ S.2]
+
+HubSpot must NEVER move money, approve payouts, issue refunds, alter
+wallet balances, create tax documents, reverse transactions, approve
+financial settlement, or change provider payment status.
+
+Any money-related action happens **only** through PetWash backend
+services with all of:
+
+- server-side authorisation (`requireAuth` / RBAC / second-admin where
+  applicable)
+- idempotency key (per PR-W4 / PR-J pattern)
+- append-only audit log (hash-chained per Part 9)
+- finance object-model compliance (canonical Money type, locked-nine
+  fields, append-only ledger entries)
+- CPA / counsel-approved flow where required (refunds, credit notes,
+  payouts, withholding, clawbacks)
+
+Adapter API surface forbids the symbols that would enable a violation:
+`chargeCard`, `issueRefund`, `triggerPayout`, `creditWallet`,
+`issueInvoice`, `voidTransaction`, `releaseEscrow`,
+`approvePayoutBatch`, `mutateLedgerEntry`. Source-pin tests assert
+their absence on `HubSpotAdapter`.
+
+### Rule 3 — AI authority (precise carve-outs)  [→ S.6]
+
+AI workflows in or around HubSpot (HubSpot AI / Breeze, custom LLM
+calls per `docs/architecture/00-master-roadmap.md` governance, and the
+internal Gemini integration per `petwash-platform` skill §3) MAY:
+
+- summarise records, threads, pipelines, and reports
+- detect risks (fraud, churn, machine failure, dispute volatility)
+- suggest next actions to a human
+- draft email / chat / workflow / educational copy
+- classify leads (territory fit, franchise readiness)
+- score opportunities (provider trust, territory, churn, loyalty
+  upgrade likelihood)
+- flag missing or anomalous data
+- prepare reports (operational, executive, investor)
+
+AI MUST NOT:
+
+- approve providers (KYC outcome, marketplace activation)
+- approve KYC results
+- approve money movement (refund, payout, credit, invoice, wallet
+  adjustment, payment release)
+- approve refunds (any class)
+- change legal terms or T&Cs
+- commit municipal or landlord obligations
+- sign contracts (any class)
+- modify finance / tax records (any class)
+- activate stations commercially
+- override audit or compliance rules
+- decide a chargeback's outcome
+- write to any Postgres table on PetWash side that is not pre-classified
+  as AI-writable
+
+Every AI action is wrapped in an `ai_event` with:
+
+```
+ai_event { event_id, agent_class, proposed_action,
+           human_decision: pending | approved_by_<admin> |
+                           rejected_by_<admin>,
+           approved_at?, audit_event_id (FK audit_events) }
+```
+
+It does not act until a human clicks. The click writes the
+`audit_event` and hash-chains into Part 9.
+
+### Rule 4 — CRM object model (locked enum)  [→ S.3]
+
+The HubSpot account uses these object types and only these:
+
+| HubSpot object class | Standard / Custom | PetWash entity it mirrors | Source of truth | Sync direction | Canonical id |
+|---|---|---|---|---|---|
+| Contact | Standard | App User (pet owner / customer / unauthenticated lead) | PetWash | PetWash → HubSpot | `appUserId` |
+| Company | Standard | Brand retail partner / corporate customer / municipality entity / property landlord entity / supplier entity | PetWash | PetWash → HubSpot | `partnerId` / `municipalityId` / `landlordId` / `supplierId` (canonical) + `hubspotCompanyId` (mirror-side opaque) |
+| Deal | Standard | Sales-pipeline records (B5 retail, B7 investor, S14 partnerships, S4 franchise) | HubSpot for the deal lifecycle; PetWash for any monetary outcome | mostly HubSpot-owned; PetWash receives final commercial state via webhook | `dealId` (canonical) + `hubspotDealId` (mirror) |
+| Ticket / **Support Case** | Standard (renamed conceptually) | Support case (B8) — first-class concept; never confuse with bookings or KYC reviews | HubSpot for case lifecycle; PetWash for any underlying entity state | bidirectional within Phase 2 bounds | `supportCaseId` (canonical) + `ticketId` (HubSpot-side) |
+| **Custom: Pet Profile** | Custom | Pet record (per `docs/product/pet-profile-luxury-onboarding-master-plan.md`) | PetWash | PetWash → HubSpot | `petId` |
+| **Custom: Provider** | Custom | Marketplace provider (sitter / walker / groomer / driver / wash partner) | PetWash | PetWash → HubSpot | `providerId` |
+| **Custom: Station** | Custom | Physical K9000 / wash kiosk site | PetWash | PetWash → HubSpot | `stationId` |
+| **Custom: Territory** | Custom | Geographic territory pipeline (I1) | PetWash | PetWash → HubSpot (with HubSpot enrichment in Phase 3) | `territoryId` |
+| **Custom: Municipal Lead** | Custom | Council / municipal opportunity (B3) | HubSpot pipeline; PetWash for any contractual outcome | mostly HubSpot-owned | `municipalityId` |
+| **Custom: Franchise Lead** | Custom | Prospective franchisee (S4 / B7 overlap) | HubSpot pipeline; PetWash for franchise activation | mostly HubSpot-owned | `franchiseLeadId` |
+| **Custom: Partner** | Custom | Brand / strategic partner pipeline (B5 + S14) | HubSpot pipeline; PetWash for contract execution | mostly HubSpot-owned | `partnerId` |
+| **Custom: Landlord** | Custom | Property-landlord lead (B4) | HubSpot pipeline; PetWash for lease activation | mostly HubSpot-owned | `landlordId` |
+| **Custom: Supplier** | Custom | Hardware / services supplier (S9) | HubSpot pipeline; PetWash for purchase order activation | mostly HubSpot-owned | `supplierId` |
+| **Custom: Incident** | Custom | Operational incident (machine fault, dispute escalation, security event) | PetWash | PetWash → HubSpot | `incidentId` |
+| **Custom: Maintenance Event** | Custom | Scheduled or reactive maintenance against a Station | PetWash | PetWash → HubSpot | `maintenanceEventId` |
+| **Custom: Expansion Opportunity** | Custom | Specific opportunity tied to a Territory | HubSpot pipeline; PetWash for live commitment | mostly HubSpot-owned | `opportunityId` |
+
+Forbidden mixing:
+- A Provider is NOT a Contact.
+- A Station is NOT a Company.
+- A Pet Profile is NOT a Contact.
+- A Municipal Lead is NOT a Company.
+- Each custom object has exactly one canonical id from PetWash; HubSpot
+  internal ids are treated as opaque.
+
+### Rule 5 — Lifecycle maps  [→ S.4]
+
+Each lifecycle below has its own pipeline. No mixing. PetWash event
+flips the stage; HubSpot does not mutate PetWash state.
+
+| Lifecycle | Mirrors | Source of truth |
+|---|---|---|
+| Customer / pet owner | App User profile + first-booking + retention signals | PetWash |
+| **Pet Profile** | Pet record onboarding milestones (per `docs/product/pet-profile-luxury-onboarding-master-plan.md` PR-PET-* sequence) — **first-class lifecycle**, not derived from customer | PetWash |
+| Provider | KYC + onboarding + booking volume + dispute / fraud signals (S2) | PetWash |
+| Franchisee | S4 milestones (Inquiry → Sunset) | HubSpot pipeline; PetWash for activation |
+| Municipality | B3 milestones (Outreach → Discontinued) | HubSpot pipeline; PetWash for any operational outcome |
+| Landlord | B4 milestones (Identified → Renewing) | HubSpot pipeline; PetWash for lease activation |
+| Corporate partner | B5 + S14 milestones (Prospect → Reviewing) | HubSpot pipeline; PetWash for contract execution |
+| Support case | B8 ticket lifecycle (New → Closed → Reopened) | HubSpot for the case lifecycle; PetWash for any underlying state mutation |
+| Machine site | S9 + R1 milestones (Site-survey → Decommissioned) | PetWash |
+| Territory pipeline | I1 + S4 milestones (Identified → Re-evaluating) | PetWash |
+
+### Rule 6 — Data hygiene + canonical IDs  [→ S.5]
+
+**Canonical IDs (locked enum)** — every mirrored record carries exactly
+one canonical PetWash id in a property whose name matches the id:
+
+| Domain | Canonical id |
+|---|---|
+| App User | `appUserId` |
+| Pet | `petId` |
+| Provider | `providerId` |
+| Station | `stationId` |
+| Territory | `territoryId` |
+| Booking | `bookingId` |
+| Wallet account | `walletAccountId` |
+| Incident | `incidentId` |
+| Support case | `supportCaseId` |
+| HubSpot Contact (mirror-side) | `hubspotContactId` |
+| HubSpot Company (mirror-side) | `hubspotCompanyId` |
+| HubSpot Deal (mirror-side) | `hubspotDealId` |
+
+**Hygiene rules (locked):**
+
+H-1. **No duplicate CRM identity.** A given canonical id resolves to
+exactly one HubSpot object. Sync uses UPSERT on canonical-id property;
+never INSERT-without-checking.
+
+H-2. **Dedupe by canonical id first.** Email-match is a fallback only
+when canonical id is not yet known.
+
+H-3. **No CRM-only provider status.** Provider activation /
+suspension / on-hold status is owned by PetWash. HubSpot can DISPLAY
+the status (mirrored from PetWash) but cannot AUTHORITATIVELY hold it.
+
+H-4. **No CRM-only booking status.** Booking lifecycle (`pending`,
+`confirmed`, `in_progress`, `completed`, `cancelled`, `disputed`) is
+owned by PetWash per `docs/architecture/06-booking-consistency.md`.
+HubSpot mirrors only.
+
+H-5. **No CRM-only station activation status.** Commercial activation
+of a K9000 station happens in PetWash backend with admin click +
+audit. HubSpot mirrors the state.
+
+H-6. **No free-text finance state.** No HubSpot free-text field
+contains wallet balance, payment status, refund amount, payout amount,
+or any monetary-cents value as a primary record. Mirror display fields
+are explicitly labelled `[mirror]` so support agents do not edit them
+by hand.
+
+H-7. **No PII duplication.** A single HubSpot object holds the
+authoritative mirrored copy of an attribute; sibling objects reference
+it by canonical id.
+
+H-8. **Dedupe rules must be explicit per object class.** Each
+PR-CRM-* runtime PR that touches sync includes a per-object dedupe
+specification in its Gate-1 report; the spec is source-pin tested.
+
+H-9. **CRM updates must not overwrite app truth without controlled
+backend route.** Any HubSpot-side mutation that wants to flow back to
+PetWash transits a typed, RBAC-gated, audit-logged backend route. Any
+attempt to write directly to PetWash tables from HubSpot is blocked at
+the database level (no HubSpot service-account credentials grant DML
+on canonical tables).
+
+H-10. **Property naming convention:** `petwash_<entity>_<field>` for
+all custom-mirrored fields; HubSpot-native properties keep their
+default names. Source-pin test asserts the prefix on every custom
+property created by PR-CRM-* PRs.
+
+H-11. **Timestamp suffix:** every timestamp property has a `_utc`
+suffix and stores ISO 8601 UTC. Display layer translates to local
+(default Asia/Jerusalem).
+
+H-12. **Schema property additions** require a documented purpose, an
+owning team, a freshness cadence, and a privacy classification.
+Without all four, the property cannot be created.
+
+### Rule 7 — Five-phase rollout (gated)  [→ S.7]
+
+The 13 PRs in Appendix A regroup under the CEO 5-phase model:
+
+| Phase | Scope | PR coverage |
+|---|---|---|
+| **Phase 0** docs / audit only | Document everything; no code touches HubSpot | `PR-CRM-0` (this spec), `PR-CRM-1` (repo audit + source-pin tests pinning current HubSpot state, including the 20 documented defects D-01..D-20) |
+| **Phase 1** read-only mirror | PetWash → HubSpot one-way sync; no two-way; no AI | `PR-CRM-2` env-var + config-health, `PR-CRM-3` adapter (mock-mode default), `PR-CRM-4` Contact one-way sync, `PR-CRM-5` Provider custom-object one-way sync |
+| **Phase 2** controlled two-way sync | Bounded write-back from HubSpot for non-money operations only | `PR-CRM-6` pipeline + lifecycle scaffolding spec, `PR-CRM-7` Provider-trust score writer (S2), `PR-CRM-8` Territory score writer (I1), `PR-CRM-9` Support ticket routing (B8) |
+| **Phase 3** predictive intelligence | AI / scoring writes to HubSpot mirror; admin reviews; humans approve | `PR-CRM-10` KPI dashboard reads (S6), `PR-CRM-11` automation hooks |
+| **Phase 4** franchise / global cockpit | Multi-region cockpit; franchise telemetry; investor view | `PR-CRM-12` AI workflow safety rails + future `PR-CRM-13..N` |
+
+**Gating rules (locked):**
+
+G-1. **Do not skip phases.** A Phase-N PR cannot ship before all
+prior-phase PRs are merged AND the prior-phase soak / acceptance
+criteria are met.
+
+G-2. **No two-way sync until read-only mirror is verified.** Phase 1
+must soak ≥ 30 days with reconciliation green (canonical-id dedupe
+rate ≥ 99.9%) before any Phase-2 PR is opened.
+
+G-3. **No AI actions until source-of-truth and permission rules are
+locked.** Phase 3 cannot start until Rules 1, 2, 3, 6 above are
+operationally proven over Phase 2 + CEO + counsel sign-off on the AI
+carve-outs.
+
+G-4. **Phase 3 → Phase 4** requires Provider Master Agreement,
+Franchise Master Agreement, and CFO close-of-books reconciliation
+against HubSpot reports for ≥ 90 days.
+
+Each phase boundary is its own merge gate.
+
+### Rule 8 — PR discipline  [→ S.8]
+
+D-1. **Docs-only for spec PRs.** A spec PR (the document you are
+reading + future spec deltas) introduces zero runtime change.
+
+D-2. **Single-purpose runtime PRs.** No "connect HubSpot to
+everything" PR. Each PR-CRM-* runtime PR touches at most one of:
+`server/services/HubSpotAdapter.ts`, `server/jobs/hubspotSync*.ts`,
+`server/routes/hubspot*.ts`, manual-setup-spec deltas in this doc.
+
+D-3. **No runtime PR ships:**
+- a database migration (separate schema-migration sub-PR)
+- a finance / payment / payout / refund / invoice / tax / wallet /
+  K9000 / provider-activation change (those changes live in their
+  own PR classes per `docs/architecture/execution-pr-roadmap.md`)
+- an auth / RBAC change (separate auth PR class)
+- a hidden side effect (every behaviour change is declared in the
+  Gate-1 report)
+- a package / lockfile change (separate dependency PR class)
+- a configuration change (separate config PR class)
+- a HubSpot API call from a docs-only PR (zero by definition)
+
+D-4. **Single-revert.** Every PR-CRM-* can be reverted with
+`git revert` and the system returns to the prior known-good state.
+
+---
+
+These eight rules are non-negotiable. Any PR that contradicts them is
+wrong and must be rejected at Gate 1. The detailed reasoning + rollout
+phase mapping is preserved verbatim in **Appendix S — CEO Additions,
+Round 001** at the end of this document, which remains the historical
+audit trail of the round-001 promotion.
+
+---
+
 ## Table of contents
 
 - [0. Honest preamble — what we found, what is broken](#0-honest-preamble)
