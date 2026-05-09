@@ -20,6 +20,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
+import { logAuditEvent } from '../middleware/auditLog';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { 
   broadcastBookingChatMessage, 
@@ -1035,6 +1036,26 @@ router.post('/:bookingId/dispute', async (req, res) => {
 
     // 5. Audit log (logger)
     logger.info(`[Dispute] Dispute opened for booking ${bookingId}`, { uid, platform, reason, category });
+
+    // PR-D-BOOKING-AUDIT-WIRING: append-only audit_events row for the
+    // booking_disputed transition. The logger.info above remains for
+    // operational tailing; this is the durable, queryable trail used by
+    // booking-trace + admin dashboards.
+    void logAuditEvent({
+      actorUserId: uid,
+      actionType: 'booking_disputed',
+      targetType: 'booking',
+      targetId: bookingId,
+      severity: 'info',
+      traceId: (req as any).traceId,
+      metadata: {
+        platform,
+        // Dispute reason + category are free-form business fields (not
+        // secrets). Truncated defensively to avoid bloating the audit row.
+        category: typeof category === 'string' ? category.slice(0, 80) : null,
+        reason: typeof reason === 'string' ? reason.slice(0, 500) : null,
+      },
+    }).catch(() => { /* helper already swallows; double-guard */ });
 
     res.json({ success: true, disputeId: `DISP-${nanoid(8)}` });
   } catch (error) {
