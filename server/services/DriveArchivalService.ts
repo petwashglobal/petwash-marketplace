@@ -27,6 +27,7 @@ import { db } from '../db';
 import { pwTaxDocuments } from '@shared/schema-payments';
 import { sql, eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { COMPANY_TAX_ID, COMPANY_NAME_EN } from '@shared/finance-identity';
 
 const DRIVE_PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_TAX_DOCS_FOLDER_ID ?? null;
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -44,7 +45,7 @@ function generatePdfStub(taxDocId: string, documentType: string, payload: Record
   // PETWASH_PRINCIPAL (default) → PetWash Ltd is the seller.
   const sellerLine = payload.sellerModel === 'MARKETPLACE_PROVIDER'
     ? `% Seller: Provider (ID: ${payload.providerId ?? 'unknown'}) — replace with provider name/VAT in production PDF`
-    : `% Seller: PetWash Ltd (VAT 516788400)`;
+    : `% Seller: ${COMPANY_NAME_EN} (VAT ${COMPANY_TAX_ID})`;
 
   const text = [
     `%PDF-1.4`,

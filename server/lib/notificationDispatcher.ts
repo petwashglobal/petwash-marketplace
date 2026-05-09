@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto';
 import { db as firestoreDb } from './firebase-admin';
 import { FIRESTORE_PATHS } from '../../shared/firestore-schema';
 import { logger } from './logger';
+import { COMPANY_TAX_ID } from '@shared/finance-identity';
 import { isSendGridConfigured, sgMail } from './sendgrid';
 import { twilioSMSService } from '../services/TwilioSMSService';
 
@@ -120,7 +121,7 @@ function buildEmailHtml(title: string, bodyHtml: string, ctaText?: string, ctaUr
           ${cta}
         </td></tr>
         <tr><td style="background:#f9f9f9;padding:16px 32px;text-align:center;font-size:12px;color:#888">
-          PetWash™ Ltd · VAT 516788400 · <a href="https://petwash.co.il" style="color:#888">petwash.co.il</a><br>
+          PetWash™ Ltd · VAT ${COMPANY_TAX_ID} · <a href="https://petwash.co.il" style="color:#888">petwash.co.il</a><br>
           <a href="https://petwash.co.il/unsubscribe" style="color:#aaa">Unsubscribe</a>
         </td></tr>
       </table>

@@ -32,6 +32,7 @@ import { requireAdmin } from '../../adminAuth';
 import { logger } from '../../lib/logger';
 import { z } from 'zod';
 import { createHash } from 'crypto';
+import { COMPANY_TAX_ID, COMPANY_NAME_EN, COMPANY_NAME_HE } from '@shared/finance-identity';
 
 const router = Router();
 
@@ -566,9 +567,9 @@ router.get('/compliance-report', async (req, res) => {
       period: `${reportYear}-${reportMonth.toString().padStart(2, '0')}`,
       generatedAt: new Date().toISOString(),
       company: {
-        name: 'Pet Wash Ltd',
-        nameHe: 'פט ווש בע"מ',
-        taxId: '516788400',
+        name: COMPANY_NAME_EN,
+        nameHe: COMPANY_NAME_HE,
+        taxId: COMPANY_TAX_ID,
         country: 'Israel',
       },
       bookings: bookingSummary,
