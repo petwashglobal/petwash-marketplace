@@ -19,6 +19,7 @@ import { bookingLimiter } from "../middleware/rateLimiter";
 import { bookingPolicyEngine } from "../services/BookingPolicyEngine";
 import { dispatchNotifications, buildBookingCancelledSms } from "../services/PetWashNotificationEngine";
 import { calendarIntegrationService } from "../services/CalendarIntegrationService";
+import { logAuditEvent } from "../middleware/auditLog";
 
 const router = express.Router();
 
@@ -535,6 +536,20 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
       confirmedBy: userId,
     });
 
+    // PR-D-BOOKING-AUDIT-WIRING: append-only audit event AFTER successful
+    // status mutation. Fire-and-forget — auditLog already swallows errors,
+    // so this can never roll back the state change. Strict shape:
+    // targetType='booking', targetId=bookingId, severity='info'. INSERT-only.
+    void logAuditEvent({
+      actorUserId: userId,
+      actionType: 'booking_confirmed',
+      targetType: 'booking',
+      targetId: bookingId,
+      severity: 'info',
+      traceId: (req as any).traceId,
+      metadata: { stationId: bookingStationId ?? null, platform: booking?.platform ?? null },
+    }).catch(() => { /* helper already swallows; double-guard */ });
+
     res.json({ success: true });
 
     // ── Non-blocking: Google Sheets sync + email notification ───────────────
@@ -644,6 +659,17 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
       logger.error('[Bookings] Settlement engine error (non-fatal)', { bookingId, error: err?.message });
     });
 
+    // PR-D-BOOKING-AUDIT-WIRING: append-only audit event after completion.
+    void logAuditEvent({
+      actorUserId: userId,
+      actionType: 'booking_completed',
+      targetType: 'booking',
+      targetId: bookingId,
+      severity: 'info',
+      traceId: (req as any).traceId,
+      metadata: { platform: booking?.platform ?? null },
+    }).catch(() => { /* helper already swallows; double-guard */ });
+
     res.json({ success: true });
   } catch (error: any) {
     console.error("[Bookings] Error completing:", error);
@@ -740,6 +766,26 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       refundAmount: netRefundILS,
       refundPolicy: cancellationResult.policyTier,
     });
+
+    // PR-D-BOOKING-AUDIT-WIRING: append-only audit event AFTER the status
+    // mutation succeeds (escrow refund already passed). Records who
+    // cancelled and the policy tier for downstream dispute resolution.
+    void logAuditEvent({
+      actorUserId: userId,
+      actionType: 'booking_cancelled',
+      targetType: 'booking',
+      targetId: bookingId,
+      severity: 'info',
+      traceId: (req as any).traceId,
+      metadata: {
+        cancelledBy,
+        platform: booking?.platform ?? null,
+        refundPolicy: cancellationResult.policyTier,
+        // Cancellation reason is recorded as a free-form business field,
+        // NOT a secret. Truncated defensively.
+        reason: typeof reason === 'string' ? reason.slice(0, 200) : null,
+      },
+    }).catch(() => { /* helper already swallows; double-guard */ });
 
     // 6b. Calendar sync on CANCEL (Phase B1) — remove the Google Calendar
     // event so the provider's calendar doesn't keep a stale invite.

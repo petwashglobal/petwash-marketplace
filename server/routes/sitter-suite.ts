@@ -1146,7 +1146,24 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           logger.warn('[GCS] Sitter financial backup failed (non-blocking)', gcsErr);
         }
       })();
-      
+
+      // PR-D-BOOKING-AUDIT-WIRING: append-only provider_response_changed
+      // event for the ACCEPT branch. Records who accepted and that
+      // payment capture succeeded (status=confirmed). INSERT-only.
+      void logAuditEvent({
+        actorUserId: providerUid,
+        actionType: 'provider_response_changed',
+        targetType: 'booking',
+        targetId: bookingId,
+        severity: 'info',
+        traceId: (req as any).traceId,
+        metadata: {
+          response: 'accept',
+          newStatus: 'confirmed',
+          platform: 'sitter_suite',
+        },
+      }).catch(() => { /* helper already swallows; double-guard */ });
+
       res.json({
         success: true,
         status: 'confirmed',
@@ -1216,7 +1233,27 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       }
       
       logger.info('[Sitter Suite] ❌ Provider DECLINED booking', { bookingId, reason: declineReason });
-      
+
+      // PR-D-BOOKING-AUDIT-WIRING: append-only provider_response_changed
+      // event for the DECLINE branch. Mirrors the ACCEPT branch shape so
+      // downstream queries can filter by `metadata.response`. INSERT-only.
+      void logAuditEvent({
+        actorUserId: providerUid,
+        actionType: 'provider_response_changed',
+        targetType: 'booking',
+        targetId: bookingId,
+        severity: 'info',
+        traceId: (req as any).traceId,
+        metadata: {
+          response: 'decline',
+          newStatus: 'declined',
+          platform: 'sitter_suite',
+          // declineReason is a free-form business field (not a secret).
+          // Truncated defensively.
+          reason: typeof declineReason === 'string' ? declineReason.slice(0, 200) : null,
+        },
+      }).catch(() => { /* helper already swallows; double-guard */ });
+
       res.json({
         success: true,
         status: 'declined',
