@@ -243,5 +243,104 @@
     "forbidden": "Access Forbidden",
     "tryAgain": "Please try again",
     "contactSupport": "Contact Support"
+  },
+  "petOnboarding": {
+    "start": {
+      "addPet": "Add my pet",
+      "addAnotherPet": "Add another pet",
+      "skip": "Skip for now",
+      "continue": "Continue",
+      "back": "Back",
+      "saveAndReturn": "Save and return later",
+      "oneTimeNotice": "You only need to add your pet once. We'll keep their profile ready for every booking."
+    },
+    "species": {
+      "dog": "Dog",
+      "puppy": "Puppy",
+      "cat": "Cat",
+      "kitten": "Kitten",
+      "bird": "Bird",
+      "smallMammal": "Rabbit / Guinea pig",
+      "reptile": "Reptile / Snake",
+      "other": "Other pet",
+      "unknown": "Not sure"
+    },
+    "basics": {
+      "petName": "Pet's name",
+      "male": "Male",
+      "female": "Female",
+      "sexUnknown": "Unknown",
+      "birthMonth": "Birth month",
+      "birthYear": "Birth year",
+      "breed": "Breed",
+      "size": "Size",
+      "weightRange": "Weight range",
+      "origin": "Where did you get your pet?"
+    },
+    "breed": {
+      "search": "Search breed",
+      "popular": "Popular breeds",
+      "cantFind": "Can't find your breed?",
+      "mixed": "Mixed breed",
+      "unknown": "Unknown breed",
+      "closestMatch": "Closest match"
+    },
+    "photo": {
+      "upload": "Upload photo",
+      "edit": "Edit photo",
+      "confirmCrop": "Confirm crop",
+      "slideZoom": "Slide to zoom",
+      "chooseAvatar": "Choose a Pet Wash avatar",
+      "privacyNote": "Photos are private and shown only to providers you book."
+    },
+    "health": {
+      "desexed": "Desexed (neutered or spayed)",
+      "microchipped": "Microchipped",
+      "vaccinated": "Vaccinated",
+      "medicalNotes": "Medical notes",
+      "allergies": "Allergies",
+      "medication": "Current medication",
+      "vetDetails": "Vet details",
+      "emergencyContact": "Emergency contact",
+      "providerConsent": "Share essential pet care details with approved providers when needed for a booking"
+    },
+    "behaviour": {
+      "houseTrained": "House trained",
+      "separationAnxiety": "Separation anxiety",
+      "energy": "Energy level",
+      "energyLow": "Low",
+      "energyMedium": "Medium",
+      "energyHigh": "High",
+      "energyVeryHigh": "Very high",
+      "friendlyDogs": "Friendly with other dogs",
+      "friendlyCats": "Friendly with cats",
+      "goodChildren": "Good with children",
+      "nervous": "Nervous around new people",
+      "reactive": "Reactive on leash",
+      "behaviourNotes": "Behaviour notes"
+    },
+    "petId": {
+      "name": "Pet Wash Pet ID",
+      "passport": "Pet Passport",
+      "microchipBadge": "Verified microchip",
+      "vaccinationBadge": "Vaccination verified",
+      "medicalAlert": "Medical alert",
+      "behaviourNote": "Behaviour note",
+      "emergencyQR": "Emergency QR",
+      "walletCardCopy": "Carry your pet's digital ID card with you"
+    },
+    "emptyStates": {
+      "noPets": "No pets yet",
+      "sittersRely": "Sitters rely on your pet profile to keep your pet safe",
+      "addFirst": "Add your first pet",
+      "completeProfile": "A complete profile improves provider matching"
+    },
+    "consent": {
+      "privateByDefault": "Private by default",
+      "providerVisibility": "Visible to approved providers only when needed for a booking",
+      "exportData": "Export pet data",
+      "deletePet": "Delete pet profile",
+      "deactivatePet": "Deactivate pet profile"
+    }
   }
 }
