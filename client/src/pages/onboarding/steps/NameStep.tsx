@@ -13,6 +13,7 @@ export function NameStep({ t }: { t: TFn }) {
         {t('petOnboarding.basics.petName')}
       </h1>
       <input
+        id="pet-onboarding-name-input"
         type="text"
         value={draft.name}
         onChange={(e) => setField('name', e.target.value)}
@@ -23,7 +24,9 @@ export function NameStep({ t }: { t: TFn }) {
         maxLength={40}
         aria-label={t('petOnboarding.basics.petName')}
         aria-required="true"
-        className="mt-6 w-full bg-transparent border-0 border-b border-slate-200 focus:border-slate-900 focus:outline-none focus:ring-0 text-2xl font-light text-slate-900 pb-3 transition-colors"
+        aria-invalid={draft.name.trim().length === 0}
+        inputMode="text"
+        className="mt-6 w-full min-h-[44px] bg-transparent border-0 border-b border-slate-200 focus:border-slate-900 focus:outline-none focus:ring-0 focus-visible:border-emerald-700 text-2xl font-light text-slate-900 pb-3 transition-colors"
         style={{ fontSize: '20px' }}
       />
     </div>

@@ -129,6 +129,37 @@ export function PhotoCropper({ t, rawDataUrl, onConfirm, onRestart }: PhotoCropp
     dragStateRef.current.active = false;
   };
 
+  /** Keyboard accessibility (PR-PET-7):
+   *   Arrow keys pan the image by 16 px / step.
+   *   '+' / '=' zoom in by ZOOM_STEP. '-' / '_' zoom out.
+   *   '0' resets to fit (zoom=1, offset=0). */
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const STEP = 16;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setOffset((prev) => clamp({ x: prev.x - STEP, y: prev.y }));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setOffset((prev) => clamp({ x: prev.x + STEP, y: prev.y }));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setOffset((prev) => clamp({ x: prev.x, y: prev.y - STEP }));
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setOffset((prev) => clamp({ x: prev.x, y: prev.y + STEP }));
+    } else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP));
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP));
+    } else if (e.key === '0') {
+      e.preventDefault();
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+    }
+  };
+
   const handleConfirm = () => {
     const img = imgRef.current;
     const canvas = canvasRef.current;
@@ -165,12 +196,17 @@ export function PhotoCropper({ t, rawDataUrl, onConfirm, onRestart }: PhotoCropp
     <div className="flex flex-col items-center px-6">
       <div
         ref={containerRef}
-        className="relative overflow-hidden rounded-full border border-slate-200 bg-slate-50 select-none touch-none"
+        className="relative overflow-hidden rounded-full border border-slate-200 bg-slate-50 select-none touch-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
         style={{ width: VIEWPORT_PX, height: VIEWPORT_PX }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onKeyDown={onKeyDown}
+        tabIndex={0}
+        role="application"
+        aria-label={t('petOnboarding.photo.slideZoom')}
+        aria-roledescription="image cropper"
         data-pr-pet-6-cropper-viewport="true"
       >
         {dims && (
