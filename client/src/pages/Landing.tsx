@@ -6,6 +6,7 @@ import { GiftCards } from '@/components/GiftCards';
 import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
+import { PremiumPlatformGrid } from '@/components/marketing/PremiumPlatformGrid';
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
@@ -185,8 +186,18 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
 
-        {/* PetWash Platforms - All Devices */}
-        <PetWashDivisions language={language} />
+        {/* PetWash Platforms — feature-flagged premium cards (PR-PREMIUM-CARDS-1).
+            Default OFF. Old PetWashDivisions stays the production
+            default until VITE_PREMIUM_PLATFORM_CARDS_ENABLED='true' AND
+            the design team confirms all 12 .webp binaries are
+            committed AND CEO visual review (mobile + desktop) is
+            complete. Toggling the flag swaps components — no other
+            behavior change. */}
+        {import.meta.env.VITE_PREMIUM_PLATFORM_CARDS_ENABLED === 'true' ? (
+          <PremiumPlatformGrid language={language} />
+        ) : (
+          <PetWashDivisions language={language} />
+        )}
 
         {/* Luxury Gold Divider */}
         <div className="relative h-3 bg-white overflow-hidden">
