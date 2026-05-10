@@ -97,7 +97,7 @@ export function PhotoUploader({ t, onPicked }: PhotoUploaderProps) {
       <button
         type="button"
         onClick={handleClick}
-        className="min-h-[48px] min-w-[200px] rounded-full bg-slate-900 text-white text-base font-medium hover:bg-slate-800 transition-colors px-6"
+        className="min-h-[48px] min-w-[200px] rounded-full bg-slate-900 text-white text-base font-medium hover:bg-slate-800 transition-colors px-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
         data-pr-pet-6-pick-cta="true"
       >
         {t('petOnboarding.photo.upload')}

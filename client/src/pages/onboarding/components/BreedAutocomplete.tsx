@@ -47,7 +47,7 @@
  *   • Autocomplete keyboard arrow-nav (will land in PR-PET-7
  *     accessibility lane).
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getBreedsForSpecies,
   getBreedById,
@@ -68,6 +68,9 @@ interface BreedAutocompleteProps {
   t: (key: string) => string;
 }
 
+const LISTBOX_ID = 'pet-onboarding-breed-listbox';
+const optionDomId = (breedId: string) => `breed-opt-${breedId}`;
+
 export function BreedAutocomplete({
   speciesId,
   lang,
@@ -77,6 +80,8 @@ export function BreedAutocomplete({
 }: BreedAutocompleteProps) {
   const [query, setQuery] = useState('');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [activeBreedId, setActiveBreedId] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const all = useMemo(() => getBreedsForSpecies(speciesId), [speciesId]);
   const placeholders = useMemo(
@@ -103,7 +108,65 @@ export function BreedAutocomplete({
     });
   }, [all, trimmedQuery]);
 
+  /** Flat list of currently-rendered options in DOM order. Used for
+   *  ArrowUp / ArrowDown / Home / End keyboard navigation
+   *  (PR-PET-7). */
+  const visibleIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const b of placeholders) ids.push(b.id);
+    if (trimmedQuery.length === 0) {
+      for (const b of popular) ids.push(b.id);
+    } else {
+      for (const b of matches) ids.push(b.id);
+    }
+    return ids;
+  }, [placeholders, popular, matches, trimmedQuery]);
+
+  // If active id falls out of the visible set (e.g. query change
+  // hides the active option), reset to first visible.
+  useEffect(() => {
+    if (activeBreedId && !visibleIds.includes(activeBreedId)) {
+      setActiveBreedId(visibleIds[0] ?? null);
+    }
+  }, [visibleIds, activeBreedId]);
+
   const selectedBreed = selectedBreedId ? getBreedById(selectedBreedId) : null;
+
+  const commit = (id: string) => {
+    onSelect(id);
+    setIsPanelOpen(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (visibleIds.length === 0) return;
+    const currentIdx = activeBreedId ? visibleIds.indexOf(activeBreedId) : -1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIdx = currentIdx < 0 ? 0 : (currentIdx + 1) % visibleIds.length;
+      setActiveBreedId(visibleIds[nextIdx]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIdx =
+        currentIdx <= 0 ? visibleIds.length - 1 : currentIdx - 1;
+      setActiveBreedId(visibleIds[prevIdx]);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActiveBreedId(visibleIds[0]);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActiveBreedId(visibleIds[visibleIds.length - 1]);
+    } else if (e.key === 'Enter') {
+      if (activeBreedId) {
+        e.preventDefault();
+        commit(activeBreedId);
+      }
+    } else if (e.key === 'Escape') {
+      if (query.length > 0) {
+        e.preventDefault();
+        setQuery('');
+      }
+    }
+  };
 
   if (selectedBreed && !isPanelOpen) {
     return (
@@ -126,8 +189,12 @@ export function BreedAutocomplete({
             onClick={() => {
               setIsPanelOpen(true);
               setQuery('');
+              setActiveBreedId(null);
+              // Restore focus to the search input on the next tick
+              // so it reads as the new active landmark.
+              setTimeout(() => inputRef.current?.focus(), 0);
             }}
-            className="text-sm text-slate-500 underline-offset-2 hover:underline"
+            className="text-sm text-slate-500 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
             aria-label={t('petOnboarding.start.back')}
           >
             {t('petOnboarding.photo.edit')}
@@ -140,30 +207,42 @@ export function BreedAutocomplete({
   return (
     <div className="flex flex-col">
       <input
+        ref={inputRef}
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder={t('petOnboarding.breed.search')}
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
         inputMode="search"
+        role="combobox"
         aria-label={t('petOnboarding.breed.search')}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-0"
+        aria-expanded="true"
+        aria-autocomplete="list"
+        aria-controls={LISTBOX_ID}
+        aria-activedescendant={
+          activeBreedId ? optionDomId(activeBreedId) : undefined
+        }
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
         style={{ fontSize: '16px' }}
       />
 
-      <div className="mt-4 max-h-[60vh] overflow-y-auto">
+      <div
+        id={LISTBOX_ID}
+        role="listbox"
+        aria-label={t('petOnboarding.basics.breed')}
+        className="mt-4 max-h-[60vh] overflow-y-auto"
+      >
         {/* Placeholders — always visible, regardless of search term. */}
         <ResultSection
           title={t('petOnboarding.breed.cantFind')}
           items={placeholders}
           lang={lang}
           selectedBreedId={selectedBreedId}
-          onSelect={(id) => {
-            onSelect(id);
-            setIsPanelOpen(false);
-          }}
+          activeBreedId={activeBreedId}
+          onSelect={commit}
           isPlaceholderSection
         />
 
@@ -173,10 +252,8 @@ export function BreedAutocomplete({
             items={popular}
             lang={lang}
             selectedBreedId={selectedBreedId}
-            onSelect={(id) => {
-              onSelect(id);
-              setIsPanelOpen(false);
-            }}
+            activeBreedId={activeBreedId}
+            onSelect={commit}
           />
         )}
 
@@ -186,10 +263,8 @@ export function BreedAutocomplete({
             items={matches}
             lang={lang}
             selectedBreedId={selectedBreedId}
-            onSelect={(id) => {
-              onSelect(id);
-              setIsPanelOpen(false);
-            }}
+            activeBreedId={activeBreedId}
+            onSelect={commit}
             emptyHint={t('petOnboarding.breed.cantFind')}
           />
         )}
@@ -203,6 +278,7 @@ interface ResultSectionProps {
   items: BreedEntry[];
   lang: Lang;
   selectedBreedId: string | null;
+  activeBreedId: string | null;
   onSelect: (breedId: string) => void;
   isPlaceholderSection?: boolean;
   emptyHint?: string;
@@ -213,6 +289,7 @@ function ResultSection({
   items,
   lang,
   selectedBreedId,
+  activeBreedId,
   onSelect,
   isPlaceholderSection = false,
   emptyHint,
@@ -227,24 +304,30 @@ function ResultSection({
       {items.length === 0 && emptyHint ? (
         <p className="px-1 text-sm text-slate-500">{emptyHint}</p>
       ) : (
-        <ul role="listbox" className="flex flex-col">
+        <ul className="flex flex-col">
           {items.map((b) => {
             const isSelected = selectedBreedId === b.id;
+            const isActive = activeBreedId === b.id;
             return (
               <li key={b.id} role="presentation">
                 <button
+                  id={optionDomId(b.id)}
                   type="button"
                   role="option"
                   aria-selected={isSelected}
+                  tabIndex={-1}
                   onClick={() => onSelect(b.id)}
                   className={[
-                    'group flex min-h-[44px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-base transition-colors',
+                    'group flex min-h-[44px] w-full items-center justify-between rounded-xl px-3 py-2 text-start text-base transition-colors',
                     isSelected
                       ? 'bg-emerald-700 text-white'
-                      : 'text-slate-900 hover:bg-slate-50',
+                      : isActive
+                        ? 'bg-slate-100 text-slate-900'
+                        : 'text-slate-900 hover:bg-slate-50',
                   ].join(' ')}
                   data-pr-pet-5-option="true"
                   data-placeholder={isPlaceholderSection ? 'true' : undefined}
+                  data-active={isActive ? 'true' : undefined}
                 >
                   <span className="font-medium">{getLabel(b.label, lang)}</span>
                   {isSelected && (

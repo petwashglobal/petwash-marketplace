@@ -33,7 +33,7 @@
  *     future PR can add a guard.
  *   • The Save CTA on Review is intentionally stubbed (toast + no-op).
  */
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useLanguage } from '../../lib/languageStore';
 import {
@@ -97,6 +97,18 @@ function ShellInner() {
   const step = parseStepFromPath(location);
   const stepIndex = PET_ONBOARDING_STEP_ORDER.indexOf(step);
   const totalSteps = PET_ONBOARDING_STEP_ORDER.length;
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  /** PR-PET-7 a11y: on every step change move keyboard focus to the
+   *  step's main landmark so screen readers announce the new step
+   *  and keyboard users land in the right region. */
+  useEffect(() => {
+    const node = mainRef.current;
+    if (node) {
+      // Use a microtask so the new step has rendered first.
+      queueMicrotask(() => node.focus());
+    }
+  }, [step]);
 
   const [bundle, setBundle] = useState<Record<string, unknown> | null>(null);
   const [englishBundle, setEnglishBundle] = useState<Record<string, unknown> | null>(null);
@@ -154,7 +166,13 @@ function ShellInner() {
         ariaLabel={t('petOnboarding.start.back')}
       />
 
-      <main className="flex-1 overflow-y-auto pt-6 pb-32">
+      <main
+        ref={mainRef}
+        tabIndex={-1}
+        aria-live="polite"
+        aria-atomic="true"
+        className="flex-1 overflow-y-auto pt-6 pb-32 focus:outline-none"
+      >
         <Suspense fallback={<div className="px-6 text-sm text-slate-400">…</div>}>
           {step === 'welcome' && <WelcomeStep t={t} />}
           {step === 'name' && <NameStep t={t} />}
@@ -196,7 +214,7 @@ function Header({
           disabled={!canGoBack}
           aria-label={ariaLabel}
           className={[
-            'w-10 h-10 rounded-full flex items-center justify-center transition-opacity',
+            'w-10 h-10 rounded-full flex items-center justify-center transition-opacity motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700',
             canGoBack ? 'opacity-100 hover:bg-slate-50' : 'opacity-0 pointer-events-none',
           ].join(' ')}
         >
@@ -209,8 +227,8 @@ function Header({
         </span>
         <div className="w-10 h-10" aria-hidden="true" />
       </div>
-      <div className="h-[2px] bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemax={100}>
-        <div className="h-full bg-slate-900 transition-all duration-300" style={{ width: `${pct}%` }} />
+      <div className="h-[2px] bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full bg-slate-900 transition-all duration-300 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -250,7 +268,7 @@ function Footer({
           onClick={onContinue}
           disabled={!canContinue}
           className={[
-            'w-full h-12 rounded-full text-base font-medium transition-colors',
+            'w-full h-12 rounded-full text-base font-medium transition-colors motion-reduce:transition-none',
             canContinue
               ? 'bg-slate-900 text-white hover:bg-slate-800'
               : 'bg-slate-100 text-slate-400 cursor-not-allowed',
@@ -273,7 +291,7 @@ function StubbedSaveButton({ t }: { t: (k: string) => string }) {
       <button
         type="button"
         onClick={() => setConfirmed(true)}
-        className="w-full h-12 rounded-full bg-slate-900 text-white text-base font-medium hover:bg-slate-800 transition-colors"
+        className="w-full h-12 rounded-full bg-slate-900 text-white text-base font-medium hover:bg-slate-800 transition-colors motion-reduce:transition-none"
         data-pr-pet-4-save-stub="true"
       >
         {t('petOnboarding.start.continue')}

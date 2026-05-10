@@ -63,7 +63,7 @@ export function PhotoStep({ t }: { t: TFn }) {
         <div className="flex flex-col items-center px-6">
           <img
             src={draft.photoDataUrl}
-            alt=""
+            alt={draft.name ? `${draft.name}` : ''}
             className="w-40 h-40 rounded-full object-cover mb-6 border border-slate-200"
             data-pr-pet-6-confirmed-thumb="true"
           />
@@ -73,7 +73,7 @@ export function PhotoStep({ t }: { t: TFn }) {
               setField('photoDataUrl', null);
               setRawDataUrl(null);
             }}
-            className="text-sm text-slate-500 underline-offset-2 hover:underline"
+            className="text-sm text-slate-500 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 min-h-[44px] px-3"
           >
             {t('petOnboarding.photo.edit')}
           </button>
