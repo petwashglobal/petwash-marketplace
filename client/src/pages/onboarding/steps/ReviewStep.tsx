@@ -23,6 +23,16 @@ export function ReviewStep({ t, lang }: { t: TFn; lang: Lang }) {
         {t('petOnboarding.petId.name')}
       </h1>
 
+      {draft.photoDataUrl && (
+        <div className="mb-6 flex justify-center" data-pr-pet-6-review-thumb="true">
+          <img
+            src={draft.photoDataUrl}
+            alt=""
+            className="w-24 h-24 rounded-full object-cover border border-slate-200"
+          />
+        </div>
+      )}
+
       <dl className="space-y-4">
         <Row
           label={t('petOnboarding.basics.petName')}

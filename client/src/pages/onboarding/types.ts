@@ -23,6 +23,7 @@ export type PetOnboardingStepId =
   | 'name'
   | 'species'
   | 'breed'
+  | 'photo'
   | 'review';
 
 export const PET_ONBOARDING_STEP_ORDER: readonly PetOnboardingStepId[] = [
@@ -30,18 +31,28 @@ export const PET_ONBOARDING_STEP_ORDER: readonly PetOnboardingStepId[] = [
   'name',
   'species',
   'breed',
+  'photo',
   'review',
 ] as const;
 
-/** In-memory draft. Deliberately small — v1 minimum. */
+/** In-memory draft. Deliberately small — v1 minimum.
+ *
+ *  PR-PET-6 adds `photoDataUrl` — a transient base64 data URL
+ *  produced by the in-browser cropper (PhotoCropper.tsx). It is
+ *  NEVER uploaded, NEVER persisted, NEVER written to localStorage /
+ *  sessionStorage / IndexedDB. Discarded on shell unmount.
+ *  Persistence is the responsibility of a future draft-persistence
+ *  PR (PR-PET-4B), not this PR. */
 export interface PetOnboardingDraft {
   name: string;
   species: SpeciesId | null;
   breedId: string | null;
+  photoDataUrl: string | null;
 }
 
 export const EMPTY_PET_DRAFT: PetOnboardingDraft = {
   name: '',
   species: null,
   breedId: null,
+  photoDataUrl: null,
 };
