@@ -67,6 +67,7 @@ export function isStepId(value: string | undefined): value is PetOnboardingStepI
     value === 'name' ||
     value === 'species' ||
     value === 'breed' ||
+    value === 'photo' ||
     value === 'review'
   );
 }

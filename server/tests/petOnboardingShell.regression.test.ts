@@ -304,15 +304,20 @@ describe('PR-PET-4 — G. save-stub honesty', () => {
     expect(shell.includes('data-pr-pet-4-save-stub')).toBe(true);
   });
 
-  it('G3. step set is exactly welcome → name → species → breed → review', () => {
+  it('G3. step set covers welcome → name → species → breed → (photo as of PR-PET-6) → review', () => {
     const types = read('client/src/pages/onboarding/types.ts');
     expect(types.includes("'welcome'")).toBe(true);
     expect(types.includes("'name'")).toBe(true);
     expect(types.includes("'species'")).toBe(true);
     expect(types.includes("'breed'")).toBe(true);
     expect(types.includes("'review'")).toBe(true);
-    // No premature inclusion of out-of-scope steps.
-    expect(types.includes("'photo'")).toBe(false);
+    // 'photo' was deferred at PR-PET-4 time; PR-PET-6 extended the
+    // step set to include it. PR-PET-6's own pinning suite
+    // (server/tests/petPhotoOnboarding.regression.test.ts §D)
+    // verifies that 'photo' lands BETWEEN 'breed' and 'review'.
+    // Pinning here only that the deeper master-plan steps still
+    // remain explicitly out of scope until the relevant later
+    // PR-PET-* class introduces them.
     expect(types.includes("'consent_medical'")).toBe(false);
     expect(types.includes("'aggression_warning'")).toBe(false);
   });

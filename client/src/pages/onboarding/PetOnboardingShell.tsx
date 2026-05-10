@@ -63,6 +63,9 @@ const SpeciesStep = lazy(() =>
 const BreedStep = lazy(() =>
   import('./steps/BreedStep').then((m) => ({ default: m.BreedStep })),
 );
+const PhotoStep = lazy(() =>
+  import('./steps/PhotoStep').then((m) => ({ default: m.PhotoStep })),
+);
 const ReviewStep = lazy(() =>
   import('./steps/ReviewStep').then((m) => ({ default: m.ReviewStep })),
 );
@@ -157,6 +160,7 @@ function ShellInner() {
           {step === 'name' && <NameStep t={t} />}
           {step === 'species' && <SpeciesStep t={t} lang={lang} />}
           {step === 'breed' && <BreedStep t={t} lang={lang} />}
+          {step === 'photo' && <PhotoStep t={t} />}
           {step === 'review' && <ReviewStep t={t} lang={lang} />}
         </Suspense>
       </main>
