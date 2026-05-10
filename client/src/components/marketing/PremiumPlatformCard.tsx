@@ -70,21 +70,25 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
         )}
       </div>
 
-      {/* Editorial copy block (overlaid HTML; selectable; accessible). */}
-      <div className="px-6 py-6 text-start sm:px-8 sm:py-8">
+      {/* Editorial copy block (overlaid HTML; selectable; accessible).
+          Mobile padding intentionally tighter than desktop —
+          CEO directive 2026-05-10 ("less dead space; tighter mobile
+          layout; more content visible; still clean"). Desktop keeps
+          editorial breathing room. */}
+      <div className="px-5 py-4 text-start sm:px-8 sm:py-8">
         <h3 className="text-2xl font-light leading-tight tracking-tight text-[#07140d] sm:text-3xl">
           {title}
         </h3>
-        <p className="mt-3 text-lg font-medium leading-snug text-emerald-800 sm:text-xl">
+        <p className="mt-2 text-lg font-medium leading-snug text-emerald-800 sm:mt-3 sm:text-xl">
           {headline}
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base">
           {subtitle}
         </p>
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <Link
             href={card.href}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-700 px-6 text-base font-medium text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 motion-reduce:transition-none"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-700 px-5 text-base font-medium text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 motion-reduce:transition-none sm:px-6"
             data-pr-premium-card-cta="true"
           >
             {cta}
