@@ -4,6 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
+// PR-LOCATION-GUARD-PLACES-1: client-side echo of the server
+// gate. When the flag is OFF we skip the network call entirely
+// and let the user type freely. The server is the authoritative
+// gate; this check just avoids an unnecessary 503 round-trip.
+import { isGooglePlacesEnabled } from '@/lib/feature-flags/googlePlaces';
 
 function generateSessionToken(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -154,6 +159,16 @@ export function GooglePlacesAutocomplete({
   }, []);
 
   const fetchPredictions = useCallback(async (input: string) => {
+    // PR-LOCATION-GUARD-PLACES-1: short-circuit when the
+    // client flag is off (mirrors server gate). Surfaces the
+    // existing manual-entry hint so the input stays usable.
+    if (!isGooglePlacesEnabled()) {
+      setPredictions([]);
+      setShowDropdown(false);
+      setShowManualHint(true);
+      return;
+    }
+
     if (input.length < 3) {
       setPredictions([]);
       setShowDropdown(false);
