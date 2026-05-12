@@ -36,6 +36,13 @@ import { Router } from 'express';
 import { logger } from '../lib/logger';
 import { db as firestore } from '../lib/firebase-admin';
 import rateLimit from 'express-rate-limit';
+// PR-LOCATION-GUARD-PLACES-1: explicit on/off gate for live
+// Google Places proxy calls. Applied to the autocomplete and
+// details endpoints so non-production environments cannot
+// spend live API budget by default (PROGRAM.md §1.12). The
+// existing GOOGLE_MAPS_API_KEY presence check still runs
+// after this gate.
+import { requireGooglePlacesEnabled } from '../lib/feature-flags/googlePlaces';
 
 const router = Router();
 
@@ -333,7 +340,7 @@ router.get('/places-health', async (req, res) => {
  * to group keystrokes into a single billing session (reduces cost, improves quality).
  * Uses Places API v1 (POST + X-Goog-FieldMask) for better billing and response quality.
  */
-router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimiter, async (req, res) => {
+router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocompleteLimiter, placesSessionLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     if (!isAllowedPlacesOrigin(req)) {
@@ -503,7 +510,7 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimit
  * Returns structured address components for form auto-fill.
  * Uses Places API v1 (X-Goog-FieldMask + X-Goog-Places-Session-Token) to close billing session.
  */
-router.get('/places-details', placesDetailsLimiter, async (req, res) => {
+router.get('/places-details', requireGooglePlacesEnabled, placesDetailsLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     // Issue #153 Mission 5 PR-A: enforce the same origin allowlist that
