@@ -104,32 +104,123 @@ const SCAN_FILES: ReadonlyArray<string> = SCAN_ROOTS
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Strip JS/TS/HTML/markdown comments AND string literals so
- * the regex scan only matches CODE. Comments documenting the
- * PR-LEGAL-B cleanup ("previously fully insured ...") would
- * otherwise produce false positives.
+ * Source preparation for the insurance-phrase scan.
  *
- * For markdown the strip is more conservative — markdown
- * doesn't have JS-style comments. We rely on the fact that
- * the dangerous markdown lines are in contract-template
- * bodies and have been edited in this PR. The scan will see
- * any remaining body line.
+ * Strips JS / TS / TSX / JSX comments so cleanup-provenance
+ * comments ("previously 'fully insured' ...") do not produce
+ * false positives on the FORBIDDEN_PATTERNS scan.
+ *
+ * Markdown is returned RAW. Previously this helper stripped
+ * HTML comments via
+ *     src.replace(/<!--[\s\S]*?-->/g, "")
+ * which CodeQL #188 (js/incomplete-multi-character-
+ * sanitization) flagged as an unsafe sanitizer pattern.
+ * The HTML comment stripper is GONE, not patched: this is
+ * the safer posture because any insurance phrasing hidden
+ * inside an HTML comment block now stays scannable — and
+ * scanning HTML comments is exactly what we want. A
+ * regulator reads HTML comments the same as body text.
+ *
+ * The TS / TSX stripper is a tiny state-machine parser
+ * (NOT a chain of multi-character regex replaces) that:
+ *   - tracks single-quote, double-quote, and template-
+ *     literal string state with escape-character awareness
+ *   - skips `/* … *\/` block comments outside strings
+ *   - skips `//` line comments outside strings
+ *   - skips `{/* … *\/}` JSX comments outside strings
+ *
+ * String literal contents are PRESERVED on purpose: an
+ * insurance promise inside a JSX string is exactly what we
+ * want this scan to catch.
  */
-function stripCommentsAndStrings(src: string, isMarkdown: boolean): string {
+function sourceForInsuranceScan(src: string, isMarkdown: boolean): string {
   if (isMarkdown) {
-    // Strip HTML comments only; leave body text intact.
-    return src.replace(/<!--[\s\S]*?-->/g, "");
+    // Raw markdown — HTML comments included by design.
+    return src;
   }
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1")
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+  const n = src.length;
+  let out = "";
+  let i = 0;
+  let inString: '"' | "'" | "`" | null = null;
+
+  while (i < n) {
+    const c = src[i];
+
+    if (inString) {
+      // We are inside a string literal. Preserve every
+      // character. Honour escape sequences so `\"` does not
+      // close a double-quote string.
+      if (c === "\\" && i + 1 < n) {
+        out += c;
+        out += src[i + 1];
+        i += 2;
+        continue;
+      }
+      if (c === inString) {
+        out += c;
+        inString = null;
+        i++;
+        continue;
+      }
+      out += c;
+      i++;
+      continue;
+    }
+
+    const next = src[i + 1];
+    const after = src[i + 2];
+
+    // Block comment /* … */
+    if (c === "/" && next === "*") {
+      const end = src.indexOf("*/", i + 2);
+      i = end < 0 ? n : end + 2;
+      continue;
+    }
+
+    // Line comment //
+    if (c === "/" && next === "/") {
+      const end = src.indexOf("\n", i + 2);
+      if (end < 0) {
+        i = n;
+      } else {
+        out += "\n"; // preserve line count for tooling
+        i = end + 1;
+      }
+      continue;
+    }
+
+    // JSX comment {/* … */}
+    if (c === "{" && next === "/" && after === "*") {
+      const end = src.indexOf("*/}", i + 3);
+      i = end < 0 ? n : end + 3;
+      continue;
+    }
+
+    // Enter a string literal
+    if (c === '"' || c === "'" || c === "`") {
+      inString = c;
+      out += c;
+      i++;
+      continue;
+    }
+
+    out += c;
+    i++;
+  }
+
+  return out;
 }
+
+// Backwards-compatible alias for any future caller that
+// imports by the old name. The internal call site below uses
+// the new name directly.
+const stripCommentsAndStrings = sourceForInsuranceScan;
 
 function readScrubbed(path: string): string {
   const src = readFileSync(path, "utf8");
   const isMd = path.endsWith(".md");
-  return stripCommentsAndStrings(src, isMd);
+  return sourceForInsuranceScan(src, isMd);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -324,5 +415,140 @@ describe("PR-LEGAL-B — allowlist sanity", () => {
       if (rel.endsWith(".regression.test.ts")) continue;
       expect(existsSync(full)).toBe(true);
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Source-preparation invariants (CodeQL #188 fix verification)
+// ─────────────────────────────────────────────────────────────
+//
+// Previously the helper used
+//     src.replace(/<!--[\s\S]*?-->/g, "")
+// to strip HTML comments from markdown before scanning.
+// CodeQL flagged this as js/incomplete-multi-character
+// -sanitization. The fix REMOVED the HTML stripper entirely
+// (markdown is now scanned raw) and replaced the TS/TSX
+// stripper with a small state-machine parser instead of
+// chained regex replaces.
+//
+// These tests pin the new behaviour so a future PR cannot
+// silently restore the unsafe sanitiser path.
+
+describe("PR-LEGAL-B — CodeQL #188: HTML comments are scanned, not stripped", () => {
+  it("an HTML comment containing 'fully insured' is preserved (and therefore scannable)", () => {
+    const sample =
+      "<!-- fully insured up to ₪2M -->\n" +
+      "# Heading\n" +
+      "Body text.\n";
+    const scrubbed = sourceForInsuranceScan(sample, /* isMarkdown */ true);
+    expect(/fully insured/i.test(scrubbed)).toBe(true);
+  });
+
+  it("multiple HTML comments are all preserved (no sanitiser path collapses them)", () => {
+    const sample =
+      "<!-- protected by us -->\n" +
+      "Body.\n" +
+      "<!-- covered by us -->\n";
+    const scrubbed = sourceForInsuranceScan(sample, true);
+    expect(/protected by us/i.test(scrubbed)).toBe(true);
+    expect(/covered by us/i.test(scrubbed)).toBe(true);
+  });
+
+  it("nested HTML comment shape is preserved as-is (no regex unwind)", () => {
+    // A genuine nested sequence — the legacy regex would have
+    // mishandled this. The new helper does not touch it; both
+    // the inner and outer text remain visible to the scan.
+    const sample = "<!-- outer <!-- inner fully insured --> trail -->\n";
+    const scrubbed = sourceForInsuranceScan(sample, true);
+    expect(scrubbed).toContain("fully insured");
+  });
+
+  it("Hebrew RTL phrasing inside an HTML comment is still scanned", () => {
+    const sample = "<!-- ביטוח מלא -->\n# כותרת\nגוף.\n";
+    const scrubbed = sourceForInsuranceScan(sample, true);
+    expect(scrubbed.includes("ביטוח מלא")).toBe(true);
+  });
+});
+
+describe("PR-LEGAL-B — CodeQL #188: TS/TSX comment stripper (state-machine)", () => {
+  it("forbidden phrase inside a JS line comment is STRIPPED", () => {
+    const sample = "// fully insured\nconst x = 1;\n";
+    const scrubbed = sourceForInsuranceScan(sample, /* isMarkdown */ false);
+    expect(/fully insured/i.test(scrubbed)).toBe(false);
+    expect(scrubbed).toContain("const x = 1;");
+  });
+
+  it("forbidden phrase inside a JS block comment is STRIPPED", () => {
+    const sample = "/* fully insured */\nconst x = 1;\n";
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(false);
+  });
+
+  it("forbidden phrase inside a JSX comment is STRIPPED", () => {
+    const sample = "<div>{/* fully insured */}</div>\n";
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(false);
+    expect(scrubbed).toContain("<div>");
+  });
+
+  it("forbidden phrase inside a double-quoted string literal is PRESERVED", () => {
+    const sample = 'const x = "fully insured up to ₪2M";\n';
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(true);
+  });
+
+  it("forbidden phrase inside a single-quoted string literal is PRESERVED", () => {
+    const sample = "const x = 'fully insured';\n";
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(true);
+  });
+
+  it("forbidden phrase inside a template literal is PRESERVED", () => {
+    const sample = "const x = `fully insured ${y}`;\n";
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(true);
+  });
+
+  it("a // sequence INSIDE a string is not treated as a comment", () => {
+    // The state-machine must not start comment mode while
+    // inside a string literal.
+    const sample = 'const url = "https://example.com/fully insured";\n';
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(true);
+  });
+
+  it("escaped quote inside a string does not prematurely close the string", () => {
+    const sample = 'const x = "she said \\"fully insured\\"";\n';
+    const scrubbed = sourceForInsuranceScan(sample, false);
+    expect(/fully insured/i.test(scrubbed)).toBe(true);
+  });
+
+  it("the helper does not call .replace with a multi-char sanitizer regex", () => {
+    // Reflective check: scan the file's own ACTIVE code
+    // (comments and string literals stripped) for an
+    // .replace(/<!-- ... /, ...) call. The historical
+    // pattern is allowed to appear in JSDoc comments
+    // documenting WHY it was removed — but it must not
+    // appear in executable code. This pins the CodeQL #188
+    // fix at the source level so a future edit cannot
+    // silently restore the unsafe call.
+    const self = readFileSync(__filename, "utf8");
+    // The same state-machine prep this file provides,
+    // applied to itself, leaves only code + string
+    // literals visible.
+    const codeOnly = sourceForInsuranceScan(self, /* isMarkdown */ false);
+    // Tests in this file use sample strings like
+    // "<!-- fully insured -->" inside string literals; the
+    // state-machine preserves those (we want to assert
+    // their presence elsewhere). So scan for the dangerous
+    // CALL shape — `.replace(/<!--` — which would only
+    // appear in non-string code.
+    //
+    // String literals (preserved) contain things like
+    //     "<!-- fully insured up to ₪2M -->"
+    // but NOT the literal characters `.replace(/<!--` as a
+    // contiguous sequence. So we still get a precise check.
+    const restored = /\.replace\s*\(\s*\/\s*<!--/;
+    expect(restored.test(codeOnly)).toBe(false);
   });
 });
