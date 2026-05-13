@@ -610,13 +610,17 @@ export default function BrowseSitters() {
                   <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
                     <Shield className="h-7 w-7 text-fuchsia-600" />
                   </div>
+                  {/* PR-LEGAL-B: previously claimed 'Full Insurance Included'
+                      with 'Complete insurance coverage for every booking'.
+                      Replaced with the canonical disclaimer per §8 of the
+                      Provider & Host Services Agreement. */}
                   <h4 className="font-semibold text-gray-900 mb-2">
-                    {isHebrew ? 'ביטוח מלא כלול' : 'Full Insurance Included'}
+                    {isHebrew ? 'מידע בטיחות' : 'Safety information'}
                   </h4>
                   <p className="text-sm text-gray-500">
-                    {isHebrew 
-                      ? 'כיסוי ביטוחי מלא לכל הזמנה'
-                      : 'Complete insurance coverage for every booking'
+                    {isHebrew
+                      ? 'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.'
+                      : 'Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.'
                     }
                   </p>
                 </div>
@@ -736,11 +740,16 @@ export default function BrowseSitters() {
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
                   <Heart className="h-7 w-7 text-fuchsia-600" />
                 </div>
+                {/* PR-LEGAL-B: previously 'Full Insurance' / 'Coverage for every
+                    booking'. Replaced with the CEO-approved canonical disclaimer
+                    per §8 of the Provider & Host Services Agreement. */}
                 <h4 className="font-semibold text-gray-900 mb-2">
-                  {isHebrew ? 'ביטוח מלא' : 'Full Insurance'}
+                  {isHebrew ? 'מידע בטיחות' : 'Safety information'}
                 </h4>
                 <p className="text-sm text-gray-500">
-                  {isHebrew ? 'כיסוי מלא בכל הזמנה' : 'Coverage for every booking'}
+                  {isHebrew
+                    ? 'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.'
+                    : 'Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.'}
                 </p>
               </div>
             </div>

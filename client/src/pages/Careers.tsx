@@ -480,9 +480,14 @@ export default function Careers() {
                 description: isRTL ? 'בחר את השעות שלך ואזורי הפעילות' : 'Choose your hours and service areas',
               },
               {
+                // PR-LEGAL-B: previously 'Full Insurance' / 'Comprehensive
+                // coverage for peace of mind'. Replaced with the canonical
+                // disclaimer per §8 of the Provider & Host Services Agreement.
                 icon: Shield,
-                title: isRTL ? 'ביטוח מלא' : 'Full Insurance',
-                description: isRTL ? 'כיסוי ביטוחי מקיף לשקט נפשי' : 'Comprehensive coverage for peace of mind',
+                title: isRTL ? 'מידע בטיחות' : 'Safety information',
+                description: isRTL
+                  ? 'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.'
+                  : 'Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.',
               },
               {
                 icon: Users,

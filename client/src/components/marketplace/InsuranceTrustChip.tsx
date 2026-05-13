@@ -1,28 +1,38 @@
 /**
- * InsuranceTrustChip — Compact "Covered by PetWash™" pill.
+ * InsuranceTrustChip — Provider-safety disclaimer chip.
  *
- * Surfaces the headline insurance fact (every booking is covered) at the
- * exact moments where customers decide to book or pay:
+ * PR-LEGAL-B: previously named "Covered by PetWash™" and
+ * displayed a specific underwriter (Harel Insurance), policy
+ * number (PW-2026-IL-001) and coverage amounts (₪20M, ₪250K,
+ * ₪50K). Those claims contradicted §8 of the Provider & Host
+ * Services Agreement merged in PR-LEGAL-A (#246):
  *
- *   • Provider profile pages (sitter / walker / driver / groomer / trainer)
- *   • BookingWizard summary step
- *   • CheckoutModal / payment review screens
+ *   "Pet Wash Ltd is not an insurance company, insurance
+ *    broker or insurance adviser."
  *
- * Source of truth (text + numbers must match):
- *   client/src/components/legal/InsuranceAndProtection.tsx
+ * The component now renders only the canonical disclaimer
+ * approved by the CEO (chat 2026-05-12). It carries NO
+ * monetary amounts, NO underwriter name, NO policy number,
+ * NO "covered by us" claim.
  *
- * Variant matrix:
- *   variant="badge"    — small pill, single line, no expansion (inside cards)
- *   variant="row"      — full-width row with icon + headline (provider hero)
- *   variant="card"     — boxed callout with bullet list (checkout summary)
+ * The component file is intentionally kept under its
+ * existing name so the existing import paths in
+ * BookingWizard, ProviderProfilePage, ProviderDetail,
+ * MultiPetBookingWizard, and MarketplaceTerms continue
+ * compiling. A follow-up cleanup PR may rename the file
+ * to SafetyDisclaimerChip.
  *
- * The numbers are pulled from the underlying policy on InsuranceAndProtection.
- * They are intentionally hard-coded here: the policy is a static legal
- * artifact (Harel PW-2026-IL-001), not a per-provider variable. Any change
- * needs to land in InsuranceAndProtection.tsx in the same PR.
+ * Variants
+ *   variant="badge"  — small inline pill
+ *   variant="row"    — full-width row with expandable details
+ *   variant="card"   — boxed callout
+ *
+ * All three variants render the same disclaimer; the
+ * "expand" affordance on `row` is preserved for layout
+ * compatibility but no longer reveals coverage numbers.
  */
 import { useState } from 'react';
-import { Shield, ChevronDown, Heart, UserCheck, Stethoscope } from 'lucide-react';
+import { ShieldAlert, ChevronDown } from 'lucide-react';
 
 interface InsuranceTrustChipProps {
   variant?: 'badge' | 'row' | 'card';
@@ -30,11 +40,28 @@ interface InsuranceTrustChipProps {
   className?: string;
 }
 
-const POLICY = {
-  underwriter: { en: 'Harel Insurance', he: 'הראל ביטוח' },
-  generalLiability: '₪20,000,000',
-  petAndProperty: '₪250,000',
-  emergencyVet: '₪50,000',
+const HEADLINE = {
+  en: 'Safety information',
+  he: 'מידע בטיחות',
+};
+
+// Approved bilingual disclaimer wording. CEO directive
+// 2026-05-12. Do NOT edit without Counsel sign-off.
+const DISCLAIMER = {
+  en:
+    'Providers may be required to maintain their own ' +
+    'insurance depending on the service type and applicable ' +
+    'law. Pet Wash is not an insurance company, broker or ' +
+    'adviser.',
+  he:
+    'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג ' +
+    'השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, ' +
+    'סוכנות ביטוח או יועצת ביטוח.',
+};
+
+const BADGE_LABEL = {
+  en: 'Verified provider',
+  he: 'ספק מאומת',
 };
 
 export function InsuranceTrustChip({
@@ -44,21 +71,18 @@ export function InsuranceTrustChip({
 }: InsuranceTrustChipProps) {
   const [open, setOpen] = useState(false);
 
-  const headline = isHebrew
-    ? 'מכוסה על ידי PetWash™'
-    : 'Covered by PetWash™';
-  const subhead = isHebrew
-    ? `ביטוח אחריות צד שלישי בכל הזמנה דרך הפלטפורמה — ${POLICY.underwriter.he}`
-    : `Third-party liability on every booking — underwritten by ${POLICY.underwriter.en}`;
+  const headline = isHebrew ? HEADLINE.he : HEADLINE.en;
+  const disclaimer = isHebrew ? DISCLAIMER.he : DISCLAIMER.en;
+  const badge = isHebrew ? BADGE_LABEL.he : BADGE_LABEL.en;
 
   if (variant === 'badge') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-100 ${className}`}
-        title={subhead}
+        className={`inline-flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-gray-700 rounded-full text-xs font-semibold border border-gray-200 ${className}`}
+        title={disclaimer}
       >
-        <Shield className="w-3 h-3" />
-        {isHebrew ? 'מכוסה ביטוחית' : 'Insured booking'}
+        <ShieldAlert className="w-3 h-3" />
+        {badge}
       </span>
     );
   }
@@ -67,95 +91,56 @@ export function InsuranceTrustChip({
     return (
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className={`w-full text-start flex flex-col gap-2 p-4 rounded-2xl border border-emerald-100 bg-emerald-50/40 hover:bg-emerald-50/70 transition-colors ${className}`}
+        className={`w-full text-start flex flex-col gap-2 p-4 rounded-2xl border border-gray-200 bg-gray-50/60 hover:bg-gray-50 transition-colors ${className}`}
       >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-            <Shield className="w-5 h-5 text-emerald-600" />
+          <div className="w-9 h-9 rounded-full bg-gray-200/60 flex items-center justify-center shrink-0">
+            <ShieldAlert className="w-5 h-5 text-gray-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-900">{headline}</div>
-            <div className="text-xs text-gray-600 leading-snug">{subhead}</div>
+            <div className="text-sm font-semibold text-gray-900">
+              {headline}
+            </div>
+            {!open && (
+              <div className="text-xs text-gray-600 leading-snug line-clamp-2">
+                {disclaimer}
+              </div>
+            )}
           </div>
           <ChevronDown
             className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
           />
         </div>
         {open && (
-          <ul className="grid sm:grid-cols-3 gap-2 pt-2 border-t border-emerald-100/60">
-            <CoverageLine
-              icon={UserCheck}
-              amount={POLICY.generalLiability}
-              label={isHebrew ? 'אחריות כללית' : 'General liability'}
-            />
-            <CoverageLine
-              icon={Heart}
-              amount={POLICY.petAndProperty}
-              label={isHebrew ? 'נזק לחיית מחמד או רכוש' : 'Pet & property damage'}
-            />
-            <CoverageLine
-              icon={Stethoscope}
-              amount={POLICY.emergencyVet}
-              label={isHebrew ? 'וטרינר חירום' : 'Emergency vet'}
-            />
-          </ul>
+          <p className="text-xs text-gray-700 leading-relaxed pt-2 border-t border-gray-200/60">
+            {disclaimer}
+          </p>
         )}
       </button>
     );
   }
 
-  // variant === 'card' — full callout for checkout
+  // variant === 'card'
   return (
-    <div className={`p-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 ${className}`}>
+    <div
+      className={`p-4 rounded-2xl border border-gray-200 bg-gray-50/60 ${className}`}
+    >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-          <Shield className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+          <ShieldAlert className="w-5 h-5 text-gray-700" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-gray-900">{headline}</div>
-          <p className="text-xs text-gray-700 leading-relaxed mt-0.5">{subhead}</p>
+          <div className="text-sm font-semibold text-gray-900">
+            {headline}
+          </div>
+          <p className="text-xs text-gray-700 leading-relaxed mt-1">
+            {disclaimer}
+          </p>
         </div>
       </div>
-      <ul className="grid sm:grid-cols-3 gap-2 mt-3">
-        <CoverageLine
-          icon={UserCheck}
-          amount={POLICY.generalLiability}
-          label={isHebrew ? 'אחריות כללית' : 'General liability'}
-        />
-        <CoverageLine
-          icon={Heart}
-          amount={POLICY.petAndProperty}
-          label={isHebrew ? 'נזק לחיית מחמד או רכוש' : 'Pet & property damage'}
-        />
-        <CoverageLine
-          icon={Stethoscope}
-          amount={POLICY.emergencyVet}
-          label={isHebrew ? 'וטרינר חירום' : 'Emergency vet'}
-        />
-      </ul>
     </div>
-  );
-}
-
-function CoverageLine({
-  icon: Icon,
-  amount,
-  label,
-}: {
-  icon: any;
-  amount: string;
-  label: string;
-}) {
-  return (
-    <li className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/70">
-      <Icon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-      <div className="min-w-0">
-        <div className="text-xs font-semibold text-gray-900 leading-tight">{amount}</div>
-        <div className="text-[10px] text-gray-500 leading-tight truncate">{label}</div>
-      </div>
-    </li>
   );
 }
 

@@ -179,10 +179,13 @@ export function ServiceShowcase({ variant = "grid", showPricing = true, classNam
         >
           {isRTL ? "7 שירותים. פלטפורמה אחת." : "7 Services. One Platform."}
         </h2>
+        {/* PR-LEGAL-B: previously claimed "PetWash Protect™ guarantee".
+            Replaced with a neutral one-roof description per §8 of the
+            Provider & Host Services Agreement. */}
         <p className="text-gray-500 max-w-2xl mx-auto">
-          {isRTL 
-            ? "כל מה שחיית המחמד שלך צריכה, תחת קורת גג אחת עם ערבות Pet Wash Protect™"
-            : "Everything your pet needs, under one roof with PetWash Protect™ guarantee"
+          {isRTL
+            ? "כל מה שחיית המחמד שלך צריכה, תחת קורת גג אחת"
+            : "Everything your pet needs, under one roof"
           }
         </p>
       </div>

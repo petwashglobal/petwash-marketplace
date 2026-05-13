@@ -263,11 +263,15 @@ export default function DriverDetail() {
             priceFrom: 20,
           },
         ]}
+        // PR-LEGAL-B: dropped 'Fully insured pet transport' / 'הסעת חיות
+        // מחמד מבוטחת במלואה' from the highlights — these claims contradict
+        // §8 of the Provider & Host Services Agreement. Insurance posture
+        // is communicated through the standalone Safety-information panel
+        // (InsuranceTrustChip / InsuranceAndProtection components).
         highlights={[
           driver.hasAirConditioning ? 'Climate-controlled vehicle' : 'Well-ventilated vehicle',
           driver.hasCrate ? 'Secure pet crates included' : 'Pet-friendly seating',
           'Real-time trip tracking via GPS',
-          'Fully insured pet transport',
           'Trained in pet first aid',
           'Clean, sanitized vehicle',
         ]}
@@ -275,7 +279,6 @@ export default function DriverDetail() {
           driver.hasAirConditioning ? 'רכב ממוזג' : 'רכב מאוורר היטב',
           driver.hasCrate ? 'כלובי נשיאה מאובטחים כלולים' : 'ישיבה ידידותית לחיות מחמד',
           'מעקב נסיעה בזמן אמת עם GPS',
-          'הסעת חיות מחמד מבוטחת במלואה',
           'מאומן בעזרה ראשונה לחיות מחמד',
           'רכב נקי ומחוטא',
         ]}

@@ -33,11 +33,18 @@ export default function MarketplaceTerms() {
   const [activeTab, setActiveTab] = useState("insurance");
 
   const mainTabs = [
-    { 
-      id: "insurance", 
-      label: isHebrew ? "ביטוח והגנות" : "Insurance & Protection", 
+    {
+      // PR-LEGAL-B: previously 'Insurance & Protection' tab claiming
+      // 'Full insurance coverage, claims process, protections'.
+      // Reframed as a safety-information tab per §8 of the Provider &
+      // Host Services Agreement (PR-LEGAL-A #246). Tab id preserved
+      // for URL-fragment compatibility.
+      id: "insurance",
+      label: isHebrew ? "מידע בטיחות" : "Safety information",
       icon: Shield,
-      description: isHebrew ? "כיסוי ביטוחי מלא, תהליך תביעות, הגנות" : "Full insurance coverage, claims process, protections"
+      description: isHebrew
+        ? "ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח."
+        : "Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser."
     },
     { 
       id: "legal", 

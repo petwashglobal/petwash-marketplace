@@ -194,8 +194,11 @@ export default function SitterSuite() {
                       <div className="bg-gradient-to-br from-emerald-400 to-green-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
                         <CheckCircle2 className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-xl font-black text-white drop-shadow-lg">{isHebrew ? 'מבוטח' : 'Insured'}</div>
-                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'כיסוי מלא' : 'Full Coverage'}</div>
+                      {/* PR-LEGAL-B: previously 'Insured' / 'Full Coverage' badge.
+                          Replaced with neutral verification labels per §8 of the
+                          Provider & Host Services Agreement. */}
+                      <div className="text-xl font-black text-white drop-shadow-lg">{isHebrew ? 'מאומת' : 'Verified'}</div>
+                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'מטפלים מאומתים' : 'Verified sitters'}</div>
                     </div>
                   </div>
                   <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
@@ -341,7 +344,10 @@ export default function SitterSuite() {
             <div className="luxury-grid-4">
               {[
                 { icon: Shield, title: isHebrew ? 'בדיקת רקע' : 'Background Checks', desc: isHebrew ? 'כל השמרטפים עוברים בדיקה יסודית' : 'All sitters pass thorough screening' },
-                { icon: CheckCircle2, title: isHebrew ? 'ביטוח מלא' : 'Full Insurance', desc: isHebrew ? 'כיסוי עד ₪10,000 לכל הזמנה' : 'Up to ₪10,000 coverage per booking' },
+                // PR-LEGAL-B: previously 'Full Insurance' / 'Up to ₪10,000
+                // coverage per booking'. Replaced with neutral verification
+                // tile per §8 of the Provider & Host Services Agreement.
+                { icon: CheckCircle2, title: isHebrew ? 'ספקים מאומתים' : 'Verified providers', desc: isHebrew ? 'זהות, מסמכים והמלצות עברו בדיקה' : 'Identity, documents and references checked' },
                 { icon: Award, title: isHebrew ? 'אישורים' : 'Certifications', desc: isHebrew ? 'שמרטפים מוסמכים ומאומנים' : 'Certified & trained professionals' },
                 { icon: ThumbsUp, title: isHebrew ? 'ערבות החזר כסף' : 'Money-Back Guarantee', desc: isHebrew ? 'החזר מלא אם לא מרוצה' : 'Full refund if not satisfied' },
               ].map((item, i) => (

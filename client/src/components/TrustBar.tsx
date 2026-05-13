@@ -33,11 +33,14 @@ const BADGES: TrustBadge[] = [
     bg: `${GOLD}15`,
   },
   {
+    // PR-LEGAL-B: previously 'PetWash Guarantee' / 'Full coverage for
+    // every confirmed booking'. Replaced with a neutral verification
+    // label per §8 of the Provider & Host Services Agreement.
     icon: <Shield size={16} />,
-    labelHe: 'ערבות PetWash',
-    labelEn: 'PetWash Guarantee',
-    descHe: 'כיסוי מלא לכל הזמנה מאושרת',
-    descEn: 'Full coverage for every confirmed booking',
+    labelHe: 'ספקים מאומתים',
+    labelEn: 'Verified Providers',
+    descHe: 'זהות, מסמכים והמלצות עברו בדיקה',
+    descEn: 'Identity, documents and references checked',
     color: '#1e40af',
     bg: '#eff6ff',
   },

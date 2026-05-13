@@ -893,7 +893,7 @@ export default function MarketplaceBookingFlow() {
                           )}
                           {appliedCredits.cashPaidCents === 0 && (
                             <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                              {isHebrew ? 'מכוסה במלואו על ידי הזיכויים שלך!' : 'Fully covered by your credits!'}
+                              {isHebrew ? 'שולם במלואו מהזיכויים שלך!' : 'Paid in full by your credits!'}
                             </p>
                           )}
                         </div>
@@ -952,7 +952,7 @@ export default function MarketplaceBookingFlow() {
                       <Shield className="w-4 h-4 text-green-600" />
                       <span>
                         {appliedCredits && appliedCredits.cashPaidCents === 0
-                          ? (isHebrew ? 'מכוסה במלואו על ידי הזיכויים שלך' : 'Fully covered by your wallet credits')
+                          ? (isHebrew ? 'שולם במלואו מהזיכויים שלך' : 'Paid in full by your wallet credits')
                           : (isHebrew ? 'תשלום מאובטח דרך Nayax Israel' : 'Secure payment via Nayax Israel')
                         }
                       </span>

@@ -599,10 +599,14 @@ export default function BecomeProvider() {
                 </span>
               </h1>
               
+              {/* PR-LEGAL-B: previously claimed "full insurance" / "ביטוח
+                  מלא" — the platform does not provide that. Replaced with
+                  neutral copy per §8 of the Provider & Host Services
+                  Agreement. */}
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                {isHebrew 
-                  ? 'הצטרף לרשת ספקי השירות המובילה בישראל. הכנסה גמישה, ביטוח מלא, וקהילה תומכת.'
-                  : 'Join Israel\'s leading pet care provider network. Flexible income, full insurance, and supportive community.'}
+                {isHebrew
+                  ? 'הצטרף לרשת ספקי השירות המובילה בישראל. הכנסה גמישה וקהילה תומכת.'
+                  : 'Join Israel\'s leading pet care provider network. Flexible income and a supportive community.'}
               </p>
             </div>
 

@@ -158,9 +158,12 @@ export default function ServiceLandingPage() {
       ? `${svc.labelHe} בישראל | PetWash`
       : `${svc.labelEn} in Israel | PetWash`;
 
+  // PR-LEGAL-B: previously claimed providers are "insured" / "ביטוח כלול".
+  // Replaced with a §8-aligned description per the Provider & Host
+  // Services Agreement (PR-LEGAL-A #246).
   const metaDesc = isRTL
-    ? `מצא את הספק הטוב ביותר ל${svc.labelHe}${cityInfo ? ` ב${cityInfo.he}` : ''}. כל הספקים מאומתים, מדורגים וביטוח כלול.`
-    : `Find the best ${svc.labelEn}${cityInfo ? ` in ${cityInfo.en}` : ''} in Israel. All providers verified, rated, and insured.`;
+    ? `מצא את הספק הטוב ביותר ל${svc.labelHe}${cityInfo ? ` ב${cityInfo.he}` : ''}. כל הספקים מאומתים ומדורגים, ונדרשים להחזיק בביטוח לפי דין.`
+    : `Find the best ${svc.labelEn}${cityInfo ? ` in ${cityInfo.en}` : ''} in Israel. All providers verified and rated; providers are required to maintain their own insurance as required by law.`;
 
   const faqs = isRTL ? svc.faqHe : svc.faqEn;
 
