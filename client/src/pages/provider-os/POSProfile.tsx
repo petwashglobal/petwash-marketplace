@@ -658,11 +658,11 @@ export default function POSProfile() {
 
             {/* Metric chips */}
             <div className="grid grid-cols-2 gap-2">
-              {/* Acceptance rate */}
+              {/* Booking Activity Summary */}
               <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.acceptanceRatePct != null ? 'bg-blue-50 border border-blue-100' : 'bg-white border border-gray-100'}`}>
                 <UserCheck className={`w-4 h-4 shrink-0 ${trustStats?.acceptanceRatePct != null ? 'text-blue-500' : 'text-gray-300'}`} />
                 <div className="min-w-0">
-                  <p className="text-[10px] text-gray-500">Acceptance rate</p>
+                  <p className="text-[10px] text-gray-500">Booking Activity Summary</p>
                   <p className={`text-sm font-semibold ${trustStats?.acceptanceRatePct != null ? 'text-blue-700' : 'text-gray-300'}`}>
                     {trustStats?.acceptanceRatePct != null ? `${trustStats.acceptanceRatePct}%` : '—'}
                   </p>

@@ -265,7 +265,7 @@ export default function ContractorDashboard() {
                   <div className="luxury-glass-minimal p-5 rounded-xl">
                     <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                      Performance Metrics
+                      Platform Activity Overview
                     </h4>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">

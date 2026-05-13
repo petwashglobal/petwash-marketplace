@@ -727,11 +727,11 @@ export default function WalkerDashboard() {
                   </div>
                 </div>
 
-                {/* Performance Metrics */}
+                {/* Platform Activity Overview */}
                 <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
                   <div className="p-6">
-                    <h3 className="luxury-heading-md mb-2">{isHebrew ? 'מדדי ביצועים' : 'Performance Metrics'}</h3>
-                    <p className="luxury-text-small mb-6">{isHebrew ? 'נתונים מפתח על הביצועים שלך' : 'Key data about your performance'}</p>
+                    <h3 className="luxury-heading-md mb-2">{isHebrew ? 'סקירת פעילות פלטפורמה' : 'Platform Activity Overview'}</h3>
+                    <p className="luxury-text-small mb-6">{isHebrew ? 'נתוני פעילות מרכזיים בפלטפורמה' : 'Key activity data on the platform'}</p>
                     
                     <div className="luxury-grid-4">
                       <div className="luxury-glass-minimal luxury-hover-lift p-4 text-center">
