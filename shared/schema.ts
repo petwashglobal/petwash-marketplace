@@ -4014,6 +4014,11 @@ export const sitterProfiles = pgTable("sitter_profiles", {
   streetAddress: varchar("street_address").notNull(),
   apartment: varchar("apartment"), // Optional
   city: varchar("city").notNull(),
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): canonical
+  // citySymbol from shared/data/israel-cities.ts. Nullable
+  // until Phase-3 UI cutover writes it alongside the legacy
+  // city varchar. No reader trusts this column yet.
+  citySymbol: varchar("city_symbol", { length: 20 }),
   stateProvince: varchar("state_province").notNull(),
   postalCode: varchar("postal_code").notNull(),
   country: varchar("country").notNull().default("Israel"),
@@ -4273,10 +4278,16 @@ export const sitterProfiles = pgTable("sitter_profiles", {
   totalBookings: integer("total_bookings").default(0),
   totalEarningsCents: integer("total_earnings_cents").default(0),
   responseTimeMinutes: integer("response_time_minutes"), // Avg response time
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): symbol-
+  // backed lookup index. Legacy `city` column still indexed
+  // implicitly via marketplace ilike scans; this index serves
+  // the Phase-4 read-switch.
+  index("idx_sitter_profiles_city_symbol").on(table.citySymbol),
+]);
 
 // Pet Profiles for Sitting Service (with High Alert Safety)
 export const petProfilesForSitting = pgTable("pet_profiles_for_sitting", {
@@ -4581,6 +4592,11 @@ export const walkerProfiles = pgTable("walker_profiles", {
   
   // Location & Service Area
   city: varchar("city").notNull(),
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): canonical
+  // citySymbol from shared/data/israel-cities.ts. Nullable
+  // until Phase-3 UI cutover writes it alongside the legacy
+  // city varchar. No reader trusts this column yet.
+  citySymbol: varchar("city_symbol", { length: 20 }),
   country: varchar("country").notNull().default("IL"), // IL, USA, UK, AUS, CAN
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 7 }), // Real-time location
   currentLongitude: decimal("current_longitude", { precision: 10, scale: 7 }),
@@ -4656,10 +4672,15 @@ export const walkerProfiles = pgTable("walker_profiles", {
   isActive: boolean("is_active").default(true),
   suspensionReason: text("suspension_reason"),
   suspendedUntil: timestamp("suspended_until"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): symbol-
+  // backed lookup index. Marketplace + booking-search reads
+  // keep using the legacy `city` column until Phase 4.
+  index("idx_walker_profiles_city_symbol").on(table.citySymbol),
+]);
 
 // WALKER SCHEDULE & AVAILABILITY
 export const walkerSchedule = pgTable("walker_schedule", {
@@ -6958,6 +6979,13 @@ export const trainers = pgTable("trainers", {
   currency: varchar("currency").default("ILS"),
   serviceTypes: text("service_types").array(), // in_home, park, station
   serviceArea: text("service_area"), // Geographic coverage
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): canonical
+  // array of citySymbols from shared/data/israel-cities.ts.
+  // Trainers serve multiple cities; the free-text `service_area`
+  // string above stays the legacy authority until Phase-4 read
+  // switch. Defaults to '{}' so existing INSERTs continue to
+  // work without supplying this column.
+  serviceCitySymbols: text("service_city_symbols").array().notNull().default(sql`ARRAY[]::text[]`),
   languages: text("languages").array().default(sql`ARRAY['he', 'en']`), // Languages spoken
   
   // Availability
@@ -7002,6 +7030,11 @@ export const trainers = pgTable("trainers", {
   verificationIdx: index("idx_trainers_verification").on(table.verificationStatus),
   certifiedIdx: index("idx_trainers_certified").on(table.isCertified),
   activeIdx: index("idx_trainers_active").on(table.isActive),
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): symbol
+  // array index. The actual SQL migration creates this as a
+  // GIN index (USING GIN) — Drizzle's `index().on()` declares
+  // the name; the migration file controls the index method.
+  serviceCitySymbolsIdx: index("idx_trainers_service_city_symbols").on(table.serviceCitySymbols),
 }));
 
 export const insertTrainerSchema = createInsertSchema(trainers).omit({
@@ -9419,6 +9452,11 @@ export const contractorServiceAreas = pgTable("contractor_service_areas", {
   contractorId: varchar("contractor_id").notNull(),
   country: varchar("country").default("IL"),
   city: varchar("city"),
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): canonical
+  // citySymbol from shared/data/israel-cities.ts. Nullable
+  // until Phase-3 UI cutover. No reader trusts this column
+  // yet; the legacy `city` varchar above remains authoritative.
+  citySymbol: varchar("city_symbol", { length: 20 }),
   regionName: varchar("region_name"),
   radiusKm: decimal("radius_km", { precision: 6, scale: 2 }), // Service radius in kilometers
   centerLat: decimal("center_lat", { precision: 10, scale: 7 }), // GPS latitude
@@ -9429,6 +9467,11 @@ export const contractorServiceAreas = pgTable("contractor_service_areas", {
 }, (table) => [
   index("idx_contractor_areas_contractor").on(table.contractorId),
   index("idx_contractor_areas_city").on(table.city),
+  // PR-LOCATION-PROVIDER-SERVICE-AREAS-1 (Phase 1): symbol-
+  // backed lookup index. Replaces the free-text city index
+  // in the Phase-4 read-switch; both live in parallel until
+  // then.
+  index("idx_contractor_areas_city_symbol").on(table.citySymbol),
 ]);
 
 export const contractorCapabilities = pgTable("contractor_capabilities", {
