@@ -263,7 +263,9 @@ describe("F. docs/trust/PROGRAM.md — FORBIDDEN_MEDICAL_WORDING scan", () => {
 
   it("the doc explicitly forbids 'employment medical screening' language", () => {
     expect(DOC).toMatch(/employment medical screening/i);
-    expect(DOC).toMatch(/NOT as employment medical screening/i);
+    // Markdown blockquote line-wrap inserts "\n> " between
+    // "NOT as" and "employment medical screening" — allow it.
+    expect(DOC).toMatch(/NOT as\s+(?:>\s+)?employment medical screening/i);
   });
 
   it("the doc does not contain insurance-promise wording (PR #248 lock extends)", () => {
@@ -283,7 +285,10 @@ describe("F. docs/trust/PROGRAM.md — FORBIDDEN_MEDICAL_WORDING scan", () => {
 
 describe("G. docs/trust/PROGRAM.md — constitutional anchors", () => {
   it("cites docs/location/PRIVACY.md §3, §7, §10, §11, §13, §14, §17", () => {
-    expect(DOC).toMatch(/PRIVACY\.md[^\n]*§3[^\n]*§7/);
+    // Allow markdown blockquote line-wrap between PRIVACY.md
+    // and the first cited §-anchor (the doc wraps the
+    // constitutional-references line in a blockquote).
+    expect(DOC).toMatch(/PRIVACY\.md[\s\S]{0,80}§3[\s\S]{0,40}§7/);
     expect(DOC).toMatch(/§10/);
     expect(DOC).toMatch(/§11/);
     expect(DOC).toMatch(/§13/);
@@ -297,7 +302,12 @@ describe("G. docs/trust/PROGRAM.md — constitutional anchors", () => {
   });
 
   it("cites the §8 insurance-disclaimer anchor", () => {
-    expect(DOC).toMatch(/Pet Wash Ltd is not an insurance company, insurance broker or insurance adviser/);
+    // The mandatory phrase is rendered inside a markdown
+    // blockquote that wraps mid-sentence; allow "\n> " between
+    // "insurance company, insurance" and "broker or insurance adviser".
+    expect(DOC).toMatch(
+      /Pet Wash Ltd is not an insurance company,\s+(?:>\s+)?insurance\s+(?:>\s+)?broker or insurance adviser/,
+    );
   });
 
   it("cites PR-LEGAL-B #247 / #248 as the insurance-consistency lock source", () => {
