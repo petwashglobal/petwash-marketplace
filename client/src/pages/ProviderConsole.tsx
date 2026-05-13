@@ -135,7 +135,7 @@ function DashboardTab() {
           { label: 'Today', value: perf?.bookings.today ?? '—', icon: CalendarCheck, color: 'text-blue-600' },
           { label: 'This Week', value: perf?.bookings.last7d ?? '—', icon: TrendingUp, color: 'text-green-600' },
           { label: 'Completion Rate', value: perf ? `${perf.rates.completionRate}%` : '—', icon: CheckCircle, color: 'text-emerald-600' },
-          { label: 'Acceptance Rate', value: perf ? `${perf.rates.acceptanceRate}%` : '—', icon: Zap, color: 'text-purple-600' },
+          { label: 'Booking Activity Summary', value: perf ? `${perf.rates.acceptanceRate}%` : '—', icon: Zap, color: 'text-purple-600' },
         ].map((kpi) => (
           <Card key={kpi.label} className="border-0 shadow-sm">
             <CardContent className="pt-4">
@@ -894,7 +894,7 @@ function PerformanceTab() {
 
   const insightMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/provider-console/ai/query', {
-      query: `Based on my performance data (completion rate: ${perf?.rates.completionRate}%, acceptance rate: ${perf?.rates.acceptanceRate}%, cancellation rate: ${perf?.rates.cancellationRate}%, last 30 days bookings: ${perf?.bookings.last30d}), give me 3 specific actionable suggestions to improve my business as a pet care provider.`,
+      query: `Based on my recent platform usage data (completion rate: ${perf?.rates.completionRate}%, booking activity rate: ${perf?.rates.acceptanceRate}%, cancellation rate: ${perf?.rates.cancellationRate}%, bookings in the last 30 days: ${perf?.bookings.last30d}), provide three informational insights about my booking activity patterns and platform usage trends. Insights only — do not include performance assessments, supervision recommendations, or directive instructions.`,
     }),
     onSuccess: async (res) => { const d = await res.json(); setAiInsight(d.response); },
     onError: () => toast({ title: 'AI query failed', variant: 'destructive' }),

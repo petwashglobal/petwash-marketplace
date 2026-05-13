@@ -475,7 +475,7 @@ export default function DriverDashboard() {
                 </div>
 
                 <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-fade-in luxury-delay-1">
-                  <h3 className="luxury-heading-md mb-6">Performance Metrics</h3>
+                  <h3 className="luxury-heading-md mb-6">Platform Activity Overview</h3>
                   <div className="luxury-grid-4">
                     <div className="luxury-glass-card luxury-hover-lift text-center p-6">
                       <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4">

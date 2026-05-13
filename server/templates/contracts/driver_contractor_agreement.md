@@ -36,7 +36,7 @@ The Contractor agrees to provide independent pet transport services ("Services")
 - Pet pickup from client locations
 - Safe transport to destination (veterinary clinics, grooming facilities, boarding, airports, etc.)
 - Pet delivery to designated recipients
-- Route optimization and timely completion
+- Use of provided navigation and trip-support tools and timely completion
 - Vehicle cleanliness and maintenance
 
 ### 1.2 Service Standards
@@ -153,7 +153,7 @@ The Contractor agrees to:
 ### 5.2 Business Information
 The Contractor shall not disclose:
 - PetTrek™ pricing strategies
-- Route optimization algorithms
+- Navigation and trip-support tool configurations
 - Client databases or contact lists
 - Internal policies or procedures
 
