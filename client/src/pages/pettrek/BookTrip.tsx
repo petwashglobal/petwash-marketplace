@@ -205,9 +205,14 @@ export default function BookTrip() {
 
   const safetyFeatures = [
     {
+      // PR-LEGAL-B: previously 'Full Insurance' / 'Every trip is fully
+      // insured'. Replaced with the CEO-approved canonical disclaimer
+      // per §8 of the Provider & Host Services Agreement.
       icon: Shield,
-      title: isHebrew ? 'ביטוח מלא' : 'Full Insurance',
-      description: isHebrew ? 'כל נסיעה מבוטחת במלואה' : 'Every trip is fully insured'
+      title: isHebrew ? 'מידע בטיחות' : 'Safety information',
+      description: isHebrew
+        ? 'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.'
+        : 'Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.'
     },
     {
       icon: Heart,

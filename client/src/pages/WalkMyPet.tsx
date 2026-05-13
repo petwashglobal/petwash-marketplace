@@ -140,8 +140,12 @@ export default function WalkMyPet() {
       badge2Desc: isHebrew ? 'כל צ\'ק-אין/אאוט נרשם לנצח - אי אפשר לזייף או לשנות' : 'Every check-in/check-out recorded forever - impossible to fake or alter',
       badge3Title: isHebrew ? 'ניטור נתוני חיים' : 'Vital Data Monitoring',
       badge3Desc: isHebrew ? 'דופק, צעדים, הידרציה, וטמפרטורה נעקבים ונרשמים בכל הליכה' : 'Heart rate, steps, hydration, and temperature tracked & logged every walk',
-      badge4Title: isHebrew ? 'ביטוח ₪2M' : '₪2M Insurance Coverage',
-      badge4Desc: isHebrew ? 'כל ווקר מבוטח במלוא עד 2 מיליון ש"ח - הכלב שלך מוגן' : 'Every walker fully insured up to ₪2M - your dog is protected',
+      // PR-LEGAL-B: previously '₪2M Insurance Coverage' / 'Every walker
+      // fully insured up to ₪2M' — replaced with the CEO-approved
+      // canonical disclaimer per §8 of the Provider & Host Services
+      // Agreement. No insurance promise, no sum.
+      badge4Title: isHebrew ? 'מידע בטיחות' : 'Safety information',
+      badge4Desc: isHebrew ? 'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.' : 'Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.',
       badge5Title: isHebrew ? 'וידאו לייב (בקרוב)' : 'Live Video (Coming Soon)',
       badge5Desc: isHebrew ? 'צפה בכלב שלך בזמן אמת עם שידור חי מהווקר' : 'Watch your dog in real-time with live streaming from walker',
       badge6Title: isHebrew ? 'תמחור שקוף' : 'Transparent Pricing',
@@ -253,13 +257,16 @@ export default function WalkMyPet() {
                     <div className="text-sm font-medium text-white/90">{t.stats.gps.label}</div>
                   </div>
                   <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
+                    {/* PR-LEGAL-B: previously displayed a "₪2M" badge labelled
+                        "Full Insurance". Replaced with a neutral verification
+                        badge per §8 of the Provider & Host Services Agreement. */}
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
                         <Shield className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-xl font-black text-white">₪2M</div>
+                      <div className="text-base font-bold text-white">{isHebrew ? 'מאומת' : 'Verified'}</div>
                     </div>
-                    <div className="text-sm font-medium text-white/90">{isHebrew ? 'ביטוח מלא' : 'Full Insurance'}</div>
+                    <div className="text-sm font-medium text-white/90">{isHebrew ? 'ספקים מאומתים' : 'Verified providers'}</div>
                   </div>
                   <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
                     <div className="flex items-center gap-3 mb-2">

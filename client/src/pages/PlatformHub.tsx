@@ -129,11 +129,14 @@ const trustFeatures = [
     metric: '100%',
   },
   {
+    // PR-LEGAL-B: previously '₪25,000 Guarantee' / 'Pet Wash Protect
+    // covers your peace of mind' — replaced with a neutral verification
+    // tile per §8 of the Provider & Host Services Agreement.
     icon: Award,
-    title: '₪25,000 Guarantee',
-    titleHe: 'ערבות ₪25,000',
-    desc: 'Pet Wash Protect covers your peace of mind',
-    descHe: 'הגנת Pet Wash לשקט הנפשי שלך',
+    title: 'Verified providers',
+    titleHe: 'ספקים מאומתים',
+    desc: 'Identity, documents and references checked',
+    descHe: 'זהות, מסמכים והמלצות עברו בדיקה',
     metric: 'Covered',
   },
   {
@@ -216,10 +219,14 @@ const faqs = [
     aHe: 'כן, כל נותן שירות ב-Pet Wash עובר אימות רקע מורחב לפני שהוא יכול להציע שירותים.',
   },
   {
-    q: 'What is Pet Wash Protect?',
-    qHe: 'מה זה Pet Wash Protect?',
-    a: 'Pet Wash Protect provides up to ₪25,000 coverage for eligible claims, giving you peace of mind with every booking.',
-    aHe: 'Pet Wash Protect מספקת כיסוי עד ₪25,000 לתביעות מזכות, נותנת לך שקט נפשי עם כל הזמנה.',
+    // PR-LEGAL-B: this FAQ entry previously described a "Pet Wash Protect"
+    // ₪25,000 coverage program. That contradicted §8 of the Provider &
+    // Host Services Agreement. Replaced with a §8-aligned safety FAQ
+    // entry. No coverage claim, no monetary sum, no underwriter.
+    q: 'What does Pet Wash do to keep bookings safe?',
+    qHe: 'מה פט וואש עושה כדי לשמור על בטיחות ההזמנות?',
+    a: 'Pet Wash operates a technology marketplace and verifies providers (identity, documents and references). Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.',
+    aHe: 'פט וואש מפעילה פלטפורמת טכנולוגיה ומאמתת ספקים (זהות, מסמכים והמלצות). ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.',
   },
   {
     q: 'How does payment work?',
@@ -531,9 +538,12 @@ export default function PlatformHub() {
         <section className="bg-white py-28">
           <div className="max-w-6xl mx-auto px-6">
 
+            {/* PR-LEGAL-B: replaced the "PET WASH PROTECT™" eyebrow with
+                a neutral safety-information label per §8 of the Provider
+                & Host Services Agreement. */}
             <div className="text-center mb-20">
               <p className="text-[10px] font-light tracking-[5px] uppercase mb-4" style={{ fontFamily: sans, color: '#C6A664' }}>
-                PET WASH PROTECT™
+                {isHebrew ? 'מידע בטיחות' : 'SAFETY INFORMATION'}
               </p>
               <h2 className="text-4xl font-light text-[#0A0A0A]" style={{ fontFamily: serif }}>
                 {isHebrew ? 'אמון ובטיחות' : 'Trust & Safety'}

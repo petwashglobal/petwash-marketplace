@@ -585,13 +585,16 @@ export default function BrowseWalkers() {
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-teal-100 flex items-center justify-center">
                   <Shield className="h-7 w-7 text-teal-600" />
                 </div>
+                {/* PR-LEGAL-B: previously 'Full Insurance' / 'Complete coverage
+                    for every walk'. Replaced with the CEO-approved canonical
+                    disclaimer per §8 of the Provider & Host Services Agreement. */}
                 <h4 className="font-semibold text-gray-900 mb-2">
-                  {isHebrew ? 'ביטוח מלא' : 'Full Insurance'}
+                  {isHebrew ? 'מידע בטיחות' : 'Safety information'}
                 </h4>
                 <p className="text-sm text-gray-500">
-                  {isHebrew 
-                    ? 'כיסוי מלא לכל טיול'
-                    : 'Complete coverage for every walk'
+                  {isHebrew
+                    ? 'ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.'
+                    : 'Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.'
                   }
                 </p>
               </div>
@@ -637,10 +640,13 @@ export default function BrowseWalkers() {
               <h2 className="text-3xl font-bold text-gray-900 mb-3">
                 {isHebrew ? 'הפכו למטיילי כלבים ב-⁦Pet Wash™⁩' : 'Become a ⁦Pet Wash™⁩ Dog Walker'}
               </h2>
+              {/* PR-LEGAL-B: previously claimed "full insurance" — replaced
+                  with neutral recruitment copy per §8 of the Provider &
+                  Host Services Agreement. */}
               <p className="text-gray-600 max-w-2xl mx-auto">
-                {isHebrew 
-                  ? 'הרוויחו עד ₪65 לשעה תוך כדי הליכה עם כלבים. גמישות מלאה, ביטוח מלא.'
-                  : 'Earn up to ₪65/hour while walking dogs. Full flexibility, full insurance.'
+                {isHebrew
+                  ? 'הרוויחו עד ₪65 לשעה תוך כדי הליכה עם כלבים. גמישות מלאה ותמיכה מהפלטפורמה.'
+                  : 'Earn up to ₪65/hour while walking dogs. Full flexibility and platform support.'
                 }
               </p>
             </div>

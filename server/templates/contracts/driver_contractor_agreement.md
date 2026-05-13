@@ -130,7 +130,7 @@ Any incident must be reported within {{incident_reporting_hours}} hours:
 - Property damage
 
 ### 4.3 Liability & Indemnification
-**Company Liability:** Pet Wash™ provides up to {{company_liability_limit}} liability coverage per incident.
+**Company Liability:** Pet Wash Ltd is not an insurance company, broker or adviser. The Contractor remains solely responsible for maintaining the insurance required by applicable law for their service.
 
 **Contractor Liability:** The Contractor indemnifies Pet Wash™ against:
 - Negligent driving or vehicle operation

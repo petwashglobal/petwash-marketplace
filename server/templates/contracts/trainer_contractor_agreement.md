@@ -249,7 +249,7 @@ Upon termination, the Contractor shall:
 ## 9. LIABILITY & INDEMNIFICATION
 
 ### 9.1 Company Liability
-Pet Wash™ provides up to {{company_liability_limit}} liability coverage per incident.
+Pet Wash Ltd is not an insurance company, broker or adviser. The Contractor remains solely responsible for maintaining the insurance required by applicable law for their service.
 
 ### 9.2 Contractor Liability
 The Contractor indemnifies Pet Wash™ against:

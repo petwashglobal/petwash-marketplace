@@ -17,14 +17,23 @@ interface TrustSafetySectionProps {
   className?: string;
 }
 
+// PR-LEGAL-B: the first trust feature previously claimed
+// "Every booking protected by PetWash Protect™ insurance"
+// and a "₪25,000 Guarantee" — both contradict §8 of the
+// Provider & Host Services Agreement merged in PR-LEGAL-A
+// (#246). Replaced with the CEO-approved canonical safety
+// disclaimer (chat 2026-05-12). No insurance promises, no
+// sums, no underwriter naming.
 const trustFeatures = [
   {
     icon: Shield,
-    title: "₪25,000 Guarantee",
-    titleHe: "ערבות ₪25,000",
-    description: "Every booking protected by PetWash Protect™ insurance",
-    descriptionHe: "כל הזמנה מוגנת בביטוח Pet Wash Protect™",
-    color: "emerald",
+    title: "Safety information",
+    titleHe: "מידע בטיחות",
+    description:
+      "Providers may be required to maintain their own insurance depending on the service type and applicable law. Pet Wash is not an insurance company, broker or adviser.",
+    descriptionHe:
+      "ספקים עשויים להידרש להחזיק בביטוח מתאים בהתאם לסוג השירות והדין החל. פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח או יועצת ביטוח.",
+    color: "slate",
   },
   {
     icon: BadgeCheck,
@@ -125,9 +134,13 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
     <div className={cn("py-20 bg-white", className)}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+          {/* PR-LEGAL-B: previously a "PetWash Protect™" chip. Removed —
+              the "Protect" branding implies an insurance/protection program
+              that Pet Wash does not provide (§8). Replaced with a neutral
+              "Trust & Safety" label. */}
+          <div className="inline-flex items-center gap-2 bg-gray-50 text-gray-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
             <Shield className="h-4 w-4" />
-            PetWash Protect™
+            {isRTL ? "בטיחות ואמון" : "Trust & Safety"}
           </div>
           <h2 
             className="text-3xl md:text-4xl lg:text-5xl font-light tracking-wide text-gray-900 mb-4"
@@ -135,10 +148,13 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
           >
             {isRTL ? "בטיחות ואמון ללא פשרות" : "Uncompromising Safety & Trust"}
           </h2>
+          {/* PR-LEGAL-B: previously claimed every booking is backed by a
+              ₪25,000 PetWash Protect™ guarantee. Replaced with a neutral
+              description per §8 of the Provider & Host Services Agreement. */}
           <p className="text-gray-500 max-w-2xl mx-auto text-lg">
-            {isRTL 
-              ? "כל הזמנה מגובה בערבות Pet Wash Protect™ של ₪25,000 לשקט נפשי מוחלט"
-              : "Every booking backed by ₪25,000 PetWash Protect™ guarantee for complete peace of mind"
+            {isRTL
+              ? "ספקים מאומתים, אופציות תשלום מאובטחות, ותמיכה במחלוקות. ראו מידע על בטיחות."
+              : "Verified providers, secure payment options and support for disputes. See safety information."
             }
           </p>
         </div>
@@ -198,16 +214,19 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
           </div>
         </div>
 
+        {/* PR-LEGAL-B: previously rendered a "PetWash Protect™ ₪25,000 Guarantee"
+            badge. Replaced with a neutral Trust & Safety badge per §8 of the
+            Provider & Host Services Agreement. */}
         <div className="mt-16 text-center">
-          <div className="inline-flex items-center gap-4 bg-emerald-600 text-white px-8 py-4 rounded-2xl">
+          <div className="inline-flex items-center gap-4 bg-gray-700 text-white px-8 py-4 rounded-2xl">
             <Shield className="h-8 w-8" />
             <div className="text-left">
-              <p className="text-sm opacity-90">PetWash Protect™</p>
-              <p 
+              <p className="text-sm opacity-90">{isRTL ? "מידע בטיחות" : "Safety information"}</p>
+              <p
                 className="text-2xl font-light"
                 style={{ fontFamily: "'Didot', 'Bodoni MT', 'Playfair Display', serif" }}
               >
-                ₪25,000 {isRTL ? "ערבות" : "Guarantee"}
+                {isRTL ? "ספקים מאומתים" : "Verified providers"}
               </p>
             </div>
           </div>

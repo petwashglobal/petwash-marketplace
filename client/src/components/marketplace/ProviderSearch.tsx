@@ -1537,9 +1537,12 @@ export function ProviderSearch({
             <Star className="h-4 w-4 text-amber-500" />
             <span>{isHebrew ? 'דירוג 4.9+ ממוצע' : '4.9+ average rating'}</span>
           </div>
+          {/* PR-LEGAL-B: previously 'Full insurance included' / 'ביטוח מלא
+              כלול'. Replaced with a neutral verified-provider label per §8
+              of the Provider & Host Services Agreement. */}
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Sparkles className={`h-4 w-4 ${t.iconColor}`} />
-            <span>{isHebrew ? 'ביטוח מלא כלול' : 'Full insurance included'}</span>
+            <span>{isHebrew ? 'ספק מאומת' : 'Verified provider'}</span>
           </div>
         </div>
       </div>
