@@ -38,7 +38,7 @@
 
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync, existsSync } from "fs";
-import { resolve, join, sep } from "path";
+import path, { resolve, join, sep } from "path";
 
 const ROOT = resolve(__dirname, "..", "..");
 
@@ -550,5 +550,272 @@ describe("PR-LEGAL-B — CodeQL #188: TS/TSX comment stripper (state-machine)", 
     // contiguous sequence. So we still get a precise check.
     const restored = /\.replace\s*\(\s*\/\s*<!--/;
     expect(restored.test(codeOnly)).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// PR-LEGAL-A-REWRITE — structural guards for the 23-section
+// bilingual Provider & Host Services Agreement.
+//
+// Locks the source-of-truth shape after the rewrite:
+//   - 23 sections present (§0 through §22) in EN
+//   - 23 sections present (§0 through §22) in HE_DRAFT
+//   - Company number 517145033 present in EN and HE_DRAFT
+//   - §6 mandatory insurance disclaimer present verbatim in EN
+//   - Hebrew §6 mandatory phrase present
+//   - Wolt/Yango integration-evidence phrases absent
+//   - Class-action waiver text absent
+//   - HE remains null, HE_VERIFIED remains false (no premature
+//     flip)
+//   - COUNSEL_APPROVED remains false
+//   - Version is "2026-05-13"
+// ─────────────────────────────────────────────────────────────
+
+describe("PR-LEGAL-A-REWRITE — bilingual structural integrity", () => {
+  const agreementSrc = readFileSync(
+    path.join(ROOT, "shared/legal/providerHostAgreement.ts"),
+    "utf8",
+  );
+
+  it("agreement version bumped to 2026-05-13", () => {
+    expect(agreementSrc).toMatch(
+      /PROVIDER_HOST_AGREEMENT_VERSION\s*=\s*"2026-05-13"/,
+    );
+  });
+
+  it("EN body contains all 23 section ids (0-22)", () => {
+    for (let i = 0; i <= 22; i++) {
+      const re = new RegExp(`id:\\s*"${i}"\\s*,\\s*\\n\\s*title:`);
+      expect(agreementSrc).toMatch(re);
+    }
+  });
+
+  it("EN body contains the 23 canonical English section titles", () => {
+    const titles = [
+      "DEFINITIONS",
+      "PLATFORM ROLE",
+      "INDEPENDENT CONTRACTOR STATUS",
+      "PROVIDER RESPONSIBILITY",
+      "ANIMAL WELFARE AND DOG SUPERVISION",
+      "HOST AND HOME-BASED SERVICES",
+      "INSURANCE DISCLAIMER",
+      "PRIVACY AND PERSONAL DATA",
+      "NON-DISCRIMINATION AND ACCESSIBILITY",
+      "TAX, BUSINESS AND LEGAL COMPLIANCE",
+      "PAYMENTS AND PLATFORM FEES",
+      "VERIFICATION AND SAFETY CHECKS",
+      "CUSTOMER RELATIONSHIP",
+      "INTELLECTUAL PROPERTY AND CONTENT LICENCE",
+      "ACCOUNT SUSPENSION AND TERMINATION",
+      "LIMITATION OF LIABILITY",
+      "MODIFICATIONS AND EFFECTIVE DATE",
+      "GOVERNING LAW AND JURISDICTION",
+      "DISPUTE RESOLUTION",
+      "LANGUAGE PRECEDENCE",
+      "NOTICES AND CONTACTS",
+      "SEVERABILITY",
+      "DIGITAL ACCEPTANCE",
+    ];
+    for (const t of titles) {
+      expect(agreementSrc).toContain(`title: "${t}"`);
+    }
+  });
+
+  it("HE_DRAFT body contains the 23 canonical Hebrew section titles", () => {
+    const titles = [
+      "הגדרות",
+      "תפקיד הפלטפורמה",
+      "מעמד נותן שירות עצמאי",
+      "אחריות נותן השירות",
+      "רווחת בעלי חיים וחוק להסדרת הפיקוח על כלבים",
+      "אירוח ושירותים בבית נותן השירות",
+      "הבהרת ביטוח",
+      "פרטיות ומידע אישי",
+      "איסור הפליה ונגישות",
+      "מסים, עסק ועמידה בדרישות הדין",
+      "תשלומים ועמלות פלטפורמה",
+      "אימות ובדיקות בטיחות",
+      "הקשר מול הלקוח",
+      "קניין רוחני ורישיון תכנים",
+      "השעיה וסיום",
+      "הגבלת אחריות",
+      "שינויים ומועד תחילה",
+      "דין חל וסמכות שיפוט",
+      "יישוב מחלוקות",
+      "עדיפות לשונית",
+      "הודעות ופרטי קשר",
+      "הפרדת תניות",
+      "קבלה דיגיטלית",
+    ];
+    for (const t of titles) {
+      expect(agreementSrc).toContain(`title: "${t}"`);
+    }
+  });
+
+  it("§0 EN defines Pet Wash Ltd with company number 517145033", () => {
+    expect(agreementSrc).toMatch(
+      /"Pet Wash"[^]*?Israeli company number 517145033/,
+    );
+  });
+
+  it("§0 HE_DRAFT defines פט וואש בע״מ with company number 517145033", () => {
+    expect(agreementSrc).toMatch(
+      /"פט וואש"[^]*?מספר חברה 517145033/,
+    );
+  });
+
+  it("§6 mandatory English insurance disclaimer present verbatim", () => {
+    expect(agreementSrc).toContain(
+      "Pet Wash Ltd is not an insurance company, insurance broker, insurance agent or insurance adviser.",
+    );
+  });
+
+  it("§6 mandatory Hebrew insurance disclaimer present verbatim", () => {
+    expect(agreementSrc).toContain(
+      "פט וואש בע״מ אינה חברת ביטוח, סוכנות ביטוח, סוכן ביטוח או יועצת ביטוח.",
+    );
+  });
+
+  it("§2 contains the independent-contractor anti-integration freedoms (EN)", () => {
+    const want = [
+      "may work for competing platforms",
+      "minimum volume of bookings",
+      "may decline bookings",
+      "neutral and generally applicable platform integrity, fraud-prevention and safety measures",
+      "Platform rules apply to use of the Platform only",
+    ];
+    for (const w of want) {
+      expect(agreementSrc).toContain(w);
+    }
+  });
+
+  it("§2 does NOT use the looser 'without consequence' phrasing", () => {
+    // Replaced by neutral, generally-applicable integrity language
+    // to avoid behavioural-scoring / supervision readings.
+    expect(agreementSrc).not.toMatch(/without consequence/i);
+    expect(agreementSrc).not.toContain("platform-quality signals");
+  });
+
+  it("§2 contains the independent-contractor anti-integration freedoms (HE)", () => {
+    const want = [
+      "פלטפורמות מתחרות",
+      "היקף הזמנות מינימלי",
+      "ורשאי לסרב להזמנות",
+      "אמצעים נייטרליים ובעלי תחולה כללית",
+      "ואינם מסדירים את ניהול עסקו העצמאי",
+    ];
+    for (const w of want) {
+      expect(agreementSrc).toContain(w);
+    }
+  });
+
+  it("§19 makes Hebrew prevail in conflict between versions", () => {
+    expect(agreementSrc).toContain("the Hebrew version shall prevail");
+    expect(agreementSrc).toContain("יגבר הנוסח העברי");
+  });
+
+  it("§17 names Tel Aviv-Jaffa courts as exclusive forum", () => {
+    expect(agreementSrc).toContain("Tel Aviv-Jaffa");
+    expect(agreementSrc).toContain("תל אביב-יפו");
+  });
+
+  it("§20 cites the canonical contact email aliases", () => {
+    expect(agreementSrc).toContain("legal@petwash.co.il");
+    expect(agreementSrc).toContain("privacy@petwash.co.il");
+    expect(agreementSrc).toContain("support@petwash.co.il");
+  });
+
+  it("§22 EN uses softened device-metadata wording (not 'device fingerprint hash')", () => {
+    const section22Match = agreementSrc.match(
+      /id:\s*"22"[\s\S]*?title:\s*"DIGITAL ACCEPTANCE"[\s\S]*?body:\s*`([\s\S]*?)`/,
+    );
+    expect(section22Match).toBeTruthy();
+    const body = section22Match![1];
+    expect(body).toContain(
+      "device metadata reasonably necessary for fraud prevention and account-security purposes",
+    );
+    expect(body).not.toMatch(/device fingerprint hash/i);
+  });
+
+  it("§22 EN scopes 'other technical metadata' by purpose (no open-ended telemetry)", () => {
+    expect(agreementSrc).toContain(
+      "other technical metadata reasonably necessary for security, fraud prevention, legal compliance and platform-integrity purposes",
+    );
+    // The looser earlier phrasing must be gone.
+    expect(agreementSrc).not.toContain(
+      "other technical fields detailed in the Privacy Notice",
+    );
+  });
+
+  it("§7 contains 'where lawful and reasonably possible' retention hedge", () => {
+    expect(agreementSrc).toContain("where lawful and reasonably possible");
+    expect(agreementSrc).toContain("ככל שהדבר אפשרי באופן סביר ועומד בדין");
+  });
+
+  it("HE remains null (no premature flip)", () => {
+    expect(agreementSrc).toMatch(
+      /PROVIDER_HOST_AGREEMENT_HE:\s*AgreementBody\s*\|\s*null\s*=\s*null/,
+    );
+  });
+
+  it("HE_VERIFIED remains false (no premature flip)", () => {
+    expect(agreementSrc).toMatch(
+      /PROVIDER_HOST_AGREEMENT_HE_VERIFIED\s*=\s*false/,
+    );
+  });
+
+  it("COUNSEL_APPROVED remains false (no premature flip)", () => {
+    expect(agreementSrc).toMatch(
+      /PROVIDER_HOST_AGREEMENT_COUNSEL_APPROVED\s*=\s*false/,
+    );
+  });
+
+  it("HE_DRAFT export is present and uses bilingual Hebrew title", () => {
+    expect(agreementSrc).toContain(
+      "export const PROVIDER_HOST_AGREEMENT_HE_DRAFT",
+    );
+    expect(agreementSrc).toContain(
+      'title: "פט וואש בע״מ — הסכם נותני שירות ומארחים"',
+    );
+  });
+});
+
+describe("PR-LEGAL-A-REWRITE — Wolt/Yango integration-evidence scrub", () => {
+  const agreementSrc = readFileSync(
+    path.join(ROOT, "shared/legal/providerHostAgreement.ts"),
+    "utf8",
+  );
+
+  // The Wolt / Yango National Labor Court doctrine treats certain
+  // platform-supervision phrases as integration evidence. The
+  // agreement body MUST NOT contain these in provider-facing
+  // text. Code comments are also scanned because regulators read
+  // them in disclosure.
+  const FORBIDDEN_INTEGRATION_PHRASES: ReadonlyArray<RegExp> = [
+    /\bshifts\b/i,
+    /\bavailability windows\b/i,
+    /\bperformance score\b/i,
+    /\brating threshold\b/i,
+    /\bperformance management\b/i,
+    /\bwe monitor providers\b/i,
+    /\buniform\/branding\b/i,
+    /\bmandatory training\b/i,
+    /\brequired training\b/i,
+  ];
+
+  for (const re of FORBIDDEN_INTEGRATION_PHRASES) {
+    it(`agreement source does NOT contain integration-evidence phrase: ${re}`, () => {
+      expect(agreementSrc).not.toMatch(re);
+    });
+  }
+
+  it("agreement source does NOT contain class-action waiver wording", () => {
+    expect(agreementSrc).not.toMatch(/class\s*-?\s*action\s+waiver/i);
+    expect(agreementSrc).not.toMatch(/waive[^.\n]{0,40}class\s+action/i);
+  });
+
+  it("agreement source does NOT contain mandatory-arbitration wording", () => {
+    expect(agreementSrc).not.toMatch(/mandatory arbitration/i);
+    expect(agreementSrc).not.toMatch(/binding arbitration/i);
   });
 });
