@@ -186,14 +186,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
 
-        {/* PetWash Platforms — feature-flagged premium cards (PR-PREMIUM-CARDS-1).
-            Default OFF. Old PetWashDivisions stays the production
-            default until VITE_PREMIUM_PLATFORM_CARDS_ENABLED='true' AND
-            the design team confirms all 12 .webp binaries are
-            committed AND CEO visual review (mobile + desktop) is
-            complete. Toggling the flag swaps components — no other
+        {/* PetWash Platforms — premium cards shipped (PR-PREMIUM-CARDS-2).
+            Default ON. Set VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false'
+            as an emergency disable to revert to the legacy
+            PetWashDivisions grid; otherwise the new premium grid
+            renders. Toggling the flag swaps components — no other
             behavior change. */}
-        {import.meta.env.VITE_PREMIUM_PLATFORM_CARDS_ENABLED === 'true' ? (
+        {import.meta.env.VITE_PREMIUM_PLATFORM_CARDS_ENABLED !== 'false' ? (
           <PremiumPlatformGrid language={language} />
         ) : (
           <PetWashDivisions language={language} />

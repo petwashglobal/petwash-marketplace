@@ -1,9 +1,12 @@
 /**
- * PR-PREMIUM-CARDS-1 — premium platform cards Phase 1 regression suite.
+ * PR-PREMIUM-CARDS-2 — premium platform cards Phase 2 (default ON).
  *
- * CEO directive (2026-05-10):
- *   • Phase 1 only: Home/Landing premium grid + component system
- *   • Feature flag VITE_PREMIUM_PLATFORM_CARDS_ENABLED, default OFF
+ * Phase 2 ships the premium grid as the production default. The
+ * feature flag is retained as an emergency-disable escape hatch
+ * (set VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false' to fall back to
+ * the legacy PetWashDivisions grid).
+ *
+ *   • Premium grid renders by default on /
  *   • Locale-first asset selection (explicit → profile → navigator
  *     → IP → English); IP is NEVER the primary signal
  *   • Smart Hub IP-locked (no station recreation; static .webp only)
@@ -15,9 +18,8 @@
  *   A. file presence
  *   B. content + asset config integrity (6 platforms × 2 locales)
  *   C. locale resolver behaviour (Hebrew → .he.webp; English →
- *      .en.webp; unsupported → .en.webp; IP not primary; PetTrek
- *      Hebrew falls back to English while binary is pending)
- *   D. feature flag exists, default OFF, swap is gated
+ *      .en.webp; unsupported → .en.webp; IP not primary)
+ *   D. feature flag exists, default ON, "false" disables
  *   E. money / persistence firewall (no /api/* calls; no fetch;
  *      no localStorage; no FormData; no payment vendor strings)
  *   F. K9000 IP rule — no fake station fallback (no inline SVG of
@@ -57,15 +59,35 @@ const NEW_FILES = [
   'client/src/content/platformCards.ts',
   'client/src/components/marketing/PremiumPlatformCard.tsx',
   'client/src/components/marketing/PremiumPlatformGrid.tsx',
-  'client/src/assets/platform-cards/README.md',
+];
+
+const SHIPPED_ASSETS = [
+  'client/public/assets/platform-cards/smart-hub-card.en.webp',
+  'client/public/assets/platform-cards/smart-hub-card.he.webp',
+  'client/public/assets/platform-cards/pet-sitter-card.en.webp',
+  'client/public/assets/platform-cards/pet-sitter-card.he.webp',
+  'client/public/assets/platform-cards/petfinder-card.en.webp',
+  'client/public/assets/platform-cards/petfinder-card.he.webp',
+  'client/public/assets/platform-cards/pettrek-card.en.webp',
+  'client/public/assets/platform-cards/pettrek-card.he.webp',
+  'client/public/assets/platform-cards/academy-card.en.webp',
+  'client/public/assets/platform-cards/academy-card.he.webp',
+  'client/public/assets/platform-cards/walk-my-pet-card.en.webp',
+  'client/public/assets/platform-cards/walk-my-pet-card.he.webp',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────
 // A. File presence
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — A. file layout', () => {
-  it('A1. all 5 new files exist', () => {
+describe('PR-PREMIUM-CARDS-2 — A. file layout', () => {
+  it('A1. all 4 code files exist', () => {
     for (const rel of NEW_FILES) {
+      expect(existsSync(resolve(ROOT, rel)), `expected ${rel}`).toBe(true);
+    }
+  });
+
+  it('A2. all 12 .webp card assets shipped under client/public/', () => {
+    for (const rel of SHIPPED_ASSETS) {
       expect(existsSync(resolve(ROOT, rel)), `expected ${rel}`).toBe(true);
     }
   });
@@ -74,7 +96,7 @@ describe('PR-PREMIUM-CARDS-1 — A. file layout', () => {
 // ─────────────────────────────────────────────────────────────────────────
 // B. Content config integrity
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — B. content config', () => {
+describe('PR-PREMIUM-CARDS-2 — B. content config', () => {
   const expectedIds = [
     'smart-hub',
     'pet-sitter',
@@ -124,7 +146,7 @@ describe('PR-PREMIUM-CARDS-1 — B. content config', () => {
 // ─────────────────────────────────────────────────────────────────────────
 // C. Locale resolver behaviour
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — C. locale resolver', () => {
+describe('PR-PREMIUM-CARDS-2 — C. locale resolver', () => {
   it('C1. Hebrew locale resolves to .he.webp', () => {
     const path = platformCardAsset('pet-sitter', 'he');
     expect(path).toBe('/assets/platform-cards/pet-sitter-card.he.webp');
@@ -135,13 +157,7 @@ describe('PR-PREMIUM-CARDS-1 — C. locale resolver', () => {
     expect(path).toBe('/assets/platform-cards/pet-sitter-card.en.webp');
   });
 
-  it('C3. PetTrek Hebrew (asset pending) falls back to English', () => {
-    // Phase 1 ships only en + he assets, but PetTrek Hebrew binary
-    // is pending per CEO. The resolver returns the .he.webp path —
-    // but the runtime <img onError> falls back to gradient. Pin the
-    // path returned and confirm the resolver does not silently
-    // substitute en for an unsupported locale (substitution only
-    // happens when the locale itself is outside Phase-1 shipped set).
+  it('C3. PetTrek Hebrew resolves to the shipped .he.webp asset', () => {
     const path = platformCardAsset('pettrek', 'he');
     expect(path).toBe('/assets/platform-cards/pettrek-card.he.webp');
   });
@@ -217,17 +233,22 @@ describe('PR-PREMIUM-CARDS-1 — C. locale resolver', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-// D. Feature flag exists + default OFF + swap is gated
+// D. Feature flag exists + default ON + emergency disable is gated
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — D. feature flag', () => {
-  it('D1. Landing.tsx gates the swap on VITE_PREMIUM_PLATFORM_CARDS_ENABLED', () => {
+describe('PR-PREMIUM-CARDS-2 — D. feature flag', () => {
+  it('D1. Landing.tsx swap is gated on VITE_PREMIUM_PLATFORM_CARDS_ENABLED', () => {
+    const src = read('client/src/pages/Landing.tsx');
+    expect(src.includes('VITE_PREMIUM_PLATFORM_CARDS_ENABLED')).toBe(true);
+  });
+
+  it("D1b. Default ON: emergency disable is explicit 'false'", () => {
     const src = read('client/src/pages/Landing.tsx');
     expect(
-      src.includes("VITE_PREMIUM_PLATFORM_CARDS_ENABLED === 'true'"),
+      src.includes("VITE_PREMIUM_PLATFORM_CARDS_ENABLED !== 'false'"),
     ).toBe(true);
   });
 
-  it('D2. Both grids appear in Landing.tsx (legacy retained as default)', () => {
+  it('D2. Both grids appear in Landing.tsx (legacy retained as emergency disable)', () => {
     const src = read('client/src/pages/Landing.tsx');
     expect(src.includes('PetWashDivisions')).toBe(true);
     expect(src.includes('PremiumPlatformGrid')).toBe(true);
@@ -259,7 +280,7 @@ describe('PR-PREMIUM-CARDS-1 — D. feature flag', () => {
 // ─────────────────────────────────────────────────────────────────────────
 // E. Money / persistence firewall (non-regression)
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — E. money + persistence firewall', () => {
+describe('PR-PREMIUM-CARDS-2 — E. money + persistence firewall', () => {
   const FORBIDDEN_KEYWORDS: ReadonlyArray<RegExp> = [
     /\bStripe\b/,
     /\bTranzila\b/,
@@ -304,7 +325,7 @@ describe('PR-PREMIUM-CARDS-1 — E. money + persistence firewall', () => {
 // ─────────────────────────────────────────────────────────────────────────
 // F. K9000 IP rule — no fake station fallback
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — F. K9000 IP-lock', () => {
+describe('PR-PREMIUM-CARDS-2 — F. K9000 IP-lock', () => {
   it('F1. Smart Hub card resolves to the static .webp asset only', () => {
     const card = PLATFORM_CARDS.find((c) => c.id === 'smart-hub');
     expect(card).toBeTruthy();
@@ -315,10 +336,7 @@ describe('PR-PREMIUM-CARDS-1 — F. K9000 IP-lock', () => {
   });
 
   it('F2. No SVG that could be mistaken for the K9000 station + no k9000 reference in code files', () => {
-    // README.md is documentation that legitimately mentions K9000
-    // when explaining the IP rule. Test only the code files.
-    const CODE_FILES = NEW_FILES.filter((f) => !f.endsWith('.md'));
-    for (const rel of CODE_FILES) {
+    for (const rel of NEW_FILES) {
       const src = read(rel);
       // Forbid any inline SVG; the card uses <img> on the static
       // asset and a CSS gradient as fallback. SVG path data of any
@@ -336,7 +354,7 @@ describe('PR-PREMIUM-CARDS-1 — F. K9000 IP-lock', () => {
 // ─────────────────────────────────────────────────────────────────────────
 // G. No auto-translated image text
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — G. no runtime image text translation', () => {
+describe('PR-PREMIUM-CARDS-2 — G. no runtime image text translation', () => {
   it('G1. Card component does not call any translation library on the image asset', () => {
     const src = read(
       'client/src/components/marketing/PremiumPlatformCard.tsx',
@@ -354,7 +372,7 @@ describe('PR-PREMIUM-CARDS-1 — G. no runtime image text translation', () => {
 // ─────────────────────────────────────────────────────────────────────────
 // H. Accessibility basics
 // ─────────────────────────────────────────────────────────────────────────
-describe('PR-PREMIUM-CARDS-1 — H. accessibility', () => {
+describe('PR-PREMIUM-CARDS-2 — H. accessibility', () => {
   it('H1. PremiumPlatformCard alt text references title + headline (non-empty)', () => {
     const src = read(
       'client/src/components/marketing/PremiumPlatformCard.tsx',
