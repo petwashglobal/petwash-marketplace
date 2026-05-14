@@ -71,28 +71,6 @@ export function Footer({ language }: FooterProps) {
                   {t('footer.disclaimer', language)}
                 </Link>
               </div>
-              <div>
-                <Link href="/admin/login-v2" className="text-black hover:text-gray-600 transition-colors cursor-pointer text-sm font-semibold">
-                  Admin Portal
-                </Link>
-              </div>
-              <div>
-                <Link href="/admin/guide" className="text-black hover:text-gray-600 transition-colors cursor-pointer text-sm">
-                  {t('footer.adminGuide', language)}
-                </Link>
-              </div>
-              <div className="pt-3 border-t border-gray-200 mt-3">
-                <Link 
-                  href="/admin/help"
-                  className="text-emerald-600 hover:text-emerald-800 transition-colors cursor-pointer text-sm font-semibold flex items-center justify-center gap-1.5"
-                >
-                  <span>🔧</span>
-                  <span>{t('footer.maintenanceGuide', language)}</span>
-                </Link>
-                <p className="text-xs text-gray-500 mt-1 text-center">
-                  {t('footer.techStack', language)}
-                </p>
-              </div>
             </nav>
           </div>
 
