@@ -40,19 +40,22 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
 
   return (
     <article
-      className="relative overflow-hidden rounded-[28px] bg-white shadow-[0_8px_24px_rgba(7,20,13,0.06)] transition-shadow duration-300 hover:shadow-[0_12px_32px_rgba(7,20,13,0.10)] motion-reduce:transition-none focus-within:shadow-[0_12px_32px_rgba(7,20,13,0.10)]"
+      className="relative overflow-hidden rounded-[28px] bg-white ring-1 ring-emerald-100/80 shadow-[0_12px_30px_rgba(7,20,13,0.08)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(7,20,13,0.12)] motion-reduce:transition-none focus-within:shadow-[0_16px_40px_rgba(7,20,13,0.12)]"
       data-pr-premium-card="true"
       data-platform-id={card.id}
     >
       {/* Image surface (static asset; CSS gradient fallback if
-          both .webp variants are missing). */}
+          both .webp variants are missing). Mobile uses object-contain
+          to keep every pixel of the editorial artwork visible (poster
+          framing); ≥sm switches to object-cover for the more
+          immersive desktop layout. */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
         <img
           src={assetSrc}
           alt={`${title} — ${headline}`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain sm:object-cover"
           onError={(e) => {
             // Graceful: hide broken image; gradient fallback
             // shows through.

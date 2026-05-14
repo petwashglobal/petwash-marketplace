@@ -45,12 +45,12 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
 
   return (
     <section
-      className="bg-[#fbfbf7] py-10 sm:py-16 lg:py-24"
+      className="bg-[#fbfbf7] pt-10 pb-24 sm:py-16 lg:py-24"
       data-pr-premium-grid="true"
       aria-labelledby="petwash-platform-universe-heading"
     >
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-12">
-        <header className="mb-6 text-center sm:mb-12">
+      <div className="mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-12">
+        <header className="mb-8 text-center sm:mb-12">
           <h2
             id="petwash-platform-universe-heading"
             className="text-3xl font-light tracking-tight text-[#07140d] sm:text-4xl lg:text-5xl"
@@ -58,7 +58,7 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
             {PLATFORM_UNIVERSE_HEADING[heading]}
           </h2>
         </header>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
           {PLATFORM_CARDS.map((card) => (
             <PremiumPlatformCard key={card.id} card={card} locale={locale} />
           ))}
