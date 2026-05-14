@@ -26,10 +26,57 @@ export default {
       boxShadow: {
         'soft-3d': '0 10px 30px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.1)',
         'luxury-glow': '0 0 20px rgba(192, 34, 34, 0.2), 0 10px 40px rgba(0, 0, 0, 0.3)',
+        // EGIFT Phase A — luxury editorial stage shadows (CEO-approved direction
+        // per PR #262). Used for hero card thumbnails, message preview card, and
+        // any element that should float on the true-white stage. NOT a
+        // replacement for soft-3d / luxury-glow above — both stay for backward
+        // compatibility with existing components.
+        'stage-soft':   '0 1px 2px rgba(10,10,10,0.04), 0 8px 24px rgba(10,10,10,0.05)',
+        'stage-lifted': '0 4px 12px rgba(10,10,10,0.06), 0 24px 60px rgba(10,10,10,0.08)',
+        'stage-cinema': '0 8px 24px rgba(10,10,10,0.08), 0 40px 100px rgba(10,10,10,0.12)',
+      },
+      spacing: {
+        // EGIFT Phase A — editorial spacing scale using clamp() for fluid
+        // responsive rhythm. Used in Phase B+ for hero padding, section gaps,
+        // and breathing room around the luxury card composition. Additive
+        // tokens; existing Tailwind spacing (p-4, mb-8, etc.) is unaffected.
+        'editorial-xs': 'clamp(8px, 1.5vw, 12px)',
+        'editorial-sm': 'clamp(14px, 2vw, 20px)',
+        'editorial-md': 'clamp(24px, 4vw, 40px)',
+        'editorial-lg': 'clamp(40px, 6vw, 72px)',
+        'editorial-xl': 'clamp(64px, 9vw, 120px)',
       },
       colors: {
         'luxury-dark': '#18181B',
         'brand-accent': '#C02222',
+        // EGIFT Phase A — luxury editorial color tokens. CEO-approved per
+        // PR #262 (merged 2026-05). These are ADDITIVE and do not change
+        // any existing class. Phase B+ migrates inline hex codes in
+        // client/src/pages/EGift.tsx to these tokens. Out-of-scope for
+        // Phase A: no consumers yet.
+        ink: {
+          900: '#0A0A0A', // Headings, key marks (deep graphite)
+          800: '#0F0F0F', // Body text (replaces #7A7068 in Phase B)
+          400: '#6B6B6B', // De-emphasized utility text
+        },
+        stage: {
+          white: '#FFFFFF', // Canonical true-white stage
+          50:    '#FAFAFA', // Alt surface; use only when true white reads as too stark
+        },
+        gold: {
+          luxe: '#A88B4C', // Restrained metallic; section labels, hairlines
+          600:  '#8B7340', // Deeper hover/pressed state
+          300:  '#D4B86A', // Highlight; used sparingly
+        },
+        // Occasion-driven emotional tones. Subtly desaturated from
+        // typical pink/red/gold to fit Cartier/Tom Ford editorial palette.
+        // Wired into hero halo + section labels in Phase D.
+        occasion: {
+          birthday: '#E5377F', // Birthday — was #ec4899 (slightly desaturated)
+          love:     '#C4334F', // With Love — deeper than Valentine, more Cartier
+          thanks:   '#8B7340', // Thank You — gold tone (gratitude)
+          holiday:  '#8B5E3C', // Holiday — warm bronze
+        },
         // Tailwind default purple palette
         purple: {
           50: '#faf5ff',
