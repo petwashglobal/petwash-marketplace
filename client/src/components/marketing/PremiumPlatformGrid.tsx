@@ -45,20 +45,36 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
 
   return (
     <section
-      className="bg-[#fbfbf7] pt-10 pb-24 sm:py-16 lg:py-24"
+      className="bg-[#fbfbf7] pt-[clamp(40px,8vw,96px)] pb-[calc(clamp(56px,10vw,96px)_+_env(safe-area-inset-bottom))]"
       data-pr-premium-grid="true"
       aria-labelledby="petwash-platform-universe-heading"
     >
-      <div className="mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-12">
-        <header className="mb-8 text-center sm:mb-12">
+      {/* Container width matches the CEO 2026-05-14 directive:
+          min(94%, 1400px) — 3% breathing room on each side of the
+          card column on every viewport, capped at 1400px on large
+          desktops to keep the editorial feel. No horizontal padding
+          on the inner container; the 94% width creates the margin. */}
+      <div className="mx-auto w-[min(94%,1400px)]">
+        <header className="mb-[clamp(28px,5vw,56px)] text-center">
           <h2
             id="petwash-platform-universe-heading"
-            className="text-3xl font-light tracking-tight text-[#07140d] sm:text-4xl lg:text-5xl"
+            className="text-[clamp(28px,5vw,48px)] font-light tracking-tight text-[#07140d]"
           >
             {PLATFORM_UNIVERSE_HEADING[heading]}
           </h2>
         </header>
-        <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+        {/* Column logic (CEO 2026-05-14 acceptance criteria 1–4):
+            - default (≤md, <768px): 1 column — every iPhone portrait
+              and every small phone in landscape gets a single
+              poster-framed card.
+            - landscape:max-lg (orientation landscape, <1024px): force
+              1 column even when md kicks in — protects iPhone
+              landscape (667–932px) from getting 2 cramped 2-col
+              posters.
+            - md (≥768px) up to xl: 2 columns — iPad portrait and
+              small tablets.
+            - xl (≥1280px): 3 columns — desktop / laptop. */}
+        <div className="grid grid-cols-1 gap-[clamp(20px,4vw,44px)] md:grid-cols-2 landscape:max-lg:grid-cols-1 xl:grid-cols-3">
           {PLATFORM_CARDS.map((card) => (
             <PremiumPlatformCard key={card.id} card={card} locale={locale} />
           ))}

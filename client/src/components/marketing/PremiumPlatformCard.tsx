@@ -40,22 +40,25 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
 
   return (
     <article
-      className="relative overflow-hidden rounded-[28px] bg-white ring-1 ring-emerald-100/80 shadow-[0_12px_30px_rgba(7,20,13,0.08)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(7,20,13,0.12)] motion-reduce:transition-none focus-within:shadow-[0_16px_40px_rgba(7,20,13,0.12)]"
+      className="relative isolate overflow-hidden rounded-[clamp(22px,3vw,34px)] bg-white border border-black/[0.045] shadow-[0_8px_24px_rgba(0,0,0,0.045),0_22px_60px_rgba(0,0,0,0.055)] transition-shadow duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06),0_28px_72px_rgba(0,0,0,0.07)] motion-reduce:transition-none focus-within:shadow-[0_12px_32px_rgba(0,0,0,0.06),0_28px_72px_rgba(0,0,0,0.07)]"
       data-pr-premium-card="true"
       data-platform-id={card.id}
     >
-      {/* Image surface (static asset; CSS gradient fallback if
-          both .webp variants are missing). Mobile uses object-contain
-          to keep every pixel of the editorial artwork visible (poster
-          framing); ≥sm switches to object-cover for the more
-          immersive desktop layout. */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
+      {/* Image surface (static asset; CSS gradient fallback if both
+          .webp variants are missing). Mobile + tablet + landscape
+          phones use object-contain so every pixel of editorial
+          artwork (incl. baked-in headline text) stays visible — the
+          poster framing the CEO directive of 2026-05-14 calls for.
+          Only ≥lg (1024px desktop) reverts to object-cover for the
+          immersive layout. White background fills the contain
+          letterbox space. */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-white">
         <img
           src={assetSrc}
           alt={`${title} — ${headline}`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-contain sm:object-cover"
+          className="h-full w-full object-contain lg:object-cover"
           onError={(e) => {
             // Graceful: hide broken image; gradient fallback
             // shows through.
@@ -74,24 +77,25 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
       </div>
 
       {/* Editorial copy block (overlaid HTML; selectable; accessible).
-          Mobile padding intentionally tighter than desktop —
-          CEO directive 2026-05-10 ("less dead space; tighter mobile
-          layout; more content visible; still clean"). Desktop keeps
-          editorial breathing room. */}
-      <div className="px-5 py-4 text-start sm:px-8 sm:py-8">
-        <h3 className="text-2xl font-light leading-tight tracking-tight text-[#07140d] sm:text-3xl">
+          Padding, font sizes and inter-block margins all use clamp()
+          so the card scales smoothly from 320px iPhone SE up to
+          1400px desktop without per-breakpoint hand-tuning. Per CEO
+          directive 2026-05-14: luxury editorial poster framing on
+          mobile; readable, calm, intentional on desktop. */}
+      <div className="px-[clamp(18px,4vw,36px)] py-[clamp(18px,3vw,32px)] text-start">
+        <h3 className="text-[clamp(22px,4vw,32px)] font-light leading-[1.15] tracking-tight text-[#07140d]">
           {title}
         </h3>
-        <p className="mt-2 text-lg font-medium leading-snug text-emerald-800 sm:mt-3 sm:text-xl">
+        <p className="mt-[clamp(12px,2vw,20px)] text-[clamp(18px,3vw,22px)] font-medium leading-snug text-emerald-800">
           {headline}
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base">
+        <p className="mt-[clamp(10px,2vw,16px)] text-[clamp(14px,2vw,16px)] leading-relaxed text-slate-600">
           {subtitle}
         </p>
-        <div className="mt-4 sm:mt-6">
+        <div className="mt-[clamp(18px,3vw,28px)]">
           <Link
             href={card.href}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-700 px-5 text-base font-medium text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 motion-reduce:transition-none sm:px-6"
+            className="inline-flex w-full min-h-[44px] sm:min-h-[54px] items-center justify-center rounded-2xl bg-emerald-700 px-6 text-base font-[650] text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 motion-reduce:transition-none"
             data-pr-premium-card-cta="true"
           >
             {cta}
