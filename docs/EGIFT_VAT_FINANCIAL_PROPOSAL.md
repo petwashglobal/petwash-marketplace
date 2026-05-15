@@ -34,6 +34,34 @@ The proposal addresses all five with **one configurable flag** (`EGIFT_VAT_MODE`
 
 ---
 
+## 0a. Non-negotiable architectural rules for the egift system
+
+**These are constitutional.** They were ratified by the CEO. Any future implementer or AI agent working on egift, wallet, or store-credit code in this repository must comply with all ten. They are not preferences. A PR that violates any of them must be rejected at code review regardless of how attractive the feature is.
+
+1. **Ledger-first accounting only.** Every financial change is an INSERT into an append-only ledger. No path through code may move money or credit without writing a ledger row in the same database transaction.
+
+2. **Reverse entries only, never mutate financial history.** A refund, cancellation, correction, or any reversal is a NEW ledger row that offsets the prior row. Updates and deletes against existing financial history are forbidden. If a row is wrong, it stays — and a correcting reversal sits beside it.
+
+3. **Idempotent event processing everywhere.** Every event-handling endpoint and webhook handler must be safe to call N times with no compounding effect. This is achieved with `idempotencyKey` enforcement on `egift_events` (already present) and equivalent uniqueness on every new endpoint.
+
+4. **Human-readable exports are never source of truth.** Sheets, Docs, PDFs, CSV exports, and Drive archives (the Layer 2 operational archive defined in `BACKUP_RETENTION_ARCHITECTURE.md`) are convenience views generated FROM the ledger. They must always be reproducible from Layer 1. They are never the system of record. If a discrepancy is found between an export and the ledger, the ledger wins.
+
+5. **Auditability before automation.** Any new automation that touches money must first have its observability and audit-trail surface area defined. No "ship now, instrument later". Every state transition must already be visible in `auditEvents`, `egift_events`, or equivalent at the moment the automation goes live.
+
+6. **Every financial state transition must be reconstructible from append-only events.** Given the full event log, the current balance, status, and history of any voucher must be derivable by replay. No state may exist on disk that cannot be reproduced from events. This is the integrity guarantee that protects the platform under audit.
+
+7. **No silent expiry logic.** When a voucher expires, it produces an explicit `EXPIRED` event in `egift_events` AND `eVoucherEvents`. The expiry job must log every transition. Hidden background sweeps that change voucher state without an event row are forbidden.
+
+8. **No hidden balance adjustments by admin tools.** Every admin action that touches voucher state, balance, or status produces a row in `egift_admin_actions` (Phase 4 deliverable) with `beforeState`, `afterState`, `actorUserId`, `reason`, and a corresponding `egift_events` and `walletLedgerEntries` entry. There is no admin path that moves money without leaving a trail.
+
+9. **Every admin financial action must become an audit event.** Cross-referenced with the central `auditEvents` table for searchability across systems. An admin who issues a refund leaves a trail visible to the next admin, the CPA, and any future regulator without needing to query egift-specific tables.
+
+10. **Consumer-visible balances must always reconcile to ledger totals.** The number a recipient sees on a card preview or in their wallet is computed from the ledger — never stored as a denormalized field that could drift. The daily reconciliation job (Phase 3 deliverable) verifies that `walletAccounts.egiftBalanceCents` equals the sum of net `walletLedgerEntries` for that user. Drift is a P0 alert.
+
+These ten rules are referenced from every implementation phase. Phase 1 (schema additions) preserves them by being purely additive. Phase 2 (display + recording) honors rule 1, 3, and 5 by writing per-event rows before any UI ships. Phase 3 (liability tracking + partial redemption fix) directly delivers rule 6 and rule 10. Phase 4 (admin tools + refund flow) is gated on rules 2, 8, and 9 being structurally enforced first.
+
+---
+
 ## 1. What the audit found
 
 Verified by code audit of the full repo, May 2026.
@@ -501,6 +529,8 @@ All routes require `requireAdmin` + step-up OTP (per backup-retention §3.6 once
 - Multi-currency support (currently ILS only; out of scope).
 - Gift card issuance to non-Israeli buyers (out of scope; current flow assumes Israeli VAT).
 - Replacing the existing three-ledger architecture (`eVouchers`, `egift_events`, `walletLedgerEntries`) with a unified ledger — out of scope; reconciliation is the right approach.
+- **Breakage accounting and revenue recognition on expired vouchers.** Explicitly out of implementation scope until written CPA guidance is on file (Decision H). Default behavior: expired voucher value remains on the balance sheet as outstanding liability, never auto-recognized as revenue.
+- **Escheatment / unclaimed-property remittance.** Explicitly out of implementation scope until written privacy + tax counsel guidance is on file (Decision I). Default behavior: no funds leave the platform's control under any automated process; expiry is logged but no money moves.
 
 ---
 
@@ -519,6 +549,23 @@ E. **Backfill historical data.** Should the new columns on `egift_events` and `e
 F. **Partial-redemption behavior.** The audit found that the current redemption route marks the full voucher REDEEMED on first use, regardless of amount used. Confirm intent: should ₪100 cards behave as "single-use voucher" (current) or "stored-value balance" (proposed Phase 3 fix)? They're different products with different legal treatment.
 
 G. **HMAC-signing redemption links.** Phase 2 add, or defer? Default: defer to Phase 4 unless there's a security concern flagged by the audit.
+
+H. **Breakage accounting policy and revenue-recognition timing.** When an egift is sold but never redeemed and eventually expires, the unredeemed value is "breakage". Accounting standards in many jurisdictions allow recognizing breakage as revenue, but the timing and methodology differ:
+
+- Recognize at expiry (event-driven): when a voucher transitions to EXPIRED, the remaining balance is reclassified from liability to revenue in one entry.
+- Recognize over redemption pattern (proportional): as customers redeem cards, an estimated portion of the remaining liability is recognized as breakage based on historical non-redemption rates.
+- Recognize never (most conservative): the liability stays on the balance sheet indefinitely; expired-but-not-recognized funds are managed as deferred liability or dormant balances, possibly subject to escheatment (see Decision I).
+
+The CPA must pick the methodology under Israeli accounting standards (IFRS 15 application + ITA guidance). No automated breakage logic ships before written CPA guidance is on file. **Default until then: zero breakage recognition. Expired voucher value remains on the balance sheet as outstanding liability.**
+
+I. **Expired or unredeemed gift-card legal treatment under Israeli law.** Some jurisdictions (notably US states) impose escheatment — the requirement to remit unclaimed property (including gift-card balances) to a state authority after a defined dormancy period. Israeli law's treatment of unclaimed prepaid balances and stored value is not a question the engineering team can answer. Privacy and tax counsel must confirm:
+
+- Does Israeli law impose any escheatment-style obligation on PetWash for unredeemed egift balances? If yes, after how many years of dormancy, and to which authority?
+- Are there consumer-protection rules requiring minimum validity periods for prepaid vouchers in Israel? (Some EU jurisdictions mandate minimums.)
+- Does the existing 12-month or other expiry default in `eVouchers.expiresAt` comply with Israeli consumer law?
+- If breakage is recognized as revenue (Decision H), does that conflict with any escheatment claim?
+
+**No automated expiry-to-revenue logic, no automated remittance logic, and no change to the current expiry default ships before written guidance from privacy + tax counsel is on file.** Default until then: vouchers expire as currently configured, expired balances remain on the books as outstanding liability, no funds leave the platform's control.
 
 ---
 
@@ -548,4 +595,4 @@ Israeli legal references:
 
 ---
 
-**End of audit and proposal. No code, no schema, no infrastructure changed. Awaiting CEO + CPA review and decisions A through G.**
+**End of audit and proposal. No code, no schema, no infrastructure changed. Awaiting CEO + CPA review and decisions A through I.**
