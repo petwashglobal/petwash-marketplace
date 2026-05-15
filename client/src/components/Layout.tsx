@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 import { PetWashHeader } from './PetWashHeader';
 import { Footer } from './Footer';
 import { NetworkOfflineBanner } from './NetworkOfflineBanner';
@@ -17,10 +18,16 @@ interface LayoutProps {
 
 export function Layout({ children, language: propLanguage, onLanguageChange: propOnLanguageChange }: LayoutProps) {
   const { language: contextLanguage, setLanguage: contextSetLanguage } = useLanguage();
-  
+
   const language = propLanguage ?? contextLanguage;
   const onLanguageChange = propOnLanguageChange ?? contextSetLanguage;
   const isRTL = language === 'he' || language === 'ar';
+
+  // Phase B2 direction correction (Decision D, Option A) — the violet/purple/
+  // indigo pre-launch banner clashes with the luxury hero on /egift. Hide it
+  // on that route only. All other pages continue to show the banner.
+  const [location] = useLocation();
+  const isEgiftRoute = location.startsWith('/egift');
 
   const { paymentsEnabled } = usePaymentStatus();
   const [bannerDismissed, setBannerDismissed] = useState(() =>
@@ -49,8 +56,9 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
 
   return (
     <div className="min-h-[100dvh] bg-white">
-      {/* Pre-launch soft-launch banner — shown until payments are live, dismissible */}
-      {!paymentsEnabled && !bannerDismissed && (
+      {/* Pre-launch soft-launch banner — shown until payments are live, dismissible.
+          Phase B2: suppressed on /egift to keep the luxury hero composition clean. */}
+      {!paymentsEnabled && !bannerDismissed && !isEgiftRoute && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
           className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white z-50 relative"
