@@ -1031,7 +1031,7 @@ export default function EGift() {
               >
                 <h2
                   className="text-lg sm:text-xl md:text-2xl font-extralight mb-6 text-ink-900"
-                  style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
+                  style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '-0.02em' }}
                 >
                   {tx('expressCheckout', lang)}
                 </h2>
@@ -1189,15 +1189,16 @@ export default function EGift() {
                   </div>
                 </div>
 
-                {/* Redeemable-at chip strip — Phase B: gold-luxe label, ink hairline. */}
+                {/* Redeemable-at chip strip — Phase B2: ink-900 label, ink hairline,
+                    ink-900 chips. ZERO gold. */}
                 <div className="mt-5 p-4 bg-stage-white" style={{ borderRadius: '2px', border: '1px solid rgba(10,10,10,0.10)' }}>
-                  <p className="text-[10px] md:text-[11px] tracking-[0.1em] uppercase font-semibold mb-2 text-gold-luxe">{tx('redeemableAt', lang)}</p>
+                  <p className="text-[10px] md:text-[11px] tracking-[0.1em] uppercase font-semibold mb-2 text-ink-900">{tx('redeemableAt', lang)}</p>
                   <div className="flex flex-wrap gap-2">
                     {platformServices.filter(s => selectedServices.includes(s.id)).map(service => (
                       <span
                         key={service.id}
-                        className="px-2.5 py-1 text-[10px] sm:text-[11px] md:text-[12px] tracking-wide text-gold-luxe bg-stage-white"
-                        style={{ border: '1px solid rgba(168,139,76,0.30)' }}
+                        className="px-2.5 py-1 text-[10px] sm:text-[11px] md:text-[12px] tracking-wide text-ink-900 bg-stage-white"
+                        style={{ border: '1px solid rgba(10,10,10,0.15)' }}
                       >
                         {service.name}
                       </span>
@@ -1205,17 +1206,13 @@ export default function EGift() {
                   </div>
                 </div>
 
+                {/* Pay & Send CTA — Phase B2: solid ink-900 rectangle. */}
                 <Button
-                  className="w-full py-4 md:py-[18px] mt-5 text-[11px] md:text-[12px] tracking-[0.18em] uppercase font-semibold transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 md:py-[18px] mt-5 text-[11px] md:text-[12px] tracking-[0.18em] uppercase font-semibold transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed bg-ink-900 text-stage-white hover:bg-black"
                   onClick={handleCheckout}
                   disabled={isProcessing}
                   data-testid="button-checkout"
-                  style={{
-                    borderRadius: '2px',
-                    background: 'linear-gradient(90deg, #A88B4C 0%, #8B7340 50%, #A88B4C 100%)',
-                    color: '#FFFFFF',
-                    boxShadow: '0 4px 20px rgba(168,139,76,0.30)',
-                  }}
+                  style={{ borderRadius: '2px' }}
                 >
                   {isProcessing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1254,7 +1251,7 @@ export default function EGift() {
                     {selectedOccasion && (
                       <selectedOccasion.icon className="w-4 h-4" style={{ color: selectedOccasion.borderColor }} strokeWidth={1.5} />
                     )}
-                    <p className="text-[10px] md:text-[11px] tracking-[0.25em] uppercase text-gold-luxe font-semibold text-center">
+                    <p className="text-[10px] md:text-[11px] tracking-[0.25em] uppercase text-ink-900 font-semibold text-center">
                       {tx('eGiftCard', lang)} · {tierLabel}
                     </p>
                   </div>
@@ -1281,11 +1278,11 @@ export default function EGift() {
                   <div className="text-center mt-5">
                     <p
                       className="text-3xl sm:text-4xl md:text-[2.4rem] font-extralight mb-1 text-ink-900"
-                      style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}
+                      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '-0.04em' }}
                     >
                       {formattedValue}
                     </p>
-                    <p className="text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-ink-800">
+                    <p className="text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-ink-900">
                       {tx('eGiftCredit', lang)}
                     </p>
                     <div className="mt-3 flex items-center justify-between text-[9px] md:text-[10px] tracking-wide text-ink-400">
@@ -1295,7 +1292,7 @@ export default function EGift() {
                   </div>
                 </div>
                 <div className="mt-4 text-center">
-                  <p className="text-[11px] md:text-[12px] text-gold-luxe">{tx('worksAtAll', lang)}</p>
+                  <p className="text-[11px] md:text-[12px] text-ink-900">{tx('worksAtAll', lang)}</p>
                 </div>
               </div>
             </div>
@@ -1309,70 +1306,49 @@ export default function EGift() {
   return (
     <Layout>
     <div className="min-h-screen bg-stage-white" dir={dir}>
-      <div className="container mx-auto px-4 py-12 sm:py-16 md:py-20 lg:py-24">
+      <div className="container mx-auto px-4 py-8 sm:py-10 md:py-12 lg:py-16">
 
-        {/* ── Hero Banner — Phase B: true stage-white with subtle 4% gold radial halo
-             (replaces previous warm cream gradient #F8F4EE→#F0EBE0). Ribbon
-             decorations softened from opacity-0.2 to opacity-0.12 for editorial
-             restraint. Card tier labels gain md: variant for iPad portrait. */}
-        <div
-          className="relative w-full rounded-sm overflow-hidden mb-14 sm:mb-20 md:mb-24 bg-stage-white"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 50% -20%, rgba(168,139,76,0.045) 0%, transparent 60%)',
-            minHeight: '200px',
-          }}
-        >
-          {/* Ribbon decorations — softened opacity for luxury editorial restraint */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <svg className="absolute -top-4 -left-8 opacity-[0.12] rotate-[-20deg]" width="220" height="110" viewBox="0 0 220 110">
-              <rect x="0" y="40" width="220" height="30" fill="#ffffff" />
-              <rect x="0" y="38" width="220" height="4" fill="#A88B4C" opacity="0.6" />
-              <rect x="0" y="68" width="220" height="4" fill="#A88B4C" opacity="0.6" />
-              <text x="18" y="61" fontSize="11" fill="#0A0A0A" fontFamily="sans-serif" fontWeight="700" letterSpacing="3" textAnchor="start">PetWash</text>
-              <text x="90" y="61" fontSize="11" fill="#0A0A0A" fontFamily="sans-serif" fontWeight="700" letterSpacing="3">PetWash</text>
-              <text x="162" y="61" fontSize="11" fill="#0A0A0A" fontFamily="sans-serif" fontWeight="700" letterSpacing="3">PetWash</text>
-            </svg>
-            <svg className="absolute -top-2 -right-6 opacity-[0.12] rotate-[18deg]" width="200" height="100" viewBox="0 0 200 100">
-              <rect x="0" y="35" width="200" height="30" fill="#ffffff" />
-              <rect x="0" y="33" width="200" height="4" fill="#A88B4C" opacity="0.5" />
-              <rect x="0" y="63" width="200" height="4" fill="#A88B4C" opacity="0.5" />
-              <text x="12" y="55" fontSize="10" fill="#0A0A0A" fontFamily="sans-serif" fontWeight="700" letterSpacing="2.5">PetWash™</text>
-              <text x="100" y="55" fontSize="10" fill="#0A0A0A" fontFamily="sans-serif" fontWeight="700" letterSpacing="2.5">PetWash™</text>
-            </svg>
-          </div>
-          {/* Hero content — gains md: padding rhythm so iPad portrait stops inheriting
-              the phone-sized px-8 py-10. md: adds breathing room for tablet portrait. */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8 md:gap-10 lg:gap-12 px-8 py-10 md:px-12 md:py-14 lg:px-16 lg:py-16">
+        {/* ── Hero — Phase B2 direction correction (Cartier/LV/Apple posture):
+             SVG ribbon decorations REMOVED entirely. Card tier label boxes
+             monochrome (PREMIUM white, ELITE solid black). One moment of brand
+             gold preserved on the "PetWash Premium" callout. H1 in Cormorant
+             Garamond (Cartier-Didot precision, replacing Playfair Display
+             editorial mood). Vertical rhythm tightened ~30%. */}
+        <div className="relative w-full bg-stage-white mb-10 sm:mb-12 md:mb-14">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 md:gap-10 px-6 py-8 md:px-10 md:py-10 lg:px-12 lg:py-12">
             <div className="flex-shrink-0 flex gap-3 md:gap-4">
-              {['PREMIUM', 'ELITE'].map(tier => (
-                <div
-                  key={tier}
-                  className="w-28 h-16 sm:w-36 sm:h-20 md:w-40 md:h-[88px] rounded-sm flex items-center justify-center shadow-stage-cinema"
-                  style={{
-                    background: tier === 'ELITE' ? 'linear-gradient(135deg,#FFF8E8,#FFF0C8,#FFF8E8)' : '#FAFAF8',
-                    border: '1px solid rgba(10,10,10,0.08)',
-                  }}
-                >
-                  <span
-                    className="text-[10px] md:text-[11px] tracking-[0.2em] uppercase font-semibold"
-                    style={{ color: tier === 'ELITE' ? '#A88B4C' : '#0F0F0F', fontFamily: 'serif' }}
+              {['PREMIUM', 'ELITE'].map(tier => {
+                const isElite = tier === 'ELITE';
+                return (
+                  <div
+                    key={tier}
+                    className={`w-28 h-16 sm:w-36 sm:h-20 md:w-40 md:h-[88px] rounded-sm flex items-center justify-center shadow-stage-soft ${
+                      isElite ? 'bg-ink-900' : 'bg-stage-white border border-ink-900/12'
+                    }`}
                   >
-                    PetWash
-                  </span>
-                </div>
-              ))}
+                    <span
+                      className={`text-[10px] md:text-[11px] tracking-[0.2em] uppercase font-semibold ${
+                        isElite ? 'text-stage-white' : 'text-ink-900'
+                      }`}
+                      style={{ fontFamily: 'serif' }}
+                    >
+                      PetWash
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             <div className="text-center sm:text-left">
-              <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase mb-3 font-semibold text-gold-luxe">
+              <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase mb-3 font-semibold text-ink-900">
                 PetWash™ Premium
               </p>
               <h2
                 className="text-2xl sm:text-3xl md:text-[2.1rem] lg:text-[2.4rem] font-extralight mb-2 text-ink-900"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: '-0.02em' }}
+                style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", letterSpacing: '-0.03em' }}
               >
                 {lang === 'he' ? 'כרטיסי מתנה דיגיטליים' : 'eGIFT CARDS'}
               </h2>
-              <p className="text-sm md:text-[15px] lg:text-base max-w-sm md:max-w-md leading-relaxed text-ink-800">
+              <p className="text-sm md:text-[15px] lg:text-base max-w-sm md:max-w-md leading-relaxed text-ink-900">
                 {lang === 'he'
                   ? 'שלח את מתנת הבחירה שלך עם כרטיס מתנה של PetWash'
                   : 'Send the gift of choice with a PetWash eGift Card'}
@@ -1386,15 +1362,13 @@ export default function EGift() {
           </div>
         </div>
 
-        {/* ── 3-Step Flow — Phase B: color migration to Phase A tokens. Circles
-             stay at current size (slim-down is Phase C scope). Connector line
-             uses a restrained ink hairline instead of the prior gold gradient.
-             Labels gain md: typography variants so iPad portrait does not stay
-             at iPhone label sizes. */}
-        <div className="mb-14 sm:mb-16 md:mb-20">
+        {/* ── 3-Step Flow — Phase B2: numerals + connector flat ink (no gold).
+             H1 font swap propagates: numerals use Cormorant Garamond. Tighter
+             vertical rhythm. */}
+        <div className="mb-10 sm:mb-12 md:mb-14">
           <div className="grid grid-cols-3 gap-0 max-w-2xl mx-auto relative">
-            {/* Connector — restrained ink hairline (was: gold gradient) */}
-            <div className="absolute top-7 left-[33%] right-[33%] h-px bg-ink-900/10" />
+            {/* Connector — restrained ink hairline */}
+            <div className="absolute top-7 left-[33%] right-[33%] h-px bg-ink-900/12" />
             {[
               { num: '1', label: lang === 'he' ? 'בחר כרטיס' : 'Choose Your Card', sub: lang === 'he' ? 'בחר עיצוב מועדף' : 'Select your preferred design' },
               { num: '2', label: lang === 'he' ? 'התאמה אישית' : 'Personalise', sub: lang === 'he' ? 'הוסף הודעה ואת שם הנמען' : 'Add a message & recipient details' },
@@ -1402,45 +1376,37 @@ export default function EGift() {
             ].map((s) => (
               <div key={s.num} className="flex flex-col items-center text-center px-2">
                 <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center mb-3 relative z-10 shadow-stage-soft bg-stage-white"
-                  style={{ border: '1.5px solid rgba(10,10,10,0.10)' }}
+                  className="w-14 h-14 rounded-full flex items-center justify-center mb-3 relative z-10 bg-stage-white"
+                  style={{ border: '1px solid rgba(10,10,10,0.12)' }}
                 >
-                  <span className="text-base font-light text-gold-luxe" style={{ fontFamily: "'Playfair Display', serif" }}>{s.num}</span>
+                  <span className="text-base font-light text-ink-900">{s.num}</span>
                 </div>
-                <p className="text-xs md:text-[13px] font-semibold mb-1 text-ink-900" style={{ fontFamily: 'serif' }}>{s.label}</p>
-                <p className="text-[10px] md:text-[11px] leading-snug text-ink-400">{s.sub}</p>
+                <p className="text-xs md:text-[13px] font-semibold mb-1 text-ink-900">{s.label}</p>
+                <p className="text-[10px] md:text-[11px] leading-snug text-ink-900">{s.sub}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="text-center mb-12 sm:mb-16 md:mb-20">
-          {/* Editorial mark — gold hairline + gift icon. Migrated to deeper
-              metallic gold (#A88B4C, Decision A). */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-12 md:w-16 h-px bg-gradient-to-r from-transparent to-gold-luxe" />
-            <Gift className="w-4 h-4 md:w-[18px] md:h-[18px] text-gold-luxe" strokeWidth={1.2} />
-            <div className="w-12 md:w-16 h-px bg-gradient-to-l from-transparent to-gold-luxe" />
-          </div>
-
-          {/* Section label — standardized to font-semibold + tracking-[0.4em] +
-              text-gold-luxe + md: size variant. Hairline rule sits below. */}
-          <p className="text-[10px] sm:text-[11px] md:text-[12px] tracking-[0.4em] uppercase mb-5 font-semibold text-gold-luxe">
+        {/* ── Page title block — Phase B2 direction correction:
+             - Removed the gold-hairline+gift-icon decoration (pure ornament).
+             - Section label "PLATFORM CREDIT" moved from text-gold-luxe to
+               text-ink-900 (Apple/LV editorial caps, no gold).
+             - H1 font swapped from Playfair Display to Cormorant Garamond.
+             - Description body promoted from text-ink-800 to text-ink-900. */}
+        <div className="text-center mb-10 sm:mb-12 md:mb-14">
+          <p className="text-[10px] sm:text-[11px] md:text-[12px] tracking-[0.4em] uppercase mb-5 font-semibold text-ink-900">
             {tx('platformCredit', lang)}
           </p>
 
-          {/* H1 — Phase B: font-light → font-extralight (Cartier/Tom Ford weight).
-              Adds md: size variant (text-5xl) so iPad portrait does not jump
-              directly from sm:text-4xl to lg:text-[3.2rem]. iPhone base stays
-              at text-3xl per CEO direction "do not squeeze iPhone". */}
           <h1
             className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.2rem] mb-6 px-4 font-extralight leading-tight text-ink-900"
-            style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', serif", letterSpacing: '-0.03em' }}
+            style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", letterSpacing: '-0.035em' }}
           >
             {tx('title', lang)}
           </h1>
           <p
-            className="text-sm sm:text-[15px] md:text-base lg:text-[17px] max-w-lg md:max-w-xl mx-auto leading-relaxed text-ink-800"
+            className="text-sm sm:text-[15px] md:text-base lg:text-[17px] max-w-lg md:max-w-xl mx-auto leading-relaxed text-ink-900"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
             {tx('description', lang)}
@@ -1448,12 +1414,11 @@ export default function EGift() {
         </div>
 
         <div className="max-w-[1040px] mx-auto">
-          {/* Occasion chips — Phase B: section label standardized to gold-luxe +
-              font-semibold + tracking-[0.4em]. Chip unselected text moves from
-              #7A7068 (warm gray) to ink-800 (deep luxury ink). Chip padding gains
-              md: variant so iPad portrait does not inherit phone-sized chips. */}
-          <div className="mb-10 sm:mb-14 md:mb-16">
-            <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase font-semibold text-gold-luxe mb-4 text-center">
+          {/* Occasion chips — Phase B2: section label moved to text-ink-900
+              (Cartier/LV editorial caps). Selected chips keep their occasion
+              color — that is the emotional accent. */}
+          <div className="mb-8 sm:mb-10 md:mb-12">
+            <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase font-semibold text-ink-900 mb-4 text-center">
               {tx('chooseOccasion', lang)}
             </p>
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-3.5">
@@ -1492,37 +1457,37 @@ export default function EGift() {
             </div>
           </div>
 
-          {/* Service toggles — Phase B: label standardized; selected/unselected
-              text use Phase A ink/gold-luxe tokens. Padding gains md: variant
-              so iPad portrait sees toggles sized between mobile and desktop. */}
+          {/* Service toggles — Phase B2: ZERO gold, ZERO cream. Unselected pills
+              are pure white with thin ink hairline + ink-900 text. Selected pills
+              fill solid ink-900 with white text. Apple/LV chip discipline. */}
           <div className="mb-8 sm:mb-10 md:mb-12">
-            <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase font-semibold text-gold-luxe mb-3 text-center">
+            <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase font-semibold text-ink-900 mb-3 text-center">
               {tx('usableAt', lang)}
             </p>
             <div className="flex flex-wrap justify-center gap-2 md:gap-2.5">
-              {platformServices.map(service => (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => toggleService(service.id)}
-                  className="px-3 sm:px-4 md:px-5 py-2 md:py-2.5 text-[10px] sm:text-[11px] md:text-[12px] tracking-[0.08em] font-medium transition-all duration-200 touch-manipulation"
-                  style={{
-                    borderRadius: '2px',
-                    border: selectedServices.includes(service.id) ? '1px solid #A88B4C' : '1px solid rgba(10,10,10,0.10)',
-                    background: selectedServices.includes(service.id) ? 'rgba(168,139,76,0.10)' : '#FFFFFF',
-                    color: selectedServices.includes(service.id) ? '#A88B4C' : '#6B6B6B',
-                  }}
-                  data-testid={`service-toggle-${service.id}`}
-                >
-                  {service.name}
-                </button>
-              ))}
+              {platformServices.map(service => {
+                const isSelected = selectedServices.includes(service.id);
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => toggleService(service.id)}
+                    className={`px-3 sm:px-4 md:px-5 py-2 md:py-2.5 text-[10px] sm:text-[11px] md:text-[12px] tracking-[0.08em] font-medium transition-all duration-200 touch-manipulation ${
+                      isSelected ? 'bg-ink-900 text-stage-white border border-ink-900' : 'bg-stage-white text-ink-900 border border-ink-900/15'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                    data-testid={`service-toggle-${service.id}`}
+                  >
+                    {service.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Choose Value section label — standardized. */}
+          {/* Choose Value section label — Phase B2: ink-900 (no gold). */}
           <div className="mb-3 text-center">
-            <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase font-semibold text-gold-luxe mb-4">
+            <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase font-semibold text-ink-900 mb-4">
               {tx('chooseValue', lang)}
             </p>
           </div>
@@ -1544,11 +1509,11 @@ export default function EGift() {
             ))}
           </div>
 
-          {/* Security footer — Phase B: lock + label use Phase A tokens. */}
-          <div className="mt-8 sm:mt-10 md:mt-12 flex flex-col items-center gap-2">
+          {/* Security footer — Phase B2: ink-900 (no gold). */}
+          <div className="mt-6 sm:mt-8 md:mt-10 flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
-              <Lock className="w-3 h-3 text-gold-luxe" strokeWidth={1.5} />
-              <span className="text-[9px] sm:text-[10px] md:text-[11px] tracking-[0.12em] uppercase text-ink-400 font-medium">
+              <Lock className="w-3 h-3 text-ink-900" strokeWidth={1.5} />
+              <span className="text-[9px] sm:text-[10px] md:text-[11px] tracking-[0.12em] uppercase text-ink-900 font-medium">
                 {lang === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
               </span>
             </div>
@@ -1573,13 +1538,10 @@ export default function EGift() {
                   setSelectedOption(null);
                 }
               }}
-              className="w-full py-3 md:py-3.5 text-[11px] md:text-[12px] tracking-[0.12em] uppercase font-medium transition-all duration-200 touch-manipulation flex items-center justify-center gap-2"
-              style={{
-                borderRadius: '2px',
-                border: isCustom ? '1px solid #A88B4C' : '1px solid rgba(10,10,10,0.10)',
-                background: isCustom ? 'linear-gradient(90deg, #A88B4C, #8B7340)' : '#FFFFFF',
-                color: isCustom ? '#FFFFFF' : '#6B6B6B',
-              }}
+              className={`w-full py-3 md:py-3.5 text-[11px] md:text-[12px] tracking-[0.12em] uppercase font-medium transition-all duration-200 touch-manipulation flex items-center justify-center gap-2 ${
+                isCustom ? 'bg-ink-900 text-stage-white border border-ink-900' : 'bg-stage-white text-ink-900 border border-ink-900/15'
+              }`}
+              style={{ borderRadius: '2px' }}
               data-testid="button-custom-amount"
             >
               <Sparkles className="w-3.5 h-3.5" strokeWidth={1.5} />
@@ -1588,7 +1550,7 @@ export default function EGift() {
 
             {isCustom && (
               <div className="mt-3 relative">
-                <span className="absolute start-3 top-1/2 -translate-y-1/2 text-ink-800 text-sm pointer-events-none">₪</span>
+                <span className="absolute start-3 top-1/2 -translate-y-1/2 text-ink-900 text-sm pointer-events-none">₪</span>
                 <Input
                   type="text"
                   inputMode="numeric"
@@ -1611,20 +1573,15 @@ export default function EGift() {
           </div>
 
           {selectedOption && (
-            <div className="mt-10 sm:mt-12 md:mt-14 text-center">
-              {/* Proceed CTA — Phase B: gold gradient migrated to the deeper
-                  metallic gold (#A88B4C → #8B7340) approved in Decision A.
-                  Foreground text is white for contrast on the darker tone. */}
+            <div className="mt-8 sm:mt-10 md:mt-12 text-center">
+              {/* Proceed CTA — Phase B2: solid ink-900 rectangle with white text.
+                  Apple/LV/Cartier confidence. Sharp rounded-[2px] corners, no
+                  shadow, no gradient. */}
               <Button
-                className="px-10 sm:px-14 md:px-16 py-4 md:py-[18px] text-[11px] md:text-[12px] tracking-[0.18em] uppercase font-semibold transition-all duration-300 inline-flex items-center gap-2.5 touch-manipulation"
+                className="px-10 sm:px-14 md:px-16 py-4 md:py-[18px] text-[11px] md:text-[12px] tracking-[0.18em] uppercase font-semibold transition-all duration-300 inline-flex items-center gap-2.5 touch-manipulation bg-ink-900 text-stage-white hover:bg-black"
                 onClick={proceedToCheckout}
                 data-testid="button-proceed-checkout"
-                style={{
-                  borderRadius: '2px',
-                  background: 'linear-gradient(90deg, #A88B4C 0%, #8B7340 50%, #A88B4C 100%)',
-                  color: '#FFFFFF',
-                  boxShadow: '0 4px 20px rgba(168,139,76,0.30)',
-                }}
+                style={{ borderRadius: '2px' }}
               >
                 {tx('continueCheckout', lang)}
                 <ForwardIcon className="w-3.5 h-3.5" />
@@ -1632,26 +1589,20 @@ export default function EGift() {
             </div>
           )}
 
-          {/* Trust badge row — Phase B: hairlines + check icons use gold-luxe;
-              labels use ink-800 for deeper readability on iPhone OLED. md:
-              variants give iPad portrait its own rhythm. */}
-          <div className="mt-14 sm:mt-20 md:mt-24">
-            <div className="flex items-center justify-center gap-4 mb-10">
-              <div className="flex-1 max-w-[80px] md:max-w-[100px] h-px bg-gradient-to-r from-transparent to-ink-900/15" />
-              <ShieldCheck className="w-4 h-4 md:w-[18px] md:h-[18px] text-gold-luxe" strokeWidth={1.2} />
-              <div className="flex-1 max-w-[80px] md:max-w-[100px] h-px bg-gradient-to-l from-transparent to-ink-900/15" />
-            </div>
-
+          {/* Trust badge row — Phase B2: hairlines + check icons + labels all
+              ink-900. ZERO gold tint on check circles (was rgba(168,139,76,0.06)).
+              Tighter top margin. */}
+          <div className="mt-10 sm:mt-14 md:mt-16">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10 md:gap-12 max-w-xl md:max-w-2xl mx-auto">
               {[tx('allServices', lang), tx('valid12Months', lang), tx('noAccountRequired', lang), tx('instantDelivery', lang)].map((label) => (
                 <div key={label} className="text-center">
                   <div
-                    className="w-9 h-9 md:w-10 md:h-10 mx-auto mb-2.5 rounded-full flex items-center justify-center"
-                    style={{ border: '1px solid rgba(10,10,10,0.10)', background: 'rgba(168,139,76,0.06)' }}
+                    className="w-9 h-9 md:w-10 md:h-10 mx-auto mb-2.5 rounded-full flex items-center justify-center bg-stage-white"
+                    style={{ border: '1px solid rgba(10,10,10,0.12)' }}
                   >
-                    <Check className="w-3.5 h-3.5 md:w-4 md:h-4 text-gold-luxe" strokeWidth={1.5} />
+                    <Check className="w-3.5 h-3.5 md:w-4 md:h-4 text-ink-900" strokeWidth={1.5} />
                   </div>
-                  <p className="text-[10px] md:text-[11px] tracking-[0.08em] font-medium uppercase text-ink-800">
+                  <p className="text-[10px] md:text-[11px] tracking-[0.08em] font-medium uppercase text-ink-900">
                     {label}
                   </p>
                 </div>
