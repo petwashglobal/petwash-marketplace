@@ -32,6 +32,30 @@ body[data-cookie-consent-active="true"] .pw-float {
   pointer-events: none !important;
 }
 
+/* Phase E — context-aware fade while the egift hero is in view.
+   The useEgiftHeroSuppressFloating hook (called from
+   client/src/pages/EGift.tsx) sets data-pw-egift-hero-visible="true"
+   on <body> when the hero block scrolls into view (≥50% threshold).
+   The floating stack then fades to opacity 0 + pointer-events: none
+   using the same 0.2s ease transition declared on .pw-float-stack
+   above. Scope: /egift only — the hook is not called elsewhere, so
+   no other route is affected. */
+body[data-pw-egift-hero-visible="true"] .pw-float-stack,
+body[data-pw-egift-hero-visible="true"] .pw-float {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Respect prefers-reduced-motion for both suppression paths — the
+   fade becomes instant rather than animated for users who request
+   reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .pw-float-stack,
+  .pw-float {
+    transition: none !important;
+  }
+}
+
 .pw-float {
   position: fixed;
   right: 16px;

@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { useEgiftHeroSuppressFloating } from '@/hooks/useEgiftHeroSuppressFloating';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -695,6 +696,13 @@ export default function EGift() {
   const [isCustom, setIsCustom] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Phase E — quiet the FloatingStack (WhatsApp / Accessibility / AI
+  // buttons) while the egift hero is in view. Sets a body data
+  // attribute that floating-stack.css fades on. Scope: /egift only.
+  // No effect on any other route.
+  const heroRef = useRef<HTMLDivElement>(null);
+  useEgiftHeroSuppressFloating(heroRef);
+
   const [formData, setFormData] = useState({
     recipientName: '',
     recipientEmail: '',
@@ -1313,8 +1321,12 @@ export default function EGift() {
              monochrome (PREMIUM white, ELITE solid black). One moment of brand
              gold preserved on the "PetWash Premium" callout. H1 in Cormorant
              Garamond (Cartier-Didot precision, replacing Playfair Display
-             editorial mood). Vertical rhythm tightened ~30%. */}
-        <div className="relative w-full bg-stage-white mb-10 sm:mb-12 md:mb-14">
+             editorial mood). Vertical rhythm tightened ~30%.
+
+             Phase E — heroRef is observed by useEgiftHeroSuppressFloating
+             so the FloatingStack (WhatsApp / Accessibility / AI) fades out
+             while this hero is in view. */}
+        <div ref={heroRef} className="relative w-full bg-stage-white mb-10 sm:mb-12 md:mb-14">
           <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 md:gap-10 px-6 py-8 md:px-10 md:py-10 lg:px-12 lg:py-12">
             <div className="flex-shrink-0 flex gap-3 md:gap-4">
               {['PREMIUM', 'ELITE'].map(tier => {
