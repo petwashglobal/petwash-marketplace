@@ -166,8 +166,20 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
   },
 ] as const;
 
-/** "Platform Universe" section heading — bilingual. */
+/**
+ * "Platform Universe" section heading — bilingual.
+ *
+ * The Hebrew variant wraps "PetWash™" in U+2066 (LRI — Left-to-Right
+ * Isolate) and U+2069 (PDI — Pop Directional Isolate) so the Latin
+ * brand mark + ™ symbol render as a single LTR cluster inside the
+ * RTL Hebrew sentence. Without isolation, the Unicode bidirectional
+ * algorithm reorders the ™ to the visual left of "PetWash" in RTL
+ * context. Matches the pattern already used elsewhere in the
+ * codebase (see Footer.tsx, WashPackages.tsx, etc.).
+ * CEO directive: ™ must always sit to the right of "PetWash" in
+ * every language, including Hebrew and Arabic.
+ */
 export const PLATFORM_UNIVERSE_HEADING = {
-  he: 'עולם PetWash™',
+  he: 'עולם ⁦PetWash™⁩',
   en: 'The PetWash™ Platform Universe',
 } as const;
