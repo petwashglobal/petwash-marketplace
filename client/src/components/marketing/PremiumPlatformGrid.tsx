@@ -6,10 +6,12 @@
  * block component when the VITE_PREMIUM_PLATFORM_CARDS_ENABLED
  * feature flag is on.
  *
- * Layout:
- *   • Mobile: single-column stack, premium spacing
- *   • Tablet (sm): 2 columns
- *   • Desktop (lg): 3 columns
+ * Layout (CEO direction 2026-05-15):
+ *   • Phone, iPad portrait, iPad landscape, small laptop (<1280px):
+ *     1 column. Each card stands alone, scrolling down. Cards must
+ *     never be cramped next to each other on tablets or small screens.
+ *   • Desktop / large laptop (≥xl, 1280px+): 3 columns. Real desktop
+ *     width is the only place cards have room to breathe side-by-side.
  *
  * Locale resolution per the CEO directive: explicit prop first,
  * then navigator.language, then English fallback. IP/country is
@@ -63,18 +65,19 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
             {PLATFORM_UNIVERSE_HEADING[heading]}
           </h2>
         </header>
-        {/* Column logic (CEO 2026-05-14 acceptance criteria 1–4):
-            - default (≤md, <768px): 1 column — every iPhone portrait
-              and every small phone in landscape gets a single
-              poster-framed card.
-            - landscape:max-lg (orientation landscape, <1024px): force
-              1 column even when md kicks in — protects iPhone
-              landscape (667–932px) from getting 2 cramped 2-col
-              posters.
-            - md (≥768px) up to xl: 2 columns — iPad portrait and
-              small tablets.
-            - xl (≥1280px): 3 columns — desktop / laptop. */}
-        <div className="grid grid-cols-1 gap-[clamp(20px,4vw,44px)] md:grid-cols-2 landscape:max-lg:grid-cols-1 xl:grid-cols-3">
+        {/* Column logic — CEO direction 2026-05-15 (reverses earlier
+            2026-05-14 multi-column rule): platform cards must NEVER appear
+            next to each other on phones, tablets, or large tablets. They are
+            designed as premium poster-framed cards that read best one per
+            screen, scrolling down. Each card is its own standalone idea, not
+            a cell in a 2-up grid that crops them.
+            - default through lg (≤1279px): 1 column, full container width.
+              Covers every iPhone (any orientation), iPad portrait, iPad
+              landscape, small laptops.
+            - xl (≥1280px): 3 columns — only true desktop / large laptop,
+              where the cards have room to breathe side-by-side without
+              cropping or text overflow. */}
+        <div className="grid grid-cols-1 gap-[clamp(20px,4vw,44px)] xl:grid-cols-3">
           {PLATFORM_CARDS.map((card) => (
             <PremiumPlatformCard key={card.id} card={card} locale={locale} />
           ))}
