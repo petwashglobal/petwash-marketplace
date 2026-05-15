@@ -22,11 +22,15 @@
 
 The current `/franchise` page has **10 P0 legal-risk items**, **3 broken CTAs that do nothing**, **two empty data arrays** (`successStories: []`, `locations: []`) that nonetheless render heading sections claiming a network exists, and **45+ uses of the word "franchise"** without any of the Israeli franchise law disclosures that should accompany a franchise sales pitch. The visual design uses 50+ emoji, 5+ conflicting gradient color schemes, glassmorphism on 100% of cards, and reads as fintech-startup not luxury infrastructure brand.
 
-The proposed direction is a **full page replacement**, not a cleanup. The repositioning is from "Franchise Sales Pitch" to "Smart Hub Partnership" — selective, operationally mature, premium, with ecosystem-level confidence (K9000 hub + software + consumables + parts + training + brand standards + smart-city infrastructure).
+The proposed direction is a **full page replacement**, not a cleanup. The repositioning is from "Replit-startup franchise sales pitch" to a **premium ecosystem presentation of the PetWash™ Franchise Opportunity** — selective, operationally mature, with ecosystem-level confidence (K9000 hub + software + consumables + parts + training + brand standards + smart-city infrastructure).
 
-**The biggest single strategic question is whether the word "franchise" should remain at all.** Israeli franchise law treats the word with weight — every appearance of "franchise" or "franchisee" implies a legal relationship that requires specific pre-contract disclosures (a question that needs Israeli legal counsel). Alternative naming options (Smart Hub Partnership, Location Partner, etc.) avoid that legal trigger and align better with the premium ecosystem positioning. Decision A in §13.
+### CEO naming direction (locked)
 
-After CEO + legal sign-off on naming, the implementation is one PR replacing `Franchise.tsx` + removing `FranchiseROICalculator.tsx` + updating i18n + rewriting the form route. Roughly 600-900 lines of net change across about 6 files.
+The public name stays **"Franchise Opportunity" / "זכיינות"** — simple and clear. We do NOT rename publicly to Smart Hub Partnership, Operator Program, Host Program, Location Partner, or any other reframed term. The sophistication of the page must come from **visual design, brand positioning, operational maturity, infrastructure presentation, ecosystem depth, luxury atmosphere, and technology/support systems** — not from overcomplicated naming. This is a deliberate strategic decision: keep the public-facing label legible and familiar, deliver premium quality through the page itself.
+
+What this means concretely: the URL stays `/franchise`, the hamburger menu label simplifies to just "Franchise Opportunity" / "זכיינות" (removing the awkward "& city partners" suffix), every public string saying "Franchise Opportunity" or "זכיינות" stays, and every internal section communicates the premium infrastructure ecosystem positioning through copy and design without changing the brand name of the program.
+
+After CEO + Israeli legal counsel sign-off on the drafted copy and consent fields, the implementation is one PR replacing `Franchise.tsx` + removing `FranchiseROICalculator.tsx` + updating i18n + rewriting the form route. Roughly 600–900 lines of net change across about 6 files.
 
 ---
 
@@ -155,35 +159,30 @@ Source: an Explore-agent deep audit of `client/src/pages/Franchise.tsx`, `client
 
 ---
 
-## 3. The word "franchise" — the strategic naming question
+## 3. Naming — direction locked by CEO
 
-### 3.1 The problem
+### 3.1 Decision
 
-Using "franchise" / "franchisee" / "franchise network" in marketing copy creates two issues:
+The public name is **"Franchise Opportunity"** in English and **"זכיינות"** in Hebrew. No public rename. The sophistication of the page comes from visual design, brand positioning, ecosystem depth, and operational maturity — not from creative renaming. This is a deliberate CEO decision and overrides the earlier draft of this proposal which had recommended "Smart Hub Partnership."
 
-**Legal exposure.** Israeli commercial law treats a franchise relationship as a specific contractual form requiring pre-contract disclosure of financial information, operational requirements, fees, termination conditions, etc. (the closest international analogue is the FDD — Franchise Disclosure Document — required in many jurisdictions). PetWash currently has none of this infrastructure publicly available. Continuing to use the word "franchise" without it is exposure.
+### 3.2 What this implies operationally
 
-**Brand positioning.** The word "franchise" carries associations from quick-service restaurants and convenience-store chains — operational, transactional, scalable but not premium. For a 2026 luxury infrastructure brand positioning around dual-bay smart hubs and smart-city pet care, "franchise" is the wrong vibe. Premium infrastructure brands (Tesla Supercharger network, Apple authorized service providers, Cartier authorized boutiques) do not call their location partners "franchisees."
+- The URL stays `/franchise` (no rename to `/partnership`).
+- The hamburger menu label simplifies from "Franchise & city partners" / "זכיינות ושותפויות עירוניות" to just "Franchise Opportunity" / "זכיינות" — removing the awkward "& city partners" suffix that the prior implementer added against direction.
+- The page H1 reads "Franchise Opportunity" / "זכיינות פטוואש" or similar — straight, no euphemism.
+- Every drafted copy section in §6 and §7 below uses "Franchise Opportunity" / "זכיינות" as the public mark.
+- Internal positioning language ("premium smart infrastructure ecosystem," "K9000 dual-bay smart wash hub model") communicates the elevated brand position without changing what the public program is called.
 
-### 3.2 Alternative naming options
+### 3.3 The legal-exposure note still holds — but addressed by content, not by renaming
 
-Listed by premium-positioning fit, with Hebrew equivalents:
+Israeli commercial law treats a "franchise" relationship as a specific contractual form that triggers pre-contract disclosure obligations. The earlier draft proposed avoiding the word as a workaround. The CEO direction is to **keep the word AND add the proper disclosure infrastructure** — namely:
 
-| English | Hebrew | Fit |
-|---|---|---|
-| **Smart Hub Partnership** | **שותפות הב חכם** or **שותפות תחנה חכמה** | Strongest premium fit. "Hub" matches the dual-bay infrastructure language. |
-| **Location Partner** | **שותף מיקום** | Operational, restrained, used by Tesla and Starbucks Reserve. |
-| **Authorized Operator** | **מפעיל מורשה** | Apple / Cartier vocabulary. Implies selectivity. |
-| **Network Partner** | **שותף רשת** | Generic but clean. |
-| **Franchise Opportunity** | **זכיינות** | Current term. Carries legal weight + brand baggage. |
+- Clear consent fields on the inquiry form (§10).
+- No revenue / ROI / profit / "earn X" claims anywhere on the public page (the previously identified P0 items in §2 are all removed).
+- Explicit reference to the partnership process being subject to formal agreement (§6.6 / §7.6).
+- A pre-contract document made available privately (not on the public page) when a qualified inquiry advances to the next stage — this is the Israeli franchise law disclosure document, separately authored with Israeli counsel.
 
-### 3.3 Recommendation
-
-Recommend **Smart Hub Partnership** / **שותפות הב חכם** as the primary brand-facing language with **Authorized Operator** / **מפעיל מורשה** as a secondary technical term used in operational documents. Move the URL from `/franchise` to `/partnership` (with a permanent redirect from `/franchise` and `/franchise-opportunities` to preserve any inbound links and search rankings). Update the hamburger menu label accordingly.
-
-If the CEO prefers to keep "Franchise Opportunity" / "זכיינות" for any strategic or pre-existing-contract reason, then the legal infrastructure (franchise disclosure document, pre-contract disclosure timeline, franchise registration if Israeli law requires) becomes a parallel prerequisite workstream and must precede the new page going live.
-
-Decision A in §13.
+The public page is the top of the funnel. The legal-exposure mitigation happens through (a) removing risky claims from the public page entirely and (b) channeling all interested parties into a controlled disclosure flow that begins with the consent-checked inquiry form. The CPA / counsel review of Decisions A–G in §13 covers the wording.
 
 ---
 
@@ -281,9 +280,9 @@ The literal text for each section. **All numerical / financial claims removed. A
 
 ### 6.1 Hero
 
-> # Smart Hub Partnership
+> # Franchise Opportunity
 >
-> PetWash™ partners with selected operators, property owners, and municipalities to deploy dual-bay smart wash hubs across Israel.
+> PetWash™ partners with selected operators, property owners, and municipalities to deploy the K9000 dual-bay smart wash hub network across Israel.
 >
 > [ Express Interest ]
 
@@ -291,9 +290,9 @@ The literal text for each section. **All numerical / financial claims removed. A
 
 > ## A premium smart-city infrastructure for pet care
 >
-> PetWash™ is building Israel's selective dual-bay smart wash hub network — an end-to-end ecosystem combining the K9000 hardware, our software platform, premium consumables, operational training, and brand standards into a single coherent partnership.
+> PetWash™ is building Israel's selective dual-bay smart wash hub network — an end-to-end ecosystem combining the K9000 hardware, our software platform, premium consumables, operational training, and brand standards into a single coherent franchise opportunity.
 >
-> We grow deliberately, with the partners and locations that fit the long-term network thesis.
+> We grow deliberately, with the operators and locations that fit the long-term network thesis.
 
 ### 6.3 The Hub
 
@@ -318,7 +317,7 @@ The literal text for each section. **All numerical / financial claims removed. A
 
 > ## Selective by design
 >
-> Our partnership network is intentionally small. We work with:
+> Our franchise network is intentionally small. We work with:
 >
 > - **Municipal partners** — local authorities adopting smart-city pet-care infrastructure.
 > - **Commercial property owners** — premium retail, mixed-use, fuel-station, and transport-hub developers.
@@ -329,12 +328,12 @@ The literal text for each section. **All numerical / financial claims removed. A
 
 ### 6.6 How It Works
 
-> ## How a partnership progresses
+> ## How an inquiry progresses
 >
 > 1. **Express interest** — submit the form below.
-> 2. **Initial conversation** — our partnership team reaches out within five business days.
+> 2. **Initial conversation** — our franchise team reaches out within five business days.
 > 3. **Site and operational review** — for qualified opportunities, we conduct a joint site and operational fit assessment.
-> 4. **Partnership agreement** — if both sides see a fit, we move to formal documentation.
+> 4. **Franchise agreement** — if both sides see a fit, we move to formal documentation.
 
 ### 6.7 Express Interest (form heading)
 
@@ -350,9 +349,9 @@ Mirror version of §6. **Same review requirement — Israeli counsel and Hebrew 
 
 ### 7.1 Hero
 
-> # שותפות הב חכם
+> # זכיינות PetWash™
 >
-> PetWash™ משתפת פעולה עם מפעילים נבחרים, בעלי נכסים ורשויות מקומיות לפריסת תחנות שטיפה חכמות דו-תאיות ברחבי ישראל.
+> PetWash™ משתפת פעולה עם מפעילים נבחרים, בעלי נכסים ורשויות מקומיות לפריסת רשת תחנות K9000 — שטיפה חכמה דו-תאית ברחבי ישראל.
 >
 > [ הרשמת עניין ]
 
@@ -360,9 +359,9 @@ Mirror version of §6. **Same review requirement — Israeli counsel and Hebrew 
 
 > ## תשתית סמארט-סיטי פרימיום לטיפוח חיות מחמד
 >
-> PetWash™ בונה בישראל רשת סלקטיבית של תחנות שטיפה חכמות דו-תאיות — מערכת אקולוגית מקצה לקצה המשלבת את חומרת K9000, את פלטפורמת התוכנה שלנו, את הצריכים הפרימיומיים, את ההכשרה התפעולית ואת סטנדרטי המותג לשותפות אחת ושלמה.
+> PetWash™ בונה בישראל רשת סלקטיבית של תחנות שטיפה חכמות דו-תאיות — מערכת אקולוגית מקצה לקצה המשלבת את חומרת K9000, את פלטפורמת התוכנה שלנו, את הצריכים הפרימיומיים, את ההכשרה התפעולית ואת סטנדרטי המותג להזדמנות זכיינות אחת ושלמה.
 >
-> אנו צומחים בכוונה תחילה, עם השותפים והמיקומים המתאימים לתזת הרשת ארוכת הטווח.
+> אנו צומחים בכוונה תחילה, עם המפעילים והמיקומים המתאימים לתזת הרשת ארוכת הטווח.
 
 ### 7.3 The Hub
 
@@ -387,7 +386,7 @@ Mirror version of §6. **Same review requirement — Israeli counsel and Hebrew 
 
 > ## סלקטיבי בעיצוב
 >
-> רשת השותפים שלנו קטנה במכוון. אנחנו עובדים עם:
+> רשת הזכייניים שלנו קטנה במכוון. אנחנו עובדים עם:
 >
 > - **שותפים עירוניים** — רשויות מקומיות המאמצות תשתית סמארט-סיטי לטיפוח חיות מחמד.
 > - **בעלי נכסים מסחריים** — מסחר פרימיום, שימוש מעורב, תחנות דלק ויזמי רכזות תחבורה.
@@ -398,12 +397,12 @@ Mirror version of §6. **Same review requirement — Israeli counsel and Hebrew 
 
 ### 7.6 How It Works
 
-> ## איך מתקדמת שותפות
+> ## איך מתקדמת פנייה
 >
 > 1. **הרשמת עניין** — מילוי הטופס מטה.
-> 2. **שיחה ראשונה** — צוות השותפויות שלנו יחזור אליך בתוך חמישה ימי עסקים.
+> 2. **שיחה ראשונה** — צוות הזכיינות שלנו יחזור אליך בתוך חמישה ימי עסקים.
 > 3. **בחינת מיקום ותפעול** — להזדמנויות מתאימות, אנו עורכים הערכת התאמה משותפת.
-> 4. **הסכם שותפות** — אם שני הצדדים רואים התאמה, אנו עוברים לתיעוד פורמלי.
+> 4. **הסכם זכיינות** — אם שני הצדדים רואים התאמה, אנו עוברים לתיעוד פורמלי.
 
 ### 7.7 Express Interest (form heading)
 
@@ -527,8 +526,8 @@ The full replacement is too big for one PR. Three phases:
 - Replace `client/src/pages/Franchise.tsx` content entirely with the new architecture from §5 and §6 / §7 copy.
 - Remove `client/src/components/FranchiseROICalculator.tsx` entirely (the file no longer used).
 - Update i18n keys: remove all "franchise.heroStats", "franchise.avgROI", "franchise.successProbability", "franchise.calculator" keys. Add new "partnership.*" keys with the new copy.
-- Update hamburger menu in `client/src/components/PetWashHeader.tsx`: change "franchise.label" to "partnership.label" or whatever naming Decision A produces. Update the 6-language i18n strings accordingly.
-- Add `/partnership` route in App.tsx (or keep `/franchise` based on Decision A) + 301 redirect from `/franchise-opportunities` and any prior URLs.
+- Update hamburger menu in `client/src/components/PetWashHeader.tsx`: simplify the `"franchise.label"` i18n entries to just "Franchise Opportunity" / "זכיינות" (removing the awkward "& city partners" / "ושותפויות עירוניות" suffix the prior implementer added). Same key, cleaner strings in all 6 languages.
+- Keep `/franchise` route. No URL change. The existing `/franchise-opportunities` redirect to `/franchise` already exists in App.tsx and stays.
 - No backend changes yet — the form continues to POST to the existing `/api/franchise/inquiry` endpoint with the existing field set. New consent fields are wired in Phase 3.
 - Estimated diff: ~600-800 lines net change (mostly deletions; the new page is structurally smaller than the current one).
 
@@ -546,7 +545,7 @@ The full replacement is too big for one PR. Three phases:
 ### Phase 4 — Cleanup of partners page + URL handling (small PR, optional)
 
 - `client/src/pages/partners/Franchise.tsx` and route `/partners/franchise` — consolidate with the main partnership page or redirect.
-- Hamburger menu cleanup: the existing item is "Franchise & city partners" (EN) / "זכיינות ושותפויות עירוניות" (HE). After repositioning, simplify to "Smart Hub Partnership" / "שותפות הב חכם" or whatever Decision A produces.
+- Hamburger menu cleanup: the existing item is "Franchise & city partners" (EN) / "זכיינות ושותפויות עירוניות" (HE). After this rebuild, the label simplifies to just "Franchise Opportunity" / "זכיינות" — same i18n key, cleaner strings in all 6 languages. This is the correction of the prior implementer's compound-label mistake.
 - Estimated diff: ~50-100 lines.
 
 **Total: 3-4 small PRs, ~900-1200 net line changes across the entire repositioning. Each phase is independently revertable.**
@@ -567,9 +566,9 @@ The full replacement is too big for one PR. Three phases:
 
 ## 13. Decisions awaiting CEO + Israeli legal counsel
 
-A. **Naming.** Smart Hub Partnership / שותפות הב חכם (default recommendation) vs Franchise Opportunity / זכיינות (current term) vs another option from §3.2. **This decision triggers cascading changes** — URL, hamburger menu, page title, i18n keys, all copy.
+A. **Naming — locked by CEO direction.** Public name stays "Franchise Opportunity" / "זכיינות". No public rename. Sophistication delivered through design and ecosystem positioning, not through reframing the label. Confirmed. No further decision needed on this item — the placeholder is retained only so the decisions list stays sequentially A–G.
 
-B. **URL path.** `/partnership` (recommended if naming changes) vs `/franchise` (keeps current URL, redirect added from prior aliases). 301 redirects either way.
+B. **URL path — locked.** `/franchise` stays. No move to `/partnership`. The existing `/franchise-opportunities` → `/franchise` redirect in App.tsx is preserved.
 
 C. **Approve the drafted English copy** in §6, subject to Israeli legal counsel review.
 
