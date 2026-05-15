@@ -11,6 +11,144 @@ This skill is the source of truth for "how we work." Read it end-to-end before y
 
 ---
 
+## 0. Strategic operating pillar (read this FIRST, every session)
+
+**PetWash™ is not only a premium pet-care platform. It is modern urban pet-care infrastructure.**
+
+This pillar sits above every code rule, every design rule, every AI rule below. When the rules below conflict with a strategic decision in this section, escalate to the user — do not silently optimize for one filter at the cost of the brand.
+
+### 0.1 The five connected truths
+
+Every surface PetWash™ ships must satisfy all five. If a proposal satisfies four and breaks the fifth, name the tradeoff explicitly.
+
+1. **Human convenience.** PetWash™ makes dog washing easier for real people: older customers, apartment residents, busy families, people with physical limitations, parents, renters, and anyone who cannot safely or comfortably wash a dog at home.
+2. **Pet safety and comfort.** The wash experience must feel calm, controlled, clean, pet-safe, simple, and trusted.
+3. **Premium lifestyle.** The public brand must feel like modern luxury infrastructure: Apple, Tesla, Hermès, LV-level restraint. White space, black typography, clean hierarchy, no cheap startup energy, no cartoon clutter, no exaggerated claims.
+4. **Urban infrastructure value.** PetWash™ helps cities, councils, commercial centers, residential towers, and public spaces offer a cleaner organized pet-care solution.
+5. **Environmental and ecological value.** Controlled pet washing instead of random home or street washing. Reduced dog hair entering private plumbing and shared building systems. Less uncontrolled runoff into municipal systems. Use of pet-safe / organic / eco-conscious products. Reduced use of random household soaps and shampoos. Cleaner shared apartment living. More efficient water use compared with messy home washing. Cleaner public spaces. Better hygiene infrastructure for dense urban living.
+
+### 0.2 Brand attribute hierarchy
+
+When multiple attributes compete for emphasis on a surface, use this order top-down:
+
+1. Easy
+2. Safe
+3. Clean
+4. Premium
+5. Modern
+6. Trusted
+7. Eco-conscious
+
+**Eco is a powerful supporting proof layer, not the whole identity.** Do not present the ecological message like a cheap recycling campaign. Never lead with eco. Lead with easy + safe; eco enters as supporting evidence of operational care.
+
+### 0.3 Correct language (use)
+
+- "Cleaner urban pet-care infrastructure"
+- "Designed for modern apartment living"
+- "Pet-safe products"
+- "Eco-conscious operation"
+- "Australian certified organic products"
+- "Cleaner, smarter self-service pet care"
+- "A more organized way to care for dogs in dense cities"
+- "Premium infrastructure for cleaner communities"
+
+### 0.4 Avoid (do NOT write, do NOT generate)
+
+- Greenwashing
+- Guilt marketing
+- Activist language
+- Sad elderly / medical tone
+- Cheap convenience language
+- Exaggerated environmental claims
+- Invented numbers
+- "Save the planet" clichés
+
+### 0.5 Municipal positioning
+
+PetWash™ presented to cities is:
+- Public hygiene infrastructure
+- Pet-owner amenity
+- Cleaner drainage support
+- Apartment-friendly solution
+- Reduced uncontrolled washing
+- Controlled product use
+- Neighborhood amenity
+- Modern city service
+- Commercial-center traffic driver
+- Low-friction infrastructure upgrade
+
+### 0.6 Partner / franchise positioning
+
+PetWash™ is **not** "a machine." It is an end-to-end deployment system:
+- Premium dual-bay station
+- Software layer
+- Payments layer
+- QR / digital journey
+- Support model
+- Consumables
+- Organic / pet-safe products
+- Shampoo / conditioner / tea tree oil supply
+- Spare parts
+- Maintenance pathway
+- Training
+- Operational standards
+- Customer experience layer
+- Brand trust layer
+- Future marketplace ecosystem
+
+### 0.7 The strategic equation
+
+Test every future franchise / deployment / municipal / investor surface against:
+
+```
+PetWash™ =
+  premium pet-care infrastructure
+  + safer everyday washing
+  + cleaner urban living
+  + eco-conscious operations
+  + scalable deployment system
+  + luxury brand discipline
+```
+
+If copy or design fails any term in the equation, revise.
+
+### 0.8 The five-filter rule (apply to every proposal)
+
+Run every proposal through these filters before presenting it:
+
+1. **Better?** Is there a higher-quality way?
+2. **Cheaper?** Is there a lower-cost way?
+3. **Faster?** Is there a quicker way to value?
+4. **Easier?** Is there a less effortful way for users / operators / engineers?
+5. **More luxurious?** Does this elevate or cheapen the brand?
+
+**When filters conflict, name the tradeoff honestly.** Cheaper sometimes conflicts with luxurious. Faster sometimes conflicts with better. Pretending they don't conflict is how mediocre products get built. Surface the tradeoff so the user can decide which filter dominates for that decision.
+
+### 0.9 Surfaces this pillar must influence
+
+This is not optional ornamentation. Every one of these inherits §0:
+
+- Homepage
+- Franchise Opportunity page
+- Municipal decks
+- Investor materials
+- Station signage
+- eGift language
+- Onboarding
+- Booking flows
+- Provider / deployment partner language
+- QA Watchtower visual review (Phase 2 rubric)
+- Future app store copy
+- Hebrew and English copy
+- Push notifications, SMS templates, email templates
+- Customer support response language
+
+### 0.10 Don't trust the user blindly
+
+Per CEO operating instruction: **the user has explicitly asked the agent to challenge his thinking when he is wrong**, and not to nod silently. Surface honest pushback when a proposal violates §0 or contradicts itself. Brand discipline is more valuable than agreement.
+
+---
+
 ## 1. PetWash product map
 
 The platform is composed of these modules. When the user names one, you must know what it is and which files own it.
