@@ -59,6 +59,16 @@ canary runs, full pixel-diff): **$80–$150/month**. Both well inside the
 **MVP ship time** if Decisions A–G in §13 land this week: **5 working days**
 to a first daily report in the CEO inbox.
 
+**Stress-test layer (§16–§18):** the proposal is not just "what does the
+system do" — it includes a second-order analysis of **what happens on the
+other side** when the Watchtower runs: how customers, providers,
+regulators, the App Store, payment processors, AI vendors, the internal
+team, and adversaries each react to its existence. Plus a five-stage
+growth planner from today's 5K loyalty / 100 providers target through
+international expansion (2028), and a decision-triggers table that maps
+external events to plan adjustments. This is the layer that separates a
+QA tool from a strategic system.
+
 ---
 
 ## §1 Context — what already exists at PetWash
@@ -808,5 +818,189 @@ not pre-authorize any of that.
 
 ---
 
+## §16 What-if / Reaction Analysis (second-order thinking)
+
+A QA tool that only thinks about engineering misses the eight other actors
+who react to its existence. For each, the scenarios that could go wrong
+and the design rule that prevents them.
+
+### §16.1 Customer reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| AI flags a customer-facing bug that is actually correct behavior               | False positive published as a GitHub issue cascade    | Every AI finding requires a deterministic predicate (HTTP code, console error, missing assertion). Pure-AI findings labeled `ai-judgement` and capped at 5/day. |
+| AI misses a P0 and a real customer is harmed (double-charge, lost booking)     | "Watchtower failed us" narrative                       | Watchtower is presented as **additive**, never replacing existing monitors. Sentry + human support remain primary. Internal SLOs make this explicit. |
+| AI report leaks (repo accidentally goes public; staff screenshots leak)         | Embarrassment, regulatory exposure                    | No real customer data in any artifact (§7). Even if the repo went public tomorrow, the worst leak is synthetic bot screenshots. |
+| Customer asks "is AI watching me?" (Israeli regulator-prompted FAQ)            | Privacy concern                                       | Public-facing FAQ entry: "We run automated quality checks against staging using synthetic test accounts. No real customer data is ever sent to AI services." |
+| A customer's edge case (e.g. unusual name with RTL marks) breaks Watchtower    | Watchtower fails silently, real customer also blocked | Watchtower captures the failure as P1; the underlying bug gets a real human fix, not a Watchtower-only patch. |
+
+### §16.2 Provider reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| AI flags a provider-facing bug that exposes provider PII (KYC fields, IBAN)    | Trust breach with the most valuable side of the marketplace | Provider-facing journeys NEVER run with real provider data. Synthetic provider accounts only. Provider screens covered by §7 redaction. |
+| Watchtower KYC tests use synthetic accounts that **look like real fraud**      | Bank or KYC vendor flags us                            | Synthetic accounts pre-registered with KYC vendor as "platform test rails." Documented in `qa-watchtower/lib/synthetic-accounts.md`. |
+| A provider sees AI confidence stated higher than their own human judgement     | Subordination, eroded trust                            | AI output never displayed to providers. Watchtower is internal-only, behind `requireBrainAccess`. |
+| AI-detected booking issue is actually a provider's intentional behavior change | False positive becomes "the platform doesn't understand my business" | Provider behavior changes are signaled via provider settings + audit log; Watchtower journeys assert against the audit log, not against fixed expectations. |
+
+### §16.3 Regulator reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Israeli Privacy Protection Authority (Section 17): "Is AI processing personal data?" | If we say yes, registration obligations. If we say no, must prove it. | Documented Privacy Impact Assessment in `docs/qa-reports/PRIVACY_IMPACT_ASSESSMENT.md`. Conclusion: Watchtower processes synthetic data only — Section 17 does not apply. Counsel sign-off attached. |
+| EU AI Act (in force August 2026): "Classify your AI use" | High-risk category triggers expensive obligations | Watchtower classifies as **limited risk** (text/image analysis for internal QA, not customer-facing decision). Documented classification kept current. |
+| Israeli Tax Authority audits synthetic eGift transactions on staging         | Confusion with real revenue                            | Synthetic transactions flagged in BillingLedger with `source: 'qa-watchtower-bot'` and **excluded** from any VAT / accounting export by design. Test added to `accounting-export.ts` to fail if synthetic data ever appears in an export. |
+| GDPR (for EU users when international expansion starts)                        | Data-subject access requests including AI inputs       | Watchtower never sees personal data. Standard DSAR response: "No personal data processed by AI quality systems." |
+| App Store reviewer asks: "Document your QA discipline before approval"         | Approval delay                                          | Daily Watchtower reports become **evidence**, not embarrassment. Demo-able to App Review per `docs/APPLE_DEVELOPER_SETUP_PLAN.md` §App Review. |
+
+### §16.4 Payment processor reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Tranzila sees synthetic eGift purchases from staging — counts toward fees?     | Cost surprise                                          | Tranzila **sandbox** environment, not production. Sandbox transactions are free. Sandbox credentials separate from production credentials. |
+| Synthetic transactions pollute Tranzila settlement reports                     | Reconciliation headache                                | Sandbox is isolated. Production Tranzila never sees Watchtower traffic. Verified at the network egress level. |
+| Tranzila rate-limits Watchtower traffic                                        | False positives on perf checks                         | Watchtower hits the sandbox at a rate-limited cadence (max 1 checkout/hour per bot account). |
+| Tranzila API change breaks Watchtower checkout journey                          | Daily false P0 alert                                   | Tranzila API version pinned. Subscribed to Tranzila changelog. Watchtower failure auto-notes "Tranzila version drift" before alerting humans. |
+
+### §16.5 AI vendor reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Anthropic deprecates Sonnet 4.6 mid-deployment                                  | Pipeline silently fails or quality degrades            | Model ID pinned in `ai-client.ts`. Migration playbook documented. 30-day overlap when next Sonnet ships. |
+| Anthropic raises Sonnet 4.6 pricing 5×                                          | Monthly bill spikes                                    | Monthly cost ceiling alert at $200. If exceeded, Agent 2 auto-fails over to Gemini Flash; report adds warning header. |
+| Anthropic API has a 12-hour outage during nightly run                          | No findings reported that night                        | Deterministic fallback per platform skill §3 + §8.6. Report still ships with `wired: false, fallback: true`. |
+| Google deprecates Gemini Flash mid-deployment                                   | Pre-screen layer breaks                                | Pre-screen is optional. Watchtower runs without Flash, just at higher cost. Logged as low-severity infra issue. |
+| AI vendor subtly changes model output format (drift)                            | Schema parse failures, missed findings                 | Strict JSON schema validation in `ai-review.ts`. Schema failure → deterministic fallback + alert. |
+| AI returns subtly **wrong** data (hallucination not caught)                     | False finding shipped to GitHub                        | Cross-validation rule: any P0 AI finding requires **two independent signals** (deterministic predicate + AI judgement). Single-signal AI findings cap at P2. |
+| AI vendor introduces prompt-injection vulnerability                             | Adversary can manipulate findings                      | All scraped DOM content treated as untrusted. Prompts use explicit role separation. No tool-use granted to QA agents (review-only). |
+
+### §16.6 Internal team reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Alert fatigue: 30+ P3 findings/day for 6 weeks                                  | Team stops reading reports                             | P3 findings auto-archive after 14 days. Weekly digest only for P3. Daily report capped at 10 items. |
+| Engineer pushback: "AI is telling me to do this"                                | Resentment, ignored findings                           | Every finding shows AI confidence + raw evidence. Engineers can mark `won't fix` with a one-sentence reason; that reason is logged. |
+| CEO information overload                                                       | Daily report ignored                                   | CEO email is **one page, three items max**. Detail behind a "Read full report" link. |
+| Senior engineer disagrees with AI severity scoring                              | Severity wars                                          | Severity rubric documented in `qa-watchtower/SEVERITY.md`. Engineers can override severity in a comment; override logged. |
+| New hire trusts AI more than senior judgement                                   | Bad architectural decisions                            | Onboarding doc explicitly: "Watchtower is a junior pair-programmer. Senior judgement wins every disagreement." |
+| Team gets dependent on Watchtower and forgets to test manually                  | Coverage gap when Watchtower is down                   | Quarterly "Watchtower-off day" — 24 hours with no nightly run. Manual QA + Sentry as backup. Drill-tested. |
+
+### §16.7 Adversarial reactions
+
+| Scenario                                                                       | Reaction                                              | Design rule                                                                                                                                |
+|--------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Attacker plants XSS in a public route to make AI report a false P0              | Watchtower noise, engineer attention diverted          | Strict DOM sanitization before AI sees content. XSS in scraped content auto-flags as security finding, not UX finding. |
+| Bot account credentials leak from GitHub Secrets                                | Attacker logs in as staging bot                       | Quarterly rotation insufficient — rotate on every CI run. Bot password is a per-run ephemeral, not a static secret. |
+| Attacker watches public daily reports to find unfixed bugs in production        | Targeted exploitation                                  | Daily reports live in `docs/qa-reports/` which **stays in private repo**. If repo ever goes public, `qa-reports/` is excluded by `.gitignore` (pre-emptive). |
+| Attacker fakes a synthetic-bot user agent and probes production                | False "synthetic" traffic on production                | User agent is necessary but not sufficient. Watchtower also sends a signed header; production rejects "synthetic" traffic that lacks the signature. |
+| Attacker poisons staging database to manipulate Watchtower assertions          | Watchtower greenlights a broken state                  | Staging seeded with deterministic fixture data every night before run. Drift detected by checksum. |
+
+### §16.8 Cross-cutting reactions (the things that affect everyone)
+
+- **The Watchtower itself becomes critical infrastructure.** Within 12 months,
+  if it works, teams will rely on its daily report. That makes its downtime
+  a P1 incident. Design rule: status page entry, deterministic fallback,
+  no single point of failure.
+- **The data the Watchtower generates is itself valuable.** 90 days of
+  daily reports tells you platform health, regression rate, feature
+  fragility, regional differences. Design rule: retain 90 days, summarize
+  to monthly trends, surface in Brain Dashboard.
+- **The Watchtower's prompts are intellectual property.** Five carefully
+  tuned system prompts are a competitive moat. Design rule: prompts versioned
+  in repo, never copy-pasted to public, never used as a sample/demo.
+
+---
+
+## §17 Future growth planner (2026 → 2028)
+
+Mapped to PetWash's actual trajectory. Each stage defines: scale, what the
+Watchtower looks like, cost, team posture, and what triggers the next stage.
+
+### Stage 1 — current target (2026 H2, 5K loyalty / 100 providers)
+
+- **Scale:** ~150 nightly journeys × 25-min run, single region (Israel)
+- **Watchtower:** Agents 1 + 5 only, 6 customer routes, iPhone + Desktop, he + en
+- **Cost:** ~$28/mo
+- **Team posture:** CEO reads daily report, 1 eng triages findings, 0 dedicated QA
+- **Trigger to next stage:** booking volume > 200/day OR provider count > 100 OR App Store launch approaches
+- **Key risk:** false-positive cascade. Mitigation: cap at 10 daily findings, severity rubric documented.
+
+### Stage 2 — early traction (2027 Q1, 25K loyalty / 500 providers)
+
+- **Scale:** ~600 nightly journeys + hourly canary on 3 critical flows
+- **Watchtower:** All 5 agents deployed. Argos CI for visual diff. Sentry production wiring. iPad viewport added. Real-device cloud (BrowserStack iOS Safari) added for App Store readiness.
+- **Cost:** ~$165/mo Watchtower + ~$200/mo BrowserStack iOS team plan = **~$365/mo**
+- **Team posture:** CEO + eng lead + design lead receiving relevant findings. Brain Dashboard QA panel becomes a daily CEO surface. 0.5 FTE engineering attention on QA triage.
+- **Trigger to next stage:** native iOS app submitted OR international pilot announced OR booking volume > 1K/day
+- **Key risk:** alert fatigue. Mitigation: P3 auto-archive, weekly digests.
+
+### Stage 3 — scale (2027 H2, 100K loyalty / 2K providers, native iOS live)
+
+- **Scale:** ~2,000 nightly journeys + 15-min canary on 5 critical flows + native iOS XCUITest suite
+- **Watchtower:** Native iOS Watchtower agent (XCUITest + AI vision review of iOS screenshots). Server-side journey replay capability (replay a real customer's anonymized session against staging). Multi-region (Israeli + diaspora users behind VPN simulation).
+- **Cost:** ~$500/mo + ~$200/mo BrowserStack + ~$300/mo TestFlight automation tooling = **~$1,000/mo**
+- **Team posture:** **First dedicated QA engineer hired.** Watchtower becomes their assistant; they own the prompts, the rubric, and the triage. CEO reads weekly digest only.
+- **Trigger to next stage:** international expansion OR enterprise B2B partnerships sign OR regulatory exposure increases
+- **Key risk:** Watchtower becomes critical infrastructure. Mitigation: status page, deterministic fallback, quarterly drill.
+
+### Stage 4 — international (2028, first foreign pilot — Cyprus / Greece / UAE)
+
+- **Scale:** Locale matrix expands to 5 (he, en, el, ar, ru). Currency matrix to 4 (ILS, EUR, USD, AED). VAT matrix to 3 jurisdictions. Each new market multiplies journey count by ~1.5×.
+- **Watchtower:** New agent — **Locale Compliance Agent** — checks per-country legal copy (refund rules, VAT display, accessibility statement currency, consumer protection). Existing agents extended with locale-specific assertions.
+- **Cost:** ~$2,500/mo (model usage roughly scales with route × locale × viewport matrix)
+- **Team posture:** 2 dedicated QA engineers (one per region cluster). Counsel review of Locale Compliance Agent's per-country prompt.
+- **Trigger to next stage:** second + third foreign markets, IPO conversations, or B2B enterprise deals
+- **Key risk:** regulatory mismatch. Mitigation: per-country counsel sign-off documented before each market.
+
+### Stage 5 — enterprise / IPO readiness (2028+, optional)
+
+- **Scale:** Full SOC 2 / ISO 27001 evidence — Watchtower outputs become **audit artifacts**. Daily reports archived for 7 years per accounting/audit retention.
+- **Watchtower:** Becomes a standard line item in due-diligence response. Auditors review prompts, governance, finding-to-fix-time KPIs.
+- **Cost:** ~$5K–10K/mo (depending on compliance scope). Watchtower as critical infrastructure has its own SLOs and on-call.
+- **Team posture:** Dedicated SRE for Watchtower availability. QA team of 3–5. CEO sees only monthly health summary.
+- **Trigger:** investor diligence, enterprise procurement, public-company readiness.
+
+### Cross-stage discipline
+
+Every stage transition preserves these invariants:
+- **AI is advisory.** Never autonomous, even at Stage 5.
+- **No real customer data sent to AI.** Even at Stage 5, redaction layer remains mandatory.
+- **Deterministic fallback always available.** Watchtower never becomes a single point of failure.
+- **Severity rubric versioned.** Severity scoring across stages remains comparable so trends are meaningful.
+- **Cost ceiling configurable.** Alert at 50%, 80%, 100% of monthly budget.
+
+---
+
+## §18 Decision triggers (what changes the plan)
+
+External events that should prompt a scope re-evaluation. This is the
+"when to adjust" table — without it, the Watchtower drifts from intention.
+
+| Event                                                                | Adjustment to Watchtower                                                                                                          | Decision authority |
+|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| First serious customer-facing outage                                 | Add hourly canary for the affected flow. Increase Agent 5 (booking/onboarding) scrutiny on that flow.                              | Eng lead           |
+| Anthropic 5×+ price hike                                             | Migrate Agent 2 (vision) to Gemini Flash. Re-scope Agent 1 from daily to weekly if needed.                                       | CEO + eng lead     |
+| Anthropic deprecates Sonnet 4.6                                      | 30-day migration window to next model. Re-validate prompts. Update `ai-client.ts` version pin.                                   | Eng lead           |
+| AI API outage > 24h                                                  | Watchtower runs in fallback mode. Report ships marked `wired: false`. Alert CEO + eng lead via SMS.                              | Auto + SRE         |
+| Israeli Privacy Authority inquiry                                    | Counsel-reviewed disclosure to data subjects. Public FAQ updated. Watchtower pauses processing until counsel signs off.           | CEO + counsel      |
+| EU AI Act classification change                                       | Re-classify Watchtower. If reclassified to "high-risk," halt and re-architect.                                                   | CEO + counsel      |
+| First App Store rejection citing UX bugs                             | Visual luxury agent becomes **mandatory pre-submit**. Submission process adds a green Watchtower report as a checklist gate.     | Eng lead           |
+| First chargeback caused by a missed Watchtower bug                   | Add booking + payment + audit-log triple-cross-check journey. Severity rubric updated.                                            | CEO + eng lead     |
+| Provider revolt over false positives                                 | Tighten Agent 2 (visual luxury) rubric. Add provider-side "this finding is wrong" feedback button.                                | CEO                |
+| Hiring of first dedicated QA engineer                                | Watchtower ownership transfers to QA. CEO reads weekly digest only. Daily detail goes to QA inbox.                                | CEO                |
+| Bot account credential leak                                          | All bot accounts rotated within 1 hour. Post-mortem. Move from quarterly rotation to per-run ephemeral credentials.               | SRE                |
+| Watchtower mean-time-to-detect (MTTD) > 24h on a real production bug | Investigate the gap. Add a new journey or assertion. Severity rubric updated.                                                    | Eng lead           |
+| Cost exceeds $200/mo unexpectedly                                    | Budget alert at 50/80/100%. Auto-failover to cheaper model. CEO notified.                                                        | Auto + CEO         |
+| International expansion announced                                    | Locale Compliance Agent built (Stage 4 §17). New journeys added for the new market's critical flows.                              | CEO + eng lead     |
+| SOC 2 / ISO 27001 audit announced                                    | Watchtower documentation reviewed by auditor. Daily reports archived to long-term storage. Prompts versioned in audit log.        | CEO + eng lead + auditor |
+| AI vendor introduces new capability (e.g. video understanding GA)    | Evaluate for Watchtower fit. Pilot on Agent 3 (mobile Safari) first since it already uses video.                                  | Eng lead           |
+
+This table is the **living governance document** — every quarter, the
+table is reviewed for new entries based on the prior 90 days of operations.
+
+---
+
 **End of proposal.** No code ships from this PR. Implementation gated on
-CEO sign-off on Decisions A–G.
+CEO sign-off on Decisions A–G. The stress-test layer (§16–§18) does not
+require new decisions — it is the system-thinking lens through which
+every existing decision is evaluated.
