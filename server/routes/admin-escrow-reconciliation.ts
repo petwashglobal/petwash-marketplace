@@ -20,7 +20,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { escrowHoldings } from '@shared/schema';
+import { escrowHoldings, PETWASH_COMMISSION_RATE } from '@shared/schema';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { desc, eq, gte, lte, and, or } from 'drizzle-orm';
@@ -370,10 +370,13 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
       .where(eq(escrowHoldings.escrowId, escrowId));
 
     if (pgRows.length === 0) {
-      // Create missing PG row from Firestore data
+      // Create missing PG row from Firestore data.
+      // PR marketplace-polish: use the canonical PETWASH_COMMISSION_RATE
+      // from shared/schema.ts instead of a hardcoded 0.15 — keeps this
+      // reconciliation path in lockstep with TransactionEngine + booking
+      // quote math if the rate ever changes.
       const amountCents = Math.round((fs.amount ?? 0) * 100);
-      const commissionPct = 0.15;
-      const platformFeeCents = Math.round(amountCents * commissionPct);
+      const platformFeeCents = Math.round(amountCents * PETWASH_COMMISSION_RATE);
       const vatCents = Math.round(platformFeeCents * 0.18);
       const netProviderCents = amountCents - platformFeeCents;
 

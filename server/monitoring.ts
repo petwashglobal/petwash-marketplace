@@ -1062,7 +1062,7 @@ export async function sendDailyNayaxReport() {
     const msg = {
       to: 'Support@PetWash.co.il',
       from: 'reports@petwash.co.il',
-      subject: `🐾 ⁦Pet Wash™⁩ Daily Nayax Report - ${reportDate}`,
+      subject: `⁦PetWash™⁩ Daily Nayax Report — ${reportDate}`,
       html: htmlContent
     };
 

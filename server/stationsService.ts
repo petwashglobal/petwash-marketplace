@@ -871,7 +871,7 @@ async function sendOfflineEmail(stationId: string, minutesOffline: number): Prom
     const station = await getStation(stationId);
     if (!station) return;
 
-    const subject = `⚠️ Station ${stationId} offline (${Math.round(minutesOffline)}m)`;
+    const subject = `[ALERT] Station ${stationId} offline (${Math.round(minutesOffline)}m)`;
     const html = `
       <div style="font-family: Arial; max-width: 600px;">
         <h2 style="color: #dc2626;">⚠️ STATION OFFLINE</h2>
@@ -922,7 +922,7 @@ async function sendRecoveryEmail(stationId: string): Promise<void> {
     const station = await getStation(stationId);
     if (!station) return;
 
-    const subject = `✅ Station ${stationId} back online`;
+    const subject = `[RECOVERED] Station ${stationId} back online`;
     const html = `
       <div style="font-family: Arial; max-width: 600px;">
         <h2 style="color: #059669;">✅ STATION RECOVERED</h2>

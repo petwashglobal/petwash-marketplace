@@ -334,7 +334,7 @@ export class IsraeliTaxReportService {
       const msg = {
         to: recipientEmail,
         from: 'reports@petwash.co.il',
-        subject: `📊 דוח מס / Tax Report - ⁦Pet Wash™⁩ - ${data.reportDate}`,
+        subject: `דוח מס / Tax Report — ⁦PetWash™⁩ — ${data.reportDate}`,
         html: htmlContent
       };
       
