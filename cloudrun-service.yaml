@@ -191,6 +191,13 @@ spec:
             secretKeyRef:
               key: latest
               name: GOOGLE_MAPS_API_KEY
+        # ── Feature flag: enable Google Places autocomplete in production ─────
+        # Required by server/lib/feature-flags/googlePlaces.ts +
+        # server/routes/google-services.ts:343 (requireGooglePlacesEnabled).
+        # Without this flag, /api/google/places-autocomplete returns 503
+        # PLACES_DISABLED and address autocomplete is dead on the live site.
+        - name: GOOGLE_PLACES_LIVE
+          value: 'true'
         startupProbe:
           httpGet:
             path: /health
