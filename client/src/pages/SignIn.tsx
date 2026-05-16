@@ -123,6 +123,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [phoneFirstName, setPhoneFirstName] = useState("");
   const [phoneLastName, setPhoneLastName] = useState("");
   const [phoneTermsAccepted, setPhoneTermsAccepted] = useState(false);
+  // PR-Z1.5: Extended identity capture for the OTP hard gate. Adds DOB (18+
+  // enforced), email (intent-aware), honorific (Hebrew comms need this for
+  // gendered salutations), marketing consent (unchecked default). Pattern
+  // mirrors EL AL frequent-flyer signup (CEO reference 2026-05-16).
+  // See docs/SIGNUP_ONBOARDING_FORENSIC_AUDIT.md §15 PR-Z1.5.
+  const [phoneEmail, setPhoneEmail] = useState("");
+  const [phoneGender, setPhoneGender] = useState<'male' | 'female' | ''>('');
+  const [phoneDobDay, setPhoneDobDay] = useState("");
+  const [phoneDobMonth, setPhoneDobMonth] = useState("");
+  const [phoneDobYear, setPhoneDobYear] = useState("");
+  const [phoneMarketingAccepted, setPhoneMarketingAccepted] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   // Account linking: stores credential from a social provider that collided with an existing account.
   // After the user signs in with their existing method, linkWithCredential() is called to merge them.
@@ -1561,15 +1572,90 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
+  // PR-Z1.5: Compute age from DD/MM/YYYY parts. Returns -1 if invalid date.
+  // 18+ enforcement is a hard gate per CEO directive 2026-05-16
+  // ("הרשמה מגיל 18 בלבד" / "Registration from age 18 only").
+  const computeAgeFromParts = (day: string, month: string, year: string): number => {
+    const d = parseInt(day, 10);
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+    if (!d || !m || !y || d < 1 || d > 31 || m < 1 || m > 12 || y < 1900 || y > 2100) {
+      return -1;
+    }
+    const dob = new Date(y, m - 1, d);
+    // Reject invalid dates that JS Date "normalizes" silently (e.g. Feb 31).
+    if (dob.getDate() !== d || dob.getMonth() !== m - 1 || dob.getFullYear() !== y) {
+      return -1;
+    }
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   // PR-Z1: Complete the phone-OTP signup by submitting firstName + lastName +
-  // terms acceptance through the post-login coordinator. Until this resolves,
-  // the user cannot reach the authenticated app surface.
+  // terms acceptance through the post-login coordinator. PR-Z1.5 extends with
+  // DOB (18+), email, honorific, marketing consent.
   const handlePhoneNameSubmit = async () => {
     if (!phoneFirstName.trim()) {
       toast({
         variant: 'destructive',
         title: phoneErrTitle[language] || phoneErrTitle.en,
         description: language === 'he' ? 'נא להזין שם פרטי' : 'First name is required',
+      });
+      return;
+    }
+    // PR-Z1.5: 18+ hard gate. Reject invalid or under-18 DOB before submission.
+    const age = computeAgeFromParts(phoneDobDay, phoneDobMonth, phoneDobYear);
+    if (age < 0) {
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description:
+          language === 'he'
+            ? 'נא להזין תאריך לידה תקין'
+            : 'Please enter a valid date of birth',
+      });
+      return;
+    }
+    if (age < 18) {
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description:
+          language === 'he'
+            ? 'הרשמה מגיל 18 בלבד'
+            : 'Registration is restricted to users aged 18 and over',
+      });
+      return;
+    }
+    // PR-Z1.5: Email required for loyalty + provider intents. Optional for
+    // customer-only. Format-checked when provided.
+    const intent = localStorage.getItem('signup_intent') || '';
+    const emailRequired = intent === 'loyalty' || intent === 'provider';
+    const trimmedEmail = phoneEmail.trim();
+    if (emailRequired && !trimmedEmail) {
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description:
+          language === 'he'
+            ? 'יש להזין כתובת אימייל'
+            : 'Email address is required',
+      });
+      return;
+    }
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description:
+          language === 'he'
+            ? 'כתובת האימייל אינה תקינה'
+            : 'Email address is not valid',
       });
       return;
     }
@@ -1586,12 +1672,18 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
     setPhoneLoading(true);
     try {
+      // PR-Z1.5: ISO-8601 YYYY-MM-DD for the server. Locale-independent.
+      const dobIso = `${phoneDobYear}-${String(phoneDobMonth).padStart(2, '0')}-${String(phoneDobDay).padStart(2, '0')}`;
       const data = await resolvePostLogin({
         body: {
           firstName: phoneFirstName.trim(),
           lastName: phoneLastName.trim() || undefined,
-          intent: localStorage.getItem('signup_intent') || undefined,
-        },
+          intent: intent || undefined,
+          email: trimmedEmail || undefined,
+          gender: phoneGender || undefined,
+          dateOfBirth: dobIso,
+          marketingConsent: phoneMarketingAccepted,
+        } as any,
       });
       localStorage.removeItem('signup_intent');
 
@@ -1616,6 +1708,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPhoneFirstName('');
       setPhoneLastName('');
       setPhoneTermsAccepted(false);
+      setPhoneEmail('');
+      setPhoneGender('');
+      setPhoneDobDay('');
+      setPhoneDobMonth('');
+      setPhoneDobYear('');
+      setPhoneMarketingAccepted(false);
 
       window.scrollTo(0, 0);
       navigate(data?.nextUrl || data?.redirectTo || '/home');
@@ -2432,9 +2530,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 </h3>
                 
                 {phoneNameStep ? (
-                  // PR-Z1: Hard gate — phone-OTP signup cannot complete into the app
-                  // until firstName + terms acceptance are captured.
-                  <div className="space-y-4" dir={language === 'he' || language === 'ar' ? 'rtl' : 'ltr'}>
+                  // PR-Z1: Hard gate — phone-OTP signup cannot complete into
+                  // the app until firstName + terms acceptance are captured.
+                  // PR-Z1.5: Extended with honorific (Hebrew comms gendered),
+                  // email (intent-aware required), DOB (3 fields, 18+
+                  // enforced), marketing consent. Scrollable wrapper for
+                  // small screens. Pattern mirrors EL AL frequent-flyer signup.
+                  <div className="space-y-4 max-h-[70vh] overflow-y-auto pe-1" dir={language === 'he' || language === 'ar' ? 'rtl' : 'ltr'}>
                     <p className="text-sm font-medium text-neutral-800 text-center">
                       {language === 'he'
                         ? '✅ הטלפון אומת. כמה פרטים אחרונים:'
@@ -2469,6 +2571,110 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         data-testid="input-phone-last-name"
                       />
                     </div>
+                    {/* PR-Z1.5: Honorific for Hebrew salutations. NOT biological
+                        gender — labelled "I want to be addressed as" per EL AL pattern. */}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                        {language === 'he' ? 'אני רוצה שתפנו אלי בלשון' : 'Please address me as'}
+                      </Label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="phone-signin-honorific"
+                            value="male"
+                            checked={phoneGender === 'male'}
+                            onChange={() => setPhoneGender('male')}
+                            className="h-4 w-4 cursor-pointer"
+                            data-testid="radio-phone-honorific-male"
+                          />
+                          <span className="text-sm text-neutral-700">
+                            {language === 'he' ? 'זכר' : 'Male'}
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="phone-signin-honorific"
+                            value="female"
+                            checked={phoneGender === 'female'}
+                            onChange={() => setPhoneGender('female')}
+                            className="h-4 w-4 cursor-pointer"
+                            data-testid="radio-phone-honorific-female"
+                          />
+                          <span className="text-sm text-neutral-700">
+                            {language === 'he' ? 'נקבה' : 'Female'}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                    {/* PR-Z1.5: Email — required for loyalty + provider intents.
+                        Optional for customer-only. Format validated on submit. */}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                        {language === 'he' ? 'כתובת אימייל' : 'Email address'}
+                        {(typeof window !== 'undefined' &&
+                          (localStorage.getItem('signup_intent') === 'loyalty' ||
+                            localStorage.getItem('signup_intent') === 'provider')) && (
+                          <span className="text-red-500 ms-1">*</span>
+                        )}
+                      </Label>
+                      <Input
+                        type="email"
+                        value={phoneEmail}
+                        onChange={(e) => setPhoneEmail(e.target.value)}
+                        autoComplete="email"
+                        inputMode="email"
+                        placeholder={language === 'he' ? 'name@example.com' : 'name@example.com'}
+                        className="h-11 rounded-none border-neutral-200"
+                        data-testid="input-phone-email"
+                        dir="ltr"
+                      />
+                    </div>
+                    {/* PR-Z1.5: DOB as 3 separate fields (DD/MM/YYYY) per EL AL
+                        pattern. Avoids iPad Safari native date picker UX
+                        quirks. 18+ hard-enforced on submit. */}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                        {language === 'he' ? 'תאריך לידה' : 'Date of birth'}
+                        <span className="text-red-500 ms-1">*</span>
+                        <span className="block text-[10px] text-neutral-400 normal-case tracking-normal mt-1">
+                          {language === 'he' ? 'הרשמה מגיל 18 בלבד' : 'Registration restricted to users aged 18+'}
+                        </span>
+                      </Label>
+                      <div className="flex gap-2" dir="ltr">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder={language === 'he' ? 'יום' : 'DD'}
+                          value={phoneDobDay}
+                          onChange={(e) => setPhoneDobDay(e.target.value.replace(/\D/g, ''))}
+                          className="h-11 rounded-none border-neutral-200 text-center"
+                          data-testid="input-phone-dob-day"
+                        />
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder={language === 'he' ? 'חודש' : 'MM'}
+                          value={phoneDobMonth}
+                          onChange={(e) => setPhoneDobMonth(e.target.value.replace(/\D/g, ''))}
+                          className="h-11 rounded-none border-neutral-200 text-center"
+                          data-testid="input-phone-dob-month"
+                        />
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={4}
+                          placeholder={language === 'he' ? 'שנה' : 'YYYY'}
+                          value={phoneDobYear}
+                          onChange={(e) => setPhoneDobYear(e.target.value.replace(/\D/g, ''))}
+                          className="h-11 rounded-none border-neutral-200 text-center"
+                          data-testid="input-phone-dob-year"
+                        />
+                      </div>
+                    </div>
                     <div className="flex items-start gap-2">
                       <input
                         id="phone-signin-terms"
@@ -2497,11 +2703,36 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         )}
                       </label>
                     </div>
+                    {/* PR-Z1.5: Marketing consent — UNCHECKED default (per §0
+                        doctrine: earn trust, don't pre-check). */}
+                    <div className="flex items-start gap-2">
+                      <input
+                        id="phone-signin-marketing"
+                        type="checkbox"
+                        checked={phoneMarketingAccepted}
+                        onChange={(e) => setPhoneMarketingAccepted(e.target.checked)}
+                        className="mt-1 h-4 w-4 cursor-pointer"
+                        data-testid="checkbox-phone-marketing"
+                      />
+                      <label
+                        htmlFor="phone-signin-marketing"
+                        className="text-xs text-neutral-700 leading-relaxed cursor-pointer"
+                      >
+                        {language === 'he'
+                          ? 'אני מסכים/ה לקבל עדכונים, מבצעים והטבות במייל וב-SMS (אופציונלי)'
+                          : 'I agree to receive updates, offers, and perks by email and SMS (optional)'}
+                      </label>
+                    </div>
                     <Button
                       type="button"
                       onClick={handlePhoneNameSubmit}
                       disabled={
-                        phoneLoading || !phoneFirstName.trim() || !phoneTermsAccepted
+                        phoneLoading ||
+                        !phoneFirstName.trim() ||
+                        !phoneTermsAccepted ||
+                        !phoneDobDay ||
+                        !phoneDobMonth ||
+                        !phoneDobYear
                       }
                       className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                       data-testid="button-phone-name-submit"
@@ -2584,6 +2815,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPhoneFirstName('');
                   setPhoneLastName('');
                   setPhoneTermsAccepted(false);
+                  // PR-Z1.5: clear extended identity-capture state on back
+                  setPhoneEmail('');
+                  setPhoneGender('');
+                  setPhoneDobDay('');
+                  setPhoneDobMonth('');
+                  setPhoneDobYear('');
+                  setPhoneMarketingAccepted(false);
                 }}
                 variant="ghost"
                 className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-white rounded-none transition-all tracking-wider uppercase"
