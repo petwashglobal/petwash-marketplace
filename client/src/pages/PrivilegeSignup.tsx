@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { createGoogleProvider, getAuthStrategy } from "@/lib/iosAuthHandler";
+// PR-AUTH-1: OAuth init now goes through the canonical hook in
+// auth-guardian-2025. getRedirectResult belongs to AuthProvider only —
+// page-level consumers were a race-condition source on iPhone Safari.
+import { signInWithGoogle as canonicalSignInWithGoogle } from "@/lib/auth-guardian-2025";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
@@ -113,15 +114,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const provider = createGoogleProvider();
-      const strategy = getAuthStrategy();
-      if (strategy === 'redirect') {
-        // iPhone Safari: popup windows are blocked — use redirect flow instead
-        await signInWithRedirect(auth, provider);
-        // Page will reload; result is handled by getRedirectResult in useEffect below
-        return;
-      }
-      await signInWithPopup(auth, provider);
+      // PR-AUTH-1: delegate to the canonical OAuth entry. It picks popup vs
+      // redirect via getAuthStrategy() (same iOS detection as admin + join
+      // flows). On iPhone Safari the page unloads after this call; on
+      // desktop popup, control returns and the user observer useEffect
+      // below picks up the new user via AuthProvider.
+      await canonicalSignInWithGoogle();
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         toast({
@@ -135,19 +133,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
     }
   };
 
-  // Handle Google redirect result (iPhone Safari returns here after sign-in)
-  useEffect(() => {
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) {
-        const displayName = result.user.displayName || '';
-        const nameParts = displayName.trim().split(' ');
-        if (nameParts[0]) setFirstName(nameParts[0]);
-        if (nameParts.slice(1).join(' ')) setLastName(nameParts.slice(1).join(' '));
-        if (result.user.email) setEmail(result.user.email);
-        setShowForm(true);
-      }
-    }).catch(() => {});
-  }, []);
+  // PR-AUTH-1: page-level getRedirectResult removed (race-condition source).
+  // AuthProvider is now the sole consumer of getRedirectResult. The user
+  // observer useEffect below (which reads `user` from useFirebaseAuth) sets
+  // firstName / lastName / email / showForm from the same source. After an
+  // iPhone Safari redirect-return, AuthProvider consumes the result, sets
+  // the user, and our observer runs.
 
   useEffect(() => {
     if (user) {

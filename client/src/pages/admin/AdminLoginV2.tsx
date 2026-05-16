@@ -22,8 +22,17 @@ import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { isAdminRole } from "@shared/adminRoles";
+// PR-AUTH-1: canonical Google OAuth entry point. iOS detection +
+// popup/redirect choice + intent preservation live inside this hook.
+// AuthProvider remains the only consumer of getRedirectResult().
+import { signInWithGoogle as canonicalSignInWithGoogle } from "@/lib/auth-guardian-2025";
+import { getAuthStrategy } from "@/lib/iosAuthHandler";
 
 const isMobileBrowser = () => {
+  // Retained for legacy callers; PR-AUTH-1 replaced the OAuth-init use of
+  // this with getAuthStrategy() from iosAuthHandler (the canonical iOS
+  // detection used by auth-guardian-2025). Phase B will remove the remaining
+  // callers (audit doc PR-AUTH-5).
   const ua = navigator.userAgent;
   return /iPhone|iPad|iPod|Android/i.test(ua);
 };
@@ -279,24 +288,31 @@ export default function AdminLoginV2() {
     setIsGoogleLoading(true);
 
     try {
-      const { signInWithPopup, signInWithRedirect, GoogleAuthProvider } = await import("firebase/auth");
-      const { auth } = await import("@/lib/firebase");
-
-      const provider = new GoogleAuthProvider();
-
-      if (isMobileBrowser()) {
-        // Mobile Safari/iOS blocks popups — use redirect flow instead.
-        // Set a flag so the post-redirect useEffect knows to pick up the user
-        // via onAuthStateChanged (AuthProvider consumes getRedirectResult first).
+      // PR-AUTH-1: delegate the OAuth call itself to the canonical hook
+      // (auth-guardian-2025.signInWithGoogle). It calls getAuthStrategy()
+      // internally to decide popup vs redirect, preserves provider intent,
+      // and never touches getRedirectResult (AuthProvider is the sole
+      // consumer of that). We still own the admin-specific session +
+      // role check below — that is not auth, that is authorization.
+      const strategy = getAuthStrategy();
+      if (strategy === 'redirect') {
+        // For iOS Safari: mark that the post-redirect useEffect should pick
+        // up the user via onAuthStateChanged. canonicalSignInWithGoogle
+        // unloads the page right after this point.
         localStorage.setItem('pw_admin_google_redirect_pending', '1');
-        await signInWithRedirect(auth, provider);
-        // Page will reload; result is handled in the useEffect above
+        await canonicalSignInWithGoogle();
+        // Page unloaded — code below is unreachable on this path.
         return;
       }
 
-      // Desktop: popup flow
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
+      // Desktop: popup flow. canonicalSignInWithGoogle awaits the popup
+      // and then we run the admin-specific session + role check inline.
+      await canonicalSignInWithGoogle();
+      const { auth } = await import("@/lib/firebase");
+      if (!auth.currentUser) {
+        throw new Error('NO_USER_AFTER_POPUP');
+      }
+      const idToken = await auth.currentUser.getIdToken();
       await createServerSession(idToken);
       await assertAdminAccess();
 
@@ -308,9 +324,12 @@ export default function AdminLoginV2() {
         return;
       }
       trackAuthError(error, 'admin_google').catch(() => {});
+      const isAccessDenied = error?.message === 'ACCESS_DENIED';
       toast({
         title: "Google Sign-In Failed",
-        description: "Google sign-in failed. Please try again.",
+        description: isAccessDenied
+          ? "This account does not have admin privileges."
+          : "Google sign-in failed. Please try again.",
         variant: "destructive",
       });
     } finally {
