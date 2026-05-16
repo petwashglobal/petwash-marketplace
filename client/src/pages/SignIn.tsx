@@ -113,6 +113,16 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<{ phone: string } | null>(null);
+  // PR-Z1: Hard gate for phone-OTP signup. New phone users (or returning users
+  // with missing firstName) cannot enter the app until they capture their name
+  // and accept terms. Replaces the soft redirect to /complete-profile which
+  // could be interrupted mid-flow, leaving the user authenticated with
+  // firstName=null and the UI falling back to generic "Pet Parent" display.
+  // See docs/SIGNUP_ONBOARDING_FORENSIC_AUDIT.md §2.1.
+  const [phoneNameStep, setPhoneNameStep] = useState(false);
+  const [phoneFirstName, setPhoneFirstName] = useState("");
+  const [phoneLastName, setPhoneLastName] = useState("");
+  const [phoneTermsAccepted, setPhoneTermsAccepted] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   // Account linking: stores credential from a social provider that collided with an existing account.
   // After the user signs in with their existing method, linkWithCredential() is called to merge them.
@@ -1488,6 +1498,37 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         language,
       });
 
+      // PR-Z1: Hard gate. Phone-OTP creates a session but no name. New users
+      // (or returning users with incomplete profiles) MUST capture firstName
+      // before entering the app. whoami is server-authoritative — never trust
+      // Firebase claims here.
+      let hasFirstName = false;
+      try {
+        const whoamiResp = await fetch(getApiUrl('/api/session/whoami'), {
+          credentials: 'include',
+        });
+        if (whoamiResp.ok) {
+          const whoamiData = await whoamiResp.json();
+          hasFirstName = Boolean(
+            whoamiData?.firstName && String(whoamiData.firstName).trim()
+          );
+        }
+      } catch (whoamiErr) {
+        // Fail-safe: if whoami fails (network blip), default to showing the
+        // name step. Better to ask than to let a nameless user in.
+        logger.warn('[PhoneAuth] whoami check failed, defaulting to name step', whoamiErr);
+        hasFirstName = false;
+      }
+
+      if (!hasFirstName) {
+        // Halt here. handlePhoneNameSubmit completes the flow once firstName
+        // and terms acceptance are captured.
+        setPhoneLoading(false);
+        setPhoneNameStep(true);
+        return;
+      }
+
+      // Returning user with firstName already on record — proceed as before.
       toast({
         title: t('signin.successTitle', language),
         description: t('signin.redirecting', language),
@@ -1514,6 +1555,76 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         category: 'authentication',
         label: 'twilio_error',
         language,
+      });
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  // PR-Z1: Complete the phone-OTP signup by submitting firstName + lastName +
+  // terms acceptance through the post-login coordinator. Until this resolves,
+  // the user cannot reach the authenticated app surface.
+  const handlePhoneNameSubmit = async () => {
+    if (!phoneFirstName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: language === 'he' ? 'נא להזין שם פרטי' : 'First name is required',
+      });
+      return;
+    }
+    if (!phoneTermsAccepted) {
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description:
+          language === 'he'
+            ? 'יש לאשר את תנאי השימוש ומדיניות הפרטיות'
+            : 'You must accept the Terms of Use and Privacy Policy',
+      });
+      return;
+    }
+    setPhoneLoading(true);
+    try {
+      const data = await resolvePostLogin({
+        body: {
+          firstName: phoneFirstName.trim(),
+          lastName: phoneLastName.trim() || undefined,
+          intent: localStorage.getItem('signup_intent') || undefined,
+        },
+      });
+      localStorage.removeItem('signup_intent');
+
+      trackEvent({
+        action: 'phone_signin_name_captured',
+        category: 'authentication',
+        label: 'phone_otp_hard_gate',
+        language,
+      });
+
+      toast({
+        title: t('signin.successTitle', language),
+        description: t('signin.redirecting', language),
+      });
+
+      // Reset phone-flow state cleanly so a future re-open of the modal starts fresh.
+      setPhoneMode(false);
+      setPhoneNumber('');
+      setVerificationCode('');
+      setConfirmationResult(null);
+      setPhoneNameStep(false);
+      setPhoneFirstName('');
+      setPhoneLastName('');
+      setPhoneTermsAccepted(false);
+
+      window.scrollTo(0, 0);
+      navigate(data?.nextUrl || data?.redirectTo || '/home');
+    } catch (err: any) {
+      logger.error('[PhoneAuth] Name submission failed:', err);
+      toast({
+        variant: 'destructive',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: err?.message || (phoneVerifyFail[language] || phoneVerifyFail.en),
       });
     } finally {
       setPhoneLoading(false);
@@ -2320,7 +2431,94 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
                 </h3>
                 
-                {!confirmationResult ? (
+                {phoneNameStep ? (
+                  // PR-Z1: Hard gate — phone-OTP signup cannot complete into the app
+                  // until firstName + terms acceptance are captured.
+                  <div className="space-y-4" dir={language === 'he' || language === 'ar' ? 'rtl' : 'ltr'}>
+                    <p className="text-sm font-medium text-neutral-800 text-center">
+                      {language === 'he'
+                        ? '✅ הטלפון אומת. כמה פרטים אחרונים:'
+                        : '✅ Phone verified. A couple of details to finish:'}
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                        {language === 'he' ? 'שם פרטי' : 'First name'}
+                        <span className="text-red-500 ms-1">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        value={phoneFirstName}
+                        onChange={(e) => setPhoneFirstName(e.target.value)}
+                        autoComplete="given-name"
+                        autoFocus
+                        required
+                        className="h-11 rounded-none border-neutral-200"
+                        data-testid="input-phone-first-name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                        {language === 'he' ? 'שם משפחה' : 'Last name'}
+                      </Label>
+                      <Input
+                        type="text"
+                        value={phoneLastName}
+                        onChange={(e) => setPhoneLastName(e.target.value)}
+                        autoComplete="family-name"
+                        className="h-11 rounded-none border-neutral-200"
+                        data-testid="input-phone-last-name"
+                      />
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <input
+                        id="phone-signin-terms"
+                        type="checkbox"
+                        checked={phoneTermsAccepted}
+                        onChange={(e) => setPhoneTermsAccepted(e.target.checked)}
+                        className="mt-1 h-4 w-4 cursor-pointer"
+                        data-testid="checkbox-phone-terms"
+                      />
+                      <label
+                        htmlFor="phone-signin-terms"
+                        className="text-xs text-neutral-700 leading-relaxed cursor-pointer"
+                      >
+                        {language === 'he' ? (
+                          <>
+                            קראתי ואני מסכים/ה ל<Link href="/terms" className="underline">תנאי השימוש</Link> ול
+                            <Link href="/privacy-policy" className="underline">מדיניות הפרטיות</Link>
+                            <span className="text-red-500 ms-1">*</span>
+                          </>
+                        ) : (
+                          <>
+                            I agree to the <Link href="/terms" className="underline">Terms of Use</Link> and{' '}
+                            <Link href="/privacy-policy" className="underline">Privacy Policy</Link>
+                            <span className="text-red-500 ms-1">*</span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handlePhoneNameSubmit}
+                      disabled={
+                        phoneLoading || !phoneFirstName.trim() || !phoneTermsAccepted
+                      }
+                      className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
+                      data-testid="button-phone-name-submit"
+                    >
+                      {phoneLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          {language === 'he' ? 'המשך' : 'Continue'}
+                          {language === 'he'
+                            ? <ArrowLeft className="w-4 h-4 ms-2" />
+                            : <ArrowRight className="w-4 h-4 ms-2" />}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : !confirmationResult ? (
                   <>
                     <div className="space-y-2">
                       <Label className="text-xs text-neutral-500 uppercase tracking-wider">
@@ -2382,6 +2580,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPhoneNumber('');
                   setVerificationCode('');
                   setConfirmationResult(null);
+                  setPhoneNameStep(false);
+                  setPhoneFirstName('');
+                  setPhoneLastName('');
+                  setPhoneTermsAccepted(false);
                 }}
                 variant="ghost"
                 className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-white rounded-none transition-all tracking-wider uppercase"
