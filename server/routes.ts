@@ -244,7 +244,6 @@ import syntheticRoutes from "./routes/synthetic";
 import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
 import walletTelemetryRoutes from "./routes/wallet-telemetry";
 import productionMonitorRoutes from "./routes/production-monitor";
-import octopusBrainRoutes from "./routes/octopus-brain";
 import octopusEngineRoutes from "./routes/octopus-engine";
 import kyc2026Routes from "./routes/kyc2026";
 import mfaRoutes from "./routes/mfa";
@@ -10546,9 +10545,12 @@ self.addEventListener('notificationclick', (event) => {
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
   const geminiWatchdogRoutes = await import('./routes/gemini-watchdog');
   app.use('/api/gemini-watchdog', adminLimiter, geminiWatchdogRoutes.default);
-  
-  // 🐙 Octopus Brain - Central platform orchestration with Gemini AI monitoring
-  app.use('/api/octopus-brain', apiLimiter, octopusBrainRoutes);
+
+  // /api/octopus-brain — DELETED 2026-05-17. Router was mounted with rate-limit
+  // only (no validateFirebaseToken, no requireBrainAccess), exposing platform
+  // health + 3 unguarded POST mutations. No client component called it. See
+  // docs/AUTH_STACK_FORENSIC_AUDIT.md and the octopus-brain audit notes.
+  // The canonical brain is /api/admin/brain (admin-brain.ts), correctly gated.
   app.use('/api/octopus', apiLimiter, octopusEngineRoutes);
   logger.info('[Routes] Octopus Global Brain Engine registered (unified booking, wallet, ledger, provider search)');
   
