@@ -573,6 +573,19 @@ function BecomeProviderRedirect() {
   return <Redirect to={`/sign-in?redirect=${encodeURIComponent(redirectTarget)}`} />;
 }
 
+/**
+ * PR Phase A (2026-05-16): /apply-provider and /join-team are duplicate
+ * legacy entry points that render the same ProviderApplicationForm.
+ * Both redirect to the canonical /provider-onboarding. Routes remain
+ * mounted for 90 days so inbound links (Google index, business cards,
+ * social posts) keep working; canonical surface is the single source
+ * of truth. Per docs/PROVIDER_ONBOARDING_AND_OAUTH_REBUILD_AUDIT.md §2.
+ */
+function LegacyProviderRouteRedirect() {
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  return <Redirect to={`/provider-onboarding${search}`} />;
+}
+
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
   const { trackLanguageChange } = useAnalytics();
@@ -2266,22 +2279,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/apply-provider">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <ProviderApplicationForm />
-              </Suspense>
-            </RequireAuth>
-          )}
+          {() => <LegacyProviderRouteRedirect />}
         </Route>
         <Route path="/join-team">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <ProviderApplicationForm />
-              </Suspense>
-            </RequireAuth>
-          )}
+          {() => <LegacyProviderRouteRedirect />}
         </Route>
         <Route path="/providers">
           {() => (
@@ -3268,7 +3269,10 @@ console.log("Build: 1769350182889");
           </svg>
           
           <Toaster />
-          <OnboardingChecklist />
+          {/* PR Phase A: suppress post-login overlay on immersive flows.
+              OnboardingChecklist is `fixed bottom-24 right-4 z-40` and
+              covered form CTAs on iPhone Safari onboarding pages. */}
+          {!isImmersive && <OnboardingChecklist />}
           {showFloatingStack && (
           <FloatingStack 
             language={currentLanguage}
@@ -3292,7 +3296,9 @@ console.log("Build: 1769350182889");
                 document.documentElement.dir = isRTL(newLang) ? 'rtl' : 'ltr';
                 document.documentElement.lang = newLang;
               }} />
-              <NotificationPermissionPrompt />
+              {/* PR Phase A: same gating as OnboardingChecklist above —
+                  fixed-position prompt was covering form CTAs on immersive flows. */}
+              {!isImmersive && <NotificationPermissionPrompt />}
               {/* PR-SHELL-IMMERSIVE: centralized boundary. Bottom nav must
                   NOT render on auth / onboarding / KYC / verification /
                   loyalty-join routes — the CEO's screenshot showed it
