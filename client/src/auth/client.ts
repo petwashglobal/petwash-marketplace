@@ -17,7 +17,6 @@ import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithPopup,
   GoogleAuthProvider,
   sendSignInLinkToEmail,
   setPersistence,
@@ -54,10 +53,22 @@ export async function loginWithEmailPassword(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
+/**
+ * @deprecated PR-AUTH-1 — delegates to the canonical
+ * `signInWithGoogle` in `@/lib/auth-guardian-2025`. The previous
+ * implementation was popup-only with NO iOS Safari fallback, which
+ * silently broke iPhone admin login. Kept as a thin shim for any
+ * legacy caller; Phase B (PR-AUTH-4 in the audit doc) will remove it.
+ *
+ * Return shape preserved (Promise that rejects on error) but the
+ * UserCredential is no longer returned — the canonical hook does
+ * iOS-aware redirect/popup and callers should observe auth state
+ * via AuthProvider's onAuthStateChanged.
+ */
 export async function loginWithGoogle() {
   await setPersistence(auth, browserLocalPersistence);
-  console.log('[Auth] 🪟 Using popup flow for Google sign-in');
-  return await signInWithPopup(auth, googleProvider);
+  const { signInWithGoogle: canonical } = await import('@/lib/auth-guardian-2025');
+  return await canonical();
 }
 
 /**
