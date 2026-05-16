@@ -2,21 +2,16 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-const isReplit = process.env.REPL_ID !== undefined;
+// Replit dev-IDE plugins removed 2026-05-17 — they only loaded inside the
+// Replit web IDE (gated on REPL_ID + NODE_ENV !== 'production') and the
+// dependencies `@replit/vite-plugin-runtime-error-modal` and
+// `@replit/vite-plugin-cartographer` were removed from package.json in the
+// same PR. Production builds were never affected; this just removes the
+// dev-IDE-only error overlay we no longer use.
 
 export default defineConfig({
   plugins: [
     react(),
-    ...(isReplit && process.env.NODE_ENV !== "production"
-      ? [
-          await import("@replit/vite-plugin-runtime-error-modal").then((m) =>
-            m.default(),
-          ),
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ].filter(Boolean)
-      : []),
   ],
   resolve: {
     alias: {
