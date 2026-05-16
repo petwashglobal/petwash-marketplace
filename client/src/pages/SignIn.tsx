@@ -134,6 +134,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [phoneDobMonth, setPhoneDobMonth] = useState("");
   const [phoneDobYear, setPhoneDobYear] = useState("");
   const [phoneMarketingAccepted, setPhoneMarketingAccepted] = useState(false);
+  // PR-Z1.6: ID number capture + server dedup. Mirrors EL AL pattern: when
+  // server returns 409 DUPLICATE_IDENTITY, surface a yellow warning banner
+  // with a "Sign in to existing account" recovery path. Form data preserved
+  // so user can switch flows without retyping.
+  const [phoneIdType, setPhoneIdType] = useState<'national' | 'driving' | 'passport' | ''>('');
+  const [phoneIdNumber, setPhoneIdNumber] = useState("");
+  const [phoneDuplicateIdentity, setPhoneDuplicateIdentity] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   // Account linking: stores credential from a social provider that collided with an existing account.
   // After the user signs in with their existing method, linkWithCredential() is called to merge them.
@@ -1572,6 +1579,35 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
+  // PR-Z1.6: Israeli teudat zehut (תעודת זהות) checksum validation.
+  // Israeli ID = 9 digits, last digit is a Luhn-style check digit.
+  // Returns true if the number passes the checksum.
+  const isValidIsraeliId = (id: string): boolean => {
+    const digits = id.replace(/\D/g, '');
+    if (digits.length !== 9) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      let n = parseInt(digits[i], 10) * ((i % 2) + 1);
+      if (n > 9) n -= 9;
+      sum += n;
+    }
+    return sum % 10 === 0;
+  };
+
+  // PR-Z1.6: ID number format validation by document type.
+  // - National ID (IL): 9 digits + Luhn checksum
+  // - Driving License: 5–15 alphanumeric (varies by country, lenient)
+  // - Passport: 5–15 alphanumeric (varies by country, lenient)
+  const isValidIdFormat = (type: string, value: string): boolean => {
+    const v = value.trim();
+    if (!v) return false;
+    if (type === 'national') return isValidIsraeliId(v);
+    if (type === 'driving' || type === 'passport') {
+      return /^[A-Z0-9]{5,15}$/i.test(v);
+    }
+    return false;
+  };
+
   // PR-Z1.5: Compute age from DD/MM/YYYY parts. Returns -1 if invalid date.
   // 18+ enforcement is a hard gate per CEO directive 2026-05-16
   // ("הרשמה מגיל 18 בלבד" / "Registration from age 18 only").
@@ -1670,6 +1706,51 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       });
       return;
     }
+    // PR-Z1.6: ID number capture — required for loyalty + provider intents.
+    // Optional for customer-only. Format-validated per document type.
+    const idRequired = intent === 'loyalty' || intent === 'provider';
+    const trimmedIdNumber = phoneIdNumber.trim();
+    if (idRequired) {
+      if (!phoneIdType) {
+        toast({
+          variant: 'destructive',
+          title: phoneErrTitle[language] || phoneErrTitle.en,
+          description:
+            language === 'he'
+              ? 'יש לבחור סוג מסמך מזהה'
+              : 'Please select a document type',
+        });
+        return;
+      }
+      if (!trimmedIdNumber) {
+        toast({
+          variant: 'destructive',
+          title: phoneErrTitle[language] || phoneErrTitle.en,
+          description:
+            language === 'he'
+              ? 'יש להזין מספר מסמך מזהה'
+              : 'Please enter your ID number',
+        });
+        return;
+      }
+      if (!isValidIdFormat(phoneIdType, trimmedIdNumber)) {
+        toast({
+          variant: 'destructive',
+          title: phoneErrTitle[language] || phoneErrTitle.en,
+          description:
+            phoneIdType === 'national'
+              ? (language === 'he'
+                  ? 'מספר תעודת זהות אינו תקין (9 ספרות + ספרת ביקורת)'
+                  : 'Israeli ID number is invalid (9 digits + check digit)')
+              : (language === 'he'
+                  ? 'מספר מסמך אינו תקין'
+                  : 'Document number format is invalid'),
+        });
+        return;
+      }
+    }
+    // Clear any prior duplicate-identity banner before re-submitting.
+    setPhoneDuplicateIdentity(false);
     setPhoneLoading(true);
     try {
       // PR-Z1.5: ISO-8601 YYYY-MM-DD for the server. Locale-independent.
@@ -1683,6 +1764,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           gender: phoneGender || undefined,
           dateOfBirth: dobIso,
           marketingConsent: phoneMarketingAccepted,
+          // PR-Z1.6: identity capture. Server runs dedup on (idNumber, dateOfBirth).
+          idNumber: trimmedIdNumber || undefined,
+          idDocumentType: phoneIdType || undefined,
         } as any,
       });
       localStorage.removeItem('signup_intent');
@@ -1714,16 +1798,38 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPhoneDobMonth('');
       setPhoneDobYear('');
       setPhoneMarketingAccepted(false);
+      setPhoneIdType('');
+      setPhoneIdNumber('');
+      setPhoneDuplicateIdentity(false);
 
       window.scrollTo(0, 0);
       navigate(data?.nextUrl || data?.redirectTo || '/home');
     } catch (err: any) {
       logger.error('[PhoneAuth] Name submission failed:', err);
-      toast({
-        variant: 'destructive',
-        title: phoneErrTitle[language] || phoneErrTitle.en,
-        description: err?.message || (phoneVerifyFail[language] || phoneVerifyFail.en),
-      });
+      // PR-Z1.6: detect server 409 DUPLICATE_IDENTITY. The
+      // postLoginCoordinator surfaces server errors as { status, body, message }.
+      const errStatus = err?.status ?? err?.response?.status;
+      const errCode = err?.body?.error ?? err?.response?.data?.error ?? err?.code;
+      if (errStatus === 409 || errCode === 'DUPLICATE_IDENTITY') {
+        setPhoneDuplicateIdentity(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // No destructive toast — the inline yellow banner is the affordance.
+      } else if (errStatus === 400 && errCode === 'UNDERAGE') {
+        toast({
+          variant: 'destructive',
+          title: phoneErrTitle[language] || phoneErrTitle.en,
+          description:
+            language === 'he'
+              ? 'הרשמה מגיל 18 בלבד'
+              : 'Registration is restricted to users aged 18 and over',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: phoneErrTitle[language] || phoneErrTitle.en,
+          description: err?.message || (phoneVerifyFail[language] || phoneVerifyFail.en),
+        });
+      }
     } finally {
       setPhoneLoading(false);
     }
@@ -2537,6 +2643,57 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   // enforced), marketing consent. Scrollable wrapper for
                   // small screens. Pattern mirrors EL AL frequent-flyer signup.
                   <div className="space-y-4 max-h-[70vh] overflow-y-auto pe-1" dir={language === 'he' || language === 'ar' ? 'rtl' : 'ltr'}>
+                    {/* PR-Z1.6: Yellow warning banner when server returns 409
+                        DUPLICATE_IDENTITY. Privacy-respecting (does not reveal
+                        whose account) + offers recovery path. Form data preserved
+                        so user can switch flows without retyping. */}
+                    {phoneDuplicateIdentity && (
+                      <div
+                        className="border border-amber-300 bg-amber-50 p-4 space-y-2"
+                        role="alert"
+                        data-testid="phone-duplicate-identity-banner"
+                      >
+                        <p className="text-sm font-semibold text-amber-900">
+                          {language === 'he'
+                            ? 'חשבון עם פרטי זהות אלו כבר קיים במערכת'
+                            : 'An account with this identity already exists'}
+                        </p>
+                        <p className="text-xs text-amber-800 leading-relaxed">
+                          {language === 'he'
+                            ? 'התחבר לחשבון הקיים שלך באמצעות אחת השיטות למעלה, או השתמש בשחזור סיסמה אם שכחת את אמצעי ההתחברות.'
+                            : 'Please sign in to your existing account using one of the methods above, or use password recovery if you have forgotten your sign-in method.'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Send the user back to the main sign-in surface
+                            // (cleanly reset phone-flow state so they can pick
+                            // Google / Apple / email / phone as they prefer).
+                            setPhoneMode(false);
+                            setPhoneNumber('');
+                            setVerificationCode('');
+                            setConfirmationResult(null);
+                            setPhoneNameStep(false);
+                            setPhoneFirstName('');
+                            setPhoneLastName('');
+                            setPhoneTermsAccepted(false);
+                            setPhoneEmail('');
+                            setPhoneGender('');
+                            setPhoneDobDay('');
+                            setPhoneDobMonth('');
+                            setPhoneDobYear('');
+                            setPhoneMarketingAccepted(false);
+                            setPhoneIdType('');
+                            setPhoneIdNumber('');
+                            setPhoneDuplicateIdentity(false);
+                          }}
+                          className="text-xs font-medium text-amber-900 underline cursor-pointer hover:text-amber-700"
+                          data-testid="button-go-to-signin"
+                        >
+                          {language === 'he' ? 'חזור להתחברות →' : 'Go to sign in →'}
+                        </button>
+                      </div>
+                    )}
                     <p className="text-sm font-medium text-neutral-800 text-center">
                       {language === 'he'
                         ? '✅ הטלפון אומת. כמה פרטים אחרונים:'
@@ -2675,6 +2832,97 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         />
                       </div>
                     </div>
+                    {/* PR-Z1.6: ID document capture for loyalty + provider intents.
+                        3-option type radio + number input. NO document image upload
+                        (CEO safety directive: "no photo dangerous"). Server runs
+                        dedup on (idNumber, dateOfBirth) per EL AL pattern. */}
+                    {(typeof window !== 'undefined' &&
+                      (localStorage.getItem('signup_intent') === 'loyalty' ||
+                        localStorage.getItem('signup_intent') === 'provider')) && (
+                      <div className="space-y-3 pt-2 border-t border-neutral-100">
+                        <div className="space-y-2">
+                          <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                            {language === 'he' ? 'סוג מסמך מזהה' : 'Identity document'}
+                            <span className="text-red-500 ms-1">*</span>
+                          </Label>
+                          <div className="flex flex-col gap-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="phone-signin-id-type"
+                                value="national"
+                                checked={phoneIdType === 'national'}
+                                onChange={() => setPhoneIdType('national')}
+                                className="h-4 w-4 cursor-pointer"
+                                data-testid="radio-phone-id-national"
+                              />
+                              <span className="text-sm text-neutral-700">
+                                {language === 'he' ? 'תעודת זהות (ישראל)' : 'National ID (Israel)'}
+                              </span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="phone-signin-id-type"
+                                value="driving"
+                                checked={phoneIdType === 'driving'}
+                                onChange={() => setPhoneIdType('driving')}
+                                className="h-4 w-4 cursor-pointer"
+                                data-testid="radio-phone-id-driving"
+                              />
+                              <span className="text-sm text-neutral-700">
+                                {language === 'he' ? 'רישיון נהיגה' : 'Driving licence'}
+                              </span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="phone-signin-id-type"
+                                value="passport"
+                                checked={phoneIdType === 'passport'}
+                                onChange={() => setPhoneIdType('passport')}
+                                className="h-4 w-4 cursor-pointer"
+                                data-testid="radio-phone-id-passport"
+                              />
+                              <span className="text-sm text-neutral-700">
+                                {language === 'he' ? 'דרכון' : 'Passport'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-neutral-500 uppercase tracking-wider">
+                            {language === 'he' ? 'מספר מסמך' : 'Document number'}
+                            <span className="text-red-500 ms-1">*</span>
+                            <span className="block text-[10px] text-neutral-400 normal-case tracking-normal mt-1">
+                              {language === 'he'
+                                ? 'מספר בלבד. לא להעלות תמונה.'
+                                : 'Number only. No document photo required.'}
+                            </span>
+                          </Label>
+                          <Input
+                            type="text"
+                            inputMode={phoneIdType === 'national' ? 'numeric' : 'text'}
+                            maxLength={15}
+                            value={phoneIdNumber}
+                            onChange={(e) => setPhoneIdNumber(e.target.value)}
+                            placeholder={
+                              phoneIdType === 'national'
+                                ? '123456782'
+                                : phoneIdType === 'driving'
+                                  ? (language === 'he' ? 'מספר רישיון' : 'License number')
+                                  : phoneIdType === 'passport'
+                                    ? (language === 'he' ? 'מספר דרכון' : 'Passport number')
+                                    : ''
+                            }
+                            className="h-11 rounded-none border-neutral-200"
+                            data-testid="input-phone-id-number"
+                            dir="ltr"
+                            disabled={!phoneIdType}
+                          />
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-start gap-2">
                       <input
                         id="phone-signin-terms"
@@ -2822,6 +3070,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPhoneDobMonth('');
                   setPhoneDobYear('');
                   setPhoneMarketingAccepted(false);
+                  // PR-Z1.6: clear ID capture + dedup banner on back
+                  setPhoneIdType('');
+                  setPhoneIdNumber('');
+                  setPhoneDuplicateIdentity(false);
                 }}
                 variant="ghost"
                 className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-white rounded-none transition-all tracking-wider uppercase"
