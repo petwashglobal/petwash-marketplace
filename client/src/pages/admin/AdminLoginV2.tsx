@@ -1,6 +1,6 @@
 /**
- * Pet Wash Admin Platform Login
- * Secure administrative access for Pet Wash business management
+ * PetWash™ Admin Platform Login
+ * Secure administrative access for PetWash™ business management
  * 
  * Features:
  * - Biometric/Passkey authentication (Touch ID/Face ID)
@@ -21,7 +21,6 @@ import { Fingerprint, Mail, Lock, Sparkles, CheckCircle2, XCircle, Loader2 } fro
 import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { isAdminRole } from "@shared/adminRoles";
 
@@ -97,7 +96,7 @@ export default function AdminLoginV2() {
           const idToken = await user.getIdToken();
           await createServerSession(idToken);
           await assertAdminAccess();
-          toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
+          toast({ title: "Welcome back", description: "Successfully logged in with Google" });
           setLocation("/admin/dashboard");
         } catch (err: any) {
           const isAccessDenied = err?.message === 'ACCESS_DENIED';
@@ -138,7 +137,7 @@ export default function AdminLoginV2() {
       await assertAdminAccess();
 
       toast({
-        title: "Welcome back! ✨",
+        title: "Welcome back",
         description: "Successfully logged in",
       });
 
@@ -255,7 +254,7 @@ export default function AdminLoginV2() {
 
         setBiometricStatus("success");
         toast({
-          title: "Biometric Authentication Successful! 🎉",
+          title: "Biometric authentication successful",
           description: "Welcome back",
         });
         
@@ -302,7 +301,7 @@ export default function AdminLoginV2() {
       await createServerSession(idToken);
       await assertAdminAccess();
 
-      toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
+      toast({ title: "Welcome back", description: "Successfully logged in with Google" });
       setLocation("/admin/dashboard");
     } catch (error: any) {
       if (error?.code === "auth/popup-closed-by-user" || error?.code === "auth/cancelled-popup-request") {
@@ -324,17 +323,17 @@ export default function AdminLoginV2() {
     <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
       {/* Main Login Card */}
       <Card className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-8">
-        {/* Header - Pet Wash Logo */}
+        {/* Header — PetWash™ logo */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
             <img 
               src="/brand/petwash-logo-official.png" 
-              alt="Pet Wash" 
+              alt="PetWash"
               className="h-16 w-auto object-contain"
             />
           </div>
           <h1 className="luxury-heading-lg luxury-text-gradient mb-2">
-            Pet Wash Admin Platform
+            PetWash Admin Platform
           </h1>
           <p className="text-gray-600">
             Secure Business Management
@@ -383,7 +382,7 @@ export default function AdminLoginV2() {
                     animate={{ scale: 1 }}
                   >
                     <CheckCircle2 className="h-5 w-5" />
-                    ✅ Access Granted
+                    Access granted
                   </motion.div>
                 )}
                 {biometricStatus === "error" && (
@@ -393,7 +392,7 @@ export default function AdminLoginV2() {
                     animate={{ scale: 1 }}
                   >
                     <XCircle className="h-5 w-5" />
-                    ❌ Scan Failed. Retry?
+                    Scan failed — retry?
                   </motion.div>
                 )}
               </Button>
@@ -495,15 +494,19 @@ export default function AdminLoginV2() {
           </Button>
         </div>
 
-        {/* Security Badge */}
-        <div className="mt-8 flex flex-col items-center gap-3">
-          <div className="flex items-center gap-2">
-            <LuxuryEmoji emoji="🛡️" material="platinum" size="sm" animate={false} />
-            <LuxuryEmoji emoji="🔒" material="gold" size="sm" animate={false} />
-            <LuxuryEmoji emoji="👑" material="diamond" size="sm" animate={false} />
+        {/* Security badge — PR admin-login-immersive: typographic
+            treatment replaces LuxuryEmoji glyphs per §0 (no emojis in
+            professional surfaces). */}
+        <div className="mt-8 flex flex-col items-center gap-2">
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-gray-400">
+            <span>Secure</span>
+            <span aria-hidden="true">·</span>
+            <span>Encrypted</span>
+            <span aria-hidden="true">·</span>
+            <span>Audit-logged</span>
           </div>
           <p className="text-xs text-gray-500">
-            Secured admin access
+            PetWash™ admin access
           </p>
         </div>
       </Card>
