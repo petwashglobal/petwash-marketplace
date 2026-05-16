@@ -366,10 +366,12 @@ export default function JoinAsWalker() {
               <div>
                 <Label className="mb-3 block">Equipment & Features</Label>
                 <div className="space-y-3">
+                  {/* PR Phase A: icon emojis stripped per CEO §0.
+                      Phase B will introduce Lucide replacements. */}
                   {[
-                    { field: "hasFirstAidKit", label: "First Aid Kit", desc: "I carry a pet first aid kit on every walk", icon: "🩺" },
-                    { field: "hasBodyCamera", label: "Body Camera", desc: "I use a camera for walk documentation & safety", icon: "📷" },
-                    { field: "hasCarTransport", label: "Car Transport", desc: "I can pick up & drop off dogs by car", icon: "🚗" },
+                    { field: "hasFirstAidKit", label: "First Aid Kit", desc: "I carry a pet first aid kit on every walk", icon: "" },
+                    { field: "hasBodyCamera", label: "Body Camera", desc: "I use a camera for walk documentation & safety", icon: "" },
+                    { field: "hasCarTransport", label: "Car Transport", desc: "I can pick up & drop off dogs by car", icon: "" },
                   ].map(item => (
                     <label key={item.field} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${form[item.field as keyof typeof form] ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}>
                       <span className="text-2xl">{item.icon}</span>

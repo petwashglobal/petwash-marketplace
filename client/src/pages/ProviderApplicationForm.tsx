@@ -607,10 +607,9 @@ export default function ProviderApplicationForm() {
                       )}
                     </div>
                     <div className="pb-6">
-                      <p className={`font-semibold text-sm ${s.done ? 'text-emerald-700' : s.current ? 'text-amber-700' : 'text-gray-500'}`}>
+                      <p className={`font-semibold text-sm ${s.done ? 'text-emerald-700' : s.current ? 'text-amber-700' : 'text-gray-500'} inline-flex items-center gap-2`}>
                         {s.label}
-                        {s.done && <span className="ml-2 text-emerald-500">✓</span>}
-                        {s.current && <span className="ml-2 text-amber-500">←</span>}
+                        {s.done && <Check className="w-4 h-4 text-emerald-500" aria-hidden="true" />}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
                     </div>
@@ -643,7 +642,7 @@ export default function ProviderApplicationForm() {
                         <Camera className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-black text-sm">{isHebrew ? '📸 סלפי' : '📸 Selfie'}</p>
+                        <p className="font-medium text-black text-sm">{isHebrew ? 'סלפי' : 'Selfie'}</p>
                         <p className="text-xs text-gray-500">{isHebrew ? 'פנים ברורות, תאורה טובה' : 'Clear face, good lighting'}</p>
                       </div>
                       {selfieDocPhoto && <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-auto" />}
@@ -752,7 +751,7 @@ export default function ProviderApplicationForm() {
                           <Car className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-black text-sm">{isHebrew ? '🚗 רישיון נהיגה' : '🚗 Driving License'}</p>
+                          <p className="font-medium text-black text-sm">{isHebrew ? 'רישיון נהיגה' : 'Driving License'}</p>
                           <p className="text-xs text-gray-500">{isHebrew ? 'נדרש לשירות הסעת חיות מחמד' : 'Required for pet transportation service'}</p>
                         </div>
                         {drivingLicensePhoto && <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-auto" />}

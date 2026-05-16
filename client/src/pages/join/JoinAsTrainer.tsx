@@ -14,21 +14,23 @@ import { FaGoogle } from "react-icons/fa";
 import { PhoneInput } from "@/components/PhoneInput";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
+// PR Phase A: emoji icons removed per CEO §0 (no emojis in professional
+// onboarding). Phase B will introduce Lucide icons.
 const SPECIALTIES = [
-  { id: "obedience", label: "Basic Obedience", labelHe: "ציות בסיסי", emoji: "🎯" },
-  { id: "puppy_training", label: "Puppy Training", labelHe: "אילוף גורים", emoji: "🐾" },
-  { id: "behavioral_modification", label: "Behavioral Issues", labelHe: "בעיות התנהגות", emoji: "🧠" },
-  { id: "agility", label: "Agility", labelHe: "אג'יליטי", emoji: "🏃" },
-  { id: "therapy_training", label: "Therapy / Emotional Support", labelHe: "כלב טיפולי", emoji: "❤️" },
-  { id: "protection", label: "Protection Training", labelHe: "אילוף שמירה", emoji: "🛡️" },
-  { id: "sport", label: "Sport & Competition", labelHe: "ספורט ותחרויות", emoji: "🏆" },
-  { id: "trick_training", label: "Tricks & Performance", labelHe: "טריקים", emoji: "✨" },
+  { id: "obedience", label: "Basic Obedience", labelHe: "ציות בסיסי", emoji: "" },
+  { id: "puppy_training", label: "Puppy Training", labelHe: "אילוף גורים", emoji: "" },
+  { id: "behavioral_modification", label: "Behavioral Issues", labelHe: "בעיות התנהגות", emoji: "" },
+  { id: "agility", label: "Agility", labelHe: "אג'יליטי", emoji: "" },
+  { id: "therapy_training", label: "Therapy / Emotional Support", labelHe: "כלב טיפולי", emoji: "" },
+  { id: "protection", label: "Protection Training", labelHe: "אילוף שמירה", emoji: "" },
+  { id: "sport", label: "Sport & Competition", labelHe: "ספורט ותחרויות", emoji: "" },
+  { id: "trick_training", label: "Tricks & Performance", labelHe: "טריקים", emoji: "" },
 ];
 
 const SERVICE_TYPES = [
-  { id: "in_home", label: "At Client's Home", desc: "You travel to the client", emoji: "🏠" },
-  { id: "park", label: "At a Park / Outdoor", desc: "Sessions in open spaces", emoji: "🌳" },
-  { id: "station", label: "At My Location", desc: "Clients come to you", emoji: "📍" },
+  { id: "in_home", label: "At Client's Home", desc: "You travel to the client", emoji: "" },
+  { id: "park", label: "At a Park / Outdoor", desc: "Sessions in open spaces", emoji: "" },
+  { id: "station", label: "At My Location", desc: "Clients come to you", emoji: "" },
 ];
 
 const LANGUAGES = [
@@ -398,7 +400,7 @@ export default function JoinAsTrainer() {
                 </div>
               </div>
               <div className="bg-emerald-50 rounded-xl p-4">
-                <p className="text-sm font-medium text-emerald-800 mb-1">💡 Certification Bonus</p>
+                <p className="text-sm font-medium text-emerald-800 mb-1">Certification Bonus</p>
                 <p className="text-sm text-emerald-700">Once your credentials are verified, you'll receive a gold <strong>Certified Trainer</strong> badge that increases bookings by up to 40%.</p>
               </div>
               <div className="bg-white rounded-xl p-4 space-y-3">
