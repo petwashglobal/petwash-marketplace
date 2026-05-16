@@ -114,6 +114,12 @@ export const IMMERSIVE_ROUTES: readonly string[] = [
   '/pet-wash-ltd/executive/kyc',
   '/admin/kyc',
   '/admin/staff-onboarding',
+  // PR admin-login-immersive: admin sign-in surface (FloatingStack with
+  // accessibility / WhatsApp / chat widgets was leaking on top of the
+  // OAuth flow on iPhone Safari, observed 2026-05-16). /admin redirects
+  // to /admin/login-v2 for unauthenticated users (App.tsx:2630).
+  '/admin/login',
+  '/admin/login-v2',
 
   // ── Pending / blocked states (full-screen "your access is pending") ───
   '/access-pending',
