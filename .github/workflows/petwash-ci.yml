@@ -610,6 +610,15 @@ jobs:
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_WEBAUTHN_RP_ID: ${{ secrets.VITE_WEBAUTHN_RP_ID }}
+          # Companion to GOOGLE_PLACES_LIVE in cloudrun-service.yaml (PR #290).
+          # The client flag resolver in client/src/lib/feature-flags/googlePlaces.ts
+          # defaults to import.meta.env.PROD when this var is unset — Vite's
+          # `npm run build` does set PROD=true, so in theory the flag would
+          # resolve ON in production builds. Setting it explicitly here makes
+          # the behaviour deterministic and removes one variable from production
+          # debugging when address autocomplete misbehaves on iPad Safari.
+          # docs/GOOGLE_PLACES_AUTOCOMPLETE_AUDIT.md §1.
+          VITE_GOOGLE_PLACES_LIVE: 'true'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
