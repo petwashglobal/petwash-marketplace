@@ -14,7 +14,7 @@ interface PremiumGoogleOAuthConsentProps {
 /**
  * LUXURY 2025: Premium Google OAuth Consent Screen
  * Shows comprehensive permissions for Gmail, Contacts, and Calendar
- * Matches official Google OAuth consent design for ⁦Pet Wash™⁩ Ltd
+ * Matches official Google OAuth consent design for ⁦PetWash™⁩
  */
 export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onCancel }: PremiumGoogleOAuthConsentProps) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,13 +31,13 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
   const text = {
     en: {
       header: 'accounts.google.com',
-      willAllow: 'This will allow ⁦Pet Wash™⁩ Ltd to:',
+      willAllow: 'This will allow ⁦PetWash™⁩ to:',
       permissions: [
         {
           icon: Mail,
           iconBg: 'bg-red-500',
           title: 'Read, compose, send, and permanently delete all your email from Gmail',
-          info: '⁦Pet Wash™⁩ will be able to access, send, and manage all your Gmail messages',
+          info: '⁦PetWash™⁩ will be able to access, send, and manage all your Gmail messages',
         },
         {
           icon: Users,
@@ -52,28 +52,31 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
           info: 'Schedule and manage pet washing appointments directly in your Google Calendar',
         },
       ],
-      makeSure: 'Make sure you trust ⁦Pet Wash™⁩ Ltd',
+      makeSure: 'Make sure you trust ⁦PetWash™⁩',
       trustMessage: 'You may be sharing sensitive info with this site or app. You can always see or remove access in your',
       googleAccount: 'Google Account',
       learnHow: 'Learn how Google helps you',
       shareDataSafely: 'share data safely',
-      seePetWash: "See ⁦Pet Wash™⁩ Ltd's",
+      seePetWash: "See ⁦PetWash™⁩'s",
       privacyPolicy: 'Privacy Policy',
       and: 'and',
       termsOfService: 'Terms of Service',
       cancel: 'Cancel',
       allow: 'Allow',
-      appName: '⁦Pet Wash™⁩ Ltd',
+      // PR Phase A: brand mark only — "Ltd" is the legal entity (Pet Wash
+      // Ltd / פט וואש בע״מ) and belongs in legal documents, not the OAuth
+      // consent screen. Per §0 doctrine + R-B decision 2026-05-16.
+      appName: '⁦PetWash™⁩',
     },
     he: {
       header: 'accounts.google.com',
-      willAllow: 'זה יאפשר ל-⁦Pet Wash™⁩ Ltd:',
+      willAllow: 'זה יאפשר ל-⁦PetWash™⁩:',
       permissions: [
         {
           icon: Mail,
           iconBg: 'bg-red-500',
           title: 'קריאה, כתיבה, שליחה ומחיקה קבועה של כל האימיילים שלך ב-Gmail',
-          info: '⁦Pet Wash™⁩ תוכל לגשת, לשלוח ולנהל את כל הודעות Gmail שלך',
+          info: '⁦PetWash™⁩ תוכל לגשת, לשלוח ולנהל את כל הודעות Gmail שלך',
         },
         {
           icon: Users,
@@ -88,7 +91,7 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
           info: 'קביעה וניהול תורי רחיצת כלבים ישירות ביומן Google שלך',
         },
       ],
-      makeSure: 'ודא שאתה סומך על ⁦Pet Wash™⁩ Ltd',
+      makeSure: 'ודא שאתה סומך על ⁦PetWash™⁩',
       trustMessage: 'ייתכן שאתה משתף מידע רגיש עם אתר או אפליקציה זו. תמיד תוכל לראות או להסיר גישה ב',
       googleAccount: 'חשבון Google',
       learnHow: 'למד כיצד Google עוזרת לך',
@@ -99,7 +102,7 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
       termsOfService: 'תנאי השירות',
       cancel: 'ביטול',
       allow: 'אפשר',
-      appName: '⁦Pet Wash™⁩ Ltd',
+      appName: '⁦PetWash™⁩',
     },
   };
 

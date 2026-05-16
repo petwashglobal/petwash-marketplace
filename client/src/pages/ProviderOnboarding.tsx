@@ -12,11 +12,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { DatePicker } from '@/components/ui/date-picker';
 import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  Upload, 
-  Camera, 
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Upload,
+  Camera,
   CreditCard,
   Shield,
   Clock,
@@ -25,7 +25,13 @@ import {
   Star,
   ArrowRight,
   Loader2,
-  X
+  X,
+  // PR Phase A — Lucide icons replacing emoji in professional onboarding.
+  Footprints,
+  Home,
+  Car,
+  GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -226,16 +232,20 @@ export default function ProviderOnboarding() {
   }, [user]);
 
   // ── Phone OTP Verification Handlers ──────────────────────────────────
+  // PR Phase A: no flag emojis. ISO-2 code + dial code is the professional
+  // pattern (matches Apple/Stripe/airline checkouts). Phase B replaces this
+  // custom picker with the library-backed <PhoneInput /> already used in
+  // /apply-provider, OnboardingVerification, and the join/* flows.
   const COUNTRY_CODES = [
-    { code: '+972', label: '🇮🇱 +972', name: 'Israel' },
-    { code: '+1',   label: '🇺🇸 +1',   name: 'USA / Canada' },
-    { code: '+44',  label: '🇬🇧 +44',  name: 'UK' },
-    { code: '+61',  label: '🇦🇺 +61',  name: 'Australia' },
-    { code: '+49',  label: '🇩🇪 +49',  name: 'Germany' },
-    { code: '+33',  label: '🇫🇷 +33',  name: 'France' },
-    { code: '+7',   label: '🇷🇺 +7',   name: 'Russia' },
-    { code: '+91',  label: '🇮🇳 +91',  name: 'India' },
-    { code: '+55',  label: '🇧🇷 +55',  name: 'Brazil' },
+    { code: '+972', label: 'IL +972', name: 'Israel' },
+    { code: '+1',   label: 'US +1',   name: 'USA / Canada' },
+    { code: '+44',  label: 'GB +44',  name: 'UK' },
+    { code: '+61',  label: 'AU +61',  name: 'Australia' },
+    { code: '+49',  label: 'DE +49',  name: 'Germany' },
+    { code: '+33',  label: 'FR +33',  name: 'France' },
+    { code: '+7',   label: 'RU +7',   name: 'Russia' },
+    { code: '+91',  label: 'IN +91',  name: 'India' },
+    { code: '+55',  label: 'BR +55',  name: 'Brazil' },
   ];
 
   const sendPhoneOtp = async () => {
@@ -266,7 +276,7 @@ export default function ProviderOnboarding() {
         return;
       }
       setPhoneOtpId(data.otpId);
-      toast({ title: isHebrew ? '📱 קוד נשלח ב-SMS!' : '📱 SMS code sent!', description: isHebrew ? `נשלח ל-${fullPhone}` : `Sent to ${fullPhone}` });
+      toast({ title: isHebrew ? 'קוד נשלח ב-SMS' : 'SMS code sent', description: isHebrew ? `נשלח ל-${fullPhone}` : `Sent to ${fullPhone}` });
     } catch {
       setPhoneOtpError(isHebrew ? 'שגיאת רשת' : 'Network error');
     } finally {
@@ -295,7 +305,7 @@ export default function ProviderOnboarding() {
         return;
       }
       setPhoneVerified(true);
-      toast({ title: isHebrew ? '✅ טלפון אומת בהצלחה!' : '✅ Phone verified!', description: isHebrew ? 'מספר הטלפון שלך אומת' : 'Your phone number is now verified' });
+      toast({ title: isHebrew ? 'טלפון אומת בהצלחה' : 'Phone verified', description: isHebrew ? 'מספר הטלפון שלך אומת' : 'Your phone number is now verified' });
     } catch {
       setPhoneOtpError(isHebrew ? 'שגיאת רשת' : 'Network error');
     } finally {
@@ -304,7 +314,10 @@ export default function ProviderOnboarding() {
   };
 
   const t = {
-    title: isHebrew ? 'הצטרפו לצוות Pet Wash' : 'Join the Pet Wash Team',
+    // PR Phase A: Hebrew "Pet Wash" wrapped in U+2066/U+2069 (LTR isolate /
+    // pop directional isolate) so iOS Safari renders the brand mark left-to-
+    // right inside the Hebrew sentence. Matches the §0 brand mark "PetWash™".
+    title: isHebrew ? 'הצטרפו לצוות ⁦PetWash™⁩' : 'Join the PetWash™ Team',
     subtitle: isHebrew ? 'הירשם כשותף עצמאי והתחל להרוויח' : 'Sign up as an independent contractor and start earning',
     providerTypeTitle: isHebrew ? 'סוג שותף' : 'Provider Type',
     walker: isHebrew ? 'מטייל כלבים (Walk My Pet)' : 'Dog Walker (Walk My Pet)',
@@ -723,7 +736,7 @@ export default function ProviderOnboarding() {
                             id="walker"
                           />
                           <Label htmlFor="walker" className="cursor-pointer flex-1 text-center">
-                            <span className="text-2xl mb-2 block">🚶</span>
+                            <Footprints className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{t.walker}</span>
                           </Label>
                         </div>
@@ -739,7 +752,7 @@ export default function ProviderOnboarding() {
                             id="sitter"
                           />
                           <Label htmlFor="sitter" className="cursor-pointer flex-1 text-center">
-                            <span className="text-2xl mb-2 block">🏠</span>
+                            <Home className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{t.sitter}</span>
                           </Label>
                         </div>
@@ -755,7 +768,7 @@ export default function ProviderOnboarding() {
                             id="driver"
                           />
                           <Label htmlFor="driver" className="cursor-pointer flex-1 text-center">
-                            <span className="text-2xl mb-2 block">🚗</span>
+                            <Car className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
                           </Label>
                         </div>
@@ -771,7 +784,7 @@ export default function ProviderOnboarding() {
                             id="trainer"
                           />
                           <Label htmlFor="trainer" className="cursor-pointer flex-1 text-center">
-                            <span className="text-2xl mb-2 block">🎓</span>
+                            <GraduationCap className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{isHebrew ? 'מאלף כלבים' : 'Dog Trainer'}</span>
                           </Label>
                         </div>
@@ -787,7 +800,7 @@ export default function ProviderOnboarding() {
                             id="station_operator"
                           />
                           <Label htmlFor="station_operator" className="cursor-pointer flex-1 text-center">
-                            <span className="text-2xl mb-2 block">🚿</span>
+                            <Sparkles className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{t.stationOperator}</span>
                           </Label>
                         </div>
@@ -820,10 +833,21 @@ export default function ProviderOnboarding() {
 
                 {/* Phone with country code + OTP verification */}
                 <div className="space-y-2">
-                  <Label>{t.phone} {phoneVerified && <span className="text-green-600 text-xs font-semibold ml-1">✅ {isHebrew ? 'מאומת' : 'Verified'}</span>}</Label>
+                  <Label>
+                    {t.phone}
+                    {phoneVerified && (
+                      <span className="inline-flex items-center gap-1 text-green-600 text-xs font-semibold ml-1">
+                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                        {isHebrew ? 'מאומת' : 'Verified'}
+                      </span>
+                    )}
+                  </Label>
                   {!phoneVerified && (
                     <>
-                      <div className="flex gap-2">
+                      {/* PR Phase A: dir="ltr" locks logical order — country
+                          selector LEFT, phone input RIGHT — in every language.
+                          CEO rule: phone field groups never reverse in RTL. */}
+                      <div dir="ltr" className="flex gap-2">
                         <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode} disabled={!!phoneOtpId}>
                           <SelectTrigger className="w-[110px] h-12 bg-white border border-gray-200 rounded-xl text-sm flex-shrink-0">
                             <SelectValue />
@@ -881,7 +905,8 @@ export default function ProviderOnboarding() {
                       )}
                       {phoneOtpError && (
                         <p className="text-red-500 text-xs flex items-center gap-1">
-                          <span>⚠️</span> {phoneOtpError}
+                          <AlertTriangle className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                          {phoneOtpError}
                         </p>
                       )}
                       {!phoneOtpId && (
@@ -1219,16 +1244,17 @@ export default function ProviderOnboarding() {
                     {isHebrew ? 'הצהרות נדרשות' : 'Required Declarations'}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {isHebrew 
-                      ? 'אנא סמן את כל ההצהרות הרלוונטיות לתפקיד שלך. מסמכים יאומתו ידנית על ידי צוות Pet Wash.'
-                      : 'Please check all declarations relevant to your role. Documents will be manually verified by Pet Wash team.'}
+                    {isHebrew
+                      ? 'אנא סמן את כל ההצהרות הרלוונטיות לתפקיד שלך. מסמכים יאומתו ידנית על ידי צוות ⁦PetWash™⁩.'
+                      : 'Please check all declarations relevant to your role. Documents will be manually verified by the PetWash™ team.'}
                   </p>
 
                   {/* Driver Declarations (PetTrek) */}
                   {hasProviderType('driver') && (
                     <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-white rounded-lg border border-blue-200 dark:border-blue-800">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-200">
-                        🚗 {isHebrew ? 'הצהרות נהג (PetTrek)' : 'Driver Declarations (PetTrek)'}
+                      <h4 className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                        <Car className="w-4 h-4" aria-hidden="true" />
+                        {isHebrew ? 'הצהרות נהג (PetTrek)' : 'Driver Declarations (PetTrek)'}
                       </h4>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
@@ -1266,8 +1292,9 @@ export default function ProviderOnboarding() {
                   {/* Trainer Declarations (Academy) */}
                   {hasProviderType('trainer') && (
                     <div className="space-y-3 mb-6 p-4 bg-green-50 dark:bg-white rounded-lg border border-green-200 dark:border-green-800">
-                      <h4 className="font-semibold text-green-900 dark:text-green-200">
-                        🎓 {isHebrew ? 'הצהרות מאמן (Academy)' : 'Trainer Declarations (Academy)'}
+                      <h4 className="font-semibold text-green-900 dark:text-green-200 flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4" aria-hidden="true" />
+                        {isHebrew ? 'הצהרות מאמן (Academy)' : 'Trainer Declarations (Academy)'}
                       </h4>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
@@ -1290,8 +1317,9 @@ export default function ProviderOnboarding() {
                   {/* Sitter/Walker Declarations */}
                   {(hasProviderType('walker') || hasProviderType('sitter')) && (
                     <div className="space-y-3 mb-6 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
-                      <h4 className="font-semibold text-pink-900 dark:text-pink-200">
-                        🐕 {isHebrew ? 'הצהרות שמרטף/מטייל' : 'Sitter/Walker Declarations'}
+                      <h4 className="font-semibold text-pink-900 dark:text-pink-200 flex items-center gap-2">
+                        <Footprints className="w-4 h-4" aria-hidden="true" />
+                        {isHebrew ? 'הצהרות שמרטף/מטייל' : 'Sitter/Walker Declarations'}
                       </h4>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
@@ -1313,8 +1341,9 @@ export default function ProviderOnboarding() {
 
                   {/* Universal Declarations (All Roles) */}
                   <div className="space-y-3 p-4 bg-white dark:bg-white/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <h4 className="font-semibold text-gray-900 dark:text-black">
-                      ✅ {isHebrew ? 'הצהרות כלליות (חובה)' : 'General Declarations (Required)'}
+                    <h4 className="font-semibold text-gray-900 dark:text-black flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                      {isHebrew ? 'הצהרות כלליות (חובה)' : 'General Declarations (Required)'}
                     </h4>
 
                     <label className="flex items-start gap-3 cursor-pointer">
@@ -1330,8 +1359,9 @@ export default function ProviderOnboarding() {
 
                   {/* Israel-safe self-declaration (2026 spec). Mandatory.  */}
                   <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-300 dark:border-blue-700">
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-200">
-                      🛡️ {declarationText.title}
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                      <Shield className="w-4 h-4" aria-hidden="true" />
+                      {declarationText.title}
                     </h4>
                     <p className="text-xs text-blue-900 dark:text-blue-200">
                       {declarationText.idRequiredNotice}
@@ -1381,8 +1411,9 @@ export default function ProviderOnboarding() {
 
                     {enhancedVerificationRequired && (
                       <div className="mt-2 p-2 rounded border border-amber-300 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700">
-                        <p className="text-xs text-amber-900 dark:text-amber-200">
-                          ⚠️ {declarationText.enhancedNotice}
+                        <p className="text-xs text-amber-900 dark:text-amber-200 flex items-start gap-1">
+                          <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                          {declarationText.enhancedNotice}
                         </p>
                       </div>
                     )}
@@ -1391,9 +1422,10 @@ export default function ProviderOnboarding() {
                   {/* Legal Notice - Israeli Law Compliance */}
                   <div className="mt-4 p-3 bg-white dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                     <p className="text-xs text-amber-800 dark:text-amber-300">
-                      {isHebrew 
-                        ? '⚖️ הערה משפטית: בהתאם לחוק הגנת הפרטיות בישראל, איננו מבקשים מידע על עבר פלילי באופן ישיר. במקום זאת, אנו מסתמכים על הצהרות עצמיות ואימות מסמכים ידני. לפי סעיף 2 לחוק המרשם הפלילי, אין לדרוש גילוי מידע על הרשעות שנמחקו.'
-                        : '⚖️ Legal Notice: In accordance with Israeli Privacy Protection Law, we do not directly request criminal record information. Instead, we rely on self-declarations and manual document verification. Per Section 2 of the Criminal Registry Law, disclosure of expunged convictions cannot be required.'}
+                      <strong>{isHebrew ? 'הערה משפטית: ' : 'Legal Notice: '}</strong>
+                      {isHebrew
+                        ? 'בהתאם לחוק הגנת הפרטיות בישראל, איננו מבקשים מידע על עבר פלילי באופן ישיר. במקום זאת, אנו מסתמכים על הצהרות עצמיות ואימות מסמכים ידני. לפי סעיף 2 לחוק המרשם הפלילי, אין לדרוש גילוי מידע על הרשעות שנמחקו.'
+                        : 'In accordance with Israeli Privacy Protection Law, we do not directly request criminal record information. Instead, we rely on self-declarations and manual document verification. Per Section 2 of the Criminal Registry Law, disclosure of expunged convictions cannot be required.'}
                     </p>
                   </div>
                 </div>

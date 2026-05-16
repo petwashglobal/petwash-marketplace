@@ -15,13 +15,16 @@ import { FaGoogle } from "react-icons/fa";
 import { PhoneInput } from "@/components/PhoneInput";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
+// PR Phase A: emoji icons removed per CEO §0 (no emojis in professional
+// onboarding). Phase B will introduce Lucide icons for pet types — for
+// now the cards render the label only.
 const PET_TYPES = [
-  { id: "dogs", label: "Dogs", emoji: "🐕" },
-  { id: "cats", label: "Cats", emoji: "🐈" },
-  { id: "rabbits", label: "Rabbits", emoji: "🐇" },
-  { id: "birds", label: "Birds", emoji: "🦜" },
-  { id: "small_animals", label: "Small Animals", emoji: "🐹" },
-  { id: "exotic", label: "Exotic Pets", emoji: "🦎" },
+  { id: "dogs", label: "Dogs", emoji: "" },
+  { id: "cats", label: "Cats", emoji: "" },
+  { id: "rabbits", label: "Rabbits", emoji: "" },
+  { id: "birds", label: "Birds", emoji: "" },
+  { id: "small_animals", label: "Small Animals", emoji: "" },
+  { id: "exotic", label: "Exotic Pets", emoji: "" },
 ];
 
 const HOME_TYPES = [
@@ -185,7 +188,7 @@ export default function JoinAsSitter() {
   const steps = [
     { num: 1, icon: <Heart className="h-4 w-4" />, label: "Personal Info" },
     { num: 2, icon: <Home className="h-4 w-4" />, label: "Your Home" },
-    { num: 3, icon: "🐾", label: "What You Offer" },
+    { num: 3, icon: <Check className="h-4 w-4" />, label: "What You Offer" },
     { num: 4, icon: <DollarSign className="h-4 w-4" />, label: "Pricing & Legal" },
   ];
 
@@ -391,9 +394,9 @@ export default function JoinAsSitter() {
                 <Label className="mb-3 block">Services You Offer</Label>
                 <div className="space-y-3">
                   {[
-                    { field: "overnightAccepted", label: "Overnight Boarding", desc: "Pets stay with you overnight (24h)", emoji: "🌙" },
-                    { field: "dropInAccepted", label: "Drop-In Visits", desc: "Short visits to pet's home", emoji: "🏠" },
-                    { field: "daycareAccepted", label: "Doggy Daycare", desc: "Pets stay during the day while owners work", emoji: "☀️" },
+                    { field: "overnightAccepted", label: "Overnight Boarding", desc: "Pets stay with you overnight (24h)", emoji: "" },
+                    { field: "dropInAccepted", label: "Drop-In Visits", desc: "Short visits to pet's home", emoji: "" },
+                    { field: "daycareAccepted", label: "Doggy Daycare", desc: "Pets stay during the day while owners work", emoji: "" },
                   ].map(item => (
                     <label key={item.field} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${form[item.field as keyof typeof form] ? "border-purple-500 bg-purple-50" : "border-slate-200 hover:border-purple-300"}`}>
                       <span className="text-2xl">{item.emoji}</span>
