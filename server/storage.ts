@@ -235,6 +235,11 @@ export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  // PR-Z1.6: identity dedup — find users matching (idNumber, dateOfBirth).
+  // Prevents one person from creating multiple accounts under the same
+  // identity (loyalty farming, KYC dodging). Returns array because caller
+  // filters out the requesting user's own record.
+  findUsersByIdAndDob(idNumber: string, dateOfBirth: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   createManualUser(userData: any): Promise<User>;
@@ -970,6 +975,21 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  // PR-Z1.6: Identity dedup query. Returns users matching idNumber + DOB.
+  // Caller is responsible for filtering out the requesting user's own record.
+  // dateOfBirth is stored as Date or null in PG; we compare on the date part.
+  async findUsersByIdAndDob(idNumber: string, dateOfBirth: string): Promise<User[]> {
+    if (!idNumber || !dateOfBirth) return [];
+    const dob = new Date(dateOfBirth);
+    if (isNaN(dob.getTime())) return [];
+    const matches = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.idNumber, idNumber), eq(users.dateOfBirth, dob)))
+      .limit(5);
+    return matches;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {

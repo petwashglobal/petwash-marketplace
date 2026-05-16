@@ -236,6 +236,65 @@ export async function postLoginDecider(req: Request, res: Response) {
       }
     }
 
+    // PR-Z1.6: Server-side identity validation (defense in depth).
+    // Fires only when the signup form actually submits these fields; returning
+    // post-login calls with empty body skip these checks.
+    //
+    // 1) 18+ age check — CEO directive 2026-05-16 "הרשמה מגיל 18 בלבד".
+    //    Client also validates (PR-Z1.5), but server enforcement is the
+    //    real gate. Reject under-18 with 400 UNDERAGE.
+    //
+    // 2) Identity dedup on (idNumber, dateOfBirth) — EL AL frequent-flyer
+    //    pattern. Prevents one person from creating multiple accounts under
+    //    the same identity (loyalty farming, KYC dodging, double-claim of
+    //    referral bonuses, etc.). Reject with 409 DUPLICATE_IDENTITY.
+    const z16Body = req.body || {};
+    const z16Dob = typeof z16Body.dateOfBirth === 'string' ? z16Body.dateOfBirth : null;
+    const z16IdNumber = typeof z16Body.idNumber === 'string' ? z16Body.idNumber.trim() : null;
+
+    if (z16Dob) {
+      const dobDate = new Date(z16Dob);
+      if (!isNaN(dobDate.getTime())) {
+        const today = new Date();
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const m = today.getMonth() - dobDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          logger.warn('[PostLogin] UNDERAGE rejected', { userId, age });
+          return res.status(400).json({
+            error: 'UNDERAGE',
+            message: 'Registration is restricted to users aged 18 and over.',
+          });
+        }
+      }
+    }
+
+    if (z16IdNumber && z16Dob && z16IdNumber.length >= 5) {
+      try {
+        const matches = await storage.findUsersByIdAndDob(z16IdNumber, z16Dob);
+        const conflict = matches.find((u: any) => u.id !== userId);
+        if (conflict) {
+          // Privacy-respecting: never reveal the conflicting account's email
+          // or any other PII. Just say "an account exists" + recovery path.
+          logger.warn('[PostLogin] DUPLICATE_IDENTITY detected', {
+            attemptingUserId: userId,
+            // Do NOT log the conflict's email or full ID number.
+          });
+          return res.status(409).json({
+            error: 'DUPLICATE_IDENTITY',
+            message: 'An account already exists with this identity. Please sign in to your existing account, or use the password-recovery flow.',
+          });
+        }
+      } catch (dedupErr) {
+        // Fail-soft: dedup errors should not block legitimate signups.
+        // Log + continue. A small window of duplicate accounts is preferable
+        // to a hard outage on signup.
+        logger.error('[PostLogin] Identity dedup query failed (non-blocking)', { error: String(dedupErr) });
+      }
+    }
+
     // Canonical cross-store sync: if termsAcceptedAt is missing in PostgreSQL,
     // check Firestore for acceptedTerms/consentTimestamp (set during registration)
     // and backfill the PostgreSQL field. This covers all sign-in entry methods.
