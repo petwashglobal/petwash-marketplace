@@ -264,9 +264,13 @@ const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
 const TrainerBookings = lazy(() => import("@/pages/academy/TrainerBookings"));
 
 // Provider Join Flows — platform-specific application forms
-const JoinAsWalker = lazy(() => import("@/pages/join/JoinAsWalker"));
-const JoinAsSitter = lazy(() => import("@/pages/join/JoinAsSitter"));
-const JoinAsTrainer = lazy(() => import("@/pages/join/JoinAsTrainer"));
+// /join/{walker,sitter,trainer} components deleted 2026-05-17 — they were
+// non-functional dead-end forms (missing OTP verification, self-declaration
+// checkbox, document uploads — all required by the canonical submit
+// endpoint /api/provider-onboarding/apply). Users hit a generic 400 error
+// on submit with no recovery path. Routes 302-redirect to the canonical
+// /provider-onboarding?role=X surface. Same pattern Phase A applied to
+// /apply-provider and /join-team.
 
 // Contractor Dashboard - 2026 Lifecycle Management
 const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
@@ -1272,27 +1276,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* Provider Join Flows — dedicated platform-specific application forms */}
+        {/* Provider join flows: 302-redirect to canonical /provider-onboarding.
+            The dedicated forms were non-functional (missing OTP, self-declaration,
+            document upload) — they hit /api/provider-onboarding/apply and got
+            generic 400 errors. Inbound links (social, banner CTAs, business
+            cards) keep working; canonical surface handles all roles via
+            multi-select provider type. */}
         <Route path="/join/walker">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <JoinAsWalker />
-            </Suspense>
-          )}
+          {() => <Redirect to="/provider-onboarding?role=walker" />}
         </Route>
         <Route path="/join/sitter">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <JoinAsSitter />
-            </Suspense>
-          )}
+          {() => <Redirect to="/provider-onboarding?role=sitter" />}
         </Route>
         <Route path="/join/trainer">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <JoinAsTrainer />
-            </Suspense>
-          )}
+          {() => <Redirect to="/provider-onboarding?role=trainer" />}
         </Route>
 
         {/* Provider Matching Flow — luxury real-time matching experience */}
