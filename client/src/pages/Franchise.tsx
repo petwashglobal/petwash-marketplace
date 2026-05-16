@@ -299,11 +299,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                   </h3>
                   
                   <div className="grid md:grid-cols-3 gap-6">
-                    {[
-                      { name: 'James Anderson', location: 'Toronto, Canada', revenue: '$18K CAD/mo', thumbnail: '🇨🇦' },
-                      { name: 'Emily Roberts', location: 'Sydney, Australia', revenue: '$19K AUD/mo', thumbnail: '🇦🇺' },
-                      { name: 'David Williams', location: 'London, England', revenue: '£14K GBP/mo', thumbnail: '🇬🇧' }
-                    ].filter(() => false).map((video, idx) => (
+                    {([] as Array<{ name: string; location: string; revenue: string; thumbnail: string }>).map((video, idx) => (
                       <Button
                         key={idx}
                         onClick={() => {
@@ -652,13 +648,9 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                             <span className="text-gray-600 dark:text-gray-400">Power:</span>
                             <span className="font-semibold text-gray-900 dark:text-black">208-240V / 16A</span>
                           </div>
-                          <div className="flex justify-between border-b border-gray-200/50 dark:border-gray-700/50 pb-2">
+                          <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">Water Usage:</span>
                             <span className="font-semibold text-gray-900 dark:text-black">10 L/min (2.64 GPM)</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">CSA Approved:</span>
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">✓ Certified</span>
                           </div>
                         </div>
                       </div>
