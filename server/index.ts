@@ -571,6 +571,13 @@ app.use((req, res, next) => {
 // --- 2026 HEALTH MONITORING (Cloud Run Production Standard) ---
 let serverReady = false;
 
+// PR-HEALTH-READY: sanitized startup phase label exposed via /api/health.
+// Pure label — never carries error content, env names, or secret values.
+// Transitions: booting → loading_routes → registering_routes → ready
+//                       (or → failed on caught exception, no detail exposed)
+let startupPhase: 'booting' | 'loading_routes' | 'registering_routes' | 'ready' | 'failed' = 'booting';
+const bootEpochMs = Date.now();
+
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let t: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -723,13 +730,23 @@ app.get('/health/strict', (_req, res) => {
 app.get('/api/health', async (_req, res) => {
   const db = await checkDbOnce();
   const status = db.ok ? 'OK' : 'DEGRADED';
-  // Expose only safe, non-sensitive state fields. startupError/startupErrorAt are
-  // intentionally omitted here — they may contain internal paths or error messages
-  // that should not be visible without authentication.
+  const traceId = crypto.randomUUID();
+  // PR-HEALTH-READY: sanitized fields only. NO startupError.message, NO
+  // stack traces, NO env var names, NO secret names, NO DB / provider keys.
+  // Pure boolean + label state — see startupPhase typedef for the closed
+  // enum surface. K_REVISION is set by Cloud Run automatically (revision
+  // name, public-safe).
   res.status(200).json({
     status,
     timestamp: new Date().toISOString(),
     checks: { db: { ok: db.ok, ms: db.ms } },
+    routesReady: !!healthState.app.routesReady,
+    serverReady,
+    startupPhase,
+    bootTs: healthState.bootTs,
+    uptimeSec: Math.floor((Date.now() - bootEpochMs) / 1000),
+    traceId,
+    revision: process.env.K_REVISION || null,
     state: {
       bootTs: healthState.bootTs,
       app: { ok: healthState.app.ok, routesReady: healthState.app.routesReady },
@@ -1027,8 +1044,10 @@ if (isProduction) {
     // on a cold start. The race silently tripped the catch block, left routesReady=false and
     // serverReady=false, making every non-health route return 503 indefinitely.
     console.log('[Server] Loading routes module (dynamic import)...');
+    startupPhase = 'loading_routes';
     const { registerRoutes } = await import("./routes");
     console.log('[Server] Routes module loaded, registering routes...');
+    startupPhase = 'registering_routes';
     await registerRoutes(app);
     healthState.app.routesReady = true;
 
@@ -1055,6 +1074,7 @@ if (isProduction) {
     // on a Cloud Run cold start, causing the smoke test to time out.
     if (isProduction) {
       serverReady = true;
+      startupPhase = 'ready';
       console.log('✅ [Server] Routes ready — startup guard lifted (background init continues)');
     }
 
@@ -1427,6 +1447,7 @@ if (isProduction) {
     if (isProduction) {
       console.error('⚠️ [Production] Keeping server alive for health checks — routesReady=false, all API routes may return 503');
       serverReady = false;
+      startupPhase = 'failed';
     } else {
       process.exit(1);
     }
