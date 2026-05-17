@@ -578,6 +578,13 @@ let serverReady = false;
 let startupPhase: 'booting' | 'loading_routes' | 'registering_routes' | 'ready' | 'failed' = 'booting';
 const bootEpochMs = Date.now();
 
+// PR-HEALTH-READY-2: when startupPhase transitions to 'failed' in the catch
+// block, capture WHICH phase we were in at the moment of catch + the error
+// constructor name only. NEVER the message / stack / code (those can leak
+// internal paths or secret-derived text). Pure diagnostic labels.
+let failedAtPhase: 'loading_routes' | 'registering_routes' | null = null;
+let errorKind: string | null = null;
+
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let t: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -743,6 +750,8 @@ app.get('/api/health', async (_req, res) => {
     routesReady: !!healthState.app.routesReady,
     serverReady,
     startupPhase,
+    failedAtPhase,
+    errorKind,
     bootTs: healthState.bootTs,
     uptimeSec: Math.floor((Date.now() - bootEpochMs) / 1000),
     traceId,
@@ -1447,6 +1456,14 @@ if (isProduction) {
     if (isProduction) {
       console.error('⚠️ [Production] Keeping server alive for health checks — routesReady=false, all API routes may return 503');
       serverReady = false;
+      // PR-HEALTH-READY-2: capture failure phase + error kind for sanitized
+      // diagnostic exposure on /api/health. NO message, NO stack, NO code.
+      if (startupPhase === 'loading_routes' || startupPhase === 'registering_routes') {
+        failedAtPhase = startupPhase;
+      }
+      errorKind = (error instanceof Error && error.constructor && typeof error.constructor.name === 'string')
+        ? error.constructor.name
+        : 'Unknown';
       startupPhase = 'failed';
     } else {
       process.exit(1);
