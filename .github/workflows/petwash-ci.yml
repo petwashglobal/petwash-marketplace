@@ -56,9 +56,23 @@ jobs:
           # Production-shaped env (DUMMY values — never real secrets).
           # If a production env var is required at module load and not in this
           # list, this test will surface it and the gate fails closed.
+          # ALL VALUES BELOW ARE SMOKE-TEST DUMMIES — NEVER REAL CREDENTIALS.
+          # Every value here is clearly labeled "smoke-dummy-..." so a future
+          # reader cannot mistake them for production keys. Production secrets
+          # live in GCP Secret Manager and are mapped by deploy-backend below,
+          # not by this gate job. Auto-detected required env vars are listed
+          # in docs/PRODUCTION_REQUIRED_ENV_VARS.md — the audit gate (sibling
+          # job) keeps that file in sync with the source tree.
           NODE_ENV: production
           NAYAX_ENABLED: 'false'
           PAYMENT_PROVIDER_MODE: mock
+          # Module-load REQUIRED (per audit ⚠️ MODULE_LOAD tag) — server fails
+          # to import server/routes.ts without these. Both verified locally.
+          SENDGRID_FROM_EMAIL: noreply@petwash.invalid
+          STATION_KEYS: '{"smoke-dummy-station":"smoke-dummy-station-key"}'
+          # Function-body REQUIRED (REQUIRED but not MODULE_LOAD) — these throw
+          # only when the specific feature is exercised at runtime. Setting
+          # them here keeps the smoke test aligned with production env shape.
           WALLET_LINK_SECRET: smoke-dummy-walletlinksecret-do-not-use
           PRESTIGE_QR_SECRET: smoke-dummy-prestige-do-not-use-this-value-anywhere
           PASS_LINK_SECRET: smoke-dummy-passlink-do-not-use
@@ -67,11 +81,13 @@ jobs:
           COOKIE_SECRET: smoke-dummy-cookie-secret-do-not-use
           IP_HASH_SALT: smoke-dummy-ip-hash-salt
           KYC_SALT: smoke-dummy-kyc-salt
-          TREASURY_FIELD_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          DOCUMENT_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          # Encryption-key dummies — note "smoke-dummy-" comment label for clarity.
+          # The hex format is required by the consuming code; the value is fake.
+          TREASURY_FIELD_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  # smoke-dummy-treasury-key
+          DOCUMENT_ENCRYPTION_KEY:       0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  # smoke-dummy-document-key
           MACHINE_SECRET_KEY: smoke-dummy-machine-secret
-          ADMIN_NOTIFICATION_EMAIL: smoke@example.invalid
-          SENDGRID_FROM_EMAIL: noreply@petwash.co.il
+          # Misc REQUIRED / commonly-read vars
+          ADMIN_NOTIFICATION_EMAIL: smoke@petwash.invalid
           DATABASE_URL: postgresql://x:x@localhost/x
           SMOKE_TIMEOUT_MS: '90000'
           SMOKE_BOOT_THRESHOLD_MS: '60000'
@@ -1252,14 +1268,94 @@ jobs:
           REV_NAME="${{ steps.revision.outputs.revision_name }}"
 
           echo "🚦 Promoting $REV_NAME to 100% traffic on $SVC ($REGION)"
-          gcloud run services update-traffic "$SVC" \
-            --region "$REGION" --project "$PROJECT" \
-            --to-latest \
-            --quiet
 
-          echo "✅ Traffic promoted to latest revision: $REV_NAME"
+          # PR-STARTUP-HARDEN-1 / Infra-Council C2 — retry on optimistic-concurrency
+          # 409. Two deploys today failed with "Conflict for resource ... version
+          # was specified but current version is ..." when something else (manual
+          # console edit, another gcloud call) bumped the service generation
+          # between our read and write. Workflow-level concurrency does NOT
+          # protect us from this — it's a Cloud Run API-level race.
+          MAX_ATTEMPTS=4
+          ATTEMPT=1
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            if gcloud run services update-traffic "$SVC" \
+                  --region "$REGION" --project "$PROJECT" \
+                  --to-latest \
+                  --quiet 2> /tmp/update-traffic.err; then
+              echo "✅ Traffic promoted to latest revision: $REV_NAME (attempt $ATTEMPT)"
+              break
+            fi
+            # Inspect stderr — only retry on optimistic-concurrency conflict
+            if grep -qE "Conflict|version was specified|etag" /tmp/update-traffic.err; then
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                DELAY=$((2 ** (ATTEMPT - 1)))
+                echo "⚠️  409 version conflict — retrying in ${DELAY}s (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+                cat /tmp/update-traffic.err
+                sleep "$DELAY"
+                ATTEMPT=$((ATTEMPT + 1))
+                continue
+              fi
+              echo "❌ Traffic promotion still failed after $MAX_ATTEMPTS attempts"
+              cat /tmp/update-traffic.err
+              exit 1
+            fi
+            # Any other failure — surface and exit
+            echo "❌ Traffic promotion failed with non-conflict error"
+            cat /tmp/update-traffic.err
+            exit 1
+          done
+
           echo "   Tagged candidate URL remains accessible for verification:"
           echo "   ${{ steps.revision.outputs.candidate_url }}"
+
+      # PR-STARTUP-HARDEN-1 / Infra-Council C3 — post-deploy health verification.
+      # The smoke-test gate catches module-load throws BEFORE deploy, but cannot
+      # catch issues that surface only with real Cloud Run env + service-account
+      # IAM (e.g. malformed FIREBASE_SERVICE_ACCOUNT_KEY value, real DATABASE_URL
+      # unreachable, ADC role missing). Poll /api/health on the live URL until
+      # startupPhase="ready" or timeout — fail the deploy if not ready in time.
+      - name: Verify revision health on live URL (post-deploy)
+        env:
+          # Public health endpoint, served by the just-promoted revision.
+          # Uses petwash.co.il custom domain (the production-facing URL) since
+          # that is what real users will hit. If the custom domain points at a
+          # stale revision after promotion, this catches it.
+          HEALTH_URL: https://petwash.co.il/api/health
+          MAX_WAIT_SECONDS: '180'
+          POLL_INTERVAL_SECONDS: '5'
+          EXPECTED_REVISION: ${{ steps.revision.outputs.revision_name }}
+        run: |
+          set +e
+          deadline=$(( $(date +%s) + MAX_WAIT_SECONDS ))
+          last_phase=""
+          last_revision=""
+          while [ $(date +%s) -lt $deadline ]; do
+            body=$(curl -s --max-time 10 "$HEALTH_URL" || echo '{}')
+            phase=$(printf '%s' "$body" | jq -r '.startupPhase // empty' 2>/dev/null)
+            revision=$(printf '%s' "$body" | jq -r '.revision // empty' 2>/dev/null)
+            routes_ready=$(printf '%s' "$body" | jq -r '.routesReady // empty' 2>/dev/null)
+            server_ready=$(printf '%s' "$body" | jq -r '.serverReady // empty' 2>/dev/null)
+            last_phase="$phase"
+            last_revision="$revision"
+            if [ "$revision" = "$EXPECTED_REVISION" ] \
+               && [ "$phase" = "ready" ] \
+               && [ "$routes_ready" = "true" ] \
+               && [ "$server_ready" = "true" ]; then
+              echo "✅ Health check passed — revision $revision is serving ready"
+              echo "$body" | jq .
+              exit 0
+            fi
+            echo "   waiting … revision=$revision phase=$phase routes=$routes_ready server=$server_ready"
+            sleep "$POLL_INTERVAL_SECONDS"
+          done
+          echo "❌ Revision did not reach ready state within ${MAX_WAIT_SECONDS}s"
+          echo "   Last observed revision:  $last_revision"
+          echo "   Last observed phase:     $last_phase"
+          echo "   Expected revision:       $EXPECTED_REVISION"
+          echo ""
+          echo "   Last health body:"
+          curl -s --max-time 10 "$HEALTH_URL" | jq . || echo "(curl failed)"
+          exit 1
 
       # Issue #143 — failure path: dump diagnostics from inside GitHub Actions
       # so operators don't need to switch to the GCP console to triage. CRITICAL:

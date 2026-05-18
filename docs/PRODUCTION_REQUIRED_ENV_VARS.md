@@ -6,15 +6,24 @@
 
 Generated date: 2026-05-18
 Scanned files (server/): 789
-Variables found: 316  (REQUIRED 38 · WARN 6 · OPTIONAL 272)
+Variables found: 316  (REQUIRED 8 · WARN 8 · OPTIONAL 300)
 
 ## Definitions
 
-- **REQUIRED** — at least one read site has a `throw new Error` guard nearby. Production will crash if this var is missing AND any guard fires.
+- **REQUIRED** — at least one read site has a tight falsy-check + `throw new Error` guard. The feature that calls into that guard cannot operate without this var.
 - **WARN** — at least one read site logs a warning if missing. Feature degrades, server still boots.
 - **OPTIONAL** — read sites use a fallback (`||`, `??`) or do not guard.
-- **MODULE_LOAD scope** — fires at `import` time (top-level). High blast radius.
-- **FUNCTION_BODY scope** — fires only when the function is called. Low blast radius.
+- **MODULE_LOAD scope** — the env-var read is at top-level (brace depth 0). Fires at `import` time.
+- **FUNCTION_BODY scope** — the env-var read is inside a function/method. Fires only when called.
+- **⚠️ MODULE_LOAD tag** — added ONLY when a REQUIRED guard exists at MODULE_LOAD scope. These are the high-blast-radius ones: missing the var crashes the entire server at import. The tag is NOT added when REQUIRED applies only at function-body scope, even if some other read site reads the var at module load (e.g. a `console.log` presence check).
+
+## Semantic notes
+
+Some vars classify REQUIRED but degrade gracefully at boot — they only fail at first feature invocation:
+- `WALLET_LINK_SECRET` — wallet redemption fails clearly when missing (PR #317 made the check lazy).
+- `JWT_SECRET` / `JWT_REFRESH_SECRET` — auth-route poison pill in production; throws only in non-production at first auth call.
+- `FIREBASE_SERVICE_ACCOUNT_KEY` — OPTIONAL since Cloud Run ADC fallback was adopted. The throw fires only if the var is SET but unparseable, not if absent.
+Only vars with the ⚠️ MODULE_LOAD tag must be mapped in Cloud Run env before deploy.
 
 ## Pre-deploy verification
 
@@ -25,36 +34,9 @@ Before deploying to Cloud Run, every REQUIRED var in the table below must be:
 
 A REQUIRED var that fires at MODULE_LOAD scope is the highest priority — those are the ones that take down the whole server, not just one feature.
 
-## REQUIRED (38)
+## REQUIRED (8)
 
-### ADMIN_NOTIFICATION_EMAIL ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/ai-feature-approval.ts | 38 | MODULE_LOAD | `const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL \|\| (() => {` |
-| server/routes.ts | 5293 | FUNCTION_BODY | `const email = customerEmail \|\| process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'test@internal.invalid';` |
-| server/routes.ts | 12637 | FUNCTION_BODY | `const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'admin@petwash.co.il';` |
-
-Guard line example:
-
-```ts
-throw new Error('ADMIN_NOTIFICATION_EMAIL env var must be set in production');
-```
-
-### ALLOW_SELF_BOOKING
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes/marketplace-bookings.ts | 337 | FUNCTION_BODY | `if (quote.providerId && userId === quote.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
-| server/services/BookingLifecycleService.ts | 298 | FUNCTION_BODY | `if (input.customerId === input.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
-
-Guard line example:
-
-```ts
-throw new Error('Self-booking is not permitted: customer and provider cannot be the same user');
-```
-
-### COOKIE_SECRET ⚠️ MODULE_LOAD
+### COOKIE_SECRET
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
@@ -76,77 +58,7 @@ Guard line example:
 if (!secret) throw new Error('Email verification secret not configured — set JWT_SECRET');
 ```
 
-### DOCUMENT_ENCRYPTION_KEY
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/document-security-2025.ts | 419 | FUNCTION_BODY | `const key = process.env.DOCUMENT_ENCRYPTION_KEY;` |
-| server/routes/bank.ts | 23 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
-| server/routes/bank.ts | 41 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
-| server/routes/contractor-onboarding.ts | 34 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
-| server/routes/provider-intake.ts | 27 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
-| server/routes/provider-onboarding.ts | 58 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
-
-Guard line example:
-
-```ts
-throw new Error('DOCUMENT_ENCRYPTION_KEY must be set in production');
-```
-
-### FINANCE_AUTHORIZED_EMAILS
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes/bank.ts | 83 | FUNCTION_BODY | `const raw = process.env.FINANCE_AUTHORIZED_EMAILS;` |
-
-Guard line example:
-
-```ts
-throw new Error('FATAL: FINANCE_AUTHORIZED_EMAILS environment variable is required in production');
-```
-
-### FIREBASE_API_KEY ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/security/productionHardeningAndOneTap.ts | 42 | MODULE_LOAD | `const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| "";` |
-
-Guard line example:
-
-```ts
-if (!MOBILE_LINK_SECRET) throw new Error("MOBILE_LINK_SECRET not set");
-```
-
-### FIREBASE_AUTH_DOMAIN ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/security/productionHardeningAndOneTap.ts | 43 | MODULE_LOAD | `const FIREBASE_AUTH_DOMAIN = process.env.FIREBASE_AUTH_DOMAIN \|\| process.env.VITE_FIREBASE_AUTH_DOMAIN \|\| "";` |
-
-Guard line example:
-
-```ts
-if (!MOBILE_LINK_SECRET) throw new Error("MOBILE_LINK_SECRET not set");
-```
-
-### FIREBASE_PROJECT_ID ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/infra/biometricStorage.ts | 14 | MODULE_LOAD | `const PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "signinpetwash";` |
-| server/lib/firebase-admin.ts | 5 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| 'signinpetwas` |
-| server/lib/verifyCaptcha.ts | 23 | MODULE_LOAD | `(process.env.FIREBASE_PROJECT_ID \|\| '').trim() \|\|` |
-| server/routes.ts | 15537 | FUNCTION_BODY | `process.env.FIREBASE_PROJECT_ID \|\|` |
-| server/routes/recaptcha.ts | 23 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| 'signinpetwash';` |
-| server/security/productionHardeningAndOneTap.ts | 44 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "";` |
-
-Guard line example:
-
-```ts
-if (!MOBILE_LINK_SECRET) throw new Error("MOBILE_LINK_SECRET not set");
-```
-
-### FIREBASE_SERVICE_ACCOUNT_KEY ⚠️ MODULE_LOAD
+### FIREBASE_SERVICE_ACCOUNT_KEY
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
@@ -191,53 +103,7 @@ Guard line example:
 throw new Error(
 ```
 
-### FIREBASE_WEB_API_KEY
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes.ts | 15540 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
-| server/routes/identity-service.ts | 182 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY;` |
-
-Guard line example:
-
-```ts
-throw new Error("Firebase API key missing - set FIREBASE_WEB_API_KEY environment variable");
-```
-
-### GMAIL_TOKEN_ENCRYPTION_KEY
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes/gmail.ts | 11 | FUNCTION_BODY | `const keyEnv = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;` |
-| server/routes/gmail.ts | 27 | FUNCTION_BODY | `const keyEnv = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;` |
-
-Guard line example:
-
-```ts
-if (parts.length !== 5) throw new Error('Invalid encrypted token format');
-```
-
-### GOOGLE_APPLICATION_CREDENTIALS
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/lib/gemini-client.ts | 36 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS = SA_CREDS_PATH;` |
-| server/routes.ts | 12893 | FUNCTION_BODY | `const hasCredentialsEnv = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
-| server/routes/luxury-documents.ts | 90 | FUNCTION_BODY | `const credentialsSource = process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
-| server/services/BiometricVerificationService.ts | 53 | FUNCTION_BODY | `if (process.env.GOOGLE_APPLICATION_CREDENTIALS \|\| process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
-| server/services/gcsBackupService.ts | 32 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS \|\|` |
-| server/services/gcsBackupService.ts | 355 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS \|\|` |
-| server/services/ImmutableStampService.ts | 28 | FUNCTION_BODY | `if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY \|\| process.env.GOOGLE_APPLICATION_CREDENTIALS) {` |
-| server/services/K9000TransactionService.ts | 30 | FUNCTION_BODY | `if (process.env.GOOGLE_APPLICATION_CREDENTIALS \|\| process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
-| server/services/KYC2026/KYCMemoryProcessor.ts | 80 | FUNCTION_BODY | `if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY \|\| process.env.GOOGLE_APPLICATION_CREDENTIALS) {` |
-
-Guard line example:
-
-```ts
-throw new Error('[GCS] No Google credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON in Replit Secrets.');
-```
-
-### GOOGLE_APPLICATION_CREDENTIALS_JSON ⚠️ MODULE_LOAD
+### GOOGLE_APPLICATION_CREDENTIALS_JSON
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
@@ -256,74 +122,10 @@ throw new Error('[GCS] No Google credentials found. Set GOOGLE_APPLICATION_CREDE
 Guard line example:
 
 ```ts
-throw new Error('[GCS] No Google credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON in Replit Secrets.');
+throw new Error('Google service account credentials not configured for production');
 ```
 
-### GOOGLE_SERVICE_ACCOUNT_JSON ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/lib/verifyCaptcha.ts | 60 | FUNCTION_BODY | `{ raw: process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| '', label: 'GOOGLE_SERVICE_ACCOUNT_JSON' },` |
-| server/routes/captcha-probe.ts | 306 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON,` |
-| server/routes/globalForms.ts | 702 | FUNCTION_BODY | `googleSheetsEnabled: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,` |
-| server/routes/recaptcha.ts | 114 | FUNCTION_BODY | `(process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| '').trim().startsWith('{') \|\|` |
-| server/routes/recaptcha.ts | 172 | FUNCTION_BODY | `(process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| '').trim().startsWith('{') \|\|` |
-| server/services/AiChatService.ts | 17 | FUNCTION_BODY | `if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {` |
-| server/services/AiChatService.ts | 18 | FUNCTION_BODY | `googleCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);` |
-| server/services/BookingExportService.ts | 19 | MODULE_LOAD | `const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;` |
-| server/services/CalendarIntegrationService.ts | 38 | FUNCTION_BODY | `const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;` |
-| server/services/DriveArchivalService.ts | 69 | FUNCTION_BODY | `const saJson = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '').trim();` |
-| server/services/gcsBackupService.ts | 31 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
-| server/services/gcsBackupService.ts | 354 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
-| server/services/GoogleCalendarIntegrationService.ts | 25 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
-| server/services/googleSheetsIntegration.ts | 258 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
-| server/services/GoogleWalletService.ts | 27 | MODULE_LOAD | `const SA_RAW       = process.env.GOOGLE_WALLET_SA_KEY \|\| process.env.GOOGLE_SERVICE_ACCOUNT_JSON;` |
-
-Guard line example:
-
-```ts
-throw new Error('[GCS] No Google credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON in Replit Secrets.');
-```
-
-### IP_HASH_SALT
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/services/AuthEventService.ts | 125 | FUNCTION_BODY | `const SALT = process.env.IP_HASH_SALT;` |
-
-Guard line example:
-
-```ts
-throw new Error('[AuthEventService] FATAL: IP_HASH_SALT is required in production');
-```
-
-### ISRAELI_TAX_API_CLIENT_ID
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/services/IsraeliTaxAuthorityAPI.ts | 110 | FUNCTION_BODY | `const clientId = process.env.ISRAELI_TAX_API_CLIENT_ID;` |
-| server/services/IsraeliTaxAuthorityAPI.ts | 310 | FUNCTION_BODY | `process.env.ISRAELI_TAX_API_CLIENT_ID &&` |
-
-Guard line example:
-
-```ts
-throw new Error('Israeli Tax Authority API credentials not configured. Please set ISRAELI_TAX_API_CLIENT_ID and ISRAELI_TAX_API_CLIENT_SECRET environment secrets.');
-```
-
-### ISRAELI_TAX_API_CLIENT_SECRET
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/services/IsraeliTaxAuthorityAPI.ts | 111 | FUNCTION_BODY | `const clientSecret = process.env.ISRAELI_TAX_API_CLIENT_SECRET;` |
-| server/services/IsraeliTaxAuthorityAPI.ts | 311 | FUNCTION_BODY | `process.env.ISRAELI_TAX_API_CLIENT_SECRET` |
-
-Guard line example:
-
-```ts
-throw new Error('Israeli Tax Authority API credentials not configured. Please set ISRAELI_TAX_API_CLIENT_ID and ISRAELI_TAX_API_CLIENT_SECRET environment secrets.');
-```
-
-### JWT_SECRET ⚠️ MODULE_LOAD
+### JWT_SECRET
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
@@ -344,18 +146,6 @@ Guard line example:
 if (!secret) throw new Error('Email verification secret not configured — set JWT_SECRET');
 ```
 
-### K9000_WASH_PRICE ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/nayaxFirestoreService.ts | 137 | MODULE_LOAD | `const K9000_WASH_PRICE = parseFloat(process.env.K9000_WASH_PRICE \|\| '50'); // Default wash price in ILS` |
-
-Guard line example:
-
-```ts
-throw new Error('STATION_KEYS environment variable is required for K9000 station authentication');
-```
-
 ### KYC_SALT
 
 | File | Line | Scope | Context |
@@ -371,45 +161,82 @@ Guard line example:
 throw new Error('KYC_SALT environment variable not set');
 ```
 
-### META_WHATSAPP_ACCESS_TOKEN
+### SENDGRID_FROM_EMAIL ⚠️ MODULE_LOAD
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/services/WhatsAppMetaService.ts | 50 | FUNCTION_BODY | `const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;` |
-| server/services/WhatsAppService.ts | 12 | FUNCTION_BODY | `private static readonly ACCESS_TOKEN = process.env.META_WHATSAPP_ACCESS_TOKEN;` |
+| server/jobs/daily-close-reminder.ts | 149 | FUNCTION_BODY | `from:    process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',` |
+| server/jobs/daily-close-reminder.ts | 452 | FUNCTION_BODY | `from: process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',` |
+| server/lib/notificationDispatcher.ts | 51 | MODULE_LOAD | `if (process.env.NODE_ENV === 'production' && !process.env.SENDGRID_FROM_EMAIL) {` |
+| server/lib/notificationDispatcher.ts | 54 | MODULE_LOAD | `const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'noreply@petwash.co.il';` |
+| server/lib/passTokens.ts | 149 | FUNCTION_BODY | `email: process.env.SENDGRID_FROM_EMAIL \|\| 'support@petwash.co.il',` |
 
 Guard line example:
 
 ```ts
-throw new Error(
+throw new Error('[notificationDispatcher] SENDGRID_FROM_EMAIL env var is required in production');
 ```
 
-### META_WHATSAPP_BUSINESS_PHONE
+### STATION_KEYS ⚠️ MODULE_LOAD
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/services/WhatsAppMetaService.ts | 52 | FUNCTION_BODY | `const businessPhone = process.env.META_WHATSAPP_BUSINESS_PHONE \|\| CANONICAL_SUPPORT_PHONE;` |
+| server/nayaxFirestoreService.ts | 140 | MODULE_LOAD | `if (!process.env.STATION_KEYS) {` |
+| server/nayaxFirestoreService.ts | 144 | MODULE_LOAD | `const STATION_KEYS: Record<string, string> = JSON.parse(process.env.STATION_KEYS);` |
 
 Guard line example:
 
 ```ts
-throw new Error(
+throw new Error('STATION_KEYS environment variable is required for K9000 station authentication');
 ```
 
-### META_WHATSAPP_PHONE_NUMBER_ID
+### WALLET_LINK_SECRET
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/services/WhatsAppMetaService.ts | 51 | FUNCTION_BODY | `const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;` |
-| server/services/WhatsAppService.ts | 11 | FUNCTION_BODY | `private static readonly PHONE_NUMBER_ID = process.env.META_WHATSAPP_PHONE_NUMBER_ID;` |
+| server/lib/walletPassToken.ts | 8 | MODULE_LOAD | `const WALLET_TOKEN_SECRET = process.env.WALLET_LINK_SECRET \|\| process.env.COOKIE_SECRET;` |
+| server/routes/wallet.ts | 26 | MODULE_LOAD | `const WALLET_LINK_SECRET = process.env.WALLET_LINK_SECRET;` |
+| server/services/WalletService.ts | 19 | FUNCTION_BODY | `const secret = process.env.WALLET_LINK_SECRET;` |
 
 Guard line example:
 
 ```ts
-throw new Error(
+throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 ```
 
-### NODE_ENV ⚠️ MODULE_LOAD
+## WARN (8)
+
+### ADMIN_APPROVER_EMAIL
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes/post-login.ts | 12 | MODULE_LOAD | `const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL \|\| '';` |
+| server/routes/post-login.ts | 13 | MODULE_LOAD | `if (!process.env.ADMIN_APPROVER_EMAIL) {` |
+
+### ALLOW_SELF_BOOKING
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes/marketplace-bookings.ts | 337 | FUNCTION_BODY | `if (quote.providerId && userId === quote.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
+| server/services/BookingLifecycleService.ts | 298 | FUNCTION_BODY | `if (input.customerId === input.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
+
+### BANK_PAYOUT_LIVE
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/lib/payment-flags.ts | 24 | MODULE_LOAD | `export const BANK_PAYOUT_LIVE = process.env.BANK_PAYOUT_LIVE === 'true';` |
+| server/services/ProviderPayoutService.ts | 419 | FUNCTION_BODY | `if (process.env.BANK_PAYOUT_LIVE !== 'true') {` |
+
+### DOCUSEAL_API_KEY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes/contracts.ts | 222 | FUNCTION_BODY | `const docusealApiKey = process.env.DOCUSEAL_API_KEY;` |
+| server/routes/esign.ts | 36 | FUNCTION_BODY | `if (!process.env.DOCUSEAL_API_KEY) {` |
+| server/services/DocuSealService.ts | 52 | FUNCTION_BODY | `apiKey: process.env.DOCUSEAL_API_KEY \|\| '',` |
+| server/services/StaffOnboardingService.ts | 195 | FUNCTION_BODY | `if (process.env.DOCUSEAL_API_KEY) {` |
+
+### NODE_ENV
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
@@ -520,268 +347,6 @@ throw new Error(
 | server/utils/voucherCodes.ts | 5 | MODULE_LOAD | `if (!VOUCHER_SALT && process.env.NODE_ENV === 'production') {` |
 | server/websocket.ts | 67 | FUNCTION_BODY | `const isProduction = process.env.REPLIT_DEPLOYMENT === '1' \|\| process.env.NODE_ENV === 'production';` |
 
-Guard line example:
-
-```ts
-throw new Error('ADMIN_NOTIFICATION_EMAIL env var must be set in production');
-```
-
-### PAYMENTS_PROVIDER ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/israeliComplianceMonitor.ts | 159 | FUNCTION_BODY | `const paymentProvider = process.env.PAYMENTS_PROVIDER \|\| 'nayax';` |
-| server/nayaxFirestoreService.ts | 136 | MODULE_LOAD | `const PAYMENTS_PROVIDER = process.env.PAYMENTS_PROVIDER \|\| 'NAYAX';` |
-
-Guard line example:
-
-```ts
-throw new Error('STATION_KEYS environment variable is required for K9000 station authentication');
-```
-
-### PRESTIGE_QR_SECRET ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/lib/passTokens.ts | 21 | MODULE_LOAD | `const PASS_LINK_SECRET = process.env.PASS_LINK_SECRET \|\| process.env.PRESTIGE_QR_SECRET \|\| '';` |
-| server/lib/passTokens.ts | 22 | MODULE_LOAD | `const PRESTIGE_QR_SECRET = process.env.PRESTIGE_QR_SECRET \|\| '';` |
-| server/routes/prestige-pass.ts | 142 | MODULE_LOAD | `const _RAW_QR_SECRET = process.env.PRESTIGE_QR_SECRET;` |
-
-Guard line example:
-
-```ts
-throw new Error(
-```
-
-### REPL_IDENTITY
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/hubspot.ts | 12 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/hubspot.ts | 13 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-| server/lib/replitConnector.ts | 30 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/lib/replitConnector.ts | 31 | FUNCTION_BODY | `? Buffer.from(process.env.REPL_IDENTITY, 'base64').toString('utf-8').trim()` |
-| server/routes/gmail.ts | 50 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/routes/gmail.ts | 51 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-| server/services/CalendarIntegrationService.ts | 13 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/services/CalendarIntegrationService.ts | 14 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-| server/services/GoogleCalendarIntegrationService.ts | 47 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/services/GoogleCalendarIntegrationService.ts | 48 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-| server/services/googleDriveBackupService.ts | 58 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/services/googleDriveBackupService.ts | 59 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-| server/services/googleSheetsIntegration.ts | 280 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/services/googleSheetsIntegration.ts | 281 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-| server/spotify.ts | 16 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
-| server/spotify.ts | 17 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
-
-Guard line example:
-
-```ts
-throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-```
-
-### SENDGRID_FROM_EMAIL ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/jobs/daily-close-reminder.ts | 149 | FUNCTION_BODY | `from:    process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',` |
-| server/jobs/daily-close-reminder.ts | 452 | FUNCTION_BODY | `from: process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',` |
-| server/lib/notificationDispatcher.ts | 51 | MODULE_LOAD | `if (process.env.NODE_ENV === 'production' && !process.env.SENDGRID_FROM_EMAIL) {` |
-| server/lib/notificationDispatcher.ts | 54 | MODULE_LOAD | `const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'noreply@petwash.co.il';` |
-| server/lib/passTokens.ts | 149 | FUNCTION_BODY | `email: process.env.SENDGRID_FROM_EMAIL \|\| 'support@petwash.co.il',` |
-
-Guard line example:
-
-```ts
-throw new Error('[notificationDispatcher] SENDGRID_FROM_EMAIL env var is required in production');
-```
-
-### STATION_KEYS ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/nayaxFirestoreService.ts | 140 | MODULE_LOAD | `if (!process.env.STATION_KEYS) {` |
-| server/nayaxFirestoreService.ts | 144 | MODULE_LOAD | `const STATION_KEYS: Record<string, string> = JSON.parse(process.env.STATION_KEYS);` |
-
-Guard line example:
-
-```ts
-throw new Error('STATION_KEYS environment variable is required for K9000 station authentication');
-```
-
-### SUPER_ADMIN_EMAILS ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/company-registration-secure.ts | 13 | MODULE_LOAD | `const AUTHORIZED_USERS: string[] = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/middleware/gates.ts | 12 | MODULE_LOAD | `const _rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS;` |
-| server/middleware/rbac.ts | 18 | FUNCTION_BODY | `const raw = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
-| server/middleware/roleAuth.ts | 97 | FUNCTION_BODY | `const _superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Bo` |
-| server/middleware/roleAuth.ts | 182 | FUNCTION_BODY | `const _superAdminEmails2 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(B` |
-| server/routes.ts | 12461 | FUNCTION_BODY | `const _saEmails11725 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
-| server/routes.ts | 12527 | FUNCTION_BODY | `const _saEmails11789 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
-| server/routes.ts | 12588 | FUNCTION_BODY | `const _saEmails11848 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
-| server/routes/access-requests.ts | 13 | FUNCTION_BODY | `const raw = process.env.SUPER_ADMIN_EMAILS;` |
-| server/routes/admin-provider-review.ts | 27 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/routes/admin.ts | 953 | FUNCTION_BODY | `const CEO_EMAILS_RAW = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
-| server/routes/backup.ts | 29 | FUNCTION_BODY | `const envEmails = process.env.SUPER_ADMIN_EMAILS;` |
-| server/routes/pets.ts | 195 | FUNCTION_BODY | `const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boo` |
-| server/routes/police-check.ts | 46 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/routes/publicAuthRoutes.ts | 1174 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/routes/push-notifications.ts | 96 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/routes/recaptcha.ts | 161 | FUNCTION_BODY | `const rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
-| server/routes/sitter-suite.ts | 628 | FUNCTION_BODY | `const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/routes/wallet.ts | 843 | MODULE_LOAD | `const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
-| server/services/SmsAbuseDetector.ts | 32 | MODULE_LOAD | `const ADMIN_ALERT_EMAIL = process.env.SUPER_ADMIN_EMAILS?.split(',')[0]?.trim() \|\| 'admin@petwash.co.il';` |
-
-Guard line example:
-
-```ts
-throw new Error('FATAL: SUPER_ADMIN_EMAILS environment variable is required in production');
-```
-
-### UNSUBSCRIBE_HMAC_SECRET
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/emailService.ts | 257 | FUNCTION_BODY | `const secret = process.env.UNSUBSCRIBE_HMAC_SECRET;` |
-| server/emailService.ts | 307 | FUNCTION_BODY | `const verifySecret = process.env.UNSUBSCRIBE_HMAC_SECRET;` |
-
-Guard line example:
-
-```ts
-throw new Error('FATAL: UNSUBSCRIBE_HMAC_SECRET environment variable is required in production');
-```
-
-### VITE_FIREBASE_API_KEY ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes.ts | 15540 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
-| server/security/productionHardeningAndOneTap.ts | 42 | MODULE_LOAD | `const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| "";` |
-
-Guard line example:
-
-```ts
-if (!MOBILE_LINK_SECRET) throw new Error("MOBILE_LINK_SECRET not set");
-```
-
-### VITE_FIREBASE_AUTH_DOMAIN ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/security/productionHardeningAndOneTap.ts | 43 | MODULE_LOAD | `const FIREBASE_AUTH_DOMAIN = process.env.FIREBASE_AUTH_DOMAIN \|\| process.env.VITE_FIREBASE_AUTH_DOMAIN \|\| "";` |
-
-Guard line example:
-
-```ts
-if (!MOBILE_LINK_SECRET) throw new Error("MOBILE_LINK_SECRET not set");
-```
-
-### VITE_FIREBASE_PROJECT_ID ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/infra/biometricStorage.ts | 14 | MODULE_LOAD | `const PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "signinpetwash";` |
-| server/lib/firebase-admin.ts | 5 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| 'signinpetwas` |
-| server/routes.ts | 15538 | FUNCTION_BODY | `process.env.VITE_FIREBASE_PROJECT_ID \|\|` |
-| server/security/productionHardeningAndOneTap.ts | 44 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "";` |
-| server/services/AiChatService.ts | 43 | FUNCTION_BODY | `this.projectId = process.env.GOOGLE_DIALOGFLOW_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| '';` |
-
-Guard line example:
-
-```ts
-if (!MOBILE_LINK_SECRET) throw new Error("MOBILE_LINK_SECRET not set");
-```
-
-### VOUCHER_SALT ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/utils/voucherCodes.ts | 3 | MODULE_LOAD | `const VOUCHER_SALT = process.env.VOUCHER_SALT \|\| '';` |
-
-Guard line example:
-
-```ts
-throw new Error('VOUCHER_SALT must be set in production');
-```
-
-### WALLET_LINK_SECRET ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/lib/walletPassToken.ts | 8 | MODULE_LOAD | `const WALLET_TOKEN_SECRET = process.env.WALLET_LINK_SECRET \|\| process.env.COOKIE_SECRET;` |
-| server/routes/wallet.ts | 26 | MODULE_LOAD | `const WALLET_LINK_SECRET = process.env.WALLET_LINK_SECRET;` |
-| server/services/WalletService.ts | 19 | FUNCTION_BODY | `const secret = process.env.WALLET_LINK_SECRET;` |
-
-Guard line example:
-
-```ts
-throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
-```
-
-### WEB_REPL_RENEWAL
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/hubspot.ts | 14 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/hubspot.ts | 15 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-| server/routes/gmail.ts | 52 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/routes/gmail.ts | 53 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-| server/services/CalendarIntegrationService.ts | 15 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/services/CalendarIntegrationService.ts | 16 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-| server/services/GoogleCalendarIntegrationService.ts | 49 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/services/GoogleCalendarIntegrationService.ts | 50 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-| server/services/googleDriveBackupService.ts | 60 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/services/googleDriveBackupService.ts | 61 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-| server/services/googleSheetsIntegration.ts | 282 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/services/googleSheetsIntegration.ts | 283 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-| server/spotify.ts | 18 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
-| server/spotify.ts | 19 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
-
-Guard line example:
-
-```ts
-throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-```
-
-### WEBAUTHN_COOKIE_SECRET ⚠️ MODULE_LOAD
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/webauthn/config.ts | 17 | MODULE_LOAD | `const CHALLENGE_COOKIE_SECRET = process.env.WEBAUTHN_COOKIE_SECRET \|\|` |
-
-Guard line example:
-
-```ts
-throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in production');
-```
-
-## WARN (6)
-
-### ADMIN_APPROVER_EMAIL
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes/post-login.ts | 12 | MODULE_LOAD | `const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL \|\| '';` |
-| server/routes/post-login.ts | 13 | MODULE_LOAD | `if (!process.env.ADMIN_APPROVER_EMAIL) {` |
-
-### BANK_PAYOUT_LIVE
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/lib/payment-flags.ts | 24 | MODULE_LOAD | `export const BANK_PAYOUT_LIVE = process.env.BANK_PAYOUT_LIVE === 'true';` |
-| server/services/ProviderPayoutService.ts | 419 | FUNCTION_BODY | `if (process.env.BANK_PAYOUT_LIVE !== 'true') {` |
-
-### DOCUSEAL_API_KEY
-
-| File | Line | Scope | Context |
-|------|------|-------|---------|
-| server/routes/contracts.ts | 222 | FUNCTION_BODY | `const docusealApiKey = process.env.DOCUSEAL_API_KEY;` |
-| server/routes/esign.ts | 36 | FUNCTION_BODY | `if (!process.env.DOCUSEAL_API_KEY) {` |
-| server/services/DocuSealService.ts | 52 | FUNCTION_BODY | `apiKey: process.env.DOCUSEAL_API_KEY \|\| '',` |
-| server/services/StaffOnboardingService.ts | 195 | FUNCTION_BODY | `if (process.env.DOCUSEAL_API_KEY) {` |
-
 ### PETWASH_ADMIN_SECRET
 
 | File | Line | Scope | Context |
@@ -828,7 +393,7 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/routes/finance/tranzila-admin.ts | 379 | FUNCTION_BODY | `const bypassActive     = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';` |
 | server/services/TranzilaWebhookService.ts | 140 | FUNCTION_BODY | `if (process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true') {` |
 
-## OPTIONAL (272)
+## OPTIONAL (300)
 
 ### ACCEPT_TIMEOUT_HOURS
 
@@ -861,6 +426,14 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/routes/marketplace-bookings.ts | 1779 | FUNCTION_BODY | `// BEFORE: adminKey !== process.env.ADMIN_API_KEY  — leaks secret length and prefix via timing.` |
 | server/routes/marketplace-bookings.ts | 1783 | FUNCTION_BODY | `const expectedKey = process.env.ADMIN_API_KEY \|\| '';` |
+
+### ADMIN_NOTIFICATION_EMAIL
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/ai-feature-approval.ts | 38 | MODULE_LOAD | `const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL \|\| (() => {` |
+| server/routes.ts | 5293 | FUNCTION_BODY | `const email = customerEmail \|\| process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'test@internal.invalid';` |
+| server/routes.ts | 12637 | FUNCTION_BODY | `const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'admin@petwash.co.il';` |
 
 ### ADMIN_SECRET
 
@@ -1311,6 +884,17 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/middleware/firebase-auth.ts | 35 | FUNCTION_BODY | `const expectedSecret = process.env.DEV_TEST_SECRET;` |
 
+### DOCUMENT_ENCRYPTION_KEY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/document-security-2025.ts | 419 | FUNCTION_BODY | `const key = process.env.DOCUMENT_ENCRYPTION_KEY;` |
+| server/routes/bank.ts | 23 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
+| server/routes/bank.ts | 41 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
+| server/routes/contractor-onboarding.ts | 34 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
+| server/routes/provider-intake.ts | 27 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
+| server/routes/provider-onboarding.ts | 58 | FUNCTION_BODY | `const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;` |
+
 ### DOCUSEAL_BASE_URL
 
 | File | Line | Scope | Context |
@@ -1366,6 +950,12 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/jobs/daily-close-reminder.ts | 20 | MODULE_LOAD | `const FINANCE_ALERT_EMAIL = process.env.FINANCE_ALERT_EMAIL ?? '';` |
 | server/jobs/exception-email.ts | 20 | MODULE_LOAD | `const FINANCE_ALERT_EMAIL = process.env.FINANCE_ALERT_EMAIL ?? '';` |
 
+### FINANCE_AUTHORIZED_EMAILS
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes/bank.ts | 83 | FUNCTION_BODY | `const raw = process.env.FINANCE_AUTHORIZED_EMAILS;` |
+
 ### FINANCE_EMAIL
 
 | File | Line | Scope | Context |
@@ -1374,11 +964,23 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/cron/monthly-settlements.ts | 259 | FUNCTION_BODY | `const financeEmail = process.env.FINANCE_EMAIL \|\| 'finance@petwash.co.il';` |
 | server/services/events/SettlementGeneratedHandler.ts | 33 | FUNCTION_BODY | `const financeEmail = process.env.FINANCE_EMAIL \|\| 'finance@petwash.co.il';` |
 
+### FIREBASE_API_KEY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/security/productionHardeningAndOneTap.ts | 42 | MODULE_LOAD | `const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| "";` |
+
 ### FIREBASE_APP_ID
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/routes.ts | 15556 | FUNCTION_BODY | `appId: process.env.FIREBASE_APP_ID \|\| '',` |
+
+### FIREBASE_AUTH_DOMAIN
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/security/productionHardeningAndOneTap.ts | 43 | MODULE_LOAD | `const FIREBASE_AUTH_DOMAIN = process.env.FIREBASE_AUTH_DOMAIN \|\| process.env.VITE_FIREBASE_AUTH_DOMAIN \|\| "";` |
 
 ### FIREBASE_MEASUREMENT_ID
 
@@ -1392,6 +994,17 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/routes.ts | 15555 | FUNCTION_BODY | `messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID \|\| '',` |
 
+### FIREBASE_PROJECT_ID
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/infra/biometricStorage.ts | 14 | MODULE_LOAD | `const PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "signinpetwash";` |
+| server/lib/firebase-admin.ts | 5 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| 'signinpetwas` |
+| server/lib/verifyCaptcha.ts | 23 | MODULE_LOAD | `(process.env.FIREBASE_PROJECT_ID \|\| '').trim() \|\|` |
+| server/routes.ts | 15537 | FUNCTION_BODY | `process.env.FIREBASE_PROJECT_ID \|\|` |
+| server/routes/recaptcha.ts | 23 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| 'signinpetwash';` |
+| server/security/productionHardeningAndOneTap.ts | 44 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "";` |
+
 ### FIREBASE_STORAGE_BUCKET
 
 | File | Line | Scope | Context |
@@ -1400,6 +1013,13 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/routes.ts | 15554 | FUNCTION_BODY | `storageBucket: process.env.FIREBASE_STORAGE_BUCKET \|\| `${projectId}.firebasestorage.app`,` |
 | server/routes/provider-onboarding.ts | 1433 | FUNCTION_BODY | `const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET \|\| process.env.GCS_BUCKET_NAME \|\| '');` |
 | server/routes/provider-onboarding.ts | 1441 | FUNCTION_BODY | `const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET \|\| process.env.GCS_BUCKET_NAME \|\| '');` |
+
+### FIREBASE_WEB_API_KEY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes.ts | 15540 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
+| server/routes/identity-service.ts | 182 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY;` |
 
 ### FOUNDER_DEDICATED_EMAIL
 
@@ -1538,6 +1158,13 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/routes/gmail.ts | 76 | FUNCTION_BODY | `const refreshToken = process.env.GMAIL_REFRESH_TOKEN;` |
 
+### GMAIL_TOKEN_ENCRYPTION_KEY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes/gmail.ts | 11 | FUNCTION_BODY | `const keyEnv = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;` |
+| server/routes/gmail.ts | 27 | FUNCTION_BODY | `const keyEnv = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;` |
+
 ### GOOGLE_AGENT_ID
 
 | File | Line | Scope | Context |
@@ -1565,6 +1192,20 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/lib/gemini-client.ts | 77 | FUNCTION_BODY | `apiKey: process.env.GEMINI_API_KEY \|\| process.env.GOOGLE_API_KEY \|\| '',` |
 | server/lib/gemini-client.ts | 82 | FUNCTION_BODY | `if (!IS_DIRECT_VERTEX && !PROXY_KEY && !process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {` |
 | server/lib/verifyCaptcha.ts | 28 | MODULE_LOAD | `extractGcpApiKey(process.env.GOOGLE_API_KEY \|\| '') \|\|` |
+
+### GOOGLE_APPLICATION_CREDENTIALS
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/lib/gemini-client.ts | 36 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS = SA_CREDS_PATH;` |
+| server/routes.ts | 12893 | FUNCTION_BODY | `const hasCredentialsEnv = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
+| server/routes/luxury-documents.ts | 90 | FUNCTION_BODY | `const credentialsSource = process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
+| server/services/BiometricVerificationService.ts | 53 | FUNCTION_BODY | `if (process.env.GOOGLE_APPLICATION_CREDENTIALS \|\| process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
+| server/services/gcsBackupService.ts | 32 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS \|\|` |
+| server/services/gcsBackupService.ts | 355 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS \|\|` |
+| server/services/ImmutableStampService.ts | 28 | FUNCTION_BODY | `if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY \|\| process.env.GOOGLE_APPLICATION_CREDENTIALS) {` |
+| server/services/K9000TransactionService.ts | 30 | FUNCTION_BODY | `if (process.env.GOOGLE_APPLICATION_CREDENTIALS \|\| process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
+| server/services/KYC2026/KYCMemoryProcessor.ts | 80 | FUNCTION_BODY | `if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY \|\| process.env.GOOGLE_APPLICATION_CREDENTIALS) {` |
 
 ### GOOGLE_BUSINESS_ACCOUNT_ID
 
@@ -1682,6 +1323,26 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/services/providerSearchService.ts | 126 | FUNCTION_BODY | `const apiKey = process.env.GOOGLE_MAPS_API_KEY;` |
 | server/services/SmartEnvironmentService.ts | 17 | MODULE_LOAD | `const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;` |
 | server/services/unifiedLocationWeather.ts | 44 | MODULE_LOAD | `const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;` |
+
+### GOOGLE_SERVICE_ACCOUNT_JSON
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/lib/verifyCaptcha.ts | 60 | FUNCTION_BODY | `{ raw: process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| '', label: 'GOOGLE_SERVICE_ACCOUNT_JSON' },` |
+| server/routes/captcha-probe.ts | 306 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON,` |
+| server/routes/globalForms.ts | 702 | FUNCTION_BODY | `googleSheetsEnabled: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,` |
+| server/routes/recaptcha.ts | 114 | FUNCTION_BODY | `(process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| '').trim().startsWith('{') \|\|` |
+| server/routes/recaptcha.ts | 172 | FUNCTION_BODY | `(process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| '').trim().startsWith('{') \|\|` |
+| server/services/AiChatService.ts | 17 | FUNCTION_BODY | `if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {` |
+| server/services/AiChatService.ts | 18 | FUNCTION_BODY | `googleCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);` |
+| server/services/BookingExportService.ts | 19 | MODULE_LOAD | `const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;` |
+| server/services/CalendarIntegrationService.ts | 38 | FUNCTION_BODY | `const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\| process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;` |
+| server/services/DriveArchivalService.ts | 69 | FUNCTION_BODY | `const saJson = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '').trim();` |
+| server/services/gcsBackupService.ts | 31 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
+| server/services/gcsBackupService.ts | 354 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
+| server/services/GoogleCalendarIntegrationService.ts | 25 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
+| server/services/googleSheetsIntegration.ts | 258 | FUNCTION_BODY | `process.env.GOOGLE_SERVICE_ACCOUNT_JSON \|\|` |
+| server/services/GoogleWalletService.ts | 27 | MODULE_LOAD | `const SA_RAW       = process.env.GOOGLE_WALLET_SA_KEY \|\| process.env.GOOGLE_SERVICE_ACCOUNT_JSON;` |
 
 ### GOOGLE_TRANSLATE_API_KEY
 
@@ -1801,6 +1462,12 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/services/events/InventoryRefilledHandler.ts | 21 | FUNCTION_BODY | `const notificationEmail = process.env.INVENTORY_NOTIFICATION_EMAIL \|\| 'operations@petwash.co.il';` |
 
+### IP_HASH_SALT
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/AuthEventService.ts | 125 | FUNCTION_BODY | `const SALT = process.env.IP_HASH_SALT;` |
+
 ### ISRAELI_COMPANY_ID
 
 | File | Line | Scope | Context |
@@ -1812,6 +1479,20 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/services/IsraeliTaxAuthorityAPI.ts | 93 | FUNCTION_BODY | `private static readonly BASE_URL = process.env.ISRAELI_TAX_API_BASE_URL \|\| 'https://secapp.taxes.gov.il/api';` |
+
+### ISRAELI_TAX_API_CLIENT_ID
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/IsraeliTaxAuthorityAPI.ts | 110 | FUNCTION_BODY | `const clientId = process.env.ISRAELI_TAX_API_CLIENT_ID;` |
+| server/services/IsraeliTaxAuthorityAPI.ts | 310 | FUNCTION_BODY | `process.env.ISRAELI_TAX_API_CLIENT_ID &&` |
+
+### ISRAELI_TAX_API_CLIENT_SECRET
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/IsraeliTaxAuthorityAPI.ts | 111 | FUNCTION_BODY | `const clientSecret = process.env.ISRAELI_TAX_API_CLIENT_SECRET;` |
+| server/services/IsraeliTaxAuthorityAPI.ts | 311 | FUNCTION_BODY | `process.env.ISRAELI_TAX_API_CLIENT_SECRET` |
 
 ### ISRAELI_TAX_API_TOKEN_URL
 
@@ -1876,6 +1557,12 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/routes/google-services.ts | 241 | FUNCTION_BODY | `if (process.env.K_SERVICE) {` |
 | server/routes/google-services.ts | 245 | FUNCTION_BODY | `service: process.env.K_SERVICE,` |
 
+### K9000_WASH_PRICE
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/nayaxFirestoreService.ts | 137 | MODULE_LOAD | `const K9000_WASH_PRICE = parseFloat(process.env.K9000_WASH_PRICE \|\| '50'); // Default wash price in ILS` |
+
 ### LOG_LEVEL
 
 | File | Line | Scope | Context |
@@ -1927,6 +1614,26 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/enterprise/whatsappWebhook.ts | 13 | MODULE_LOAD | `const META_WEBHOOK_SECRET = process.env.META_WEBHOOK_SECRET;` |
+
+### META_WHATSAPP_ACCESS_TOKEN
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/WhatsAppMetaService.ts | 50 | FUNCTION_BODY | `const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;` |
+| server/services/WhatsAppService.ts | 12 | FUNCTION_BODY | `private static readonly ACCESS_TOKEN = process.env.META_WHATSAPP_ACCESS_TOKEN;` |
+
+### META_WHATSAPP_BUSINESS_PHONE
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/WhatsAppMetaService.ts | 52 | FUNCTION_BODY | `const businessPhone = process.env.META_WHATSAPP_BUSINESS_PHONE \|\| CANONICAL_SUPPORT_PHONE;` |
+
+### META_WHATSAPP_PHONE_NUMBER_ID
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/WhatsAppMetaService.ts | 51 | FUNCTION_BODY | `const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;` |
+| server/services/WhatsAppService.ts | 11 | FUNCTION_BODY | `private static readonly PHONE_NUMBER_ID = process.env.META_WHATSAPP_PHONE_NUMBER_ID;` |
 
 ### MIZRAHI_ACCOUNT_ID
 
@@ -2076,6 +1783,13 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/googleWallet.ts | 229 | FUNCTION_BODY | `const totpSecret = process.env.GOOGLE_WALLET_TOTP_SECRET \|\| process.env.PASS_TOKEN_SECRET \|\| '';` |
 | server/lib/signedRedeemToken.ts | 22 | MODULE_LOAD | `const SECRET = process.env.PASS_TOKEN_SECRET \|\| process.env.COOKIE_SECRET \|\| '';` |
 
+### PAYMENTS_PROVIDER
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/israeliComplianceMonitor.ts | 159 | FUNCTION_BODY | `const paymentProvider = process.env.PAYMENTS_PROVIDER \|\| 'nayax';` |
+| server/nayaxFirestoreService.ts | 136 | MODULE_LOAD | `const PAYMENTS_PROVIDER = process.env.PAYMENTS_PROVIDER \|\| 'NAYAX';` |
+
 ### PETWASH_EGIFT_PURCHASE_ENABLED
 
 | File | Line | Scope | Context |
@@ -2120,6 +1834,14 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/index.ts | 336 | MODULE_LOAD | `const PORT = Number(process.env.PORT \|\| 8080);` |
 | server/routes.ts | 5550 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/nayax-checkout`, {` |
 | server/routes/synthetic.ts | 16 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/auth/webauthn/login/options`, {` |
+
+### PRESTIGE_QR_SECRET
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/lib/passTokens.ts | 21 | MODULE_LOAD | `const PASS_LINK_SECRET = process.env.PASS_LINK_SECRET \|\| process.env.PRESTIGE_QR_SECRET \|\| '';` |
+| server/lib/passTokens.ts | 22 | MODULE_LOAD | `const PRESTIGE_QR_SECRET = process.env.PRESTIGE_QR_SECRET \|\| '';` |
+| server/routes/prestige-pass.ts | 142 | MODULE_LOAD | `const _RAW_QR_SECRET = process.env.PRESTIGE_QR_SECRET;` |
 
 ### PROPERTY_ACCESS_ENCRYPTION_KEY
 
@@ -2214,6 +1936,27 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/replitAuth.ts | 30 | FUNCTION_BODY | `process.env.REPL_ID!` |
 | server/replitAuth.ts | 154 | FUNCTION_BODY | `client_id: process.env.REPL_ID!,` |
+
+### REPL_IDENTITY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/hubspot.ts | 12 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/hubspot.ts | 13 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
+| server/lib/replitConnector.ts | 30 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/lib/replitConnector.ts | 31 | FUNCTION_BODY | `? Buffer.from(process.env.REPL_IDENTITY, 'base64').toString('utf-8').trim()` |
+| server/routes/gmail.ts | 50 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/routes/gmail.ts | 51 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
+| server/services/CalendarIntegrationService.ts | 13 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/services/CalendarIntegrationService.ts | 14 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
+| server/services/GoogleCalendarIntegrationService.ts | 47 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/services/GoogleCalendarIntegrationService.ts | 48 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
+| server/services/googleDriveBackupService.ts | 58 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/services/googleDriveBackupService.ts | 59 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
+| server/services/googleSheetsIntegration.ts | 280 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/services/googleSheetsIntegration.ts | 281 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
+| server/spotify.ts | 16 | FUNCTION_BODY | `const xReplitToken = process.env.REPL_IDENTITY` |
+| server/spotify.ts | 17 | FUNCTION_BODY | `? 'repl ' + process.env.REPL_IDENTITY` |
 
 ### REPL_OWNER
 
@@ -2442,6 +2185,31 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/services/GeminiSpamGuard.ts | 31 | MODULE_LOAD | `const ALERT_PHONE = process.env.SUPER_ADMIN_ALERT_PHONE ?? null;` |
 | server/services/ThreatGuardService.ts | 27 | MODULE_LOAD | `const ALERT_PHONE = process.env.SUPER_ADMIN_ALERT_PHONE ?? null;` |
 
+### SUPER_ADMIN_EMAILS
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/company-registration-secure.ts | 13 | MODULE_LOAD | `const AUTHORIZED_USERS: string[] = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/middleware/gates.ts | 12 | MODULE_LOAD | `const _rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS;` |
+| server/middleware/rbac.ts | 18 | FUNCTION_BODY | `const raw = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
+| server/middleware/roleAuth.ts | 97 | FUNCTION_BODY | `const _superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Bo` |
+| server/middleware/roleAuth.ts | 182 | FUNCTION_BODY | `const _superAdminEmails2 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(B` |
+| server/routes.ts | 12461 | FUNCTION_BODY | `const _saEmails11725 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
+| server/routes.ts | 12527 | FUNCTION_BODY | `const _saEmails11789 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
+| server/routes.ts | 12588 | FUNCTION_BODY | `const _saEmails11848 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
+| server/routes/access-requests.ts | 13 | FUNCTION_BODY | `const raw = process.env.SUPER_ADMIN_EMAILS;` |
+| server/routes/admin-provider-review.ts | 27 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/routes/admin.ts | 953 | FUNCTION_BODY | `const CEO_EMAILS_RAW = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
+| server/routes/backup.ts | 29 | FUNCTION_BODY | `const envEmails = process.env.SUPER_ADMIN_EMAILS;` |
+| server/routes/pets.ts | 195 | FUNCTION_BODY | `const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boo` |
+| server/routes/police-check.ts | 46 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/routes/publicAuthRoutes.ts | 1174 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/routes/push-notifications.ts | 96 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/routes/recaptcha.ts | 161 | FUNCTION_BODY | `const rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
+| server/routes/sitter-suite.ts | 628 | FUNCTION_BODY | `const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/routes/wallet.ts | 843 | MODULE_LOAD | `const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
+| server/services/SmsAbuseDetector.ts | 32 | MODULE_LOAD | `const ADMIN_ALERT_EMAIL = process.env.SUPER_ADMIN_EMAILS?.split(',')[0]?.trim() \|\| 'admin@petwash.co.il';` |
+
 ### SUPER_ADMIN_TEMP_PASSWORD
 
 | File | Line | Scope | Context |
@@ -2636,6 +2404,13 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/services/winbackChannel.ts | 38 | MODULE_LOAD | `const WA_FROM = process.env.TWILIO_WHATSAPP_FROM ?? 'whatsapp:+14155238886'; // Twilio sandbox default` |
 
+### UNSUBSCRIBE_HMAC_SECRET
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/emailService.ts | 257 | FUNCTION_BODY | `const secret = process.env.UNSUBSCRIBE_HMAC_SECRET;` |
+| server/emailService.ts | 307 | FUNCTION_BODY | `const verifySecret = process.env.UNSUBSCRIBE_HMAC_SECRET;` |
+
 ### VAT_RATE
 
 | File | Line | Scope | Context |
@@ -2665,6 +2440,29 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 |------|------|-------|---------|
 | server/services/MultiSourceWeatherService.ts | 18 | MODULE_LOAD | `const VISUAL_CROSSING_KEY = process.env.VISUAL_CROSSING_KEY;` |
 
+### VITE_FIREBASE_API_KEY
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/routes.ts | 15540 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
+| server/security/productionHardeningAndOneTap.ts | 42 | MODULE_LOAD | `const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| "";` |
+
+### VITE_FIREBASE_AUTH_DOMAIN
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/security/productionHardeningAndOneTap.ts | 43 | MODULE_LOAD | `const FIREBASE_AUTH_DOMAIN = process.env.FIREBASE_AUTH_DOMAIN \|\| process.env.VITE_FIREBASE_AUTH_DOMAIN \|\| "";` |
+
+### VITE_FIREBASE_PROJECT_ID
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/infra/biometricStorage.ts | 14 | MODULE_LOAD | `const PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "signinpetwash";` |
+| server/lib/firebase-admin.ts | 5 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| 'signinpetwas` |
+| server/routes.ts | 15538 | FUNCTION_BODY | `process.env.VITE_FIREBASE_PROJECT_ID \|\|` |
+| server/security/productionHardeningAndOneTap.ts | 44 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "";` |
+| server/services/AiChatService.ts | 43 | FUNCTION_BODY | `this.projectId = process.env.GOOGLE_DIALOGFLOW_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| '';` |
+
 ### VITE_RECAPTCHA_SITE_KEY
 
 | File | Line | Scope | Context |
@@ -2686,11 +2484,42 @@ throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in prod
 | server/services/unifiedVoucherService.ts | 53 | MODULE_LOAD | `const PUBLIC_KEY_PEM = loadPem(process.env.VOUCHER_ES256_PUBLIC_KEY_PEM);` |
 | server/services/voucherSecurityService.ts | 48 | MODULE_LOAD | `const PUBLIC_KEY_PEM = loadPemKey(process.env.VOUCHER_ES256_PUBLIC_KEY_PEM);` |
 
+### VOUCHER_SALT
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/utils/voucherCodes.ts | 3 | MODULE_LOAD | `const VOUCHER_SALT = process.env.VOUCHER_SALT \|\| '';` |
+
 ### WEATHERAPI_KEY
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/services/MultiSourceWeatherService.ts | 17 | MODULE_LOAD | `const WEATHERAPI_KEY = process.env.WEATHERAPI_KEY;` |
+
+### WEB_REPL_RENEWAL
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/hubspot.ts | 14 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/hubspot.ts | 15 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+| server/routes/gmail.ts | 52 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/routes/gmail.ts | 53 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+| server/services/CalendarIntegrationService.ts | 15 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/services/CalendarIntegrationService.ts | 16 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+| server/services/GoogleCalendarIntegrationService.ts | 49 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/services/GoogleCalendarIntegrationService.ts | 50 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+| server/services/googleDriveBackupService.ts | 60 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/services/googleDriveBackupService.ts | 61 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+| server/services/googleSheetsIntegration.ts | 282 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/services/googleSheetsIntegration.ts | 283 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+| server/spotify.ts | 18 | FUNCTION_BODY | `: process.env.WEB_REPL_RENEWAL` |
+| server/spotify.ts | 19 | FUNCTION_BODY | `? 'depl ' + process.env.WEB_REPL_RENEWAL` |
+
+### WEBAUTHN_COOKIE_SECRET
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/webauthn/config.ts | 17 | MODULE_LOAD | `const CHALLENGE_COOKIE_SECRET = process.env.WEBAUTHN_COOKIE_SECRET \|\|` |
 
 ### WEBAUTHN_ORIGIN
 

@@ -119,11 +119,43 @@ function classifyFile(filePath: string): EnvRead[] {
         const varName = m[1];
         const scope = depthBeforeLine === 0 ? 'MODULE_LOAD' : 'FUNCTION_BODY';
 
-        // Look for a `throw new Error` within the next 8 lines of the same
-        // brace block. If found, mark REQUIRED.
+        // Tighter REQUIRED heuristic (post-council review):
+        // Only mark REQUIRED when there is a CLEAR falsy-guard on THIS specific
+        // env var (or a variable assigned from it), AND a `throw new Error` is
+        // its direct consequence within a tight 3-line window. This eliminates
+        // false positives like ALLOW_SELF_BOOKING (where a nearby throw exists
+        // for an unrelated reason) and FIREBASE_SERVICE_ACCOUNT_KEY (where the
+        // throw fires only if the var is SET but malformed — not on absence).
+        const escVar = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const sameLineFalsy = new RegExp(
+          `!\\s*process\\.env\\.${escVar}\\b|` +
+          `process\\.env\\.${escVar}\\s*\\?\\?|` +
+          `process\\.env\\.${escVar}\\s*===?\\s*(?:undefined|null|''|"")`
+        ).test(rawLine);
+
+        // Detect `const X = process.env.VAR` style assignment so we can also
+        // recognise a `!X` falsy guard one line later.
+        const assignMatch = rawLine.match(/(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*process\.env\./);
+        const assignedVar = assignMatch?.[1];
+
+        const lineHasFalsyOnAssignedVar = (s: string): boolean => {
+          if (!assignedVar) return false;
+          return new RegExp(
+            `!\\s*${assignedVar}\\b|` +
+            `${assignedVar}\\s*===?\\s*(?:undefined|null|''|"")`
+          ).test(s);
+        };
+
+        // Walk a TIGHT 3-line window from the env read. A throw counts only if
+        // it is the consequence of a falsy check on THIS env var (same line)
+        // or on the variable bound to it (a previous line within the window).
         let guardLine: string | undefined;
-        for (let j = i; j < Math.min(lines.length, i + 8); j++) {
-          if (/\bthrow new Error\b/.test(lines[j])) {
+        let falsySeenLineIdx = sameLineFalsy ? i : -1;
+        for (let j = i; j < Math.min(lines.length, i + 3); j++) {
+          if (j > i && lineHasFalsyOnAssignedVar(lines[j])) {
+            falsySeenLineIdx = j;
+          }
+          if (falsySeenLineIdx !== -1 && /\bthrow new Error\b/.test(lines[j])) {
             guardLine = lines[j].trim();
             break;
           }
@@ -222,11 +254,20 @@ function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
   lines.push('');
   lines.push('## Definitions');
   lines.push('');
-  lines.push('- **REQUIRED** — at least one read site has a `throw new Error` guard nearby. Production will crash if this var is missing AND any guard fires.');
+  lines.push('- **REQUIRED** — at least one read site has a tight falsy-check + `throw new Error` guard. The feature that calls into that guard cannot operate without this var.');
   lines.push('- **WARN** — at least one read site logs a warning if missing. Feature degrades, server still boots.');
   lines.push('- **OPTIONAL** — read sites use a fallback (`||`, `??`) or do not guard.');
-  lines.push('- **MODULE_LOAD scope** — fires at `import` time (top-level). High blast radius.');
-  lines.push('- **FUNCTION_BODY scope** — fires only when the function is called. Low blast radius.');
+  lines.push('- **MODULE_LOAD scope** — the env-var read is at top-level (brace depth 0). Fires at `import` time.');
+  lines.push('- **FUNCTION_BODY scope** — the env-var read is inside a function/method. Fires only when called.');
+  lines.push('- **⚠️ MODULE_LOAD tag** — added ONLY when a REQUIRED guard exists at MODULE_LOAD scope. These are the high-blast-radius ones: missing the var crashes the entire server at import. The tag is NOT added when REQUIRED applies only at function-body scope, even if some other read site reads the var at module load (e.g. a `console.log` presence check).');
+  lines.push('');
+  lines.push('## Semantic notes');
+  lines.push('');
+  lines.push('Some vars classify REQUIRED but degrade gracefully at boot — they only fail at first feature invocation:');
+  lines.push('- `WALLET_LINK_SECRET` — wallet redemption fails clearly when missing (PR #317 made the check lazy).');
+  lines.push('- `JWT_SECRET` / `JWT_REFRESH_SECRET` — auth-route poison pill in production; throws only in non-production at first auth call.');
+  lines.push('- `FIREBASE_SERVICE_ACCOUNT_KEY` — OPTIONAL since Cloud Run ADC fallback was adopted. The throw fires only if the var is SET but unparseable, not if absent.');
+  lines.push('Only vars with the ⚠️ MODULE_LOAD tag must be mapped in Cloud Run env before deploy.');
   lines.push('');
   lines.push('## Pre-deploy verification');
   lines.push('');
@@ -244,8 +285,12 @@ function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
     lines.push(`## ${cls} (${subset.length})`);
     lines.push('');
     for (const v of subset) {
-      const hasModuleLoad = v.reads.some(r => r.scope === 'MODULE_LOAD');
-      const priority = cls === 'REQUIRED' && hasModuleLoad ? ' ⚠️ MODULE_LOAD' : '';
+      // Only flag ⚠️ MODULE_LOAD when a MODULE_LOAD-scope read is ITSELF the
+      // REQUIRED one. Mixed cases (e.g. a module-load read that just logs +
+      // a separate function-body throw) get classified REQUIRED but without
+      // the ⚠️ — they degrade gracefully at boot, fire only on first use.
+      const hasModuleLoadRequired = v.reads.some(r => r.scope === 'MODULE_LOAD' && r.classification === 'REQUIRED');
+      const priority = cls === 'REQUIRED' && hasModuleLoadRequired ? ' ⚠️ MODULE_LOAD' : '';
       lines.push(`### ${v.varName}${priority}`);
       lines.push('');
       lines.push(`| File | Line | Scope | Context |`);

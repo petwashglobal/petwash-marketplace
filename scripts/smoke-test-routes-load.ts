@@ -6,16 +6,26 @@
  * production-shaped environment. If any module-load throw fires, the
  * child exits non-zero and we capture the file:line of the first throw.
  *
- * The test catches:
- *   • Module-load throws (top-level `throw new Error(...)`)
- *   • Lazy imports — dynamic import() failures during init
- *   • Route registration failures
- *   • Middleware boot failures
- *   • Startup async throws (unhandled promise rejections at boot)
- *   • Firebase / Google client init failures at construct time
- *   • Secret validation crashes (eager `if (!env.X) throw` guards)
- *   • Drizzle / Postgres pool init failures
- *   • Circular import crashes
+ * The test catches (verified per CI/CD-council coverage matrix):
+ *   • Module-load throws (top-level `throw new Error(...)`) — FULLY
+ *   • Dynamic `import('./x')` failures executed during routes.ts init — FULLY
+ *   • Startup async throws (unhandledRejection + uncaughtException) — FULLY
+ *   • Firebase / Google client init failures at *construct* time IF the
+ *     construct happens at module load (top-level `new X()` or top-level
+ *     `export const x = new Y()`) — FULLY
+ *   • Top-level secret-validation guards (`if (!env.X) throw`) at module
+ *     scope — FULLY
+ *   • Drizzle / Postgres pool init failures at module load — FULLY
+ *   • Circular import crashes — FULLY
+ *
+ * The test does NOT catch (deferred to PR-OBSERVABILITY-1):
+ *   • Failures inside registerRoutes(app) — middleware boot, route-specific
+ *     setup, Express handler-registration errors. These happen AFTER the
+ *     import() resolves; the probe does not boot Express.
+ *   • Function-body throws that fire only on first API call.
+ *   • Failures that depend on real Cloud Run runtime (metadata-server ADC,
+ *     actual Secret Manager mapping, real Postgres connectivity, IAM roles).
+ *     The post-deploy /api/health gate in petwash-ci.yml covers this layer.
  *
  * Output:
  *   • smoke-test-result.json (machine-readable artifact)
