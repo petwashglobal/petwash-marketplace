@@ -27,9 +27,90 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ════════════════════════════════════════════════════════════════════════
+  # PR-STARTUP-HARDEN-1 — Pre-deploy gates
+  # These two jobs run BEFORE deploy-backend. The deploy job has `needs: [...]`
+  # on both, so a failing smoke test or stale env-var audit blocks production.
+  # No app code runs in these jobs — they are pure CI scaffolding.
+  # ════════════════════════════════════════════════════════════════════════
+  gate-smoke-test-startup:
+    name: Gate — routes.ts module-load smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run routes-load smoke test
+        env:
+          # Production-shaped env (DUMMY values — never real secrets).
+          # If a production env var is required at module load and not in this
+          # list, this test will surface it and the gate fails closed.
+          NODE_ENV: production
+          NAYAX_ENABLED: 'false'
+          PAYMENT_PROVIDER_MODE: mock
+          WALLET_LINK_SECRET: smoke-dummy-walletlinksecret-do-not-use
+          PRESTIGE_QR_SECRET: smoke-dummy-prestige-do-not-use-this-value-anywhere
+          PASS_LINK_SECRET: smoke-dummy-passlink-do-not-use
+          JWT_SECRET: smoke-dummy-jwt-secret-do-not-use
+          JWT_REFRESH_SECRET: smoke-dummy-jwt-refresh-secret-do-not-use
+          COOKIE_SECRET: smoke-dummy-cookie-secret-do-not-use
+          IP_HASH_SALT: smoke-dummy-ip-hash-salt
+          KYC_SALT: smoke-dummy-kyc-salt
+          TREASURY_FIELD_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          DOCUMENT_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          MACHINE_SECRET_KEY: smoke-dummy-machine-secret
+          ADMIN_NOTIFICATION_EMAIL: smoke@example.invalid
+          SENDGRID_FROM_EMAIL: noreply@petwash.co.il
+          DATABASE_URL: postgresql://x:x@localhost/x
+          SMOKE_TIMEOUT_MS: '90000'
+          SMOKE_BOOT_THRESHOLD_MS: '60000'
+        run: npx tsx scripts/smoke-test-routes-load.ts
+
+      - name: Upload smoke-test artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-output
+          path: smoke-test-output/
+          retention-days: 14
+          if-no-files-found: warn
+
+  gate-audit-env-vars:
+    name: Gate — required env-var audit up-to-date
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Verify docs/PRODUCTION_REQUIRED_ENV_VARS.md is up to date
+        run: npx tsx scripts/audit-required-env-vars.ts --check
+
   deploy-backend:
     name: Build & Deploy Backend (Cloud Run)
     runs-on: ubuntu-latest
+    needs: [gate-smoke-test-startup, gate-audit-env-vars]
     permissions:
       contents: read
       id-token: write
