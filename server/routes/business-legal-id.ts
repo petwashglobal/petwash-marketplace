@@ -22,6 +22,8 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
+const router = Router();
+
 // Tombstone value written over PII fields when a document is anonymised.
 // Using a constant ensures consistent detection in downstream processing.
 const ANONYMISED_TOMBSTONE = '[ANONYMISED]';
