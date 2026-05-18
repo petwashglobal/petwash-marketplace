@@ -27,14 +27,24 @@ export interface BookingTriageResult {
 }
 
 export class SitterAITriageService {
-  private genAI: GoogleGenAI;
+  private genAI?: GoogleGenAI;
+  private readonly enabled: boolean;
 
   constructor() {
-    if (!IS_VERTEX) {
-      throw new Error('[Sitter AI Triage] No AI backend configured');
+    this.enabled = IS_VERTEX;
+    if (!this.enabled) {
+      console.warn(
+        '[Sitter AI Triage] No AI backend configured — feature disabled. ' +
+        'Server will start, but analyzeBookingUrgency() will throw at call time. ' +
+        'Set GEMINI_API_KEY / GOOGLE_API_KEY / AI_INTEGRATIONS_GEMINI_API_KEY or enable Vertex AI to enable.'
+      );
+      return;
     }
-    
     this.genAI = new GoogleGenAI(getVertexAIConfig());
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
   }
 
   /**
@@ -46,6 +56,9 @@ export class SitterAITriageService {
    * - Score 1 (STANDARD): Booking starts >48 hours out, standard care needs
    */
   async analyzeBookingUrgency(request: BookingTriageRequest): Promise<BookingTriageResult> {
+    if (!this.enabled || !this.genAI) {
+      throw new Error('[Sitter AI Triage] AI backend not configured — feature disabled at startup.');
+    }
     try {
       const hoursUntilStart = this.calculateHoursUntilStart(request.startDate);
       const durationDays = this.calculateBookingDays(request.startDate, request.endDate);
