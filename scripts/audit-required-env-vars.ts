@@ -296,7 +296,14 @@ function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
       lines.push(`| File | Line | Scope | Context |`);
       lines.push(`|------|------|-------|---------|`);
       for (const r of v.reads) {
-        const ctx = r.contextLine.replace(/\|/g, '\\|').slice(0, 120);
+        // CodeQL: escape backslashes BEFORE pipes so a literal `\` in the
+        // source line cannot collide with the `\|` markdown escape sequence.
+        // Order matters — flip them and `\|` from pipe-escaping gets its `\`
+        // doubled, neutralising the escape.
+        const ctx = r.contextLine
+          .replace(/\\/g, '\\\\')
+          .replace(/\|/g, '\\|')
+          .slice(0, 120);
         lines.push(`| ${r.file} | ${r.line} | ${r.scope} | \`${ctx}\` |`);
       }
       if (v.reads.some(r => r.guardLine)) {

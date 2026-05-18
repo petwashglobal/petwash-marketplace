@@ -724,7 +724,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/routes/wallet.ts | 58 | FUNCTION_BODY | `const baseUrl = process.env.BASE_URL \|\| 'https://petwash.co.il';` |
 | server/routes/webauthn.ts | 49 | MODULE_LOAD | `: (process.env.BASE_URL \|\| (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.c` |
 | server/scripts/testForms.ts | 11 | MODULE_LOAD | `const BASE_URL = process.env.BASE_URL \|\| 'http://localhost:5000';` |
-| server/security/productionHardeningAndOneTap.ts | 35 | MODULE_LOAD | `const BASE_URL = (process.env.BASE_URL \|\| "").replace(/\/+$/, "");` |
+| server/security/productionHardeningAndOneTap.ts | 35 | MODULE_LOAD | `const BASE_URL = (process.env.BASE_URL \|\| "").replace(/\\/+$/, "");` |
 | server/services/AppleWalletService.ts | 32 | MODULE_LOAD | `const BASE_URL              = process.env.BASE_URL \|\| 'https://petwash.co.il';` |
 | server/services/GoogleWalletService.ts | 28 | MODULE_LOAD | `const BASE_URL     = process.env.BASE_URL \|\| 'https://petwash.co.il';` |
 
