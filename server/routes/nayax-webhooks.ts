@@ -1193,6 +1193,65 @@ router.post(
           amountCents: payload.amountCents,
         });
 
+        // ── Calendar sync AFTER payment truth (non-blocking, idempotent) ──────
+        // The booking is now paid + confirmed, so this is the correct point to
+        // create the Google Calendar event (moved here from provider-accept).
+        // Runs after the 200 response via setImmediate so a slow/failed calendar
+        // call never delays or rolls back the payment confirmation. The
+        // already-confirmed early-return above + createBookingEvent's own
+        // petwash_booking_id lookup make webhook redelivery idempotent.
+        setImmediate(async () => {
+          try {
+            const { calendarIntegrationService } = await import('../services/CalendarIntegrationService');
+            const { bookingRequests: bookingRequestsTbl, users: usersTbl } = await import('@shared/schema');
+
+            const eventStart = booking.meetGreetDate ?? booking.startDate;
+            const eventEnd = booking.endDate ?? new Date(new Date(eventStart).getTime() + 60 * 60 * 1000);
+
+            let ownerEmail: string | undefined;
+            let providerEmail: string | undefined;
+            try {
+              const [owner] = await db.select({ email: usersTbl.email })
+                .from(usersTbl).where(eq(usersTbl.id, booking.ownerId)).limit(1);
+              ownerEmail = owner?.email ?? undefined;
+              const [prov] = await db.select({ email: usersTbl.email })
+                .from(usersTbl).where(eq(usersTbl.id, booking.providerId)).limit(1);
+              providerEmail = prov?.email ?? undefined;
+            } catch { /* non-fatal — event still creates without invites */ }
+            const attendeeEmails = [ownerEmail, providerEmail].filter((e): e is string => !!e);
+
+            const result = await calendarIntegrationService.createBookingEvent({
+              platform: booking.providerType || booking.serviceType || 'PetWash',
+              bookingId: payload.bookingId,
+              title: `PetWash™ — ${booking.serviceType || 'Booking'}`,
+              description: booking.ownerMessage || `Booking ${payload.bookingId}`,
+              startTime: new Date(eventStart),
+              endTime: new Date(eventEnd),
+              location: booking.meetGreetLocation || undefined,
+              customerName: booking.ownerId,
+              providerName: booking.providerId,
+              attendeeEmails,
+            });
+
+            if (result?.eventId) {
+              await db.update(bookingRequestsTbl)
+                .set({
+                  platformCalendarEventId: result.eventId,
+                  calendarAttendeesSynced: attendeeEmails.length > 0,
+                  updatedAt: new Date(),
+                })
+                .where(eq(bookingRequestsTbl.requestId, payload.bookingId));
+              logger.info('[BookingReqWebhook] Calendar event linked after payment', {
+                bookingId: payload.bookingId, eventId: result.eventId, attendees: attendeeEmails.length,
+              });
+            }
+          } catch (calErr: any) {
+            logger.warn('[BookingReqWebhook] Calendar create failed (non-blocking)', {
+              bookingId: payload.bookingId, error: calErr?.message,
+            });
+          }
+        });
+
         return res.status(200).json({ received: true, bookingId: payload.bookingId, status: 'confirmed' });
 
       } else if (payload.event === 'payment.failed' || payload.event === 'payment.expired' || payload.event === 'payment.cancelled') {
