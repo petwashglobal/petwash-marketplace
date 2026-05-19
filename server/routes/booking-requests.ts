@@ -948,65 +948,14 @@ router.post('/:requestId/respond', async (req, res) => {
         .where(eq(bookingRequests.requestId, requestId));
     }
 
-    // ── Calendar sync on provider ACCEPT (Phase B1) ──────────────────────────
-    // Create a Google Calendar event tagged with petwash_booking_id so:
-    //   • the provider sees the booking on their work calendar
-    //   • the customer (if email available) receives an invitation
-    //   • re-running this handler is idempotent (no duplicate events)
-    //   • a missing GOOGLE_SERVICE_ACCOUNT_JSON quietly skips — never blocks
-    // The platform_calendar_event_id column stores the Google event id so
-    // we can target updates / deletes precisely later.
-    if (data.action === 'accept') {
-      setImmediate(async () => {
-        try {
-          const eventStart = meetGreetDate ?? booking.startDate;
-          const eventEnd = booking.endDate ?? new Date(new Date(eventStart).getTime() + 60 * 60 * 1000);
-          // Best-effort fetch of attendee emails (owner + provider).
-          let ownerEmail: string | undefined;
-          let providerEmail: string | undefined;
-          try {
-            const [owner] = await db.select({ email: users.email })
-              .from(users).where(eq(users.id, booking.ownerId)).limit(1);
-            ownerEmail = owner?.email ?? undefined;
-            const [prov] = await db.select({ email: users.email })
-              .from(users).where(eq(users.id, booking.providerId)).limit(1);
-            providerEmail = prov?.email ?? undefined;
-          } catch { /* non-fatal — calendar event still creates without invites */ }
-          const attendeeEmails = [ownerEmail, providerEmail].filter((e): e is string => !!e);
-
-          const result = await calendarIntegrationService.createBookingEvent({
-            platform: booking.providerType || booking.serviceType || 'PetWash',
-            bookingId: requestId,
-            title: `PetWash™ — ${booking.serviceType || 'Booking'}`,
-            description: data.response || booking.ownerMessage || `Booking ${requestId}`,
-            startTime: new Date(eventStart),
-            endTime: new Date(eventEnd),
-            location: meetGreetLocation || undefined,
-            customerName: booking.ownerId,
-            providerName: booking.providerId,
-            attendeeEmails,
-          });
-
-          if (result?.eventId) {
-            await db.update(bookingRequests)
-              .set({
-                platformCalendarEventId: result.eventId,
-                calendarAttendeesSynced: attendeeEmails.length > 0,
-                updatedAt: new Date(),
-              })
-              .where(eq(bookingRequests.requestId, requestId));
-            logger.info('[BookingRequests] Calendar event linked to booking', {
-              requestId, eventId: result.eventId, attendees: attendeeEmails.length,
-            });
-          }
-        } catch (calErr: any) {
-          // Never block the accept response on a calendar failure.
-          logger.warn('[BookingRequests] Calendar create failed (non-blocking)', {
-            requestId, error: calErr?.message,
-          });
-        }
-      });
-    }
+    // ── Calendar sync moved to payment-confirmation truth ────────────────────
+    // Calendar events are NO LONGER created on provider accept. A booking is
+    // not real until payment is confirmed, so creating a calendar event here
+    // produced events for bookings that were never paid ("calendar before
+    // payment truth"). The event is now created in the Nayax payment webhook
+    // (server/routes/nayax-webhooks.ts → /nayax/booking-request-payment, on
+    // payment.success → status 'confirmed'). Cancellation still deletes the
+    // event by booking_id below.
 
     // ── Wallet lifecycle on provider response ──────────────────────────────────
     // ACCEPT → debitFromWalletHold (pending → realized debit, commercially locked)
