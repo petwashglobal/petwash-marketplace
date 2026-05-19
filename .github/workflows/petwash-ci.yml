@@ -524,30 +524,16 @@ jobs:
             fi
           fi
 
-      - name: Sync FIREBASE_SERVICE_ACCOUNT_KEY from GitHub secret
-        env:
-          FIREBASE_SA_KEY_VAL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          PROJECT="$PROJECT_ID"
-
-          if [ -n "$FIREBASE_SA_KEY_VAL" ]; then
-            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets versions add "FIREBASE_SERVICE_ACCOUNT_KEY" \
-              --project="$PROJECT" \
-              --data-file=- \
-              --quiet 2>/dev/null || \
-            printf '%s' "$FIREBASE_SA_KEY_VAL" | gcloud secrets create "FIREBASE_SERVICE_ACCOUNT_KEY" \
-              --project="$PROJECT" \
-              --replication-policy=automatic \
-              --data-file=- \
-              --quiet
-            echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: synced from FIREBASE_SERVICE_ACCOUNT GitHub secret (${#FIREBASE_SA_KEY_VAL} chars)"
-          else
-            if gcloud secrets describe "FIREBASE_SERVICE_ACCOUNT_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-              echo "✅ FIREBASE_SERVICE_ACCOUNT_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
-            else
-              echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY: not found in GCP Secret Manager and FIREBASE_SERVICE_ACCOUNT GitHub secret is absent." && exit 1
-            fi
-          fi
+      # PR-STARTUP-FIX-5: removed "Sync FIREBASE_SERVICE_ACCOUNT_KEY from GitHub secret"
+      # step. The CEO's A2 fix (2026-05-18) was to remove the env var and rely on
+      # Cloud Run Application Default Credentials. The workflow was silently
+      # re-injecting a (possibly malformed) value on every deploy, causing
+      # bug #9 (production loading_routes Error on every revision).
+      # Firebase admin SDK uses ADC via the Cloud Run service account.
+      # If you ever need to pin an explicit service account JSON again,
+      # restore this step from git history at commit 723cca8 — but ensure
+      # the GitHub secret FIREBASE_SERVICE_ACCOUNT contains valid JSON first,
+      # and verify via the post-deploy /api/health gate.
 
       - name: Sync SENDGRID_API_KEY from GitHub secret
         env:
@@ -836,7 +822,10 @@ jobs:
             "BASE_URL=BASE_URL:latest"
             "DATABASE_URL=DATABASE_URL:latest"
             "FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest"
-            "FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
+            # PR-STARTUP-FIX-5: FIREBASE_SERVICE_ACCOUNT_KEY removed from required
+            # mappings. Cloud Run uses Application Default Credentials via the
+            # service account's IAM roles. Re-adding this line will re-introduce
+            # bug #9 unless the secret value is verified valid JSON.
             "JWT_SECRET=JWT_SECRET:latest"
             "JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest"
             "COOKIE_SECRET=COOKIE_SECRET:latest"

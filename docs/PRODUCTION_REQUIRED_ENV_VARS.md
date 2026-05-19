@@ -4,7 +4,7 @@
 > Regenerate with: `npx tsx scripts/audit-required-env-vars.ts`
 > Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`
 
-Generated date: 2026-05-18
+Generated date: 2026-05-19
 Scanned files (server/): 789
 Variables found: 316  (REQUIRED 8 · WARN 8 · OPTIONAL 300)
 
@@ -257,8 +257,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/jobs/watchdog.ts | 128 | FUNCTION_BODY | `Environment: ${process.env.NODE_ENV}` |
 | server/lib/buildInfo.ts | 61 | FUNCTION_BODY | `env:           process.env.NODE_ENV \|\| 'unknown',` |
 | server/lib/configHealth.ts | 161 | FUNCTION_BODY | `nodeEnv: process.env.NODE_ENV \|\| 'unknown',` |
-| server/lib/firebase-admin.ts | 25 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
-| server/lib/firebase-admin.ts | 35 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
+| server/lib/firebase-admin.ts | 42 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/lib/metrics.ts | 7 | FUNCTION_BODY | `environment: process.env.NODE_ENV \|\| 'development'` |
 | server/lib/notificationDispatcher.ts | 51 | MODULE_LOAD | `if (process.env.NODE_ENV === 'production' && !process.env.SENDGRID_FROM_EMAIL) {` |
 | server/lib/observability.ts | 6 | MODULE_LOAD | `const isProduction = process.env.NODE_ENV === 'production';` |

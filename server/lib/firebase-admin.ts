@@ -21,15 +21,22 @@ if (!admin.apps.length) {
       });
       console.log('✅ Firebase Admin SDK initialized with service account');
     } catch (error) {
-      console.error('❌ Failed to parse Firebase service account key:', error);
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('FATAL: Invalid FIREBASE_SERVICE_ACCOUNT_KEY in production. Server cannot start without valid credentials.');
-      }
+      // PR-STARTUP-FIX-5: never crash production startup on malformed
+      // FIREBASE_SERVICE_ACCOUNT_KEY. Fall through to Application Default
+      // Credentials (Cloud Run service account). The bug #9 cycle was:
+      // CI workflow injects key → secret manager value is malformed →
+      // JSON.parse throws → production boot dies at loading_routes phase.
+      // ADC works on Cloud Run via the runtime service account.
+      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', (error as Error).message);
+      console.warn(
+        '⚠️ Falling back to Application Default Credentials. ' +
+        'Verify Cloud Run service account has Firebase Admin SDK IAM roles. ' +
+        'To eliminate this warning: fix or unset FIREBASE_SERVICE_ACCOUNT_KEY.'
+      );
       firebaseApp = admin.initializeApp({
         projectId: FIREBASE_PROJECT_ID,
         storageBucket: FIREBASE_STORAGE_BUCKET,
       });
-      console.log('⚠️ Firebase Admin SDK initialized without credentials (dev mode only)');
     }
   } else {
     if (process.env.NODE_ENV === 'production') {
