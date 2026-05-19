@@ -5,7 +5,7 @@
 > Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`
 
 Generated date: 2026-05-19
-Scanned files (server/): 789
+Scanned files (server/): 790
 Variables found: 316  (REQUIRED 8 · WARN 8 · OPTIONAL 300)
 
 ## Definitions
@@ -40,7 +40,7 @@ A REQUIRED var that fires at MODULE_LOAD scope is the highest priority — those
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 281 | MODULE_LOAD | `console.log(`   COOKIE_SECRET: ${process.env.COOKIE_SECRET ? '✅ SET' : '❌ NOT SET'}`);` |
+| server/index.ts | 292 | MODULE_LOAD | `console.log(`   COOKIE_SECRET: ${process.env.COOKIE_SECRET ? '✅ SET' : '❌ NOT SET'}`);` |
 | server/lib/signedRedeemToken.ts | 22 | MODULE_LOAD | `const SECRET = process.env.PASS_TOKEN_SECRET \|\| process.env.COOKIE_SECRET \|\| '';` |
 | server/lib/walletPassToken.ts | 8 | MODULE_LOAD | `const WALLET_TOKEN_SECRET = process.env.WALLET_LINK_SECRET \|\| process.env.COOKIE_SECRET;` |
 | server/routes/onboarding-verification.ts | 250 | FUNCTION_BODY | `const secret = process.env.JWT_SECRET \|\| process.env.COOKIE_SECRET;` |
@@ -64,7 +64,7 @@ if (!secret) throw new Error('Email verification secret not configured — set J
 |------|------|-------|---------|
 | server/enterprise/aiBookkeeping.ts | 15 | FUNCTION_BODY | `credentials: process.env.FIREBASE_SERVICE_ACCOUNT_KEY` |
 | server/enterprise/aiBookkeeping.ts | 16 | FUNCTION_BODY | `? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)` |
-| server/index.ts | 280 | MODULE_LOAD | `console.log(`   FIREBASE_SERVICE_ACCOUNT_KEY: ${process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? '✅ SET' : '❌ NOT SET'}`);` |
+| server/index.ts | 291 | MODULE_LOAD | `console.log(`   FIREBASE_SERVICE_ACCOUNT_KEY: ${process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? '✅ SET' : '❌ NOT SET'}`);` |
 | server/infra/biometricStorage.ts | 34 | FUNCTION_BODY | `if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
 | server/infra/biometricStorage.ts | 41 | FUNCTION_BODY | `const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);` |
 | server/jobs/kycDeletionJob.ts | 13 | FUNCTION_BODY | `if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
@@ -249,11 +249,11 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/document-security-2025.ts | 422 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/emailService.ts | 259 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/emailService.ts | 309 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
-| server/index.ts | 31 | FUNCTION_BODY | `const isProd = process.env.NODE_ENV === 'production';` |
-| server/index.ts | 159 | FUNCTION_BODY | `process.env.NODE_ENV === 'production' ? console.error(msg) : console.warn(msg);` |
-| server/index.ts | 204 | FUNCTION_BODY | `const env = (process.env.NODE_ENV \|\| '').toLowerCase();` |
-| server/index.ts | 277 | MODULE_LOAD | `console.log(`   Environment: ${process.env.NODE_ENV \|\| 'development'}`);` |
-| server/index.ts | 344 | MODULE_LOAD | `const isProduction = process.env.NODE_ENV === 'production';` |
+| server/index.ts | 42 | FUNCTION_BODY | `const isProd = process.env.NODE_ENV === 'production';` |
+| server/index.ts | 170 | FUNCTION_BODY | `process.env.NODE_ENV === 'production' ? console.error(msg) : console.warn(msg);` |
+| server/index.ts | 215 | FUNCTION_BODY | `const env = (process.env.NODE_ENV \|\| '').toLowerCase();` |
+| server/index.ts | 288 | MODULE_LOAD | `console.log(`   Environment: ${process.env.NODE_ENV \|\| 'development'}`);` |
+| server/index.ts | 355 | MODULE_LOAD | `const isProduction = process.env.NODE_ENV === 'production';` |
 | server/jobs/watchdog.ts | 128 | FUNCTION_BODY | `Environment: ${process.env.NODE_ENV}` |
 | server/lib/buildInfo.ts | 61 | FUNCTION_BODY | `env:           process.env.NODE_ENV \|\| 'unknown',` |
 | server/lib/configHealth.ts | 161 | FUNCTION_BODY | `nodeEnv: process.env.NODE_ENV \|\| 'unknown',` |
@@ -387,7 +387,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 205 | FUNCTION_BODY | `const bypassSet = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';` |
+| server/index.ts | 216 | FUNCTION_BODY | `const bypassSet = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';` |
 | server/lib/payment-flags.ts | 45 | FUNCTION_BODY | `const bypassActive = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';` |
 | server/routes/finance/tranzila-admin.ts | 379 | FUNCTION_BODY | `const bypassActive     = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';` |
 | server/services/TranzilaWebhookService.ts | 140 | FUNCTION_BODY | `if (process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true') {` |
@@ -700,8 +700,8 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/appleWallet.ts | 236 | FUNCTION_BODY | `webServiceURL: `${process.env.BASE_URL \|\| 'https://petwash.co.il'}/api/wallet`,` |
 | server/appleWallet.ts | 628 | FUNCTION_BODY | `webServiceURL: `${process.env.BASE_URL \|\| 'https://petwash.co.il'}/api/wallet`,` |
 | server/emailService.ts | 723 | FUNCTION_BODY | `<p>לצפייה בדוח המלא: <a href="${process.env.BASE_URL \|\| 'https://petwash.co.il'}/dashboard">פאנל ניהול</a></p>` |
-| server/index.ts | 408 | MODULE_LOAD | `...(process.env.BASE_URL ? [process.env.BASE_URL] : ['http://localhost:5000']),` |
-| server/index.ts | 408 | MODULE_LOAD | `...(process.env.BASE_URL ? [process.env.BASE_URL] : ['http://localhost:5000']),` |
+| server/index.ts | 419 | MODULE_LOAD | `...(process.env.BASE_URL ? [process.env.BASE_URL] : ['http://localhost:5000']),` |
+| server/index.ts | 419 | MODULE_LOAD | `...(process.env.BASE_URL ? [process.env.BASE_URL] : ['http://localhost:5000']),` |
 | server/lib/passTokens.ts | 134 | FUNCTION_BODY | `const BASE_URL = process.env.BASE_URL \|\| 'https://petwash.co.il';` |
 | server/routes/admin.ts | 1168 | FUNCTION_BODY | `<a href="${process.env.BASE_URL \|\| 'https://petwash.co.il'}/claim-voucher?code=${code}" class="btn">` |
 | server/routes/ceo-wallet.ts | 216 | FUNCTION_BODY | `const baseUrl = process.env.BASE_URL \|\| 'https://petwash.co.il';` |
@@ -874,7 +874,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 |------|------|-------|---------|
 | server/db.ts | 23 | MODULE_LOAD | `export const isDatabaseAvailable = !!process.env.DATABASE_URL;` |
 | server/db.ts | 37 | FUNCTION_BODY | `connectionString: process.env.DATABASE_URL \|\| 'postgresql://placeholder:placeholder@localhost:5432/placeholder',` |
-| server/index.ts | 279 | MODULE_LOAD | `console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET'}`);` |
+| server/index.ts | 290 | MODULE_LOAD | `console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET'}`);` |
 | server/replitAuth.ts | 40 | FUNCTION_BODY | `conString: process.env.DATABASE_URL,` |
 
 ### DEV_TEST_SECRET
@@ -1307,9 +1307,9 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 |------|------|-------|---------|
 | server/config/google-services.ts | 12 | FUNCTION_BODY | `const mapsApiKey = process.env.GOOGLE_MAPS_API_KEY;` |
 | server/config/google-services.ts | 55 | FUNCTION_BODY | `return !!process.env.GOOGLE_MAPS_API_KEY;` |
-| server/index.ts | 282 | MODULE_LOAD | `console.log(`   GOOGLE_MAPS_API_KEY: ${process.env.GOOGLE_MAPS_API_KEY ? `✅ SET (${process.env.GOOGLE_MAPS_API_KEY.lengt` |
-| server/index.ts | 282 | MODULE_LOAD | `console.log(`   GOOGLE_MAPS_API_KEY: ${process.env.GOOGLE_MAPS_API_KEY ? `✅ SET (${process.env.GOOGLE_MAPS_API_KEY.lengt` |
-| server/index.ts | 288 | FUNCTION_BODY | `const key = process.env.GOOGLE_MAPS_API_KEY;` |
+| server/index.ts | 293 | MODULE_LOAD | `console.log(`   GOOGLE_MAPS_API_KEY: ${process.env.GOOGLE_MAPS_API_KEY ? `✅ SET (${process.env.GOOGLE_MAPS_API_KEY.lengt` |
+| server/index.ts | 293 | MODULE_LOAD | `console.log(`   GOOGLE_MAPS_API_KEY: ${process.env.GOOGLE_MAPS_API_KEY ? `✅ SET (${process.env.GOOGLE_MAPS_API_KEY.lengt` |
+| server/index.ts | 299 | FUNCTION_BODY | `const key = process.env.GOOGLE_MAPS_API_KEY;` |
 | server/routes/google-services.ts | 104 | MODULE_LOAD | `logger.info('[GoogleMaps] keyPresent=' + !!process.env.GOOGLE_MAPS_API_KEY);` |
 | server/routes/google-services.ts | 285 | FUNCTION_BODY | `apiKeyConfigured: !!process.env.GOOGLE_MAPS_API_KEY,` |
 | server/routes/google-services.ts | 286 | FUNCTION_BODY | `apiKeyLength: process.env.GOOGLE_MAPS_API_KEY?.length \|\| 0,` |
@@ -1829,8 +1829,8 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 278 | MODULE_LOAD | `console.log(`   Port: ${process.env.PORT \|\| 8080}`);` |
-| server/index.ts | 336 | MODULE_LOAD | `const PORT = Number(process.env.PORT \|\| 8080);` |
+| server/index.ts | 289 | MODULE_LOAD | `console.log(`   Port: ${process.env.PORT \|\| 8080}`);` |
+| server/index.ts | 347 | MODULE_LOAD | `const PORT = Number(process.env.PORT \|\| 8080);` |
 | server/routes.ts | 5550 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/nayax-checkout`, {` |
 | server/routes/synthetic.ts | 16 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/auth/webauthn/login/options`, {` |
 
@@ -1905,7 +1905,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 182 | FUNCTION_BODY | `const backendKey = extractSiteKey(process.env.RECAPTCHA_SITE_KEY \|\| '');` |
+| server/index.ts | 193 | FUNCTION_BODY | `const backendKey = extractSiteKey(process.env.RECAPTCHA_SITE_KEY \|\| '');` |
 | server/lib/verifyCaptcha.ts | 36 | MODULE_LOAD | `process.env.RECAPTCHA_SITE_KEY \|\|` |
 | server/routes/captcha-probe.ts | 25 | FUNCTION_BODY | `process.env.RECAPTCHA_SITE_KEY \|\|` |
 | server/routes/captcha-probe.ts | 299 | FUNCTION_BODY | `(process.env.RECAPTCHA_SITE_KEY \|\| '').trim();` |
@@ -2379,7 +2379,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 124 | FUNCTION_BODY | `const hasMsgSvc   = !!(process.env.TWILIO_MESSAGING_SERVICE_SID \|\| '').trim();` |
+| server/index.ts | 135 | FUNCTION_BODY | `const hasMsgSvc   = !!(process.env.TWILIO_MESSAGING_SERVICE_SID \|\| '').trim();` |
 | server/services/TwilioSMSService.ts | 113 | FUNCTION_BODY | `const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;` |
 | server/services/winbackChannel.ts | 60 | FUNCTION_BODY | `?? process.env.TWILIO_MESSAGING_SERVICE_SID` |
 
@@ -2387,7 +2387,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 123 | FUNCTION_BODY | `const hasPhone    = !!(process.env.TWILIO_PHONE_NUMBER \|\| '').trim();` |
+| server/index.ts | 134 | FUNCTION_BODY | `const hasPhone    = !!(process.env.TWILIO_PHONE_NUMBER \|\| '').trim();` |
 | server/services/TwilioSMSService.ts | 112 | FUNCTION_BODY | `const fromPhone = process.env.TWILIO_PHONE_NUMBER;` |
 | server/services/winbackChannel.ts | 59 | FUNCTION_BODY | `return process.env.TWILIO_PHONE_NUMBER` |
 
@@ -2466,7 +2466,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/index.ts | 181 | FUNCTION_BODY | `const viteKey    = extractSiteKey(process.env.VITE_RECAPTCHA_SITE_KEY \|\| ''); // frontend build-time key (for mismatch` |
+| server/index.ts | 192 | FUNCTION_BODY | `const viteKey    = extractSiteKey(process.env.VITE_RECAPTCHA_SITE_KEY \|\| ''); // frontend build-time key (for mismatch` |
 | server/lib/verifyCaptcha.ts | 37 | MODULE_LOAD | `process.env.VITE_RECAPTCHA_SITE_KEY \|\|` |
 
 ### VOUCHER_ES256_PRIVATE_KEY_PEM
