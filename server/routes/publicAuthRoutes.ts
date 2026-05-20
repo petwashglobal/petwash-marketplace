@@ -78,6 +78,16 @@ async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: s
 
 export const publicAuthRouter = express.Router();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @deprecated — LEGACY phone-OTP routes.
+// The /api/auth/phone/* and /api/auth/phone-session endpoints below are the older
+// phone-OTP stacks. They are SUPERSEDED by the canonical SMS auth wrapper at
+// /api/auth/sms (server/routes/auth-sms.ts), which delegates to the same
+// TwilioSMSService engine + session-cookie chain. They are retained for backward
+// compatibility and MUST NOT be removed yet — a follow-up PR will consolidate all
+// callers onto /api/auth/sms and then delete these. Do not add new callers here.
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Sends guaranteed JSON response with a safe status code.
  * use200 = return HTTP 200 always (for unauthenticated cases)
