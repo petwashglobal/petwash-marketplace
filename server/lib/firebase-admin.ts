@@ -61,18 +61,27 @@ if (!firebaseApp) {
   throw new Error('Firebase Admin app not initialized - this should never happen');
 }
 
+// Firestore.settings() may be called at most once per underlying instance.
+// firebaseApp.firestore() returns a persistent singleton that survives module
+// re-imports (e.g. Vitest re-evaluating this module between test files) even
+// though module scope is reset — so the "already applied" guard must live on
+// the instance via a global symbol, not in a module-level boolean. Without this
+// a second import re-runs settings() and throws "settings() can only be called once".
+const FIRESTORE_SETTINGS_APPLIED = Symbol.for('petwash.firebaseAdmin.firestoreSettingsApplied');
+
 // Use getter function to ensure db is always available
 export function getFirestore() {
   const firestore = firebaseApp.firestore();
+  const marker = firestore as unknown as Record<symbol, boolean>;
+  if (!marker[FIRESTORE_SETTINGS_APPLIED]) {
+    firestore.settings({ ignoreUndefinedProperties: true });
+    marker[FIRESTORE_SETTINGS_APPLIED] = true;
+  }
   return firestore;
 }
 
 // Export direct references for convenience (most common pattern)
-export const db = (() => {
-  const firestore = getFirestore();
-  firestore.settings({ ignoreUndefinedProperties: true });
-  return firestore;
-})();
+export const db = getFirestore();
 export const storage = firebaseApp.storage();
 export const auth = firebaseApp.auth();
 // Alias for consistency with some route imports
