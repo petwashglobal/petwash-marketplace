@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WashPackages } from '@/components/WashPackages';
 import { GiftCards } from '@/components/GiftCards';
+import PrestigeWalletCTA from '@/components/PrestigeWalletCTA';
 import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
@@ -346,8 +347,8 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-
-{/* Digital Wallet Section - Removed: Feature not yet active */}
+        {/* Prestige Pass — membership-gated Apple/Google Wallet CTA */}
+        <PrestigeWalletCTA language={language} />
 
         {/* Loyalty Program Section */}
         <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
