@@ -233,8 +233,10 @@ function aggregate(reads: EnvRead[]): AggregatedVar[] {
 // ─── Render ──────────────────────────────────────────────────────────────────
 
 function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
-  const now = new Date().toISOString().slice(0, 10); // YYYY-MM-DD only — deterministic for diffs
-
+  // NOTE: intentionally NO generated-date stamp. The audit gate compares this
+  // file against a fresh regeneration; embedding today's date made the file go
+  // STALE on every UTC midnight regardless of code, blocking deploys. The doc
+  // is now fully deterministic from the source tree.
   const counts = {
     REQUIRED: vars.filter(v => v.classification === 'REQUIRED').length,
     WARN: vars.filter(v => v.classification === 'WARN').length,
@@ -248,7 +250,6 @@ function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
   lines.push('> Regenerate with: `npx tsx scripts/audit-required-env-vars.ts`');
   lines.push('> Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`');
   lines.push('');
-  lines.push(`Generated date: ${now}`);
   lines.push(`Scanned files (server/): ${scannedFiles}`);
   lines.push(`Variables found: ${vars.length}  (REQUIRED ${counts.REQUIRED} · WARN ${counts.WARN} · OPTIONAL ${counts.OPTIONAL})`);
   lines.push('');
