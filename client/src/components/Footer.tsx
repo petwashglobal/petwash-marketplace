@@ -136,18 +136,6 @@ export function Footer({ language }: FooterProps) {
                   loading="lazy" 
                 />
               </div>
-              
-              {/* Nayax Powered Badge */}
-              <div className="flex items-center justify-center gap-3 mt-4">
-                <div className="h-px w-12 bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
-                <div className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-full shadow-lg">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                  <span className="text-[10px] sm:text-xs font-bold tracking-wide text-white">
-                    Powered by <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">Nayax</span> Israel
-                  </span>
-                </div>
-                <div className="h-px w-12 bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
-              </div>
             </div>
 
             {/* Trust Badges - Minimalist Luxury */}
