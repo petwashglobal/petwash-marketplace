@@ -6,6 +6,17 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   delete process.env.GEMINI_API_KEY;
 }
 
+// Mirror APPLE_WALLET_* production secrets onto the env names the wallet code
+// reads. Must run before any wallet module is imported (the modern Apple Wallet
+// service reads its env at module load). Non-destructive, never logs values.
+import { applyWalletEnvCompat } from './lib/wallet-env-compat';
+{
+  const _walletEnvFilled = applyWalletEnvCompat();
+  if (_walletEnvFilled > 0) {
+    console.log(`[startup] Apple Wallet env compatibility shim normalized ${_walletEnvFilled} name(s)`);
+  }
+}
+
 // ── Startup error collectors ───────────────────────────────────────────────────
 // Throwing before app.listen() exits the process before it binds the port;
 // Cloud Run's startup probe never sees a listener → "user-provided container failed
