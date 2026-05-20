@@ -4,7 +4,7 @@
 > Regenerate with: `npx tsx scripts/audit-required-env-vars.ts`
 > Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`
 
-Generated date: 2026-05-19
+Generated date: 2026-05-20
 Scanned files (server/): 790
 Variables found: 316  (REQUIRED 8 · WARN 8 · OPTIONAL 300)
 
@@ -569,7 +569,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/routes.ts | 5690 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://petwash.co.il';` |
 | server/routes/booking-requests.ts | 456 | FUNCTION_BODY | `bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_U` |
 | server/routes/booking-requests.ts | 459 | FUNCTION_BODY | `ctaUrl: `${process.env.APP_URL \|\| 'https://petwash.co.il'}/provider/bookings/${requestId}`,` |
-| server/routes/booking-requests.ts | 1340 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://petwash.co.il';` |
+| server/routes/booking-requests.ts | 1289 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://petwash.co.il';` |
 | server/routes/provider-applications.ts | 1256 | FUNCTION_BODY | `const invitationUrl = `${process.env.APP_URL \|\| 'https://petwash.co.il'}/provider/onboard?token=${invitationToken}`;` |
 | server/routes/provider-onboarding.ts | 1143 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://app.petwash.co.il';` |
 | server/routes/provider-onboarding.ts | 1861 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://app.petwash.co.il';` |
