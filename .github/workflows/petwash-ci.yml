@@ -901,6 +901,16 @@ jobs:
             "FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest"
             "FIREBASE_APP_ID=FIREBASE_APP_ID:latest"
             "FIREBASE_MEASUREMENT_ID=FIREBASE_MEASUREMENT_ID:latest"
+            # Apple Wallet (PassKit) credentials. server/lib/wallet-env-compat.ts
+            # aliases these APPLE_WALLET_* names onto the canonical APPLE_* names the
+            # wallet code reads at startup. With secrets_update_strategy=overwrite,
+            # omitting them here strips them from every deploy — keep them mapped.
+            "APPLE_WALLET_PASS_TYPE_ID=APPLE_WALLET_PASS_TYPE_ID:latest"
+            "APPLE_WALLET_TEAM_ID=APPLE_WALLET_TEAM_ID:latest"
+            "APPLE_WALLET_WWDR_CERT=APPLE_WALLET_WWDR_CERT:latest"
+            "APPLE_WALLET_CERT=APPLE_WALLET_CERT:latest"
+            "APPLE_WALLET_KEY=APPLE_WALLET_KEY:latest"
+            "APPLE_WALLET_ORGANIZATION_NAME=APPLE_WALLET_ORGANIZATION_NAME:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
