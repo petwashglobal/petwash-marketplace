@@ -566,7 +566,7 @@ export default function BookingConfirmation() {
         <div className="max-w-lg mx-auto">
 
           {/* ── Back ── */}
-          <Button variant="ghost" onClick={() => navigate('/my-bookings')} className="mb-4 gap-2 -mx-2 text-gray-500">
+          <Button variant="ghost" onClick={() => navigate('/bookings')} className="mb-4 gap-2 -mx-2 text-gray-500">
             <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
             {t.back}
           </Button>
@@ -902,7 +902,7 @@ export default function BookingConfirmation() {
           {/* ── View all bookings ── */}
           {confirmed && (
             <div className="flex gap-3 mt-2 mb-6">
-              <Button variant="outline" onClick={() => navigate('/my-bookings')} className="flex-1 rounded-xl font-semibold border-gray-200">
+              <Button variant="outline" onClick={() => navigate('/bookings')} className="flex-1 rounded-xl font-semibold border-gray-200">
                 {t.viewAllBookings}
               </Button>
             </div>
