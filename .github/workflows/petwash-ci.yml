@@ -831,6 +831,10 @@ jobs:
             "COOKIE_SECRET=COOKIE_SECRET:latest"
             "SESSION_SECRET=SESSION_SECRET:latest"
             "SENDGRID_API_KEY=SENDGRID_API_KEY:latest"
+            # Required: notificationDispatcher.ts throws at module load in production
+            # if SENDGRID_FROM_EMAIL is unset, which aborts the entire routes import
+            # and forces every /api/* to 503. Must be mapped onto the live revision.
+            "SENDGRID_FROM_EMAIL=SENDGRID_FROM_EMAIL:latest"
             "GEMINI_API_KEY=GEMINI_API_KEY:latest"
             "GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest"
             "GOOGLE_SERVICE_ACCOUNT_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest"
