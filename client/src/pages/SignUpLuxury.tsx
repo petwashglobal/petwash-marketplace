@@ -15,7 +15,7 @@
  *  - Safe-area bottom padding so the submit isn't hidden behind Safari's bottom bar.
  *  - 16px inputs (no iOS zoom); iOS-safe OAuth via getAuthStrategy redirect.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { signInWithPopup, signInWithRedirect, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -26,6 +26,7 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { FaApple } from 'react-icons/fa';
 
 interface Props {
@@ -40,6 +41,19 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
   const { toast } = useToast();
   const he = language === 'he';
 
+  // Intent/flow from the URL so one door serves every entry point:
+  // /signup?flow=provider | guest | prestige (default prestige).
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const rawFlow = params.get('flow') || params.get('intent') || 'prestige';
+  const flow: 'prestige' | 'provider' | 'guest' = rawFlow === 'provider' || rawFlow === 'guest' ? rawFlow : 'prestige';
+  const dest = flow === 'provider' ? '/provider/dashboard' : flow === 'guest' ? '/egift' : '/member/dashboard';
+
+  // OAuth redirect completion (iOS): after signInWithRedirect returns, Firebase
+  // signs the user in and AuthProvider mints the session — navigate off /signup
+  // so the user isn't left stuck on this screen.
+  const { user } = useFirebaseAuth();
+  useEffect(() => { if (user) navigate(dest); }, [user, dest, navigate]);
+
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -53,7 +67,7 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
     try {
       const r = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ phone, language, flow: 'prestige' }),
+        body: JSON.stringify({ phone, language, flow }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'שליחת הקוד נכשלה' : 'Could not send code')); return; }
@@ -68,7 +82,7 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
     try {
       const v = await fetch(getApiUrl('/api/auth/sms/verify'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ phone, code: c, language, flow: 'prestige' }),
+        body: JSON.stringify({ phone, code: c, language, flow }),
       });
       const vd = await v.json();
       if (!vd.ok) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
@@ -85,7 +99,7 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
           body: JSON.stringify({ idToken }),
         });
       }
-      navigate(vd.redirect || '/member/dashboard');
+      navigate(vd.redirect || dest);
     } catch (e) { logger.error('[lux] verify', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
     finally { setBusy(false); }
   }
@@ -104,7 +118,7 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
-      navigate('/member/dashboard');
+      navigate(dest);
     } catch (e: any) {
       if (e?.code === 'auth/popup-closed-by-user') return;
       logger.error('[lux] social', e); fail(he ? 'ההתחברות נכשלה' : 'Sign-in failed');
