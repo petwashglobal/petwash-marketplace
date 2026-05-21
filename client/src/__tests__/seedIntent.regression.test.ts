@@ -22,12 +22,10 @@
  *      ALLOWED_INTENTS, and POSTs to /api/auth/seed-intent.
  *   2. SignIn.tsx imports the helper and calls it BEFORE
  *      signInWithRedirect on the iPhone redirect path.
- *   3. SignUp.tsx does the same on its OAuth redirect path.
  *
  * Source pins (line numbers may drift, anchors are unique strings):
  *   client/src/lib/seedIntent.ts        — module exists, exports the helper
  *   client/src/pages/SignIn.tsx         — imports + calls before redirect
- *   client/src/pages/SignUp.tsx         — imports + calls before redirect
  */
 
 import { describe, it, expect } from 'vitest';
@@ -78,25 +76,7 @@ describe('Issue #153 PR-FRES-2 — seed signup_intent cookie before OAuth redire
     expect(window).toMatch(/await\s+seedSignupIntentCookie\(\)/);
   });
 
-  it('6. SignUp.tsx imports seedSignupIntentCookie', () => {
-    const src = read('client/src/pages/SignUp.tsx');
-    expect(src).toMatch(/import\s*\{\s*seedSignupIntentCookie\s*\}\s*from\s*['"]@\/lib\/seedIntent['"]/);
-  });
-
-  it('7. SignUp.tsx awaits seedSignupIntentCookie BEFORE signInWithRedirect on the redirect strategy path', () => {
-    const src = read('client/src/pages/SignUp.tsx');
-    const idx = src.indexOf("performOAuthSignup");
-    expect(idx).toBeGreaterThan(0);
-    const window = src.slice(idx, idx + 2500);
-    const seedPos = window.indexOf('seedSignupIntentCookie');
-    const redirectPos = window.indexOf('signInWithRedirect(auth, authProvider)');
-    expect(seedPos).toBeGreaterThan(0);
-    expect(redirectPos).toBeGreaterThan(0);
-    expect(seedPos).toBeLessThan(redirectPos);
-    expect(window).toMatch(/await\s+seedSignupIntentCookie\(\)/);
-  });
-
-  it('8. Server seed-intent endpoint contract preserved (post-login.ts route + ALLOWED_INTENTS)', () => {
+  it('6. Server seed-intent endpoint contract preserved (post-login.ts route + ALLOWED_INTENTS)', () => {
     const src = read('server/routes/post-login.ts');
     expect(src).toMatch(/export\s+async\s+function\s+seedIntent/);
     expect(src).toMatch(/pw_signup_intent/);

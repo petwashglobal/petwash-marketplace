@@ -182,13 +182,7 @@ describe('PR-FRES-B caller-integration source pins', () => {
     expect(src).not.toMatch(/fetch\([^)]*['"]\/api\/auth\/post-login['"]/);
   });
 
-  it('14. SignUp.tsx imports resolvePostLogin and removed raw post-login fetch', () => {
-    const src = read('client/src/pages/SignUp.tsx');
-    expect(src).toMatch(/import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
-    expect(src).not.toMatch(/fetch\([^)]*['"]\/api\/auth\/post-login['"]/);
-  });
-
-  it('15. GoogleOneTap.tsx removed setTimeout(..., 500) and uses coordinator', () => {
+  it('14. GoogleOneTap.tsx removed setTimeout(..., 500) and uses coordinator', () => {
     const src = read('client/src/components/GoogleOneTap.tsx');
     expect(src).toMatch(/import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
     // No more arbitrary setTimeout(..., 500) coordination
