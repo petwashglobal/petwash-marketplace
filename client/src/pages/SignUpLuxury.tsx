@@ -48,8 +48,6 @@ interface Props {
   onLanguageChange?: (lang: Language) => void;
 }
 
-const NAV_OFFSET = 104; // app navbar pushes body down by 104px (measured)
-
 type Flow = 'prestige' | 'provider' | 'guest' | 'booking' | 'general';
 
 function normalizeFlow(raw: string | null): Flow {
@@ -224,23 +222,25 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     <div className="sl-root" dir={he ? 'rtl' : 'ltr'}>
       <style>{`
         .sl-root{--gold:#d8ad55;--gold2:#f4d48a;--white:#fffaf0;--muted:rgba(255,250,240,.7);--line:rgba(255,255,255,.14);
-          position:relative;min-height:calc(100svh - ${NAV_OFFSET}px);
+          position:relative;min-height:100dvh;
           background:radial-gradient(circle at 18% 8%,rgba(244,212,138,.16),transparent 30%),radial-gradient(circle at 82% 90%,rgba(216,173,85,.12),transparent 32%),linear-gradient(135deg,#050505,#111 50%,#050505);
-          color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;display:grid;grid-template-columns:1.05fr .95fr}
-        .sl-lang{position:absolute;top:14px;${he ? 'left' : 'right'}:16px;z-index:5;display:flex;gap:6px;top:max(14px,env(safe-area-inset-top))}
+          color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;display:flex;flex-direction:column}
+        @supports not (height:100dvh){.sl-root{min-height:100vh}}
+        .sl-lang{position:absolute;top:max(14px,env(safe-area-inset-top));${he ? 'left' : 'right'}:16px;z-index:6;display:flex;gap:6px}
         .sl-langBtn{appearance:none;cursor:pointer;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--white);font-weight:800;font-size:13px;border-radius:999px;padding:7px 13px;min-height:36px}
         .sl-langBtn[aria-pressed="true"]{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#0a0a0a;border-color:transparent}
-        .sl-hero{position:relative;padding:clamp(24px,4vw,56px);display:flex;flex-direction:column;justify-content:space-between;gap:20px;overflow:hidden;min-height:calc(100svh - ${NAV_OFFSET}px)}
+        .sl-hero{position:relative;z-index:0;background:#080808;padding:clamp(28px,6vw,52px) clamp(20px,5vw,52px);display:flex;flex-direction:column;justify-content:flex-start;gap:16px;overflow:hidden;min-height:44dvh}
         .sl-hero:after{content:"";position:absolute;inset:auto 0 0 0;height:42%;background:linear-gradient(transparent,rgba(5,5,5,.94));z-index:1}
         .sl-hero > *{position:relative;z-index:2}
-        .sl-heroArt{position:absolute;inset:0;z-index:0;background:center/cover no-repeat;background-image:url(/brand/hero-dog-lux.jpg);opacity:.55;-webkit-mask-image:linear-gradient(90deg,transparent,#000 55%);mask-image:linear-gradient(90deg,transparent,#000 55%)}
-        /* Logo is the dominant brand mark — larger than the headline (per spec). */
-        .sl-logo{height:clamp(64px,11vw,132px);width:auto;filter:brightness(0) invert(1)}
+        .sl-heroArt{position:absolute;inset:0;z-index:0;background:center/cover no-repeat;background-image:url(/brand/hero-dog-lux.jpg);opacity:.5;-webkit-mask-image:linear-gradient(180deg,transparent 26%,#000 72%);mask-image:linear-gradient(180deg,transparent 26%,#000 72%)}
+        /* White wordmark on a black canvas: screen-blend drops the black border so only the crisp logo shows on the dark hero — no white box, no filter hack. */
+        .sl-logoWrap{mix-blend-mode:screen;width:fit-content}
+        .sl-logo{height:clamp(48px,13vw,104px);width:auto;display:block}
         .sl-eyebrow{letter-spacing:.22em;text-transform:uppercase;font-size:12px;color:var(--muted);font-weight:800}
         .sl-h1{font-family:"Playfair Display",Georgia,serif;font-size:clamp(30px,4.6vw,64px);line-height:.95;letter-spacing:-.03em;margin:0}
         .sl-gold{background:linear-gradient(90deg,var(--gold2),var(--gold),#9d6f23);-webkit-background-clip:text;background-clip:text;color:transparent}
         .sl-sub{margin-top:14px;max-width:520px;color:var(--muted);font-size:clamp(15px,1.5vw,20px);line-height:1.45}
-        .sl-panelWrap{display:flex;align-items:center;justify-content:center;padding:clamp(18px,3vw,44px);min-height:calc(100svh - ${NAV_OFFSET}px);padding-bottom:max(28px,env(safe-area-inset-bottom))}
+        .sl-panelWrap{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:center;padding:clamp(16px,5vw,28px) clamp(16px,5vw,28px) max(32px,env(safe-area-inset-bottom))}
         .sl-panel{width:100%;max-width:480px;border-radius:28px;border:1px solid rgba(244,212,138,.22);
           background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.04));-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);
           box-shadow:0 30px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.16);padding:clamp(22px,3.2vw,38px);display:flex;flex-direction:column;gap:16px}
@@ -265,19 +265,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         .sl-terms input{width:20px;height:20px;margin-top:1px;accent-color:var(--gold);flex:0 0 auto}
         .sl-terms a{color:var(--gold2);font-weight:700;text-decoration:underline}
         .sl-foot{text-align:center;color:rgba(255,250,240,.55);font-size:13px;line-height:1.5}
-        @media(max-width:768px){
-          .sl-root{grid-template-columns:1fr;min-height:auto}
-          .sl-hero{min-height:auto;padding:24px 22px 28px;gap:14px}
-          .sl-heroArt{-webkit-mask-image:linear-gradient(180deg,#000 45%,transparent);mask-image:linear-gradient(180deg,#000 45%,transparent);opacity:.4}
-          .sl-h1{font-size:clamp(28px,8vw,48px)}
-          .sl-sub{font-size:15px}
-          .sl-panelWrap{min-height:auto;padding:6px 16px 40px;padding-bottom:max(40px,env(safe-area-inset-bottom))}
-        }
         @media(max-width:430px){ .sl-social{grid-template-columns:1fr} .sl-panel{padding:22px 18px;border-radius:22px} }
+        /* Desktop enhancement: two-column split, full-height hero with the art bleeding toward the panel. */
+        @media(min-width:980px){
+          .sl-root{display:grid;grid-template-columns:1.05fr .95fr}
+          .sl-hero{min-height:100dvh;justify-content:space-between;gap:20px;padding:clamp(36px,4vw,64px)}
+          .sl-hero:after{display:none}
+          .sl-heroArt{-webkit-mask-image:linear-gradient(90deg,transparent,#000 55%);mask-image:linear-gradient(90deg,transparent,#000 55%);opacity:.55}
+          .sl-h1{font-size:clamp(40px,4.6vw,64px)}
+          .sl-logo{height:clamp(80px,7vw,132px)}
+          .sl-panelWrap{align-items:center;min-height:100dvh;padding:clamp(24px,3vw,44px)}
+        }
         @media(max-height:560px) and (orientation:landscape){
-          .sl-root{grid-template-columns:1fr;min-height:auto}
           .sl-hero{min-height:auto;padding:16px 22px}
-          .sl-panelWrap{min-height:auto;padding:12px 16px 28px}
         }
         @media(prefers-reduced-motion:reduce){.sl-btn{transition:none}}
       `}</style>
@@ -291,7 +291,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
       <section className="sl-hero">
         <div className="sl-heroArt" />
-        <div><img src="/petwash-logo-official.png" alt="PetWash" className="sl-logo" /></div>
+        <div className="sl-logoWrap"><img src="/brand/petwash-logo-black-bg.png" alt="PetWash" className="sl-logo" width={600} height={240} decoding="async" /></div>
         <div>
           <div className="sl-eyebrow">{he ? 'אקוסיסטם יוקרתי וחכם לחיות מחמד' : 'Intelligent pet-care ecosystem'}</div>
           <h1 className="sl-h1">{he ? 'העתיד של' : 'The Future of'}<br /><span className="sl-gold">{he ? 'חיי חיות המחמד' : 'Pet Lifestyle'}</span></h1>
