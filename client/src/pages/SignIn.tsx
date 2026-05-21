@@ -1396,6 +1396,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         body: JSON.stringify({
           phone: formattedPhone,
           language,
+          flow: 'prestige',
           ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }),
         }),
       });
@@ -1466,10 +1467,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          phone: confirmationResult.phone, 
+        body: JSON.stringify({
+          phone: confirmationResult.phone,
           code,
-          language 
+          language,
+          flow: 'prestige',
         }),
       });
 

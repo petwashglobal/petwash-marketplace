@@ -354,7 +354,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: normalizedPhone, language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
+        body: JSON.stringify({ phone: normalizedPhone, language, flow: 'prestige', ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
       });
       const result = await res.json();
       if (!result.ok) throw new Error(genericAuthFailureMessage);
@@ -385,7 +385,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: confirmationResult.phone, code, language }),
+        body: JSON.stringify({ phone: confirmationResult.phone, code, language, flow: 'prestige' }),
       });
       const verifyResult = await verifyRes.json();
       if (!verifyResult.ok) throw new Error(genericAuthFailureMessage);
