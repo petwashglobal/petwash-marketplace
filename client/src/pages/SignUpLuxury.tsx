@@ -38,7 +38,6 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
 
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -202,11 +201,8 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
           ) : (
             <>
               <p className="sl-p" style={{ textAlign: 'center' }}>{he ? `קוד נשלח ל-${phone}` : `Code sent to ${phone}`}</p>
-              <OtpCodeInput length={6} value={code} onChange={setCode} onComplete={(c) => { void verify(c); }} disabled={busy} />
-              <button className="sl-btn sl-primary" disabled={busy || code.length < 6} onClick={() => verify(code)}>
-                {busy ? '…' : (he ? 'אמת והמשך' : 'Verify & continue')}
-              </button>
-              <button className="sl-btn" disabled={busy} onClick={() => { setSent(false); setCode(''); }}>
+              <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
+              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>
                 {he ? 'שלח קוד חדש' : 'Resend code'}
               </button>
             </>
