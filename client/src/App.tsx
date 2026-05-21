@@ -67,6 +67,7 @@ const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
+const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
 const CustomerFavourites = lazy(() => import("@/pages/CustomerFavourites"));
@@ -676,6 +677,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/signup">
           {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+        {/* PREVIEW: black-luxury 2026 signup (Step 1). Live /signup unchanged until approved. */}
+        <Route path="/signup-lux">
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/sign-up">
           {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
