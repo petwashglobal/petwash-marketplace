@@ -19,6 +19,13 @@ export interface WhoamiResponse {
   mfaVerified: boolean;
   kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' | 'manual_review' | 'not_required';
   kycAdmin: boolean;
+  // Account-status projection (read-only, server-derived). Optional so older
+  // server builds that don't yet send them don't break typing.
+  profileStatus?: 'complete' | 'incomplete';
+  providerStatus?: 'none' | 'pending' | 'approved';
+  prestigeStatus?: 'none' | 'active';
+  activeFlow?: 'prestige' | 'provider' | 'guest' | 'booking' | 'general';
+  roles?: string[];
   session: {
     ageSeconds: number;
     maxAgeSeconds: number;

@@ -1,9 +1,11 @@
 /**
- * Tests for the global account button decision logic (safe scope).
+ * Tests for the global account button decision logic.
  *
- * Locks the SAFE behaviour: guest → /signup?flow=general&returnTo, authenticated
- * states get a correct label only (route stays with resolveAccountRoute). States
- * whoami cannot prove (profile-incomplete, provider-pending) must NOT be guessed.
+ * Locks: guest → /signup?flow=general&returnTo, checkout-context guest →
+ * flow=guest, and the authenticated remap to canonical routes by whoami truth.
+ * Cookie-loss (Firebase-authed, whoami null) must defer to the server resolver
+ * and never show "Sign Up". Priority: admin > incomplete > provider(pending) >
+ * provider(approved) > prestige > customer.
  */
 import { describe, it, expect } from 'vitest';
 import { accountButtonView, accountLabel } from './accountButton';
@@ -13,12 +15,13 @@ function whoami(overrides: Partial<WhoamiResponse> = {}): WhoamiResponse {
   return {
     authenticated: true,
     uid: 'u1', email: 'a@b.com', emailVerified: true, phoneVerified: true,
-    phone: null, language: 'en', displayName: 'A', role: 'customer', accountType: 'customer',
+    phone: null, language: 'en', displayName: 'A', role: 'customer', accountType: 'pet_parent',
     isSuperAdmin: false, dashboardsAllowed: ['member'], mfaRequired: false, mfaVerified: false,
     kycStatus: 'not_required', kycAdmin: false,
+    profileStatus: 'complete', providerStatus: 'none', prestigeStatus: 'none', activeFlow: 'general', roles: ['customer'],
     session: { ageSeconds: 1, maxAgeSeconds: 100, ip: 'x', createdAt: null },
     claims: {
-      role: 'customer', accountType: 'customer', loyaltyMember: false, loyaltyTier: 'bronze',
+      role: 'customer', accountType: 'pet_parent', loyaltyMember: false, loyaltyTier: 'bronze',
       program: null, providerType: null, department: null, roleCode: null, kyc_admin: false,
     },
     ...overrides,
@@ -26,70 +29,73 @@ function whoami(overrides: Partial<WhoamiResponse> = {}): WhoamiResponse {
 }
 
 describe('accountButtonView', () => {
-  it('guest (not authenticated) → /signup?flow=general with returnTo', () => {
+  it('guest → /signup?flow=general with returnTo', () => {
     const v = accountButtonView(null, { pathname: '/home', search: '?x=1' });
     expect(v.state).toBe('guest');
-    expect(v.guestTo).toBe(`/signup?flow=general&returnTo=${encodeURIComponent('/home?x=1')}`);
+    expect(v.to).toBe(`/signup?flow=general&returnTo=${encodeURIComponent('/home?x=1')}`);
     expect(v.labelEn).toBe('Sign In / Sign Up');
   });
 
-  it('guest in checkout context still routes to signup (express-continue is a follow-up)', () => {
+  it('guest in checkout context → /signup?flow=guest, Continue Checkout', () => {
     const v = accountButtonView(null, { pathname: '/egift' });
-    expect(v.state).toBe('guest');
-    expect(v.guestTo).toContain('/signup?flow=general');
-    expect(v.guestTo).toContain(encodeURIComponent('/egift'));
+    expect(v.state).toBe('guest_checkout');
+    expect(v.to).toContain('/signup?flow=guest');
+    expect(v.labelEn).toBe('Continue Checkout');
   });
 
-  it('logged-in customer → My Profile, no guest route', () => {
+  it('logged-in customer → /account, My Profile', () => {
     const v = accountButtonView(whoami(), { pathname: '/' });
     expect(v.state).toBe('customer');
+    expect(v.to).toBe('/account');
     expect(v.labelEn).toBe('My Profile');
-    expect(v.guestTo).toBeUndefined();
   });
 
-  it('profile-incomplete is NOT guessed → falls back to customer label', () => {
-    // whoami exposes no profile-completeness field; an unverified customer must
-    // still read as 'customer' (no fake "Continue Setup").
-    const v = accountButtonView(whoami({ emailVerified: false }), { pathname: '/' });
-    expect(v.state).toBe('customer');
-  });
-
-  it('provider applicant (providerType set, not approved) is NOT guessed → customer', () => {
-    // pending-vs-approved is a documented whoami gap; do not guess "Provider Setup".
+  it('incomplete profile → /profile/complete, Continue Setup (beats dashboards)', () => {
     const v = accountButtonView(
-      whoami({ dashboardsAllowed: ['member'], claims: { ...whoami().claims, providerType: 'walker' } }),
+      whoami({ profileStatus: 'incomplete', providerStatus: 'approved', dashboardsAllowed: ['member', 'provider'] }),
       { pathname: '/' },
     );
-    expect(v.state).toBe('customer');
+    expect(v.state).toBe('incomplete');
+    expect(v.to).toBe('/profile/complete');
   });
 
-  it('approved provider → Provider Dashboard', () => {
-    const v = accountButtonView(whoami({ dashboardsAllowed: ['member', 'provider'] }), { pathname: '/' });
-    expect(v.state).toBe('provider');
-    expect(v.labelEn).toBe('Provider Dashboard');
+  it('provider applicant (pending) → /provider/onboarding, Provider Setup', () => {
+    const v = accountButtonView(whoami({ providerStatus: 'pending' }), { pathname: '/' });
+    expect(v.state).toBe('provider_pending');
+    expect(v.to).toBe('/provider/onboarding');
   });
 
-  it('admin (isSuperAdmin) → Octopus Control Panel', () => {
-    const v = accountButtonView(whoami({ isSuperAdmin: true }), { pathname: '/' });
+  it('approved provider → /provider/dashboard, Provider Dashboard', () => {
+    const v = accountButtonView(whoami({ providerStatus: 'approved', dashboardsAllowed: ['member', 'provider'] }), { pathname: '/' });
+    expect(v.state).toBe('provider_approved');
+    expect(v.to).toBe('/provider/dashboard');
+  });
+
+  it('admin → /octopus, Octopus Control Panel (wins over everything)', () => {
+    const v = accountButtonView(
+      whoami({ isSuperAdmin: true, profileStatus: 'incomplete', providerStatus: 'pending', dashboardsAllowed: ['member', 'staff', 'admin'] }),
+      { pathname: '/' },
+    );
     expect(v.state).toBe('admin');
-    expect(v.labelEn).toBe('Octopus Control Panel');
+    expect(v.to).toBe('/octopus');
   });
 
-  it('admin (staff dashboard) → Octopus Control Panel', () => {
-    const v = accountButtonView(whoami({ dashboardsAllowed: ['staff'] }), { pathname: '/' });
+  it('admin via staff dashboard → /octopus', () => {
+    const v = accountButtonView(whoami({ dashboardsAllowed: ['member', 'staff'] }), { pathname: '/' });
     expect(v.state).toBe('admin');
   });
 
-  it('prestige member → Prestige', () => {
-    const v = accountButtonView(whoami({ claims: { ...whoami().claims, loyaltyMember: true } }), { pathname: '/' });
+  it('prestige member → /prestige/dashboard, Prestige', () => {
+    const v = accountButtonView(whoami({ prestigeStatus: 'active' }), { pathname: '/' });
     expect(v.state).toBe('prestige');
-    expect(v.labelEn).toBe('Prestige');
+    expect(v.to).toBe('/prestige/dashboard');
   });
 
-  it('firebaseAuthed (cookie dropped) never shows Sign Up', () => {
+  it('cookie dropped (firebaseAuthed, whoami null) → useServerResolver, never Sign Up', () => {
     const v = accountButtonView(null, { pathname: '/', firebaseAuthed: true });
-    expect(v.state).toBe('customer');
-    expect(v.guestTo).toBeUndefined();
+    expect(v.useServerResolver).toBe(true);
+    expect(v.to).toBeUndefined();
+    expect(v.labelEn).toBe('My Profile');
   });
 
   it('Hebrew + English labels resolve via accountLabel', () => {

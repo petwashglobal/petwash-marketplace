@@ -38,6 +38,7 @@ import { useFirebaseAuth } from "../auth/AuthProvider";
 import { useAccountNavigation } from "../hooks/useAccountNavigation";
 import { useWhoami } from "../auth/useWhoami";
 import { accountButtonView, accountLabel } from "../lib/accountButton";
+import { isStickyAccountPath } from "../lib/sticky-account-paths";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
@@ -269,13 +270,25 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     if (isResolvingProfile) return; // already in flight — debounce double-tap
     setIsResolvingProfile(true);
     try {
-      // GUEST → canonical signup door with returnTo (backend truth: whoami).
-      // AUTHENTICATED → unchanged P0-tested server decider (preserves the
-      // iPhone-Safari cookie-loss fix; firebaseAuthed guards against showing
-      // signup to a logged-in user whose whoami cookie was dropped).
-      const authed = whoami?.authenticated === true || !!user;
-      if (!authed && accountView.guestTo) {
-        handleNavigate(accountView.guestTo);
+      // Route by backend truth (whoami) to the canonical destination.
+      // Two P0 protections are preserved:
+      //   1. Sticky-path guard — never yank a user out of an onboarding form.
+      //   2. Cookie-loss (iOS ITP) — when Firebase is authed but the whoami
+      //      cookie was dropped, accountView.useServerResolver is set; defer to
+      //      the Bearer-aware server decider so admins/providers aren't
+      //      mis-routed and guests never see "Sign Up" for a logged-in user.
+      if (typeof window !== 'undefined' && isStickyAccountPath(window.location.pathname)) {
+        const route = await resolveAccountRoute();
+        handleNavigate(route);
+        return;
+      }
+      if (accountView.useServerResolver) {
+        const route = await resolveAccountRoute();
+        handleNavigate(route);
+        return;
+      }
+      if (accountView.to) {
+        handleNavigate(accountView.to);
         return;
       }
       const route = await resolveAccountRoute();

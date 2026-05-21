@@ -2212,6 +2212,28 @@ self.addEventListener('notificationclick', (event) => {
         kycStatus = claims.kycStatus || 'not_started';
       }
 
+      // Account-status projection (read-only, additive — no behavior change to
+      // auth/role/MFA/KYC/session decisions). Lets the global account button and
+      // Octopus route by backend truth instead of guessing. Derived from existing
+      // users-table columns already loaded in pgUser; no extra queries on this
+      // hot path. providerStatus 'pending' is best-effort from signup intent /
+      // account type (exact pending lives in provider_applications — follow-up).
+      const profileStatus: 'complete' | 'incomplete' =
+        (pgUser as any)?.profileCompletedAt ? 'complete' : 'incomplete';
+      const providerApproved =
+        !!(pgUser as any)?.providerApprovedAt || role === 'provider' || dashboardsAllowed.includes('provider');
+      const providerPending =
+        !providerApproved && (accountType === 'provider' || (pgUser as any)?.signupIntent === 'provider');
+      const providerStatus: 'none' | 'pending' | 'approved' =
+        providerApproved ? 'approved' : providerPending ? 'pending' : 'none';
+      const prestigeStatus: 'none' | 'active' =
+        (claims.program === 'prestige' || claims.loyaltyMember === true) ? 'active' : 'none';
+      const rawIntent = (pgUser as any)?.signupIntent;
+      const activeFlow: 'prestige' | 'provider' | 'guest' | 'booking' | 'general' =
+        rawIntent === 'prestige' || rawIntent === 'provider' || rawIntent === 'guest' || rawIntent === 'booking'
+          ? rawIntent : 'general';
+      const roles: string[] = Array.from(new Set([role].filter(Boolean)));
+
       const ip = req.ip || req.socket?.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
 
@@ -2249,6 +2271,12 @@ self.addEventListener('notificationclick', (event) => {
         mfaVerified,
         kycStatus,
         kycAdmin: claims.kyc_admin === true,
+        // Account-status projection (read-only) — see derivation above.
+        profileStatus,
+        providerStatus,
+        prestigeStatus,
+        activeFlow,
+        roles,
         session: {
           ageSeconds: sessionAge,
           maxAgeSeconds: maxAge,
