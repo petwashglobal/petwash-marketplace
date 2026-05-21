@@ -50,3 +50,4 @@ temp_response.txt
 # Build / scan logs — never commit
 build-output.txt
 load-test-output.txt
+smoke-test-output/
