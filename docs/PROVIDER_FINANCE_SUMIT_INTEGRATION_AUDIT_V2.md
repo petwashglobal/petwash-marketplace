@@ -1,1353 +1,843 @@
-# PROVIDER FINANCE + SUMIT INTEGRATION — V2 DEEP ARCHITECTURE
+# PROVIDER FINANCE + SUMIT INTEGRATION — V2 ARCHITECTURE (FACT-BASED REWRITE)
 
-**Document status:** DRAFT for CEO review. NOT committed to main. NOT a PR. No code yet.
-**Author:** Claude Code (Opus 4.7)
+**Status:** ARCHITECTURE only. No code. No PR. No implementation.
 **Date:** 2026-05-18
-**Companion to:** PR #301 (SUMIT_CAPABILITIES_AUDIT.md), PR #312 (PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT.md)
+**Author:** Claude Code (Opus 4.7)
+**Sources of truth** (in citation priority order):
+- `ballasandballas/office_guy_api` — official Swagger-Codegen Python client, API v3, 30+ model docs verbatim
+- `nm-digitalhub/woo-payment-gateway-officeguy` — production WordPress plugin maintained under the SUMIT brand (`OfficeGuyAPI.php`, `OfficeGuyPayment.php`, `OfficeGuyTokens.php`, `OfficeGuyDokanMarketplace.php`, `OfficeGuyDonation.php`)
+- `help.sumit.co.il/he/articles/5832873` — marketplace clearing article (WebSearch snippet only; direct fetch 403)
+- `packagist.org/packages/nm-digitalhub/laravel-officeguy` — secondary
+
+**This document replaces** the prior speculative V2. Removed: legal lectures, CPA blockers, Bearer-auth assumption, invented webhook event names, DNS/domain discussion, Prisma references. All claims here are sourced. UNKNOWNS clearly marked — they map 1:1 to questions for SUMIT support.
 
 ---
 
-## §0 SCOPE & READING GUIDE
+## §1 BASE URL, AUTH SHAPE, RESPONSE ENVELOPE — CONFIRMED
 
-### What this document IS
-A deep architectural extension of PR #312, written after:
-1. CEO uploaded SUMIT admin-panel screenshots (pricing, invoice rendering, customer model, module store)
-2. Full re-read of PR #301 and PR #312
-3. Full audit of PetWash's current financial code (services, schema, env vars, module-load risks)
-4. Discovery that PetWash's existing production financial infrastructure is FAR more developed than PR #312 implied
+### Base URL
+`https://api.sumit.co.il` — production. Every endpoint is `POST` with JSON body. Trailing slash on path is required (e.g., `/accounting/customers/create/`).
 
-### What this document is NOT
-- It does NOT re-litigate decisions F-A through F-G locked by CEO on PR #312
-- It does NOT redesign Nayax (already production with K9000 + marketplace + webhooks)
-- It does NOT redesign Wallets, Loyalty, Memberships, Bookings, Escrow (all production)
-- It is NOT a PR. It is NOT code. It is decision material for the CEO.
+A `dev.api.sumit.co.il` host is referenced in production plugin source but NOT publicly advertised as a sandbox. UNKNOWN whether usable for testing.
 
-### Reading order
-- §1: What changed since PR #312 (executive summary)
-- §2: Reconciliation between PR #312 architecture and what's actually in code (CRITICAL — there are mismatches)
-- §3 through §22: The 20 CEO-requested deliverables, in order
-- §23: New cost model (from screenshots)
-- §24: CPA engagement scope (three pending policy switches)
-- §25: Open questions index (B1–B8 + Q11–Q15 + new)
-- §26: Roadmap adjustment (PR-PFP-1 through PR-PFP-11, refined scope)
-- §27: P0 risk register
-- §28: CEO approval checklist (single page, sign-off section)
+### Auth — NOT a header. NOT Bearer.
 
----
+Every request body includes a top-level `Credentials` object. Auth is embedded in the body, not in any HTTP header.
 
-## §1 WHAT CHANGED SINCE PR #312
-
-PR #312 was written assuming PetWash had **minimal** financial infrastructure that needed to be built around SUMIT. Code audit reveals **the opposite**: PetWash already has unified payment tables, dual-invoice support, escrow state machines, idempotency keys, reconciliation reports, Apple/Google Wallet, loyalty tiers, memberships, and an Israeli tax document lifecycle. **SUMIT is not the foundation — it is one new financial backend joining an existing stack.**
-
-This changes the architecture meaningfully:
-
-1. **SUMIT is not the universal payment processor.** Nayax already handles K9000 (kiosks) AND online marketplace charging (NayaxSitterMarketplaceService, NayaxWalkMarketplaceService, NayaxJobDispatchPaymentService). SUMIT is being introduced primarily for **provider-named invoice issuance** (the marketplace tax/legal layer) and as a candidate for replacing Nayax as the online charge processor (Apple Pay/Google Pay/Bit support is a major draw). The "Nayax = kiosk only" framing in PR #312 is INCORRECT and must be corrected.
-
-2. **The dual-invoice model is already in schema.** `pw_provider_payouts` has `providerTaxInvoiceId` AND `commissionInvoiceId` columns. Section 8 Model B (provider→PetWash service invoice + PetWash→provider commission invoice) is the codified pattern. SUMIT must produce BOTH documents per payout, and the column mapping is already determined.
-
-3. **`provider_finance_profiles` is designed but NOT migrated.** PR #312 designed the schema in markdown. No migration exists. PR-PFP-1 is genuinely first work.
-
-4. **`provider_tax_compliance` ALREADY EXISTS** (`schema.ts:9197`). It stores `taxIdType` (עוסק פטור/עוסק מורשה), `taxId`, `vatNumber`, `withholdingCertRate`, `withholdingCertExpiry`. This is **partial overlap** with the proposed `provider_finance_profiles`. The V2 architecture must decide: merge, replace, or coexist. **Recommendation: keep `provider_tax_compliance` as-is (tax registration data), add `provider_finance_profiles` for SUMIT-specific wiring + bank details + payout gating.** They serve different purposes.
-
-5. **PetWash Ltd VAT number is hardcoded as `"516788400"`** in `pw_tax_documents` defaults. The CEO's Ltd ID per `israel-compliance-config.ts` is `"517145033"`. **One of these is wrong** and must be reconciled with the accountant before SUMIT integration.
-
-6. **ID numbers (`users.idNumber`) are stored as plaintext varchar.** This is a serious compliance gap (Israeli Privacy Protection Law §17). Must be addressed regardless of SUMIT integration.
-
-7. **Two module-load env-var throws exist** (WalletService line 18-19, AppleWalletService line 58-59). The first crashed production for 8 days this month. Both must be made lazy.
-
-8. **SUMIT screenshots reveal pricing model:** ₪99/month base, 400 actions included, ₪0.25 per action overage, 1.1% card clearing baseline. For a marketplace with ~10k bookings/month, the per-action overage will dominate cost — must model this carefully (§23).
-
-9. **Apple Pay / Google Pay / Bit are INCLUDED in SUMIT base plan.** Significant — eliminates need for separate Tranzila or Stripe wiring for those payment methods.
-
-10. **The Hebrew SUMIT support email is ALREADY IN THE REPO** (PR #301 §3). CEO can send it today. We can add Q11–Q15 from screenshots before sending.
-
----
-
-## §2 RECONCILIATION — PR #312 ARCHITECTURE vs ACTUAL CODE
-
-| Topic | PR #312 said | Code says | Resolution |
-|---|---|---|---|
-| Nayax scope | "Unattended kiosk terminals ONLY" | NayaxOnlinePaymentService, NayaxSitterMarketplaceService, NayaxWalkMarketplaceService — full marketplace charging | **PR #312 was WRONG.** Update Path E scope. |
-| `provider_finance_profiles` table | Designed in §2 | Does not exist | PR-PFP-1 still needed |
-| `provider_tax_compliance` table | Not mentioned | Exists, production, stores tax classification + withholding cert | **Pre-existing.** V2 must coexist, not replace |
-| Stripe wiring | "Deprecated" | Schema still has `stripeSubscriptionId`, `stripeCustomerId` on `memberships`; deprecation warnings only on env vars | PR-PFP-11 must remove these schema fields |
-| `pw_payments` unified ledger | Not discussed | Production. INTEGER CENTS, idempotency keys, state machine | SUMIT must integrate here, not parallel to it |
-| `pw_provider_payouts` dual-invoice | Discussed abstractly | Production. `providerTaxInvoiceId` + `commissionInvoiceId` columns exist | SUMIT writes IDs back to these columns |
-| `pw_tax_documents` | Not discussed | Production. Sequential numbering, Google Drive archival, 7-year retention | SUMIT integration must respect existing schema |
-| Loyalty system | Not discussed | 7-tier production (bronze→royal), 10pt/₪1, badges/challenges/referrals | **Stays internal to PetWash.** SUMIT is not in the loyalty path. |
-| Membership billing | "Use SUMIT recurring" | Stripe IDs in schema but Stripe deprecated. Recurring not actually live | Cutover plan needed: PR-PFP-12 (NEW) |
-| Apple/Google Wallet | Not discussed | Production. PetWash Prestige passes. APPLE_* env validation at module load | Compatible. SUMIT does not replace. |
-| Withholding tax | "Calculated at settlement" | `provider_tax_compliance.withholdingCertRate` stored. Default unclear. NOT visible in `pw_provider_payouts` table | **GAP.** Calculation site needs to be identified or built. CPA must confirm default rate. |
-| ID number storage | Not discussed | Plaintext `users.idNumber` varchar | **NEW P0 RISK.** Address regardless of SUMIT. |
-| VAT number | Not discussed | Hardcoded `"516788400"` in `pw_tax_documents` defaults; shared config says `"517145033"` | **Reconcile with accountant.** One is wrong. |
-| Module-load throws | Not discussed | WalletService:19 (P0, crashed prod today), AppleWalletService:58 (lazy, safer) | Lazy-check both. Add CI gate. |
-| `docs/finance/*` subdirectory | Not mentioned | 6 deeper finance docs exist (00-platform-role-model, 02-money-object-model, sumit-upay-operating-model, sumit-upay-vendor-discovery-and-rail-architecture, transaction-lifecycle-forensic-audit, finance-review-blind-spots-and-authority-questions) | **TODO:** cross-reference in V3. V2 does not subsume these. |
-
-### Critical correction
-Path E in PR #312 was scoped assuming Nayax was kiosk-only. That assumption is wrong. **Path E must include a decision: does SUMIT REPLACE Nayax for online marketplace charging, or do they COEXIST?**
-
-Recommendation (subject to CEO + accountant approval):
-- **Phase A (immediate):** Nayax continues to process online marketplace payments. SUMIT is added ONLY for invoice issuance (provider-named + commission). Money flows through Nayax → PetWash escrow → manual provider payout. SUMIT writes accounting documents from this flow.
-- **Phase B (post-CPA sign-off):** Migrate Apple Pay / Google Pay / Bit volume to SUMIT (cost advantage + UX). Nayax remains for K9000 (kiosk) and card-present.
-- **Phase C (long-term):** Evaluate whether to consolidate all online charging on SUMIT (depends on B1, B5, B6 answers + cost modeling at scale).
-
----
-
-## §3 ARCHITECTURE REPORT (Deliverable 1)
-
-### Three-tier role model (LOCKED, from §0 platform role)
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ TIER 1: PETWASH (Source of Truth)                                │
-│   Owns: users, providers, bookings, escrow, wallets, loyalty,    │
-│         memberships, disputes, reviews, marketplace state        │
-│   Owns: payment orchestration (which gateway to call when)       │
-│   Owns: business logic, pricing, fee splits                      │
-└──────────────────────────────────────────────────────────────────┘
-                  ▲                          ▲
-                  │ orchestrates             │ writes documents
-                  ▼                          ▼
-┌──────────────────────────────┐   ┌──────────────────────────────┐
-│ TIER 2A: NAYAX                │   │ TIER 2B: SUMIT               │
-│   Card clearing (K9000 + on-  │   │   Financial system of record │
-│   line marketplace charging)  │   │   Invoices, receipts, books  │
-│   Webhook on charge events    │   │   VAT calc + allocation #    │
-│                                │   │   Customer/sub-business mgmt │
-│                                │   │   Recurring billing          │
-│                                │   │   Apple Pay/Google Pay/Bit   │
-└──────────────────────────────┘   └──────────────────────────────┘
-                                              ▲
-                                              │ backup export
-                                              ▼
-                              ┌──────────────────────────────┐
-                              │ TIER 3: GOOGLE DRIVE/SHEETS  │
-                              │   Backup ONLY. No logic.     │
-                              │   PDF archival.              │
-                              │   Accountant read-only view. │
-                              └──────────────────────────────┘
+```json
+{
+  "Credentials": { "CompanyID": 12345, "APIKey": "<server-side secret>" },
+  "...": "rest of payload"
+}
 ```
 
-### Marketplace legal model (NEW — from CEO instruction)
-
-**Decision required: agent disclosure model**
-
-The CEO wants the Wolt/Uber Israel pattern: **PetWash issues invoices in the provider's legal name, with provider consent.** This is the "disclosed agent" model (סוכן גלוי). The provider is the legal seller; PetWash is the platform/agent operating on the provider's behalf.
-
-Current code config (`AGENT_MODEL_POLICY` in `israel-compliance-config.ts`): `model='undisclosed'`, `pendingCpaSignoff=true`. **This must flip to `disclosed` before launch.** CPA must confirm.
-
-Mechanism in code:
-1. Customer pays PetWash via Nayax/SUMIT.
-2. PetWash holds in escrow.
-3. On job completion + escrow release:
-   - PetWash calls SUMIT `/accounting/documents/create/` with **customer_id = end customer**, **sub_business_id = provider's sub-business**. SUMIT issues invoice in provider's name.
-   - PetWash calls SUMIT a second time with **customer_id = provider**, **issuer = PetWash Ltd**. SUMIT issues commission invoice from PetWash to provider.
-4. PetWash records both `summitDocumentId`s in `pw_provider_payouts.providerTaxInvoiceId` and `pw_provider_payouts.commissionInvoiceId`.
-5. Net amount transferred to provider's bank.
-
-**Consent mechanism (NEW — must be built):**
-- Provider, during onboarding, signs digital authorization (כתב הרשאה): "אני מאשר לפלטפורמת פטוואש להפיק חשבוניות בשמי על עסקאות שמבוצעות דרך הפלטפורמה" (I authorize PetWash to issue invoices in my name for transactions executed through the platform).
-- Stored in `provider_finance_profiles.invoice_authorization_signed_at` (NEW column needed) + `invoice_authorization_pdf_hash` (audit trail).
-- Without this signed authorization, provider's bookings cannot be paid out — payout_status remains `locked`.
-
----
-
-## §4 EXACT FILE TREE (Deliverable 2)
-
-### NEW files to create (when work starts, NOT NOW)
-```
-server/services/sumit/
-  ├── SumitMarketplaceClient.ts          # Typed API client (PR-PFP-6)
-  ├── SumitCustomerSync.ts                # End-customer sync to SUMIT (PR-PFP-7)
-  ├── SumitDocumentIssuer.ts              # Invoice/receipt issuance (PR-PFP-7)
-  ├── SumitRecurringManager.ts            # Memberships migration (PR-PFP-12)
-  ├── SumitMultivendorCharger.ts          # Marketplace charging (PR-PFP-8, gated on B1 answer)
-  └── SumitWebhookHandler.ts              # Trigger event consumption (PR-PFP-9)
-
-server/routes/sumit-webhooks.ts           # POST /webhooks/sumit/events (PR-PFP-9)
-
-server/services/InvoiceAuthorizationService.ts  # Provider consent capture (PR-PFP-4)
-
-server/lib/sumit/
-  ├── sumitAuth.ts                        # API key handling, HMAC validation
-  ├── sumitTypes.ts                       # Generated TS types from SUMIT OpenAPI (if available)
-  ├── sumitErrors.ts                      # SUMIT error code → app error mapping
-  └── sumitIdempotency.ts                 # External reference key generation
-
-shared/sumit/
-  ├── sumit-config.ts                     # ENV-driven config (lazy-init, not module-load)
-  └── sumit-feature-flags.ts              # gradual rollout flags
-
-migrations/
-  ├── NNNN_create_provider_finance_profiles.sql      (PR-PFP-1)
-  ├── NNNN_add_invoice_authorization_columns.sql     (PR-PFP-4)
-  ├── NNNN_create_sumit_document_links.sql           (PR-PFP-7)
-  ├── NNNN_create_sumit_webhook_events.sql           (PR-PFP-9)
-  └── NNNN_drop_stripe_legacy_columns.sql            (PR-PFP-11)
-
-client/src/pages/provider/
-  └── finance-onboarding/
-      ├── BusinessTypeStep.tsx
-      ├── BusinessDetailsStep.tsx
-      ├── BankAccountStep.tsx
-      ├── InvoiceAuthorizationStep.tsx   # Hebrew consent flow with signature
-      └── ReviewAndSubmitStep.tsx
-
-client/src/pages/admin/finance/
-  ├── ProviderFinanceReview.tsx          # Admin sees pending finance profiles
-  └── SumitSyncStatus.tsx                # Manual override + retry button
-
-tests/integration/sumit/
-  ├── sumit-customer-sync.test.ts
-  ├── sumit-document-issuance.test.ts
-  ├── sumit-webhook-events.test.ts
-  └── sumit-multivendor-charge.test.ts   # Gated on B1 answer
-
-docs/
-  ├── PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md   # this doc
-  ├── SUMIT_COST_MODEL.md                # action quota math (NEW)
-  ├── SUMIT_CPA_ENGAGEMENT_BRIEF.md      # for accountant (NEW)
-  ├── INVOICE_AUTHORIZATION_CONSENT_HE.md # Hebrew legal text (NEW, lawyer-reviewed)
-  └── SUMIT_RUNBOOK.md                   # ops runbook for sync failures (NEW)
-```
-
-### Files to MODIFY (when work starts)
-```
-shared/israel-compliance-config.ts       # CPA sign-offs on three policy switches
-shared/schema.ts                         # Add provider_finance_profiles + relationships
-server/services/WalletService.ts         # Lazy env check (P0 — happens regardless of SUMIT)
-server/services/AppleWalletService.ts    # Lazy env check (P0 — same class)
-server/routes.ts                         # Wire up new SUMIT routes
-shared/finance/finance-flow-types.ts     # Add SUMIT_* enum members
-```
-
-### Files to DELETE (when work starts — last)
-```
-server/services/TranzilaChargebackService.ts        # Already STUB, drop entirely
-server/services/TranzilaPaymentRequestService.ts    # Already STUB, drop entirely
-server/services/TranzilaWebhookService.ts           # Already STUB, drop entirely
-server/routes/tranzila-webhooks.ts                  # Unwired, drop
-server/routes/tranzila-event-webhooks.ts            # Unwired, drop
-```
-
-(Stripe-related code is already deprecated-warning-only; PR-PFP-11 drops schema fields.)
-
----
-
-## §5 DB SCHEMA PLAN (Deliverable 3)
-
-### Table 1: `provider_finance_profiles` (PR-PFP-1)
-
-Base schema from PR #312 §2 — locked. Adding 3 new columns from V2 analysis:
-
-```sql
-CREATE TABLE provider_finance_profiles (
-  id                              SERIAL PRIMARY KEY,
-  provider_user_id                VARCHAR NOT NULL UNIQUE REFERENCES users(id) ON DELETE RESTRICT,
-
-  -- Israeli business classification
-  business_type                   VARCHAR NOT NULL CHECK (business_type IN
-    ('exempt_dealer','authorised_dealer','limited_company','nonprofit')),
-
-  -- Business identification
-  business_number                 VARCHAR,
-  legal_name_he                   VARCHAR NOT NULL,
-  legal_name_en                   VARCHAR,
-
-  -- Location + contact
-  registered_address              TEXT,
-  business_phone                  VARCHAR,
-  invoice_email                   VARCHAR NOT NULL,
-
-  -- Payout banking (encrypted)
-  bank_account_iban_encrypted     BYTEA,
-  bank_account_iban_key_version   INTEGER,           -- supports key rotation
-  payout_method                   VARCHAR DEFAULT 'bank_transfer',
-
-  -- Tax authority connection
-  vat_number                      VARCHAR,
-  tax_authority_registered        BOOLEAN DEFAULT FALSE,
-  tax_authority_connected_at      TIMESTAMP,
-
-  -- SUMIT wiring
-  sumit_sub_business_id           VARCHAR,
-  sumit_customer_id               VARCHAR,           -- when provider receives commission invoice from PetWash
-  sumit_setup_status              VARCHAR NOT NULL DEFAULT 'pending' CHECK (sumit_setup_status IN
-    ('pending','in_progress','ready','suspended','failed')),
-  sumit_last_sync_at              TIMESTAMP,
-  sumit_last_sync_error           TEXT,
-  sumit_retry_count               INTEGER DEFAULT 0,
-
-  -- Payout gating
-  payout_status                   VARCHAR NOT NULL DEFAULT 'locked' CHECK (payout_status IN
-    ('locked','enabled','suspended')),
-
-  -- NEW (V2): Invoice authorization (consent for PetWash to issue invoices in provider's name)
-  invoice_authorization_signed_at TIMESTAMP,
-  invoice_authorization_pdf_sha256 VARCHAR(64),
-  invoice_authorization_version   VARCHAR DEFAULT 'v1',  -- track which legal text version was signed
-
-  -- Lifecycle
-  approved_by_petwash_at          TIMESTAMP,
-  created_at                      TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at                      TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  -- Constraints (from PR #312)
-  CONSTRAINT pfp_vat_required CHECK (
-    business_type NOT IN ('authorised_dealer','limited_company')
-    OR vat_number IS NOT NULL
-  ),
-  CONSTRAINT pfp_iban_required_when_enabled CHECK (
-    payout_status <> 'enabled'
-    OR bank_account_iban_encrypted IS NOT NULL
-  ),
-  -- NEW (V2): payout requires signed authorization
-  CONSTRAINT pfp_auth_required_when_enabled CHECK (
-    payout_status <> 'enabled'
-    OR invoice_authorization_signed_at IS NOT NULL
-  )
-);
-
-CREATE INDEX pfp_provider_idx       ON provider_finance_profiles (provider_user_id);
-CREATE INDEX pfp_sumit_status_idx   ON provider_finance_profiles (sumit_setup_status);
-CREATE INDEX pfp_payout_status_idx  ON provider_finance_profiles (payout_status);
-CREATE INDEX pfp_sumit_sub_idx      ON provider_finance_profiles (sumit_sub_business_id) WHERE sumit_sub_business_id IS NOT NULL;
-```
-
-### Table 2: `sumit_document_links` (PR-PFP-7)
-
-Maps PetWash booking/payment events to SUMIT-issued documents. One booking can produce multiple documents (invoice, commission invoice, receipt, refund credit note).
-
-```sql
-CREATE TABLE sumit_document_links (
-  id                       SERIAL PRIMARY KEY,
-  link_id                  VARCHAR NOT NULL UNIQUE,    -- SDL-{year}-{nanoid8}
-
-  -- PetWash side references
-  booking_id               VARCHAR,                     -- nullable: some docs are not booking-tied
-  payment_id               VARCHAR REFERENCES pw_payments(payment_id),
-  payout_id                VARCHAR REFERENCES pw_provider_payouts(payout_id),
-  provider_user_id         VARCHAR REFERENCES users(id),
-  customer_user_id         VARCHAR REFERENCES users(id),
-
-  -- SUMIT side references
-  sumit_customer_id        VARCHAR NOT NULL,
-  sumit_document_id        VARCHAR NOT NULL UNIQUE,
-  sumit_document_number    VARCHAR NOT NULL,           -- human-readable
-  sumit_allocation_number  VARCHAR,                    -- מספר הקצאה from rashut hamisim
-  sumit_sub_business_id    VARCHAR,                    -- for marketplace mode
-
-  -- Document classification
-  document_type            VARCHAR NOT NULL CHECK (document_type IN
-    ('tax_invoice','receipt','tax_invoice_receipt','commission_invoice','credit_note','refund_receipt')),
-  issuer_type              VARCHAR NOT NULL CHECK (issuer_type IN
-    ('petwash_principal','provider_via_petwash_agent')),
-
-  -- Money (mirror, not source of truth — source is SUMIT)
-  gross_cents              BIGINT NOT NULL,
-  vat_cents                BIGINT NOT NULL,
-  net_cents                BIGINT NOT NULL,
-  currency                 VARCHAR DEFAULT 'ILS',
-
-  -- PDF retrieval
-  pdf_url                  VARCHAR,
-  pdf_fetched_at           TIMESTAMP,
-  pdf_drive_backup_id      VARCHAR,                    -- after backup to Google Drive
-
-  -- Idempotency key sent to SUMIT
-  external_reference       VARCHAR NOT NULL UNIQUE,    -- pw-doc-{booking_id}-{doc_type}-{v}
-
-  -- Status
-  status                   VARCHAR NOT NULL DEFAULT 'issued' CHECK (status IN
-    ('pending','issued','sent','cancelled','superseded')),
-
-  -- Lifecycle
-  issued_at                TIMESTAMP NOT NULL DEFAULT NOW(),
-  sent_to_customer_at      TIMESTAMP,
-  cancelled_at             TIMESTAMP,
-  created_at               TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at               TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX sdl_booking_idx     ON sumit_document_links (booking_id);
-CREATE INDEX sdl_payment_idx     ON sumit_document_links (payment_id);
-CREATE INDEX sdl_payout_idx      ON sumit_document_links (payout_id);
-CREATE INDEX sdl_provider_idx    ON sumit_document_links (provider_user_id);
-CREATE INDEX sdl_customer_idx    ON sumit_document_links (customer_user_id);
-CREATE INDEX sdl_type_status_idx ON sumit_document_links (document_type, status);
-CREATE INDEX sdl_issued_at_idx   ON sumit_document_links (issued_at);
-```
-
-### Table 3: `sumit_webhook_events` (PR-PFP-9)
-
-Audit-grade log of every webhook SUMIT delivers. Append-only.
-
-```sql
-CREATE TABLE sumit_webhook_events (
-  id                  BIGSERIAL PRIMARY KEY,
-  event_id            VARCHAR NOT NULL UNIQUE,        -- SUMIT's event ID (idempotency key from their side)
-  trigger_name        VARCHAR NOT NULL,               -- e.g. 'document.created', 'payment.charged'
-  raw_payload         JSONB NOT NULL,
-  signature_header    VARCHAR,
-  signature_valid     BOOLEAN NOT NULL,
-  received_at         TIMESTAMP NOT NULL DEFAULT NOW(),
-  processed_at        TIMESTAMP,
-  processing_error    TEXT,
-  retry_count         INTEGER NOT NULL DEFAULT 0,
-  next_retry_at       TIMESTAMP,
-  dead_lettered_at    TIMESTAMP,                      -- moved to DLQ after max retries
-  related_link_id     VARCHAR REFERENCES sumit_document_links(link_id),
-  related_payment_id  VARCHAR REFERENCES pw_payments(payment_id),
-  source_ip           VARCHAR,
-  user_agent          VARCHAR
-);
-
-CREATE INDEX swe_trigger_received_idx ON sumit_webhook_events (trigger_name, received_at);
-CREATE INDEX swe_unprocessed_idx      ON sumit_webhook_events (processed_at) WHERE processed_at IS NULL;
-CREATE INDEX swe_dlq_idx              ON sumit_webhook_events (dead_lettered_at) WHERE dead_lettered_at IS NOT NULL;
-CREATE UNIQUE INDEX swe_event_id_idx  ON sumit_webhook_events (event_id);
-```
-
-### Table 4 (NEW): `sumit_sync_quota_log`
-
-For tracking action quota consumption — we need to know in real-time how close we are to overage so we don't get surprised by a ₪12k SUMIT bill.
-
-```sql
-CREATE TABLE sumit_sync_quota_log (
-  id                  BIGSERIAL PRIMARY KEY,
-  date                DATE NOT NULL,                  -- daily bucket
-  action_type         VARCHAR NOT NULL,               -- 'document_create','customer_create','recurring_charge','email_send','sms_send','webhook'
-  count               INTEGER NOT NULL DEFAULT 0,
-  sub_business_id     VARCHAR,                        -- for per-provider tracking if quotas are per-sub-business
-  UNIQUE (date, action_type, sub_business_id)
-);
-
-CREATE INDEX ssql_date_idx ON sumit_sync_quota_log (date);
-```
-
-### Modifications to existing tables
-
-```sql
--- Drop Stripe legacy fields (PR-PFP-11, last in sequence)
-ALTER TABLE memberships
-  DROP COLUMN stripe_subscription_id,
-  DROP COLUMN stripe_customer_id;
-
--- Encrypt ID number at rest (NEW P0 — independent of SUMIT)
--- Migration: read plaintext, encrypt, store in new column, null out old, drop old after verification
-ALTER TABLE users
-  ADD COLUMN id_number_encrypted BYTEA,
-  ADD COLUMN id_number_key_version INTEGER,
-  ADD COLUMN id_number_hash VARCHAR(64);  -- for search without decryption
-
--- Reconcile VAT number (NEW)
--- Either:
---   ALTER TABLE pw_tax_documents ALTER COLUMN vat_number SET DEFAULT '517145033';  (if shared config is right)
--- Or:
---   UPDATE israel-compliance-config.ts to use '516788400'                            (if hardcoded is right)
--- Accountant must confirm which.
-```
-
----
-
-## §6 SYNC FLOW DIAGRAM (Deliverable 4 — provider sync)
-
-```
-[Provider applies via PetWash form]
-              │
-              ▼
-[provider_applications row created]
-              │
-              ▼
-[Admin reviews in admin/provider-review]
-              │
-        ┌─────┴─────┐
-        ▼           ▼
-    [REJECT]    [APPROVE]
-                    │
-                    ▼
-        [provider_finance_profiles row INSERT
-         with status='pending', payout_status='locked']
-                    │
-                    ▼
-        [Onboarding email sent to provider: "Complete your finance setup"]
-                    │
-                    ▼ (provider clicks link)
-        [Client: /provider/finance-onboarding]
-              │
-              ├── Step 1: Choose business_type (עוסק פטור / עוסק מורשה / חברה / עמותה)
-              ├── Step 2: Business details (legal_name, business_number, vat_number if required)
-              ├── Step 3: Bank account (IBAN — encrypted client-side then transmitted)
-              ├── Step 4: Invoice authorization (Hebrew consent — sign + checkbox)
-              └── Step 5: Review + submit
-                    │
-                    ▼
-        [PUT /api/provider/finance-profile/me]
-                    │
-                    ▼
-        [Server validates per-business-type field matrix]
-                    │
-                    ├── Validation fail → return 400 + field errors
-                    │
-                    └── Validation pass
-                            │
-                            ▼
-                  [UPDATE provider_finance_profiles
-                   status='in_progress', authorization fields set]
-                            │
-                            ▼
-                  [ENQUEUE SUMIT sync job (BullMQ or similar)]
-                            │
-                            ▼
-                  [SumitMarketplaceClient.createSubBusiness(profile)
-                   with external_reference=pw-pfp-{provider_id}-v1]
-                            │
-                            ├── 4xx error → status='failed', sumit_last_sync_error set, admin alerted
-                            │
-                            ├── Network error → exponential backoff, retry up to N times, then DLQ
-                            │
-                            └── 200 OK with sumit_sub_business_id
-                                       │
-                                       ▼
-                            [UPDATE provider_finance_profiles
-                             sumit_sub_business_id=...,
-                             sumit_setup_status='ready' (or 'awaiting_kyc' if KYC async)]
-                                       │
-                                       ▼
-                            [If status='ready':
-                              UPDATE payout_status='enabled']
-                                       │
-                                       ▼
-                            [Welcome email: "You can now receive bookings"]
-                                       │
-                                       ▼
-                            [Provider's services become visible in marketplace search]
-```
-
-KYC async branch (if SUMIT returns 'pending_kyc'):
-- Status stays `awaiting_kyc`. Payout stays `locked`.
-- Wait for SUMIT webhook `business.kyc_completed` → flip to `ready` + `enabled`.
-- Or `business.kyc_rejected` → flip to `suspended`, admin notified.
-
----
-
-## §7 PAYMENT FLOW DIAGRAM (Deliverable 5)
-
-### Phase A flow (Nayax remains charge processor, SUMIT issues documents)
-
-```
-[Customer books service in PetWash]
-              │
-              ▼
-[BookingLifecycleService.create(bookingDraft)]
-              │
-              ▼
-[Pricing calculated via sitterFeeCalculator
- base + 15% platform fee + 18% VAT on platform fee]
-              │
-              ▼
-[NayaxOnlinePaymentService.charge(amountCents, idempotencyKey)]
-              │
-              ▼
-[pw_payments row INSERT
- status='CREATED', vertical='sitter-suite', commercialModel='MARKETPLACE_COMMISSION']
-              │
-              ▼ (customer enters card on Nayax hosted page)
-              ▼
-[Nayax webhook → /api/nayax-webhook → status='AUTHORISED' then 'CAPTURED']
-              │
-              ▼
-[Money sitting in PetWash escrow account]
-              │
-              ▼
-[escrowHoldings row INSERT — status='held']
-              │
-              ▼
-[Booking status: pending → confirmed]
-              │
-              ▼ (service performed)
-              ▼
-[Provider marks complete, customer confirms]
-              │
-              ▼
-[Booking status: completed]
-              │
-              ▼
-[72-hour escrow window starts (configurable per release policy)]
-              │
-              ▼ (after 72h, no disputes)
-              │
-              ▼
-[EscrowStateMachine: held → ready_for_release]
-              │
-              ▼
-[ProviderPayoutService.releaseEscrow(escrowId)]
-              │
-              ├──── 1. Issue provider's tax invoice (via SUMIT, as agent)
-              │       SumitDocumentIssuer.createTaxInvoice({
-              │         sub_business_id: provider.sumit_sub_business_id,
-              │         customer: end_customer_petwash_user,
-              │         amount: provider_share_cents,
-              │         external_reference: pw-doc-{booking_id}-prov-inv-v1
-              │       })
-              │       → returns sumit_document_id
-              │       → write to pw_provider_payouts.providerTaxInvoiceId
-              │       → write sumit_document_links row
-              │
-              ├──── 2. Issue PetWash's commission invoice (PetWash → provider)
-              │       SumitDocumentIssuer.createTaxInvoice({
-              │         sub_business_id: NULL (PetWash master),
-              │         customer: provider_as_sumit_customer,
-              │         amount: commission_share_cents + vat_on_commission,
-              │         external_reference: pw-doc-{booking_id}-comm-inv-v1
-              │       })
-              │       → returns sumit_document_id
-              │       → write to pw_provider_payouts.commissionInvoiceId
-              │
-              ├──── 3. Calculate withholding tax (ניכוי מס במקור)
-              │       Resolve from provider_tax_compliance:
-              │         IF withholding_cert valid → use withholding_cert_rate
-              │         ELSE use WITHHOLDING_RATE_POLICY.defaultRate (currently 0.20)
-              │       payout_net_cents = provider_share_cents - withholding_amount_cents
-              │
-              ├──── 4. Bank transfer
-              │       Phase A: manual (admin clicks "execute payout" → bank reads CSV)
-              │       Phase B: automated via SUMIT UPay or bank API
-              │
-              └──── 5. Issue receipt (קבלה) to customer + email
-                      SumitDocumentIssuer.createReceipt({...})
-                      → write sumit_document_links row
-```
-
-### Edge cases
-- **Refund**: Customer requests within 72h → issue credit note (זיכוי) via SUMIT, reverse `pw_payments` row, return funds via Nayax.
-- **Chargeback**: Nayax webhook → mark `pw_payments` as REVERSED, issue credit note, deduct from provider's next payout, alert admin.
-- **Dispute**: Booking marked `disputed` before escrow release → escrow held, admin reviews. Resolution: release to provider OR refund to customer, with appropriate documents.
-
----
-
-## §8 WEBHOOK FLOW (Deliverable 6)
-
-### Inbound (SUMIT → PetWash)
-
-```
-[SUMIT triggers event (document.created, payment.charged, business.kyc_completed, etc.)]
-              │
-              ▼
-[POST /webhooks/sumit/events
- Headers: X-Sumit-Signature, X-Sumit-Event-Id]
-              │
-              ▼
-[Express middleware: rate limit 100/min/IP]
-              │
-              ▼
-[SumitWebhookHandler.handle(req)]
-              │
-              ├── Validate HMAC signature (constant-time compare via crypto.timingSafeEqual)
-              │       Invalid → return 401, increment metric
-              │
-              ├── Check sumit_webhook_events for event_id (idempotency)
-              │       Already processed → return 200 immediately
-              │
-              ├── INSERT sumit_webhook_events row (status=received)
-              │
-              ├── Return 202 Accepted immediately (SUMIT timeout protection)
-              │
-              ▼
-[Background worker picks up event]
-              │
-              ├── Trigger router (switch on trigger_name):
-              │     'document.created'      → DocumentEventHandler
-              │     'payment.charged'       → PaymentEventHandler
-              │     'payment.refunded'      → RefundEventHandler
-              │     'business.kyc_completed' → KycCompletedHandler
-              │     'business.kyc_rejected'  → KycRejectedHandler
-              │     'recurring.charged'     → RecurringChargeHandler
-              │     'recurring.failed'      → RecurringFailureHandler
-              │     unknown                 → log + DLQ for review
-              │
-              ├── Handler runs in DB transaction
-              │
-              ├── On success: UPDATE sumit_webhook_events SET processed_at=NOW()
-              │
-              └── On failure:
-                    INCREMENT retry_count
-                    SET next_retry_at = NOW() + exponential_backoff
-                    IF retry_count > MAX: SET dead_lettered_at = NOW(), alert admin
-```
-
-### Outbound (PetWash → SUMIT) — every API call follows this pattern
-
-```
-[Business code calls SumitMarketplaceClient.someMethod(args)]
-              │
-              ▼
-[Generate idempotency external_reference]
-              │
-              ▼
-[Wrap call with retry policy: 3 attempts, exponential backoff, jitter]
-              │
-              ├── 200 OK → return response
-              │
-              ├── 4xx (validation, auth) → no retry, return typed error
-              │
-              ├── 5xx → retry up to N times
-              │
-              ├── Timeout → retry
-              │
-              └── All retries exhausted → enqueue to retry queue, return failure to caller
-```
-
----
-
-## §9 PROVIDER ONBOARDING FLOW (Deliverable 7)
-
-Already detailed in §6 sync flow. Adding mobile UX considerations here:
-
-- **All steps mobile-first**, RTL, Hebrew default, English toggle
-- **Step 4 (invoice authorization)** must show full legal text in Hebrew, scroll-to-bottom requirement before "I agree" enabled, signature pad (canvas) + checkbox, PDF generated server-side and stored with SHA-256 hash
-- **iPhone Safari testing required** (per CEO standing rule — already in PetWash conventions)
-- **No external redirect** for IBAN entry — capture in-app, encrypt client-side via Web Crypto API before transmission (defense in depth even with HTTPS)
-- **Save-as-draft** at every step (provider may be interrupted, must be able to resume)
-- **Locked banner** at top: "השלמת הרשמה פיננסית נדרשת לקבלת הזמנות" (Complete financial registration to receive bookings)
-
----
-
-## §10 ERROR / RETRY ARCHITECTURE (Deliverable 8)
-
-### Failure modes and responses
-
-| Failure | Detection | Response |
+- Server-side (private) calls: `CoreAPICredentials = { company_id: int, api_key: str }`.
+- Client-side (browser tokenization only): `CoreAPIPublicCredentials = { company_id: int, api_public_key: str }`. The public key is safe in browser code; the private `APIKey` MUST stay server-side.
+- Credentials obtained at: `https://app.sumit.co.il/developers/keys/`.
+
+### HTTP headers actually sent (informational only — NOT auth)
+| Header | Value | Purpose |
 |---|---|---|
-| SUMIT API 5xx | HTTP status | Retry 3x with exponential backoff (1s, 4s, 16s) + jitter |
-| SUMIT API 429 (rate limit) | HTTP status | Respect Retry-After header; if absent, back off 60s |
-| SUMIT API 4xx (validation) | HTTP status | NO retry. Surface to user/admin. Log with redacted payload. |
-| SUMIT API timeout | Custom timeout (5s default) | Retry as 5xx |
-| Network error (DNS, connect refused) | Exception | Retry as 5xx |
-| Webhook signature invalid | HMAC compare | 401, increment metric, alert if >10 in 5 min |
-| Webhook handler throws | try/catch | Mark event for retry, exponential backoff up to N |
-| Webhook handler retries exhausted | retry_count > MAX | Dead-letter, alert admin via Slack/email |
-| Database commit failure during webhook | tx rollback | Re-enqueue webhook (it has not been marked processed) |
-| Idempotency key collision | UNIQUE constraint | Return existing record (don't double-issue) |
-| Provider's sumit_sub_business_id missing when payout requested | DB lookup | Block payout, alert admin, return "provider finance setup incomplete" |
+| `Content-Type` | `application/json` | required |
+| `Content-Language` | `he` (default), `en`, `ar`, `es` | response/error-message language |
+| `X-OG-Client` | client identifier string (e.g., `PetWash`) | informational |
+| `X-OG-ClientIP` | end-user IP | informational |
 
-### Backoff strategy
-```typescript
-// Generic exponential backoff with jitter
-backoffMs(attempt: number) = min(MAX_BACKOFF, BASE * 2^attempt) + random(0, JITTER)
-where BASE=1000ms, MAX_BACKOFF=300000ms (5 min), JITTER=500ms
+### Response envelope (all endpoints)
+
+```json
+{
+  "Status": 0,                              // OR "Success" — see open question
+  "UserErrorMessage": null,                 // human-readable error or null
+  "TechnicalErrorDetails": null,            // debug detail or null
+  "Data": { /* endpoint-specific payload */ }
+}
 ```
 
-### Dead letter queue
-- A row in `sumit_webhook_events` with `dead_lettered_at IS NOT NULL` is in the DLQ
-- Admin UI surface: `/admin/sumit/dead-letter-queue`
-- Manual replay button (with confirm dialog)
-- Daily Slack digest of new DLQ entries
+**Open question (#Q1):** Production plugin code observes BOTH `Status == 0` (int) and `Status == "Success"` (string) in the same SUMIT codebase. Until SUMIT support disambiguates, treat the field as a union of both forms and check accordingly.
+
+Transport-level HTTP 200 ≠ success. The app MUST inspect `Status` + `UserErrorMessage`.
 
 ---
 
-## §11 SECURITY REVIEW (Deliverable 9)
+## §2 CREDENTIAL OWNERSHIP MODEL
 
-### Secrets handling
-| Secret | Storage | Access path |
+| Scope | Owner of Credentials | Where stored |
 |---|---|---|
-| `SUMIT_API_KEY` | GCP Secret Manager | Injected to Cloud Run as env var. Lazy-read at first SUMIT call (NOT module-load). |
-| `SUMIT_WEBHOOK_SECRET` | GCP Secret Manager | Same. Used only inside webhook handler. |
-| `IBAN_ENCRYPTION_KEY` | GCP Secret Manager (versioned) | Lazy-read. Key version stored per encrypted row to support rotation. |
-| `ID_NUMBER_ENCRYPTION_KEY` | GCP Secret Manager (versioned, NEW) | Same pattern. |
-| `WALLET_LINK_SECRET` | GCP Secret Manager | **CURRENTLY READ AT MODULE LOAD — MUST BE FIXED (P0).** |
+| Marketplace master | PetWash Ltd | GCP Secret Manager → `SUMIT_API_KEY`, `SUMIT_COMPANY_ID`, `SUMIT_API_PUBLIC_KEY` |
+| Per-vendor sub-business | The provider's SUMIT sub-business (created via `/website/companies/create/`) | `provider_finance_profiles` per-row, encrypted at app layer |
 
-### Module-load env-var enforcement gate (CI, NEW)
-Add to `petwash-ci.yml`:
-```yaml
-- name: Enforce lazy env-var checks
-  run: |
-    # Fail if any file in server/ has top-level "throw new Error" that depends on process.env
-    npx ts-node scripts/check-no-module-load-env-throws.ts
-```
-Script greps for the pattern and excludes whitelisted files.
-
-### Webhook signature
-- HMAC-SHA256 over raw body + timestamp
-- Constant-time compare (`crypto.timingSafeEqual`)
-- Reject if timestamp drift > 5 minutes (replay protection)
-
-### PCI-DSS scope
-- PetWash MUST remain SAQ-A (no PAN handling)
-- SUMIT hosted page or iframe for card entry → confirms with B8 answer
-- No PAN in logs, ever (already enforced via `redactPAN` in `lib/redaction.ts`)
-
-### Privacy
-- ID numbers must be encrypted at rest (new requirement, P0)
-- ID number hash for search (SHA-256 with per-installation salt)
-- Bank IBAN already planned as encrypted
-- Logs scrubbed via `redactPaymentPayload`
-
-### Audit
-- Every SUMIT API call: log with redacted args, timing, status, external_reference, trace_id
-- Every webhook: full audit row in `sumit_webhook_events` (raw_payload retained for SUMIT support debugging)
-- Every payout decision: row in payout_release_approvals + payout_audit_log
+**Important:** `/billing/payments/multivendorcharge/` requires the marketplace's `Credentials` at the top level AND each vendor's `CompanyID`+`APIKey` on each `Items[]` row. Both sets of credentials must be available to the marketplace orchestrator at charge time.
 
 ---
 
-## §12 ROLLOUT PHASES (Deliverable 10)
+## §3 ENDPOINT CATALOG — CONFIRMED SHAPES (subset matters most)
 
-### Phase 0 — Pre-flight (NOW, before any SUMIT code)
-- [ ] Production restored (PR-STARTUP-FIX-2 or WALLET_LINK_SECRET set in GCP)
-- [ ] CEO sends Hebrew SUMIT support email (B1–B8 + Q11–Q15)
-- [ ] CPA engagement initiated for three pending policy switches
-- [ ] Lawyer reviews Hebrew invoice authorization (כתב הרשאה) text
-- [ ] VAT number `516788400` vs `517145033` reconciled with accountant
-- [ ] Decision on which SUMIT plan tier we buy (driven by Q11–Q12 answers)
+Endpoints below are grouped by purpose. **CONFIRMED** = full Swagger model or production plugin example exists. **UNKNOWN** = endpoint exists per CEO list but no public payload shape surfaced.
 
-### Phase 1 — Foundation (PR-PFP-1 through PR-PFP-5, no SUMIT API yet)
-- PR-PFP-1: provider_finance_profiles migration (schema only) — LOW risk, ADDITIVE
-- PR-PFP-2: admin approval auto-creates pending row
-- PR-PFP-3: provider GET/PUT endpoints with per-business-type validation
-- PR-PFP-4: provider onboarding UI (5 steps, mobile-first, Hebrew RTL) including invoice authorization step
-- PR-PFP-5: admin manual override (mark-ready) for pre-SUMIT-integration period
+### 3.1 Customer
 
-### Phase 2 — SUMIT integration (gated on B1–B8 answers)
-- PR-PFP-6: SumitMarketplaceClient typed client + lazy env config
-- PR-PFP-7: end-customer sync + document issuance (read-only first, then write)
-- PR-PFP-8: multivendor charge integration (Phase B optional — only if SUMIT < Nayax cost AND CEO approves migration)
-- PR-PFP-9: webhook handler (POST /webhooks/sumit/events) + sumit_webhook_events table
-
-### Phase 3 — Gating & cleanup
-- PR-PFP-10: backfill script (create pending rows for all existing approved providers, send onboarding emails)
-- 14-day soak period with feature flag (provider payouts gate behind feature flag, monitor)
-- PR-PFP-9 strict gate: ProviderPayoutService refuses payout if `payout_status != 'enabled'`
-- PR-PFP-11: drop Stripe legacy columns
-
-### Phase 4 — Migration & expansion (post-MVP)
-- PR-PFP-12 (NEW): memberships cutover to SUMIT recurring (replace deprecated Stripe wiring)
-- PR-PFP-13 (NEW): evaluate Apple Pay/Google Pay/Bit migration from Nayax → SUMIT (cost-driven)
-- PR-PFP-14 (NEW): municipal/corporate B2B invoicing
-- PR-PFP-15 (NEW): bulk prepaid wash package issuance via SUMIT recurring
-
-### Independent P0 (parallel track)
-- PR-STARTUP-HARDEN-1: WalletService lazy env check + CI gate against module-load env throws
-- PR-PRIVACY-1: encrypt `users.idNumber` at rest (separate from SUMIT, but P0 compliance)
-
----
-
-## §13 LEGAL / ACCOUNTING RISKS (Deliverable 11)
-
-### Risk register
-
-| # | Risk | Severity | Mitigation |
-|---|---|---|---|
-| L-1 | Issuing invoices in provider's name without signed consent → invalid legal document, potential criminal liability under Income Tax Ordinance §145 | CRITICAL | PR-PFP-4 invoice authorization step blocks payout until signed; legal text reviewed by lawyer |
-| L-2 | Wrong AGENT_MODEL_POLICY (disclosed vs undisclosed) → VAT misreporting, potential ITA audit | HIGH | CPA must sign off before launch |
-| L-3 | Wrong default withholding rate → underpayment to ITA, provider deducted too much | HIGH | CPA must sign off; certificate-driven override already implemented |
-| L-4 | Osek Patur input-VAT reclaim error → over-remittance to ITA | MEDIUM | Conservative default (no reclaim) currently; CPA confirms |
-| L-5 | VAT number mismatch (`516788400` vs `517145033`) → invoices issued under wrong tax ID, void | HIGH | Reconcile with accountant immediately |
-| L-6 | SUMIT issues invoice in PetWash's name when it should be in provider's name (or vice versa) → tax authority audit, provider tax position broken | CRITICAL | Strict separation in code: `sub_business_id` parameter MUST be provider for provider-named invoices, MUST be NULL/master for PetWash commission invoices. Integration tests must verify. |
-| L-7 | Plaintext ID number in `users.idNumber` → Privacy Protection Law §17 violation, ~₪320k fine + lawsuit exposure | HIGH | PR-PRIVACY-1 encrypt at rest |
-| L-8 | Withholding cert expires (annual reset 31 Dec) without grace logic → over-withholding from provider | MEDIUM | Already handled in `resolveWithholdingRate(certExpiryDate)` helper. Verify in CPA review. |
-| L-9 | SHAAM allocation number missing on invoice > threshold → ITA rejection of invoice, customer cannot deduct VAT | HIGH | SUMIT handles allocation # natively (confirmed by screenshot 3). Validate via integration test. |
-| L-10 | Chargeback after invoice issued → invoice still exists in books, double accounting | MEDIUM | Credit note (זיכוי) issued via SUMIT on chargeback, reconciliation enforced |
-| L-11 | Provider deletes account → outstanding invoices in provider's name need archival | MEDIUM | Soft-delete only for finance-active providers; full retention 7 years per ITA |
-| L-12 | Clearing fee VAT (עמלת סליקה × 18%) treated as pass-through to provider → PetWash absorbs VAT loss | MEDIUM | Explicitly model in fee calculation; pass clearing+VAT as provider deduction OR absorb in commission |
-| L-13 | Provider classified wrong business type (e.g. authorized when actually exempt) → wrong invoice format, wrong VAT | MEDIUM | F-B locked: business_type cannot default, must be explicit choice. Document upload optional but recommended. |
-| L-14 | Cross-border transactions (tourist customer pays from foreign card) → currency conversion VAT complications | LOW | Out of MVP scope. ILS only for Phase 1-3. |
-
-### Anti-pattern to avoid
-**DO NOT** allow ANY code path to bypass `payout_status` check. ProviderPayoutService.releasePayout() must be the ONE function that releases money, and it must check `payout_status='enabled'` and `invoice_authorization_signed_at IS NOT NULL` before any side effect.
-
----
-
-## §14 OPEN QUESTIONS FOR SUMIT SUPPORT (Deliverable 12)
-
-### Confirmed open from PR #301
-- B1. multivendorcharge split-payment in one API call?
-- B2. KYC flow for sub-business creation (docs, timing, AML)?
-- B3. Hosted/embedded onboarding UI (Stripe Connect-style)?
-- B4. Webhook event catalog (especially finance events)?
-- B5. Apple Pay/Google Pay/Bit in marketplace mode?
-- B6. Operator-level settlement reporting?
-- B7. Plan limits + pricing for ~200 providers / 5k txn/mo?
-- B8. PCI-DSS SAQ-A confirmation when using SUMIT iframe?
-
-### NEW from V2 screenshot analysis
-- Q11. What counts as ONE "action" against the 400/month quota? (Each: invoice create, customer create, recurring charge, email, SMS, webhook?)
-- Q12. In marketplace mode, does each sub-business have its OWN 400-action allowance, or shared across master?
-- Q13. 3DS upcharge — per transaction or flat monthly?
-- Q14. 1.1% baseline clearing rate — applies to all card types, or only debit/local? International/Amex/Premium rate?
-- Q15. Merchant of record status — does SUMIT pass MoR to us, or remain MoR? (Chargeback liability + AML implications)
-
-### NEW from accounting/legal analysis
-- Q16. For invoices issued in provider's name via PetWash as agent — does SUMIT have a "issued by agent" mode that legally distinguishes from provider-issued? Or do we declare PetWash as "מוציא בשם" (issuer on behalf)?
-- Q17. Withholding tax (ניכוי מס במקור) — does SUMIT auto-calculate from provider profile, or do we pre-calculate and pass the net amount?
-- Q18. Form 856 (annual withholding report to ITA) — does SUMIT produce this for the operator, or do we need to consolidate?
-- Q19. For עוסק פטור provider, can SUMIT issue a "receipt only" document (קבלה, not חשבונית מס)? עוסק פטור legally cannot issue tax invoices.
-- Q20. Can a single SUMIT plan host multiple sub-businesses, OR does each sub-business need its own plan/billing? (Cost driver)
-- Q21. For commission invoices (PetWash → provider), is the provider classified as "ספק" (supplier) or "לקוח" (customer) in SUMIT's terminology?
-- Q22. Sandbox environment — URL, credentials process, are sandbox invoices issued to a real ITA test endpoint, or fully isolated?
-- Q23. SUMIT API uptime SLA + scheduled maintenance windows?
-
-### Updated Hebrew email (replaces PR #301 §3, NEW DRAFT — to be sent by CEO)
-[Provided in §28 as ready-to-paste text]
-
----
-
-## §15 WHAT STAYS IN PETWASH (Deliverable 13)
-
-Source of truth, owned exclusively by PetWash:
-- **Users** (`users` table, Firebase auth)
-- **Providers** (`providers`, `provider_applications`, `provider_intake_queue`)
-- **Provider tax classification** (`provider_tax_compliance` — pre-existing)
-- **Bookings** (`bookings`, `sitterBookings`, `walkBookings`, `trainerBookings`)
-- **Booking lifecycle state machine** (BookingLifecycleService)
-- **Escrow holds** (`escrowHoldings`, EscrowStateMachine — 72h default)
-- **Wallets** (`walletAccounts`, `creditTransactions`, `walletLedgerEntries`, `walletHolds`)
-- **Loyalty** (`loyaltyProfiles`, `pointsTransactions`, `badges`, `userBadges`, `dailyChallenges`, `referrals`)
-- **Memberships** (`memberships` — though billing will migrate to SUMIT recurring in Phase 4)
-- **Disputes, reviews, ratings**
-- **Marketplace search, matching, pricing rules** (sitterFeeCalculator, etc.)
-- **Promotions, gift codes** (issuance side — SUMIT does the financial document)
-- **Apple/Google Wallet pass issuance** (Prestige cards)
-- **All UI/UX**
-
----
-
-## §16 WHAT MOVES TO SUMIT (Deliverable 14)
-
-SUMIT owns:
-- **Official invoice numbering** (per Israeli ITA monotonic per type per year)
-- **SHAAM allocation number** for invoices > threshold
-- **VAT calculation** (18% Israeli rate, per-line, per-customer)
-- **Official PDF rendering** (with all required ITA fields including company info, allocation #, signature line)
-- **Tax document books** (יומן הנהלת חשבונות) — SUMIT carries certified accounting software status 00215702 per PR #301
-- **Recurring billing engine** (for memberships, Phase 4)
-- **Apple Pay / Google Pay / Bit clearing** (Phase B if cost-justified)
-- **Customer payment method storage** (cards on file, tokenized, never seen by PetWash)
-- **Bank account verification** for providers (uses SUMIT's bank verification module)
-- **End-of-month accountant export** (accountant accesses SUMIT directly with provider firm linkage per Q4 in original email)
-
-PetWash CALLS SUMIT for:
-- Customer creation/update (mirror PetWash users → SUMIT customers)
-- Sub-business creation (provider → SUMIT sub-business)
-- Document creation (invoices, receipts, credit notes)
-- Payment charging (Phase B, marketplace mode)
-- Recurring setup (Phase 4)
-
-PetWash CONSUMES from SUMIT:
-- Document IDs (write back to `sumit_document_links` + `pw_provider_payouts.providerTaxInvoiceId/commissionInvoiceId`)
-- PDF URLs (mirror to Google Drive for backup)
-- Webhook events (everything goes through `sumit_webhook_events`)
-- Bank verification status
-
----
-
-## §17 PRODUCTION DEPLOYMENT PLAN (Deliverable 15)
-
-### Pre-deployment checklist (per PR)
-- [ ] Lazy env-var checks (no module-load throws — enforced by CI gate)
-- [ ] Idempotency keys on all SUMIT writes
-- [ ] Integration tests against SUMIT sandbox (after B22 answers)
-- [ ] Feature flag for new code paths (default OFF)
-- [ ] Migration is additive (no destructive DDL on existing tables)
-- [ ] Rollback plan documented in PR description
-
-### Cloud Run deployment
-- Existing pipeline: GitHub Actions builds image → pushes to Artifact Registry → Cloud Run deploys new revision → traffic shift to latest
-- After today's lesson: traffic-shift step needs concurrency group to prevent version conflicts
-- Health endpoint already has serverReady/routesReady/startupPhase from PR #314+#315
-
-### Migration ordering
-1. Schema-only migrations first (additive, reversible)
-2. Backend code (with new endpoints behind feature flag)
-3. Frontend code (calls new endpoints when flag enabled per user)
-4. Backfill scripts (low-traffic window)
-5. Feature flag flip to ON (per-segment rollout: internal first, then beta providers, then all)
-6. Cleanup migrations (drop deprecated columns) — only after weeks of stability
-
----
-
-## §18 CLOUD RUN SECRET SETUP (Deliverable 16)
-
-### Secrets to add to GCP Secret Manager
-| Secret name | Value source | Versioned | Notes |
-|---|---|---|---|
-| `SUMIT_API_KEY` | SUMIT admin panel | yes | Rotate quarterly |
-| `SUMIT_WEBHOOK_SECRET` | SUMIT admin panel | yes | Used only in webhook handler |
-| `SUMIT_COMPANY_ID` | SUMIT account | no | PetWash master company ID |
-| `SUMIT_TERMINAL_ID` | SUMIT account | no | For UPay if used |
-| `SUMIT_API_BASE_URL` | Constant `https://api.sumit.co.il` (or sandbox URL) | no | Env-driven for sandbox swap |
-| `SUMIT_APP_NAME` | Constant `PetWash` | no | For audit trails |
-| `IBAN_ENCRYPTION_KEY` | Generate via `openssl rand -base64 32` | yes | For provider bank IBAN |
-| `ID_NUMBER_ENCRYPTION_KEY` | Generate via `openssl rand -base64 32` | yes | For users.idNumber |
-| `INVOICE_AUTHORIZATION_VERSION` | Constant string `v1` | no | Track which consent version was signed |
-
-### Cloud Run service env var bindings
-- All secrets injected as env vars at container start
-- NO secrets fetched at runtime from Secret Manager (avoids latency + cost)
-- Secret versions pinned (use `:latest` only for ops convenience, prefer pinned for prod)
-- IAM: Cloud Run service account has `Secret Manager Secret Accessor` role on specific secrets only (least privilege)
-
-### Secret rotation flow
-- `SUMIT_API_KEY` rotation: create new version in SUMIT → add to Secret Manager → cut traffic via env var swap (Cloud Run revision) → revoke old in SUMIT after 24h
-- `IBAN_ENCRYPTION_KEY` rotation: create new version → mark old as "decrypt-only" → background job re-encrypts rows from old → new (writing `key_version` column) → old key revoked after all rows migrated
-
----
-
-## §19 CI/CD CONSIDERATIONS (Deliverable 17)
-
-### New CI gates to add
-- [ ] **Module-load env throw gate** — fails build if any server/ file does top-level `process.env.X || throw`
-- [ ] **TSC error count gate** — fails if tsc error count > base branch (would have caught PR #197 in May)
-- [ ] **Routes smoke test** — `node -e "require('./server/routes')"` runs in CI, fails in <100ms if module-load throw exists
-- [ ] **Migration linter** — fails if migration is destructive (DROP COLUMN, DROP TABLE) without `-- INTENT: destructive` comment
-- [ ] **SUMIT integration tests gate** — runs against SUMIT sandbox on every PR touching `server/services/sumit/**`
-- [ ] **PII/PAN log scan** — fails if any new log statement contains regex matching credit card or ID number patterns
-- [ ] **Hebrew text encoding check** — ensures all Hebrew strings use proper UTF-8 with BiDi marks where required
-
-### Existing pipeline (do not change)
-- Build → test → deploy candidate → traffic shift to latest
-
-### NEW: deploy workflow concurrency group
-Add to deploy workflow:
-```yaml
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
-```
-Prevents the version-conflict race that hit today.
-
----
-
-## §20 MONITORING / LOGGING STRATEGY (Deliverable 18)
-
-### Metrics (Cloud Monitoring / Datadog / equivalent)
-- `sumit.api.requests` (counter, tagged by endpoint, status_code)
-- `sumit.api.latency` (histogram, tagged by endpoint)
-- `sumit.api.errors` (counter, tagged by endpoint, error_type)
-- `sumit.webhook.received` (counter, tagged by trigger_name, signature_valid)
-- `sumit.webhook.processing_latency` (histogram)
-- `sumit.webhook.dead_lettered` (counter, alert on >0 in 1h)
-- `sumit.quota.actions_consumed_daily` (gauge, alert at 80% of 400/day for monthly tracking)
-- `sumit.quota.cost_projected_monthly` (gauge, alert if >₪500/mo)
-- `sumit.sync.provider_setup_failures` (counter, alert on >5 in 1h)
-- `sumit.document.issuance_failures` (counter, alert on any)
-
-### Logs (structured JSON, all SUMIT-related lines prefixed `[sumit]`)
-- Every SUMIT API call: `{endpoint, method, status, latency_ms, external_reference, trace_id}` (NO request body — could contain customer PII)
-- Every webhook: row in `sumit_webhook_events` IS the log (no separate log line needed)
-- Every document issuance: `{document_type, sumit_document_id, booking_id, payout_id, amount_cents}` (no PII)
-
-### Alerts
-| Alert | Threshold | Channel |
-|---|---|---|
-| Webhook signature invalid > 10/5min | 10 | PagerDuty (potential attack) |
-| Dead letter queue depth > 0 | 1 | Slack #ops |
-| SUMIT API error rate > 5% in 5min | 5% | Slack #ops |
-| Provider sync failure | any | Slack #ops |
-| Document issuance failure on payout path | any | PagerDuty (money at risk) |
-| Daily action count > 80% of plan | 80% | Slack #finance |
-| Monthly cost projection > ₪500 | ₪500 | Slack #finance |
-
----
-
-## §21 RECONCILIATION STRATEGY (Deliverable 19)
-
-### Three-way reconciliation
-Every day, automated job compares:
-1. **PetWash internal ledger** (`pw_payments` + `pw_provider_payouts`)
-2. **SUMIT documents** (`sumit_document_links` mirrored from SUMIT)
-3. **Nayax transaction reports** (`nayax_transactions`)
-
-### Discrepancy types
-- **Type A**: PetWash payment without SUMIT document → SUMIT issuance failed silently or webhook missed
-- **Type B**: SUMIT document without PetWash payment → orphan invoice (data corruption?)
-- **Type C**: Nayax charge without PetWash payment → webhook delivery failure
-- **Type D**: Amount mismatch (PetWash vs SUMIT) → calculation bug
-
-Each discrepancy creates row in `pwReconciliationReports.discrepancyCount` + `criticalIssues` JSON field.
-
-### Daily reconciliation report
-- Runs at 02:00 IST (low traffic)
-- Compares previous 24h activity
-- Outputs to `pwReconciliationReports` table
-- Email to admin + finance team if `criticalIssues > 0`
-- Backup snapshot to Google Drive (already supported in current code)
-
-### Manual reconciliation (admin)
-- Admin UI: `/admin/finance/reconciliation`
-- Filters: date range, vertical, provider
-- Side-by-side view: PetWash record | SUMIT document | Nayax txn
-- Action buttons: "Replay webhook", "Manual document issuance", "Mark resolved with note"
-
----
-
-## §22 DISASTER RECOVERY (Deliverable 20)
-
-### Data backups
-- **Postgres**: GCP Cloud SQL automated daily backups, 30-day retention, 7-day PITR
-- **SUMIT documents**: PDF + metadata mirrored to Google Drive (`pw_tax_documents.driveFileId` already in schema)
-- **Webhook events**: append-only table, retained 7 years per ITA
-- **Reconciliation reports**: integrity hash chain (`integrityHash`, `prevReportHash`)
-
-### SUMIT outage
-- **Read failures (fetch PDF, customer lookup)**: degrade gracefully — show "document available shortly" in UI, retry in background
-- **Write failures (document issuance)**: queue in BullMQ (or DB-backed work queue), retry until success or 7-day TTL, alert admin if TTL exceeded
-- **Webhook failures from SUMIT side**: poll `sumit_webhook_events` for stale records, reconcile via `/billing/payments/list` API
-
-### Catastrophic failure (SUMIT entirely down >24h)
-- Switch payout pipeline to "manual mode": admin downloads CSV of pending payouts, issues invoices via SUMIT admin panel manually after recovery
-- Customer-facing: continue to accept bookings, queue document issuance for SUMIT recovery
-- No customer should ever see "system unavailable" — degradation is internal
-
-### Data integrity
-- All SUMIT API responses cached in `sumit_document_links.raw_response` (JSONB) for forensic replay
-- Webhook payloads retained in `sumit_webhook_events.raw_payload`
-- 7-year retention enforced by `retentionUntil` columns (already in schema)
-- Annual integrity audit: random sample of 100 documents, compare PetWash → SUMIT → Google Drive backup → confirm SHA256 match
-
----
-
-## §23 COST MODEL (NEW)
-
-### Cost components
-
-```
-COST_MONTHLY = SUMIT_PLAN_BASE
-             + ACTION_OVERAGE × 0.25
-             + CARD_VOLUME × CLEARING_RATE
-             + 3DS_FEE × TRANSACTION_COUNT (if applicable)
-             + SMS_FEE × SMS_COUNT (we use Twilio, exclude)
-             + EMAIL_FEE × EMAIL_COUNT (we use SendGrid, exclude)
-```
-
-### Action quota math (CRITICAL — depends on Q11, Q12 answers)
-
-Assuming WORST CASE (Q11 = "every API call counts", Q12 = "shared across all sub-businesses"):
-- 1 booking = 1 customer create (if new) + 1 invoice create + 1 receipt create + 1 commission invoice create + 1 webhook out = ~5 actions
-- 10,000 bookings/month = 50,000 actions
-- Free actions: 400
-- Overage: 49,600 × ₪0.25 = **₪12,400/month**
-
-Assuming BEST CASE (Q11 = "only invoice counts", Q12 = "per sub-business"):
-- 1 booking = 2 invoices = 2 actions
-- 10,000 bookings/month / 200 providers = 50 actions/provider/month (well within 400 each)
-- **₪0 overage**
-
-**Reality probably in between. Must clarify with SUMIT before signing plan.**
-
-### Card clearing math
-- 1.1% baseline (debit/local) per screenshot
-- Realistic blended rate ~2.0–2.5% (mix of card types, international, Amex premium)
-- 10,000 bookings × avg ₪200 = ₪2M monthly volume
-- 2.0% blended clearing = **₪40,000/month in fees**
-- Currently absorbed by Nayax (presumably similar rate); SUMIT competitive only if Apple Pay/Google Pay rates are significantly better
-
-### 3DS clearing
-- Required for chargeback liability shift
-- Per-transaction upcharge (Q13 to confirm)
-- Estimate: +0.2% per transaction = **₪4,000/month additional**
-
-### Total projected monthly SUMIT cost (mid-case)
-- Base plan: ₪99
-- Action overage (50% worst case): ₪6,200
-- Clearing (Phase B, if migrated): ₪40,000
-- 3DS: ₪4,000
-- **TOTAL: ~₪50,000/month**
-
-### Cost-saving levers
-1. **Memberships in SUMIT recurring** — saves Stripe replacement cost
-2. **Loyalty stays in PetWash** — every loyalty action would be an extra SUMIT action; keeping internal saves ₪X/year
-3. **Email/SMS NOT in SUMIT** — we use SendGrid/Twilio at lower rates
-4. **Selective marketplace migration** — only move payment methods where SUMIT is cheaper than Nayax (need real numbers)
-
----
-
-## §24 CPA ENGAGEMENT SCOPE (NEW)
-
-### Three policy switches requiring CPA sign-off
-1. **AGENT_MODEL_POLICY**: disclosed vs undisclosed
-   - Recommendation: `disclosed` (Wolt/Uber model, per CEO direction)
-   - CPA must confirm Israeli tax law alignment for marketplace agent model
-   - Impact: changes who issues invoices, how VAT is reported
-
-2. **OSEK_PATUR_VAT_POLICY**: input-VAT reclaim from Osek Patur providers
-   - Current default: cannot reclaim (conservative, may over-remit)
-   - CPA must confirm correct treatment per ITA position
-   - Impact: VAT remittance amount
-
-3. **WITHHOLDING_RATE_POLICY**: default rate when provider has no Form 2542 cert
-   - Current default: 20% (per Income Tax Ordinance §164)
-   - Could be 25% or 30% depending on provider classification (subcontractor vs other)
-   - CPA must confirm category for "marketplace service provider"
-   - Impact: withholding amount per payout
-
-### Additional CPA review items (NEW from V2)
-- Reconcile VAT number `516788400` (in `pw_tax_documents` default) vs `517145033` (in `israel-compliance-config.ts`). Which is the live ח.פ?
-- Confirm agent disclosure consent text (Hebrew invoice authorization) meets ITA legal requirements
-- Review provider tax classification matrix (per-business-type field requirements)
-- Confirm 7-year retention is sufficient for all document types (some categories require 10 years)
-- Annual Form 856 (withholding report) — produced by SUMIT or compiled by us?
-
-### CPA brief document (to produce)
-`docs/SUMIT_CPA_ENGAGEMENT_BRIEF.md` — single document for the CPA covering:
-- Architecture summary (one page)
-- Three policy switch options + recommendation + impact
-- VAT number reconciliation request
-- Withholding flow diagram
-- Sample invoice (PetWash agent issuing in provider's name)
-- Reference to relevant ITA circulars
-
----
-
-## §25 OPEN QUESTIONS INDEX
-
-See §14 for the full ordered list. Grouped by responsible party:
-
-**SUMIT support email (B1–B8 + Q11–Q23):** 23 questions total. Send today.
-
-**CPA (3 policy switches + 5 V2 items):** 8 items. Engage this week.
-
-**Lawyer (1 item):** Review Hebrew invoice authorization text + Israeli platform agent model legality. Engage in parallel with CPA.
-
-**Accountant (1 item):** VAT number reconciliation. Single-question email.
-
-**SUMIT account team (2 items):** Q20 (multi-sub-business plan), Q23 (SLA). Sales rep, not support.
-
----
-
-## §26 ROADMAP ADJUSTMENT
-
-### Original PR #312 roadmap (status updated)
-| PR | Description | Risk | Status | V2 changes |
+| Path | Status | Request body | Response | Idempotency |
 |---|---|---|---|---|
-| PR-PFP-1 | provider_finance_profiles migration | LOW | Not started | +3 columns (invoice_authorization_*) |
-| PR-PFP-2 | Admin approval creates pending row | LOW | Not started | No changes |
-| PR-PFP-3 | Provider form GET/PUT endpoints | MEDIUM | Not started | No changes |
-| PR-PFP-4 | Provider onboarding UI | MEDIUM | Not started | +1 step: invoice authorization |
-| PR-PFP-5 | Admin manual override | LOW | Not started | No changes |
-| PR-PFP-6 | SumitMarketplaceClient | MEDIUM | Blocked on B1–B8 | Add lazy env config pattern |
-| PR-PFP-7 | Sub-business create + document issuance | MEDIUM | Blocked on B1–B8 | Split into PR-PFP-7a (customer sync) + PR-PFP-7b (document issuance) |
-| PR-PFP-8 | Webhook handler | MEDIUM | Blocked on B4 | Renumber: this is now PR-PFP-9 |
-| PR-PFP-9 | Payout gating (strict) | HIGH | Blocked on PFP-3,4,7 | Renumber: now PR-PFP-10 |
-| PR-PFP-10 | Backfill script | MEDIUM | Blocked on PFP-1 | Renumber: now PR-PFP-11 |
-| PR-PFP-11 | Drop Stripe legacy | MEDIUM | Last in sequence | Renumber: now PR-PFP-12 |
+| `/accounting/customers/create/` | CONFIRMED | `{ Details: AccountingTypedCustomer, Credentials }` | `{ CustomerID, CustomerHistoryURL }` | `Customer.ExternalIdentifier` + `SearchMode: "Automatic"` |
+| `/accounting/customers/update/` | UNKNOWN body | UNKNOWN | UNKNOWN | UNKNOWN |
+| `/accounting/customers/getdetailsurl/` | UNKNOWN body | UNKNOWN | UNKNOWN | n/a |
+| `/accounting/customers/createremark/` | UNKNOWN body | UNKNOWN | UNKNOWN | n/a |
 
-### NEW additions
-| PR | Description | Risk | When |
-|---|---|---|---|
-| PR-STARTUP-HARDEN-1 | WalletService lazy + CI module-load gate | LOW | NOW (independent of SUMIT) |
-| PR-PRIVACY-1 | Encrypt users.idNumber at rest | MEDIUM | NOW (independent of SUMIT) |
-| PR-PFP-8 (renumbered) | Multivendor charge integration | HIGH | Phase B, after cost analysis |
-| PR-PFP-13 | Memberships cutover to SUMIT recurring | HIGH | Phase 4, after Stripe schema cleanup |
-| PR-PFP-14 | Apple Pay/Google Pay/Bit migration evaluation | MEDIUM | Phase 4 |
-| PR-PFP-15 | Municipal/corporate B2B invoicing | MEDIUM | Phase 4+ |
-| PR-PFP-16 | Bulk prepaid wash package recurring | MEDIUM | Phase 4+ |
+`AccountingTypedCustomer` fields (verbatim from production example):
+```json
+{
+  "Name":               "string",
+  "EmailAddress":       "string",
+  "Phone":              "string",
+  "City":               "string",
+  "Address":            "string",
+  "ZipCode":            "string",
+  "CompanyNumber":      "string (ת״ז / ח״פ / vat number)",
+  "ExternalIdentifier": "string",
+  "SearchMode":         "Automatic | None",
+  "NoVAT":              false
+}
+```
 
-### Critical sequencing rules (DO NOT VIOLATE)
-- PR-PFP-1 must merge before PR-PFP-2
-- PR-PFP-4 (invoice authorization UI) must merge before PR-PFP-10 (payout gating) goes strict
-- PR-PFP-7b (document issuance) must merge before any PetWash code is allowed to invoke `ProviderPayoutService.releaseEscrow` in production
-- PR-PFP-12 (Stripe cleanup) must be last; only after all other code has been migrated off Stripe schema fields
-- CPA sign-off MUST land before PR-PFP-7b goes live (policy switches affect document content)
+### 3.2 Documents
 
----
-
-## §27 P0 RISK REGISTER (NEW)
-
-| Risk | Source | Impact | Mitigation | Owner |
+| Path | Status | Request body | Response | Idempotency |
 |---|---|---|---|---|
-| WalletService env throw at module load | Code audit | Production crash (already happened, 8 days) | PR-STARTUP-FIX-2 lazy check + CI gate | Claude / CEO approval |
-| AppleWalletService same pattern (lazy throw — safer) | Code audit | Apple Wallet provisioning fails (not full outage) | Same lazy pattern | Claude |
-| Plaintext ID numbers in users.idNumber | Code audit | Privacy Protection Law §17 violation, ₪320k fine + lawsuit exposure | PR-PRIVACY-1 encrypt at rest + hash for search | Claude / CEO approval |
-| VAT number mismatch (516788400 vs 517145033) | Code audit | Invoices issued under wrong tax ID, ITA audit risk | Reconcile with accountant immediately | CEO + accountant |
-| Three policy switches pending CPA | israel-compliance-config.ts | Possible over-remittance of VAT, wrong withholding | CPA engagement | CEO |
-| Deploy workflow race condition | Today's incident | Failed deploys, version conflict errors | Add concurrency group | Claude |
-| No CI gate on tsc errors | PR #197 history | Future regressions ship to prod | Add tsc error count gate | Claude |
-| No CI gate on module-load env throws | Today's incident | Future PRs can re-introduce class of bug | Add CI script | Claude |
-| Path E scope unclear (Nayax vs SUMIT for online charging) | V2 analysis | Architecture indecision blocks PR-PFP-8 | Phase plan in §17 | CEO + cost data |
+| `/accounting/documents/create/` | CONFIRMED | `{ Details, Items[], Payments[], VATIncluded, VATRate, OriginalDocumentID, Credentials }` | `{ DocumentID, DocumentNumber, CustomerID, DocumentDownloadURL }` | None on doc itself; nested `Items[].Item.ExternalIdentifier` + `Details.Customer.ExternalIdentifier` |
+| `/accounting/documents/send/` | CONFIRMED | `{ EntityID, DocumentType, DocumentNumber, EmailAddress, SenderUserID, Original, Language, PersonalMessage, Credentials }` | UNKNOWN | n/a |
+| `/accounting/documents/getpdf/` | CONFIRMED | `{ DocumentID, DocumentType, DocumentNumber, Original, Credentials }` | UNKNOWN (PDF bytes or URL) | n/a |
+| `/accounting/documents/getdetails/` | CONFIRMED | `{ DocumentID, DocumentType, DocumentNumber, Credentials }` | `{ Document, Items, Payments, DocumentDownloadURL, DocumentID, DocumentNumber }` | n/a |
+| `/accounting/documents/cancel/` | CONFIRMED | `{ DocumentID, Description, Credentials }` | UNKNOWN | n/a |
+| `/accounting/documents/movetobooks/` | CONFIRMED | `{ DocumentID, Credentials }` | UNKNOWN | n/a |
+| `/accounting/documents/list/` | UNKNOWN body | likely uses `CoreTypedFilter`/`CoreTypedPaging` | UNKNOWN | n/a |
+| `/accounting/documents/getdebt/`, `/getdebtreport/`, `/addexpense/` | exist | UNKNOWN | UNKNOWN | n/a |
+
+### 3.3 Payments
+
+| Path | Status | Request body | Response | Idempotency |
+|---|---|---|---|---|
+| `/billing/payments/charge/` | CONFIRMED | `BillingPaymentsChargeRequest` (see §4 example) | `{ Payment, DocumentID, DocumentNumber, CustomerID, DocumentDownloadURL }` | **NONE documented** |
+| `/billing/payments/multivendorcharge/` | CONFIRMED via plugin + help snippet | See §5 | `Data.Vendors[]` array — per-vendor `Payment` + `DocumentID` + `CustomerID` | **NONE documented** |
+| `/billing/payments/beginredirect/` | CONFIRMED | `{ Customer, Items, VATIncluded, DocumentType, RedirectURL, ExternalIdentifier, MaximumPayments, SendUpdateByEmailAddress, ExpirationHours, Theme, Language, Credentials }` | `{ RedirectURL }` | `ExternalIdentifier` (echoed back as `OG-ExternalIdentifier` on success redirect) |
+| `/billing/payments/get/` | CONFIRMED | `{ PaymentID, Credentials }` | UNKNOWN body | n/a |
+| `/billing/payments/list/` | CONFIRMED | `{ DateFrom, DateTo, Valid, StartIndex, Credentials }` | `{ Payments: [BillingTypedPayment], HasNextPage }` | n/a (poll/reconcile use) |
+
+### 3.4 Payment methods + recurring
+
+| Path | Status | Notable fields |
+|---|---|---|
+| `/billing/paymentmethods/setforcustomer/` | CONFIRMED | `{ Customer, PaymentMethod, SingleUseToken, Credentials }` |
+| `/billing/paymentmethods/getforcustomer/` | CONFIRMED | `{ Customer, Credentials }` |
+| `/billing/paymentmethods/remove/` | exists | UNKNOWN |
+| `/billing/recurring/charge/` | CONFIRMED | `{ Customer, PaymentMethod, SingleUseToken, Items, UpdateCustomerByEmail, AuthoriseOnly, DocumentType, AttributionOffset, CreditCardPaymentsCount, VATIncluded, Credentials }` |
+| `/billing/recurring/update/` | CONFIRMED | `{ Customer, RecurringCustomerItemID, UnitPrice, Quantity, Recurrence, NextPaymentDate, LastPaymentDate, Credentials }` |
+| `/billing/recurring/listforcustomer/`, `/cancel/`, `/updatesettings/` | exist | UNKNOWN body |
+
+### 3.5 Marketplace / companies / users / permissions
+
+| Path | Status | Notable fields |
+|---|---|---|
+| `/website/companies/create/` | CONFIRMED | Request: `{ Company: WebsiteTypedCompany, User: WebsiteTypedUser, Applications[], ApplicationAdditions, HideFromCompaniesList, Credentials }`. **Response returns the new sub-business's OWN API keys**: `{ CompanyID, APIKey, APIPublicKey, UserPassword?, UserEncryptedPassword? }` |
+| `/website/companies/update/` | exists | UNKNOWN body |
+| `/website/companies/getdetails/` | CONFIRMED | Response: `{ Company: WebsiteTypedCompany }` |
+| `/website/companies/installapplications/` | exists | UNKNOWN body |
+| `/website/companies/listquotas/` | exists per CEO list | UNKNOWN |
+| `/website/users/create/` | CONFIRMED | `{ User: WebsiteTypedUser, Role, Credentials }` |
+| `/website/users/loginredirect/` | CONFIRMED | `{ EmailAddress, Password, Credentials }` |
+| `/website/permissions/set/` | CONFIRMED | `{ UserID, Role, Credentials }` |
+| `/website/permissions/remove/` | exists | UNKNOWN |
+
+### 3.6 Triggers (webhooks)
+
+| Path | Status | Body |
+|---|---|---|
+| `/triggers/triggers/subscribe/` | CONFIRMED endpoint, partial body | `{ URL, Folder, View, TriggerType, Credentials }` — `TriggerType` is typed `string` with NO documented enum |
+| `/triggers/triggers/unsubscribe/` | CONFIRMED | `{ URL, Credentials }` |
+
+**Subscribe response:** empty object.
+
+### 3.7 General + income items + UPay + CRM + SMS
+
+Endpoints listed in §13. Detail-level shapes mostly UNKNOWN except:
+- `/accounting/general/getvatrate/` — CONFIRMED. Body `{ Date, Credentials }`. Response `{ Rate: float }`.
+- `/accounting/general/getexchangerate/` — CONFIRMED. Body `{ Date, CurrencyFrom, CurrencyTo, Credentials }`. Response `{ Rate: float }`.
+- `/accounting/incomeitems/create/` — CONFIRMED. Body `{ IncomeItem: AccountingTypedIncomeItem, Credentials }`. Idempotency via `IncomeItem.ExternalIdentifier` + `SearchMode`.
 
 ---
 
-## §28 CEO APPROVAL CHECKLIST
+## §4 EXACT REQUEST/RESPONSE EXAMPLES (verbatim from production plugin)
 
-Please confirm (sign or initial each):
+### `/accounting/documents/create/`
 
-### Architecture decisions
-- [ ] Phase A: Nayax remains online charge processor; SUMIT issues documents only. Phase B (SUMIT clearing) deferred to cost analysis.
-- [ ] AGENT_MODEL_POLICY flips to `disclosed` (Wolt/Uber model). PetWash issues invoices in provider's name with consent. (Subject to CPA confirmation.)
-- [ ] Provider must sign Hebrew invoice authorization (כתב הרשאה) before payout_status can = enabled
-- [ ] `provider_tax_compliance` and `provider_finance_profiles` coexist (do not merge)
-- [ ] Loyalty stays internal to PetWash (not in SUMIT)
-- [ ] Memberships migrate Stripe → SUMIT recurring in Phase 4
+```json
+{
+  "Credentials": { "CompanyID": 12345, "APIKey": "<secret>" },
+  "Items": [
+    {
+      "Item": {
+        "Name":               "Bath service — large dog",
+        "SKU":                "BATH-L",
+        "ExternalIdentifier": "petwash-product-42",
+        "SearchMode":         "Automatic",
+        "Duration_Days":      null,
+        "Duration_Months":    "0"
+      },
+      "Quantity": 1,
+      "DocumentCurrency_UnitPrice": 100.00
+    }
+  ],
+  "VATIncluded": "true",
+  "VATRate":     "17",
+  "Details": {
+    "IsDraft":  "false",
+    "Customer": {
+      "Name":               "ישראלה ישראל",
+      "EmailAddress":       "x@y.com",
+      "Phone":              "0501234567",
+      "City":               "תל אביב",
+      "Address":            "רוטשילד 1",
+      "ZipCode":            "6688101",
+      "CompanyNumber":      "<ת״ז>",
+      "ExternalIdentifier": "petwash-user-9001",
+      "SearchMode":         "Automatic",
+      "NoVAT":              false
+    },
+    "Language":    "Hebrew",
+    "Currency":    "ILS",
+    "Description": "PetWash booking #9001",
+    "Type":        "1",
+    "SendByEmail": { "Original": "true" }
+  },
+  "Payments": [
+    { "Details_Other": { "Type": "PetWash", "Description": "PetWash booking payment", "DueDate": "2026-05-18T10:00:00" } }
+  ],
+  "OriginalDocumentID": null
+}
+```
 
-### Open questions
-- [ ] CEO sends Hebrew SUMIT support email today (B1–B8 + Q11–Q23, 23 questions)
-- [ ] CEO engages CPA this week for three policy switches + V2 items
-- [ ] CEO engages lawyer this week for invoice authorization text + agent model legality
-- [ ] CEO confirms with accountant: VAT number `516788400` or `517145033`?
+Response:
+```json
+{
+  "Status": 0,
+  "UserErrorMessage": null,
+  "TechnicalErrorDetails": null,
+  "Data": {
+    "DocumentID":          987654,
+    "DocumentNumber":      100123,
+    "CustomerID":          4567,
+    "DocumentDownloadURL": "https://..."
+  }
+}
+```
 
-### NEW P0 items (independent of SUMIT)
-- [ ] Approve PR-STARTUP-HARDEN-1 (lazy env checks + CI gate)
-- [ ] Approve PR-PRIVACY-1 (encrypt users.idNumber)
+### `/billing/payments/charge/`
 
-### V2 doc approval
-- [ ] Approve this V2 document, commit to repo via PR (no code, doc-only)
-- [ ] OR request specific changes (list them)
+```json
+{
+  "Credentials": { "CompanyID": 12345, "APIKey": "<secret>" },
+  "Items": [
+    {
+      "Item": {
+        "ExternalIdentifier": "petwash-product-42",
+        "Name":  "Bath service",
+        "SKU":   "BATH-L",
+        "SearchMode": "Automatic"
+      },
+      "Quantity": 1,
+      "UnitPrice": 100,
+      "Currency": "ILS"
+    }
+  ],
+  "VATIncluded": "true",
+  "VATRate":     "17",
+  "Customer": {
+    "Name":               "ישראלה ישראל",
+    "EmailAddress":       "x@y.com",
+    "Phone":              "0501234567",
+    "ExternalIdentifier": "petwash-user-9001",
+    "SearchMode":         "Automatic"
+  },
+  "AuthoriseOnly":          "false",
+  "DraftDocument":          "false",
+  "SendDocumentByEmail":    "true",
+  "UpdateCustomerByEmail":  "false",
+  "DocumentDescription":    "PetWash booking #9001",
+  "Payments_Count":         "1",
+  "MaximumPayments":        6,
+  "DocumentLanguage":       "Hebrew",
+  "MerchantNumber":         "<terminal>",
+  "SingleUseToken":         "<og-token from JS API>"
+}
+```
+
+Response:
+```json
+{
+  "Status": 0,
+  "Data": {
+    "Payment": {
+      "ID": 9001,
+      "ValidPayment": true,
+      "Amount": 100,
+      "AuthNumber": "...",
+      "PaymentMethod": {
+        "CreditCard_Token": "tok_...",
+        "CreditCard_LastDigits": "4242",
+        "CreditCard_ExpirationMonth": "12",
+        "CreditCard_ExpirationYear":  "2030"
+      }
+    },
+    "DocumentID": 987654,
+    "CustomerID": 4567
+  }
+}
+```
+
+### `/website/companies/create/` — response (verbatim)
+
+```json
+{
+  "Status": "Success",
+  "Data": {
+    "CompanyID":             9876,
+    "APIKey":                "<sub-business private key>",
+    "APIPublicKey":          "<sub-business public key>",
+    "UserPassword":          "<only when new user created>",
+    "UserEncryptedPassword": "<only when new user created>"
+  }
+}
+```
+
+The marketplace stores `CompanyID`, `APIKey`, `APIPublicKey` per-provider as encrypted secrets.
 
 ---
 
-## §29 APPENDIX — REFERENCES
+## §5 MULTIVENDOR CHARGE — THE PRIMARY MARKETPLACE PATH
 
-### Documents in this repo
-- `docs/SUMIT_CAPABILITIES_AUDIT.md` (PR #301)
-- `docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT.md` (PR #312)
-- `docs/INFRASTRUCTURE_AUDIT_2026_05_17.md` (PR #313, F-1 through F-5)
-- `docs/PAYMENT_ARCHITECTURE.md` (2025-11-02, NEEDS REFRESH — superseded by V2)
-- `docs/JOB_DISPATCH_PAYMENT_FIXES_2025-11-11.md`
-- `docs/finance/00-platform-role-model.md`
-- `docs/finance/02-money-object-model.md`
-- `docs/finance/sumit-upay-operating-model.md`
-- `docs/finance/sumit-upay-vendor-discovery-and-rail-architecture.md`
-- `docs/finance/transaction-lifecycle-forensic-audit.md`
-- `docs/finance/finance-review-blind-spots-and-authority-questions.md`
-- `shared/israel-compliance-config.ts`
+Endpoint: `POST /billing/payments/multivendorcharge/`
 
-### Code files referenced
-- `server/services/WalletService.ts:18-19` (P0 module-load throw)
-- `server/services/AppleWalletService.ts:58-59` (lazy throw)
-- `server/services/sitterFeeCalculator.ts` (15% commission, 18% VAT)
-- `server/lib/redaction.ts` (PAN/email/phone redaction, VAT export formatting)
-- `server/services/NayaxOnlinePaymentService.ts`
-- `server/services/NayaxSitterMarketplaceService.ts`
-- `server/services/NayaxWalkMarketplaceService.ts`
-- `server/services/ProviderPayoutService.ts`
-- `server/services/EscrowService.ts` + `EscrowStateMachine.ts`
-- `server/services/TaxDocumentService.ts`
-- `server/services/IsraeliInvoiceGenerator.ts`
-- `server/lib/payment-provider-mode.ts` (env validation pattern — good reference for lazy checks)
+### Request shape (same envelope as `/billing/payments/charge/` with per-item vendor creds)
 
-### Schema files referenced
-- `shared/schema.ts` (main schema)
-- `shared/schema-payments.ts` (pw_payments, pw_provider_payouts, pw_tax_documents)
-- `shared/schema-billing.ts` (billingRecords)
-- `shared/schema-loyalty.ts` (loyaltyProfiles, points, badges, challenges, referrals)
+```json
+{
+  "Credentials": { "CompanyID": <marketplace_id>, "APIKey": "<marketplace_key>" },
+  "Items": [
+    {
+      "Item": {
+        "Name":               "Bath service",
+        "SKU":                "BATH-L",
+        "ExternalIdentifier": "petwash-product-42",
+        "SearchMode":         "Automatic",
+        "Duration_Days":      null,
+        "Duration_Months":    "0"
+      },
+      "Quantity":   1,
+      "UnitPrice":  100,
+      "Currency":   "ILS",
+      "Duration_Days":   "0",
+      "Duration_Months": "0",
+      "Recurrence":      "0",
+      "CompanyID": <vendor_id>,
+      "APIKey":    "<vendor_key>"
+    }
+  ],
+  "VATIncluded": "true",
+  "VATRate":     "<from getvatrate>",
+  "Customer": {
+    "Name":               "...",
+    "EmailAddress":       "...",
+    "ExternalIdentifier": "petwash-user-9001",
+    "SearchMode":         "Automatic"
+  },
+  "AuthoriseOnly":     "false",
+  "SingleUseToken":    "<og-token from JS API>",
+  "DocumentLanguage":  "Hebrew",
+  "MaximumPayments":   1,
+  "Payments_Count":    "1"
+}
+```
 
-### External
-- SUMIT API documentation (URL TBD from CEO)
-- Israeli Income Tax Ordinance §164 (withholding tax rates)
-- Israeli VAT Law (חוק מע״מ תשל״ו-1975)
-- Privacy Protection Law (חוק הגנת הפרטיות תשמ״א-1981) §17
-- ITA Electronic Invoice Law (חוק חשבונית דיגיטלית) thresholds
+### Response shape
+
+```json
+{
+  "Status": 0,
+  "Data": {
+    "DocumentID": <int — fallback/aggregate, role unclear>,
+    "CustomerID": <int>,
+    "Vendors": [
+      {
+        "Payment": {
+          "ID":           <int>,
+          "AuthNumber":   "...",
+          "Amount":       ...,
+          "ValidPayment": true,
+          "PaymentMethod": {
+            "CreditCard_LastDigits":   "...",
+            "CreditCard_ExpirationMonth": "...",
+            "CreditCard_ExpirationYear":  "...",
+            "CreditCard_Token":        "..."
+          }
+        },
+        "DocumentID": <int — issued on this vendor's books>,
+        "CustomerID": <int — vendor's own customer record>
+      }
+    ]
+  }
+}
+```
+
+### Confirmed semantics
+- **One call clears AND issues invoices in vendors' names** — one document per vendor on that vendor's books. Source: help.sumit.co.il/he/articles/5832873 snippet ("This API also automatically generates an invoice/receipt in the vendor's name").
+- **Vendor credentials embedded per `Items[]` row** — vendor lookup is at line-item granularity.
+- **Each vendor maintains their own customer record** — `Data.Vendors[].CustomerID` is per-vendor.
+
+### Open semantics (#Q4)
+- Partial-failure behavior — UNKNOWN.
+- Whether all items must share one vendor per call — UNKNOWN.
+- Role of top-level `Data.DocumentID` when `Vendors[]` exists — UNKNOWN.
+- Per-vendor `DocumentType` field name — UNKNOWN.
+
+### Activation prerequisite
+Per help-center snippet: clearing on a newly-created sub-business requires a separate manual activation step ("contact support@sumit.co.il"). UNKNOWN whether API-automatable (#Q6).
 
 ---
 
-**END OF V2 ARCHITECTURE DOCUMENT.**
+## §6 IDEMPOTENCY — WHAT SUMIT ACTUALLY DOCUMENTS
 
-Total length: ~10,000 words. Density over prose. Ready for CEO review.
+| Mechanism | Status |
+|---|---|
+| `ExternalIdentifier` on Customer + Item + IncomeItem + BeginRedirect | CONFIRMED — idempotency key when paired with `SearchMode: "Automatic"` for find-or-create |
+| `ExternalReference` (any variant) | NOT DOCUMENTED — do not send |
+| `OriginalDocumentID` on document create | CONFIRMED — links a credit note to its original document; NOT a dedup key on create |
+| HTTP `Idempotency-Key` header | NOT DOCUMENTED — does not appear in any public source |
+| `Payments_Count` / charge-side keys | NOT idempotent — re-posting the same charge produces a second charge |
 
-Next steps after CEO approval:
-1. CEO sends 23-question SUMIT email
-2. CEO engages CPA + lawyer + accountant
-3. Production restored (PR-STARTUP-FIX-2 or env var fix)
-4. PR-STARTUP-HARDEN-1 + PR-PRIVACY-1 ship in parallel (independent of SUMIT)
-5. When SUMIT answers return: PR-PFP-1 through PR-PFP-5 ship (foundation)
-6. When CPA signs off: PR-PFP-6 through PR-PFP-12 ship (real integration)
+**Consequence:** PetWash MUST implement application-level dedup BEFORE every transactional SUMIT call. The dedup intent row is written first; the SUMIT call comes second; the response is recorded on the same intent row. On retry, the intent is consulted and either short-circuits (committed) or proceeds (pending/failed).
+
+See `sumit_idempotency_intents` table in §10.
+
+---
+
+## §7 WEBHOOKS — PARTIAL; BLOCKED ON UNKNOWNS
+
+### What's known
+- Subscribe endpoint: `/triggers/triggers/subscribe/`
+- Body: `{ URL, Folder, View, TriggerType, Credentials }`
+- All non-`Credentials` fields marked optional in Swagger
+- Subscribe response: empty object
+- Unsubscribe: `/triggers/triggers/unsubscribe/` body `{ URL, Credentials }`
+
+### What's NOT known (and CANNOT be guessed)
+- `TriggerType` enum values — UNKNOWN. **No event names to be invented.** (#Q8)
+- Webhook delivery payload shape — UNKNOWN. (#Q8)
+- Signature header name, algorithm, signed content — UNKNOWN. The Laravel wrapper exposes an `X-Webhook-Signature` HMAC-SHA256 header, but that is the WRAPPER's outbound signature when re-broadcasting to the wrapper's consumer — NOT necessarily what SUMIT itself sends. (#Q9)
+- Replay-protection mechanism (timestamp drift tolerance) — UNKNOWN. (#Q9)
+
+### Architectural consequence
+Webhook ingest cannot be safely implemented until #Q8 + #Q9 are answered. Until then PetWash uses **poll-based reconciliation only**:
+- `POST /billing/payments/list/` periodically with date filter — pull payments
+- `POST /accounting/documents/list/` periodically (body shape UNKNOWN — also #Q15)
+- Existing `FinancialReconciliationService.ts` daily job catches drift
+
+The `sumit_webhook_events` table is NOT in this V2 design. It is deferred to V3 once SUMIT support clarifies.
+
+---
+
+## §8 KEY ENUMERATIONS
+
+### `SearchMode` (Customer + Item)
+- `"Automatic"` — CONFIRMED (find-or-create by `ExternalIdentifier`)
+- `"None"` — CONFIRMED (strict create)
+- Other values — UNKNOWN (#Q3)
+
+### Document `Type` / `DocumentType`
+Mixed numeric and string. CONFIRMED values observed in production code:
+- `"1"` — standard invoice/receipt-style (default)
+- `"8"` — alternate invoice/receipt variant
+- `"DonationReceipt"` — donation flow (string)
+
+Help-center description lists categories: Invoice / Receipt / Donation Receipt / Invoice+Receipt / Proforma Invoice / Payment Request / Order / Price Quotation. **Exact API string per category — UNKNOWN.** (#Q2)
+
+Because the field accepts both numeric and string values, PetWash stores the wire value as a `text` column — NOT a Postgres enum.
+
+### Payment payment-method types (on `Documents.Payments[]`)
+Mutually exclusive — exactly one per payment row:
+- `Details_General`, `Details_Cash`, `Details_BankTransfer`, `Details_Cheque`, `Details_CreditCard`, `Details_Other`, `Details_Digital`, `Details_TaxWithholding` — all CONFIRMED.
+
+### `BillingTypedPaymentMethod.type` (numeric)
+- `1` — credit card. Other numeric codes UNKNOWN.
+
+### Currency (ISO 4217)
+ILS default. CONFIRMED accepted set (36 codes): ILS, USD, EUR, CAD, GBP, CHF, AUD, JPY, SEK, NOK, DKK, ZAR, JOD, LBP, EGP, BGN, CZK, HUF, PLN, RON, ISK, HRK, RUB, TRY, BRL, CNY, HKD, IDR, INR, KRW, MXN, MYR, NZD, PHP, SGD, THB.
+
+### Language
+`"Hebrew"`, `"English"`, `"Arabic"`, `"Spanish"` — CONFIRMED.
+
+### `Role` (users / permissions)
+UNKNOWN — Swagger field is typed string with no documented enum. (#Q12)
+
+### `TriggerType` (webhooks)
+UNKNOWN — see §7. (#Q8)
+
+---
+
+## §9 MARKETPLACE ARCHITECTURE — FACT-BASED
+
+### Three-tier role model
+
+```
+TIER 1: PETWASH (source of truth)
+        owns: users, providers, bookings, escrow, wallets, loyalty, memberships,
+              marketplace state, payment orchestration, pricing, fee splits
+                  │ orchestrates
+                  ▼
+TIER 2A: NAYAX (existing, KEEP)
+        K9000 + online marketplace charging (Phase A baseline)
+                  ▼
+TIER 2B: SUMIT (NEW)
+        documents always (Phase A onward);
+        clearing in Phase B if cost-justified vs Nayax
+                  │ backed up to
+                  ▼
+TIER 3: GOOGLE DRIVE
+        PDF archival only — no business logic
+```
+
+### Sub-business model (CONFIRMED via `/website/companies/create/`)
+
+Each PetWash provider with an approved finance profile maps to ONE SUMIT sub-business:
+
+```
+provider_finance_profiles row (status='pending')
+        │
+        │ on activation
+        ▼
+POST /website/companies/create/
+  Body uses PetWash master Credentials
+  Body.Company = legal entity (name, business number, type, email, phone)
+        │
+        ▼
+Response.Data: { CompanyID, APIKey, APIPublicKey, UserPassword?, UserEncryptedPassword? }
+        │
+        ▼
+Persist per-provider encrypted secrets:
+  provider_finance_profiles.sumit_company_id
+  provider_finance_profiles.sumit_api_key_encrypted
+  provider_finance_profiles.sumit_api_public_key
+        │
+        ▼
+Clearing activation: per help-center snippet, requires emailing support@sumit.co.il
+(UNKNOWN whether API-automatable — treat as manual ops step) (#Q6)
+```
+
+### Invoice issuance flows (CONFIRMED capabilities)
+
+**Flow 1 — Customer pays for marketplace service (provider-named invoice)**
+- API: `POST /billing/payments/multivendorcharge/` (one call: clearing + per-vendor doc)
+- Auth: marketplace `Credentials` top-level; vendor `CompanyID`+`APIKey` per `Items[]` row
+- Document issued: on vendor's books, in vendor's legal name
+
+**Flow 2 — PetWash commission invoice to provider (PetWash → provider)**
+- API: `POST /accounting/documents/create/` (separate call, after Flow 1)
+- Auth: PetWash master `Credentials`
+- `Details.Customer` = provider (as a customer of PetWash)
+- Document issued: on PetWash's books
+
+**Flow 3 — Direct PetWash receipt (topups, gift cards, memberships — no provider)**
+- API: `POST /accounting/documents/create/` OR `POST /billing/payments/charge/` (if also charging)
+- Auth: PetWash master `Credentials`
+- Document issued: on PetWash's books
+
+### Pre-existing provider SUMIT account
+UNKNOWN whether SUMIT supports linking an externally-created SUMIT account vs always creating one through `/website/companies/create/`. (#Q7) Until clarified: all providers route through PetWash-master-driven sub-business creation.
+
+---
+
+## §10 PETWASH-SIDE DATA MODEL DELTA
+
+NOT migrations. Design only. Migrations will be authored after #Q answers tighten the model.
+
+### Extend `provider_finance_profiles` with SUMIT wiring
+
+```
+sumit_company_id                  int
+sumit_api_key_encrypted           bytea
+sumit_api_public_key              text
+sumit_company_user_password_enc   bytea       -- if created
+sumit_setup_status                text
+  -- values (PetWash-internal, NOT SUMIT):
+  -- 'pending'                     (admin approved, awaiting provider form)
+  -- 'company_created'             (sub-business created, awaiting clearing activation)
+  -- 'awaiting_clearing_activation' (support emailed, waiting)
+  -- 'ready'                       (clearing active, can payout)
+  -- 'suspended'                   (manual hold)
+  -- 'failed'                      (create-company returned non-success)
+sumit_setup_attempts              int
+sumit_setup_last_error            text
+sumit_setup_last_response_jsonb   jsonb        -- audit trail of last SUMIT response
+sumit_clearing_activation_method  text         -- 'manual_email' | 'api' (#Q6)
+sumit_clearing_activated_at       timestamp
+```
+
+### New table: `sumit_document_links`
+
+Maps PetWash payment/payout events to SUMIT documents, on whichever books they live.
+
+```
+id                          serial PK
+pw_payment_id               text  FK → pw_payments.payment_id
+pw_payout_id                text  FK → pw_provider_payouts.payout_id  (nullable)
+provider_user_id            text  FK → users.id                       (nullable — null for Flow 3)
+sumit_company_id            int                  -- whose books the doc is on (marketplace OR vendor)
+sumit_customer_id           int                  -- per-books customer
+sumit_document_id           int  UNIQUE          -- SUMIT document ID
+sumit_document_number       text                 -- human-readable
+sumit_document_type         text                 -- wire value (mixed numeric+string)
+flow_label                  text                 -- 'flow_1_provider' | 'flow_2_commission' | 'flow_3_petwash_direct'
+gross_cents                 bigint
+vat_cents                   bigint
+net_cents                   bigint
+currency                    char(3)
+pdf_download_url            text
+external_identifier_sent    text                 -- what we sent as ExternalIdentifier (audit)
+status                      text                 -- 'pending' | 'issued' | 'cancelled' | 'superseded'
+created_at                  timestamp
+updated_at                  timestamp
+
+index on (pw_payment_id), (pw_payout_id), (provider_user_id), (flow_label, status)
+```
+
+### New table: `sumit_idempotency_intents`
+
+Application-level dedup BEFORE every SUMIT write. Implements the retry-safety pattern §6 requires.
+
+```
+intent_key                  text PK
+  -- format: 'pw-{entity}-{primary_id}-{endpoint-tag}-v{version}'
+  -- example: 'pw-payment-PWP-2026-abc123-multivendorcharge-v1'
+endpoint_path               text
+request_payload_sha256      text
+created_at                  timestamp
+last_attempt_at             timestamp
+attempt_count               int default 0
+status                      text   -- 'pending' | 'committed' | 'failed_permanent'
+sumit_response_summary      jsonb  -- extracted: DocumentID, CustomerID, PaymentID, etc.
+committed_at                timestamp
+failure_reason              text
+
+index on (status, last_attempt_at)
+```
+
+### New table: `sumit_poll_cursors`
+
+Drives poll-based reconciliation (used until webhook unknowns resolved).
+
+```
+endpoint_path           text PK
+last_polled_at          timestamp
+last_seen_payment_id    int        -- for /billing/payments/list/
+last_seen_document_id   int        -- for /accounting/documents/list/
+high_watermark_date     date
+```
+
+### Tables explicitly NOT designed yet (deferred)
+
+- `sumit_webhook_events` — blocked on #Q8, #Q9 (TriggerType enum + signature mechanism)
+- `sumit_sync_quota_log` — blocked on #Q14 (action quota mechanics)
+
+---
+
+## §11 PETWASH-SIDE IMPLEMENTATION IMPLICATIONS (one line each, design only)
+
+- Auth lives in body, not header → wrapper merges `Credentials` into JSON body, not interceptors that set headers.
+- Base URL is `https://api.sumit.co.il` → env `SUMIT_API_BASE_URL`.
+- Sub-business create returns per-provider `APIKey` + `APIPublicKey` → encrypt and store per row in `provider_finance_profiles`.
+- Multivendor charge requires per-item vendor credentials → orchestrator resolves vendor creds at line-item granularity.
+- Multivendor response has `Data.Vendors[]` → schema joins order-line → (`provider`, `sumit_document_id`, `sumit_customer_id`).
+- `ExternalIdentifier` + `SearchMode: "Automatic"` is the dedup mechanism → send PetWash IDs as `ExternalIdentifier`.
+- No idempotency-key on charges → `sumit_idempotency_intents` row written before call.
+- `DocumentType` mixed numeric + string → store as `text`, not enum.
+- Currency: 36-code accept list known → validate against this set in app code, default ILS.
+- Response envelope `Status` is union `int 0 | string "Success"` → check both forms.
+- VAT rate fetched via `/accounting/general/getvatrate/` → cache daily.
+- Exchange rate via `/accounting/general/getexchangerate/` → use if non-ILS pricing introduced.
+- JS-side card tokenization uses `APIPublicKey` only → private `APIKey` never reaches browser.
+- `Content-Language: en` set per request when admin-facing → English error messages.
+- Webhook ingest not implementable yet → poll cadence: payments every N min, documents every N min.
+
+---
+
+## §12 OPEN QUESTIONS — DRIVES THE SUPPORT EMAIL
+
+These map 1:1 to the support email PetWash sends SUMIT (CEO holds send action).
+
+**#Q1** Envelope `Status` — canonical value (int `0` vs string `"Success"`)? Stable contract?
+
+**#Q2** Exact enumeration of `DocumentType` values for `/accounting/documents/create/` (numeric AND string), each mapped to its Israeli accounting category (Invoice / Receipt / Tax Invoice Receipt / Proforma / Credit Note / Order / Price Quotation / Payment Request)?
+
+**#Q3** Full enum for `AccountingTypedCustomer.SearchMode` (confirm `"Automatic"`, `"None"`, list any others)?
+
+**#Q4** `/billing/payments/multivendorcharge/`:
+- (a) Must each `Items[]` row carry `CompanyID`+`APIKey` even when all items share one vendor?
+- (b) Partial-failure semantics — can vendor A succeed while vendor B fails in the same response?
+- (c) Field name to set the document type per vendor?
+
+**#Q5** `/website/companies/create/`:
+- (a) Which `Company` fields are STRICTLY required (Swagger marks nearly all optional, help-center snippet implies "name, business number, business type, email, phone")?
+- (b) Field name + value to choose clearing-enabled vs document-only mode at creation?
+
+**#Q6** Is the clearing-activation step on a newly-created sub-business automatable via API, or always requires emailing `support@sumit.co.il`?
+
+**#Q7** Can a pre-existing independent SUMIT account be linked to a marketplace, OR must every sub-business be created via marketplace API?
+
+**#Q8** `/triggers/triggers/subscribe/`:
+- (a) Full enumeration of valid `TriggerType` string values?
+- (b) For each: exact JSON body SUMIT POSTs to subscriber URL?
+
+**#Q9** Incoming webhooks from SUMIT:
+- (a) HTTP header carrying signature?
+- (b) Algorithm (HMAC-SHA256?)?
+- (c) Signed content (raw body? body + timestamp?)?
+- (d) Where do we obtain the signing secret?
+
+**#Q10** Sandbox / test environment — host, credentials, test card numbers (article 5832877 inaccessible)? Is `dev.api.sumit.co.il` publicly usable?
+
+**#Q11** Idempotency on transactional calls (`/billing/payments/charge/`, `/multivendorcharge/`) — is there an `Idempotency-Key` header or similar? If not, what is SUMIT's recommended retry-safety pattern?
+
+**#Q12** `Role` enum values for `/website/users/create/` and `/website/permissions/set/`? Which role grants API access vs UI-only?
+
+**#Q13** Published rate limits per `CompanyID` and/or per IP? HTTP status / response shape on rate-limit?
+
+**#Q14** Action quota mechanics — what counts as one "action" against the 400/month included quota (charges? document creates? customer creates? webhook deliveries? email sends)? Are sub-businesses' actions counted against the marketplace's master quota, or each sub-business has its own?
+
+**#Q15** Full request/response schemas for the endpoints not surfaced by public Swagger:
+- `/accounting/customers/update/`, `/getdetailsurl/`, `/createremark/`
+- `/accounting/documents/list/`, `/getdebt/`, `/getdebtreport/`, `/movetobooks/`
+- `/accounting/incomeitems/list/`
+- `/accounting/general/getnextdocumentnumber/`
+- `/website/companies/listquotas/`
+
+**#Q16** `/billing/payments/beginredirect/` — the success redirect carries `OG-CustomerID`, `OG-PaymentID`, `OG-ExternalIdentifier`. Is there an additional signed/HMAC query parameter to verify the redirect came from SUMIT and was not forged?
+
+**#Q17** Is `Content-Language: en` fully supported for English error messages, or are some error strings Hebrew-only?
+
+**#Q18** `/accounting/documents/cancel/` on a multivendorcharge-issued document — does cancellation also reverse the clearing transaction, or are document cancellation and payment refund separate operations?
+
+---
+
+## §13 COMPLETE ENDPOINT INVENTORY (for traceability)
+
+CEO-provided list, mapped to confirmation status:
+
+```
+CUSTOMERS:
+  /accounting/customers/create/                  CONFIRMED shape
+  /accounting/customers/update/                  exists  / body UNKNOWN
+  /accounting/customers/getdetailsurl/           exists  / body UNKNOWN
+  /accounting/customers/createremark/            exists  / body UNKNOWN
+
+DOCUMENTS:
+  /accounting/documents/create/                  CONFIRMED shape
+  /accounting/documents/send/                    CONFIRMED shape
+  /accounting/documents/getpdf/                  CONFIRMED shape
+  /accounting/documents/getdetails/              CONFIRMED shape
+  /accounting/documents/addexpense/              CONFIRMED endpoint  / body UNKNOWN
+  /accounting/documents/cancel/                  CONFIRMED shape
+  /accounting/documents/movetobooks/             CONFIRMED shape
+  /accounting/documents/getdebt/                 exists  / body UNKNOWN
+  /accounting/documents/getdebtreport/           exists  / body UNKNOWN
+  /accounting/documents/list/                    exists  / body UNKNOWN
+
+GENERAL:
+  /accounting/general/verifybankaccount/         CONFIRMED endpoint  / body UNKNOWN
+  /accounting/general/getvatrate/                CONFIRMED shape
+  /accounting/general/getexchangerate/           CONFIRMED shape
+  /accounting/general/updatesettings/            CONFIRMED endpoint  / body UNKNOWN
+  /accounting/general/getnextdocumentnumber/     exists  / body UNKNOWN
+  /accounting/general/setnextdocumentnumber/     CONFIRMED endpoint  / body UNKNOWN
+
+INCOME ITEMS:
+  /accounting/incomeitems/create/                CONFIRMED shape
+  /accounting/incomeitems/list/                  exists  / body UNKNOWN
+
+PAYMENTS:
+  /billing/payments/charge/                      CONFIRMED shape
+  /billing/payments/multivendorcharge/           CONFIRMED shape (production plugin + help snippet)
+  /billing/payments/get/                         CONFIRMED shape
+  /billing/payments/list/                        CONFIRMED shape
+  /billing/payments/beginredirect/               CONFIRMED shape
+
+PAYMENT METHODS:
+  /billing/paymentmethods/getforcustomer/        CONFIRMED shape
+  /billing/paymentmethods/setforcustomer/        CONFIRMED shape
+  /billing/paymentmethods/remove/                CONFIRMED endpoint  / body UNKNOWN
+
+RECURRING:
+  /billing/recurring/listforcustomer/            CONFIRMED endpoint  / body UNKNOWN
+  /billing/recurring/cancel/                     CONFIRMED endpoint  / body UNKNOWN
+  /billing/recurring/charge/                     CONFIRMED shape
+  /billing/recurring/update/                     CONFIRMED shape
+  /billing/recurring/updatesettings/             CONFIRMED endpoint  / body UNKNOWN
+
+UPAY:
+  /billing/generalbilling/openupayterminal/      CONFIRMED endpoint  / body UNKNOWN
+  /billing/generalbilling/setupaycredentials/    CONFIRMED endpoint  / body UNKNOWN
+
+WEBHOOKS/TRIGGERS:
+  /triggers/triggers/subscribe/                  CONFIRMED partial (TriggerType enum UNKNOWN)
+  /triggers/triggers/unsubscribe/                CONFIRMED shape
+
+WEBSITE/ORGANIZATIONS:
+  /website/companies/create/                     CONFIRMED shape
+  /website/companies/update/                     CONFIRMED endpoint  / body UNKNOWN
+  /website/companies/getdetails/                 CONFIRMED shape (response)
+  /website/companies/listquotas/                 exists  / body UNKNOWN
+  /website/companies/installapplications/        CONFIRMED endpoint  / body UNKNOWN
+
+USERS/PERMISSIONS:
+  /website/permissions/set/                      CONFIRMED shape
+  /website/permissions/remove/                   CONFIRMED endpoint  / body UNKNOWN
+  /website/users/create/                         CONFIRMED shape
+  /website/users/loginredirect/                  CONFIRMED shape
+
+CRM:
+  /crm/data/createentity/                        CONFIRMED endpoint  / body partial
+  /crm/data/updateentity/                        CONFIRMED endpoint  / body UNKNOWN
+  /crm/data/archiveentity/                       CONFIRMED endpoint  / body UNKNOWN
+  /crm/data/deleteentity/                        CONFIRMED endpoint  / body UNKNOWN
+  /crm/data/listentities/                        CONFIRMED endpoint  / body UNKNOWN
+  /crm/data/getentity/                           CONFIRMED endpoint  / body UNKNOWN
+  /crm/schema/listfolders/                       CONFIRMED endpoint  / body UNKNOWN
+  /crm/views/listviews/                          CONFIRMED endpoint  / body UNKNOWN
+
+SMS:
+  /sms/sms/send/                                 CONFIRMED shape
+  /sms/sms/sendmultiple/                         CONFIRMED endpoint  / body UNKNOWN
+  /sms/sms/listsenders/                          CONFIRMED shape
+```
+
+---
+
+## §14 WHAT THIS DOC EXPLICITLY DOES NOT CONTAIN
+
+Removed from prior speculative V2 per CEO instruction:
+- Legal advice / agent-disclosure framing
+- CPA blockers / policy-switch discussion (`AGENT_MODEL_POLICY`, `OSEK_PATUR_VAT_POLICY`, `WITHHOLDING_RATE_POLICY`)
+- DNS / domain / authDomain discussion
+- Prisma / ORM choices
+- Bearer-auth assumption (FACT: SUMIT auth is body-embedded `Credentials`)
+- Invented webhook event names ("document.created" et al. — UNKNOWN, must come from SUMIT)
+- Implementation code samples
+- Pull request plans
+- Hebrew invoice authorization legal text scoping
+
+Those are intentionally out of scope for V2. They belong to product/legal review and to a later doc that comes AFTER #Q answers land.
+
+---
+
+**END V2 (FACT-BASED REWRITE).**
+
+Length: ~5,300 words.
+All claims sourced. UNKNOWNs marked. Architecture only. Next step: CEO sends the 18-question support email.
