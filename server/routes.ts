@@ -1288,6 +1288,20 @@ self.addEventListener('notificationclick', (event) => {
         httpOnly: true,
         sameSite: 'none'
       });
+      // Signup/login activity trail (best-effort, non-blocking) → audit_events.
+      // Method comes from the server-verified sign_in_provider (not client input);
+      // isNewUser distinguishes signup from returning login. No PII/secrets.
+      void logAuditEvent({
+        actionType: 'SIGNUP_SESSION_CREATED',
+        actorUserId: _syncDecoded?.uid,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        traceId,
+        metadata: {
+          method: _syncDecoded?.firebase?.sign_in_provider || 'unknown',
+          isNewUser: (_syncResult as any)?.isNewUser ?? null,
+        },
+      });
       res.json({ ok: true, cookie: 'pw_session', expiresInMs: 432000000 });
     } catch (error: any) {
       logger.error('[Session] Session cookie creation error', error, { traceId: req.body?.traceId });

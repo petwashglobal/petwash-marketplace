@@ -22,6 +22,12 @@
 import { Router, type Request, type Response } from 'express';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
+
+// Last-4 only — never log a full phone number (PII) or the OTP code.
+function maskPhone(phone: unknown): string | undefined {
+  return typeof phone === 'string' && phone.length >= 4 ? `••••${phone.slice(-4)}` : undefined;
+}
 
 export type AuthFlow = 'prestige' | 'provider' | 'guest';
 
@@ -61,8 +67,19 @@ router.post('/start', async (req: Request, res: Response) => {
     const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
     if (!result.success) {
       // Covers missing Twilio config, resend cooldown, and global/per-phone caps.
+      void logAuditEvent({
+        actionType: 'SIGNUP_FAILED',
+        ip: callerIp, userAgent: req.headers['user-agent'],
+        metadata: { step: 'otp_send', method: 'mobile', flow, phone: maskPhone(phone), reason: result.message || 'sms_unavailable' },
+        severity: 'warning',
+      });
       return res.status(503).json({ ok: false, error: 'sms_unavailable', message: result.message, flow });
     }
+    void logAuditEvent({
+      actionType: 'SIGNUP_OTP_SENT',
+      ip: callerIp, userAgent: req.headers['user-agent'],
+      metadata: { method: 'mobile', flow, phone: maskPhone(phone) },
+    });
     return res.status(200).json({ ok: true, message: result.message, expiresIn: result.expiresIn, flow });
   } catch (err) {
     logger.error('[auth-sms] start failed', { error: err instanceof Error ? err.message : String(err) });
@@ -87,6 +104,12 @@ router.post('/verify', async (req: Request, res: Response) => {
   try {
     const result = await twilioSMSService.verifyCode(phone, code, language);
     if (!result.success) {
+      void logAuditEvent({
+        actionType: 'SIGNUP_FAILED',
+        ip: req.ip, userAgent: req.headers['user-agent'],
+        metadata: { step: 'otp_verify', method: 'mobile', flow, phone: maskPhone(phone), reason: 'verification_failed', locked: !!result.lockedUntil },
+        severity: 'warning',
+      });
       return res.status(401).json({
         ok: false,
         error: 'verification_failed',
@@ -94,6 +117,11 @@ router.post('/verify', async (req: Request, res: Response) => {
         lockedUntil: result.lockedUntil,
       });
     }
+    void logAuditEvent({
+      actionType: 'SIGNUP_AUTH_VERIFIED',
+      ip: req.ip, userAgent: req.headers['user-agent'],
+      metadata: { method: 'mobile', flow, phone: maskPhone(phone) },
+    });
     return res.status(200).json({
       ok: true,
       verificationToken: result.verificationToken,

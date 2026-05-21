@@ -25,9 +25,9 @@
  */
 
 import { Router, type Request, type Response } from 'express';
-import { desc, ilike, or } from 'drizzle-orm';
+import { desc, ilike, or, and, gte, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { bookings, users } from '@shared/schema';
+import { bookings, users, auditEvents } from '@shared/schema';
 import { requireAdmin } from '../adminAuth';
 import { adminProviderReviewService } from '../services/AdminProviderReviewService';
 import { logAuditEvent } from '../middleware/auditLogger';
@@ -242,6 +242,62 @@ router.get('/lookup', async (req: Request, res: Response) => {
   } catch (err: any) {
     logger.error('[Bridge] customer lookup failed', { error: err?.message ?? String(err) });
     res.status(500).json({ error: 'LOOKUP_FAILED', message: String(err?.message ?? err).slice(0, 200) });
+  }
+});
+
+/**
+ * GET /api/admin/bridge/signup-activity?hours=24&limit=200
+ * Read-only signup/login funnel from audit_events (the SIGNUP_* actionTypes
+ * emitted by the auth flow). Powers the Bridge "Signup Activity" panel so Nir
+ * can see new signups, failures, and OTP problems. No mutations.
+ */
+router.get('/signup-activity', async (req: Request, res: Response) => {
+  const actor = (req as any).user || {};
+  logAuditEvent(req, 'bridge.signup_activity.viewed', { type: 'bridge', id: 'signup-activity' }, {
+    actorUid: actor.uid,
+    actorEmail: actor.email,
+  }).catch((err) => logger.error('[Bridge] audit log failed', err));
+
+  try {
+    const hours = Math.min(Math.max(Number(req.query.hours) || 24, 1), 720);
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const limit = Math.min(Number(req.query.limit) || 200, 1000);
+    const SIGNUP_ACTIONS = ['SIGNUP_OTP_SENT', 'SIGNUP_AUTH_VERIFIED', 'SIGNUP_SESSION_CREATED', 'SIGNUP_FAILED'];
+
+    const rows = await db
+      .select()
+      .from(auditEvents)
+      .where(and(inArray(auditEvents.actionType, SIGNUP_ACTIONS), gte(auditEvents.createdAt, since)))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(limit);
+
+    const count = (t: string) => rows.filter((r) => r.actionType === t).length;
+    res.json({
+      since: since.toISOString(),
+      hours,
+      count: rows.length,
+      summary: {
+        otpSent: count('SIGNUP_OTP_SENT'),
+        verified: count('SIGNUP_AUTH_VERIFIED'),
+        sessionsCreated: count('SIGNUP_SESSION_CREATED'),
+        failed: count('SIGNUP_FAILED'),
+        newSignups: rows.filter(
+          (r) => r.actionType === 'SIGNUP_SESSION_CREATED' && (r.metadata as any)?.isNewUser === true,
+        ).length,
+      },
+      events: rows.map((r) => ({
+        id: r.id,
+        actionType: r.actionType,
+        createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+        actorUserId: r.actorUserId,
+        ip: r.ip,
+        severity: r.severity,
+        metadata: r.metadata,
+      })),
+    });
+  } catch (err: any) {
+    logger.error('[Bridge] signup-activity failed', { error: err?.message ?? String(err) });
+    res.status(500).json({ error: 'SIGNUP_ACTIVITY_FAILED', message: String(err?.message ?? err).slice(0, 200) });
   }
 });
 

@@ -107,6 +107,105 @@ function NotConnected({ reason }: { reason: string }) {
   );
 }
 
+interface SignupActivityEvent {
+  id: number;
+  actionType: string;
+  createdAt: string | null;
+  actorUserId: string | null;
+  ip: string | null;
+  severity: string | null;
+  metadata: Record<string, any> | null;
+}
+
+interface SignupActivityResponse {
+  since: string;
+  hours: number;
+  count: number;
+  summary: { otpSent: number; verified: number; sessionsCreated: number; failed: number; newSignups: number };
+  events: SignupActivityEvent[];
+}
+
+const SIGNUP_ACTION_LABEL: Record<string, string> = {
+  SIGNUP_OTP_SENT: 'OTP sent',
+  SIGNUP_AUTH_VERIFIED: 'Verified',
+  SIGNUP_SESSION_CREATED: 'Session created',
+  SIGNUP_FAILED: 'Failed',
+};
+const SIGNUP_ACTION_TONE: Record<string, string> = {
+  SIGNUP_OTP_SENT: 'bg-sky-100 text-sky-700',
+  SIGNUP_AUTH_VERIFIED: 'bg-emerald-100 text-emerald-700',
+  SIGNUP_SESSION_CREATED: 'bg-violet-100 text-violet-700',
+  SIGNUP_FAILED: 'bg-rose-100 text-rose-700',
+};
+
+// Signup/login funnel from audit_events (read-only). Loads independently of the
+// summary query so a summary failure doesn't hide it.
+function SignupActivityPanel({ enabled }: { enabled: boolean }) {
+  const { data, isLoading, error } = useQuery<SignupActivityResponse>({
+    queryKey: ['/api/admin/bridge/signup-activity'],
+    queryFn: async () => {
+      const res = await fetch(getApiUrl('/api/admin/bridge/signup-activity?hours=24'), { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 200)}`);
+      return res.json();
+    },
+    enabled,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  return (
+    <PanelShell icon={<ScrollText className="h-5 w-5" />} title="Signup activity" subtitle="Last 24h · sign-in / sign-up funnel">
+      {isLoading && (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+      )}
+      {error && !isLoading && <p className="text-sm text-rose-600">{(error as Error).message}</p>}
+      {data && !isLoading && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-2">
+            {([
+              ['New signups', data.summary.newSignups],
+              ['Verified', data.summary.verified],
+              ['OTP sent', data.summary.otpSent],
+              ['Failed', data.summary.failed],
+            ] as const).map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-gray-50 p-3 text-center">
+                <div className="text-2xl font-semibold text-gray-900">{value}</div>
+                <div className="text-xs text-gray-500">{label}</div>
+              </div>
+            ))}
+          </div>
+          {data.events.length > 0 ? (
+            <ul className="divide-y divide-gray-100">
+              {data.events.slice(0, 25).map((ev) => {
+                const m = ev.metadata || {};
+                return (
+                  <li key={ev.id} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-900">
+                        {[m.method, m.flow].filter(Boolean).join(' · ') || '—'}
+                        {m.phone ? ` · ${m.phone}` : ''}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">
+                        {ev.createdAt ? new Date(ev.createdAt).toLocaleString() : ''}
+                        {m.reason ? ` · ${m.reason}` : ''}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${SIGNUP_ACTION_TONE[ev.actionType] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {SIGNUP_ACTION_LABEL[ev.actionType] ?? ev.actionType}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-500">No signup activity in the last 24 hours.</p>
+          )}
+        </div>
+      )}
+    </PanelShell>
+  );
+}
+
 const PLACEHOLDER_PANELS: Array<{ key: keyof BridgeSummary; icon: ReactNode; title: string; subtitle: string }> = [
   { key: 'hubspotTasks', icon: <ListTodo className="h-5 w-5" />, title: 'HubSpot tasks', subtitle: 'Tasks created by signup / booking / provider flows' },
   { key: 'alerts', icon: <Bell className="h-5 w-5" />, title: 'Alerts', subtitle: 'Operational alerts feed' },
@@ -251,6 +350,11 @@ export default function PetWashBridge() {
             <p className="mt-1 text-sm text-rose-600">{(error as Error).message}</p>
           </div>
         )}
+
+        {/* Signup activity — own query; visible even if the summary fails. */}
+        <div className="mb-4">
+          <SignupActivityPanel enabled={!!user} />
+        </div>
 
         {data && !isLoading && (
           <div className="space-y-4">
