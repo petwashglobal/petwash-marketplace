@@ -126,6 +126,7 @@ const AdminLoginV2 = lazy(() => import("@/pages/admin/AdminLoginV2"));
 const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
 const GroupStatusMonitor = lazy(() => import("@/pages/admin/GroupStatusMonitor"));
 const BrainDashboard = lazy(() => import("@/pages/admin/BrainDashboard"));
+const PetWashBridge = lazy(() => import("@/pages/admin/PetWashBridge"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
@@ -1881,6 +1882,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
+
+        {/* PetWash Bridge MVP — read-only operator cockpit. */}
+        {/* Feature flag: VITE_BRIDGE_MVP_ENABLED='true' required. */}
+        {import.meta.env.VITE_BRIDGE_MVP_ENABLED === 'true' && (
+          <Route path="/admin/bridge">
+            {() => (
+              <AdminRouteGuard>
+                <PetWashBridge />
+              </AdminRouteGuard>
+            )}
+          </Route>
+        )}
 
         {/* Admin route - Fraud Monitoring Dashboard */}
         <Route path="/admin/fraud-dashboard">
