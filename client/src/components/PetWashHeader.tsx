@@ -36,6 +36,8 @@ import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
 import { Bell } from "lucide-react";
 import { useFirebaseAuth } from "../auth/AuthProvider";
 import { useAccountNavigation } from "../hooks/useAccountNavigation";
+import { useWhoami } from "../auth/useWhoami";
+import { accountButtonView, accountLabel } from "../lib/accountButton";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
@@ -243,6 +245,15 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   const { resolveAccountRoute } = useAccountNavigation();
   const [isResolvingProfile, setIsResolvingProfile] = useState(false);
 
+  // Global account button: label + guest route from backend truth (whoami).
+  // Authenticated routing stays with the P0-tested resolveAccountRoute() below.
+  const { whoami } = useWhoami();
+  const accountView = accountButtonView(whoami, {
+    pathname: typeof window !== 'undefined' ? window.location.pathname : '/',
+    search: typeof window !== 'undefined' ? window.location.search : '',
+    firebaseAuthed: !!user,
+  });
+
   /**
    * Navigate to the user's account destination. The gold profile icon must
    * NEVER feel dead — even before Firebase auth has resolved on iPhone Safari
@@ -258,6 +269,15 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     if (isResolvingProfile) return; // already in flight — debounce double-tap
     setIsResolvingProfile(true);
     try {
+      // GUEST → canonical signup door with returnTo (backend truth: whoami).
+      // AUTHENTICATED → unchanged P0-tested server decider (preserves the
+      // iPhone-Safari cookie-loss fix; firebaseAuthed guards against showing
+      // signup to a logged-in user whose whoami cookie was dropped).
+      const authed = whoami?.authenticated === true || !!user;
+      if (!authed && accountView.guestTo) {
+        handleNavigate(accountView.guestTo);
+        return;
+      }
       const route = await resolveAccountRoute();
       handleNavigate(route);
     } catch (err) {
@@ -513,7 +533,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               className="pw-header-profile-btn"
               style={{ touchAction: 'manipulation', cursor: 'pointer' }}
               onClick={handleProfileNavigate}
-              aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
+              aria-label={accountLabel(accountView, currentLanguage)}
+              title={accountLabel(accountView, currentLanguage)}
               aria-busy={(loading || isResolvingProfile) || undefined}
               data-testid="button-header-profile"
             >
@@ -634,6 +655,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             className="pw-account-btn"
             style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={handleProfileNavigate}
+            aria-label={accountLabel(accountView, currentLanguage)}
+            title={accountLabel(accountView, currentLanguage)}
             aria-busy={(loading || isResolvingProfile) || undefined}
             data-testid="button-mobile-account-gold"
           >
