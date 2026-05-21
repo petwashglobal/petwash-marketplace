@@ -683,7 +683,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/signup-lux">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
         <Route path="/sign-up">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
         <Route path="/register">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
-        
+
+        {/* Canonical "ideal" account/flow paths referenced across the signup +
+            gold-account-button specs. Each is a redirect-alias to the REAL page
+            that exists today (query string preserved for returnTo). This makes
+            the ideal paths real targets so later PRs (whoami remap, Octopus) can
+            link to them without 404s. No new pages are introduced here. */}
+        <Route path="/account">{() => <Redirect to={`/my-account${window.location.search}`} />}</Route>
+        <Route path="/octopus">{() => <Redirect to={`/admin/dashboard${window.location.search}`} />}</Route>
+        <Route path="/profile/complete">{() => <Redirect to={`/complete-profile${window.location.search}`} />}</Route>
+        <Route path="/provider/onboarding">{() => <Redirect to={`/provider-onboarding${window.location.search}`} />}</Route>
+        <Route path="/prestige/dashboard">{() => <Redirect to={`/loyalty/dashboard${window.location.search}`} />}</Route>
+        <Route path="/booking/intake">{() => <Redirect to={`/booking${window.location.search}`} />}</Route>
+        <Route path="/guest/checkout">{() => <Redirect to={`/egift${window.location.search}`} />}</Route>
+
         {/* Post-login role routing pages — all require auth */}
         <Route path="/choose-role">
           {() => (
