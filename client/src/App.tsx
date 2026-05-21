@@ -678,16 +678,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/signup">
           {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
-        {/* Black-luxury 2026 signup is now the canonical entry. /signup-lux kept as an alias. */}
-        <Route path="/signup-lux">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
-        </Route>
-        <Route path="/sign-up">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
-        </Route>
-        <Route path="/register">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
-        </Route>
+        {/* /signup is the single canonical door — every alias hard-redirects to it,
+            preserving the query string (?flow=provider|prestige|guest|booking). */}
+        <Route path="/signup-lux">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
+        <Route path="/sign-up">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
+        <Route path="/register">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
         
         {/* Post-login role routing pages — all require auth */}
         <Route path="/choose-role">
