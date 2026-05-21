@@ -229,12 +229,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         .sl-lang{position:absolute;top:max(14px,env(safe-area-inset-top));${he ? 'left' : 'right'}:16px;z-index:6;display:flex;gap:6px}
         .sl-langBtn{appearance:none;cursor:pointer;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--white);font-weight:800;font-size:13px;border-radius:999px;padding:7px 13px;min-height:36px}
         .sl-langBtn[aria-pressed="true"]{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#0a0a0a;border-color:transparent}
-        .sl-hero{position:relative;z-index:0;background:#080808;padding:clamp(28px,6vw,52px) clamp(20px,5vw,52px);display:flex;flex-direction:column;justify-content:flex-start;gap:16px;overflow:hidden;min-height:44dvh}
+        .sl-hero{position:relative;z-index:0;padding:clamp(28px,6vw,52px) clamp(20px,5vw,52px);display:flex;flex-direction:column;justify-content:flex-start;gap:16px;overflow:hidden;min-height:44dvh}
         .sl-hero:after{content:"";position:absolute;inset:auto 0 0 0;height:42%;background:linear-gradient(transparent,rgba(5,5,5,.94));z-index:1}
         .sl-hero > *{position:relative;z-index:2}
-        .sl-heroArt{position:absolute;inset:0;z-index:0;background:center/cover no-repeat;background-image:url(/brand/hero-dog-lux.jpg);opacity:.5;-webkit-mask-image:linear-gradient(180deg,transparent 26%,#000 72%);mask-image:linear-gradient(180deg,transparent 26%,#000 72%)}
-        /* White wordmark on a black canvas: screen-blend drops the black border so only the crisp logo shows on the dark hero — no white box, no filter hack. */
-        .sl-logoWrap{mix-blend-mode:screen;width:fit-content}
+        .sl-heroArt{position:absolute;inset:0;z-index:0;background:center/cover no-repeat;background-image:url(/brand/hero-dog-lux.jpg);opacity:.62;filter:contrast(1.08) saturate(1.12);-webkit-mask-image:linear-gradient(180deg,transparent 22%,#000 70%);mask-image:linear-gradient(180deg,transparent 22%,#000 70%)}
+        /* Crisp white-on-transparent wordmark (generated from the brand logo) — clean alpha edges, no blend, no canvas. */
+        .sl-logoWrap{width:fit-content}
         .sl-logo{height:clamp(48px,13vw,104px);width:auto;display:block}
         .sl-eyebrow{letter-spacing:.22em;text-transform:uppercase;font-size:12px;color:var(--muted);font-weight:800}
         .sl-h1{font-family:"Playfair Display",Georgia,serif;font-size:clamp(30px,4.6vw,64px);line-height:.95;letter-spacing:-.03em;margin:0}
@@ -266,6 +266,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         .sl-terms a{color:var(--gold2);font-weight:700;text-decoration:underline}
         .sl-foot{text-align:center;color:rgba(255,250,240,.55);font-size:13px;line-height:1.5}
         @media(max-width:430px){ .sl-social{grid-template-columns:1fr} .sl-panel{padding:22px 18px;border-radius:22px} }
+        /* Tablet (portrait iPad — large/medium/small): roomier single column, larger brand + type. */
+        @media(min-width:768px) and (max-width:979px){
+          .sl-hero{min-height:50dvh;padding:clamp(40px,6vw,68px);gap:20px}
+          .sl-logo{height:clamp(72px,9vw,116px)}
+          .sl-h1{font-size:clamp(46px,7vw,62px)}
+          .sl-sub{font-size:clamp(17px,2vw,21px);max-width:600px}
+          .sl-panel{max-width:560px}
+          .sl-panelWrap{padding:clamp(28px,5vw,44px) clamp(24px,5vw,40px) max(36px,env(safe-area-inset-bottom))}
+        }
         /* Desktop enhancement: two-column split, full-height hero with the art bleeding toward the panel. */
         @media(min-width:980px){
           .sl-root{display:grid;grid-template-columns:1.05fr .95fr}
@@ -291,7 +300,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
       <section className="sl-hero">
         <div className="sl-heroArt" />
-        <div className="sl-logoWrap"><img src="/brand/petwash-logo-black-bg.png" alt="PetWash" className="sl-logo" width={600} height={240} decoding="async" /></div>
+        <div className="sl-logoWrap"><img src="/brand/petwash-logo-white.png" alt="PetWash" className="sl-logo" width={600} height={240} decoding="async" /></div>
         <div>
           <div className="sl-eyebrow">{he ? 'אקוסיסטם יוקרתי וחכם לחיות מחמד' : 'Intelligent pet-care ecosystem'}</div>
           <h1 className="sl-h1">{he ? 'העתיד של' : 'The Future of'}<br /><span className="sl-gold">{he ? 'חיי חיות המחמד' : 'Pet Lifestyle'}</span></h1>
