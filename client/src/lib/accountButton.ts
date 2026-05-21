@@ -1,35 +1,40 @@
 /**
- * Global account button — decision logic (pure, testable). SAFE SCOPE.
+ * Global account button — decision logic (pure, testable).
  *
  * The gold profile/dashboard button is the single global account control. Its
- * LABEL is decided from BACKEND TRUTH (GET /api/session/whoami, via useWhoami),
- * never from localStorage. PetWashHeader / MobileBottomNav wire it to the
- * existing icon (no redesign).
+ * destination + label are decided from BACKEND TRUTH (GET /api/session/whoami,
+ * via useWhoami), never from localStorage. PetWashHeader / MobileBottomNav wire
+ * it to the existing icon (no redesign).
  *
- * ROUTING (intentionally conservative for this PR):
- *   - GUEST (not authenticated) → /signup?flow=general&returnTo=<current_url>
- *     (previously /signin; this is the only routing change in this PR).
- *   - AUTHENTICATED → unchanged: the caller uses the existing P0-tested
- *     resolveAccountRoute() server decider. This module returns a LABEL only
- *     for authenticated users; it does NOT dictate the authenticated route.
+ * ROUTING (canonical paths — all real today; ideal names alias to real pages):
+ *   guest                → /signup?flow=general&returnTo=<url>
+ *   guest in checkout ctx → /signup?flow=guest&returnTo=<url>
+ *   admin                → /octopus            (alias → /admin/dashboard)
+ *   profile incomplete   → /profile/complete   (alias → /complete-profile)
+ *   provider pending     → /provider/onboarding (alias → /provider-onboarding)
+ *   provider approved    → /provider/dashboard
+ *   prestige active      → /prestige/dashboard (alias → /loyalty/dashboard)
+ *   customer             → /account            (alias → /my-account)
  *
- * iOS-Safari note: callers pass `firebaseAuthed` so a logged-in user whose
- * whoami cookie was dropped (ITP) is never shown "Sign Up".
+ * Priority (authenticated): admin > incomplete > provider(pending) >
+ *   provider(approved) > prestige > customer. (Admin always wins; incomplete
+ *   beats dashboards unless admin — per spec.)
  *
- * FOLLOW-UP BLOCKERS (do NOT guess these now — whoami doesn't expose them):
- *   - profileStatus   → "Continue Setup" / /profile/complete
- *   - providerStatus  → provider pending vs approved → /provider/onboarding
- *   - prestigeStatus  → /prestige/dashboard
- *   - activeFlow      → guest-checkout express continue
- * Once whoami exposes these and the routes exist (/octopus, /account, etc.),
- * upgrade routing in the planned follow-up PR.
+ * iOS-Safari resilience: when the whoami session cookie is dropped (ITP) but
+ * Firebase still has the user, whoami is null. We must NOT show "Sign Up" and
+ * must NOT mis-route an admin to /account. In that case `useServerResolver` is
+ * set so the caller defers to the P0-tested resolveAccountRoute() server
+ * decider (Bearer-token fallback + sticky-path guard).
  */
 import type { WhoamiResponse } from '@/auth/useWhoami';
 
 export type AccountState =
   | 'guest'
+  | 'guest_checkout'
   | 'admin'
-  | 'provider'
+  | 'incomplete'
+  | 'provider_pending'
+  | 'provider_approved'
   | 'prestige'
   | 'customer';
 
@@ -37,8 +42,10 @@ export interface AccountView {
   state: AccountState;
   labelEn: string;
   labelHe: string;
-  /** Destination for GUEST only. Authenticated routing stays with resolveAccountRoute(). */
-  guestTo?: string;
+  /** Concrete destination. Absent only when useServerResolver is true. */
+  to?: string;
+  /** Cookie dropped but Firebase-authed → caller should use resolveAccountRoute(). */
+  useServerResolver?: boolean;
 }
 
 export interface AccountCtx {
@@ -48,34 +55,59 @@ export interface AccountCtx {
   firebaseAuthed?: boolean;
 }
 
-export function accountButtonView(whoami: WhoamiResponse | null, ctx: AccountCtx): AccountView {
-  const authed = whoami?.authenticated === true || ctx.firebaseAuthed === true;
+const CHECKOUT_PREFIXES = ['/egift', '/checkout', '/cart', '/booking', '/gift'];
 
-  if (!authed) {
-    const returnTo = encodeURIComponent(`${ctx.pathname || '/'}${ctx.search || ''}`);
+export function isCheckoutContext(pathname: string): boolean {
+  return CHECKOUT_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+export function accountButtonView(whoami: WhoamiResponse | null, ctx: AccountCtx): AccountView {
+  const whoamiAuthed = whoami?.authenticated === true;
+  const returnTo = encodeURIComponent(`${ctx.pathname || '/'}${ctx.search || ''}`);
+
+  // Guest — not authenticated by whoami AND not by Firebase.
+  if (!whoamiAuthed && ctx.firebaseAuthed !== true) {
+    if (isCheckoutContext(ctx.pathname)) {
+      return {
+        state: 'guest_checkout',
+        to: `/signup?flow=guest&returnTo=${returnTo}`,
+        labelEn: 'Continue Checkout', labelHe: 'המשך לתשלום',
+      };
+    }
     return {
       state: 'guest',
-      labelEn: 'Sign In / Sign Up',
-      labelHe: 'כניסה / הרשמה',
-      guestTo: `/signup?flow=general&returnTo=${returnTo}`,
+      to: `/signup?flow=general&returnTo=${returnTo}`,
+      labelEn: 'Sign In / Sign Up', labelHe: 'כניסה / הרשמה',
     };
   }
 
-  // Authenticated — LABEL ONLY (route stays with resolveAccountRoute, unchanged).
-  // Only label states whoami can prove. No guessing of profile/provider status.
+  // Firebase says authed but whoami is missing/unauth (ITP cookie loss) — never
+  // show "Sign Up", never mis-route. Defer the exact route to the P0 resolver.
+  if (!whoamiAuthed) {
+    return { state: 'customer', labelEn: 'My Profile', labelHe: 'הפרופיל שלי', useServerResolver: true };
+  }
+
   const dash = whoami?.dashboardsAllowed ?? [];
   const claims = whoami?.claims;
+  const isAdmin = whoami?.isSuperAdmin === true || dash.includes('admin') || dash.includes('staff');
 
-  if (whoami?.isSuperAdmin === true || dash.includes('admin') || dash.includes('staff')) {
-    return { state: 'admin', labelEn: 'Octopus Control Panel', labelHe: 'לוח בקרה Octopus' };
+  if (isAdmin) {
+    return { state: 'admin', to: '/octopus', labelEn: 'Octopus Control Panel', labelHe: 'לוח בקרה Octopus' };
   }
-  if (dash.includes('provider')) {
-    return { state: 'provider', labelEn: 'Provider Dashboard', labelHe: 'דשבורד ספק' };
+  // Incomplete profile beats dashboards (unless admin, handled above).
+  if (whoami?.profileStatus === 'incomplete') {
+    return { state: 'incomplete', to: '/profile/complete', labelEn: 'Continue Setup', labelHe: 'המשך הגדרה' };
   }
-  if (claims?.loyaltyMember === true || claims?.program === 'prestige') {
-    return { state: 'prestige', labelEn: 'Prestige', labelHe: 'פרסטיז׳' };
+  if (whoami?.providerStatus === 'pending') {
+    return { state: 'provider_pending', to: '/provider/onboarding', labelEn: 'Provider Setup', labelHe: 'השלמת ספק' };
   }
-  return { state: 'customer', labelEn: 'My Profile', labelHe: 'הפרופיל שלי' };
+  if (whoami?.providerStatus === 'approved' || dash.includes('provider')) {
+    return { state: 'provider_approved', to: '/provider/dashboard', labelEn: 'Provider Dashboard', labelHe: 'דשבורד ספק' };
+  }
+  if (whoami?.prestigeStatus === 'active' || claims?.loyaltyMember === true || claims?.program === 'prestige') {
+    return { state: 'prestige', to: '/prestige/dashboard', labelEn: 'Prestige', labelHe: 'פרסטיז׳' };
+  }
+  return { state: 'customer', to: '/account', labelEn: 'My Profile', labelHe: 'הפרופיל שלי' };
 }
 
 export function accountLabel(view: AccountView, lang: string): string {
