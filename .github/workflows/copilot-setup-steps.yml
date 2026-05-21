@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # ===== PRE-FIREWALL SETUP — DO ALL NETWORK WORK HERE =====
       # Everything below runs before the Copilot agent's egress firewall is
@@ -53,7 +53,7 @@ jobs:
       # ===========================================================
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           # Node 20 — matches the engine target in package.json and is the
           # same version used by petwash-ci.yml.  Pin to a major version so

@@ -269,8 +269,8 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/nayaxFirestoreService.ts | 114 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/nayaxService.ts | 70 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/replitAuth.ts | 55 | FUNCTION_BODY | `domain: process.env.NODE_ENV === 'production' ? '.petwash.co.il' : undefined,` |
-| server/routes.ts | 5943 | FUNCTION_BODY | `...(data.returnPlainForTest && process.env.NODE_ENV !== 'production' ? { code: result.codePlain } : {})` |
-| server/routes.ts | 15530 | MODULE_LOAD | `if (process.env.NODE_ENV === 'production' \|\|` |
+| server/routes.ts | 5985 | FUNCTION_BODY | `...(data.returnPlainForTest && process.env.NODE_ENV !== 'production' ? { code: result.codePlain } : {})` |
+| server/routes.ts | 15572 | MODULE_LOAD | `if (process.env.NODE_ENV === 'production' \|\|` |
 | server/routes/access-requests.ts | 15 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/routes/auth.ts | 16 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/routes/bank.ts | 85 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
@@ -413,8 +413,8 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/ai-feature-approval.ts | 38 | MODULE_LOAD | `const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL \|\| (() => {` |
-| server/routes.ts | 5306 | FUNCTION_BODY | `const email = customerEmail \|\| process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'test@internal.invalid';` |
-| server/routes.ts | 12654 | FUNCTION_BODY | `const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'admin@petwash.co.il';` |
+| server/routes.ts | 5348 | FUNCTION_BODY | `const email = customerEmail \|\| process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'test@internal.invalid';` |
+| server/routes.ts | 12696 | FUNCTION_BODY | `const ADMIN_EMAIL  = process.env.ADMIN_NOTIFICATION_EMAIL \|\| 'admin@petwash.co.il';` |
 
 ### ADMIN_SECRET
 
@@ -548,7 +548,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 5703 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://petwash.co.il';` |
+| server/routes.ts | 5745 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://petwash.co.il';` |
 | server/routes/booking-requests.ts | 456 | FUNCTION_BODY | `bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_U` |
 | server/routes/booking-requests.ts | 459 | FUNCTION_BODY | `ctaUrl: `${process.env.APP_URL \|\| 'https://petwash.co.il'}/provider/bookings/${requestId}`,` |
 | server/routes/booking-requests.ts | 1289 | FUNCTION_BODY | `const appUrl = process.env.APP_URL \|\| 'https://petwash.co.il';` |
@@ -961,7 +961,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 15573 | FUNCTION_BODY | `appId: process.env.FIREBASE_APP_ID \|\| '',` |
+| server/routes.ts | 15615 | FUNCTION_BODY | `appId: process.env.FIREBASE_APP_ID \|\| '',` |
 
 ### FIREBASE_AUTH_DOMAIN
 
@@ -973,13 +973,13 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 15574 | FUNCTION_BODY | `measurementId: process.env.FIREBASE_MEASUREMENT_ID \|\| '',` |
+| server/routes.ts | 15616 | FUNCTION_BODY | `measurementId: process.env.FIREBASE_MEASUREMENT_ID \|\| '',` |
 
 ### FIREBASE_MESSAGING_SENDER_ID
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 15572 | FUNCTION_BODY | `messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID \|\| '',` |
+| server/routes.ts | 15614 | FUNCTION_BODY | `messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID \|\| '',` |
 
 ### FIREBASE_PROJECT_ID
 
@@ -988,7 +988,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/infra/biometricStorage.ts | 14 | MODULE_LOAD | `const PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "signinpetwash";` |
 | server/lib/firebase-admin.ts | 5 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| 'signinpetwas` |
 | server/lib/verifyCaptcha.ts | 23 | MODULE_LOAD | `(process.env.FIREBASE_PROJECT_ID \|\| '').trim() \|\|` |
-| server/routes.ts | 15554 | FUNCTION_BODY | `process.env.FIREBASE_PROJECT_ID \|\|` |
+| server/routes.ts | 15596 | FUNCTION_BODY | `process.env.FIREBASE_PROJECT_ID \|\|` |
 | server/routes/recaptcha.ts | 23 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| 'signinpetwash';` |
 | server/security/productionHardeningAndOneTap.ts | 44 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "";` |
 
@@ -997,7 +997,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/lib/firebase-admin.ts | 6 | MODULE_LOAD | `const FIREBASE_STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET \|\| `${FIREBASE_PROJECT_ID}.firebasestorage.app`;` |
-| server/routes.ts | 15571 | FUNCTION_BODY | `storageBucket: process.env.FIREBASE_STORAGE_BUCKET \|\| `${projectId}.firebasestorage.app`,` |
+| server/routes.ts | 15613 | FUNCTION_BODY | `storageBucket: process.env.FIREBASE_STORAGE_BUCKET \|\| `${projectId}.firebasestorage.app`,` |
 | server/routes/provider-onboarding.ts | 1433 | FUNCTION_BODY | `const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET \|\| process.env.GCS_BUCKET_NAME \|\| '');` |
 | server/routes/provider-onboarding.ts | 1441 | FUNCTION_BODY | `const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET \|\| process.env.GCS_BUCKET_NAME \|\| '');` |
 
@@ -1005,7 +1005,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 15557 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
+| server/routes.ts | 15599 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
 | server/routes/identity-service.ts | 182 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY;` |
 
 ### FOUNDER_DEDICATED_EMAIL
@@ -1018,7 +1018,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 5273 | FUNCTION_BODY | `const founderEmail = process.env.FOUNDER_EMAIL \|\| '';` |
+| server/routes.ts | 5315 | FUNCTION_BODY | `const founderEmail = process.env.FOUNDER_EMAIL \|\| '';` |
 | server/routes/prestige-pass.ts | 2273 | FUNCTION_BODY | `const FOUNDER_EMAIL   = process.env.FOUNDER_EMAIL \|\| '';` |
 | server/routes/prestige-pass.ts | 2388 | FUNCTION_BODY | `const TO  = process.env.FOUNDER_EMAIL \|\| process.env.RECEIPT_PREVIEW_EMAIL \|\| '';` |
 
@@ -1061,7 +1061,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 12911 | FUNCTION_BODY | `const codeBucket = process.env.GCS_CODE_BUCKET \|\| 'petwash-code-backups';` |
+| server/routes.ts | 12953 | FUNCTION_BODY | `const codeBucket = process.env.GCS_CODE_BUCKET \|\| 'petwash-code-backups';` |
 | server/routes/luxury-documents.ts | 130 | FUNCTION_BODY | `const CODE_BUCKET = process.env.GCS_CODE_BUCKET \|\| 'petwash-code-backups';` |
 | server/services/gcsBackupService.ts | 19 | MODULE_LOAD | `const CODE_BUCKET = process.env.GCS_CODE_BUCKET \|\| 'petwash-code-backups';` |
 
@@ -1082,7 +1082,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 12912 | FUNCTION_BODY | `const firestoreBucket = process.env.GCS_FIRESTORE_BUCKET \|\| 'petwash-firestore-backups';` |
+| server/routes.ts | 12954 | FUNCTION_BODY | `const firestoreBucket = process.env.GCS_FIRESTORE_BUCKET \|\| 'petwash-firestore-backups';` |
 | server/routes/luxury-documents.ts | 131 | FUNCTION_BODY | `const FIRESTORE_BUCKET = process.env.GCS_FIRESTORE_BUCKET \|\| 'petwash-firestore-backups';` |
 | server/services/gcsBackupService.ts | 20 | MODULE_LOAD | `const FIRESTORE_BUCKET = process.env.GCS_FIRESTORE_BUCKET \|\| 'petwash-firestore-backups';` |
 
@@ -1185,7 +1185,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/lib/gemini-client.ts | 36 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS = SA_CREDS_PATH;` |
-| server/routes.ts | 12910 | FUNCTION_BODY | `const hasCredentialsEnv = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
+| server/routes.ts | 12952 | FUNCTION_BODY | `const hasCredentialsEnv = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
 | server/routes/luxury-documents.ts | 90 | FUNCTION_BODY | `const credentialsSource = process.env.GOOGLE_APPLICATION_CREDENTIALS;` |
 | server/services/BiometricVerificationService.ts | 53 | FUNCTION_BODY | `if (process.env.GOOGLE_APPLICATION_CREDENTIALS \|\| process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {` |
 | server/services/gcsBackupService.ts | 32 | FUNCTION_BODY | `process.env.GOOGLE_APPLICATION_CREDENTIALS \|\|` |
@@ -1646,7 +1646,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 5453 | FUNCTION_BODY | `const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;` |
+| server/routes.ts | 5495 | FUNCTION_BODY | `const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;` |
 | server/routes/gift-cards.ts | 350 | FUNCTION_BODY | `const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;` |
 | server/routes/qr-activation.ts | 353 | FUNCTION_BODY | `const NAYAX_API_KEY  = process.env.NAYAX_API_KEY;` |
 | server/routes/security-status.ts | 88 | FUNCTION_BODY | `process.env.NAYAX_API_KEY &&` |
@@ -1687,16 +1687,16 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 |------|------|-------|---------|
 | server/monitoring.ts | 782 | FUNCTION_BODY | `const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055');` |
 | server/nayaxFirestoreService.ts | 132 | MODULE_LOAD | `const NAYAX_MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055'); // 5.5% default` |
-| server/routes.ts | 5189 | FUNCTION_BODY | `rate: process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055'` |
-| server/routes.ts | 6612 | FUNCTION_BODY | `const merchantFeeRate = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055');` |
-| server/routes.ts | 6852 | FUNCTION_BODY | `const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055'); // 5.5% default` |
-| server/routes.ts | 6942 | FUNCTION_BODY | `const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055');` |
+| server/routes.ts | 5231 | FUNCTION_BODY | `rate: process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055'` |
+| server/routes.ts | 6654 | FUNCTION_BODY | `const merchantFeeRate = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055');` |
+| server/routes.ts | 6894 | FUNCTION_BODY | `const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055'); // 5.5% default` |
+| server/routes.ts | 6984 | FUNCTION_BODY | `const MERCHANT_FEE_RATE = parseFloat(process.env.NAYAX_MERCHANT_FEE_RATE \|\| '0.055');` |
 
 ### NAYAX_MERCHANT_ID
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 5453 | FUNCTION_BODY | `const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;` |
+| server/routes.ts | 5495 | FUNCTION_BODY | `const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;` |
 | server/routes/gift-cards.ts | 350 | FUNCTION_BODY | `const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;` |
 | server/routes/security-status.ts | 90 | FUNCTION_BODY | `process.env.NAYAX_MERCHANT_ID` |
 | server/services/NayaxOnlinePaymentService.ts | 35 | MODULE_LOAD | `const NAYAX_MERCHANT_ID = process.env.NAYAX_MERCHANT_ID;` |
@@ -1740,7 +1740,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 6381 | FUNCTION_BODY | `const secret = process.env.NAYAX_WEBHOOK_SECRET;` |
+| server/routes.ts | 6423 | FUNCTION_BODY | `const secret = process.env.NAYAX_WEBHOOK_SECRET;` |
 | server/routes/nayax-monyx-events.ts | 26 | MODULE_LOAD | `const WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET \|\| '';` |
 | server/routes/nayax-webhooks.ts | 49 | MODULE_LOAD | `const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET \|\| '';` |
 | server/services/NayaxOnlinePaymentService.ts | 36 | MODULE_LOAD | `const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET;` |
@@ -1819,7 +1819,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 |------|------|-------|---------|
 | server/index.ts | 289 | MODULE_LOAD | `console.log(`   Port: ${process.env.PORT \|\| 8080}`);` |
 | server/index.ts | 347 | MODULE_LOAD | `const PORT = Number(process.env.PORT \|\| 8080);` |
-| server/routes.ts | 5563 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/nayax-checkout`, {` |
+| server/routes.ts | 5605 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/nayax-checkout`, {` |
 | server/routes/synthetic.ts | 16 | FUNCTION_BODY | `const response = await fetch(`http://127.0.0.1:${process.env.PORT \|\| 5000}/api/auth/webauthn/login/options`, {` |
 
 ### PRESTIGE_QR_SECRET
@@ -1982,8 +1982,8 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 15531 | MODULE_LOAD | `process.env.REPLIT_DEPLOYMENT === '1' \|\|` |
-| server/routes.ts | 15532 | MODULE_LOAD | `process.env.REPLIT_DEPLOYMENT === 'true') {` |
+| server/routes.ts | 15573 | MODULE_LOAD | `process.env.REPLIT_DEPLOYMENT === '1' \|\|` |
+| server/routes.ts | 15574 | MODULE_LOAD | `process.env.REPLIT_DEPLOYMENT === 'true') {` |
 | server/routes/status.ts | 62 | FUNCTION_BODY | `const isProd = process.env.REPLIT_DEPLOYMENT === '1';` |
 | server/sessionConfig.ts | 9 | MODULE_LOAD | `process.env.REPLIT_DEPLOYMENT === '1' \|\|` |
 | server/sessionConfig.ts | 10 | MODULE_LOAD | `process.env.REPLIT_DEPLOYMENT === 'true';` |
@@ -2054,7 +2054,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 3805 | FUNCTION_BODY | `const webhookKey = process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY;` |
+| server/routes.ts | 3847 | FUNCTION_BODY | `const webhookKey = process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY;` |
 
 ### SENTRY_DSN
 
@@ -2189,9 +2189,9 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/middleware/rbac.ts | 18 | FUNCTION_BODY | `const raw = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
 | server/middleware/roleAuth.ts | 97 | FUNCTION_BODY | `const _superAdminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Bo` |
 | server/middleware/roleAuth.ts | 182 | FUNCTION_BODY | `const _superAdminEmails2 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(B` |
-| server/routes.ts | 12478 | FUNCTION_BODY | `const _saEmails11725 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
-| server/routes.ts | 12544 | FUNCTION_BODY | `const _saEmails11789 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
-| server/routes.ts | 12605 | FUNCTION_BODY | `const _saEmails11848 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
+| server/routes.ts | 12520 | FUNCTION_BODY | `const _saEmails11725 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
+| server/routes.ts | 12586 | FUNCTION_BODY | `const _saEmails11789 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
+| server/routes.ts | 12647 | FUNCTION_BODY | `const _saEmails11848 = (process.env.SUPER_ADMIN_EMAILS \|\| '').split(',').map(e => e.trim().toLowerCase()).filter(Boole` |
 | server/routes/access-requests.ts | 13 | FUNCTION_BODY | `const raw = process.env.SUPER_ADMIN_EMAILS;` |
 | server/routes/admin-provider-review.ts | 27 | FUNCTION_BODY | `const adminEmails = (process.env.SUPER_ADMIN_EMAILS \|\| '')` |
 | server/routes/admin.ts | 953 | FUNCTION_BODY | `const CEO_EMAILS_RAW = process.env.SUPER_ADMIN_EMAILS \|\| '';` |
@@ -2415,8 +2415,8 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/lib/redaction.ts | 124 | FUNCTION_BODY | `const VAT_RATE = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE)); // Israeli VAT rate from env` |
 | server/monitoring.ts | 783 | FUNCTION_BODY | `const VAT_RATE = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE)); // Israeli VAT rate from env` |
 | server/nayaxFirestoreService.ts | 133 | MODULE_LOAD | `const VAT_RATE = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE)); // Israeli VAT rate (18% as of Jan 2025)` |
-| server/routes.ts | 6613 | FUNCTION_BODY | `const vatRate = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE)); // Israeli VAT rate (18% as of Jan 2025)` |
-| server/routes.ts | 6941 | FUNCTION_BODY | `const VAT_RATE = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE));` |
+| server/routes.ts | 6655 | FUNCTION_BODY | `const vatRate = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE)); // Israeli VAT rate (18% as of Jan 2025)` |
+| server/routes.ts | 6983 | FUNCTION_BODY | `const VAT_RATE = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE));` |
 | server/routes/franchise.ts | 332 | FUNCTION_BODY | `const VAT_RATE = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE));` |
 | server/routes/franchise.ts | 424 | FUNCTION_BODY | `const VAT_RATE_EXCEL = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE));` |
 | server/routes/franchise.ts | 525 | FUNCTION_BODY | `const VAT_RATE_PDF = parseFloat(process.env.VAT_RATE \|\| String(ISRAEL_VAT_RATE));` |
@@ -2439,7 +2439,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes.ts | 15557 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
+| server/routes.ts | 15599 | FUNCTION_BODY | `const apiKey = process.env.FIREBASE_WEB_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| '';` |
 | server/security/productionHardeningAndOneTap.ts | 42 | MODULE_LOAD | `const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY \|\| process.env.VITE_FIREBASE_API_KEY \|\| "";` |
 
 ### VITE_FIREBASE_AUTH_DOMAIN
@@ -2454,7 +2454,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 |------|------|-------|---------|
 | server/infra/biometricStorage.ts | 14 | MODULE_LOAD | `const PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "signinpetwash";` |
 | server/lib/firebase-admin.ts | 5 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| 'signinpetwas` |
-| server/routes.ts | 15555 | FUNCTION_BODY | `process.env.VITE_FIREBASE_PROJECT_ID \|\|` |
+| server/routes.ts | 15597 | FUNCTION_BODY | `process.env.VITE_FIREBASE_PROJECT_ID \|\|` |
 | server/security/productionHardeningAndOneTap.ts | 44 | MODULE_LOAD | `const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| "";` |
 | server/services/AiChatService.ts | 43 | FUNCTION_BODY | `this.projectId = process.env.GOOGLE_DIALOGFLOW_PROJECT_ID \|\| process.env.VITE_FIREBASE_PROJECT_ID \|\| '';` |
 
