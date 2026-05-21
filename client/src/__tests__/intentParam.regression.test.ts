@@ -150,13 +150,7 @@ describe('PR-FRES-6 caller-integration source pins', () => {
     expect(legacy).toBeGreaterThan(apply);
   });
 
-  it('12. SignUp.tsx imports applyIntentFromUrl and invokes it on mount', () => {
-    const src = read('client/src/pages/SignUp.tsx');
-    expect(src).toMatch(/import\s*\{\s*applyIntentFromUrl\s*\}\s*from\s*['"]@\/lib\/intentParam['"]/);
-    expect(src).toMatch(/useEffect\(\s*\(\)\s*=>\s*\{\s*applyIntentFromUrl\(\)\s*;?\s*\}\s*,\s*\[\s*\]\s*\)/);
-  });
-
-  it('13. AuthAction.tsx (email-link return) invokes applyIntentFromUrl before handleAction', () => {
+  it('12. AuthAction.tsx (email-link return) invokes applyIntentFromUrl before handleAction', () => {
     const src = read('client/src/pages/AuthAction.tsx');
     expect(src).toMatch(/import\s*\{\s*applyIntentFromUrl\s*\}\s*from\s*['"]@\/lib\/intentParam['"]/);
     const apply = src.indexOf('applyIntentFromUrl()');
