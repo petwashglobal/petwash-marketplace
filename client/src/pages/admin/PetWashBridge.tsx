@@ -9,7 +9,7 @@
  * Route is gated by VITE_BRIDGE_MVP_ENABLED and wrapped in AdminRouteGuard
  * (see App.tsx). Data comes from GET /api/admin/bridge/summary.
  */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Layout } from '@/components/Layout';
@@ -17,7 +17,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { getApiUrl } from '@/lib/apiConfig';
 import {
   ClipboardList, CalendarClock, Users, ListTodo, Bell, ScrollText,
-  Loader2, RefreshCw, ChevronRight, PlugZap,
+  Loader2, RefreshCw, ChevronRight, PlugZap, Search,
 } from 'lucide-react';
 
 type Wired<T> = ({ wired: true } & T) | { wired: false; reason: string };
@@ -35,15 +35,47 @@ interface ProviderApplicationsPanel {
   reviewPath: string;
 }
 
+interface BookingIntakePanel {
+  recent: Array<{
+    id: string;
+    bookingNumber: string;
+    userId: string;
+    providerId: string | null;
+    status: string;
+    paymentStatus: string | null;
+    total: string;
+    currency: string | null;
+    startTime: string | null;
+    createdAt: string | null;
+  }>;
+  tracePathPrefix: string;
+}
+
 interface BridgeSummary {
   generatedAt: string;
   readOnly: boolean;
   providerApplications: Wired<ProviderApplicationsPanel>;
-  bookingIntake: Wired<never>;
-  customerLookup: Wired<never>;
+  bookingIntake: Wired<BookingIntakePanel>;
   hubspotTasks: Wired<never>;
   alerts: Wired<never>;
   auditEvents: Wired<never>;
+}
+
+interface LookupResult {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  city: string | null;
+  loyaltyTier: string | null;
+  createdAt: string | null;
+}
+
+interface LookupResponse {
+  query: string;
+  count: number;
+  results: LookupResult[];
 }
 
 function PanelShell({
@@ -76,9 +108,7 @@ function NotConnected({ reason }: { reason: string }) {
 }
 
 const PLACEHOLDER_PANELS: Array<{ key: keyof BridgeSummary; icon: ReactNode; title: string; subtitle: string }> = [
-  { key: 'bookingIntake', icon: <CalendarClock className="h-5 w-5" />, title: 'Booking intake queue', subtitle: 'Recent bookings awaiting action' },
   { key: 'hubspotTasks', icon: <ListTodo className="h-5 w-5" />, title: 'HubSpot tasks', subtitle: 'Tasks created by signup / booking / provider flows' },
-  { key: 'customerLookup', icon: <Users className="h-5 w-5" />, title: 'Customer lookup', subtitle: 'Find a customer or contact' },
   { key: 'alerts', icon: <Bell className="h-5 w-5" />, title: 'Alerts', subtitle: 'Operational alerts feed' },
   { key: 'auditEvents', icon: <ScrollText className="h-5 w-5" />, title: 'Audit events', subtitle: 'Recent system audit trail' },
 ];
@@ -90,6 +120,74 @@ const STATUS_TONE: Record<string, string> = {
   rejected: 'bg-rose-50 text-rose-700',
   on_hold: 'bg-gray-100 text-gray-600',
 };
+
+function CustomerLookupPanel() {
+  const [term, setTerm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<LookupResponse | null>(null);
+
+  async function search(e: React.FormEvent) {
+    e.preventDefault();
+    const q = term.trim();
+    if (q.length < 2) { setError('Enter at least 2 characters.'); return; }
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch(getApiUrl(`/api/admin/bridge/lookup?q=${encodeURIComponent(q)}`), { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 160)}`);
+      setData(await res.json());
+    } catch (err) {
+      setError((err as Error).message);
+      setData(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <form onSubmit={search} className="flex gap-2">
+        <input
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          inputMode="search"
+          placeholder="Email, phone, or name"
+          className="min-h-11 flex-1 rounded-xl border border-gray-200 px-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gray-900 px-4 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          Search
+        </button>
+      </form>
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+
+      {data && (
+        data.results.length > 0 ? (
+          <ul className="divide-y divide-gray-100">
+            {data.results.map((u) => (
+              <li key={u.id} className="py-2.5">
+                <p className="text-sm font-medium text-gray-900">
+                  {[u.firstName, u.lastName].filter(Boolean).join(' ') || '(no name)'}
+                  {u.loyaltyTier && <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{u.loyaltyTier}</span>}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {[u.email, u.phone, u.city].filter(Boolean).join(' · ') || u.id}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500">No matches for “{data.query}”.</p>
+        )
+      )}
+    </div>
+  );
+}
 
 export default function PetWashBridge() {
   const { user } = useFirebaseAuth();
@@ -209,7 +307,53 @@ export default function PetWashBridge() {
               )}
             </PanelShell>
 
-            {/* Panels 2–6 — placeholders */}
+            {/* Panel 2 — Booking intake (wired) */}
+            <PanelShell
+              icon={<CalendarClock className="h-5 w-5" />}
+              title="Booking intake"
+              subtitle="Most recent bookings"
+            >
+              {data.bookingIntake.wired ? (
+                data.bookingIntake.recent.length > 0 ? (
+                  <ul className="divide-y divide-gray-100">
+                    {data.bookingIntake.recent.map((b) => (
+                      <li key={b.id} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="min-w-0">
+                          <Link
+                            href={`${data.bookingIntake.wired ? data.bookingIntake.tracePathPrefix : '/booking-trace/'}${b.id}`}
+                            className="truncate text-sm font-medium text-gray-900 hover:underline"
+                          >
+                            {b.bookingNumber}
+                          </Link>
+                          <p className="truncate text-xs text-gray-500">
+                            {b.currency} {b.total}
+                            {b.startTime && ` · ${new Date(b.startTime).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_TONE[b.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {b.status.replace(/_/g, ' ')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No bookings yet.</p>
+                )
+              ) : (
+                <NotConnected reason={data.bookingIntake.reason} />
+              )}
+            </PanelShell>
+
+            {/* Panel 4 — Customer lookup (search-driven) */}
+            <PanelShell
+              icon={<Users className="h-5 w-5" />}
+              title="Customer lookup"
+              subtitle="Find a customer or contact"
+            >
+              <CustomerLookupPanel />
+            </PanelShell>
+
+            {/* Remaining panels — placeholders */}
             {PLACEHOLDER_PANELS.map(({ key, icon, title, subtitle }) => {
               const panel = data[key] as Wired<never>;
               return (

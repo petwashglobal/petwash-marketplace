@@ -25,6 +25,9 @@
  */
 
 import { Router, type Request, type Response } from 'express';
+import { desc, ilike, or } from 'drizzle-orm';
+import { db } from '../db';
+import { bookings, users } from '@shared/schema';
 import { requireAdmin } from '../adminAuth';
 import { adminProviderReviewService } from '../services/AdminProviderReviewService';
 import { logAuditEvent } from '../middleware/auditLogger';
@@ -103,15 +106,62 @@ router.get('/summary', async (req: Request, res: Response) => {
     providerApplications = { wired: false, reason: 'provider_approval_queue not reachable' };
   }
 
-  // Panels 2–6 — honest placeholders. No fabricated data (platform §2: no fake data).
-  const bookingIntake: Wired<never> = {
-    wired: false,
-    reason: 'No admin booking-list endpoint yet — read-only GET over bookings table pending (PR-2).',
-  };
-  const customerLookup: Wired<never> = {
-    wired: false,
-    reason: 'No admin user-search endpoint yet — read-only GET over users table pending (PR-2).',
-  };
+  // Panel 2 — Booking intake queue (WIRED, read-only over the bookings table).
+  let bookingIntake: Wired<{
+    recent: Array<{
+      id: string;
+      bookingNumber: string;
+      userId: string;
+      providerId: string | null;
+      status: string;
+      paymentStatus: string | null;
+      total: string;
+      currency: string | null;
+      startTime: string | null;
+      createdAt: string | null;
+    }>;
+    tracePathPrefix: string;
+  }>;
+  try {
+    const rows = await db
+      .select({
+        id: bookings.id,
+        bookingNumber: bookings.bookingNumber,
+        userId: bookings.userId,
+        providerId: bookings.providerId,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        total: bookings.total,
+        currency: bookings.currency,
+        startTime: bookings.startTime,
+        createdAt: bookings.createdAt,
+      })
+      .from(bookings)
+      .orderBy(desc(bookings.createdAt))
+      .limit(10);
+    bookingIntake = {
+      wired: true,
+      recent: rows.map((b) => ({
+        id: b.id,
+        bookingNumber: b.bookingNumber,
+        userId: b.userId,
+        providerId: b.providerId ?? null,
+        status: b.status,
+        paymentStatus: b.paymentStatus ?? null,
+        total: b.total,
+        currency: b.currency ?? 'ILS',
+        startTime: b.startTime ? new Date(b.startTime).toISOString() : null,
+        createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
+      })),
+      tracePathPrefix: '/booking-trace/',
+    };
+  } catch (err: any) {
+    logger.error('[Bridge] booking intake panel failed', { error: err?.message ?? String(err) });
+    bookingIntake = { wired: false, reason: 'bookings table not reachable' };
+  }
+
+  // Panels 3,5,6 — honest placeholders. No fabricated data (platform §2: no fake data).
+  // (customer lookup is a search-driven panel served by GET /lookup, below.)
   const hubspotTasks: Wired<never> = {
     wired: false,
     reason: 'HubSpot integration is write-only (contacts + notes); no task read path and no local hubspot_* mirror. Blocker: needs id persistence + read endpoint.',
@@ -130,11 +180,69 @@ router.get('/summary', async (req: Request, res: Response) => {
     readOnly: true,
     providerApplications,
     bookingIntake,
-    customerLookup,
     hubspotTasks,
     alerts,
     auditEvents,
   });
+});
+
+/**
+ * GET /api/admin/bridge/lookup?q=<term>
+ * Read-only customer/contact search by email, phone, first/last name.
+ * Requires a search term (no bulk dump). Every search is audited.
+ */
+router.get('/lookup', async (req: Request, res: Response) => {
+  const q = String(req.query.q ?? '').trim();
+  if (q.length < 2) {
+    return res.status(400).json({ error: 'QUERY_TOO_SHORT', message: 'Provide at least 2 characters.' });
+  }
+
+  const actor = (req as any).user || {};
+  logAuditEvent(req, 'bridge.customer.lookup', { type: 'user_search', id: q.slice(0, 64) }, {
+    actorUid: actor.uid,
+    actorEmail: actor.email,
+  }).catch((err) => logger.error('[Bridge] audit log failed', err));
+
+  try {
+    const like = `%${q}%`;
+    const rows = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        phone: users.phone,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        city: users.city,
+        loyaltyTier: users.loyaltyTier,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(or(
+        ilike(users.email, like),
+        ilike(users.phone, like),
+        ilike(users.firstName, like),
+        ilike(users.lastName, like),
+      ))
+      .limit(20);
+
+    res.json({
+      query: q,
+      count: rows.length,
+      results: rows.map((u) => ({
+        id: u.id,
+        email: u.email,
+        phone: u.phone,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        city: u.city,
+        loyaltyTier: u.loyaltyTier,
+        createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : null,
+      })),
+    });
+  } catch (err: any) {
+    logger.error('[Bridge] customer lookup failed', { error: err?.message ?? String(err) });
+    res.status(500).json({ error: 'LOOKUP_FAILED', message: String(err?.message ?? err).slice(0, 200) });
+  }
 });
 
 export default router;
