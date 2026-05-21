@@ -202,7 +202,7 @@ export default function SignUpLuxury({ language = 'en' }: Props) {
           ) : (
             <>
               <p className="sl-p" style={{ textAlign: 'center' }}>{he ? `קוד נשלח ל-${phone}` : `Code sent to ${phone}`}</p>
-              <OtpCodeInput length={6} value={code} onChange={setCode} onComplete={verify} disabled={busy} />
+              <OtpCodeInput length={6} value={code} onChange={setCode} onComplete={(c) => { void verify(c); }} disabled={busy} />
               <button className="sl-btn sl-primary" disabled={busy || code.length < 6} onClick={() => verify(code)}>
                 {busy ? '…' : (he ? 'אמת והמשך' : 'Verify & continue')}
               </button>
