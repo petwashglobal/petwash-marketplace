@@ -744,7 +744,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/admin-bridge.ts | 33 | MODULE_LOAD | `const BRIDGE_MVP_ENABLED = process.env.BRIDGE_MVP_ENABLED === 'true';` |
+| server/routes/admin-bridge.ts | 36 | MODULE_LOAD | `const BRIDGE_MVP_ENABLED = process.env.BRIDGE_MVP_ENABLED === 'true';` |
 
 ### CEO_BYPASS_EMAIL
 
