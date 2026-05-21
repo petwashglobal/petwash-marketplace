@@ -147,6 +147,7 @@ import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import adminBrainRoutes from "./routes/admin-brain";
+import adminBridgeRoutes from "./routes/admin-bridge";
 import coworkerRoutes from "./routes/coworker";
 import adminNotificationsRoutes from "./routes/admin-notifications";
 import adminPawFinderRoutes from "./routes/admin-paw-finder";
@@ -10042,6 +10043,10 @@ self.addEventListener('notificationclick', (event) => {
   // (inside adminBrainRoutes) can check super-admin email + role.
   // Read-only — no mutations on this router.
   app.use('/api/admin/brain', validateFirebaseToken, adminLimiter, adminBrainRoutes);
+  // PetWash Bridge MVP: read-only admin/operator cockpit, flag-gated
+  // (BRIDGE_MVP_ENABLED, default OFF). requireAdmin inside the router; the
+  // router 404s entirely when the flag is off. Read-only — no mutations.
+  app.use('/api/admin/bridge', validateFirebaseToken, adminLimiter, requireAdmin, adminBridgeRoutes);
   // PR-20: AI Coworker Agents scaffold. Same gate as /admin/brain
   // (validateFirebaseToken at mount + requireBrainAccess inside the router).
   // Read-only — every family returns wired:false until PR-21+ implements it.
