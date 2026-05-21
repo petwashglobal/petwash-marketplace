@@ -16,6 +16,7 @@ import {
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { planEscrowOnCreate, planEscrowOnTerminal } from '../lib/escrowSettlement';
 import { GoogleSheetsService } from './googleSheetsIntegration';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
@@ -465,11 +466,17 @@ class BookingLifecycleService {
     await this.recordStatusChange(bookingId, currentStatus, newStatus, actorUserId, actorRole, reason);
 
     if (newStatus === 'deposit_received') {
-      await this.createEscrowHolding(bookingId);
+      await this.createEscrowHolding(bookingId, actorUserId, actorRole);
     }
 
     if (newStatus === 'completed') {
-      await this.scheduleEscrowRelease(bookingId);
+      await this.scheduleEscrowRelease(bookingId, actorUserId, actorRole);
+    }
+
+    // R3: a cancelled/refunded booking must settle (refund) its escrow holding —
+    // otherwise held funds are stranded with no release path. Idempotent.
+    if (newStatus === 'cancelled' || newStatus === 'refunded') {
+      await this.settleEscrowTerminal(bookingId, actorUserId, actorRole, reason);
     }
 
     logger.info('[BookingLifecycle] Status transitioned', { 
@@ -498,7 +505,11 @@ class BookingLifecycleService {
     });
   }
 
-  private async createEscrowHolding(bookingId: string): Promise<void> {
+  private async createEscrowHolding(
+    bookingId: string,
+    actorUserId?: string,
+    actorRole?: string,
+  ): Promise<void> {
     const [booking] = await db.select()
       .from(bookings)
       .where(eq(bookings.id, bookingId))
@@ -511,38 +522,147 @@ class BookingLifecycleService {
     const vatCents = Math.round(platformFeeCents * VAT_RATE);
     const netProviderAmountCents = grossAmountCents - platformFeeCents - vatCents;
 
-    await db.insert(escrowHoldings).values({
-      escrowId: `ESC-${nanoid(12)}`,
-      bookingId,
-      customerId: booking.userId,
-      providerId: String(booking.providerId || ''),
+    // R2: a booking has at most one escrow holding. There is no UNIQUE(booking_id)
+    // constraint yet and a 'pending'/'pending_payment' row may already exist (created at
+    // /book time), so capture is idempotent: insert once, promote a pending row to 'held',
+    // and skip if already held/processed — never create a duplicate (stranded) row.
+    const [existing] = await db.select({ id: escrowHoldings.id, status: escrowHoldings.status })
+      .from(escrowHoldings)
+      .where(eq(escrowHoldings.bookingId, bookingId))
+      .limit(1);
+
+    const plan = planEscrowOnCreate(existing?.status);
+    if (plan === 'skip') {
+      logger.info('[BookingLifecycle] Escrow already captured, skipping', { bookingId, status: existing?.status });
+      return;
+    }
+
+    const captureFields = {
       grossAmountCents,
       platformFeeCents,
       vatCents,
       netProviderAmountCents,
-      status: 'held',
+      status: 'held' as const,
       capturedAt: new Date(),
-    });
+    };
 
-    logger.info('[BookingLifecycle] Escrow holding created', { bookingId, grossAmountCents });
+    if (plan === 'promote' && existing) {
+      await db.update(escrowHoldings)
+        .set({ ...captureFields, updatedAt: new Date() })
+        .where(eq(escrowHoldings.id, existing.id));
+    } else {
+      await db.insert(escrowHoldings).values({
+        escrowId: `ESC-${nanoid(12)}`,
+        bookingId,
+        customerId: booking.userId,
+        providerId: String(booking.providerId || ''),
+        ...captureFields,
+      });
+    }
+
+    await this.auditMoney(bookingId, 'BOOKING_ESCROW_CAPTURED', actorUserId, actorRole, {
+      grossAmountCents, platformFeeCents, vatCents, netProviderAmountCents, mode: plan,
+    });
+    logger.info('[BookingLifecycle] Escrow holding captured', { bookingId, grossAmountCents, mode: plan });
   }
 
-  private async scheduleEscrowRelease(bookingId: string): Promise<void> {
+  private async scheduleEscrowRelease(
+    bookingId: string,
+    actorUserId?: string,
+    actorRole?: string,
+  ): Promise<void> {
     const releaseTime = new Date(Date.now() + ESCROW_HOURS * 60 * 60 * 1000);
 
-    await db.update(escrowHoldings)
+    // Only a currently-'held' holding becomes eligible for release — never resurrect a
+    // refunded/released row into the payout pipeline.
+    const updated = await db.update(escrowHoldings)
       .set({
         serviceCompletedAt: new Date(),
         releaseEligibleAt: releaseTime,
         status: 'releasing',
         updatedAt: new Date(),
       })
-      .where(eq(escrowHoldings.bookingId, bookingId));
+      .where(and(eq(escrowHoldings.bookingId, bookingId), eq(escrowHoldings.status, 'held')))
+      .returning({ id: escrowHoldings.id });
 
-    logger.info('[BookingLifecycle] Escrow release scheduled', { 
-      bookingId, 
-      releaseEligibleAt: releaseTime 
+    if (updated.length > 0) {
+      await this.auditMoney(bookingId, 'BOOKING_ESCROW_RELEASE_SCHEDULED', actorUserId, actorRole, {
+        releaseEligibleAt: releaseTime.toISOString(),
+      });
+    }
+    logger.info('[BookingLifecycle] Escrow release scheduled', {
+      bookingId,
+      releaseEligibleAt: releaseTime,
+      scheduled: updated.length > 0,
     });
+  }
+
+  // R3: settle (refund) the escrow holding when a booking is cancelled or refunded.
+  // Idempotent — never refunds twice and never claws back an already-released payout.
+  private async settleEscrowTerminal(
+    bookingId: string,
+    actorUserId?: string,
+    actorRole?: string,
+    reason?: string,
+  ): Promise<void> {
+    const [escrow] = await db.select()
+      .from(escrowHoldings)
+      .where(eq(escrowHoldings.bookingId, bookingId))
+      .limit(1);
+    if (!escrow) return;
+
+    if (planEscrowOnTerminal(escrow.status) === 'skip') {
+      logger.info('[BookingLifecycle] Escrow already terminal, skipping settle', { bookingId, status: escrow.status });
+      return;
+    }
+
+    const now = new Date();
+    await db.update(escrowHoldings)
+      .set({
+        status: 'refunded',
+        refundProcessedAt: now,
+        refundAmountCents: escrow.grossAmountCents,
+        refundReason: reason ?? 'Booking cancelled',
+        updatedAt: now,
+      })
+      .where(eq(escrowHoldings.id, escrow.id));
+
+    await this.auditMoney(bookingId, 'BOOKING_ESCROW_REFUNDED', actorUserId, actorRole, {
+      escrowId: escrow.escrowId,
+      refundAmountCents: escrow.grossAmountCents,
+      fromStatus: escrow.status,
+      reason: reason ?? 'Booking cancelled',
+    });
+    logger.info('[BookingLifecycle] Escrow refunded on terminal transition', {
+      bookingId, fromStatus: escrow.status, refundAmountCents: escrow.grossAmountCents,
+    });
+  }
+
+  // R5: every money mutation is audited (actor + action + before/after amounts).
+  // Non-blocking: an audit failure must never break the booking flow.
+  private async auditMoney(
+    bookingId: string,
+    actionType: string,
+    actorUserId: string | undefined,
+    actorRole: string | undefined,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: actorUserId ?? 'system',
+        actorRole: actorRole ?? 'system',
+        actionType,
+        targetType: 'booking',
+        targetId: bookingId,
+        severity: 'info',
+        metadata,
+      });
+    } catch (err) {
+      logger.warn('[BookingLifecycle] audit log failed (non-blocking)', {
+        bookingId, actionType, error: (err as Error)?.message,
+      });
+    }
   }
 
   async getBookingWithHistory(bookingId: string) {
@@ -604,30 +724,38 @@ class BookingLifecycleService {
 
     for (const escrow of eligibleEscrows) {
       try {
-        await db.update(escrowHoldings)
-          .set({
-            status: 'released',
-            releasedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(escrowHoldings.id, escrow.id));
+        // R4: release the holding and mark the booking payout in ONE transaction so a crash
+        // can't leave escrow 'released' while the booking payout is unset (or vice-versa).
+        await db.transaction(async (tx) => {
+          await tx.update(escrowHoldings)
+            .set({
+              status: 'released',
+              releasedAt: now,
+              updatedAt: now,
+            })
+            .where(eq(escrowHoldings.id, escrow.id));
 
-        await db.update(bookings)
-          .set({
-            payoutStatus: 'completed',
-            payoutDate: now,
-            updatedAt: now,
-          })
-          .where(eq(bookings.id, escrow.bookingId));
+          await tx.update(bookings)
+            .set({
+              payoutStatus: 'completed',
+              payoutDate: now,
+              updatedAt: now,
+            })
+            .where(eq(bookings.id, escrow.bookingId));
+        });
 
         releasedCount++;
-        logger.info('[BookingLifecycle] Escrow released', { 
+        await this.auditMoney(escrow.bookingId, 'BOOKING_ESCROW_RELEASED', 'system', 'system', {
+          escrowId: escrow.escrowId,
+          netProviderAmountCents: escrow.netProviderAmountCents,
+        });
+        logger.info('[BookingLifecycle] Escrow released', {
           escrowId: escrow.escrowId,
           bookingId: escrow.bookingId,
-          amountCents: escrow.netProviderAmountCents 
+          amountCents: escrow.netProviderAmountCents
         });
       } catch (error) {
-        logger.error('[BookingLifecycle] Escrow release failed', error, { 
+        logger.error('[BookingLifecycle] Escrow release failed', error, {
           escrowId: escrow.escrowId });
       }
     }
