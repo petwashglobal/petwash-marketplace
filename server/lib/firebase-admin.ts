@@ -21,15 +21,22 @@ if (!admin.apps.length) {
       });
       console.log('✅ Firebase Admin SDK initialized with service account');
     } catch (error) {
-      console.error('❌ Failed to parse Firebase service account key:', error);
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('FATAL: Invalid FIREBASE_SERVICE_ACCOUNT_KEY in production. Server cannot start without valid credentials.');
-      }
+      // PR-STARTUP-FIX-5: never crash production startup on malformed
+      // FIREBASE_SERVICE_ACCOUNT_KEY. Fall through to Application Default
+      // Credentials (Cloud Run service account). The bug #9 cycle was:
+      // CI workflow injects key → secret manager value is malformed →
+      // JSON.parse throws → production boot dies at loading_routes phase.
+      // ADC works on Cloud Run via the runtime service account.
+      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', (error as Error).message);
+      console.warn(
+        '⚠️ Falling back to Application Default Credentials. ' +
+        'Verify Cloud Run service account has Firebase Admin SDK IAM roles. ' +
+        'To eliminate this warning: fix or unset FIREBASE_SERVICE_ACCOUNT_KEY.'
+      );
       firebaseApp = admin.initializeApp({
         projectId: FIREBASE_PROJECT_ID,
         storageBucket: FIREBASE_STORAGE_BUCKET,
       });
-      console.log('⚠️ Firebase Admin SDK initialized without credentials (dev mode only)');
     }
   } else {
     if (process.env.NODE_ENV === 'production') {
@@ -54,18 +61,27 @@ if (!firebaseApp) {
   throw new Error('Firebase Admin app not initialized - this should never happen');
 }
 
+// Firestore.settings() may be called at most once per underlying instance.
+// firebaseApp.firestore() returns a persistent singleton that survives module
+// re-imports (e.g. Vitest re-evaluating this module between test files) even
+// though module scope is reset — so the "already applied" guard must live on
+// the instance via a global symbol, not in a module-level boolean. Without this
+// a second import re-runs settings() and throws "settings() can only be called once".
+const FIRESTORE_SETTINGS_APPLIED = Symbol.for('petwash.firebaseAdmin.firestoreSettingsApplied');
+
 // Use getter function to ensure db is always available
 export function getFirestore() {
   const firestore = firebaseApp.firestore();
+  const marker = firestore as unknown as Record<symbol, boolean>;
+  if (!marker[FIRESTORE_SETTINGS_APPLIED]) {
+    firestore.settings({ ignoreUndefinedProperties: true });
+    marker[FIRESTORE_SETTINGS_APPLIED] = true;
+  }
   return firestore;
 }
 
 // Export direct references for convenience (most common pattern)
-export const db = (() => {
-  const firestore = getFirestore();
-  firestore.settings({ ignoreUndefinedProperties: true });
-  return firestore;
-})();
+export const db = getFirestore();
 export const storage = firebaseApp.storage();
 export const auth = firebaseApp.auth();
 // Alias for consistency with some route imports

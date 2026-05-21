@@ -66,7 +66,7 @@ const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
-const SignUp = lazy(() => import("@/pages/SignUp"));
+const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
 const CustomerFavourites = lazy(() => import("@/pages/CustomerFavourites"));
@@ -675,13 +675,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
-          {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+        {/* Black-luxury 2026 signup is now the canonical entry. /signup-lux kept as an alias. */}
+        <Route path="/signup-lux">
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/sign-up">
-          {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/register">
-          {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         
         {/* Post-login role routing pages — all require auth */}

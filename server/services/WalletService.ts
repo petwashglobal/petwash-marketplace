@@ -15,8 +15,13 @@ import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 
-const WALLET_SECRET = process.env.WALLET_LINK_SECRET;
-if (!WALLET_SECRET) throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
+function getWalletSecret(): string {
+  const secret = process.env.WALLET_LINK_SECRET;
+  if (!secret) {
+    throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
+  }
+  return secret;
+}
 
 export interface WalletSummary {
   walletId: string;
@@ -206,7 +211,7 @@ class WalletService {
     };
     const qrData = Buffer.from(JSON.stringify(qrPayload)).toString('base64');
     
-    const hmac = crypto.createHmac('sha256', WALLET_SECRET)
+    const hmac = crypto.createHmac('sha256', getWalletSecret())
       .update(sessionId + redemptionCode + expiresAt.toISOString())
       .digest('hex');
 

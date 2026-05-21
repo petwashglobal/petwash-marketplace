@@ -45,11 +45,18 @@ export interface DispatchOptions {
   channels?: NotificationChannel[];  // defaults to ['inbox', 'email', 'sms']
 }
 
-// SENDGRID_FROM_EMAIL must be set in production. The fallback is intentionally
-// kept for local development only — sending from an unverified domain in
-// production would cause SendGrid to reject outbound mail silently.
-if (process.env.NODE_ENV === 'production' && !process.env.SENDGRID_FROM_EMAIL) {
-  throw new Error('[notificationDispatcher] SENDGRID_FROM_EMAIL env var is required in production');
+// SENDGRID_FROM_EMAIL must be set in production to send from a verified domain.
+// Do NOT throw at module load if it is missing: a top-level throw here aborts the
+// whole routes.ts import, leaving routesReady=false and 503-ing every /api/* route
+// (this is exactly what caused the 2026-05 outage). Degrade safely instead — disable
+// only the email channel so we never send from an unverified domain (SendGrid would
+// silently reject), while the server still boots and inbox + SMS keep working.
+const EMAIL_SENDING_ENABLED = !(process.env.NODE_ENV === 'production' && !process.env.SENDGRID_FROM_EMAIL);
+if (!EMAIL_SENDING_ENABLED) {
+  logger.error(
+    '[notificationDispatcher] SENDGRID_FROM_EMAIL is not set in production — email channel DISABLED ' +
+    '(server still boots; inbox + SMS unaffected). Set SENDGRID_FROM_EMAIL to re-enable email.'
+  );
 }
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'noreply@petwash.co.il';
 const FROM_NAME  = 'PetWash™';
@@ -195,7 +202,9 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
   // ── 2. Send email via SendGrid ───────────────────────────────────────────
   if (channels.includes('email') && email) {
     try {
-      if (!isSendGridConfigured()) {
+      if (!EMAIL_SENDING_ENABLED) {
+        errors.push('SENDGRID_FROM_EMAIL unset in production — email skipped (fail-safe)');
+      } else if (!isSendGridConfigured()) {
         errors.push('SendGrid not configured — email skipped');
       } else {
         const htmlBody = buildEmailHtml(title, bodyHtml, ctaText, ctaUrl);

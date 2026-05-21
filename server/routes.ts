@@ -1343,6 +1343,18 @@ self.addEventListener('notificationclick', (event) => {
   // Staff Access Requests CRUD
   app.use('/api/access-requests', apiLimiter, accessRequestsRoutes);
 
+  // Sprint 2 — canonical SMS auth wrapper. Thin layer over TwilioSMSService +
+  // the existing phone-session/session-cookie chain (no new OTP or session logic).
+  // Fault-isolated: a failure to load/mount degrades only /api/auth/sms and never
+  // aborts the rest of route registration.
+  try {
+    const authSmsRoutes = (await import('./routes/auth-sms')).default;
+    app.use('/api/auth/sms', authLimiter, authSmsRoutes);
+    logger.info('[routes] Mounted /api/auth/sms (canonical SMS auth wrapper)');
+  } catch (mountErr) {
+    logger.error('[routes] Failed to mount /api/auth/sms — feature degraded, server continues', mountErr);
+  }
+
   // GET /api/auth/health - Health check for mobile auth system
   app.get('/api/auth/health', (_req, res) => {
     res.json({ ok: true });

@@ -50,4 +50,6 @@ temp_response.txt
 # Build / scan logs — never commit
 build-output.txt
 load-test-output.txt
-smoke-test-output/
+
+# PR-STARTUP-HARDEN-1 — smoke-test artifacts (regenerated per CI run; uploaded to GH artifacts instead)
+/smoke-test-output/

@@ -1,0 +1,36 @@
+# CODEOWNERS — PetWash
+#
+# Files listed here require an approving review from the matched code-owner
+# before a PR can merge. The intent is to protect the parts of the codebase
+# whose corruption would compromise security, deployment integrity, or
+# financial correctness. See https://docs.github.com/en/repositories/managing-your-repositories-settings-and-security/customizing-your-repository/about-code-owners
+#
+# PR-STARTUP-HARDEN-1 added this file to lock down the pre-deploy gate
+# scripts after the 24-hour module-load incident series. A future malicious
+# or careless PR cannot weaken the gates without explicit owner approval.
+
+# ─── Pre-deploy gate scripts (PR-STARTUP-HARDEN-1) ───────────────────────────
+/scripts/smoke-test-routes-load.ts        @petwashglobal/owners
+/scripts/audit-required-env-vars.ts       @petwashglobal/owners
+/docs/PRODUCTION_REQUIRED_ENV_VARS.md     @petwashglobal/owners
+/docs/DEPLOYMENT_DISCIPLINE.md            @petwashglobal/owners
+
+# ─── CI/CD workflow ─────────────────────────────────────────────────────────
+/.github/workflows/                       @petwashglobal/owners
+/.github/CODEOWNERS                       @petwashglobal/owners
+
+# ─── Security-critical config ───────────────────────────────────────────────
+/server/lib/firebase-admin.ts             @petwashglobal/owners
+/server/lib/payment-provider-mode.ts      @petwashglobal/owners
+/server/lib/env-validation.ts             @petwashglobal/owners
+/shared/israel-compliance-config.ts       @petwashglobal/owners
+
+# ─── Financial / compliance ──────────────────────────────────────────────────
+/shared/schema-payments.ts                @petwashglobal/owners
+/shared/schema-billing.ts                 @petwashglobal/owners
+/shared/finance-identity.ts               @petwashglobal/owners
+/server/utils/sitterFeeCalculator.ts      @petwashglobal/owners
+/server/services/ProviderPayoutService.ts @petwashglobal/owners
+/server/services/EscrowService.ts         @petwashglobal/owners
+
+# ─── If adding a new owner: append carefully, do not remove existing entries ─

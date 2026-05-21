@@ -81,7 +81,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
   // ── Social / phone signup state ───────────────────────────────────────────
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
-  const [signupMode, setSignupMode] = useState<'email' | 'phone'>('email');
+  // Mobile-first: default new signups to the phone/SMS OTP path (canonical front
+  // door). Email signup stays available via the toggle.
+  const [signupMode, setSignupMode] = useState<'email' | 'phone'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
@@ -348,11 +350,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         freshCaptchaToken = await executeReCaptcha('phone_signup').catch(() => null);
       }
 
-      const res = await fetch(getApiUrl('/api/auth/phone/send-code'), {
+      const res = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: normalizedPhone, language, ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
+        body: JSON.stringify({ phone: normalizedPhone, language, flow: 'prestige', ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }) }),
       });
       const result = await res.json();
       if (!result.ok) throw new Error(genericAuthFailureMessage);
@@ -379,11 +381,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     }
     setPhoneLoading(true);
     try {
-      const verifyRes = await fetch(getApiUrl('/api/auth/phone/verify-code'), {
+      const verifyRes = await fetch(getApiUrl('/api/auth/sms/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: confirmationResult.phone, code, language }),
+        body: JSON.stringify({ phone: confirmationResult.phone, code, language, flow: 'prestige' }),
       });
       const verifyResult = await verifyRes.json();
       if (!verifyResult.ok) throw new Error(genericAuthFailureMessage);

@@ -109,7 +109,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [passkeyAvailable] = useState(isPasskeySupported());
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [webviewBlocked, setWebviewBlocked] = useState(false);
-  const [phoneMode, setPhoneMode] = useState(false);
+  // Phone/SMS OTP is the canonical, mobile-first lead path (sidesteps the brittle
+  // Firebase/reCAPTCHA SSO). Email/password/SSO remain available via the toggle.
+  const [phoneMode, setPhoneMode] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<{ phone: string } | null>(null);
@@ -1387,13 +1389,14 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         }
       }
 
-      const response = await fetch(getApiUrl('/api/auth/phone/send-code'), {
+      const response = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           phone: formattedPhone,
           language,
+          flow: 'prestige',
           ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }),
         }),
       });
@@ -1460,14 +1463,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     setPhoneLoading(true);
     try {
       // Verify code with Twilio
-      const verifyResponse = await fetch(getApiUrl('/api/auth/phone/verify-code'), {
+      const verifyResponse = await fetch(getApiUrl('/api/auth/sms/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          phone: confirmationResult.phone, 
+        body: JSON.stringify({
+          phone: confirmationResult.phone,
           code,
-          language 
+          language,
+          flow: 'prestige',
         }),
       });
 
