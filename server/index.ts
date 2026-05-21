@@ -260,6 +260,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import express from "express";
 import { pool, db, isDatabaseAvailable } from "./db";
+import { classifyRuntimeServices } from "./lib/runtimeServiceHealth";
 import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
@@ -672,7 +673,13 @@ async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string 
 
 app.get('/health', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
-  const isDegraded = _startupConfigErrors.length > 0 || _startupSecurityViolations.length > 0;
+  const runtime = classifyRuntimeServices(process.env, isDatabaseAvailable);
+  const status =
+    runtime.productionCriticalMissing.length > 0
+      ? 'CRITICAL'
+      : (_startupConfigErrors.length > 0 || _startupSecurityViolations.length > 0)
+        ? 'DEGRADED'
+        : 'OK';
   // PR-HEALTH-BUILD-SHA: surface PUBLIC deploy identifiers so the CEO /
   // ops can confirm the production build matches the latest merge from
   // any device with no GCP auth. Helper reads ONLY non-secret deploy
@@ -681,10 +688,11 @@ app.get('/health', (_req, res) => {
   // See server/lib/buildInfo.ts.
   // PR-CI-SMOKE-HOTFIX: imported at module top (ESM-correct).
   res.status(200).json({
-    status: isDegraded ? 'DEGRADED' : 'OK',
+    status,
     timestamp: new Date().toISOString(),
     bootTs: healthState.bootTs,
     build: _getBuildInfo(),
+    runtimeServices: runtime,
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
@@ -715,11 +723,13 @@ app.get('/health', (_req, res) => {
 app.get('/health/strict', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
   const timestamp = new Date().toISOString();
+  const runtime = classifyRuntimeServices(process.env, isDatabaseAvailable);
   if (_startupSecurityViolations.length > 0) {
     return res.status(503).json({
       status: 'DANGEROUS',
       timestamp,
       bootTs: healthState.bootTs,
+      runtimeServices: runtime,
       checks: {
         process: true,
         env: process.env.NODE_ENV || 'unknown',
@@ -732,9 +742,15 @@ app.get('/health/strict', (_req, res) => {
     });
   }
   return res.status(200).json({
-    status: _startupConfigErrors.length > 0 ? 'DEGRADED' : 'OK',
+    status:
+      runtime.productionCriticalMissing.length > 0
+        ? 'CRITICAL'
+        : _startupConfigErrors.length > 0
+          ? 'DEGRADED'
+          : 'OK',
     timestamp,
     bootTs: healthState.bootTs,
+    runtimeServices: runtime,
     checks: {
       process: true,
       env: process.env.NODE_ENV || 'unknown',
