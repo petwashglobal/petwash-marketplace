@@ -19,6 +19,10 @@ export interface SystemConfigMap {
   'step_up.threshold_seconds': number;
   'matching.default_radius_km': number;
   'matching.boost_new_providers': boolean;
+  // Supplier-invoice screening (First Safe PR). OFF = the new routes are
+  // closed, no screening runs, legacy accounting flows untouched. Money is
+  // never moved by this feature; payment execution stays separate.
+  'ff.supplier_invoice_control.enabled': boolean;
   'recovery.signup_reminder_enabled': boolean;
   'recovery.booking_followup_enabled': boolean;
 }
@@ -30,6 +34,7 @@ const DEFAULTS: SystemConfigMap = {
   'step_up.threshold_seconds': 7200,
   'matching.default_radius_km': 15,
   'matching.boost_new_providers': true,
+  'ff.supplier_invoice_control.enabled': false,
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
 };

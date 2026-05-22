@@ -14,6 +14,7 @@ import { SmartReceiptService } from "./smartReceiptService";
 import { EmailService } from "./emailService";
 import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
+import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import { requireDpaAccepted } from "./middleware/dpa-guard";
 import stationsRoutes from "./routes/stations";
 import stationSettlementsRoutes from "./routes/station-settlements";
@@ -9702,6 +9703,11 @@ self.addEventListener('notificationclick', (event) => {
   
   // KYC 2026 - Enterprise-Grade Identity Verification
   app.use('/api/kyc/v2', requireDpaAccepted, kyc2026Routes);
+
+  // Supplier-invoice screening (First Safe PR). Each route checks
+  // ff.supplier_invoice_control.enabled and returns 404 when the flag is OFF,
+  // so mounting here is a safe no-op until the flag is flipped.
+  app.use('/api/supplier-invoices', supplierInvoiceRoutes);
 
   // PetWash Privilege registration - Public (no auth required to join)
   const privilegeLoyaltyRoutes = await import('./routes/privilege-loyalty');
