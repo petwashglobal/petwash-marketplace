@@ -12,6 +12,18 @@ Core rules (non-negotiable invariants): no supplier is trusted until verified; n
 
 Key design finding: ~80% of the primitives already exist in the repo. This is mostly an assembly + workflow job, not a green-field build. Net-new is roughly two tables, one screening route, the SUMIT connector, and thin glue.
 
+Strategic context: this control layer is the trust backbone that lets Pet Wash scale to many verified providers across its arms (The Sitter Suite / PetSitter, Walk My Pet, Pet Wash Academy / pet training, grooming, transport) — the same way a multi-arm platform grows on a base of trusted, vetted suppliers/providers. Verifying suppliers, screening invoices and matching to real work is what makes "many trusted providers" safe rather than risky.
+
+## Company, accountant and SUMIT reality (not theoretical)
+
+Pet Wash Ltd is a real, registered Israeli company — פט וואש בע"מ / Pet Wash Ltd, company number 517145033, incorporated 2 April 2025 — with an active bank account at Bank Mizrahi-Tefahot and a live bookkeeping relationship. Pet Wash Ltd already works with an accounting firm, רו"ח קופרברג, עזרא ושות', which uses SUMIT to collect bookkeeping documents and expenses. The supplier invoice control system must integrate with this existing workflow and must not replace the accounting firm or SUMIT. It should act as the pre-accounting approval and fraud-control layer.
+
+The accountant (קופרברג, עזרא ושות') is an existing external stakeholder / system user — not optional and not "maybe later." SUMIT is the existing, trusted bookkeeping/document-collection platform already used by the accounting firm. The Pet Wash system is the supplier-verification, fraud-detection, invoice-approval, bank-verification, job-matching and payment-control layer that runs BEFORE anything reaches SUMIT/accountant. Correct flow: provider uploads invoice/document → Pet Wash system verifies supplier, bank account, tax documents, invoice, duplicate/fraud risk and job match → only clean, approved invoices go to SUMIT/accountant → accountant/bookkeeping handles the official accounting side → payment is released only after approval rules are satisfied.
+
+SUMIT credentials are already stored in Pet Wash secrets and must be accessed server-side via environment variables. The design must not expose, duplicate, request, or document the secret.
+
+Sensitive company-records handling: Pet Wash Ltd's own legal/financial records (certificate of incorporation, bank-management confirmation, accountant engagement/fee invoice) seed the company entity profile and the accountant/supplier records. Sensitive values — bank account number, IBAN, SWIFT — are NEVER written into this SDD, code, logs, commits, or screenshots; they are stored encrypted server-side only, exactly like the SUMIT secret. This document references the company's verified Mizrahi-Tefahot account only as "on file (encrypted)."
+
 ## 1. What already exists and should be reused
 
 - Supplier entity already exists: `suppliers` table (`shared/schema-corporate.ts:134`) with legalName, registrationNumber, taxId, supplierType, paymentTerms, bankAccountDetails (jsonb), isApproved; plus `supplierContracts` (:160), `supplierQualityScores` (:181), `supplierPayments` (:198). CRUD in `server/storage.ts:3880`. This is distinct from service `providers` (`shared/schema.ts:7896`) — do not conflate them.
@@ -71,12 +83,16 @@ Key design finding: ~80% of the primitives already exist in the repo. This is mo
 
 ## 8. How SUMIT / accountant handoff works
 
+The accountant is the existing firm רו"ח קופרברג, עזרא ושות', who already uses SUMIT to collect Pet Wash's bookkeeping documents and expenses. The system does NOT replace SUMIT or the accountant; it feeds them only clean, approved, traceable documents.
+
 - Only an internally approved, non-RED (or explicitly overridden) invoice from an approved supplier may be sent. On send, status → sent_to_sumit and the send is audited.
 - Connector is server-side only and built flexibly with a safe config wrapper; it must support at least one of: a SUMIT API call, a SUMIT expense-email forward, or a manual export package (ZIP of PDFs + CSV + supplier docs + approval log) modelled on the existing `sendTaxReportToAccountant` and monthly-package flow.
 - Secret handling, restated exactly: SUMIT credentials are stored in Pet Wash secrets and must be accessed server-side via environment variables. The design must not expose or duplicate secrets. The SUMIT key is never hard-coded, never in frontend, never logged, never in errors, never in this SDD, never in the database unless encrypted with strong reason; tests mock SUMIT unless a safe explicit integration test is run; rotate immediately if ever exposed.
 - Accountant statuses: not_sent → sent_to_sumit → received_by_accountant → (missing_details → back to admin) → entered_in_books → rejected_by_accountant. The accountant is read-only plus comments and bookkeeping status; the accountant cannot approve that operational work was actually done — only Pet Wash admin confirms service delivery.
 
 ## 9. How Israeli bookkeeping, tax and compliance risks are handled
+
+Pet Wash Ltd already has a live Israeli tax/bookkeeping reality — מס הכנסה (income tax file), מע״מ (VAT), ניכוי מס במקור (withholding at source), ניהול ספרים (bookkeeping/keeping-of-books obligation), and possible ביטוח לאומי / employee-vs-contractor classification exposure for regular providers. The system must keep all records clean, traceable and audit-ready so the accountant's official filing is never polluted.
 
 - VAT: store amount-before-VAT, VAT amount, total, VAT rate (reuse ISRAEL_VAT_RATE 0.18 and `VATCalculatorService`), and a VAT-eligibility flag; flag VAT math errors and VAT charged by exempt dealers.
 - Withholding tax (ניכוי מס במקור): store each supplier's withholding rate from their approval document; if missing, flag "missing withholding approval — accountant review required" (reuse `withholdingRemittanceLedger`).
@@ -101,7 +117,7 @@ An inbound supplier-invoice screening pipeline that stops at "ready_for_accounta
 
 ## 13. Open questions
 
-- Does SUMIT expose an ingestion API, or do we start with email-forward / export package? (Connector shape depends on this; secret is already stored either way.)
+- The accountant (קופרברג, עזרא ושות') and SUMIT relationship are confirmed existing — the only open item is the connector method: does SUMIT expose an ingestion API for inbound expenses, or do we start with the SUMIT expense-email forward / export package the firm already uses? (Connector shape depends on this; the secret is already stored either way.)
 - Reuse `accountsPayable` as the invoice header vs. a dedicated `supplier_invoices` table — which is canonical, to avoid two AP models?
 - Are "providers" (sitters/walkers) ever paid as suppliers through this flow, or only true vendors? (Affects job-matching vs PO-matching.)
 - High-value approval threshold(s) in ₪ for four-eyes and finance-manager escalation.
