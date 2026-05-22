@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { AuthGateCard } from '@/components/AuthGateCard';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { type Language } from '@/lib/i18n';
 import {
@@ -1539,11 +1540,12 @@ export default function PawFinder({ language }: PawFinderProps) {
         {tab === 'report' && (
           <div className="max-w-2xl mx-auto">
             {!user ? (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">
-                <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-                <h3 className="font-semibold text-amber-900">נדרשת התחברות</h3>
-                <p className="text-sm text-amber-700 mt-1">עליך להתחבר כדי לפרסם פוסט ב-Paw Finder.</p>
-              </div>
+              <AuthGateCard
+                language={language}
+                message={isHe
+                  ? 'התחברו או הצטרפו ל-PetWash כדי לפרסם דיווח ב-Paw Finder ולעזור להחזיר חיות אבודות הביתה — תחזרו לכאן מיד אחרי ההתחברות.'
+                  : 'Sign in or join PetWash to post on Paw Finder and help reunite lost pets — you’ll come right back here.'}
+              />
             ) : (
               <div>
                 <div className="mb-6">
