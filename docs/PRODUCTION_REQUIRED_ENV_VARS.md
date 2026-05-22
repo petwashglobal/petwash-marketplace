@@ -4,7 +4,7 @@
 > Regenerate with: `npx tsx scripts/audit-required-env-vars.ts`
 > Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`
 
-Scanned files (server/): 793
+Scanned files (server/): 794
 Variables found: 317  (REQUIRED 7 · WARN 8 · OPTIONAL 302)
 
 ## Definitions
@@ -201,7 +201,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/routes/marketplace-bookings.ts | 337 | FUNCTION_BODY | `if (quote.providerId && userId === quote.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
-| server/services/BookingLifecycleService.ts | 298 | FUNCTION_BODY | `if (input.customerId === input.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
+| server/services/BookingLifecycleService.ts | 299 | FUNCTION_BODY | `if (input.customerId === input.providerId && process.env.ALLOW_SELF_BOOKING !== 'true') {` |
 
 ### BANK_PAYOUT_LIVE
 
