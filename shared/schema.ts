@@ -15540,3 +15540,72 @@ export const insertUserPlatformAccessSchema = createInsertSchema(userPlatformAcc
 });
 export type InsertUserPlatformAccess = z.infer<typeof insertUserPlatformAccessSchema>;
 export type UserPlatformAccess = typeof userPlatformAccess.$inferSelect;
+
+// ──────────────────────────────────────────────────────────────────────────
+// Supplier-invoice screening (First Safe PR — migration 0024).
+// Inbound supplier-invoice screening pipeline. Stops at "ready_for_accountant"
+// — moves NO money, sends NOTHING to SUMIT (those are separate, flag-gated
+// follow-up PRs per docs/design/2026-05-22-supplier-invoice-sumit-fraud-control.md).
+// All routes gated by SystemConfig flag `ff.supplier_invoice_control.enabled`
+// (default OFF). FK to `suppliers` (shared/schema-corporate.ts) is enforced at
+// the DB level by migration 0024; the Drizzle definition omits .references()
+// to avoid a cross-file import cycle.
+// ──────────────────────────────────────────────────────────────────────────
+
+export const supplierInvoices = pgTable("supplier_invoices", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id"), // FK to suppliers.id (DB-level, ON DELETE RESTRICT)
+  // File / OCR
+  fileUrl: text("file_url"),
+  fileHash: varchar("file_hash", { length: 64 }).notNull(),
+  source: varchar("source", { length: 40 }).default("admin_upload"),
+  ocrInvoiceNumber: varchar("ocr_invoice_number", { length: 120 }),
+  ocrSupplierName: varchar("ocr_supplier_name", { length: 255 }),
+  ocrBusinessNumber: varchar("ocr_business_number", { length: 40 }),
+  ocrInvoiceDate: date("ocr_invoice_date"),
+  ocrAmountBeforeVat: decimal("ocr_amount_before_vat", { precision: 12, scale: 2 }),
+  ocrVatAmount: decimal("ocr_vat_amount", { precision: 12, scale: 2 }),
+  ocrTotalAmount: decimal("ocr_total_amount", { precision: 12, scale: 2 }),
+  ocrCurrency: varchar("ocr_currency", { length: 8 }),
+  ocrRawText: text("ocr_raw_text"),
+  // Fraud-engine enrichment (reuses ReceiptFraudDetection)
+  fraudEngineScore: integer("fraud_engine_score"),
+  fraudEngineFlags: text("fraud_engine_flags").array(),
+  // Screening result
+  riskScore: integer("risk_score").notNull().default(0),
+  riskLevel: varchar("risk_level", { length: 10 }).notNull().default("green"),
+  status: varchar("status", { length: 30 }).notNull().default("uploaded"),
+  // Approval / four-eyes
+  uploadedBy: varchar("uploaded_by", { length: 128 }),
+  approvedBy: varchar("approved_by", { length: 128 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  rejectedBy: varchar("rejected_by", { length: 128 }),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  approvalNote: text("approval_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_supplier_invoices_supplier").on(table.supplierId),
+  index("idx_supplier_invoices_file_hash").on(table.fileHash),
+  index("idx_supplier_invoices_status").on(table.status),
+  index("idx_supplier_invoices_risk").on(table.riskLevel),
+  index("idx_supplier_invoices_supplier_invnum").on(table.supplierId, table.ocrInvoiceNumber),
+]);
+
+export const supplierInvoiceChecks = pgTable("supplier_invoice_checks", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull(), // FK to supplier_invoices.id (DB-level, ON DELETE CASCADE)
+  checkType: varchar("check_type", { length: 60 }).notNull(),
+  result: varchar("result", { length: 10 }).notNull(),
+  scoreImpact: integer("score_impact").notNull().default(0),
+  details: jsonb("details"),
+  checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_supplier_invoice_checks_invoice").on(table.invoiceId),
+]);
+
+export type SupplierInvoice = typeof supplierInvoices.$inferSelect;
+export type InsertSupplierInvoice = typeof supplierInvoices.$inferInsert;
+export type SupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferSelect;
+export type InsertSupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferInsert;
