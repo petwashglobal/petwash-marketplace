@@ -315,7 +315,61 @@ Before deploying to production:
 - [ ] Set up error tracking (Sentry, Bugsnag)
 - [ ] Set up analytics (Firebase Analytics, Mixpanel)
 - [ ] Add push notifications (for task assignments)
-- [ ] Submit to App Store and Google Play
+- [ ] Submit to App Store and Google Play (see next section)
+
+---
+
+## 🛫 App Store / Play Store submission
+
+This project now ships with the Expo submission scaffold:
+
+- `app.json` — bundle ID `il.co.petwash.staff`, NSFaceIDUsageDescription,
+  Apple Privacy Manifest, Android biometric permissions.
+- `eas.json` — `development`, `preview`, `production` build profiles
+  plus `submit` profile.
+- `.gitignore` — excludes prebuilt `ios/` and `android/`, signing assets,
+  service-account keys, secrets.
+- `assets/README.md` — exact icon / splash / screenshot specs.
+
+### One-time setup (Apple developer)
+
+1. Install EAS CLI: `npm i -g eas-cli` and `eas login`.
+2. From `mobile-app/`, run `eas init` — this fills the `extra.eas.projectId`
+   field in `app.json`. Commit that change.
+3. Drop real PNG assets into `mobile-app/assets/` per `assets/README.md`.
+4. In `eas.json`, replace the three `REPLACE_WITH_*` fields under
+   `submit.production.ios` with your Apple ID, App Store Connect app ID,
+   and Apple Team ID.
+5. Create the app shell in App Store Connect (name "PetWash Staff",
+   bundle ID `il.co.petwash.staff`) and in Google Play Console.
+
+### Build & submit
+
+```bash
+# TestFlight build (signed)
+eas build --platform ios --profile production
+eas submit --platform ios --latest
+
+# Play Store internal track (AAB)
+eas build --platform android --profile production
+eas submit --platform android --latest
+```
+
+### Store listing assets (uploaded in the consoles, NOT in this repo)
+
+- App Store: 3+ screenshots at 6.7" (1290 × 2796) and 6.5"
+  (1242 × 2688 or 1284 × 2778); iPad 12.9" required since
+  `supportsTablet: true`.
+- Play Store: 512 × 512 icon, 1024 × 500 feature graphic, 2+ phone
+  screenshots, privacy policy URL.
+
+### Still TODO before App Review will approve
+
+- [ ] Real icon / splash / adaptive icon (placeholder paths exist; binaries do not).
+- [ ] Privacy policy URL hosted on petwash.co.il.
+- [ ] Demo staff credentials for App Review reviewer (Apple requires login).
+- [ ] App Store screenshots taken on real device / simulator.
+- [ ] `API_BASE` in `App.tsx` confirmed against production backend.
 
 ---
 
