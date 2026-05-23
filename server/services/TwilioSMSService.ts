@@ -771,18 +771,29 @@ class TwilioSMSService {
         }
       }
 
-      logger.info('[TwilioSMS] SMS sent', { 
+      logger.info('[TwilioSMS] SMS sent', {
         to: formattedPhone.slice(0, 6) + '****',
         from: usedSender,
         messageId: message.sid
       });
+
+      // Feed the global SMS-abuse counters / kill-switch on EVERY successful
+      // send. Without this, sendSMS was the dead path for the cost ceiling:
+      // recordSent() was only invoked by the legacy sendVerificationCode, so
+      // hourly/daily thresholds and the auto-kill-switch never engaged for
+      // OTPs routed through RegistrationOTPService → sendSMS (the primary
+      // signup flow). Fire-and-forget; failures are logged, never thrown,
+      // because losing the counter must not also lose the user's OTP.
+      smsAbuseDetector.recordSent().catch(err =>
+        logger.error('[TwilioSMS] AbuseDetector.recordSent failed (non-fatal)', { error: err?.message })
+      );
 
       return {
         success: true,
         messageId: message.sid
       };
     } catch (error: any) {
-      logger.error('[TwilioSMS] Failed to send SMS', { 
+      logger.error('[TwilioSMS] Failed to send SMS', {
         error: error.message,
         to: formattedPhone.slice(0, 6) + '****'
       });
