@@ -4,7 +4,7 @@
 > Regenerate with: `npx tsx scripts/audit-required-env-vars.ts`
 > Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`
 
-Scanned files (server/): 807
+Scanned files (server/): 808
 Variables found: 325  (REQUIRED 7 · WARN 8 · OPTIONAL 310)
 
 ## Definitions
@@ -1653,7 +1653,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/nayax-webhooks.ts | 50 | MODULE_LOAD | `const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') \|\| [` |
+| server/routes/nayax-webhooks.ts | 51 | MODULE_LOAD | `const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') \|\| [` |
 
 ### NAYAX_API_KEY
 
@@ -1755,7 +1755,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 |------|------|-------|---------|
 | server/routes.ts | 6428 | FUNCTION_BODY | `const secret = process.env.NAYAX_WEBHOOK_SECRET;` |
 | server/routes/nayax-monyx-events.ts | 26 | MODULE_LOAD | `const WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET \|\| '';` |
-| server/routes/nayax-webhooks.ts | 49 | MODULE_LOAD | `const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET \|\| '';` |
+| server/routes/nayax-webhooks.ts | 50 | MODULE_LOAD | `const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET \|\| '';` |
 | server/services/NayaxOnlinePaymentService.ts | 36 | MODULE_LOAD | `const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET;` |
 
 ### OPENWEATHER_API_KEY
