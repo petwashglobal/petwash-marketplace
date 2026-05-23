@@ -350,7 +350,7 @@ PetWash is a premium brand. Every UI surface must look it.
 
 > Update this section after every merge. Date stamp the update.
 
-**Last updated: 2026-05-14**
+**Last updated: 2026-05-23**
 
 ### Merged (in roadmap order)
 - **PR-A** (#76) — Auth P0 fixes
@@ -360,6 +360,7 @@ PetWash is a premium brand. Every UI surface must look it.
 - **Popup #77** — PosterTemplate stripped to image-only
 - **Popup #81** — Pure-white popup shell (kill dark backdrop / blur / card framing)
 - **PR-PREMIUM-CARDS-2** (#255) — Ship premium platform cards on public homepage (default ON); 12 design binaries converted to .webp + relocated to client/public/; legacy PetWashDivisions retained as `VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false'` emergency disable.
+- **PR-MOBILE-SCAFFOLD** (#372) — Expo submission scaffold for App Store + Play Store (bundle id `il.co.petwash.staff`, NSFaceIDUsageDescription, Apple Privacy Manifest, EAS build/submit profiles, asset specs). App.tsx auth/biometric runtime untouched. Companion: `docs/finance/sumit-readiness-check-2026-05-23.md` documenting the 5 sequenced PRs needed before a real sumit.co.il send.
 
 ### Open PRs
 - None.
