@@ -15700,3 +15700,6 @@ export type NayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferSelect;
 export type InsertNayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferInsert;
 export type SumitOutboundEvent = typeof sumitOutboundEvents.$inferSelect;
 export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
+
+// Maya reception/intake — see migration 0028_maya_reception_intake_foundation.sql
+export * from './schema-maya';

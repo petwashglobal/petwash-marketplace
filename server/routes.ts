@@ -319,6 +319,7 @@ import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import adminMayaRouter from './routes/admin-maya';
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -426,6 +427,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ADMIN_ROLES is the single canonical list — imported from @shared/adminRoles.
   // requireStaffApproved skips the staff_active status check for elevated roles (admin/management/etc).
   app.use('/api/admin/', requireRole(...ADMIN_ROLES_ARRAY), requireStaffApproved, requireMfaEnrolled);
+  app.use('/api/admin/maya', adminMayaRouter);  // Maya Stage 1b
   app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================
