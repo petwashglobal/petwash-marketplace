@@ -32,7 +32,14 @@ export type CheckType =
   | 'high_amount'
   | 'ocr_unavailable'
   | 'fraud_engine_unavailable'
-  | 'fraud_engine_score';
+  | 'fraud_engine_score'
+  // Israel ITA — supplier's classification disagrees with what the
+  // invoice charges. Most damaging case: an Osek Patur supplier charging
+  // VAT — we cannot reclaim that VAT, so approving loses money. Hard fail.
+  | 'osek_vat_mismatch'
+  // Supplier has not been classified yet (still 'unknown'). Finance MUST
+  // classify before approving any invoice from them. Warning, not fail.
+  | 'osek_classification_unknown';
 
 export interface CheckResult {
   type: CheckType;
@@ -71,6 +78,14 @@ export interface ScreeningInput {
   fraudEngineAvailable: boolean;
   /** 0..100 from receiptFraudDetection.analyzeReceipt when available. */
   fraudEngineScore?: number | null;
+  /**
+   * Israeli tax-status classification of the supplier.
+   *   'patur'   = cannot legally charge VAT
+   *   'murshe'  = individual/partnership, charges + reclaims VAT
+   *   'chevra'  = Ltd company, charges + reclaims VAT
+   *   'unknown' = not yet classified (admin must set before approval)
+   */
+  supplierOsekClassification?: 'patur' | 'murshe' | 'chevra' | 'unknown';
 }
 
 const DEFAULT_HIGH_AMOUNT_THRESHOLD_CENTS = 200_000; // ₪2,000
@@ -157,6 +172,43 @@ export function buildChecks(input: ScreeningInput): CheckResult[] {
         details: { score: input.fraudEngineScore },
       });
     }
+  }
+
+  // Osek classification vs invoiced VAT consistency. Israeli tax law:
+  //   patur + VAT > 0  → HARD FAIL (cannot reclaim VAT never legitimately
+  //                      charged; approving loses us money).
+  //   murshe/chevra + VAT==0 on a positive base → warning (could be
+  //                      zero-rated export or supplier error).
+  //   unknown classification → warning (must classify before approval).
+  const classification = input.supplierOsekClassification;
+  const vat = typeof input.vatAmount === 'number' ? input.vatAmount : null;
+  const base = typeof input.amountBeforeVat === 'number' ? input.amountBeforeVat : null;
+
+  if (classification === 'patur' && vat !== null && vat > 0) {
+    checks.push({
+      type: 'osek_vat_mismatch',
+      result: 'fail',
+      scoreImpact: 85,
+      details: { reason: 'patur_supplier_charged_vat', classification, vatAmount: vat },
+    });
+  } else if (
+    (classification === 'murshe' || classification === 'chevra') &&
+    vat !== null && vat === 0 &&
+    base !== null && base > 0
+  ) {
+    checks.push({
+      type: 'osek_vat_mismatch',
+      result: 'warning',
+      scoreImpact: 25,
+      details: { reason: 'vat_registered_supplier_charged_no_vat', classification },
+    });
+  } else if (classification === 'unknown') {
+    checks.push({
+      type: 'osek_classification_unknown',
+      result: 'warning',
+      scoreImpact: 20,
+      details: { reason: 'supplier_not_yet_classified' },
+    });
   }
 
   return checks;

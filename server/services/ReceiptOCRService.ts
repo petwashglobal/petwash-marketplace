@@ -25,6 +25,13 @@ interface ReceiptData {
   totalAmount?: number;
   vendorName?: string;
   taxId?: string;
+  /**
+   * Israel ITA Digital Invoice Law 2026 — SHAAM allocation number
+   * (מספר הקצאה) printed on tax invoices above the applicable threshold.
+   * Empty / undefined when not present or not extractable. PetWash is the
+   * BUYER here — we read the supplier's number, we do not request one.
+   */
+  shaamAllocationNumber?: string;
   rawText: string;
   confidence: number;
 }
@@ -181,11 +188,35 @@ class ReceiptOCRService {
         }
       }
 
+      // Israel ITA Digital Invoice Law 2026 — SHAAM allocation number
+      // (מספר הקצאה). Above-threshold supplier invoices carry this; when
+      // missing, PR-S5a's screening rule blocks finance approval to
+      // prevent the un-deductible-VAT loss. We extract using both Hebrew
+      // and English label variants; numbers are 9-12 digits. Try the most
+      // specific labels first to avoid grabbing a random nearby number.
+      const shaamPatterns: RegExp[] = [
+        /(?:מספר\s*הקצאה|מס['׳]?\s*הקצאה|הקצאת\s*חשבונית)[:\s#-]*(\d{9,12})/i,
+        /(?:הקצאה)[:\s#-]+(\d{9,12})/i,
+        /(?:Allocation\s*(?:Number|No|#)?|SHAAM(?:\s*Number)?)[:\s#-]*(\d{9,12})/i,
+      ];
+      for (const pattern of shaamPatterns) {
+        const m = rawText.match(pattern);
+        if (m) {
+          receiptData.shaamAllocationNumber = m[1];
+          // Mask in logs (same approach as taxId — only first 2 + last 2).
+          logger.info('[ReceiptOCR] SHAAM allocation detected', {
+            shaamMasked: this.maskTaxId(m[1]),
+          });
+          break;
+        }
+      }
+
       logger.info('[ReceiptOCR] ✅ Receipt data extracted', {
         hasDate: !!receiptData.date,
         hasAmount: !!receiptData.totalAmount,
         hasVendor: !!receiptData.vendorName,
         hasTaxId: !!receiptData.taxId,
+        hasShaamAllocation: !!receiptData.shaamAllocationNumber,
       });
 
       return receiptData;
