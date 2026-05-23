@@ -15583,6 +15583,15 @@ export const supplierInvoices = pgTable("supplier_invoices", {
   rejectedAt: timestamp("rejected_at", { withTimezone: true }),
   rejectionReason: text("rejection_reason"),
   approvalNote: text("approval_note"),
+  // SUMIT (sumit.co.il) linkage — populated by PR-S4 once the admin
+  // "Send to SUMIT" button + ff.supplier_invoice_control.sumit_send.enabled
+  // flag are wired. All nullable; null means "never attempted".
+  sumitDocumentId: varchar("sumit_document_id", { length: 64 }),
+  sumitStatus: varchar("sumit_status", { length: 20 }), // pending | sent | confirmed | failed | null
+  sumitSentAt: timestamp("sumit_sent_at", { withTimezone: true }),
+  sumitConfirmedAt: timestamp("sumit_confirmed_at", { withTimezone: true }),
+  sumitLastError: text("sumit_last_error"),
+  sumitIdempotencyKey: varchar("sumit_idempotency_key", { length: 80 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -15591,6 +15600,12 @@ export const supplierInvoices = pgTable("supplier_invoices", {
   index("idx_supplier_invoices_status").on(table.status),
   index("idx_supplier_invoices_risk").on(table.riskLevel),
   index("idx_supplier_invoices_supplier_invnum").on(table.supplierId, table.ocrInvoiceNumber),
+  index("idx_supplier_invoices_sumit_status").on(table.sumitStatus),
+  // Unique-when-not-null is enforced at the DB level by the migration
+  // (partial unique indexes). Drizzle index() here exists for query
+  // planning only.
+  index("idx_supplier_invoices_sumit_document").on(table.sumitDocumentId),
+  index("idx_supplier_invoices_sumit_idem").on(table.sumitIdempotencyKey),
 ]);
 
 export const supplierInvoiceChecks = pgTable("supplier_invoice_checks", {
@@ -15605,7 +15620,34 @@ export const supplierInvoiceChecks = pgTable("supplier_invoice_checks", {
   index("idx_supplier_invoice_checks_invoice").on(table.invoiceId),
 ]);
 
+// Append-only audit log of every SUMIT (sumit.co.il) call. One row per
+// outbound request or inbound webhook. Never UPDATEd after insert — used
+// for replay, debug, reconciliation, and compliance review. Empty until
+// PR-S4 wires the admin "Send to SUMIT" button.
+export const sumitOutboundEvents = pgTable("sumit_outbound_events", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull(), // FK to supplier_invoices.id ON DELETE CASCADE
+  eventType: varchar("event_type", { length: 40 }).notNull(),
+    // create_document | create_document_retry | webhook_received | reconcile_lookup
+  direction: varchar("direction", { length: 10 }).notNull(), // outbound | inbound
+  sumitDocumentId: varchar("sumit_document_id", { length: 64 }),
+  idempotencyKey: varchar("idempotency_key", { length: 80 }).notNull(),
+  requestPayload: jsonb("request_payload"),
+  responseStatusCode: integer("response_status_code"),
+  responseBody: jsonb("response_body"),
+  errorMessage: text("error_message"),
+  actor: varchar("actor", { length: 128 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_sumit_outbound_events_invoice").on(table.invoiceId),
+  index("idx_sumit_outbound_events_created_desc").on(table.createdAt),
+  index("idx_sumit_outbound_events_idem").on(table.idempotencyKey),
+  index("idx_sumit_outbound_events_doc").on(table.sumitDocumentId),
+]);
+
 export type SupplierInvoice = typeof supplierInvoices.$inferSelect;
 export type InsertSupplierInvoice = typeof supplierInvoices.$inferInsert;
 export type SupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferSelect;
 export type InsertSupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferInsert;
+export type SumitOutboundEvent = typeof sumitOutboundEvents.$inferSelect;
+export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
