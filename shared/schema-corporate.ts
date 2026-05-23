@@ -149,12 +149,24 @@ export const suppliers = pgTable("suppliers", {
   isActive: boolean("is_active").default(true),
   isApproved: boolean("is_approved").default(false),
   qualityScore: decimal("quality_score", { precision: 3, scale: 1 }).default("0"), // 0-10 rating
+  // Israeli tax-status classification — drives VAT validation in the
+  // supplier-invoice screening pipeline. See PR-S5c and
+  // docs/finance/vat-attribution-matrix-2026-05-23.md.
+  //   'patur'   = עוסק פטור (cannot charge VAT)
+  //   'murshe'  = עוסק מורשה (charges + reclaims VAT)
+  //   'chevra'  = חברה בע"מ (charges + reclaims VAT, distinct withholding)
+  //   'unknown' = not yet categorised (default — admin must classify before approving invoices)
+  osekClassification: varchar("osek_classification", { length: 20 }).notNull().default("unknown"),
+  osekCertificateUrl: text("osek_certificate_url"),
+  osekClassificationVerifiedAt: timestamp("osek_classification_verified_at", { withTimezone: true }),
+  osekClassificationVerifiedBy: varchar("osek_classification_verified_by", { length: 128 }),
   onboardedAt: date("onboarded_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   typeIdx: index("idx_suppliers_type").on(table.supplierType),
   activeIdx: index("idx_suppliers_active").on(table.isActive),
+  osekIdx: index("idx_suppliers_osek_classification").on(table.osekClassification),
 }));
 
 export const supplierContracts = pgTable("supplier_contracts", {
