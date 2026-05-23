@@ -1,0 +1,48 @@
+# CodeQL configuration — scan source code only, not build artefacts or vendored libraries.
+#
+# Why this file exists: the repo policy commits `dist/` so Cloud Run can serve a
+# pre-built bundle. Without this exclusion CodeQL scans every minified vendor
+# library (Firebase, React, Recharts, etc.) and flags pre-existing issues inside
+# those libraries as if they were ours — issues we can neither own nor fix, and
+# that re-appear every time `dist/` is rebuilt against a different chunk hash.
+#
+# Rule of thumb: CodeQL targets HUMAN-WRITTEN SOURCE under client/, server/,
+# shared/, scripts/, .github/workflows/. Everything else (built output, vendored
+# minified bundles, package caches, generated docs) is excluded.
+
+name: "PetWash CodeQL Config"
+
+paths:
+  - client/src
+  - server
+  - shared
+  - scripts
+  - migrations
+  - .github/workflows
+
+paths-ignore:
+  # Build output (regenerated on every `npm run build`; pure derivative of source).
+  - dist
+  - build
+  - .next
+  # Compiled / generated JavaScript that mirrors TypeScript source.
+  - "**/*.min.js"
+  - "**/*.bundle.js"
+  # Vendored / third-party code we do not author.
+  - node_modules
+  - client/public/vendor
+  # Editor / tooling artefacts.
+  - "**/*.d.ts"
+  - "**/coverage/**"
+  - "**/.cache/**"
+  # Static assets and large data fixtures.
+  - "**/*.json"
+  - "**/*.svg"
+  - "**/*.png"
+  - "**/*.jpg"
+  - "**/*.jpeg"
+  - "**/*.gif"
+  - "**/*.webp"
+  - "**/*.ico"
+  - "**/*.pdf"
+  - "**/*.lock"
