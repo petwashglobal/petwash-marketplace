@@ -547,6 +547,11 @@ export const ROLE_HIERARCHY: Record<string, number> = {
   'franchise_owner': 3,
   'pending_staff': 3,
   'staff': 4,
+  // M8: accountant — read-only access to invoices ready_for_accountant +
+  // the "mark entered in SUMIT" action. Cannot upload, approve, reject, or
+  // see the SUMIT control panel. Slots between staff(4) and admin(6) so
+  // existing access-level-6/8 checks still exclude accountants.
+  'accountant': 5,
   'admin': 6,
   'hr': 7,
   'management': 8,

@@ -32,6 +32,7 @@ import {
   Zap,
   Package,
   CreditCard,
+  Receipt,
   ArrowUpRight,
   Bell,
   Search,
@@ -97,8 +98,10 @@ const MODULE_LINKS: Record<string, { label: string; href: string; icon: typeof E
   finance: [
     { label: "Financial Reports", href: "/admin/financial", icon: DollarSign },
     { label: "Vouchers & Credits", href: "/admin/vouchers", icon: CreditCard },
+    { label: "Supplier Invoices", href: "/admin/supplier-invoices", icon: Receipt },
     { label: "Suppliers", href: "/admin/suppliers", icon: Building2 },
     { label: "SUMIT Control", href: "/admin/sumit", icon: ShieldCheck },
+    { label: "Accountant Queue", href: "/admin/accountant", icon: FileText },
   ],
   stations: [
     { label: "Station Control", href: "/admin/stations", icon: Cpu },

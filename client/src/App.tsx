@@ -56,6 +56,8 @@ const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoi
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
 const AdminSumitControl = lazy(() => import("@/pages/AdminSumitControl"));
+const ProviderMyInvoices = lazy(() => import("@/pages/ProviderMyInvoices"));
+const AccountantQueue = lazy(() => import("@/pages/AccountantQueue"));
 const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
 const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
@@ -2181,6 +2183,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <AdminSumitControl />
             </AdminRouteGuard>
           )}
+        </Route>
+        <Route path="/admin/accountant">
+          {() => (
+            <AdminRouteGuard>
+              <AccountantQueue />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Provider self-service — Mission-7 */}
+        <Route path="/provider/my-invoices">
+          {() => <ProviderMyInvoices />}
         </Route>
 
         {/* Staff Onboarding & Fraud Prevention */}
