@@ -354,7 +354,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/lib/sendgrid.ts | 4 | MODULE_LOAD | `const rawKey = process.env.SENDGRID_API_KEY \|\| '';` |
 | server/monitoring.ts | 15 | MODULE_LOAD | `const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;` |
 | server/nayaxFirestoreService.ts | 1332 | FUNCTION_BODY | `if (!process.env.SENDGRID_API_KEY) {` |
-| server/routes/admin-sumit.ts | 54 | FUNCTION_BODY | `sendgridApiKey: Boolean(process.env.SENDGRID_API_KEY),` |
+| server/routes/admin-sumit.ts | 76 | FUNCTION_BODY | `sendgridApiKey: Boolean(process.env.SENDGRID_API_KEY),` |
 | server/routes/ceo-wallet.ts | 209 | FUNCTION_BODY | `if (!process.env.SENDGRID_API_KEY) {` |
 | server/routes/ceo-wallet.ts | 340 | FUNCTION_BODY | `if (!process.env.SENDGRID_API_KEY) {` |
 | server/routes/send-thank-you.ts | 17 | FUNCTION_BODY | `if (!process.env.SENDGRID_API_KEY) {` |
@@ -394,9 +394,9 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/admin-sumit.ts | 53 | FUNCTION_BODY | `accountantEmail: Boolean(process.env.ACCOUNTANT_EMAIL),` |
-| server/routes/admin-sumit.ts | 86 | FUNCTION_BODY | `accountantEmailDomain: process.env.ACCOUNTANT_EMAIL` |
-| server/routes/admin-sumit.ts | 87 | FUNCTION_BODY | `? `***@${process.env.ACCOUNTANT_EMAIL.split('@')[1] ?? '***'}`` |
+| server/routes/admin-sumit.ts | 75 | FUNCTION_BODY | `accountantEmail: Boolean(process.env.ACCOUNTANT_EMAIL),` |
+| server/routes/admin-sumit.ts | 108 | FUNCTION_BODY | `accountantEmailDomain: process.env.ACCOUNTANT_EMAIL` |
+| server/routes/admin-sumit.ts | 109 | FUNCTION_BODY | `? `***@${process.env.ACCOUNTANT_EMAIL.split('@')[1] ?? '***'}`` |
 | server/services/SumitEmailDispatcher.ts | 34 | FUNCTION_BODY | `/** Optional override; defaults to process.env.ACCOUNTANT_EMAIL. */` |
 | server/services/SumitEmailDispatcher.ts | 51 | FUNCTION_BODY | `const v = process.env.ACCOUNTANT_EMAIL;` |
 | server/services/SumitPreflightCheck.ts | 180 | FUNCTION_BODY | `: fail('env_accountant_email', 'ACCOUNTANT_EMAIL חסר', 'process.env.ACCOUNTANT_EMAIL not set'),` |
@@ -2195,14 +2195,14 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/admin-sumit.ts | 85 | FUNCTION_BODY | `sumitApiBaseUrl: process.env.SUMIT_API_BASE_URL \|\| 'https://api.sumit.co.il',` |
+| server/routes/admin-sumit.ts | 107 | FUNCTION_BODY | `sumitApiBaseUrl: process.env.SUMIT_API_BASE_URL \|\| 'https://api.sumit.co.il',` |
 | server/services/SumitClient.ts | 34 | FUNCTION_BODY | `baseUrl: process.env.SUMIT_API_BASE_URL \|\| 'https://api.sumit.co.il',` |
 
 ### SUMIT_API_KEY
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/admin-sumit.ts | 50 | FUNCTION_BODY | `sumitApiKey: Boolean(process.env.SUMIT_API_KEY),` |
+| server/routes/admin-sumit.ts | 72 | FUNCTION_BODY | `sumitApiKey: Boolean(process.env.SUMIT_API_KEY),` |
 | server/services/SumitClient.ts | 35 | FUNCTION_BODY | `apiKey: process.env.SUMIT_API_KEY,` |
 | server/services/SumitPreflightCheck.ts | 167 | FUNCTION_BODY | `: fail('env_api_key', 'SUMIT_API_KEY חסר', 'process.env.SUMIT_API_KEY not set'),` |
 
@@ -2210,7 +2210,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/admin-sumit.ts | 51 | FUNCTION_BODY | `sumitCompanyId: Boolean(process.env.SUMIT_COMPANY_ID),` |
+| server/routes/admin-sumit.ts | 73 | FUNCTION_BODY | `sumitCompanyId: Boolean(process.env.SUMIT_COMPANY_ID),` |
 | server/services/SumitClient.ts | 36 | FUNCTION_BODY | `companyId: process.env.SUMIT_COMPANY_ID,` |
 | server/services/SumitPreflightCheck.ts | 171 | FUNCTION_BODY | `: fail('env_company_id', 'SUMIT_COMPANY_ID חסר', 'process.env.SUMIT_COMPANY_ID not set'),` |
 
@@ -2224,7 +2224,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/routes/admin-sumit.ts | 52 | FUNCTION_BODY | `sumitWebhookSecret: Boolean(process.env.SUMIT_WEBHOOK_SECRET),` |
+| server/routes/admin-sumit.ts | 74 | FUNCTION_BODY | `sumitWebhookSecret: Boolean(process.env.SUMIT_WEBHOOK_SECRET),` |
 | server/services/SumitClient.ts | 37 | FUNCTION_BODY | `webhookSecret: process.env.SUMIT_WEBHOOK_SECRET,` |
 | server/services/SumitPreflightCheck.ts | 175 | FUNCTION_BODY | `: fail('env_webhook_secret', 'SUMIT_WEBHOOK_SECRET חסר', 'process.env.SUMIT_WEBHOOK_SECRET not set'),` |
 
