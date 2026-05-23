@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BookingSlotConflictError } from '../lib/marketplaceSlotLock';
+import { acquireSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 
 // Integration-style tests against the real DB are deliberately out of
 // scope here — they need a Postgres instance with btree_gist available.
@@ -50,5 +50,35 @@ describe('slot-lock range semantics (documented behavior)', () => {
     // for the same provider fails with 23P01.
     expect(b.start.getTime()).toBeLessThan(a.end.getTime());
     expect(b.end.getTime()).toBeGreaterThan(a.start.getTime());
+  });
+});
+
+describe('acquireSlotLock — pre-DB input validation', () => {
+  // Doesn't touch the DB — the guard fires before any insert.
+  const dummyTx = {} as any;
+  const baseInput = {
+    providerId: 'prov_42',
+    bookingRef: 'br_test',
+    serviceType: 'sitter',
+  };
+
+  it('rejects end strictly less than start', async () => {
+    await expect(
+      acquireSlotLock(dummyTx, {
+        ...baseInput,
+        startAt: new Date('2026-05-23T11:00:00Z'),
+        endAt: new Date('2026-05-23T10:00:00Z'),
+      }),
+    ).rejects.toThrow(/Slot end must be strictly after start/);
+  });
+
+  it('rejects end equal to start (zero-length slot)', async () => {
+    await expect(
+      acquireSlotLock(dummyTx, {
+        ...baseInput,
+        startAt: new Date('2026-05-23T10:00:00Z'),
+        endAt: new Date('2026-05-23T10:00:00Z'),
+      }),
+    ).rejects.toThrow(/Slot end must be strictly after start/);
   });
 });
