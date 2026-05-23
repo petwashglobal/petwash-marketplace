@@ -28,15 +28,57 @@ import { logger } from '../lib/logger';
  * Env is read on every call (not cached at module load) so tests can
  * mutate process.env per case and ops can flip SUMIT_ENABLED without a
  * process restart. Cost is negligible — these are property reads.
+ *
+ * Mission-5: SUMIT_SANDBOX = 'true' routes calls to SUMIT's sandbox
+ * environment. When unset/false, calls go to production. Default is
+ * SANDBOX-ON so a misconfigured deploy never accidentally hits prod
+ * SUMIT — operator must explicitly opt-in to production by setting
+ * SUMIT_SANDBOX='false' (the only allowed string for prod).
  */
 function readEnv() {
+  const explicitSandbox = process.env.SUMIT_SANDBOX;
+  // Sandbox defaults to TRUE. Only the explicit string 'false' opts
+  // into production. Any other value (including unset) → sandbox.
+  const sandbox = explicitSandbox !== 'false';
+  const defaultBase = sandbox
+    ? 'https://sandbox-api.sumit.co.il'
+    : 'https://api.sumit.co.il';
   return {
-    baseUrl: process.env.SUMIT_API_BASE_URL || 'https://api.sumit.co.il',
+    baseUrl: process.env.SUMIT_API_BASE_URL || defaultBase,
     apiKey: process.env.SUMIT_API_KEY,
     companyId: process.env.SUMIT_COMPANY_ID,
     webhookSecret: process.env.SUMIT_WEBHOOK_SECRET,
     enabled: process.env.SUMIT_ENABLED === 'true',
+    sandbox,
   };
+}
+
+/**
+ * Pull the SUMIT-assigned document id out of an arbitrarily-shaped JSON
+ * response. SUMIT's exact field name is not verified in this PR — try
+ * common variants in priority order. If none match, return undefined
+ * (caller treats as a partial success and surfaces the raw response in
+ * the outbound audit row).
+ */
+function extractDocumentId(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const b = body as Record<string, unknown>;
+  // Try known/likely shapes:
+  const candidates = [
+    b.DocumentNumber,
+    b.documentNumber,
+    (b.Document as Record<string, unknown> | undefined)?.DocumentNumber,
+    (b.Document as Record<string, unknown> | undefined)?.Number,
+    b.DocumentID,
+    b.documentId,
+    b.ID,
+    b.id,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c.trim();
+    if (typeof c === 'number' && Number.isFinite(c)) return String(c);
+  }
+  return undefined;
 }
 
 /**
@@ -115,11 +157,25 @@ export class SumitClient {
   }
 
   /**
-   * Will POST /accounting/documents/create/ when wired. For now it logs
-   * the intent and returns wired:false. The caller must NOT persist
-   * sumit_document_id when wired:false.
+   * POST /accounting/documents/create/
+   *
+   * Mission-5: real HTTP call to SUMIT (sandbox by default).
+   *
+   * BODY SHAPE WARNING (see also docs/finance/sumit-api-known-vs-assumed-2026-05-23.md):
+   * The exact field names below are based on the public SUMIT capability
+   * surface + the SDD's documented body-embedded Credentials pattern,
+   * NOT the authenticated swagger spec (which is gated behind a SUMIT
+   * login this environment cannot reach). When the real swagger lands:
+   *   - verify the top-level keys (PascalCase per .NET convention?
+   *     camelCase? snake_case?)
+   *   - verify the document-type enum (TaxInvoice / חשבונית מס mapping)
+   *   - verify the items array vs single-line shorthand
+   * Until verified, this MUST run against SUMIT_SANDBOX=true. The
+   * dispatcher (Mission-4 SumitDispatcher) is responsible for never
+   * letting a production send fire without explicit operator approval.
    */
   async createDocument(input: SumitDocumentInput): Promise<SumitDocumentResult> {
+    const env = readEnv();
     if (!isWired()) {
       logger.info('[SumitClient] createDocument called while not wired', {
         supplierInvoiceId: input.supplierInvoiceId,
@@ -130,13 +186,113 @@ export class SumitClient {
         wired: false,
         idempotencyKey: input.idempotencyKey,
         reason:
-          'SumitClient stub — not wired. Real send arrives with PR-S4 once ff.supplier_invoice_control.sumit_send.enabled is ON.',
+          'SumitClient not wired — set SUMIT_ENABLED=true plus all credentials',
       };
     }
 
-    throw new Error(
-      'SumitClient.createDocument live path not implemented yet — see PR-S4'
-    );
+    // Body shape: body-embedded Credentials per SDD.
+    // The "Items" array uses one line per invoice. Quantity 1, unit price
+    // = amount-before-vat (SUMIT applies VAT per item per its own rules).
+    const body = {
+      Credentials: {
+        CompanyID: env.companyId,
+        APIKey: env.apiKey,
+      },
+      // 1 = TaxInvoice (חשבונית מס). VERIFY against swagger when
+      // available — could also be 2/3/n.
+      DocumentType: 1,
+      Customer: {
+        Name: input.customer.name,
+        SearchMode: 0,
+        ExternalIdentifier: input.customer.businessNumber || undefined,
+        EmailAddress: input.customer.email || undefined,
+      },
+      Items: [
+        {
+          Item: { Name: input.description },
+          Quantity: 1,
+          UnitPrice: input.amountBeforeVat,
+          Currency: input.currency,
+          // VAT rules per SUMIT's per-item config; we leave them to compute.
+        },
+      ],
+      // Idempotency hint — exact field name unverified. Sending both
+      // common variants (ExternalIdentifier on the doc root, plus a
+      // header) for resilience until verified.
+      ExternalIdentifier: input.idempotencyKey,
+    };
+
+    const url = `${env.baseUrl}/accounting/documents/create/`;
+    const startMs = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          // Idempotency-Key header — RFC-style; SUMIT may or may not
+          // honor it. Belt-and-braces with the body field above.
+          'Idempotency-Key': input.idempotencyKey,
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      const msg = (networkErr as Error).message;
+      logger.error('[SumitClient] network error', {
+        supplierInvoiceId: input.supplierInvoiceId,
+        url,
+        elapsedMs: Date.now() - startMs,
+        err: msg,
+      });
+      return {
+        wired: false,
+        idempotencyKey: input.idempotencyKey,
+        reason: `Network error: ${msg}`,
+      };
+    }
+
+    let parsedBody: unknown = null;
+    try {
+      parsedBody = await res.json();
+    } catch {
+      // SUMIT may return an empty/non-JSON body on some error paths.
+    }
+
+    if (!res.ok) {
+      logger.warn('[SumitClient] non-2xx', {
+        supplierInvoiceId: input.supplierInvoiceId,
+        status: res.status,
+        url,
+        sandbox: env.sandbox,
+        elapsedMs: Date.now() - startMs,
+      });
+      return {
+        wired: true,
+        idempotencyKey: input.idempotencyKey,
+        reason: `SUMIT returned ${res.status}`,
+        rawResponse: parsedBody,
+      };
+    }
+
+    // Extract the SUMIT-assigned document id. Field name unverified;
+    // try common variants in order.
+    const sumitDocumentId = extractDocumentId(parsedBody);
+
+    logger.info('[SumitClient] document created', {
+      supplierInvoiceId: input.supplierInvoiceId,
+      sumitDocumentId,
+      sandbox: env.sandbox,
+      elapsedMs: Date.now() - startMs,
+    });
+
+    return {
+      wired: true,
+      idempotencyKey: input.idempotencyKey,
+      sumitDocumentId,
+      rawResponse: parsedBody,
+    };
   }
 
   /**
