@@ -15,6 +15,8 @@ import { EmailService } from "./emailService";
 import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
+import adminSuppliersRoutes from "./routes/admin-suppliers";
+import adminSumitRoutes from "./routes/admin-sumit";
 import { requireDpaAccepted } from "./middleware/dpa-guard";
 import stationsRoutes from "./routes/stations";
 import stationSettlementsRoutes from "./routes/station-settlements";
@@ -9708,6 +9710,8 @@ self.addEventListener('notificationclick', (event) => {
   // ff.supplier_invoice_control.enabled and returns 404 when the flag is OFF,
   // so mounting here is a safe no-op until the flag is flipped.
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
+  app.use('/api/admin/suppliers', adminSuppliersRoutes);
+  app.use('/api/admin/sumit', adminSumitRoutes);
 
   // PetWash Privilege registration - Public (no auth required to join)
   const privilegeLoyaltyRoutes = await import('./routes/privilege-loyalty');
