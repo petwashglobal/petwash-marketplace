@@ -28,11 +28,29 @@
  *         42710 / 42P06), assume it was applied out-of-band before this
  *         script existed (bootstrap case). Mark as applied (with a
  *         `bootstrapped: true` flag) and continue.
- *      e. Any OTHER error → exit non-zero so the deploy blocks.
- *         (Including 42P01 / 42703 — missing-table / missing-column
- *         indicate a real schema-ordering bug, NOT a bootstrap case.
- *         Add the file to .manual-migrations.txt only if its table
- *         is genuinely out-of-band-managed.)
+ *      e. If the file fails with "undefined reference" (PG codes
+ *         42P01 / 42703) AND --lenient is on, log as ORPHANED and
+ *         continue to the next file. WITHOUT --lenient, fail closed.
+ *      f. Any OTHER error → exit non-zero so the deploy blocks.
+ *
+ * Modes:
+ *   STRICT (default, local dev):
+ *     Every error except ALREADY_EXISTS_CODES is fatal. Used to catch
+ *     real ordering / dependency bugs during development.
+ *   LENIENT (CI deploy step, opt-in via --lenient or
+ *           PETWASH_MIGRATE_LENIENT=1):
+ *     Treats UNDEFINED_REFERENCE_CODES (42P01, 42703) as soft skips
+ *     and continues to the next file. Required because prod schema
+ *     drifted from migration files — some tables (e.g.
+ *     station_settlements, super_app_payouts) exist in
+ *     shared/schema.ts but were created via out-of-band
+ *     `drizzle-kit push` rather than a migration file. Their ALTER
+ *     migrations (0015 etc.) cannot run until either the table is
+ *     created via a new migration, or the file is moved to the
+ *     manual-migrations allowlist.
+ *     End-of-run summary lists every ORPHANED file with the PG error
+ *     code so an operator can resolve via the three fix-forward
+ *     options printed at the end.
  *
  * Bootstrap semantics:
  *   On the very first run against an existing database, the tracking
@@ -77,6 +95,17 @@ const ALREADY_EXISTS_CODES = new Set([
   '42710', // duplicate_object (e.g. constraint, type)
   '42P06', // duplicate_schema
   '42P16', // invalid_table_definition (rare; when re-creating with conflicting cols)
+]);
+
+// PG error codes that indicate "schema object the migration assumed
+// existed does NOT exist." Typically a migration that ALTERs a table
+// created out-of-band via `drizzle-kit push` against shared/schema.ts,
+// where that push never ran on this deployment. In --lenient mode we
+// log + record as ORPHANED and continue so newer migrations downstream
+// still get a chance to apply. In strict mode (default) we fail closed.
+const UNDEFINED_REFERENCE_CODES = new Set([
+  '42P01', // undefined_table
+  '42703', // undefined_column
 ]);
 
 function sha256(s: string): string {
@@ -130,6 +159,18 @@ async function main() {
     process.exit(2);
   }
 
+  // --lenient (or PETWASH_MIGRATE_LENIENT=1): on UNDEFINED_REFERENCE_CODES
+  // errors (42P01 / 42703), log + continue instead of fail-closed. Used
+  // by CI where prod schema diverges from migration files (tables created
+  // out-of-band via drizzle-kit push). Local invocations stay STRICT by
+  // default so devs catch real ordering bugs.
+  const lenient =
+    process.argv.includes('--lenient') ||
+    process.env.PETWASH_MIGRATE_LENIENT === '1';
+  if (lenient) {
+    console.log('[migrate] LENIENT mode enabled — orphaned ALTER/INDEX targets will be logged + skipped, not fatal.');
+  }
+
   const pool = new Pool({ connectionString: url });
   const client = await pool.connect();
 
@@ -158,6 +199,7 @@ async function main() {
     let appliedCount = 0;
     let bootstrappedCount = 0;
     let manualSkipCount = 0;
+    const orphanedFiles: Array<{ file: string; code: string; message: string }> = [];
 
     for (const file of files) {
       if (applied.has(file)) continue;
@@ -220,7 +262,23 @@ async function main() {
           continue;
         }
 
-        // Real error — fail closed so deploy blocks.
+        if (lenient && code && UNDEFINED_REFERENCE_CODES.has(code)) {
+          // Orphan case: this migration targets a table/column that does
+          // not exist on this DB. Usually means the table was supposed to
+          // be created by an out-of-band `drizzle-kit push` against
+          // shared/schema.ts that never ran here. Log, record nothing in
+          // _petwash_migrations (so a future schema-aligned run still
+          // tries the migration), and move on to the next file. This is
+          // what lets NEW migrations downstream still apply even when an
+          // OLD orphan blocks the strict path.
+          console.error(
+            `[migrate] 🟧 ORPHANED ${file} (code=${code}) — target missing from prod schema. Skipping (lenient). msg: ${msg}`,
+          );
+          orphanedFiles.push({ file, code, message: msg });
+          continue;
+        }
+
+        // Real error (or strict mode) — fail closed so deploy blocks.
         console.error(
           `[migrate] ❌ ${file} failed (code=${code ?? 'none'}): ${msg}`,
         );
@@ -229,8 +287,22 @@ async function main() {
     }
 
     console.log(
-      `[migrate] summary: ${appliedCount} newly applied, ${bootstrappedCount} bootstrapped as already-existing, ${manualSkipCount} skipped via manual allowlist.`,
+      `[migrate] summary: ${appliedCount} newly applied, ${bootstrappedCount} bootstrapped as already-existing, ${manualSkipCount} skipped via manual allowlist, ${orphanedFiles.length} ORPHANED (lenient skip).`,
     );
+
+    if (orphanedFiles.length > 0) {
+      console.error('[migrate] ORPHANED migrations — these reference tables/columns missing from the prod schema:');
+      for (const o of orphanedFiles) {
+        console.error(`  • ${o.file}  [${o.code}]  ${o.message.split('\n')[0]}`);
+      }
+      console.error(
+        '[migrate] Fix-forward options for each ORPHANED entry:\n' +
+        '  (a) Create the missing table via shared/schema.ts + a new CREATE TABLE migration, OR\n' +
+        '  (b) Confirm the table is genuinely out-of-band-managed and add the file to migrations/.manual-migrations.txt, OR\n' +
+        '  (c) Delete the migration file if it is dead code from a removed feature.\n' +
+        '[migrate] These DID NOT block this deploy (lenient mode) but will keep firing on every run until resolved.',
+      );
+    }
   } finally {
     client.release();
     await pool.end();

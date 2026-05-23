@@ -89,6 +89,83 @@ describe('apply-pending-migrations — manual-migrations allowlist', () => {
   });
 });
 
+describe('apply-pending-migrations — --lenient mode (M-DEPLOY-1b)', () => {
+  // Why lenient mode exists: prod schema drifted from migration files
+  // (tables created via out-of-band drizzle-kit push). One orphaned
+  // ALTER (e.g. 0015 on station_settlements) blocking every downstream
+  // migration is what caused CI run #968. The fix is to log orphans
+  // and continue so newer migrations still apply. Strict mode is
+  // preserved for local dev to catch real ordering bugs.
+
+  it('declares an UNDEFINED_REFERENCE_CODES set with 42P01 and 42703', () => {
+    const codesBlock = RUNNER_SRC.match(
+      /UNDEFINED_REFERENCE_CODES\s*=\s*new Set\(\[[\s\S]*?\]\)/,
+    )?.[0] ?? '';
+    expect(codesBlock).toMatch(/['"]42P01['"]/);
+    expect(codesBlock).toMatch(/['"]42703['"]/);
+  });
+
+  it('UNDEFINED_REFERENCE_CODES is SEPARATE from ALREADY_EXISTS_CODES', () => {
+    // If 42P01 leaks into ALREADY_EXISTS_CODES, the runner would silently
+    // bootstrap-record migrations whose target tables are missing —
+    // dangerous schema-divergence masking.
+    const alreadyExists = RUNNER_SRC.match(
+      /ALREADY_EXISTS_CODES\s*=\s*new Set\(\[[\s\S]*?\]\)/,
+    )?.[0] ?? '';
+    expect(alreadyExists).not.toMatch(/['"]42P01['"]/);
+    expect(alreadyExists).not.toMatch(/['"]42703['"]/);
+  });
+
+  it('lenient mode is opt-in via --lenient flag OR PETWASH_MIGRATE_LENIENT=1', () => {
+    expect(RUNNER_SRC).toMatch(/process\.argv\.includes\(['"]--lenient['"]\)/);
+    expect(RUNNER_SRC).toMatch(/PETWASH_MIGRATE_LENIENT === ['"]1['"]/);
+  });
+
+  it('default mode is STRICT (no flag → lenient is false)', () => {
+    // The lenient guard is a logical OR; nothing flips it on by default.
+    const block = RUNNER_SRC.match(
+      /const lenient\s*=[\s\S]*?;/,
+    )?.[0] ?? '';
+    expect(block).toMatch(/process\.argv\.includes\(['"]--lenient['"]\)/);
+    expect(block).toMatch(/===\s*['"]1['"]/);
+    // Must not have a `|| true` or similar default-on hack.
+    expect(block).not.toMatch(/\|\|\s*true/);
+  });
+
+  it('UNDEFINED_REFERENCE_CODES path is gated on `lenient` — strict mode still fails closed', () => {
+    expect(RUNNER_SRC).toMatch(
+      /if \(lenient && code && UNDEFINED_REFERENCE_CODES\.has\(code\)\)/,
+    );
+  });
+
+  it('orphaned migrations are recorded in orphanedFiles array (NOT in _petwash_migrations)', () => {
+    // Important: orphan-skips must NOT write to _petwash_migrations so
+    // a future schema-aligned run gets another chance at the migration.
+    // The skip-orphan block is between the already-exists block and the
+    // fail-closed branch.
+    const orphanBlock = RUNNER_SRC.match(
+      /if \(lenient && code && UNDEFINED_REFERENCE_CODES\.has\(code\)\)[\s\S]*?continue;/,
+    )?.[0] ?? '';
+    expect(orphanBlock).toMatch(/orphanedFiles\.push/);
+    // Must NOT INSERT into _petwash_migrations from this branch.
+    expect(orphanBlock).not.toMatch(/INSERT INTO _petwash_migrations/);
+  });
+
+  it('CI workflow invokes the script with --lenient', () => {
+    const yaml = fs.readFileSync(
+      path.join(REPO_ROOT, '.github', 'workflows', 'petwash-ci.yml'),
+      'utf8',
+    );
+    expect(yaml).toMatch(/apply-pending-migrations\.ts --lenient/);
+  });
+
+  it('summary line includes the ORPHANED count + a fix-forward operator message', () => {
+    expect(RUNNER_SRC).toMatch(/ORPHANED \(lenient skip\)/);
+    expect(RUNNER_SRC).toMatch(/ORPHANED migrations — these reference tables\/columns missing from the prod schema/);
+    expect(RUNNER_SRC).toMatch(/Fix-forward options for each ORPHANED entry/);
+  });
+});
+
 describe('apply-pending-migrations — allowlist content', () => {
   // The Tranzila migration is the original landmine that motivated this
   // feature. If the table ever gets created in prod (Tranzila resurrected),
