@@ -53,6 +53,8 @@ const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
 const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
 const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
+const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
+const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
 const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
 const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
@@ -2155,6 +2157,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminSupplierInvoiceDetail />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/suppliers">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSuppliers />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/suppliers/:id">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSupplierDetail />
             </AdminRouteGuard>
           )}
         </Route>
