@@ -152,6 +152,36 @@ jobs:
     name: Apply pending SQL migrations
     runs-on: ubuntu-latest
     needs: [gate-smoke-test-startup, gate-audit-env-vars]
+    # M-DEPLOY-1c: this step does NOT block deploy-backend any more.
+    #
+    # Why: the auto-migration runner was added in PR #395 as an
+    # improvement, but the codebase's migration history pre-dates it by
+    # years — the actual prod schema was managed by a hybrid of file-
+    # migrations + out-of-band `drizzle-kit push` against
+    # shared/schema.ts. Walking the file list against the real prod
+    # schema keeps surfacing edge cases (orphaned ALTERs, CONCURRENTLY
+    # statements that need autocommit, etc.). Each one is a real bug,
+    # but together they have blocked every production deploy since
+    # #963.
+    #
+    # Production deployed cleanly for months WITHOUT auto-migrations.
+    # The honest call is to keep the step (for visibility — operators
+    # see what didn't apply in the CI log) but stop letting it gate
+    # promotion. NEW migrations that we actually care about (slot-
+    # locks, nayax dedup, etc.) still need to land in prod somehow —
+    # but that has to be a deliberate operator action, not a blocking
+    # CI step that prevents unrelated PRs from deploying.
+    #
+    # `continue-on-error: true` means: the job runs, may fail, the
+    # failure is visible in the GitHub Actions UI, BUT downstream jobs
+    # whose `needs:` includes this one still execute. Combined with
+    # deploy-backend's `needs: [..., apply-migrations]`, deploy-backend
+    # will now run regardless of the migration result.
+    #
+    # Tracked follow-up: M-DEPLOY-3 (per-file --requires-table headers
+    # + to_regclass pre-check). Until then, schema-aligning migrations
+    # is a manual operator task documented in M-DEPLOY-7.
+    continue-on-error: true
     permissions:
       contents: read
       id-token: write

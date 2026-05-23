@@ -108,6 +108,26 @@ const UNDEFINED_REFERENCE_CODES = new Set([
   '42703', // undefined_column
 ]);
 
+// Statements that CANNOT run inside a transaction block. Postgres
+// returns code 25001 (active_sql_transaction) if any of these are sent
+// after BEGIN. The runner detects them via regex (comments stripped)
+// and skips the BEGIN/COMMIT wrap for affected files. Each statement
+// runs in its own implicit transaction (autocommit), so if a later
+// statement fails the earlier ones stay committed — fine for the
+// IF NOT EXISTS idempotent shape these migrations use today.
+const NON_TRANSACTIONAL_RE =
+  /\bCONCURRENTLY\b|\bVACUUM\b|\bREINDEX\s+(?!OPTIONS)|ALTER\s+SYSTEM\b|CREATE\s+DATABASE\b|DROP\s+DATABASE\b|CREATE\s+TABLESPACE\b|DROP\s+TABLESPACE\b/i;
+
+function isNonTransactional(sql: string): boolean {
+  // Strip line + block comments so documentation references to
+  // CONCURRENTLY etc. (e.g. the header comment in 0016) don't trigger
+  // false positives.
+  const stripped = sql
+    .replace(/--[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  return NON_TRANSACTIONAL_RE.test(stripped);
+}
+
 function sha256(s: string): string {
   return createHash('sha256').update(s).digest('hex');
 }
@@ -226,20 +246,39 @@ async function main() {
         continue;
       }
 
+      const nonTx = isNonTransactional(sql);
+
       try {
-        await client.query('BEGIN');
-        await client.query(sql);
-        await client.query(
-          `INSERT INTO _petwash_migrations (filename, checksum, bootstrapped)
-           VALUES ($1, $2, false)
-           ON CONFLICT (filename) DO NOTHING`,
-          [file, checksum],
-        );
-        await client.query('COMMIT');
+        if (nonTx) {
+          // CREATE INDEX CONCURRENTLY / VACUUM / REINDEX / etc. cannot
+          // run inside BEGIN/COMMIT (PG code 25001). Send the SQL in
+          // autocommit mode; each statement gets its own implicit
+          // transaction. IF NOT EXISTS guards make partial-failure on
+          // retry safe for the migrations we use today.
+          console.log(`[migrate] (non-tx) ${file} contains CONCURRENTLY/VACUUM/etc — skipping BEGIN/COMMIT wrap.`);
+          await client.query(sql);
+          await client.query(
+            `INSERT INTO _petwash_migrations (filename, checksum, bootstrapped)
+             VALUES ($1, $2, false)
+             ON CONFLICT (filename) DO NOTHING`,
+            [file, checksum],
+          );
+        } else {
+          await client.query('BEGIN');
+          await client.query(sql);
+          await client.query(
+            `INSERT INTO _petwash_migrations (filename, checksum, bootstrapped)
+             VALUES ($1, $2, false)
+             ON CONFLICT (filename) DO NOTHING`,
+            [file, checksum],
+          );
+          await client.query('COMMIT');
+        }
         console.log(`[migrate] ✅ applied: ${file}`);
         appliedCount += 1;
       } catch (err) {
-        // Always rollback before deciding next move.
+        // Always rollback before deciding next move. ROLLBACK is a
+        // no-op when there's no active transaction (non-tx path).
         try { await client.query('ROLLBACK'); } catch { /* already rolled back */ }
 
         const code = (err as { code?: string }).code;
