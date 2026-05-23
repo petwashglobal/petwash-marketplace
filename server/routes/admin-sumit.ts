@@ -25,7 +25,7 @@ import { supplierInvoices } from '../../shared/schema';
 import { suppliers } from '../../shared/schema-corporate';
 import { systemConfig } from '../services/SystemConfig';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
-import { loadUserRole, checkAccessLevel } from '../middleware/rbac';
+import { loadUserRole, checkAccessLevel, isSuperAdminVerified } from '../middleware/rbac';
 import { runPreflight, type SumitMode } from '../services/SumitPreflightCheck';
 import { logger } from '../lib/logger';
 
@@ -38,11 +38,33 @@ function flagGate(_req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-const requireFinanceOrAdmin = [
+/**
+ * Tightened gate for the SUMIT control surface. The control panel exposes
+ * env-presence booleans (which secrets are/aren't set), the activation
+ * mode, the feature-flag state, and a per-bucket invoice count. None of
+ * this is operational data for a regular finance admin — it's the
+ * "wiring inspector" view. Limit to super-admin so a compromised
+ * regular-admin account cannot enumerate which secrets are configured.
+ *
+ * Pattern: validateFirebaseToken → loadUserRole → checkAccessLevel(8) →
+ *          require-super-admin.
+ *
+ * On non-super-admin → 404 (not 403) so we don't reveal that the
+ * endpoint exists to lower-privilege admins.
+ */
+function requireSuperAdminGate(req: Request, res: Response, next: NextFunction) {
+  if (!isSuperAdminVerified(req)) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  next();
+}
+
+const requireSuperAdmin = [
   flagGate,
   validateFirebaseToken,
   loadUserRole,
   checkAccessLevel(8),
+  requireSuperAdminGate,
 ];
 
 function envFlags() {
@@ -55,7 +77,7 @@ function envFlags() {
   };
 }
 
-router.get('/health', ...requireFinanceOrAdmin, async (_req: Request, res: Response) => {
+router.get('/health', ...requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
     const mode = systemConfig.get('sumit.mode') as SumitMode;
     const parentFlag = systemConfig.get('ff.supplier_invoice_control.enabled');
@@ -95,7 +117,7 @@ router.get('/health', ...requireFinanceOrAdmin, async (_req: Request, res: Respo
 
 router.get(
   '/preflight/:invoiceId',
-  ...requireFinanceOrAdmin,
+  ...requireSuperAdmin,
   async (req: Request, res: Response) => {
     const invoiceId = Number(req.params.invoiceId);
     if (!Number.isInteger(invoiceId) || invoiceId <= 0) {
