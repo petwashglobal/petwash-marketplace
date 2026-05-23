@@ -17,6 +17,7 @@ import {
   Receipt,
   XCircle,
   ExternalLink,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,12 @@ type Invoice = {
   rejectedAt: string | null;
   rejectionReason: string | null;
   approvalNote: string | null;
+  // SUMIT linkage (PR-S2 columns now on main).
+  sumitDocumentId: string | null;
+  sumitStatus: "pending" | "sent" | "confirmed" | "failed" | null;
+  sumitSentAt: string | null;
+  sumitConfirmedAt: string | null;
+  sumitLastError: string | null;
   createdAt: string;
 };
 
@@ -135,6 +142,29 @@ export default function AdminSupplierInvoiceDetail() {
       return res.json();
     },
     enabled: Number.isInteger(id) && id > 0,
+  });
+
+  const sendToSumit = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/supplier-invoices/${id}/send-to-sumit`),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/supplier-invoices/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier-invoices"] });
+      if (res?.sent) {
+        toast({
+          title: "נשלח ל-SUMIT",
+          description: res.sumitDocumentId ? `מס׳ מסמך: ${res.sumitDocumentId}` : undefined,
+        });
+      } else if (res?.wired === false) {
+        toast({
+          title: "SUMIT לא מוגדר",
+          description: res.reason ?? "חסרים פרטי גישה ל-SUMIT בשרת",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "שליחה ל-SUMIT נכשלה", description: err.message, variant: "destructive" });
+    },
   });
 
   const approve = useMutation({
@@ -270,6 +300,20 @@ export default function AdminSupplierInvoiceDetail() {
                       <span>—</span>
                     )}
                   </div>
+                  <div>
+                    <div className="text-[11px] text-gray-500">SUMIT</div>
+                    <div className="font-mono text-sm">
+                      {invoice.sumitStatus === "sent" || invoice.sumitStatus === "confirmed" ? (
+                        <span className="text-emerald-700">
+                          ✓ {invoice.sumitDocumentId ?? "נשלח"}
+                        </span>
+                      ) : invoice.sumitStatus === "failed" ? (
+                        <span className="text-red-600">כשל — {invoice.sumitLastError ?? "—"}</span>
+                      ) : (
+                        <span className="text-gray-400">לא נשלח</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -292,6 +336,37 @@ export default function AdminSupplierInvoiceDetail() {
                 )}
               </CardContent>
             </Card>
+
+            {invoice.status === "ready_for_accountant" &&
+              invoice.sumitStatus !== "sent" &&
+              invoice.sumitStatus !== "confirmed" && (
+                <Card className="border-slate-200 mb-4">
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium">שליחה ל-SUMIT</div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          רישום חשבונית הספק במערכת הנהלת חשבונות
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => sendToSumit.mutate()}
+                        disabled={sendToSumit.isPending}
+                        className="gap-1.5"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        {sendToSumit.isPending ? "שולח…" : "שלח ל-SUMIT"}
+                      </Button>
+                    </div>
+                    {invoice.sumitStatus === "failed" && invoice.sumitLastError && (
+                      <div className="mt-3 text-xs text-red-700">
+                        ניסיון אחרון נכשל: {invoice.sumitLastError} — לחץ שלח שוב כדי לנסות מחדש (אותו idempotency key).
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
             {!isTerminal && (
               <Card className="border-slate-200">
