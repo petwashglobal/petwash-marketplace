@@ -197,7 +197,18 @@ jobs:
           echo "Applying pending SQL migrations to production database..."
           # Uses scripts/apply-pending-migrations.ts — bootstrap-safe + idempotent.
           # See that file's header docstring for full semantics.
-          npx tsx scripts/apply-pending-migrations.ts
+          #
+          # --lenient: tolerate UNDEFINED_REFERENCE_CODES (42P01 / 42703)
+          # because prod schema drifted from migration files — some tables
+          # exist via out-of-band `drizzle-kit push` against shared/schema.ts
+          # rather than a CREATE TABLE migration. Without --lenient one
+          # orphaned ALTER (e.g. 0015 on station_settlements) blocks every
+          # downstream migration from applying — including the NEW ones we
+          # actually need (slot-locks, nayax dedup, etc.). Lenient mode
+          # logs orphans as ORPHANED, continues to the next file, and
+          # prints an end-of-run summary so operators see what didn't run.
+          # Local dev invocations stay STRICT (without the flag).
+          npx tsx scripts/apply-pending-migrations.ts --lenient
           echo "✅ Migrations step finished."
 
   deploy-backend:
