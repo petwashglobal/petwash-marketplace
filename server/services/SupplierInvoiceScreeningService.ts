@@ -35,6 +35,7 @@ import {
 } from '../../shared/schema';
 import { storage } from '../lib/firebase-admin';
 import { receiptOCRService } from './ReceiptOCRService';
+import { isShaamAllocationRequired } from '../../shared/israel-compliance-config';
 import { receiptFraudDetection } from './ReceiptFraudDetection';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { logger } from '../lib/logger';
@@ -107,13 +108,25 @@ class SupplierInvoiceScreeningService {
       logger.warn('[SupplierInvoiceScreening] Signed-URL generation failed', { err: (err as Error).message });
     }
 
-    // Optional supplier lookup for business-number / name comparison.
+    // Optional supplier lookup for business-number / name / Osek-classification
+    // comparison. osek_classification is read so the screening lib can flag a
+    // patur-supplier-charging-VAT mismatch (per PR-S5c).
     let supplierRow:
-      | { id: number; companyName: string; taxId: string | null }
+      | {
+          id: number;
+          companyName: string;
+          taxId: string | null;
+          osekClassification: string;
+        }
       | null = null;
     if (input.supplierId != null) {
       const [row] = await db
-        .select({ id: suppliers.id, companyName: suppliers.companyName, taxId: suppliers.taxId })
+        .select({
+          id: suppliers.id,
+          companyName: suppliers.companyName,
+          taxId: suppliers.taxId,
+          osekClassification: suppliers.osekClassification,
+        })
         .from(suppliers)
         .where(eq(suppliers.id, input.supplierId))
         .limit(1);
@@ -153,6 +166,23 @@ class SupplierInvoiceScreeningService {
       fraudEngineAvailable = false;
     }
 
+    // Israel ITA 2026 — compute whether this invoice needs a SHAAM
+    // allocation number. SUMIT/ITA threshold is on ex-VAT amount; we only
+    // have totalAmount from OCR today (ex-VAT extraction is a deferred
+    // TODO), so we approximate by dividing total by 1.18. The
+    // approximation is intentionally PESSIMISTIC for invoices near the
+    // threshold — better to flag a borderline case for finance review
+    // than to silently let a real allocation requirement slip through.
+    const invoiceDate = ocrData?.date ? new Date(ocrData.date) : new Date();
+    const exVatApprox =
+      typeof ocrData?.totalAmount === 'number' ? ocrData.totalAmount / 1.18 : null;
+    const shaamRequired =
+      exVatApprox != null ? isShaamAllocationRequired(exVatApprox, invoiceDate) : false;
+
+    const osekClassification =
+      (supplierRow?.osekClassification as 'patur' | 'murshe' | 'chevra' | 'unknown' | undefined) ??
+      undefined;
+
     const facts: ScreeningInput = {
       fileHashDuplicate,
       // Per-supplier invoice-number duplicate detection is deferred until
@@ -170,6 +200,13 @@ class SupplierInvoiceScreeningService {
       ocrAvailable,
       fraudEngineAvailable,
       fraudEngineScore,
+      // Israel ITA 2026 + Osek classification — flow into the screening rules
+      // landed by PR-S5a + PR-S5c. When the supplier is 'unknown' the lib emits
+      // an osek_classification_unknown warning so finance classifies the
+      // supplier before approving.
+      shaamAllocationRequired: shaamRequired,
+      shaamAllocationNumberOnInvoice: ocrData?.shaamAllocationNumber ?? null,
+      supplierOsekClassification: osekClassification,
     };
     const screening = screenInvoice(facts);
 
@@ -196,6 +233,11 @@ class SupplierInvoiceScreeningService {
         riskLevel: screening.riskLevel,
         status: screening.status,
         uploadedBy: input.uploadedByUid,
+        // Israel ITA 2026 — persist the computed requirement and the
+        // OCR-extracted allocation number (when present). These columns
+        // power the admin "missing SHAAM" filter and reconciliation.
+        shaamRequired,
+        shaamAllocationNumber: ocrData?.shaamAllocationNumber ?? null,
         createdAt: now,
         updatedAt: now,
       })
@@ -385,6 +427,42 @@ class SupplierInvoiceScreeningService {
       .from(supplierInvoiceChecks)
       .where(eq(supplierInvoiceChecks.invoiceId, invoiceId));
     return { invoice, checks };
+  }
+
+  /**
+   * Admin list endpoint. Returns the most recent invoices first, with
+   * optional risk-level and status filters. Pagination via offset/limit.
+   * Cap is 100 per page so the admin table stays responsive.
+   */
+  async list(opts: {
+    limit?: number;
+    offset?: number;
+    riskLevel?: 'green' | 'yellow' | 'red';
+    status?: string;
+  }) {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
+    const offset = Math.max(opts.offset ?? 0, 0);
+
+    const conditions = [] as any[];
+    if (opts.riskLevel) conditions.push(eq(supplierInvoices.riskLevel, opts.riskLevel));
+    if (opts.status) conditions.push(eq(supplierInvoices.status, opts.status));
+
+    const baseQuery = db
+      .select()
+      .from(supplierInvoices)
+      .$dynamic();
+
+    const filtered = conditions.length > 0 ? baseQuery.where(and(...conditions)) : baseQuery;
+    const rows = await filtered.limit(limit).offset(offset);
+
+    // Sort newest first in app code (Drizzle orderBy DESC syntax varies by version).
+    rows.sort((a, b) => {
+      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bT - aT;
+    });
+
+    return { rows, limit, offset };
   }
 }
 

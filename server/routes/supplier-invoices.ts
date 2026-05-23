@@ -105,6 +105,25 @@ router.post('/', ...requireFinanceOrAdmin, upload.single('file'), async (req: Re
   }
 });
 
+// GET /api/supplier-invoices — admin list with optional filters
+router.get('/', ...requireFinanceOrAdmin, async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const rawOffset = Number(req.query.offset);
+    const limit = Number.isFinite(rawLimit) ? rawLimit : undefined;
+    const offset = Number.isFinite(rawOffset) ? rawOffset : undefined;
+    const riskLevel = typeof req.query.riskLevel === 'string'
+      ? (req.query.riskLevel as 'green' | 'yellow' | 'red')
+      : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const out = await supplierInvoiceScreeningService.list({ limit, offset, riskLevel, status });
+    return res.json(out);
+  } catch (err) {
+    logger.error('[SupplierInvoices] list failed', err);
+    return res.status(500).json({ error: 'List failed' });
+  }
+});
+
 // GET /api/supplier-invoices/:id
 router.get('/:id', ...requireFinanceOrAdmin, async (req: Request, res: Response) => {
   const id = Number(req.params.id);

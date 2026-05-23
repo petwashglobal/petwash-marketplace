@@ -51,6 +51,8 @@ const EmployeeExpenses = lazy(() => import("@/pages/EmployeeExpenses"));
 const NewExpense = lazy(() => import("@/pages/NewExpense"));
 const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
+const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
+const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
 const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
 const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
@@ -2140,7 +2142,23 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
-        
+
+        {/* Supplier-invoice screening (PR #370 + #375) admin pages */}
+        <Route path="/admin/supplier-invoices">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSupplierInvoices />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/supplier-invoices/:id">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSupplierInvoiceDetail />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* Staff Onboarding & Fraud Prevention */}
         <Route path="/careers/apply">
           {() => <StaffApplication />}
