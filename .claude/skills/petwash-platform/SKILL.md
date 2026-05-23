@@ -361,6 +361,7 @@ PetWash is a premium brand. Every UI surface must look it.
 - **Popup #81** — Pure-white popup shell (kill dark backdrop / blur / card framing)
 - **PR-PREMIUM-CARDS-2** (#255) — Ship premium platform cards on public homepage (default ON); 12 design binaries converted to .webp + relocated to client/public/; legacy PetWashDivisions retained as `VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false'` emergency disable.
 - **PR-MOBILE-SCAFFOLD** (#372) — Expo submission scaffold for App Store + Play Store (bundle id `il.co.petwash.staff`, NSFaceIDUsageDescription, Apple Privacy Manifest, EAS build/submit profiles, asset specs). App.tsx auth/biometric runtime untouched. Companion: `docs/finance/sumit-readiness-check-2026-05-23.md` documenting the 5 sequenced PRs needed before a real sumit.co.il send.
+- **PR-S5c + PR-OCR-1** (#375) — Israel-tax compliance pair. PR-S5c: 3-way Osek classification (`patur` / `murshe` / `chevra` / `unknown`) on suppliers (migration 0027 + 4 new columns + CHECK constraint), new `osek_vat_mismatch` screening rule (HARD FAIL when a patur supplier invoices VAT > 0 — protects against un-deductible VAT loss), `osek_classification_unknown` warning so finance must classify before approval, full VAT attribution matrix doc covering K9000 100%-revenue model vs marketplace 15%-commission model with worked numeric examples. PR-OCR-1: SHAAM allocation number (מספר הקצאה) regex extraction from receipt OCR text (Hebrew + English label variants, 9–12 digit capture, 18 vitest cases). No wallet/escrow/agent-model touch.
 
 ### Open PRs
 - None.
