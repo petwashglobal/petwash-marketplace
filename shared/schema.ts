@@ -15649,5 +15649,31 @@ export type SupplierInvoice = typeof supplierInvoices.$inferSelect;
 export type InsertSupplierInvoice = typeof supplierInvoices.$inferInsert;
 export type SupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferSelect;
 export type InsertSupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferInsert;
+
+// ──────────────────────────────────────────────────────────────────────────
+// Marketplace booking slot locks (migration 0028)
+//
+// Closes the hostile-audit critical: two customers booking the same
+// provider for overlapping time. The Postgres EXCLUDE constraint (added
+// in the SQL migration, not directly expressible in Drizzle) makes
+// overlapping inserts fail at the DB level. Drizzle definition exists
+// so the helper in server/lib/marketplaceSlotLock.ts can type-check
+// inserts; the actual no-overlap guarantee comes from the EXCLUDE.
+// ──────────────────────────────────────────────────────────────────────────
+export const marketplaceBookingSlotLocks = pgTable("marketplace_booking_slot_locks", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+  bookingRef: text("booking_ref").notNull(),
+  serviceType: varchar("service_type", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_marketplace_slot_locks_provider").on(table.providerId, table.startAt),
+  index("idx_marketplace_slot_locks_booking_ref").on(table.bookingRef),
+]);
+
+export type MarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferSelect;
+export type InsertMarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferInsert;
 export type SumitOutboundEvent = typeof sumitOutboundEvents.$inferSelect;
 export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
