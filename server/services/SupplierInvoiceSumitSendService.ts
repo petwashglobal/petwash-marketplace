@@ -29,6 +29,7 @@ import {
   type SupplierInvoice,
 } from '../../shared/schema';
 import { sumitClient } from './SumitClient';
+import { sumitDispatcher } from './SumitDispatcher';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { logger } from '../lib/logger';
 
@@ -96,49 +97,51 @@ class SupplierInvoiceSumitSendService {
       throw err;
     }
 
-    const health = sumitClient.health();
-    if (!health.wired) {
-      logger.warn('[SumitSend] Admin clicked send but SUMIT is not wired', {
-        invoiceId: invoice.id,
-        actorEmail: input.actorEmail,
-      });
-      return {
-        sent: false,
-        sumitStatus: invoice.sumitStatus as SumitSendResult['sumitStatus'] ?? 'pending',
-        reason: health.reason,
-        wired: false,
-      };
-    }
-
     const idempotencyKey = invoice.sumitIdempotencyKey ?? this.buildIdempotencyKey(invoice);
     const description =
       invoice.ocrInvoiceNumber
         ? `Supplier invoice #${invoice.ocrInvoiceNumber}`
         : `Supplier invoice ${invoice.id}`;
 
-    let outboundResult: Awaited<ReturnType<typeof sumitClient.createDocument>>;
+    // Mission-4: route through the dispatcher (mode = off/email/api/csv_export).
+    // The dispatcher already short-circuits when sumit.mode === 'off'. We map
+    // its result back into the shape this service has always exposed so the
+    // route + UI contract stays unchanged.
+    let dispatchResult: Awaited<ReturnType<typeof sumitDispatcher.dispatch>>;
     let errorMessage: string | null = null;
     let responseStatusCode: number | null = null;
     try {
-      outboundResult = await sumitClient.createDocument({
-        supplierInvoiceId: String(invoice.id),
+      dispatchResult = await sumitDispatcher.dispatch({
+        invoice,
+        supplierName:
+          invoice.ocrSupplierName ?? `Supplier ${invoice.supplierId ?? 'unknown'}`,
         idempotencyKey,
-        customer: {
-          name: invoice.ocrSupplierName ?? `Supplier ${invoice.supplierId ?? 'unknown'}`,
-          businessNumber: invoice.ocrBusinessNumber ?? '',
-        },
-        amountBeforeVat: Number(invoice.ocrAmountBeforeVat ?? 0),
-        vatAmount: Number(invoice.ocrVatAmount ?? 0),
-        totalAmount: Number(invoice.ocrTotalAmount ?? 0),
-        currency: 'ILS',
-        description,
       });
-      responseStatusCode = outboundResult.wired ? 200 : 0;
+      responseStatusCode = dispatchResult.sent ? 200 : 0;
+      if (!dispatchResult.sent && dispatchResult.reason) {
+        errorMessage = dispatchResult.reason;
+      }
     } catch (e) {
       errorMessage = (e as Error).message;
-      outboundResult = { wired: false, idempotencyKey, reason: errorMessage };
+      dispatchResult = {
+        sent: false,
+        mode: sumitDispatcher.currentMode(),
+        sumitDocumentId: null,
+        reason: errorMessage,
+      };
       responseStatusCode = -1;
     }
+
+    // Adapter back to the legacy `outboundResult` shape the rest of the
+    // function uses. Keep this thin so the dispatcher stays the single
+    // source of truth for per-mode delivery.
+    const outboundResult = {
+      wired: dispatchResult.sent,
+      idempotencyKey,
+      sumitDocumentId: dispatchResult.sumitDocumentId ?? undefined,
+      reason: dispatchResult.reason,
+      rawResponse: dispatchResult.rawResponse,
+    };
 
     // Always write an outbound event — succeeded or failed.
     await db.insert(sumitOutboundEvents).values({
@@ -185,10 +188,11 @@ class SupplierInvoiceSumitSendService {
         actorRole: input.actorRole,
         sumitDocumentId: outboundResult.sumitDocumentId ?? null,
         idempotencyKey,
-        ipAddress: input.ipAddress,
-        userAgent: input.userAgent,
+        mode: dispatchResult.mode,
         errorMessage: errorMessage ?? outboundResult.reason ?? null,
       },
+      ipAddress: input.ipAddress || null,
+      userAgent: input.userAgent || null,
     });
 
     return {

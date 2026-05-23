@@ -28,6 +28,17 @@ export interface SystemConfigMap {
   // even if the parent supplier-invoice flag is ON. Defense in depth — must
   // flip BOTH flags to actually send a document. Default OFF.
   'ff.supplier_invoice_control.sumit_send.enabled': boolean;
+  /**
+   * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
+   * the integration method:
+   *   'off'        — every send returns sent:false reason:"mode is off" (default)
+   *   'email'      — forward to ACCOUNTANT_EMAIL with the original file attached
+   *   'api'        — direct sumit.co.il REST call via SumitClient (needs API spec)
+   *   'csv_export' — write a CSV row + PDF copy to firebase storage for manual upload
+   * Independent of the two ff. flags above; activation requires BOTH the flags
+   * AND mode != 'off'. Default 'off' means production behaviour is unchanged.
+   */
+  'sumit.mode': 'off' | 'email' | 'api' | 'csv_export';
   'recovery.signup_reminder_enabled': boolean;
   'recovery.booking_followup_enabled': boolean;
 }
@@ -41,6 +52,7 @@ const DEFAULTS: SystemConfigMap = {
   'matching.boost_new_providers': true,
   'ff.supplier_invoice_control.enabled': false,
   'ff.supplier_invoice_control.sumit_send.enabled': false,
+  'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
 };
