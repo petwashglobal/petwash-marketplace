@@ -421,6 +421,24 @@ export class RegistrationOTPService {
         return { success: false, otpId, expiresIn: 0, error: 'COOLDOWN_ACTIVE', cooldownRemaining: cooldown };
       }
 
+      // Resend abuse cap — mirror sendOTP per-phone and per-IP hourly limits
+      // so resend cannot be used to bypass them. Before this, after the
+      // initial send an attacker holding an otpId could resend ~1 SMS/min
+      // indefinitely (~60/hr/phone), trivially exceeding OTP_PHONE_MAX_PER_HOUR.
+      const phoneCount = await cacheIncr(phoneRateKey(phoneE164), 3600);
+      if (phoneCount > OTP_PHONE_MAX_PER_HOUR) {
+        logger.warn('[RegistrationOTP] Resend phone rate limit exceeded', { phoneE164: phoneE164.slice(0, 6) + '****', traceId });
+        return { success: false, otpId, expiresIn: 0, error: 'PHONE_RATE_LIMIT' };
+      }
+
+      if (opts.ip) {
+        const ipCount = await cacheIncr(ipRateKey(opts.ip), 3600);
+        if (ipCount > OTP_IP_MAX_PER_HOUR) {
+          logger.warn('[RegistrationOTP] Resend IP rate limit exceeded', { ip: opts.ip, traceId });
+          return { success: false, otpId, expiresIn: 0, error: 'IP_RATE_LIMIT' };
+        }
+      }
+
       const code = generateSecureOTP();
       const codeHash = sha256(code);
       const ttlRemaining = await cacheTtl(otpRedisKey(otpId));
