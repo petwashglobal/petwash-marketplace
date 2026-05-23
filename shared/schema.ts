@@ -15677,3 +15677,6 @@ export type MarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inf
 export type InsertMarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferInsert;
 export type SumitOutboundEvent = typeof sumitOutboundEvents.$inferSelect;
 export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
+
+// Maya reception/intake — see migration 0028_maya_reception_intake_foundation.sql
+export * from './schema-maya';
