@@ -4458,6 +4458,11 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
 }
 .intl-phone-wrapper .PhoneInputInput {
   flex: 1;
+  /* Allow the flex input to shrink below its intrinsic content width on
+     narrow viewports (iPhone). Without min-width:0, flex items refuse
+     to shrink past their natural size and the typed number overflows
+     past the wrapper's rounded border. */
+  min-width: 0;
   border: none;
   outline: none;
   font-size: 15px;
