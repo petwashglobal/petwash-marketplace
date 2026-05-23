@@ -13,14 +13,26 @@
  *
  * What this script does:
  *   1. Ensure tracking table `_petwash_migrations` exists.
- *   2. For each migrations/XXXX_*.sql file in lexicographic order:
+ *   2. Load the manual-migrations allowlist from
+ *      `migrations/.manual-migrations.txt` (one filename per line,
+ *      comments with #). Listed files target tables managed outside the
+ *      canonical Drizzle schema (e.g. deprecated subsystems) and must
+ *      not be auto-applied — they are recorded as bootstrapped on
+ *      first sight.
+ *   3. For each migrations/XXXX_*.sql file in lexicographic order:
  *      a. Skip if filename is already in _petwash_migrations.
- *      b. Otherwise BEGIN, run the file's SQL, INSERT tracking row, COMMIT.
- *      c. If the file fails with "already exists" (PG codes 42P07 /
+ *      b. If filename is in the manual-migrations allowlist, record
+ *         as bootstrapped without running, then continue.
+ *      c. Otherwise BEGIN, run the file's SQL, INSERT tracking row, COMMIT.
+ *      d. If the file fails with "already exists" (PG codes 42P07 /
  *         42710 / 42P06), assume it was applied out-of-band before this
  *         script existed (bootstrap case). Mark as applied (with a
  *         `bootstrapped: true` flag) and continue.
- *      d. Any OTHER error → exit non-zero so the deploy blocks.
+ *      e. Any OTHER error → exit non-zero so the deploy blocks.
+ *         (Including 42P01 / 42703 — missing-table / missing-column
+ *         indicate a real schema-ordering bug, NOT a bootstrap case.
+ *         Add the file to .manual-migrations.txt only if its table
+ *         is genuinely out-of-band-managed.)
  *
  * Bootstrap semantics:
  *   On the very first run against an existing database, the tracking
@@ -55,6 +67,7 @@ neonConfig.webSocketConstructor = ws;
 
 const MIGRATIONS_DIR = join(process.cwd(), 'migrations');
 const MIGRATION_FILE_RE = /^\d{4}_[A-Za-z0-9_-]+\.sql$/;
+const MANUAL_MIGRATIONS_LIST = join(MIGRATIONS_DIR, '.manual-migrations.txt');
 
 // PG error codes that indicate "schema object already exists" —
 // typical of an out-of-band-applied migration meeting this script for
@@ -75,6 +88,39 @@ function listMigrationFiles(): string[] {
     .filter((f) => MIGRATION_FILE_RE.test(f))
     .filter((f) => statSync(join(MIGRATIONS_DIR, f)).isFile())
     .sort();
+}
+
+/**
+ * Load the manual-migrations allowlist. Each non-empty, non-comment
+ * line is a filename the runner must skip (record as bootstrapped
+ * without running). Tolerant: missing file → empty set, malformed
+ * lines silently dropped.
+ *
+ * Use this for migrations that target tables managed outside the
+ * canonical Drizzle schema — e.g. a deprecated subsystem whose tables
+ * were never created in this deployment. Without this allowlist the
+ * runner fails with 42P01 (undefined_table) and blocks every deploy.
+ */
+function loadManualMigrationsList(): Set<string> {
+  const skip = new Set<string>();
+  try {
+    const raw = readFileSync(MANUAL_MIGRATIONS_LIST, 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      // Only accept entries that match the migration filename pattern —
+      // defensive against accidental paths or globs.
+      if (MIGRATION_FILE_RE.test(trimmed)) skip.add(trimmed);
+    }
+  } catch (err: any) {
+    // Missing file is fine (no manual migrations declared).
+    if (err?.code !== 'ENOENT') {
+      console.warn(
+        `[migrate] could not read ${MANUAL_MIGRATIONS_LIST}: ${err?.message ?? err}`,
+      );
+    }
+  }
+  return skip;
 }
 
 async function main() {
@@ -104,18 +150,39 @@ async function main() {
     const applied = new Set(appliedRows.rows.map((r) => r.filename));
 
     const files = listMigrationFiles();
+    const manualSkip = loadManualMigrationsList();
     console.log(
-      `[migrate] found ${files.length} migration files; ${applied.size} already recorded as applied.`,
+      `[migrate] found ${files.length} migration files; ${applied.size} already recorded as applied; ${manualSkip.size} declared manual.`,
     );
 
     let appliedCount = 0;
     let bootstrappedCount = 0;
+    let manualSkipCount = 0;
 
     for (const file of files) {
       if (applied.has(file)) continue;
 
       const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
       const checksum = sha256(sql);
+
+      // Manual-migrations allowlist — record as bootstrapped without
+      // running. Used for migrations that target out-of-band-managed
+      // tables (e.g. deprecated subsystems). See
+      // migrations/.manual-migrations.txt for the list + per-file
+      // justification.
+      if (manualSkip.has(file)) {
+        console.log(
+          `[migrate] ⊘  ${file} declared manual — recording as bootstrapped without running.`,
+        );
+        await client.query(
+          `INSERT INTO _petwash_migrations (filename, checksum, bootstrapped)
+           VALUES ($1, $2, true)
+           ON CONFLICT (filename) DO NOTHING`,
+          [file, checksum],
+        );
+        manualSkipCount += 1;
+        continue;
+      }
 
       try {
         await client.query('BEGIN');
@@ -162,7 +229,7 @@ async function main() {
     }
 
     console.log(
-      `[migrate] summary: ${appliedCount} newly applied, ${bootstrappedCount} bootstrapped as already-existing.`,
+      `[migrate] summary: ${appliedCount} newly applied, ${bootstrappedCount} bootstrapped as already-existing, ${manualSkipCount} skipped via manual allowlist.`,
     );
   } finally {
     client.release();
