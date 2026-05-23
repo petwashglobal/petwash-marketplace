@@ -4,6 +4,8 @@
 > Regenerate with: `npx tsx scripts/audit-required-env-vars.ts`
 > Verify with:     `npx tsx scripts/audit-required-env-vars.ts --check`
 
+Scanned files (server/): 804
+Variables found: 325  (REQUIRED 7 · WARN 8 · OPTIONAL 310)
 Scanned files (server/): 805
 Variables found: 324  (REQUIRED 7 · WARN 8 · OPTIONAL 309)
 
@@ -376,7 +378,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/routes/finance/tranzila-admin.ts | 379 | FUNCTION_BODY | `const bypassActive     = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';` |
 | server/services/TranzilaWebhookService.ts | 140 | FUNCTION_BODY | `if (process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true') {` |
 
-## OPTIONAL (309)
+## OPTIONAL (310)
 
 ### ACCEPT_TIMEOUT_HOURS
 
@@ -2196,6 +2198,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/routes/admin-sumit.ts | 107 | FUNCTION_BODY | `sumitApiBaseUrl: process.env.SUMIT_API_BASE_URL \|\| 'https://api.sumit.co.il',` |
+| server/services/SumitClient.ts | 47 | FUNCTION_BODY | `baseUrl: process.env.SUMIT_API_BASE_URL \|\| defaultBase,` |
 | server/services/SumitClient.ts | 34 | FUNCTION_BODY | `baseUrl: process.env.SUMIT_API_BASE_URL \|\| 'https://api.sumit.co.il',` |
 
 ### SUMIT_API_KEY
@@ -2203,6 +2206,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/routes/admin-sumit.ts | 72 | FUNCTION_BODY | `sumitApiKey: Boolean(process.env.SUMIT_API_KEY),` |
+| server/services/SumitClient.ts | 48 | FUNCTION_BODY | `apiKey: process.env.SUMIT_API_KEY,` |
 | server/services/SumitClient.ts | 35 | FUNCTION_BODY | `apiKey: process.env.SUMIT_API_KEY,` |
 | server/services/SumitPreflightCheck.ts | 167 | FUNCTION_BODY | `: fail('env_api_key', 'SUMIT_API_KEY חסר', 'process.env.SUMIT_API_KEY not set'),` |
 
@@ -2211,6 +2215,7 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/routes/admin-sumit.ts | 73 | FUNCTION_BODY | `sumitCompanyId: Boolean(process.env.SUMIT_COMPANY_ID),` |
+| server/services/SumitClient.ts | 49 | FUNCTION_BODY | `companyId: process.env.SUMIT_COMPANY_ID,` |
 | server/services/SumitClient.ts | 36 | FUNCTION_BODY | `companyId: process.env.SUMIT_COMPANY_ID,` |
 | server/services/SumitPreflightCheck.ts | 171 | FUNCTION_BODY | `: fail('env_company_id', 'SUMIT_COMPANY_ID חסר', 'process.env.SUMIT_COMPANY_ID not set'),` |
 
@@ -2218,13 +2223,20 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
-| server/services/SumitClient.ts | 38 | FUNCTION_BODY | `enabled: process.env.SUMIT_ENABLED === 'true',` |
+| server/services/SumitClient.ts | 51 | FUNCTION_BODY | `enabled: process.env.SUMIT_ENABLED === 'true',` |
+
+### SUMIT_SANDBOX
+
+| File | Line | Scope | Context |
+|------|------|-------|---------|
+| server/services/SumitClient.ts | 39 | FUNCTION_BODY | `const explicitSandbox = process.env.SUMIT_SANDBOX;` |
 
 ### SUMIT_WEBHOOK_SECRET
 
 | File | Line | Scope | Context |
 |------|------|-------|---------|
 | server/routes/admin-sumit.ts | 74 | FUNCTION_BODY | `sumitWebhookSecret: Boolean(process.env.SUMIT_WEBHOOK_SECRET),` |
+| server/services/SumitClient.ts | 50 | FUNCTION_BODY | `webhookSecret: process.env.SUMIT_WEBHOOK_SECRET,` |
 | server/services/SumitClient.ts | 37 | FUNCTION_BODY | `webhookSecret: process.env.SUMIT_WEBHOOK_SECRET,` |
 | server/services/SumitPreflightCheck.ts | 175 | FUNCTION_BODY | `: fail('env_webhook_secret', 'SUMIT_WEBHOOK_SECRET חסר', 'process.env.SUMIT_WEBHOOK_SECRET not set'),` |
 
