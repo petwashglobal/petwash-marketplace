@@ -16,6 +16,24 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     .getRegistrations()
     .then((regs) => regs.forEach((r) => r.unregister().catch(() => {})))
     .catch(() => {});
+
+  // When the kill-worker (public/sw.js) finishes clearing caches it posts
+  // a SW_KILLED message. Reload exactly once so the now-stale bundle gets
+  // re-fetched from the network. The sessionStorage flag prevents an
+  // infinite reload loop on devices where the kill-worker keeps
+  // re-activating across sessions.
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data as { type?: string } | undefined;
+    if (data?.type !== 'SW_KILLED') return;
+    try {
+      if (sessionStorage.getItem('petwash_sw_killed_reload') === '1') return;
+      sessionStorage.setItem('petwash_sw_killed_reload', '1');
+    } catch (_e) {
+      // Private browsing / quota — proceed; one duplicate reload is
+      // strictly better than serving the stale signup forever.
+    }
+    location.reload();
+  });
 }
 
 declare global {
