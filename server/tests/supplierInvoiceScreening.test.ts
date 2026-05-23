@@ -185,3 +185,56 @@ describe('four-eyes + risk-tier approval gate', () => {
     expect(evaluateApproval({ invoice: inv, actor: otherApprover, action: 'reject' }).ok).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Israel ITA Digital Invoice Law 2026 — SHAAM allocation requirement
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('supplier-invoice screening — SHAAM allocation', () => {
+  it('does not add the check when shaamAllocationRequired is false (below threshold)', () => {
+    const checks = buildChecks({ ...okFacts, shaamAllocationRequired: false });
+    expect(checks.find(c => c.type === 'shaam_allocation_missing')).toBeUndefined();
+  });
+
+  it('does not add the check when allocation number IS present', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      shaamAllocationRequired: true,
+      shaamAllocationNumberOnInvoice: '123456789',
+    });
+    expect(checks.find(c => c.type === 'shaam_allocation_missing')).toBeUndefined();
+  });
+
+  it('adds a hard fail (90 score) when SHAAM is required but allocation is missing', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      shaamAllocationRequired: true,
+      shaamAllocationNumberOnInvoice: null,
+    });
+    const c = checks.find(c => c.type === 'shaam_allocation_missing');
+    expect(c).toBeDefined();
+    expect(c?.result).toBe('fail');
+    expect(c?.scoreImpact).toBe(90);
+  });
+
+  it('treats an empty / whitespace-only allocation number as missing', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      shaamAllocationRequired: true,
+      shaamAllocationNumberOnInvoice: '   ',
+    });
+    expect(checks.find(c => c.type === 'shaam_allocation_missing')).toBeDefined();
+  });
+
+  it('shaam_allocation_missing pushes the invoice into RED (score >= 70)', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      shaamAllocationRequired: true,
+      shaamAllocationNumberOnInvoice: null,
+    });
+    const score = computeRiskScore(checks);
+    expect(score).toBeGreaterThanOrEqual(70);
+    expect(riskLevel(score)).toBe('red');
+    expect(mapToInvoiceStatus(riskLevel(score))).toBe('blocked');
+  });
+});

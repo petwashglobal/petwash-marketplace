@@ -15583,6 +15583,14 @@ export const supplierInvoices = pgTable("supplier_invoices", {
   rejectedAt: timestamp("rejected_at", { withTimezone: true }),
   rejectionReason: text("rejection_reason"),
   approvalNote: text("approval_note"),
+  // Israel ITA Digital Invoice Law 2026 — SHAAM allocation number tracking.
+  // shaamRequired is computed at ingest from amount + invoice date via
+  // shared/israel-compliance-config.ts::isShaamAllocationRequired. When true,
+  // the supplier's invoice MUST carry a SHAAM allocation number for the VAT
+  // to be deductible. shaamAllocationNumber is captured from OCR — we are
+  // the buyer here, not the issuer, so we do not call ITA ourselves.
+  shaamRequired: boolean("shaam_required").notNull().default(false),
+  shaamAllocationNumber: varchar("shaam_allocation_number", { length: 40 }),
   // SUMIT (sumit.co.il) linkage — populated by PR-S4 once the admin
   // "Send to SUMIT" button + ff.supplier_invoice_control.sumit_send.enabled
   // flag are wired. All nullable; null means "never attempted".
@@ -15606,6 +15614,9 @@ export const supplierInvoices = pgTable("supplier_invoices", {
   // planning only.
   index("idx_supplier_invoices_sumit_document").on(table.sumitDocumentId),
   index("idx_supplier_invoices_sumit_idem").on(table.sumitIdempotencyKey),
+  // SHAAM allocation number lookup + "required but missing" admin view.
+  index("idx_supplier_invoices_shaam_alloc").on(table.shaamAllocationNumber),
+  index("idx_supplier_invoices_shaam_required_missing").on(table.shaamRequired),
 ]);
 
 export const supplierInvoiceChecks = pgTable("supplier_invoice_checks", {

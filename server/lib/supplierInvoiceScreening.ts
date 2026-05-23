@@ -32,7 +32,11 @@ export type CheckType =
   | 'high_amount'
   | 'ocr_unavailable'
   | 'fraud_engine_unavailable'
-  | 'fraud_engine_score';
+  | 'fraud_engine_score'
+  // Israel ITA Digital Invoice Law 2026 — SHAAM allocation number missing
+  // on an above-threshold supplier invoice. Without it the VAT cannot be
+  // deducted, so this is a HARD block (fail), not a warning.
+  | 'shaam_allocation_missing';
 
 export interface CheckResult {
   type: CheckType;
@@ -71,6 +75,17 @@ export interface ScreeningInput {
   fraudEngineAvailable: boolean;
   /** 0..100 from receiptFraudDetection.analyzeReceipt when available. */
   fraudEngineScore?: number | null;
+  /**
+   * Israel ITA 2026 — true when the ex-VAT amount on this invoice (and its
+   * date) require a SHAAM allocation number. Computed by the caller via
+   * shared/israel-compliance-config.ts::isShaamAllocationRequired.
+   */
+  shaamAllocationRequired?: boolean;
+  /**
+   * Israel ITA 2026 — SHAAM allocation number extracted from the supplier's
+   * invoice (we are the buyer). Empty/null when none was extracted.
+   */
+  shaamAllocationNumberOnInvoice?: string | null;
 }
 
 const DEFAULT_HIGH_AMOUNT_THRESHOLD_CENTS = 200_000; // ₪2,000
@@ -141,6 +156,21 @@ export function buildChecks(input: ScreeningInput): CheckResult[] {
 
   if (!input.ocrAvailable) {
     checks.push({ type: 'ocr_unavailable', result: 'warning', scoreImpact: 10 });
+  }
+
+  // Israel ITA Digital Invoice Law 2026 — block invoices above the SHAAM
+  // threshold that lack an allocation number. Approving such an invoice
+  // would forfeit our VAT deduction, so this is a hard fail, not a warning.
+  if (input.shaamAllocationRequired) {
+    const alloc = input.shaamAllocationNumberOnInvoice?.trim();
+    if (!alloc) {
+      checks.push({
+        type: 'shaam_allocation_missing',
+        result: 'fail',
+        scoreImpact: 90,
+        details: { reason: 'required_above_threshold_but_not_extracted' },
+      });
+    }
   }
 
   if (!input.fraudEngineAvailable) {
