@@ -24,10 +24,19 @@ npm install
 ```
 
 ### 2. Configure Backend API
-Update `API_BASE` in `App.tsx`:
-```typescript
-const API_BASE = "https://api.petwash.co.il"; // Your backend URL
+`App.tsx` reads `EXPO_PUBLIC_API_BASE` at build time and falls back to
+`https://api.petwash.co.il` if unset.
+
+```bash
+# Local dev against staging:
+EXPO_PUBLIC_API_BASE=https://staging.petwash.co.il npm start
+
+# Production build (default — no env needed):
+eas build --platform ios --profile production
 ```
+
+The `EXPO_PUBLIC_` prefix is required so Expo inlines the value into the
+JS bundle. Anything not prefixed is stripped at build time.
 
 ### 3. Run the App
 ```bash
@@ -257,10 +266,8 @@ const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 ```
 
 ### Change API Base URL
-```typescript
-// In App.tsx, line 15
-const API_BASE = "https://staging.petwash.co.il"; // Staging
-```
+Set `EXPO_PUBLIC_API_BASE` at build/run time (see "Configure Backend API"
+above). No source edit needed.
 
 ### Change Brand Colors
 ```typescript
