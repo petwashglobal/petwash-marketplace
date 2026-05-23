@@ -126,3 +126,21 @@ class SystemConfigService {
 }
 
 export const systemConfig = new SystemConfigService();
+
+/**
+ * Thin async wrapper around `systemConfig.get(key)`.
+ *
+ * Maya admin routes (server/routes/admin-maya.ts) imported a named
+ * `getFeatureFlag` export that did not exist — the import threw
+ * `SyntaxError` at module load and the routes.ts smoke test caught it
+ * (CI run #965 gate failure). Adding the wrapper as a named export
+ * restores module-load without touching any Maya code.
+ *
+ * Async signature matches the call sites which `await` the result, and
+ * leaves room for a future DB-backed flag store without changing
+ * callers. Today this is a synchronous lookup against the in-memory
+ * `systemConfig` instance.
+ */
+export async function getFeatureFlag<K extends ConfigKey>(key: K): Promise<SystemConfigMap[K]> {
+  return systemConfig.get(key);
+}
