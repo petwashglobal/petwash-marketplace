@@ -168,8 +168,14 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [pendingSignInCaptchaToken, setPendingSignInCaptchaToken] = useState<string | null>(null);
   const [pendingSignInUid, setPendingSignInUid] = useState<string | null>(null);
   const [pinError, setPinError] = useState("");
+  // FIX: previously this defaulted to null when localStorage was empty, which
+  // made /signin render the Hebrew "ברוכים הבאים / new users — choose intent"
+  // picker (lines ~2258) instead of the actual sign-in form. That was the
+  // "different page on iPhone vs iPad" symptom — iPad had signup_intent set
+  // from a prior visit, iPhone did not. Default to 'customer' so /signin
+  // always lands on the canonical sign-in form on every device.
   const [selectedIntent, setSelectedIntent] = useState<string | null>(
-    localStorage.getItem('signup_intent') || null
+    localStorage.getItem('signup_intent') || 'customer'
   );
   
   const autoFaceID = useAutoFaceID({

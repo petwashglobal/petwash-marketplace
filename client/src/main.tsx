@@ -4,6 +4,20 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./lib/i18next-init";
 
+// Defensive one-time service-worker cleanup. Earlier builds shipped a
+// pre-caching sw.js; the current client never calls navigator.serviceWorker
+// .register(), but orphan registrations on returning devices keep serving
+// stale chunks (the iPad "two signup pages at once" bug). public/sw.js is
+// now a self-uninstalling kill script, and this belt-and-braces call asks
+// every registered worker to unregister on app boot. Idempotent — does
+// nothing on a clean device. Non-blocking. Failures swallowed.
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .getRegistrations()
+    .then((regs) => regs.forEach((r) => r.unregister().catch(() => {})))
+    .catch(() => {});
+}
+
 declare global {
   interface Window {
     _hsq?: any[];
