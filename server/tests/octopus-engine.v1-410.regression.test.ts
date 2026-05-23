@@ -104,3 +104,50 @@ describe('Issue #153 PR-A — /v1/wallet* and /v1/ledger* 410 Gone', () => {
     expect(ledgerHandlerIdx).toBeGreaterThan(ledgerInterceptIdx);
   });
 });
+
+describe('M-B — /v1/egift events GETs require auth + ownership', () => {
+  // Before this fix both GET /v1/egift/:egiftId/events and
+  // GET /v1/egift/user/:userId/events were public. Any caller could
+  // enumerate egift IDs or guess user IDs and read full purchase/
+  // redemption history including amounts, station IDs, recipient
+  // timestamps, and ledger entry refs. Egift routes remain active by
+  // design (see test above), so we cannot 410 them — we must gate them.
+  it('GET /v1/egift/:egiftId/events declares requireAuth in the route signature', () => {
+    // Match the route signature line up to the arrow function — the third
+    // argument before `async` must be the requireAuth middleware.
+    expect(SRC).toMatch(
+      /router\.get\(\s*["']\/v1\/egift\/:egiftId\/events["']\s*,\s*requireAuth\s*,\s*async/,
+    );
+  });
+
+  it('GET /v1/egift/:egiftId/events checks admin OR participant before returning trail', () => {
+    // Pull the whole route block from the route signature up to the next
+    // top-level `router.` declaration so nested `});` don't truncate it.
+    const block = SRC.match(
+      /router\.get\(\s*["']\/v1\/egift\/:egiftId\/events["'][\s\S]*?(?=\nrouter\.)/,
+    )?.[0] ?? '';
+    // Must read firebaseUser, check admin, and verify the caller appears
+    // as a participant in the audit trail. 404 (not 403) avoids confirming
+    // the egift exists to unauthorized callers.
+    expect(block).toMatch(/firebaseUser/);
+    expect(block).toMatch(/isAdmin/);
+    expect(block).toMatch(/isParticipant|e\.userId === callerUid/);
+    expect(block).toMatch(/res\.status\(404\)/);
+  });
+
+  it('GET /v1/egift/user/:userId/events declares requireAuth in the route signature', () => {
+    expect(SRC).toMatch(
+      /router\.get\(\s*["']\/v1\/egift\/user\/:userId\/events["']\s*,\s*requireAuth\s*,\s*async/,
+    );
+  });
+
+  it('GET /v1/egift/user/:userId/events 403s when caller is not admin and path uid != caller uid', () => {
+    const block = SRC.match(
+      /router\.get\(\s*["']\/v1\/egift\/user\/:userId\/events["'][\s\S]*?(?=\nrouter\.|\nexport )/,
+    )?.[0] ?? '';
+    expect(block).toMatch(/firebaseUser/);
+    expect(block).toMatch(/isAdmin/);
+    expect(block).toMatch(/firebaseUser\?\.uid !== userId/);
+    expect(block).toMatch(/res\.status\(403\)/);
+  });
+});

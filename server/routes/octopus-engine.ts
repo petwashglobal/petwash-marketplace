@@ -1018,10 +1018,32 @@ router.post("/v1/egift/purchase", async (req: Request, res: Response) => {
 });
 
 // =================== EGIFT AUDIT TRAIL ===================
-router.get("/v1/egift/:egiftId/events", async (req: Request, res: Response) => {
+// Both endpoints below now require Firebase auth + an ownership check.
+// Previously they were public — any caller could enumerate egift IDs (or
+// guess user IDs) and read full purchase/redemption history including
+// amounts, station IDs, recipient timestamps, and ledger entry refs.
+// Ownership model:
+//   /v1/egift/:egiftId/events       — caller must be admin OR a participant
+//                                     in the trail (appears as userId on any
+//                                     event row: purchaser or redeemer).
+//   /v1/egift/user/:userId/events   — caller must be admin OR the user
+//                                     identified by the path param.
+router.get("/v1/egift/:egiftId/events", requireAuth, async (req: Request, res: Response) => {
   try {
     const { egiftId } = req.params;
+    const firebaseUser = (req as any).firebaseUser;
+    const isAdmin = firebaseUser?.role === 'admin' || firebaseUser?.isSuperAdmin;
     const events = await egiftFinancialService.getEgiftAuditTrail(egiftId);
+
+    if (!isAdmin) {
+      const callerUid = firebaseUser?.uid;
+      const isParticipant = events.some((e: any) => e?.userId && e.userId === callerUid);
+      if (!isParticipant) {
+        // Return 404 instead of 403 to avoid confirming the egift exists.
+        return res.status(404).json({ error: "Egift not found" });
+      }
+    }
+
     return res.json({ success: true, egiftId, events, total: events.length });
   } catch (err: any) {
     logger.error("[Egift] Audit trail fetch failed", err);
@@ -1029,9 +1051,15 @@ router.get("/v1/egift/:egiftId/events", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/v1/egift/user/:userId/events", async (req: Request, res: Response) => {
+router.get("/v1/egift/user/:userId/events", requireAuth, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+    const firebaseUser = (req as any).firebaseUser;
+    const isAdmin = firebaseUser?.role === 'admin' || firebaseUser?.isSuperAdmin;
+    if (!isAdmin && firebaseUser?.uid !== userId) {
+      return res.status(403).json({ error: "Forbidden — you may only view your own egift events" });
+    }
+
     const limit = parseInt(req.query.limit as string) || 50;
     const events = await egiftFinancialService.getUserEgiftEvents(userId, limit);
     return res.json({ success: true, userId, events, total: events.length });
