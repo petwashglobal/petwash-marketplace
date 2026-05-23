@@ -35,7 +35,6 @@ import {
 } from '../../shared/schema';
 import { storage } from '../lib/firebase-admin';
 import { receiptOCRService } from './ReceiptOCRService';
-import { isShaamAllocationRequired } from '../../shared/israel-compliance-config';
 import { receiptFraudDetection } from './ReceiptFraudDetection';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { logger } from '../lib/logger';
@@ -166,19 +165,6 @@ class SupplierInvoiceScreeningService {
       fraudEngineAvailable = false;
     }
 
-    // Israel ITA 2026 — compute whether this invoice needs a SHAAM
-    // allocation number. SUMIT/ITA threshold is on ex-VAT amount; we only
-    // have totalAmount from OCR today (ex-VAT extraction is a deferred
-    // TODO), so we approximate by dividing total by 1.18. The
-    // approximation is intentionally PESSIMISTIC for invoices near the
-    // threshold — better to flag a borderline case for finance review
-    // than to silently let a real allocation requirement slip through.
-    const invoiceDate = ocrData?.date ? new Date(ocrData.date) : new Date();
-    const exVatApprox =
-      typeof ocrData?.totalAmount === 'number' ? ocrData.totalAmount / 1.18 : null;
-    const shaamRequired =
-      exVatApprox != null ? isShaamAllocationRequired(exVatApprox, invoiceDate) : false;
-
     const osekClassification =
       (supplierRow?.osekClassification as 'patur' | 'murshe' | 'chevra' | 'unknown' | undefined) ??
       undefined;
@@ -200,12 +186,16 @@ class SupplierInvoiceScreeningService {
       ocrAvailable,
       fraudEngineAvailable,
       fraudEngineScore,
-      // Israel ITA 2026 + Osek classification — flow into the screening rules
-      // landed by PR-S5a + PR-S5c. When the supplier is 'unknown' the lib emits
-      // an osek_classification_unknown warning so finance classifies the
-      // supplier before approving.
-      shaamAllocationRequired: shaamRequired,
-      shaamAllocationNumberOnInvoice: ocrData?.shaamAllocationNumber ?? null,
+      // Osek classification — wired now (PR-S5c columns are on main). When
+      // the supplier is 'unknown' the lib emits an osek_classification_unknown
+      // warning so finance classifies the supplier before approving.
+      //
+      // SHAAM (ff PR-S5a) fields are NOT wired here yet — the
+      // supplier_invoices.shaam_required / shaam_allocation_number columns
+      // and the matching ScreeningInput fields live on the unmerged PR-S5a
+      // stack. Once that merges to main a follow-up adds:
+      //   shaamAllocationRequired, shaamAllocationNumberOnInvoice into facts,
+      //   shaamRequired + shaamAllocationNumber into the insert below.
       supplierOsekClassification: osekClassification,
     };
     const screening = screenInvoice(facts);
@@ -233,11 +223,10 @@ class SupplierInvoiceScreeningService {
         riskLevel: screening.riskLevel,
         status: screening.status,
         uploadedBy: input.uploadedByUid,
-        // Israel ITA 2026 — persist the computed requirement and the
-        // OCR-extracted allocation number (when present). These columns
-        // power the admin "missing SHAAM" filter and reconciliation.
-        shaamRequired,
-        shaamAllocationNumber: ocrData?.shaamAllocationNumber ?? null,
+        // shaamRequired + shaamAllocationNumber columns will be added by
+        // PR-S5a (migration 0026). The OCR extracts shaamAllocationNumber
+        // into ocrData already (PR-OCR-1 is on main); the persistence wiring
+        // follows once PR-S5a's migration lands.
         createdAt: now,
         updatedAt: now,
       })

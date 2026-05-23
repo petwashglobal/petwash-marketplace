@@ -39,8 +39,6 @@ type Invoice = {
   status: string;
   fraudEngineScore: number | null;
   fraudEngineFlags: string[] | null;
-  shaamRequired: boolean;
-  shaamAllocationNumber: string | null;
   approvedBy: string | null;
   approvedAt: string | null;
   rejectedBy: string | null;
@@ -256,18 +254,6 @@ export default function AdminSupplierInvoiceDetail() {
                   <div>
                     <div className="text-[11px] text-gray-500">ציון סיכון</div>
                     <div className="font-mono">{invoice.riskScore}/100</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-gray-500">מספר הקצאה (SHAAM)</div>
-                    <div
-                      className={cn(
-                        "font-mono",
-                        invoice.shaamRequired && !invoice.shaamAllocationNumber && "text-red-600",
-                      )}
-                    >
-                      {invoice.shaamAllocationNumber ??
-                        (invoice.shaamRequired ? "חסר — חובה" : "לא נדרש")}
-                    </div>
                   </div>
                   <div>
                     <div className="text-[11px] text-gray-500">קובץ מקור</div>

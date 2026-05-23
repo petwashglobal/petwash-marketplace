@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  AlertTriangle,
   CheckCircle2,
   RefreshCw,
   Upload,
@@ -38,9 +37,9 @@ type InvoiceRow = {
   riskScore: number;
   riskLevel: RiskLevel;
   status: string;
-  shaamRequired: boolean;
-  shaamAllocationNumber: string | null;
   createdAt: string;
+  // SHAAM fields land once PR-S5a migration 0026 ships; UI then surfaces
+  // the "missing allocation" chip in the row card.
 };
 
 type ListResponse = {
@@ -301,12 +300,7 @@ export default function AdminSupplierInvoices() {
                             {row.ocrSupplierName ?? "ספק לא זוהה"}
                           </span>
                           <RiskBadge level={row.riskLevel} />
-                          {row.shaamRequired && !row.shaamAllocationNumber && (
-                            <Badge className="bg-red-100 text-red-800 text-[10px] font-medium gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              חסר מספר הקצאה
-                            </Badge>
-                          )}
+                          {/* "חסר מספר הקצאה" chip lands once PR-S5a is on main. */}
                         </div>
                         <div className="mt-1.5 text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
                           <span>חשבונית #{row.id}</span>
