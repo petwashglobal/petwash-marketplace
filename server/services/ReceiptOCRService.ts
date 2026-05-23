@@ -32,6 +32,14 @@ interface ReceiptData {
    * BUYER here — we read the supplier's number, we do not request one.
    */
   shaamAllocationNumber?: string;
+  /**
+   * Israeli bank account printed on the supplier invoice for payment
+   * routing. Shape: "<bank>-<branch>-<account>" when all three are
+   * captured (e.g. "10-805-12345678"), else "<branch>-<account>" or
+   * just the digits we found. Used by the screening pipeline's
+   * bank_visible / bank_mismatch checks.
+   */
+  bankAccount?: string;
   rawText: string;
   confidence: number;
 }
@@ -188,6 +196,37 @@ class ReceiptOCRService {
         }
       }
 
+      // Israeli bank account on supplier invoice. Israeli format:
+      // bank-branch-account where bank is 2-3 digits, branch is 3 digits,
+      // account is 4-9 digits. Common label variants: "בנק", "סניף",
+      // "חשבון", or compact "ב/ס/ח". Tries explicit label form first,
+      // then full triple, then loose "branch-account" pair.
+      const bankPatterns: RegExp[] = [
+        // "בנק 10 סניף 805 חשבון 12345678" (loose whitespace allowed)
+        /(?:בנק)\D{0,10}(\d{1,3})\D{0,10}(?:סניף)\D{0,10}(\d{1,3})\D{0,10}(?:ח(?:ש?ב?ון)?)\D{0,10}(\d{4,9})/i,
+        // "10-805-12345678" or "10 / 805 / 12345678"
+        /(?<![\d])(\d{1,3})\s*[-\/]\s*(\d{3})\s*[-\/]\s*(\d{4,9})(?![\d])/,
+        // "סניף 805 חשבון 12345678" (branch + account, no bank code)
+        /(?:סניף)\D{0,10}(\d{3})\D{0,10}(?:ח(?:ש?ב?ון)?)\D{0,10}(\d{4,9})/i,
+      ];
+      for (const pattern of bankPatterns) {
+        const m = rawText.match(pattern);
+        if (m) {
+          // The first pattern captures 3 groups (bank, branch, account).
+          // The third captures 2 (branch, account). Reflect that in output.
+          receiptData.bankAccount =
+            m.length >= 4 && m[3] ? `${m[1]}-${m[2]}-${m[3]}` : `${m[1]}-${m[2]}`;
+          // Mask digits in logs — bank-branch are not sensitive but full
+          // account number is. Show only last 4.
+          const masked = receiptData.bankAccount.replace(
+            /(\d{4,9})$/,
+            (_m, acct) => `***${acct.slice(-4)}`,
+          );
+          logger.info('[ReceiptOCR] Bank account detected', { bankAccountMasked: masked });
+          break;
+        }
+      }
+
       // Israel ITA Digital Invoice Law 2026 — SHAAM allocation number
       // (מספר הקצאה). Above-threshold supplier invoices carry this; when
       // missing, PR-S5a's screening rule blocks finance approval to
@@ -217,6 +256,7 @@ class ReceiptOCRService {
         hasVendor: !!receiptData.vendorName,
         hasTaxId: !!receiptData.taxId,
         hasShaamAllocation: !!receiptData.shaamAllocationNumber,
+        hasBankAccount: !!receiptData.bankAccount,
       });
 
       return receiptData;

@@ -177,8 +177,11 @@ class SupplierInvoiceScreeningService {
       businessNumberOnInvoice,
       businessNumberMatchesSupplier,
       supplierNameMatchesSupplier,
-      // Bank-account extraction from invoices is deferred (see Deferred TODO).
-      bankAccountVisibleOnInvoice: false,
+      // Bank-account extraction now wired via ReceiptOCRService.bankAccount.
+      // The "verified" comparison against a supplier's saved bank account is
+      // still pending (suppliers.bankAccountDetails is encrypted jsonb; the
+      // compare needs a structured-field PR), so matchesVerified stays null.
+      bankAccountVisibleOnInvoice: !!ocrData?.bankAccount,
       bankAccountMatchesVerified: null,
       amountBeforeVat: null,
       vatAmount: null,
