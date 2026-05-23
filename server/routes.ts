@@ -17,6 +17,7 @@ import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminSumitRoutes from "./routes/admin-sumit";
+import providerMyInvoicesRoutes from "./routes/provider-my-invoices";
 import accountantRoutes from "./routes/accountant";
 import { requireDpaAccepted } from "./middleware/dpa-guard";
 import stationsRoutes from "./routes/stations";
@@ -9713,6 +9714,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
   app.use('/api/admin/sumit', adminSumitRoutes);
+  app.use('/api/provider', providerMyInvoicesRoutes);
   app.use('/api/accountant', accountantRoutes);
 
   // PetWash Privilege registration - Public (no auth required to join)
