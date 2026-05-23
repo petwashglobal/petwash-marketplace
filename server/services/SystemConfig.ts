@@ -23,6 +23,11 @@ export interface SystemConfigMap {
   // closed, no screening runs, legacy accounting flows untouched. Money is
   // never moved by this feature; payment execution stays separate.
   'ff.supplier_invoice_control.enabled': boolean;
+  // PR-S4: separately-gated SUMIT (sumit.co.il) send. When this flag is OFF
+  // the new POST /api/supplier-invoices/:id/send-to-sumit route returns 404
+  // even if the parent supplier-invoice flag is ON. Defense in depth — must
+  // flip BOTH flags to actually send a document. Default OFF.
+  'ff.supplier_invoice_control.sumit_send.enabled': boolean;
   'recovery.signup_reminder_enabled': boolean;
   'recovery.booking_followup_enabled': boolean;
 }
@@ -35,6 +40,7 @@ const DEFAULTS: SystemConfigMap = {
   'matching.default_radius_km': 15,
   'matching.boost_new_providers': true,
   'ff.supplier_invoice_control.enabled': false,
+  'ff.supplier_invoice_control.sumit_send.enabled': false,
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
 };

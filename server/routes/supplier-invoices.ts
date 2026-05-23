@@ -20,6 +20,7 @@ import { systemConfig } from '../services/SystemConfig';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
 import { supplierInvoiceScreeningService } from '../services/SupplierInvoiceScreeningService';
+import { supplierInvoiceSumitSendService } from '../services/SupplierInvoiceSumitSendService';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -33,6 +34,19 @@ const upload = multer({
 // line of defence; the router is also conditionally mounted in routes.ts.
 function flagGate(_req: Request, res: Response, next: NextFunction) {
   if (!systemConfig.get('ff.supplier_invoice_control.enabled')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  next();
+}
+
+// PR-S4 SUMIT-send second gate. Closed unless BOTH parent flag AND
+// sumit_send flag are ON. Returns 404 (not 503) so the existence of the
+// route is not leaked when the feature is disabled.
+function sumitSendFlagGate(_req: Request, res: Response, next: NextFunction) {
+  if (
+    !systemConfig.get('ff.supplier_invoice_control.enabled') ||
+    !systemConfig.get('ff.supplier_invoice_control.sumit_send.enabled')
+  ) {
     return res.status(404).json({ error: 'Not found' });
   }
   next();
@@ -176,5 +190,46 @@ router.post('/:id/reject', ...requireFinanceOrAdmin, async (req: Request, res: R
     return res.status(500).json({ error: 'Reject failed' });
   }
 });
+
+// PR-S4: POST /api/supplier-invoices/:id/send-to-sumit
+// Double-gated (parent flag + sumit_send flag). Admin click only — no
+// autonomous AI path. Returns 200 + {sent:true, sumitDocumentId} on success;
+// 200 + {sent:false, wired:false, reason} when SUMIT env is not configured;
+// 409 when invoice status is not 'ready_for_accountant' or it has already
+// been sent.
+const requireFinanceOrAdminForSumitSend = [
+  sumitSendFlagGate,
+  validateFirebaseToken,
+  loadUserRole,
+  checkAccessLevel(8),
+];
+router.post(
+  '/:id/send-to-sumit',
+  ...requireFinanceOrAdminForSumitSend,
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id' });
+    const uid = authReq.firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const result = await supplierInvoiceSumitSendService.send({
+        invoiceId: id,
+        actorUid: uid,
+        actorEmail: readActorEmail(authReq),
+        actorRole: readActorRole(authReq),
+        ipAddress: req.ip || '',
+        userAgent: req.get('user-agent') || '',
+      });
+      return res.json(result);
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code;
+      if (code === 'NOT_FOUND') return res.status(404).json({ error: 'Not found' });
+      if (code === 'INVALID_STATE') return res.status(409).json({ error: (err as Error).message });
+      logger.error('[SupplierInvoices] send-to-sumit failed', err);
+      return res.status(500).json({ error: 'SUMIT send failed' });
+    }
+  }
+);
 
 export default router;
