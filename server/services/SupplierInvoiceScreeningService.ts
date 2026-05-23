@@ -107,13 +107,25 @@ class SupplierInvoiceScreeningService {
       logger.warn('[SupplierInvoiceScreening] Signed-URL generation failed', { err: (err as Error).message });
     }
 
-    // Optional supplier lookup for business-number / name comparison.
+    // Optional supplier lookup for business-number / name / Osek-classification
+    // comparison. osek_classification is read so the screening lib can flag a
+    // patur-supplier-charging-VAT mismatch (per PR-S5c).
     let supplierRow:
-      | { id: number; companyName: string; taxId: string | null }
+      | {
+          id: number;
+          companyName: string;
+          taxId: string | null;
+          osekClassification: string;
+        }
       | null = null;
     if (input.supplierId != null) {
       const [row] = await db
-        .select({ id: suppliers.id, companyName: suppliers.companyName, taxId: suppliers.taxId })
+        .select({
+          id: suppliers.id,
+          companyName: suppliers.companyName,
+          taxId: suppliers.taxId,
+          osekClassification: suppliers.osekClassification,
+        })
         .from(suppliers)
         .where(eq(suppliers.id, input.supplierId))
         .limit(1);
@@ -153,6 +165,10 @@ class SupplierInvoiceScreeningService {
       fraudEngineAvailable = false;
     }
 
+    const osekClassification =
+      (supplierRow?.osekClassification as 'patur' | 'murshe' | 'chevra' | 'unknown' | undefined) ??
+      undefined;
+
     const facts: ScreeningInput = {
       fileHashDuplicate,
       // Per-supplier invoice-number duplicate detection is deferred until
@@ -170,6 +186,17 @@ class SupplierInvoiceScreeningService {
       ocrAvailable,
       fraudEngineAvailable,
       fraudEngineScore,
+      // Osek classification — wired now (PR-S5c columns are on main). When
+      // the supplier is 'unknown' the lib emits an osek_classification_unknown
+      // warning so finance classifies the supplier before approving.
+      //
+      // SHAAM (ff PR-S5a) fields are NOT wired here yet — the
+      // supplier_invoices.shaam_required / shaam_allocation_number columns
+      // and the matching ScreeningInput fields live on the unmerged PR-S5a
+      // stack. Once that merges to main a follow-up adds:
+      //   shaamAllocationRequired, shaamAllocationNumberOnInvoice into facts,
+      //   shaamRequired + shaamAllocationNumber into the insert below.
+      supplierOsekClassification: osekClassification,
     };
     const screening = screenInvoice(facts);
 
@@ -196,6 +223,10 @@ class SupplierInvoiceScreeningService {
         riskLevel: screening.riskLevel,
         status: screening.status,
         uploadedBy: input.uploadedByUid,
+        // shaamRequired + shaamAllocationNumber columns will be added by
+        // PR-S5a (migration 0026). The OCR extracts shaamAllocationNumber
+        // into ocrData already (PR-OCR-1 is on main); the persistence wiring
+        // follows once PR-S5a's migration lands.
         createdAt: now,
         updatedAt: now,
       })
@@ -385,6 +416,42 @@ class SupplierInvoiceScreeningService {
       .from(supplierInvoiceChecks)
       .where(eq(supplierInvoiceChecks.invoiceId, invoiceId));
     return { invoice, checks };
+  }
+
+  /**
+   * Admin list endpoint. Returns the most recent invoices first, with
+   * optional risk-level and status filters. Pagination via offset/limit.
+   * Cap is 100 per page so the admin table stays responsive.
+   */
+  async list(opts: {
+    limit?: number;
+    offset?: number;
+    riskLevel?: 'green' | 'yellow' | 'red';
+    status?: string;
+  }) {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
+    const offset = Math.max(opts.offset ?? 0, 0);
+
+    const conditions = [] as any[];
+    if (opts.riskLevel) conditions.push(eq(supplierInvoices.riskLevel, opts.riskLevel));
+    if (opts.status) conditions.push(eq(supplierInvoices.status, opts.status));
+
+    const baseQuery = db
+      .select()
+      .from(supplierInvoices)
+      .$dynamic();
+
+    const filtered = conditions.length > 0 ? baseQuery.where(and(...conditions)) : baseQuery;
+    const rows = await filtered.limit(limit).offset(offset);
+
+    // Sort newest first in app code (Drizzle orderBy DESC syntax varies by version).
+    rows.sort((a, b) => {
+      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bT - aT;
+    });
+
+    return { rows, limit, offset };
   }
 }
 
