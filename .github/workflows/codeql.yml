@@ -73,6 +73,12 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
+        # Scan human-written source only; exclude `dist/` build artefacts and
+        # vendored / minified bundles (Firebase, React, etc.). Without this the
+        # scanner surfaces pre-existing issues inside third-party library code
+        # we can neither own nor fix — and those re-appear on every PR that
+        # rebuilds `dist/`. See .github/codeql/codeql-config.yml for details.
+        config-file: ./.github/codeql/codeql-config.yml
         # If you wish to specify custom queries, you can do so here or in a config file.
         # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
