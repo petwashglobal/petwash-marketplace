@@ -18,7 +18,11 @@ import * as SecureStore from "expo-secure-store";
 // 1. CONFIG
 // ============================================================
 
-const API_BASE = "https://api.petwash.co.il"; // Production: https://api.petwash.co.il
+// Override at build time: `EXPO_PUBLIC_API_BASE=https://staging.petwash.co.il eas build ...`
+// The EXPO_PUBLIC_ prefix is required for Expo to inline the value into the JS bundle.
+const API_BASE =
+  (typeof process !== "undefined" && process.env && process.env.EXPO_PUBLIC_API_BASE) ||
+  "https://api.petwash.co.il";
 
 const SECURE_REFRESH_KEY = "PETWASH_REFRESH_TOKEN";
 const SECURE_BIOMETRICS_ENABLED_KEY = "PETWASH_BIOMETRICS_ENABLED";
