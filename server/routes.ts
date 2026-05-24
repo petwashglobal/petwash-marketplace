@@ -323,6 +323,7 @@ import adminMayaRouter from './routes/admin-maya';
 import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
 import adminMayaVoiceRouter from './routes/admin-maya-voice';
 import aiBookingRouter from './routes/ai-booking';
+import adminPaymentDevicesRouter from './routes/admin-payment-devices';
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -434,6 +435,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Mounted BEFORE /api/admin/maya so /voice/* routes through this voice gate first.
   app.use('/api/admin/maya/voice', adminMayaVoiceRouter);
   app.use('/api/admin/maya', adminMayaRouter);
+  // Admin payment-device stock (Nayax VPOS Touch). Asset / lifecycle
+  // tracking only — does NOT touch Nayax payment runtime, K9000 polling,
+  // wallet credits, or payment sessions. Inherits the full /api/admin/
+  // security stack (adminLimiter + requireRole + requireMfaEnrolled).
+  app.use('/api/admin/payment-devices', adminPaymentDevicesRouter);
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);  // Maya Stage 1b

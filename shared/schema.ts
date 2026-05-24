@@ -15703,3 +15703,58 @@ export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
 
 // Maya reception/intake — see migration 0028_maya_reception_intake_foundation.sql
 export * from './schema-maya';
+
+// ──────────────────────────────────────────────────────────────────────────
+// Payment device stock (Nayax VPOS Touch) — migration 0031.
+// Admin asset/stock management for physical payment terminals. NOT the
+// payment runtime — this table only tracks WHICH device is at WHICH
+// machine and its lifecycle. NayaxOnlinePaymentService, webhooks, and
+// K9000 polling are untouched.
+// ──────────────────────────────────────────────────────────────────────────
+export const paymentDevices = pgTable("payment_devices", {
+  id: serial("id").primaryKey(),
+  provider: varchar("provider", { length: 40 }).notNull().default("nayax"),
+  model: varchar("model", { length: 80 }).notNull(),
+  serialNumber: varchar("serial_number", { length: 64 }).notNull(),
+  partNumber: varchar("part_number", { length: 64 }),
+  nayaxTerminalId: varchar("nayax_terminal_id", { length: 64 }),
+  simIccid: varchar("sim_iccid", { length: 64 }),
+  status: varchar("status", { length: 24 }).notNull().default("in_stock"),
+  assignedMachineId: varchar("assigned_machine_id", { length: 64 }),
+  assignedLocationId: varchar("assigned_location_id", { length: 64 }),
+  installationDate: timestamp("installation_date", { withTimezone: true }),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("payment_devices_provider_serial_unique").on(table.provider, table.serialNumber),
+  index("idx_payment_devices_status").on(table.status),
+  index("idx_payment_devices_assigned_machine").on(table.assignedMachineId),
+  index("idx_payment_devices_assigned_location").on(table.assignedLocationId),
+  index("idx_payment_devices_provider").on(table.provider),
+]);
+
+export type PaymentDevice = typeof paymentDevices.$inferSelect;
+export type InsertPaymentDevice = typeof paymentDevices.$inferInsert;
+
+// Append-only history. Trigger in migration 0031 blocks UPDATE/DELETE
+// at the DB level so even admin code cannot rewrite history.
+export const paymentDeviceAssignments = pgTable("payment_device_assignments", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").notNull().references(() => paymentDevices.id, { onDelete: "restrict" }),
+  machineId: varchar("machine_id", { length: 64 }),
+  locationId: varchar("location_id", { length: 64 }),
+  statusAtEvent: varchar("status_at_event", { length: 24 }).notNull(),
+  eventType: varchar("event_type", { length: 24 }).notNull(),
+  performedBy: varchar("performed_by", { length: 128 }).notNull(),
+  performedAt: timestamp("performed_at", { withTimezone: true }).notNull().defaultNow(),
+  note: text("note"),
+}, (table) => [
+  index("idx_payment_device_assignments_device").on(table.deviceId),
+  index("idx_payment_device_assignments_machine").on(table.machineId),
+  index("idx_payment_device_assignments_time").on(table.performedAt),
+]);
+
+export type PaymentDeviceAssignment = typeof paymentDeviceAssignments.$inferSelect;
+export type InsertPaymentDeviceAssignment = typeof paymentDeviceAssignments.$inferInsert;
