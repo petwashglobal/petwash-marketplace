@@ -45,6 +45,13 @@ export interface SystemConfigMap {
   // BookingRequest prefills. AI never confirms / assigns / quotes / charges.
   // Default OFF; backend returns 503 feature_disabled when off.
   'ff.ai.booking_intake.enabled': boolean;
+  // AI provider matching score (AI-B2) — Gemini ranks a set of candidate
+  // provider IDs against the parsed booking intake using PUBLIC profile
+  // fields only (bio, rating, response rate, services, languages, badges,
+  // working hours, home setup). Never sees background check, KYC, risk
+  // score, admin notes, or any other internal trust field. Falls back to
+  // a deterministic rating-based score when Gemini is unavailable.
+  'ff.ai.provider_matching.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -83,6 +90,8 @@ const DEFAULTS: SystemConfigMap = {
   'ff.maya.voice.recording.enabled': false,
   // AI-B1 default OFF
   'ff.ai.booking_intake.enabled': false,
+  // AI-B2 default OFF
+  'ff.ai.provider_matching.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,

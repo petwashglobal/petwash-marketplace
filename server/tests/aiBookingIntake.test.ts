@@ -22,6 +22,7 @@ import request from 'supertest';
 // Hoisted shared state so vi.mock factories + beforeEach can both reach it.
 const state = vi.hoisted(() => ({
   flag: false as boolean,
+  matchFlag: false as boolean,
   // Per-test AI response. Either a JSON string the model would return, or
   // null to simulate AI unavailable, or a synthetic non-JSON to test the
   // tryParseJsonFromModel fallback.
@@ -30,14 +31,53 @@ const state = vi.hoisted(() => ({
     | { ok: false; error: string }
     | null,
   lastPrompt: '' as string,
+  // Per-call DB responses for match-score tests. db.select().from().where()
+  // shifts the next entry off the front. First call → providers, second →
+  // profiles.
+  dbResponse: [] as any[][],
 }));
 
 vi.mock('../services/SystemConfig', () => ({
   getFeatureFlag: vi.fn(async (key: string) => {
     if (key === 'ff.ai.booking_intake.enabled') return state.flag;
+    if (key === 'ff.ai.provider_matching.enabled') return state.matchFlag;
     return false;
   }),
   systemConfig: { get: vi.fn(), set: vi.fn() },
+}));
+
+// Per-test DB rows. The mock db returns whatever the test sets in
+// state.providerRows / state.profileRows.
+vi.mock('../db', () => {
+  const buildSelect = () => ({
+    from: () => ({
+      where: () => Promise.resolve(state.dbResponse.shift() ?? []),
+    }),
+  });
+  return {
+    db: {
+      select: vi.fn(buildSelect),
+    },
+  };
+});
+
+vi.mock('@shared/schema', () => ({
+  // Minimal stubs so drizzle-orm's inArray helper has something to reference.
+  // The mocked db.select() short-circuits to state.dbResponse and never
+  // actually queries.
+  octopusProviders: {
+    id: 'id', userId: 'user_id', city: 'city', services: 'services',
+    rating: 'rating', approved: 'approved', visible: 'visible',
+  },
+  providerProfiles: {
+    userId: 'user_id', bio: 'bio', languages: 'languages', badges: 'badges',
+    ratingAvg: 'rating_avg', ratingCount: 'rating_count',
+    responseRatePct: 'response_rate_pct',
+    avgResponseTimeMinutes: 'avg_response_time_minutes',
+    completedBookingsCount: 'completed_bookings_count',
+    hasFencedYard: 'has_fenced_yard', hasNoPetsAtHome: 'has_no_pets_at_home',
+    acceptedPets: 'accepted_pets', workingHours: 'working_hours',
+  },
 }));
 
 vi.mock('../lib/gemini-client', () => ({
@@ -63,8 +103,10 @@ function buildApp() {
 
 beforeEach(() => {
   state.flag = true; // most tests assume flag ON; the OFF test flips it
+  state.matchFlag = true;
   state.aiResponse = null;
   state.lastPrompt = '';
+  state.dbResponse = [];
 });
 
 describe('AI-B1 conversational booking intake', () => {
@@ -354,6 +396,239 @@ describe('AI-B1 safety — Zod sanitises model output', () => {
     const res = await request(buildApp())
       .post('/api/ai/booking/parse')
       .send({ text: huge });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid_body');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI-B2 — provider matching score
+// ═══════════════════════════════════════════════════════════════════════════
+
+function approvedProviderRow(id: string, userId: string, overrides: any = {}) {
+  return {
+    id,
+    userId,
+    city: 'Tel Aviv',
+    services: ['dog_walking'],
+    rating: 4.7,
+    approved: true,
+    visible: true,
+    ...overrides,
+  };
+}
+
+function profileRow(userId: string, overrides: any = {}) {
+  return {
+    userId,
+    bio: 'Premium dog walker',
+    languages: ['en', 'he'],
+    badges: ['top_rated'],
+    ratingAvg: '4.8',
+    ratingCount: 120,
+    responseRatePct: 95,
+    avgResponseTimeMinutes: 8,
+    completedBookingsCount: 250,
+    hasFencedYard: true,
+    hasNoPetsAtHome: false,
+    acceptedPets: ['dog'],
+    workingHours: { mon: { from: '09:00', to: '18:00', active: true } },
+    ...overrides,
+  };
+}
+
+describe('AI-B2 provider matching score', () => {
+  it('Test 1 — happy path: returns score + public reasons for 2 providers', async () => {
+    state.dbResponse = [
+      [approvedProviderRow('p1', 'u1'), approvedProviderRow('p2', 'u2')],
+      [profileRow('u1'), profileRow('u2')],
+    ];
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        scores: [
+          { providerId: 'p1', matchScore: 92, publicReasons: ['Highly rated', 'Available near you'] },
+          { providerId: 'p2', matchScore: 78, publicReasons: ['Speaks Hebrew and English'] },
+        ],
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({
+        providerIds: ['p1', 'p2'],
+        parsedIntake: { serviceType: 'dog_walking', petType: 'dog', city: 'Tel Aviv' },
+        locale: 'en',
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.scores).toHaveLength(2);
+    expect(res.body.scores[0].matchScore).toBe(92);
+    expect(res.body.scores[0].publicReasons).toContain('Highly rated');
+    expect(res.body.fallback).toBe(false);
+  });
+
+  it('Test 2 — pending/hidden providers DROPPED before AI sees them', async () => {
+    // Sneak in a non-approved provider — must NOT reach the model or the
+    // response. Defends against enumeration of pending/rejected providers.
+    state.dbResponse = [
+      [
+        approvedProviderRow('p1', 'u1'),
+        approvedProviderRow('p2', 'u2', { approved: false, visible: false }),
+        approvedProviderRow('p3', 'u3', { approved: true, visible: false }),
+      ],
+      [profileRow('u1')],
+    ];
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        scores: [{ providerId: 'p1', matchScore: 88, publicReasons: ['Highly rated'] }],
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1', 'p2', 'p3'], parsedIntake: {} });
+    expect(res.status).toBe(200);
+    // Only the approved+visible provider made it through.
+    expect(res.body.scores.map((s: any) => s.providerId)).toEqual(['p1']);
+    // The prompt seen by the model must contain p1 but neither p2 nor p3.
+    expect(state.lastPrompt).toContain('"providerId":"p1"');
+    expect(state.lastPrompt).not.toContain('"providerId":"p2"');
+    expect(state.lastPrompt).not.toContain('"providerId":"p3"');
+  });
+
+  it('Test 3 — provider PAYLOAD section of prompt never contains private trust fields', async () => {
+    state.dbResponse = [
+      [approvedProviderRow('p1', 'u1')],
+      [profileRow('u1')],
+    ];
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({ scores: [{ providerId: 'p1', matchScore: 85, publicReasons: ['Highly rated'] }] }),
+    };
+    await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+
+    // The prompt has TWO sections that mention "trust" words:
+    //   1. safety prose (telling the model what NOT to do — must reference
+    //      the terms by name, that's the point)
+    //   2. JSON provider payload (the actual data the model sees)
+    // Test #3 checks ONLY section 2 — the JSON payload — for forbidden
+    // field names. This is the "build from public-only projection"
+    // guarantee. Tests #4 / #5 cover the response sanitiser separately.
+    const providersSection = state.lastPrompt.split('PROVIDERS')[1] ?? '';
+    expect(providersSection).not.toMatch(/backgroundCheckStatus|background_check_status/);
+    expect(providersSection).not.toMatch(/payoutAccountStatus|payout_account_status/);
+    expect(providersSection).not.toMatch(/trustScore|trust_score/);
+    expect(providersSection).not.toMatch(/rankingScore|ranking_score/);
+    expect(providersSection).not.toMatch(/rankingOverride|ranking_override/);
+    expect(providersSection).not.toMatch(/rankingFlaggedAt|ranking_flagged_at/);
+    expect(providersSection).not.toMatch(/trustMetricsUpdatedAt|rankingBoostUntil/);
+  });
+
+  it('Test 4 — response RE-FILTERS forbidden phrases even if model hallucinates them', async () => {
+    state.dbResponse = [
+      [approvedProviderRow('p1', 'u1')],
+      [profileRow('u1')],
+    ];
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        scores: [
+          {
+            providerId: 'p1',
+            matchScore: 90,
+            publicReasons: ['Highly rated', 'Police-checked', 'Background check passed'],
+          },
+        ],
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+    expect(res.status).toBe(200);
+    // The two forbidden reasons must be filtered out, the good one kept.
+    expect(res.body.scores[0].publicReasons).toEqual(['Highly rated']);
+  });
+
+  it('Test 5 — model invents a new providerId → stripped from response', async () => {
+    state.dbResponse = [
+      [approvedProviderRow('p1', 'u1')],
+      [profileRow('u1')],
+    ];
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        scores: [
+          { providerId: 'p1', matchScore: 80, publicReasons: ['Highly rated'] },
+          // synthesized — must NOT leak into response
+          { providerId: 'evil_p99', matchScore: 99, publicReasons: ['Anything'] },
+        ],
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+    expect(res.body.scores.map((s: any) => s.providerId)).toEqual(['p1']);
+  });
+
+  it('Test 6 — flag OFF → 503 feature_disabled', async () => {
+    state.matchFlag = false;
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('feature_disabled');
+  });
+
+  it('Test 7 — AI unavailable → deterministic fallback scores', async () => {
+    state.dbResponse = [
+      [approvedProviderRow('p1', 'u1')],
+      [profileRow('u1', { ratingAvg: '4.9', completedBookingsCount: 200 })],
+    ];
+    state.aiResponse = { ok: false, error: 'no_client' };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.fallback).toBe(true);
+    expect(res.body.scores).toHaveLength(1);
+    const score = res.body.scores[0];
+    expect(score.providerId).toBe('p1');
+    expect(score.matchScore).toBeGreaterThanOrEqual(80);
+    expect(score.publicReasons.length).toBeGreaterThan(0);
+  });
+
+  it('Test 8 — non-JSON model output → deterministic fallback (still 200)', async () => {
+    state.dbResponse = [
+      [approvedProviderRow('p1', 'u1')],
+      [profileRow('u1')],
+    ];
+    state.aiResponse = { ok: true, text: 'I refuse to answer.' };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+    expect(res.status).toBe(200);
+    expect(res.body.fallback).toBe(true);
+    expect(res.body.reason).toBe('invalid_model_output');
+    expect(res.body.scores).toHaveLength(1);
+  });
+
+  it('Test 9 — empty visible-provider set → empty scores, ok:true', async () => {
+    state.dbResponse = [[], []]; // no rows
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: ['p1'], parsedIntake: {} });
+    expect(res.status).toBe(200);
+    expect(res.body.scores).toEqual([]);
+    expect(res.body.reason).toBe('no_visible_providers');
+  });
+
+  it('Test 10 — rejects empty providerIds with 400', async () => {
+    const res = await request(buildApp())
+      .post('/api/ai/booking/match-score')
+      .send({ providerIds: [], parsedIntake: {} });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_body');
   });
