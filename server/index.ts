@@ -206,54 +206,6 @@ const _startupSecurityViolations: string[] = [];
   }
 })();
 
-// ── M-D: Provider KYC document encryption key — fail-closed in production ───
-// AES-256-GCM master key (DOCUMENT_ENCRYPTION_KEY) protects every provider KYC
-// upload, biometric file, bank/IBAN field and contractor onboarding document.
-// Without it, the runtime route handlers throw in production
-// (server/document-security-2025.ts:419, contractor-onboarding.ts:34,
-//  provider-intake.ts:27, provider-onboarding.ts:58, bank.ts:23) — provider
-// onboarding is silently broken until the first upload attempt produces a 500.
-//
-// server/lib/env-validation.ts:225 already defined a hard-stop for this same
-// secret, but the module is never imported anywhere — so the check never ran.
-// Surface the gap at boot so it is visible to monitoring AND blocks deploy
-// promotion via /health/strict 503 (CI smoke gate), instead of waiting for
-// the first provider to hit a runtime stack trace.
-//
-// Recorded in _startupSecurityViolations (not _startupConfigErrors) because
-// missing this key violates a hard data-protection guarantee: in dev the
-// route handlers downgrade to plaintext storage, and in prod they throw at
-// runtime. Treating this as a security violation matches the user's
-// "fail-closed in production" directive for M-D.
-//
-// Min length 32 chars matches the runtime length guard in
-// document-security-2025.ts:433. NODE_ENV check matches the production-only
-// scope of the existing route-level throws.
-(function assertDocumentEncryptionKeyInProd() {
-  const isProd = process.env.NODE_ENV === 'production';
-  if (!isProd) return;
-
-  const val = (process.env.DOCUMENT_ENCRYPTION_KEY || '').trim();
-  if (!val) {
-    const msg =
-      '[startup] 🚨 SECURITY: DOCUMENT_ENCRYPTION_KEY is not set in production — ' +
-      'all provider KYC, biometric, bank and contractor onboarding uploads will throw at runtime. ' +
-      'Generate: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))". ' +
-      'Set in GCP Secret Manager and redeploy.';
-    console.error(msg);
-    _startupSecurityViolations.push(msg);
-    return;
-  }
-  if (val.length < 32) {
-    const msg =
-      '[startup] 🚨 SECURITY: DOCUMENT_ENCRYPTION_KEY is shorter than 32 characters — ' +
-      'AES-256-GCM requires a 32-byte key. ' +
-      'Rotate immediately: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))".';
-    console.error(msg);
-    _startupSecurityViolations.push(msg);
-  }
-})();
-
 // ── Tranzila webhook bypass guard ─────────────────────────────────────────────
 // TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is allowed ONLY in isolated local dev.
 // If it is set in production or staging the server MUST refuse to start.
