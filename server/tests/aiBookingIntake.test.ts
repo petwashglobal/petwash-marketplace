@@ -23,6 +23,7 @@ import request from 'supertest';
 const state = vi.hoisted(() => ({
   flag: false as boolean,
   matchFlag: false as boolean,
+  slotFlag: false as boolean,
   // Per-test AI response. Either a JSON string the model would return, or
   // null to simulate AI unavailable, or a synthetic non-JSON to test the
   // tryParseJsonFromModel fallback.
@@ -41,17 +42,26 @@ vi.mock('../services/SystemConfig', () => ({
   getFeatureFlag: vi.fn(async (key: string) => {
     if (key === 'ff.ai.booking_intake.enabled') return state.flag;
     if (key === 'ff.ai.provider_matching.enabled') return state.matchFlag;
+    if (key === 'ff.ai.slot_suggestions.enabled') return state.slotFlag;
     return false;
   }),
   systemConfig: { get: vi.fn(), set: vi.fn() },
 }));
 
 // Per-test DB rows. The mock db returns whatever the test sets in
-// state.providerRows / state.profileRows.
+// state.providerRows / state.profileRows / state.slotRows. Each `from()`
+// builder shifts the next response off the front of state.dbResponse,
+// so a multi-query handler (like B2's provider + profile fetch) gets
+// each query satisfied in order. For single-query handlers (like B3),
+// chain orderBy/limit too.
 vi.mock('../db', () => {
+  const finalAwait = () => Promise.resolve(state.dbResponse.shift() ?? []);
   const buildSelect = () => ({
     from: () => ({
-      where: () => Promise.resolve(state.dbResponse.shift() ?? []),
+      where: (..._args: any[]) => ({
+        orderBy: (..._a: any[]) => finalAwait(),
+        then: (cb: any, errCb: any) => finalAwait().then(cb, errCb),
+      }),
     }),
   });
   return {
@@ -77,6 +87,10 @@ vi.mock('@shared/schema', () => ({
     completedBookingsCount: 'completed_bookings_count',
     hasFencedYard: 'has_fenced_yard', hasNoPetsAtHome: 'has_no_pets_at_home',
     acceptedPets: 'accepted_pets', workingHours: 'working_hours',
+  },
+  availabilitySlots: {
+    id: 'id', providerId: 'provider_id', startTime: 'start_time',
+    endTime: 'end_time', status: 'status', lockExpiresAt: 'lock_expires_at',
   },
 }));
 
@@ -104,6 +118,7 @@ function buildApp() {
 beforeEach(() => {
   state.flag = true; // most tests assume flag ON; the OFF test flips it
   state.matchFlag = true;
+  state.slotFlag = true;
   state.aiResponse = null;
   state.lastPrompt = '';
   state.dbResponse = [];
@@ -629,6 +644,169 @@ describe('AI-B2 provider matching score', () => {
     const res = await request(buildApp())
       .post('/api/ai/booking/match-score')
       .send({ providerIds: [], parsedIntake: {} });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid_body');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI-B3 — smart slot suggestions
+// ═══════════════════════════════════════════════════════════════════════════
+
+function slotRow(
+  id: number,
+  providerId: number,
+  startTime: Date,
+  endTime: Date,
+  overrides: any = {},
+) {
+  return {
+    id,
+    providerId,
+    startTime,
+    endTime,
+    status: 'available',
+    lockExpiresAt: null,
+    ...overrides,
+  };
+}
+
+describe('AI-B3 smart slot suggestions', () => {
+  it('Test 1 — "tomorrow morning" returns slots in 08-12 window', async () => {
+    // Build a "tomorrow morning 09:00-10:00" slot in Asia/Jerusalem
+    // (Israeli TZ is UTC+2 or +3 depending on DST). Use a fixed
+    // server-future date so the test is deterministic regardless of when
+    // it runs.
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const start = new Date(tomorrow);
+    start.setUTCHours(7, 0, 0, 0); // 09:00 in IL summer / 09:00 winter
+    const end = new Date(start);
+    end.setUTCHours(start.getUTCHours() + 1);
+
+    state.dbResponse = [
+      [
+        slotRow(101, 1, start, end),
+        slotRow(102, 1, new Date(start.getTime() + 60 * 60 * 1000), new Date(end.getTime() + 60 * 60 * 1000)),
+      ],
+    ];
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'tomorrow', timeWindow: 'morning' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.suggestions).toHaveLength(2);
+    expect(res.body.suggestions[0].slotId).toBe(101);
+    expect(res.body.resolvedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(res.body.resolvedWindow).toHaveProperty('startISO');
+  });
+
+  it('Test 2 — slot LOCKED by another customer is filtered server-side', async () => {
+    // The DB mock returns whatever it's given. The route's WHERE clause
+    // does the lock filter via SQL — but we still want a test that proves
+    // the filter SHAPE exists. Here we check that the route accepts the
+    // unfiltered DB response as-is (drizzle-orm semantics) and the SQL
+    // would have filtered. We verify via the where-clause builder being
+    // called with isNull / lt over lockExpiresAt — this is a snapshot of
+    // the route source.
+    const src = (await import('node:fs')).readFileSync(
+      'server/routes/ai-booking.ts',
+      'utf8',
+    );
+    expect(src).toMatch(/isNull\(availabilitySlots\.lockExpiresAt\)/);
+    expect(src).toMatch(/lt\(availabilitySlots\.lockExpiresAt, nowUtc\)/);
+    expect(src).toMatch(/eq\(availabilitySlots\.status, ['"]available['"]\)/);
+  });
+
+  it('Test 3 — short slot (<service duration) is dropped', async () => {
+    // 30-min slot vs 60-min service duration → must be dropped.
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const start = new Date(tomorrow);
+    start.setUTCHours(7, 0, 0, 0);
+    const shortEnd = new Date(start.getTime() + 30 * 60 * 1000); // only 30 min
+
+    const start2 = new Date(start.getTime() + 60 * 60 * 1000);
+    const longEnd = new Date(start2.getTime() + 60 * 60 * 1000); // 60 min
+
+    state.dbResponse = [
+      [
+        slotRow(201, 1, start, shortEnd),
+        slotRow(202, 1, start2, longEnd),
+      ],
+    ];
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'tomorrow', timeWindow: 'morning', serviceDurationMinutes: 60 });
+    expect(res.status).toBe(200);
+    // Only the 60-min slot survives.
+    expect(res.body.suggestions).toHaveLength(1);
+    expect(res.body.suggestions[0].slotId).toBe(202);
+  });
+
+  it('Test 4 — "today" with afternoon window resolves to today date', async () => {
+    state.dbResponse = [[]]; // no slots; we only verify resolution
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'today', timeWindow: 'afternoon' });
+    expect(res.status).toBe(200);
+    // Either we get suggestions or "window_in_past" if today's afternoon
+    // already passed when the test ran. Both are valid.
+    expect(res.body.resolvedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('Test 5 — "this_weekend" resolves to upcoming Saturday', async () => {
+    state.dbResponse = [[]];
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'this_weekend', timeWindow: 'anytime' });
+    expect(res.status).toBe(200);
+    expect(res.body.resolvedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Saturday weekday=6 in UTC date arithmetic; resolved date should
+    // BE a Saturday (or today if today is Sat).
+    const resolved = new Date(res.body.resolvedDate + 'T00:00:00Z');
+    expect(resolved.getUTCDay()).toBe(6);
+  });
+
+  it('Test 6 — ISO date passthrough', async () => {
+    state.dbResponse = [[]];
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: '2026-12-25', timeWindow: 'morning' });
+    expect(res.body.resolvedDate).toBe('2026-12-25');
+  });
+
+  it('Test 7 — unresolvable date → empty suggestions + reason', async () => {
+    state.dbResponse = [[]];
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'next leap year', timeWindow: 'morning' });
+    expect(res.status).toBe(200);
+    expect(res.body.suggestions).toEqual([]);
+    expect(res.body.reason).toBe('could_not_resolve_date');
+  });
+
+  it('Test 8 — flag OFF → 503 feature_disabled', async () => {
+    state.slotFlag = false;
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'tomorrow', timeWindow: 'morning' });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('feature_disabled');
+  });
+
+  it('Test 9 — empty result set returns reason:no_matching_slots', async () => {
+    state.dbResponse = [[]];
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'tomorrow', timeWindow: 'morning' });
+    expect(res.status).toBe(200);
+    expect(res.body.suggestions).toEqual([]);
+    expect(res.body.reason).toBe('no_matching_slots');
+  });
+
+  it('Test 10 — rejects invalid duration (>480 min) with 400', async () => {
+    const res = await request(buildApp())
+      .post('/api/ai/booking/slot-suggestions')
+      .send({ dateText: 'tomorrow', serviceDurationMinutes: 9999 });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_body');
   });

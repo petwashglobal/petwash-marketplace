@@ -29,12 +29,12 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { inArray } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { safeGenerate } from '../lib/gemini-client';
 import { getFeatureFlag } from '../services/SystemConfig';
 import { db } from '../db';
-import { octopusProviders, providerProfiles } from '@shared/schema';
+import { availabilitySlots, octopusProviders, providerProfiles } from '@shared/schema';
 
 const router = Router();
 
@@ -522,6 +522,250 @@ router.post('/match-score', requireMatchingFlag, async (req: Request, res: Respo
     }));
 
   return res.json({ ok: true, scores: safeScores, fallback: false });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI-B3 — Smart slot suggestions
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// POST /api/ai/booking/slot-suggestions
+//
+// Turns a vague date/time intent ("tomorrow morning") into concrete,
+// backend-validated slot windows from the existing availability_slots
+// table. NEVER returns synthetic slots — every suggestion is a real
+// available_slots row. Honors:
+//   - availability_slots.status === 'available'
+//   - active payment locks (lock_expires_at > now blocks the slot)
+//   - service duration (slot must fit at least serviceDurationMinutes)
+//   - timezone (default Asia/Jerusalem)
+//   - optional provider filter
+//
+// Intentionally DETERMINISTIC (no Gemini call). The "smart" part is the
+// dateText/timeWindow parsing; the validation is hard DB. Safety + correct
+// availability are non-negotiable — there is no AI flair worth a fake slot.
+//
+// Feature flag: ff.ai.slot_suggestions.enabled  (default FALSE)
+
+type DateTextHint = 'today' | 'tomorrow' | 'this_weekend' | string; // string = ISO yyyy-mm-dd
+
+const SlotSuggestBodySchema = z.object({
+  dateText: z.string().min(1).max(40), // 'today', 'tomorrow', 'this_weekend', or ISO yyyy-mm-dd
+  timeWindow: z
+    .enum(['morning', 'afternoon', 'evening', 'anytime', 'exact', 'unknown'])
+    .optional()
+    .default('anytime'),
+  serviceDurationMinutes: z.number().int().min(15).max(480).optional().default(60),
+  timezone: z.string().max(64).optional().default('Asia/Jerusalem'),
+  providerIds: z.array(z.number().int().positive()).max(50).optional(),
+  maxSuggestions: z.number().int().min(1).max(20).optional().default(8),
+});
+
+// Window-of-day in hours (local time). Inclusive start, exclusive end.
+const WINDOWS: Record<string, [number, number]> = {
+  morning: [8, 12],
+  afternoon: [12, 17],
+  evening: [17, 21],
+  anytime: [8, 21],
+  exact: [0, 24],
+  unknown: [8, 21],
+};
+
+/**
+ * Resolve a textual date hint into a concrete YYYY-MM-DD date in the
+ * given IANA timezone.
+ *   - 'today' → server's current date in tz
+ *   - 'tomorrow' → +1 day
+ *   - 'this_weekend' → upcoming Saturday (or today if it IS Saturday)
+ *   - ISO yyyy-mm-dd → returned verbatim (after validation)
+ *   - anything else → null (caller falls back to next 7 days)
+ */
+function resolveDateText(dateText: string, tz: string): string | null {
+  const cleaned = dateText.trim().toLowerCase();
+
+  // ISO yyyy-mm-dd passthrough (validate).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    const d = new Date(`${cleaned}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) return cleaned;
+    return null;
+  }
+
+  const now = new Date();
+  // Build a date object representing "today" in the target tz by formatting
+  // current UTC as a date string in tz, then re-parsing.
+  const tzDateStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now); // yyyy-mm-dd
+  const [y, m, d] = tzDateStr.split('-').map((n) => parseInt(n, 10));
+  const baseDate = new Date(Date.UTC(y, m - 1, d));
+
+  if (cleaned === 'today' || cleaned === 'now') {
+    return tzDateStr;
+  }
+  if (cleaned === 'tomorrow' || cleaned === 'tmrw') {
+    baseDate.setUTCDate(baseDate.getUTCDate() + 1);
+  } else if (cleaned === 'this_weekend' || cleaned === 'weekend' || cleaned === 'this weekend') {
+    // upcoming Saturday (UTC weekday: Sun=0..Sat=6)
+    const todayWeekday = baseDate.getUTCDay();
+    const daysToSat = todayWeekday === 6 ? 0 : (6 - todayWeekday + 7) % 7;
+    baseDate.setUTCDate(baseDate.getUTCDate() + daysToSat);
+  } else {
+    return null;
+  }
+
+  const yyyy = baseDate.getUTCFullYear();
+  const mm = String(baseDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(baseDate.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Build the search window in UTC for a given (resolvedDate, timeWindow, tz).
+ * Returns null when the resolved date+startHour is already in the past
+ * (today-with-past-window), which means the front-end should ask the
+ * customer to pick a later time.
+ */
+function buildWindow(
+  resolvedDate: string,
+  timeWindow: keyof typeof WINDOWS,
+  tz: string,
+): { startISO: string; endISO: string } | null {
+  const [startH, endH] = WINDOWS[timeWindow] ?? WINDOWS.anytime;
+  // Construct local-time start/end strings, then convert to UTC by formatting
+  // through the tz. We use Intl-based offset detection rather than a dep.
+  const startLocal = `${resolvedDate}T${String(startH).padStart(2, '0')}:00:00`;
+  const endLocal = `${resolvedDate}T${String(endH).padStart(2, '0')}:00:00`;
+  const startUTC = localToUtcISO(startLocal, tz);
+  const endUTC = localToUtcISO(endLocal, tz);
+  if (!startUTC || !endUTC) return null;
+  // Refuse a window that ends before "now" — nothing valid can come back.
+  if (new Date(endUTC).getTime() < Date.now()) return null;
+  return { startISO: startUTC, endISO: endUTC };
+}
+
+/**
+ * Best-effort local-time-string → UTC ISO conversion using the runtime's
+ * Intl tz data. Good enough for "tomorrow 09:00 Asia/Jerusalem" without
+ * pulling a dependency.
+ */
+function localToUtcISO(localISO: string, tz: string): string | null {
+  // Pretend the localISO is UTC, then compute the tz offset at that moment.
+  const asIfUtc = new Date(`${localISO}Z`);
+  if (Number.isNaN(asIfUtc.getTime())) return null;
+  const tzFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const parts = tzFormatter.formatToParts(asIfUtc);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value;
+  const tzYear = parseInt(get('year') ?? '0', 10);
+  const tzMonth = parseInt(get('month') ?? '0', 10);
+  const tzDay = parseInt(get('day') ?? '0', 10);
+  const tzHour = parseInt(get('hour') ?? '0', 10);
+  const tzMin = parseInt(get('minute') ?? '0', 10);
+  const tzSec = parseInt(get('second') ?? '0', 10);
+  const tzUtc = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMin, tzSec);
+  const offsetMs = tzUtc - asIfUtc.getTime();
+  // The actual UTC moment is the local time MINUS the offset.
+  const correctedUtc = asIfUtc.getTime() - offsetMs;
+  return new Date(correctedUtc).toISOString();
+}
+
+async function requireSlotSuggestionsFlag(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const enabled = await getFeatureFlag('ff.ai.slot_suggestions.enabled');
+    if (!enabled) return res.status(503).json({ ok: false, error: 'feature_disabled' });
+    next();
+  } catch (err) {
+    logger.warn('[ai-booking] slot-suggestions flag read failed; treating as disabled', { err });
+    return res.status(503).json({ ok: false, error: 'feature_disabled' });
+  }
+}
+
+router.post('/slot-suggestions', requireSlotSuggestionsFlag, async (req: Request, res: Response) => {
+  const body = SlotSuggestBodySchema.safeParse(req.body);
+  if (!body.success) {
+    return res.status(400).json({ ok: false, error: 'invalid_body', details: body.error.flatten() });
+  }
+  const { dateText, timeWindow, serviceDurationMinutes, timezone, providerIds, maxSuggestions } = body.data;
+
+  const resolvedDate = resolveDateText(dateText, timezone);
+  if (!resolvedDate) {
+    return res.json({
+      ok: true,
+      suggestions: [],
+      reason: 'could_not_resolve_date',
+      resolvedDate: null,
+      resolvedWindow: null,
+    });
+  }
+
+  const window = buildWindow(resolvedDate, timeWindow, timezone);
+  if (!window) {
+    return res.json({
+      ok: true,
+      suggestions: [],
+      reason: 'window_in_past',
+      resolvedDate,
+      resolvedWindow: null,
+    });
+  }
+
+  // Query availability_slots in the window. Filter by:
+  //   - status = 'available' (status='held'/'booked'/'cancelled' all skipped)
+  //   - no active payment lock (lockExpiresAt null OR < now)
+  //   - slot end ≥ now (no past slots even if window technically starts today)
+  //   - optionally constrain to providerIds
+  const nowUtc = new Date();
+  const conditions: any[] = [
+    eq(availabilitySlots.status, 'available'),
+    gte(availabilitySlots.startTime, new Date(window.startISO)),
+    lte(availabilitySlots.endTime, new Date(window.endISO)),
+    gte(availabilitySlots.endTime, nowUtc),
+    or(
+      isNull(availabilitySlots.lockExpiresAt),
+      lt(availabilitySlots.lockExpiresAt, nowUtc),
+    ),
+  ];
+  if (providerIds && providerIds.length > 0) {
+    conditions.push(inArray(availabilitySlots.providerId, providerIds));
+  }
+
+  const rows = await db
+    .select({
+      id: availabilitySlots.id,
+      providerId: availabilitySlots.providerId,
+      startTime: availabilitySlots.startTime,
+      endTime: availabilitySlots.endTime,
+    })
+    .from(availabilitySlots)
+    .where(and(...conditions))
+    .orderBy(availabilitySlots.startTime);
+
+  // Filter: must fit the requested service duration.
+  const minDurMs = serviceDurationMinutes * 60_000;
+  const suggestions = rows
+    .filter((r) => r.endTime.getTime() - r.startTime.getTime() >= minDurMs)
+    .slice(0, maxSuggestions)
+    .map((r) => ({
+      slotId: r.id,
+      providerId: r.providerId,
+      startISO: r.startTime.toISOString(),
+      endISO: r.endTime.toISOString(),
+      durationMinutes: Math.round((r.endTime.getTime() - r.startTime.getTime()) / 60000),
+    }));
+
+  return res.json({
+    ok: true,
+    suggestions,
+    resolvedDate,
+    resolvedWindow: window,
+    reason: suggestions.length === 0 ? 'no_matching_slots' : undefined,
+  });
 });
 
 export default router;
