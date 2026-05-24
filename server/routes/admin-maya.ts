@@ -1,19 +1,21 @@
 /**
- * Maya reception/intake admin API (Stage 1b).
+ * Maya reception/intake admin API.
+ *
+ * Stage 1b: master kill switch + per-feature flags + by-id reads + writes.
+ * Stage 2  (this version): adds list endpoints needed by the admin UI.
  *
  * Mounted at /api/admin/maya — inherits the existing admin security stack
  * (rate limit, IP risk scoring, session age guard, requireRole(ADMIN_ROLES),
  * requireStaffApproved, requireMfaEnrolled).
  *
- * All routes are gated by ff.maya.enabled (master kill switch, default OFF
- * in SystemConfig DEFAULT_FEATURE_FLAGS). Sub-features gated by their own
- * ff.maya.<area>.enabled flags.
+ * All routes gated by ff.maya.enabled (master kill switch, default OFF).
+ * Sub-features gated by their own ff.maya.<area>.enabled flags.
  *
- * Hard scope (matches the SDD discipline rules):
- *   - DRAFT-ONLY. Provider drafts cannot be set to 'approved'. Booking drafts
- *     cannot be set to 'confirmed'.
- *   - NO wallet writes, NO K9000 release, NO payments, NO provider approval,
- *     NO final booking confirmation, NO voice / WhatsApp / email.
+ * Hard scope:
+ *   - DRAFT-ONLY. Provider drafts cannot be set to 'approved'. Booking
+ *     drafts cannot be set to 'confirmed'.
+ *   - NO wallet writes, NO K9000 release, NO payments, NO provider
+ *     approval, NO final booking confirmation, NO voice/WhatsApp/email.
  *   - Audit log is append-only at the DB level.
  *
  * Crash-safe: all handlers fail-closed. If SystemConfig hasn't loaded the
@@ -50,6 +52,12 @@ function isUuid(v: unknown): v is string {
   );
 }
 
+function parseLimit(q: unknown, fallback = 50): number {
+  const n = Number(q);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.min(Math.floor(n), 200);
+}
+
 // ---------------------------------------------------------------------------
 // gates
 // ---------------------------------------------------------------------------
@@ -61,7 +69,6 @@ async function requireMaster(_req: Request, res: Response, next: NextFunction) {
     }
     next();
   } catch (err) {
-    // fail-closed
     logger.warn({ err }, 'ff.maya.enabled flag read failed; treating as disabled');
     return res.status(503).json({ ok: false, error: 'maya_disabled' });
   }
@@ -87,6 +94,18 @@ router.use(requireMaster);
 // ---------------------------------------------------------------------------
 // conversations
 // ---------------------------------------------------------------------------
+router.get('/conversations', async (req: Request, res: Response) => {
+  const status = isString(req.query.status) ? (req.query.status as string) : undefined;
+  const limit = parseLimit(req.query.limit);
+  try {
+    const rows = await Maya.listConversations({ status, limit });
+    res.json({ ok: true, conversations: rows });
+  } catch (err) {
+    logger.error({ err }, 'maya listConversations failed');
+    res.status(500).json({ ok: false, error: 'internal_error' });
+  }
+});
+
 router.post('/conversations', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   if (!isString(body.channel) || !['web', 'admin', 'test'].includes(body.channel)) {
@@ -172,6 +191,18 @@ router.get('/conversations/:id/messages', async (req: Request, res: Response) =>
 // ---------------------------------------------------------------------------
 // leads
 // ---------------------------------------------------------------------------
+router.get('/leads', async (req: Request, res: Response) => {
+  const status = isString(req.query.status) ? (req.query.status as string) : undefined;
+  const limit = parseLimit(req.query.limit);
+  try {
+    const rows = await Maya.listLeads({ status, limit });
+    res.json({ ok: true, leads: rows });
+  } catch (err) {
+    logger.error({ err }, 'maya listLeads failed');
+    res.status(500).json({ ok: false, error: 'internal_error' });
+  }
+});
+
 router.post('/leads', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   try {
@@ -207,6 +238,22 @@ router.get('/leads/:id', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 // provider intake drafts (DRAFT-ONLY)
 // ---------------------------------------------------------------------------
+router.get(
+  '/provider-intake-drafts',
+  requireFlag('ff.maya.provider_intake.enabled'),
+  async (req: Request, res: Response) => {
+    const status = isString(req.query.status) ? (req.query.status as string) : undefined;
+    const limit = parseLimit(req.query.limit);
+    try {
+      const rows = await Maya.listProviderDrafts({ intakeStatus: status, limit });
+      res.json({ ok: true, drafts: rows });
+    } catch (err) {
+      logger.error({ err }, 'maya listProviderDrafts failed');
+      res.status(500).json({ ok: false, error: 'internal_error' });
+    }
+  },
+);
+
 router.post(
   '/provider-intake-drafts',
   requireFlag('ff.maya.provider_intake.enabled'),
@@ -281,6 +328,22 @@ router.patch(
 // ---------------------------------------------------------------------------
 // booking intake drafts (DRAFT-ONLY; price never stored here)
 // ---------------------------------------------------------------------------
+router.get(
+  '/booking-intake-drafts',
+  requireFlag('ff.maya.booking_intake.enabled'),
+  async (req: Request, res: Response) => {
+    const status = isString(req.query.status) ? (req.query.status as string) : undefined;
+    const limit = parseLimit(req.query.limit);
+    try {
+      const rows = await Maya.listBookingDrafts({ intakeStatus: status, limit });
+      res.json({ ok: true, drafts: rows });
+    } catch (err) {
+      logger.error({ err }, 'maya listBookingDrafts failed');
+      res.status(500).json({ ok: false, error: 'internal_error' });
+    }
+  },
+);
+
 router.post(
   '/booking-intake-drafts',
   requireFlag('ff.maya.booking_intake.enabled'),
@@ -388,14 +451,45 @@ router.get(
   requireFlag('ff.maya.tasks.enabled'),
   async (req: Request, res: Response) => {
     const status = isString(req.query.status) ? (req.query.status as string) : undefined;
-    const rows = await Maya.listTasks({ status });
+    const limit = parseLimit(req.query.limit);
+    const rows = await Maya.listTasks({ status, limit });
     return res.json({ ok: true, tasks: rows });
+  },
+);
+
+router.get(
+  '/tasks/:id',
+  requireFlag('ff.maya.tasks.enabled'),
+  async (req: Request, res: Response) => {
+    if (!isUuid(req.params.id)) {
+      return res.status(400).json({ ok: false, error: 'invalid_id' });
+    }
+    const row = await Maya.getTask(req.params.id);
+    if (!row) return res.status(404).json({ ok: false, error: 'not_found' });
+    return res.json({ ok: true, task: row });
   },
 );
 
 // ---------------------------------------------------------------------------
 // escalations
 // ---------------------------------------------------------------------------
+router.get(
+  '/escalations',
+  requireFlag('ff.maya.escalations.enabled'),
+  async (req: Request, res: Response) => {
+    const status = isString(req.query.status) ? (req.query.status as string) : undefined;
+    const severity = isString(req.query.severity) ? (req.query.severity as string) : undefined;
+    const limit = parseLimit(req.query.limit);
+    try {
+      const rows = await Maya.listEscalations({ status, severity, limit });
+      res.json({ ok: true, escalations: rows });
+    } catch (err) {
+      logger.error({ err }, 'maya listEscalations failed');
+      res.status(500).json({ ok: false, error: 'internal_error' });
+    }
+  },
+);
+
 router.post(
   '/escalations',
   requireFlag('ff.maya.escalations.enabled'),
@@ -428,5 +522,38 @@ router.post(
     }
   },
 );
+
+router.get(
+  '/escalations/:id',
+  requireFlag('ff.maya.escalations.enabled'),
+  async (req: Request, res: Response) => {
+    if (!isUuid(req.params.id)) {
+      return res.status(400).json({ ok: false, error: 'invalid_id' });
+    }
+    const row = await Maya.getEscalation(req.params.id);
+    if (!row) return res.status(404).json({ ok: false, error: 'not_found' });
+    return res.json({ ok: true, escalation: row });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// audit log (read-only — DB trigger blocks UPDATE/DELETE on the underlying table)
+// ---------------------------------------------------------------------------
+router.get('/audit', async (req: Request, res: Response) => {
+  const entityType = isString(req.query.entityType) ? (req.query.entityType as string) : undefined;
+  const entityId = isString(req.query.entityId) ? (req.query.entityId as string) : undefined;
+  const limit = parseLimit(req.query.limit);
+  try {
+    const rows = await Maya.listAuditLog({ entityType, entityId, limit });
+    // BigInt-safe serialization: maya_audit_log.id is bigserial (BigInt at
+    // the JS layer). JSON.stringify cannot encode BigInt, so we stringify
+    // the id here before the response goes through res.json().
+    const safe = rows.map((r) => ({ ...r, id: String((r as any).id) }));
+    res.json({ ok: true, entries: safe });
+  } catch (err) {
+    logger.error({ err }, 'maya listAuditLog failed');
+    res.status(500).json({ ok: false, error: 'internal_error' });
+  }
+});
 
 export default router;

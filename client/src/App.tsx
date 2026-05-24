@@ -244,6 +244,17 @@ const UnifiedEntityManagement = lazy(() => import("@/pages/UnifiedEntityManageme
 const PolicyManagementDashboard = lazy(() => import("@/pages/PolicyManagementDashboard"));
 const FranchiseManagementDashboard = lazy(() => import("@/pages/FranchiseManagementDashboard"));
 const AdminRouteGuard = lazy(() => import("@/components/AdminRouteGuard").then(m => ({ default: m.AdminRouteGuard })));
+// Maya Stage 2 — admin UI lazy imports
+const AdminMaya = lazy(() => import("@/pages/admin/maya/AdminMaya"));
+const AdminMayaInbox = lazy(() => import("@/pages/admin/maya/AdminMayaInbox"));
+const AdminMayaConversationDetail = lazy(() => import("@/pages/admin/maya/AdminMayaConversationDetail"));
+const AdminMayaLeads = lazy(() => import("@/pages/admin/maya/AdminMayaLeads"));
+const AdminMayaProviderDrafts = lazy(() => import("@/pages/admin/maya/AdminMayaProviderDrafts"));
+const AdminMayaBookingDrafts = lazy(() => import("@/pages/admin/maya/AdminMayaBookingDrafts"));
+const AdminMayaTasks = lazy(() => import("@/pages/admin/maya/AdminMayaTasks"));
+const AdminMayaEscalations = lazy(() => import("@/pages/admin/maya/AdminMayaEscalations"));
+const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
+
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
@@ -3140,6 +3151,52 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <OpsDashboard language={language} onLanguageChange={handleLanguageChange} />
             </RoleProtectedRoute>
           )}
+        </Route>
+        {/* Maya Stage 2 — admin UI (all behind RoleProtectedRoute + ff.maya.* server-side) */}
+        <Route path="/admin/maya">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMaya />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/inbox">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaInbox />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/conversations/:id">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaConversationDetail />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/leads">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaLeads />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/provider-drafts">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaProviderDrafts />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/booking-drafts">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaBookingDrafts />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/tasks">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaTasks />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/escalations">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaEscalations />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/audit">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaAudit />
+          </RoleProtectedRoute>
         </Route>
         <Route component={NotFound} />
       </Switch>

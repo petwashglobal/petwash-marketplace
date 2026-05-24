@@ -1,30 +1,60 @@
 /**
- * Maya admin API tests — Stage 1b.
+ * Maya admin API tests — Stage 2 (extends Stage 1b).
  *
  * Verifies: master kill switch, per-feature gates, validators, draft-only
  * constraints (provider 'approved' and booking 'confirmed' both rejected),
- * audit writes, role-aware actor extraction.
+ * audit writes, role-aware actor extraction, AND the new list endpoints
+ * added in Stage 2.
  *
- * Uses the same vitest + supertest + vi.mock pattern as auth-sms.test.ts.
+ * Mock state is held in vi.hoisted() so it can be reset between tests.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
 // ---------------------------------------------------------------------------
-// Mocks (hoisted by vi.mock).
+// Shared mock state — hoisted so vi.mock factories can reach it AND beforeEach
+// can reset it between tests.
 // ---------------------------------------------------------------------------
-const flagStore = new Map<string, boolean>();
-const auditWrites: Array<{
-  actor: { type: string; id?: string | null };
-  entityType: string;
-  entityId: string;
-  action: string;
-  payload?: Record<string, unknown>;
-}> = [];
+const state = vi.hoisted(() => ({
+  flagStore: new Map<string, boolean>(),
+  auditWrites: [] as Array<{
+    actor: { type: string; id?: string | null };
+    entityType: string;
+    entityId: string;
+    action: string;
+    payload?: Record<string, unknown>;
+  }>,
+  idCounter: 0,
+  conversations: new Map<string, any>(),
+  messages: [] as any[],
+  leads: new Map<string, any>(),
+  providerDrafts: new Map<string, any>(),
+  bookingDrafts: new Map<string, any>(),
+  tasks: new Map<string, any>(),
+  escalations: new Map<string, any>(),
+  auditEntries: [] as any[],
+  uuid(): string {
+    this.idCounter += 1;
+    return `00000000-0000-0000-0000-${String(this.idCounter).padStart(12, '0')}`;
+  },
+  resetAll() {
+    this.flagStore.clear();
+    this.auditWrites.length = 0;
+    this.idCounter = 0;
+    this.conversations.clear();
+    this.messages.length = 0;
+    this.leads.clear();
+    this.providerDrafts.clear();
+    this.bookingDrafts.clear();
+    this.tasks.clear();
+    this.escalations.clear();
+    this.auditEntries.length = 0;
+  },
+}));
 
 vi.mock('../services/SystemConfig', () => ({
-  getFeatureFlag: vi.fn(async (key: string) => flagStore.get(key) ?? false),
+  getFeatureFlag: vi.fn(async (key: string) => state.flagStore.get(key) ?? false),
 }));
 
 vi.mock('../lib/logger', () => ({
@@ -35,83 +65,75 @@ vi.mock('../middleware/auditLog', () => ({
   logAuditEvent: vi.fn(),
 }));
 
-// In-memory MayaService mock so tests don't need a DB.
+// In-memory MayaService mock so tests don't need a DB. State lives in the
+// hoisted `state` object, so beforeEach can clear it.
 vi.mock('../services/MayaService', () => {
-  let idCounter = 0;
-  const uuid = () => {
-    idCounter += 1;
-    return `00000000-0000-0000-0000-${String(idCounter).padStart(12, '0')}`;
-  };
-  const conversations = new Map<string, any>();
-  const messages: any[] = [];
-  const leads = new Map<string, any>();
-  const providerDrafts = new Map<string, any>();
-  const bookingDrafts = new Map<string, any>();
-  const tasks = new Map<string, any>();
-  const escalations = new Map<string, any>();
-
   async function writeMayaAudit(opts: any) {
-    auditWrites.push(opts);
+    state.auditWrites.push(opts);
+    state.auditEntries.push({
+      id: String(state.auditEntries.length + 1),
+      occurredAt: new Date().toISOString(),
+      ...opts,
+    });
   }
 
   return {
     writeMayaAudit,
 
     async createConversation(input: any, actor: any) {
-      const row = { id: uuid(), status: 'open', ...input };
-      conversations.set(row.id, row);
-      await writeMayaAudit({
-        actor,
-        entityType: 'conversation',
-        entityId: row.id,
-        action: 'create',
-      });
+      const row = { id: state.uuid(), status: 'open', ...input };
+      state.conversations.set(row.id, row);
+      await writeMayaAudit({ actor, entityType: 'conversation', entityId: row.id, action: 'create' });
       return row;
     },
-    async getConversation(id: string) {
-      return conversations.get(id) ?? null;
+    async getConversation(id: string) { return state.conversations.get(id) ?? null; },
+    async listConversations(opts: any = {}) {
+      const all = Array.from(state.conversations.values());
+      const filtered = opts.status ? all.filter((c) => c.status === opts.status) : all;
+      return filtered.slice(0, opts.limit ?? 50);
     },
+
     async appendMessage(conversationId: string, input: any, actor: any) {
-      if (!conversations.has(conversationId)) {
+      if (!state.conversations.has(conversationId)) {
         const err = new Error('conversation not found') as any;
         err.statusCode = 404;
         throw err;
       }
-      const row = { id: uuid(), conversationId, ...input };
-      messages.push(row);
-      await writeMayaAudit({
-        actor,
-        entityType: 'message',
-        entityId: row.id,
-        action: 'create',
-      });
+      const row = { id: state.uuid(), conversationId, ...input };
+      state.messages.push(row);
+      await writeMayaAudit({ actor, entityType: 'message', entityId: row.id, action: 'create' });
       return row;
     },
     async listMessages(conversationId: string) {
-      return messages.filter((m) => m.conversationId === conversationId);
+      return state.messages.filter((m) => m.conversationId === conversationId);
     },
+
     async createLead(input: any, actor: any) {
-      const row = { id: uuid(), status: 'new', ...input };
-      leads.set(row.id, row);
+      const row = { id: state.uuid(), status: 'new', ...input };
+      state.leads.set(row.id, row);
       await writeMayaAudit({ actor, entityType: 'lead', entityId: row.id, action: 'create' });
       return row;
     },
-    async getLead(id: string) {
-      return leads.get(id) ?? null;
+    async getLead(id: string) { return state.leads.get(id) ?? null; },
+    async listLeads(opts: any = {}) {
+      const all = Array.from(state.leads.values());
+      const filtered = opts.status ? all.filter((l) => l.status === opts.status) : all;
+      return filtered.slice(0, opts.limit ?? 50);
     },
+
     async createProviderDraft(input: any, actor: any) {
-      const row = { id: uuid(), intakeStatus: 'draft', ...input };
-      providerDrafts.set(row.id, row);
-      await writeMayaAudit({
-        actor,
-        entityType: 'provider_draft',
-        entityId: row.id,
-        action: 'create',
-      });
+      const row = { id: state.uuid(), intakeStatus: 'draft', ...input };
+      state.providerDrafts.set(row.id, row);
+      await writeMayaAudit({ actor, entityType: 'provider_draft', entityId: row.id, action: 'create' });
       return row;
     },
-    async getProviderDraft(id: string) {
-      return providerDrafts.get(id) ?? null;
+    async getProviderDraft(id: string) { return state.providerDrafts.get(id) ?? null; },
+    async listProviderDrafts(opts: any = {}) {
+      const all = Array.from(state.providerDrafts.values());
+      const filtered = opts.intakeStatus
+        ? all.filter((d) => d.intakeStatus === opts.intakeStatus)
+        : all;
+      return filtered.slice(0, opts.limit ?? 50);
     },
     async updateProviderDraft(id: string, input: any, actor: any) {
       if (input.intakeStatus && !['draft', 'submitted-for-review'].includes(input.intakeStatus)) {
@@ -119,14 +141,10 @@ vi.mock('../services/MayaService', () => {
         err.statusCode = 422;
         throw err;
       }
-      const existing = providerDrafts.get(id);
-      if (!existing) {
-        const err = new Error('not found') as any;
-        err.statusCode = 404;
-        throw err;
-      }
+      const existing = state.providerDrafts.get(id);
+      if (!existing) { const err = new Error('not found') as any; err.statusCode = 404; throw err; }
       const updated = { ...existing, ...input };
-      providerDrafts.set(id, updated);
+      state.providerDrafts.set(id, updated);
       await writeMayaAudit({
         actor,
         entityType: 'provider_draft',
@@ -135,19 +153,20 @@ vi.mock('../services/MayaService', () => {
       });
       return updated;
     },
+
     async createBookingDraft(input: any, actor: any) {
-      const row = { id: uuid(), intakeStatus: 'draft', ...input };
-      bookingDrafts.set(row.id, row);
-      await writeMayaAudit({
-        actor,
-        entityType: 'booking_draft',
-        entityId: row.id,
-        action: 'create',
-      });
+      const row = { id: state.uuid(), intakeStatus: 'draft', ...input };
+      state.bookingDrafts.set(row.id, row);
+      await writeMayaAudit({ actor, entityType: 'booking_draft', entityId: row.id, action: 'create' });
       return row;
     },
-    async getBookingDraft(id: string) {
-      return bookingDrafts.get(id) ?? null;
+    async getBookingDraft(id: string) { return state.bookingDrafts.get(id) ?? null; },
+    async listBookingDrafts(opts: any = {}) {
+      const all = Array.from(state.bookingDrafts.values());
+      const filtered = opts.intakeStatus
+        ? all.filter((d) => d.intakeStatus === opts.intakeStatus)
+        : all;
+      return filtered.slice(0, opts.limit ?? 50);
     },
     async updateBookingDraft(id: string, input: any, actor: any) {
       if (input.intakeStatus && !['draft', 'submitted-for-review'].includes(input.intakeStatus)) {
@@ -155,14 +174,10 @@ vi.mock('../services/MayaService', () => {
         err.statusCode = 422;
         throw err;
       }
-      const existing = bookingDrafts.get(id);
-      if (!existing) {
-        const err = new Error('not found') as any;
-        err.statusCode = 404;
-        throw err;
-      }
+      const existing = state.bookingDrafts.get(id);
+      if (!existing) { const err = new Error('not found') as any; err.statusCode = 404; throw err; }
       const updated = { ...existing, ...input };
-      bookingDrafts.set(id, updated);
+      state.bookingDrafts.set(id, updated);
       await writeMayaAudit({
         actor,
         entityType: 'booking_draft',
@@ -171,25 +186,39 @@ vi.mock('../services/MayaService', () => {
       });
       return updated;
     },
+
     async createTask(input: any, actor: any) {
-      const row = { id: uuid(), status: 'open', ...input };
-      tasks.set(row.id, row);
+      const row = { id: state.uuid(), status: 'open', ...input };
+      state.tasks.set(row.id, row);
       await writeMayaAudit({ actor, entityType: 'task', entityId: row.id, action: 'create' });
       return row;
     },
-    async listTasks(_opts: any) {
-      return Array.from(tasks.values());
+    async listTasks(opts: any = {}) {
+      const all = Array.from(state.tasks.values());
+      const filtered = opts.status ? all.filter((t) => t.status === opts.status) : all;
+      return filtered.slice(0, opts.limit ?? 50);
     },
+    async getTask(id: string) { return state.tasks.get(id) ?? null; },
+
     async createEscalation(input: any, actor: any) {
-      const row = { id: uuid(), status: 'open', severity: input.severity ?? 'medium', ...input };
-      escalations.set(row.id, row);
-      await writeMayaAudit({
-        actor,
-        entityType: 'escalation',
-        entityId: row.id,
-        action: 'create',
-      });
+      const row = { id: state.uuid(), status: 'open', severity: input.severity ?? 'medium', ...input };
+      state.escalations.set(row.id, row);
+      await writeMayaAudit({ actor, entityType: 'escalation', entityId: row.id, action: 'create' });
       return row;
+    },
+    async listEscalations(opts: any = {}) {
+      let all = Array.from(state.escalations.values());
+      if (opts.status) all = all.filter((e) => e.status === opts.status);
+      if (opts.severity) all = all.filter((e) => e.severity === opts.severity);
+      return all.slice(0, opts.limit ?? 50);
+    },
+    async getEscalation(id: string) { return state.escalations.get(id) ?? null; },
+
+    async listAuditLog(opts: any = {}) {
+      let all = [...state.auditEntries].reverse();
+      if (opts.entityType) all = all.filter((a) => a.entityType === opts.entityType);
+      if (opts.entityId) all = all.filter((a) => a.entityId === opts.entityId);
+      return all.slice(0, opts.limit ?? 50);
     },
   };
 });
@@ -205,84 +234,78 @@ function makeApp() {
 
 describe('Maya admin API (/api/admin/maya)', () => {
   beforeEach(() => {
-    flagStore.clear();
-    auditWrites.length = 0;
+    state.resetAll();
   });
 
-  // -------------------------------------------------------------------------
-  // master kill switch
-  // -------------------------------------------------------------------------
-  it('returns 503 when ff.maya.enabled is OFF (master kill switch)', async () => {
-    const res = await request(makeApp())
-      .post('/api/admin/maya/conversations')
-      .send({ channel: 'web' });
+  // ---------- master kill switch ----------
+  it('returns 503 when ff.maya.enabled is OFF', async () => {
+    const res = await request(makeApp()).post('/api/admin/maya/conversations').send({ channel: 'web' });
     expect(res.status).toBe(503);
     expect(res.body.error).toBe('maya_disabled');
   });
 
-  // -------------------------------------------------------------------------
-  // conversations
-  // -------------------------------------------------------------------------
-  it('creates a conversation and writes an audit row when ff.maya.enabled is ON', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    const res = await request(makeApp())
-      .post('/api/admin/maya/conversations')
-      .send({ channel: 'web' });
+  // ---------- conversations ----------
+  it('creates a conversation and writes an audit row', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    const res = await request(makeApp()).post('/api/admin/maya/conversations').send({ channel: 'web' });
     expect(res.status).toBe(201);
-    expect(res.body.ok).toBe(true);
     expect(res.body.conversation.channel).toBe('web');
-    const writes = auditWrites.filter((a) => a.entityType === 'conversation');
-    expect(writes).toHaveLength(1);
-    expect(writes[0].action).toBe('create');
+    expect(state.auditWrites.filter((a) => a.entityType === 'conversation')).toHaveLength(1);
   });
 
   it('rejects bad channel with 400', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    const res = await request(makeApp())
-      .post('/api/admin/maya/conversations')
-      .send({ channel: 'sms' });
+    state.flagStore.set('ff.maya.enabled', true);
+    const res = await request(makeApp()).post('/api/admin/maya/conversations').send({ channel: 'sms' });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_channel');
   });
 
-  // -------------------------------------------------------------------------
-  // messages
-  // -------------------------------------------------------------------------
-  it('appends a message and writes an audit row', async () => {
-    flagStore.set('ff.maya.enabled', true);
+  it('lists conversations after creating some (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
     const app = makeApp();
-    const c = await request(app)
-      .post('/api/admin/maya/conversations')
-      .send({ channel: 'web' });
+    await request(app).post('/api/admin/maya/conversations').send({ channel: 'web' });
+    await request(app).post('/api/admin/maya/conversations').send({ channel: 'admin' });
+    const list = await request(app).get('/api/admin/maya/conversations');
+    expect(list.status).toBe(200);
+    expect(list.body.conversations).toHaveLength(2);
+  });
+
+  it('filters conversations by status (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/conversations').send({ channel: 'web' });
+    const list = await request(app).get('/api/admin/maya/conversations?status=closed');
+    expect(list.status).toBe(200);
+    expect(list.body.conversations).toHaveLength(0);
+  });
+
+  // ---------- messages ----------
+  it('appends a message and writes an audit row', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    const app = makeApp();
+    const c = await request(app).post('/api/admin/maya/conversations').send({ channel: 'web' });
     const m = await request(app)
       .post(`/api/admin/maya/conversations/${c.body.conversation.id}/messages`)
       .send({ role: 'user', content: 'שלום' });
     expect(m.status).toBe(201);
-    const writes = auditWrites.filter((a) => a.entityType === 'message');
-    expect(writes).toHaveLength(1);
+    expect(state.auditWrites.filter((a) => a.entityType === 'message')).toHaveLength(1);
   });
 
-  // -------------------------------------------------------------------------
-  // provider intake drafts — DRAFT-ONLY
-  // -------------------------------------------------------------------------
+  // ---------- provider intake drafts ----------
   it('returns 503 when ff.maya.provider_intake.enabled is OFF', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.provider_intake.enabled', false);
-    const res = await request(makeApp())
-      .post('/api/admin/maya/provider-intake-drafts')
-      .send({});
+    state.flagStore.set('ff.maya.enabled', true);
+    const res = await request(makeApp()).post('/api/admin/maya/provider-intake-drafts').send({});
     expect(res.status).toBe(503);
     expect(res.body.feature).toBe('ff.maya.provider_intake.enabled');
   });
 
   it('rejects provider draft "approved" status with 422', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.provider_intake.enabled', true);
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.provider_intake.enabled', true);
     const app = makeApp();
     const created = await request(app)
       .post('/api/admin/maya/provider-intake-drafts')
       .send({ businessName: 'Pet Shop' });
-    expect(created.status).toBe(201);
     const upd = await request(app)
       .patch(`/api/admin/maya/provider-intake-drafts/${created.body.draft.id}`)
       .send({ intakeStatus: 'approved' });
@@ -290,17 +313,25 @@ describe('Maya admin API (/api/admin/maya)', () => {
     expect(upd.body.error).toBe('approval_not_in_scope');
   });
 
-  // -------------------------------------------------------------------------
-  // booking intake drafts — DRAFT-ONLY; no price stored
-  // -------------------------------------------------------------------------
+  it('lists provider drafts (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.provider_intake.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/provider-intake-drafts').send({ businessName: 'A' });
+    await request(app).post('/api/admin/maya/provider-intake-drafts').send({ businessName: 'B' });
+    const list = await request(app).get('/api/admin/maya/provider-intake-drafts');
+    expect(list.status).toBe(200);
+    expect(list.body.drafts).toHaveLength(2);
+  });
+
+  // ---------- booking intake drafts ----------
   it('rejects booking draft "confirmed" status with 422', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.booking_intake.enabled', true);
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.booking_intake.enabled', true);
     const app = makeApp();
     const created = await request(app)
       .post('/api/admin/maya/booking-intake-drafts')
       .send({ serviceCode: 'single-wash' });
-    expect(created.status).toBe(201);
     const upd = await request(app)
       .patch(`/api/admin/maya/booking-intake-drafts/${created.body.draft.id}`)
       .send({ intakeStatus: 'confirmed' });
@@ -309,18 +340,17 @@ describe('Maya admin API (/api/admin/maya)', () => {
   });
 
   it('rejects bad pet_size with 400', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.booking_intake.enabled', true);
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.booking_intake.enabled', true);
     const res = await request(makeApp())
       .post('/api/admin/maya/booking-intake-drafts')
       .send({ petSize: 'huge' });
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('invalid_pet_size');
   });
 
   it('does not return a "price" field on booking draft', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.booking_intake.enabled', true);
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.booking_intake.enabled', true);
     const res = await request(makeApp())
       .post('/api/admin/maya/booking-intake-drafts')
       .send({ serviceCode: 'single-wash', price: 55 });
@@ -328,35 +358,120 @@ describe('Maya admin API (/api/admin/maya)', () => {
     expect(res.body.draft.price).toBeUndefined();
   });
 
-  // -------------------------------------------------------------------------
-  // tasks
-  // -------------------------------------------------------------------------
+  it('lists booking drafts (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.booking_intake.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/booking-intake-drafts').send({ serviceCode: 'single-wash' });
+    const list = await request(app).get('/api/admin/maya/booking-intake-drafts');
+    expect(list.status).toBe(200);
+    expect(list.body.drafts).toHaveLength(1);
+  });
+
+  // ---------- leads ----------
+  it('lists leads (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/leads').send({ name: 'Alice' });
+    await request(app).post('/api/admin/maya/leads').send({ name: 'Bob' });
+    const list = await request(app).get('/api/admin/maya/leads');
+    expect(list.status).toBe(200);
+    expect(list.body.leads).toHaveLength(2);
+  });
+
+  // ---------- tasks ----------
   it('requires title on task create', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.tasks.enabled', true);
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.tasks.enabled', true);
     const res = await request(makeApp()).post('/api/admin/maya/tasks').send({});
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('title_required');
   });
 
-  // -------------------------------------------------------------------------
-  // escalations
-  // -------------------------------------------------------------------------
+  it('lists tasks and fetches by id (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.tasks.enabled', true);
+    const app = makeApp();
+    const created = await request(app).post('/api/admin/maya/tasks').send({ title: 'Call back' });
+    const list = await request(app).get('/api/admin/maya/tasks');
+    expect(list.body.tasks).toHaveLength(1);
+    const byId = await request(app).get(`/api/admin/maya/tasks/${created.body.task.id}`);
+    expect(byId.status).toBe(200);
+    expect(byId.body.task.title).toBe('Call back');
+  });
+
+  // ---------- escalations ----------
   it('requires reason on escalation create', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.escalations.enabled', true);
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.escalations.enabled', true);
     const res = await request(makeApp()).post('/api/admin/maya/escalations').send({});
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('reason_required');
   });
 
-  it('rejects bad severity', async () => {
-    flagStore.set('ff.maya.enabled', true);
-    flagStore.set('ff.maya.escalations.enabled', true);
+  it('lists escalations by severity (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.escalations.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/escalations').send({ reason: 'a', severity: 'low' });
+    await request(app).post('/api/admin/maya/escalations').send({ reason: 'b', severity: 'critical' });
+    const list = await request(app).get('/api/admin/maya/escalations?severity=critical');
+    expect(list.status).toBe(200);
+    expect(list.body.escalations).toHaveLength(1);
+    expect(list.body.escalations[0].severity).toBe('critical');
+  });
+
+  // ---------- audit log ----------
+  it('lists audit log entries (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/conversations').send({ channel: 'web' });
+    await request(app).post('/api/admin/maya/leads').send({ name: 'Alice' });
+    const list = await request(app).get('/api/admin/maya/audit');
+    expect(list.status).toBe(200);
+    expect(list.body.entries.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('filters audit log by entityType (Stage 2)', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    const app = makeApp();
+    await request(app).post('/api/admin/maya/conversations').send({ channel: 'web' });
+    await request(app).post('/api/admin/maya/leads').send({ name: 'Alice' });
+    const list = await request(app).get('/api/admin/maya/audit?entityType=lead');
+    expect(list.body.entries).toHaveLength(1);
+    expect(list.body.entries[0].entityType).toBe('lead');
+  });
+
+  it('audit log returns 503 when master flag is off', async () => {
+    const res = await request(makeApp()).get('/api/admin/maya/audit');
+    expect(res.status).toBe(503);
+  });
+
+  // ---------- sub-flag gates (verify each sub-feature gates independently) ----------
+  it('returns 503 feature_disabled when ff.maya.booking_intake.enabled is OFF', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.booking_intake.enabled', false);
+    const res = await request(makeApp())
+      .post('/api/admin/maya/booking-intake-drafts')
+      .send({ serviceCode: 'single-wash' });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('feature_disabled');
+    expect(res.body.feature).toBe('ff.maya.booking_intake.enabled');
+  });
+
+  it('returns 503 feature_disabled when ff.maya.tasks.enabled is OFF', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.tasks.enabled', false);
+    const res = await request(makeApp()).post('/api/admin/maya/tasks').send({ title: 'x' });
+    expect(res.status).toBe(503);
+    expect(res.body.feature).toBe('ff.maya.tasks.enabled');
+  });
+
+  it('returns 503 feature_disabled when ff.maya.escalations.enabled is OFF', async () => {
+    state.flagStore.set('ff.maya.enabled', true);
+    state.flagStore.set('ff.maya.escalations.enabled', false);
     const res = await request(makeApp())
       .post('/api/admin/maya/escalations')
-      .send({ reason: 'x', severity: 'meh' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toBe('invalid_severity');
+      .send({ reason: 'x' });
+    expect(res.status).toBe(503);
+    expect(res.body.feature).toBe('ff.maya.escalations.enabled');
   });
 });

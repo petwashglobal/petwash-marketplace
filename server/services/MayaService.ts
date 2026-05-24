@@ -1,22 +1,15 @@
 /**
  * Maya reception/intake service — thin Drizzle layer over the maya_* tables.
  *
- * Responsibilities:
- *   - typed CRUD-ish access for conversations, messages, leads, intake drafts,
- *     tasks, escalations
- *   - append-only audit writer (writes to maya_audit_log; UPDATE/DELETE on
- *     that table is blocked at the DB level by the migration's trigger)
+ * Stage 1b: writes (create/update) + by-id reads + append-only audit.
+ * Stage 2  (this version): adds list/index reads needed by the admin UI.
  *
- * Hard constraints (enforced here in addition to the migration's CHECK
- * constraints):
- *   - Provider intake drafts CANNOT transition to 'approved' here. Provider
- *     approval is handled by the provider-admin system outside Maya.
- *   - Booking intake drafts CANNOT transition to 'confirmed' here. Final
- *     booking confirmation is handled by the existing booking system.
+ * Hard scope (unchanged from Stage 1b):
+ *   - Provider intake drafts CANNOT transition to 'approved' here.
+ *   - Booking intake drafts CANNOT transition to 'confirmed' here.
  *   - This service writes NO money. No wallet, no K9000, no payments.
  */
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
-// NOTE: confirm this import path matches your repo. Likely '../db' or '../db/index'.
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   mayaAuditLog,
@@ -34,6 +27,7 @@ import {
   type MayaBookingIntakeDraft,
   type MayaTask,
   type MayaEscalation,
+  type MayaAuditLogEntry,
 } from '@shared/schema';
 
 export type MayaActor = {
@@ -64,6 +58,13 @@ const VALID_ACTIONS: ReadonlySet<MayaAuditAction> = new Set([
   'status_change',
 ]);
 
+const MAX_LIMIT = 200;
+function clampLimit(n: unknown, fallback = 50): number {
+  const v = typeof n === 'number' ? n : Number(n);
+  if (!Number.isFinite(v) || v <= 0) return fallback;
+  return Math.min(Math.floor(v), MAX_LIMIT);
+}
+
 // ===========================================================================
 // audit
 // ===========================================================================
@@ -91,6 +92,40 @@ export async function writeMayaAudit(opts: {
     action: opts.action,
     payload: opts.payload ?? null,
   });
+}
+
+export async function listAuditLog(opts: {
+  entityType?: string;
+  entityId?: string;
+  limit?: number;
+} = {}): Promise<MayaAuditLogEntry[]> {
+  const limit = clampLimit(opts.limit);
+  if (opts.entityType && opts.entityId) {
+    return db
+      .select()
+      .from(mayaAuditLog)
+      .where(
+        and(
+          eq(mayaAuditLog.entityType, opts.entityType),
+          eq(mayaAuditLog.entityId, opts.entityId),
+        ),
+      )
+      .orderBy(desc(mayaAuditLog.occurredAt))
+      .limit(limit);
+  }
+  if (opts.entityType) {
+    return db
+      .select()
+      .from(mayaAuditLog)
+      .where(eq(mayaAuditLog.entityType, opts.entityType))
+      .orderBy(desc(mayaAuditLog.occurredAt))
+      .limit(limit);
+  }
+  return db
+    .select()
+    .from(mayaAuditLog)
+    .orderBy(desc(mayaAuditLog.occurredAt))
+    .limit(limit);
 }
 
 // ===========================================================================
@@ -133,6 +168,22 @@ export async function getConversation(id: string): Promise<MayaConversation | nu
     .where(and(eq(mayaConversations.id, id), isNull(mayaConversations.deletedAt)))
     .limit(1);
   return row ?? null;
+}
+
+export async function listConversations(opts: {
+  status?: string;
+  limit?: number;
+} = {}): Promise<MayaConversation[]> {
+  const limit = clampLimit(opts.limit);
+  const cond = opts.status
+    ? and(isNull(mayaConversations.deletedAt), eq(mayaConversations.status, opts.status))
+    : isNull(mayaConversations.deletedAt);
+  return db
+    .select()
+    .from(mayaConversations)
+    .where(cond)
+    .orderBy(desc(mayaConversations.createdAt))
+    .limit(limit);
 }
 
 // ===========================================================================
@@ -218,6 +269,19 @@ export async function getLead(id: string): Promise<MayaLead | null> {
   return row ?? null;
 }
 
+export async function listLeads(opts: { status?: string; limit?: number } = {}): Promise<MayaLead[]> {
+  const limit = clampLimit(opts.limit);
+  const cond = opts.status
+    ? and(isNull(mayaLeads.deletedAt), eq(mayaLeads.status, opts.status))
+    : isNull(mayaLeads.deletedAt);
+  return db
+    .select()
+    .from(mayaLeads)
+    .where(cond)
+    .orderBy(desc(mayaLeads.createdAt))
+    .limit(limit);
+}
+
 // ===========================================================================
 // provider intake drafts (DRAFT-ONLY)
 // ===========================================================================
@@ -239,7 +303,6 @@ export async function createProviderDraft(
       region: input.region ?? null,
       servicesOffered: input.servicesOffered ?? null,
       notes: input.notes ?? null,
-      // intakeStatus omitted — DB default is 'draft'
     })
     .returning();
   await writeMayaAudit({
@@ -275,7 +338,6 @@ export async function updateProviderDraft(
     updatedAt: new Date().toISOString(),
   };
   if (Object.keys(updates).length === 1) {
-    // only updatedAt — nothing to update
     const existing = await getProviderDraft(id);
     if (!existing) {
       const err = new Error('provider draft not found') as Error & { statusCode?: number };
@@ -311,6 +373,25 @@ export async function getProviderDraft(id: string): Promise<MayaProviderIntakeDr
     .where(and(eq(mayaProviderIntakeDrafts.id, id), isNull(mayaProviderIntakeDrafts.deletedAt)))
     .limit(1);
   return row ?? null;
+}
+
+export async function listProviderDrafts(opts: {
+  intakeStatus?: string;
+  limit?: number;
+} = {}): Promise<MayaProviderIntakeDraft[]> {
+  const limit = clampLimit(opts.limit);
+  const cond = opts.intakeStatus
+    ? and(
+        isNull(mayaProviderIntakeDrafts.deletedAt),
+        eq(mayaProviderIntakeDrafts.intakeStatus, opts.intakeStatus),
+      )
+    : isNull(mayaProviderIntakeDrafts.deletedAt);
+  return db
+    .select()
+    .from(mayaProviderIntakeDrafts)
+    .where(cond)
+    .orderBy(desc(mayaProviderIntakeDrafts.createdAt))
+    .limit(limit);
 }
 
 // ===========================================================================
@@ -408,6 +489,25 @@ export async function getBookingDraft(id: string): Promise<MayaBookingIntakeDraf
   return row ?? null;
 }
 
+export async function listBookingDrafts(opts: {
+  intakeStatus?: string;
+  limit?: number;
+} = {}): Promise<MayaBookingIntakeDraft[]> {
+  const limit = clampLimit(opts.limit);
+  const cond = opts.intakeStatus
+    ? and(
+        isNull(mayaBookingIntakeDrafts.deletedAt),
+        eq(mayaBookingIntakeDrafts.intakeStatus, opts.intakeStatus),
+      )
+    : isNull(mayaBookingIntakeDrafts.deletedAt);
+  return db
+    .select()
+    .from(mayaBookingIntakeDrafts)
+    .where(cond)
+    .orderBy(desc(mayaBookingIntakeDrafts.createdAt))
+    .limit(limit);
+}
+
 // ===========================================================================
 // tasks
 // ===========================================================================
@@ -435,11 +535,21 @@ export async function createTask(
   return row;
 }
 
-export async function listTasks(opts: { status?: string } = {}): Promise<MayaTask[]> {
+export async function listTasks(opts: { status?: string; limit?: number } = {}): Promise<MayaTask[]> {
+  const limit = clampLimit(opts.limit);
   const cond = opts.status
     ? and(isNull(mayaTasks.deletedAt), eq(mayaTasks.status, opts.status))
     : isNull(mayaTasks.deletedAt);
-  return db.select().from(mayaTasks).where(cond).orderBy(desc(mayaTasks.createdAt)).limit(200);
+  return db.select().from(mayaTasks).where(cond).orderBy(desc(mayaTasks.createdAt)).limit(limit);
+}
+
+export async function getTask(id: string): Promise<MayaTask | null> {
+  const [row] = await db
+    .select()
+    .from(mayaTasks)
+    .where(and(eq(mayaTasks.id, id), isNull(mayaTasks.deletedAt)))
+    .limit(1);
+  return row ?? null;
 }
 
 // ===========================================================================
@@ -471,4 +581,30 @@ export async function createEscalation(
     payload: { severity: row.severity },
   });
   return row;
+}
+
+export async function listEscalations(opts: {
+  status?: string;
+  severity?: string;
+  limit?: number;
+} = {}): Promise<MayaEscalation[]> {
+  const limit = clampLimit(opts.limit);
+  const conds = [isNull(mayaEscalations.deletedAt)];
+  if (opts.status) conds.push(eq(mayaEscalations.status, opts.status));
+  if (opts.severity) conds.push(eq(mayaEscalations.severity, opts.severity));
+  return db
+    .select()
+    .from(mayaEscalations)
+    .where(and(...conds))
+    .orderBy(desc(mayaEscalations.createdAt))
+    .limit(limit);
+}
+
+export async function getEscalation(id: string): Promise<MayaEscalation | null> {
+  const [row] = await db
+    .select()
+    .from(mayaEscalations)
+    .where(and(eq(mayaEscalations.id, id), isNull(mayaEscalations.deletedAt)))
+    .limit(1);
+  return row ?? null;
 }
