@@ -65,6 +65,13 @@ export interface SystemConfigMap {
   // Never diagnoses. Never claims medical authority. Out-of-vocab tags
   // from the model are silently dropped by Zod.
   'ff.ai.care_notes.enabled': boolean;
+  // AI wallet anomaly monitor (AI-W1) — admin-only. Reads recent
+  // wallet_ledger_entries, aggregates per user (PII-stripped), asks
+  // Gemini to score 0..100 risk + flag the worst. NEVER refunds /
+  // credits / changes account status — flags-only for human admin
+  // review. Falls back to deterministic threshold scoring when Gemini
+  // is unavailable. Zero new infrastructure cost.
+  'ff.ai.wallet_anomaly_monitor.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -109,6 +116,8 @@ const DEFAULTS: SystemConfigMap = {
   'ff.ai.slot_suggestions.enabled': false,
   // AI-B4 default OFF
   'ff.ai.care_notes.enabled': false,
+  // AI-W1 default OFF
+  'ff.ai.wallet_anomaly_monitor.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
