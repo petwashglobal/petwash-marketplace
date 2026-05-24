@@ -1,37 +1,26 @@
 /**
- * SignUpLuxury — canonical /signup front door (black-luxury 2026, full mockup).
+ * SignUpLuxury — canonical /signup front door (black-luxury 2026, full
+ * mockup). Locked to the owner's design brief: pure-black background, gold
+ * accent, two-column on landscape iPad + desktop, stacked on portrait iPad,
+ * progressive-disclosure (Step 1 / Step 2) on phones.
  *
- * Matches the locked owner mockup: two-column premium layout. Left column is
- * the hero — PetWash wordmark, "The Future of Pet Lifestyle", hero dog photo,
- * premium experience badges (AI Care / VIP Rewards / Smart Booking / Health
- * Tracking), rating, trust-row of customer avatars, security badge. Right
- * column is the glass panel — "Create Your Account", social buttons
- * (Google / Apple / Facebook / Instagram), Mobile / Email / Other Email tabs,
- * phone + email fields, next-time entry-code, 2026 Advanced Security row
- * (Passkey Ready / reCAPTCHA v3 / OTP Verification), four consent checkboxes
- * (Biometric / Save Password / Remember Me / Wallet Consent), Apple Wallet +
- * Google Wallet buttons, Terms, reCAPTCHA badge, Create Secure Account CTA,
- * bank-level security row, Download Our App banner (App Store + Play + QR).
+ * Responsive contract:
+ *   ≤767px (phones)         → single column, two-step flow, sticky CTA
+ *   768–1023px (iPad portrait) → single column, single step, full form
+ *   ≥1024px (iPad landscape, desktop) → two columns, single step,
+ *                                       sticky left, max-width 1440px
  *
- * Auth wiring that actually works (do not break):
- *   - Google OAuth   — ff.auth.signup.google_signin.enabled (default ON)
- *   - Apple OAuth    — ff.auth.signup.apple_signin.enabled (default OFF →
- *                       button is rendered as "Coming soon" so the design
- *                       stays whole, click is disabled until the backend is
- *                       configured; never a dead-button)
- *   - Facebook / Instagram — design tiles, "Coming soon" badge, disabled.
- *                       We do NOT have web OAuth for these.
- *   - Mobile OTP     — canonical /api/auth/sms/start + /verify chain
- *   - Email / pwd    — ff.auth.signup.email_password.enabled (default ON),
- *                       any domain, sign-in OR sign-up.
+ * Auth wiring (real, do not break):
+ *   - Google OAuth (ff.auth.signup.google_signin.enabled, default ON)
+ *   - Apple OAuth  (ff.auth.signup.apple_signin.enabled, default OFF →
+ *                   rendered as "Coming soon" pill, click disabled)
+ *   - Facebook / Instagram — design tiles, "Coming soon" pill, disabled
+ *   - Mobile OTP (canonical /api/auth/sms/start + /verify)
+ *   - Email / password (any domain, sign-in or sign-up)
  *
- * Consent checkboxes + next-time code + wallet intent are captured here and
- * persisted to localStorage under `petwash_signup_prefs`. The post-signup
- * onboarding flow picks them up — no fake server endpoint is invented.
- *
- * Session minting uses the canonical chain in server/routes/auth-sms.ts
- * (sms/verify → phone-session → /api/auth/session → cookie). whoami fires
- * after every successful auth before routing.
+ * Persisted prefs (entry code, biometric, save-pwd, remember-me, wallet
+ * intent) are written to localStorage under `petwash_signup_prefs` for the
+ * post-signup onboarding flow to pick up.
  */
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
@@ -52,6 +41,8 @@ import { signupFlags } from '@/lib/authSignupFlags';
 import {
   FaApple, FaFacebookF, FaInstagram, FaFingerprint, FaLock, FaWallet,
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
+  FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
+  FaEnvelope, FaPhoneAlt, FaCheckCircle, FaInfoCircle, FaPaw, FaCreditCard,
 } from 'react-icons/fa';
 
 interface Props {
@@ -63,8 +54,7 @@ type Flow = 'prestige' | 'provider' | 'guest' | 'booking' | 'general';
 
 function normalizeFlow(raw: string | null): Flow {
   return raw === 'provider' || raw === 'guest' || raw === 'booking' || raw === 'prestige'
-    ? raw
-    : 'general';
+    ? raw : 'general';
 }
 
 function destForFlow(flow: Flow): string {
@@ -90,10 +80,24 @@ function persistPrefs(prefs: SignupPrefs) {
   try { localStorage.setItem('petwash_signup_prefs', JSON.stringify(prefs)); } catch { /* quota / private mode */ }
 }
 
+// Phone breakpoint — below this we switch on progressive disclosure.
+function useIsPhone(): boolean {
+  const [is, setIs] = useState<boolean>(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const fn = (e: MediaQueryListEvent) => setIs(e.matches);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return is;
+}
+
 export default function SignUpLuxury({ language = 'en', onLanguageChange }: Props) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const he = language === 'he';
+  const isPhone = useIsPhone();
 
   const params = useMemo(
     () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
@@ -102,7 +106,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const flow = normalizeFlow(params.get('flow') || params.get('intent'));
   const dest = destForFlow(flow);
 
-  // OAuth redirect completion: AuthProvider mints the session; navigate off /signup.
   const { user } = useFirebaseAuth();
   useEffect(() => { if (user) navigate(dest); }, [user, dest, navigate]);
 
@@ -113,14 +116,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [entryCode, setEntryCode] = useState('');
-  const [biometric, setBiometric] = useState(false);
+  const [biometric, setBiometric] = useState(true);
   const [savePassword, setSavePassword] = useState(true);
   const [rememberMe, setRememberMe] = useState(true);
-  const [walletConsent, setWalletConsent] = useState(false);
+  const [walletConsent, setWalletConsent] = useState(true);
   const [walletIntent, setWalletIntent] = useState<'apple' | 'google' | null>(null);
   const [terms, setTerms] = useState(false);
+  const [robot, setRobot] = useState(false); // visual "I'm not a robot" — real reCAPTCHA v3 is invisible server-side
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1); // mobile progressive disclosure
 
   const fail = (msg: string) => toast({ variant: 'destructive', title: he ? 'שגיאה' : 'Error', description: msg });
 
@@ -185,7 +190,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple') {
-    if (!requireTerms()) return;
+    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
     setBusy(true);
     try {
       const provider = which === 'google' ? createGoogleProvider() : createAppleProvider();
@@ -246,179 +251,261 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
+  // STEP 1 → STEP 2 transition on phones. Validates the input for the active
+  // method before advancing so the next screen never carries empty state.
+  const step1Valid = () => {
+    if (method === 'mobile') return phone.length > 4;
+    return email.length > 3 && password.length > 0;
+  };
+  const advance = () => {
+    if (!step1Valid()) {
+      fail(method === 'mobile'
+        ? (he ? 'הזן מספר נייד תקין' : 'Enter a valid mobile number')
+        : (he ? 'הזן אימייל וסיסמה' : 'Enter your email and password'));
+      return;
+    }
+    setStep(2);
+  };
+
+  // On the phone in step 2 the OTP-sent state takes over the screen.
+  const showStep2Phone = isPhone && step === 2;
+  const showFormOnPhone = !isPhone || step === 1;
+  const showConsentOnPhone = !isPhone || step === 2;
+
+  // CTA label adapts to the actual action.
+  const ctaLabel = busy ? '…' : (
+    method === 'mobile' ? (he ? 'שלח קוד אימות' : 'Send Verification Code') : (he ? 'צור חשבון מאובטח' : 'Create Secure Account')
+  );
+
   const t = {
-    eyebrow: he ? 'אקוסיסטם יוקרתי וחכם לחיות מחמד' : 'The intelligent pet-care ecosystem',
+    eyebrow: he ? 'אקוסיסטם חכם לטיפול בחיות מחמד' : 'INTELLIGENT PET-CARE ECOSYSTEM',
     h1a: he ? 'העתיד של' : 'The Future of',
     h1b: he ? 'חיי חיות המחמד' : 'Pet Lifestyle',
-    sub: he ? 'שמונה פלטפורמות. אקוסיסטם אחד חכם לטיפול בחיות מחמד — בוטיק, חכם, ובהפתעה.' : 'Eight platforms. One intelligent pet-care ecosystem — boutique, smart, beautifully surprising.',
+    sub1: he ? 'שמונה פלטפורמות מהפכניות.' : 'Eight Revolutionary Platforms.',
+    sub2: he ? 'אקוסיסטם חכם אחד לטיפול בחיות מחמד.' : 'One Intelligent Pet-Care Ecosystem.',
+    premium: he ? 'חוויית פרמיום' : 'PREMIUM EXPERIENCE',
+    premiumSub: he ? 'חכם. מאובטח. חלק.' : 'Intelligent. Secure. Seamless.',
     badges: he
-      ? ['טיפול חכם מבוסס AI', 'תגמולי VIP', 'הזמנה חכמה', 'מעקב בריאות']
-      : ['AI-Powered Care', 'VIP Rewards', 'Smart Booking', 'Health Tracking'],
-    trust: he ? 'מהימן על-ידי הורי חיות מחמד בעולם' : 'Trusted by pet parents worldwide',
-    secure: he ? '🛡 הצפנה ברמת בנק · GDPR · ISO 27001' : '🛡 Bank-level encryption · GDPR · ISO 27001',
-    create: he ? 'צור את החשבון שלך' : 'Create your account',
-    helper: he ? 'הצטרף לאקוסיסטם — נייד, Google או אימייל.' : 'Join the ecosystem — phone, Google, or email.',
-    or: he ? 'או המשך עם' : 'or continue with',
-    soon: he ? 'בקרוב' : 'Soon',
+      ? [{ t: 'טיפול חכם בכוח AI', I: FaCog }, { t: 'תגמולי VIP', I: FaGift }, { t: 'הזמנה חכמה', I: FaCalendarAlt }, { t: 'מעקב בריאות', I: FaHeartbeat }]
+      : [{ t: 'AI Powered Pet Care', I: FaCog }, { t: 'VIP Rewards', I: FaGift }, { t: 'Smart Booking', I: FaCalendarAlt }, { t: 'Health Tracking', I: FaHeartbeat }],
+    trusted: he ? 'מהימן על-ידי הורי חיות מחמד בעולם' : 'TRUSTED BY PET PARENTS WORLDWIDE',
+    rating: he ? '4.9/5 דירוג ממוצע' : '4.9/5 Average Rating',
+    secure: he ? 'מאובטח · פרטי · מוצפן' : 'SECURE · PRIVATE · ENCRYPTED',
+    secureSub: he ? 'הנתונים שלך 100% בטוחים אצלנו.' : 'Your data is 100% safe with us.',
+
+    create: he ? 'צור את החשבון שלך' : 'Create Your Account',
+    helper: he ? 'הצטרף לעתיד של טיפול חכם בחיות מחמד' : 'Join the future of intelligent pet care',
+    cwGoogle: he ? 'המשך עם Google' : 'Continue with Google',
+    cwApple: he ? 'המשך עם Apple' : 'Continue with Apple',
+    cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
+    cwIg: he ? 'המשך עם Instagram' : 'Continue with Instagram',
+    soon: he ? 'בקרוב' : 'SOON',
+    or: he ? 'או הירשם עם' : 'or sign up with',
     tabMobile: he ? 'נייד' : 'Mobile',
     tabEmail: he ? 'אימייל' : 'Email',
     tabOther: he ? 'אימייל אחר' : 'Other Email',
-    phoneLabel: he ? 'מספר נייד' : 'Mobile number',
-    emailOpt: he ? 'אימייל (אופציונלי)' : 'Email Address (Optional)',
-    emailAny: he ? 'Gmail, Hotmail או כל אימייל' : 'Gmail, Hotmail, Yahoo, or any email',
+    phoneLabel: he ? 'מספר נייד' : 'Mobile Number',
+    phonePh: he ? 'הזן את מספר הנייד' : 'Enter your mobile number',
+    emailOpt: he ? 'כתובת אימייל (אופציונלי)' : 'Email Address (Optional)',
+    emailPh: 'name@email.com',
+    emailHelper: he ? 'ניתן להשתמש ב-Gmail, Hotmail, Yahoo או כל אימייל' : 'You can use Gmail, Hotmail, Yahoo or any email address',
     emailLabel: he ? 'אימייל' : 'Email',
     pwd: he ? 'סיסמה' : 'Password',
     pwd2: he ? 'אישור סיסמה (לחשבון חדש)' : 'Confirm password (new account)',
-    entry: he ? 'קוד כניסה מהיר (6 ספרות)' : 'Next-Time Entry Code (6 digits)',
-    entryHint: he ? 'נשמר במכשיר — מקצר את ההתחברות בפעם הבאה' : 'Saved on this device — shortcut for next sign-in',
-    advSecurity: he ? 'אבטחה מתקדמת 2026' : '2026 Advanced Security',
-    passkey: he ? 'מוכן ל-Passkey' : 'Passkey Ready',
-    recaptcha: 'reCAPTCHA v3',
-    otp: he ? 'אימות OTP' : 'OTP Verification',
-    biometric: he ? 'הסכמה לזיהוי ביומטרי / Face ID' : 'Biometric / Face ID Consent',
-    savePwd: he ? 'שמור סיסמה במכשיר' : 'Save password on this device',
-    remember: he ? 'זכור אותי' : 'Remember me',
-    walletConsent: he ? 'הסכמה לארנק נייד (Apple/Google Wallet)' : 'Mobile Wallet Consent (Apple / Google)',
-    addApple: he ? 'הוסף לארנק Apple' : 'Add to Apple Wallet',
-    addGoogle: he ? 'הוסף לארנק Google' : 'Add to Google Wallet',
-    walletNote: he ? '* יופעל לאחר ההרשמה' : '* Activates right after signup',
+    entryTitle: he ? 'צור קוד כניסה מהיר' : 'Create Next-Time Entry Code',
+    entryPh: he ? 'צור קוד 6 ספרות' : 'Create 6-digit code',
+    entryBtn: he ? 'שלח קוד' : 'Send Code',
+    entryHelper: he ? 'השתמש בקוד זה בכניסה הבאה לאימות מהיר ובטוח.' : 'Use this code next time to login quickly and securely.',
+
+    advTitle: he ? 'אבטחה מתקדמת 2026' : '2026 ADVANCED SECURITY',
+    advPasskey: he ? 'מוכן ל-Passkey' : 'Passkey Ready',
+    advPasskeySub: he ? 'עתיד ללא סיסמה' : 'Passwordless future',
+    advRecap: 'reCAPTCHA v3',
+    advRecapSub: he ? 'הגנה מבוטים והונאה' : 'Bot & fraud protection',
+    advOtp: he ? 'אימות OTP' : 'OTP Verification',
+    advOtpSub: he ? 'אימות SMS ואימייל' : 'SMS & Email verify',
+
+    consentBio: he ? 'הסכמה לזיהוי ביומטרי / Face ID' : 'Face ID / Biometric Consent',
+    consentBioSub: he ? 'אני מסכים/ה להשתמש ב-Face ID, Touch ID או כניסה ביומטרית במכשיר זה.' : 'I consent to use Face ID, Touch ID or biometric login on this device.',
+    consentSavePwd: he ? 'שמור סיסמה במכשיר' : 'Save Password to My Device',
+    consentSavePwdSub: he ? 'שמור את הסיסמה שלי באופן מאובטח במכשיר זה.' : 'Save my password securely to this device.',
+    consentRemember: he ? 'זכור אותי ל-30 יום' : 'Remember Me for 30 Days',
+    consentRememberSub: he ? 'השאר אותי מחובר/ת במכשיר זה למשך 30 יום אלא אם אצא ידנית.' : 'Keep me signed in on this device for 30 days unless I sign out.',
+    consentWallet: he ? 'הסכמה לארנק נייד' : 'Mobile Wallet Consent',
+    consentWalletSub: he ? 'אני מסכים/ה לקבל כרטיסי נאמנות, הצעות ומנויים בארנק הנייד.' : 'I agree to receive loyalty cards, offers and membership passes in mobile wallet.',
+
+    addApple: 'Add to Apple Wallet',
+    addGoogle: 'Add to Google Wallet',
+
     iAgree: he ? 'אני מסכים/ה ל' : 'I agree to the ',
     termsLink: he ? 'תנאי השימוש' : 'Terms of Service',
     andTo: he ? ' ול' : ' and ',
     privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
+    notRobot: he ? 'אני לא רובוט' : "I'm not a robot",
+
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
-    bank: he ? '🔒 הצפנה ברמת בנק · GDPR · ISO 27001' : '🔒 Bank-level encryption · GDPR · ISO 27001',
-    download: he ? 'הורד את האפליקציה שלנו' : 'Download Our App',
-    downloadSub: he ? 'הניסיון המלא בכף ידך' : 'The full experience in your pocket',
-    appStore: 'App Store',
-    googlePlay: 'Google Play',
-    qrCaption: he ? 'סרוק להורדה' : 'Scan to download',
-    ratingLabel: he ? 'מ-12,400+ ביקורות' : 'from 12,400+ reviews',
+    bank: he ? 'אבטחה ברמת בנק' : 'Bank-level security',
+    enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
+    safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
+
+    dlTitle: he ? 'הורד את האפליקציה שלנו' : 'Download Our App',
+    dlSub: he ? 'גש לכל הפיצ׳רים בנייד' : 'Access all features on the go',
+    storeApple: 'App Store',
+    storeAppleLine: he ? 'הורד מ-' : 'Download on the',
+    storeGoogle: 'Google Play',
+    storeGoogleLine: 'GET IT ON',
+    back: he ? 'חזרה' : 'Back',
+    next: he ? 'המשך' : 'Continue',
   };
 
   return (
-    <div className="sl-root" dir={he ? 'rtl' : 'ltr'}>
+    <div className="sl-shell" dir={he ? 'rtl' : 'ltr'}>
       <style>{styles(he)}</style>
 
-      {onLanguageChange && (
-        <div className="sl-lang">
-          <button type="button" className="sl-langBtn" aria-pressed={!he} onClick={() => onLanguageChange('en')}>EN</button>
-          <button type="button" className="sl-langBtn" aria-pressed={he} onClick={() => onLanguageChange('he')}>עב</button>
-        </div>
-      )}
+      {/* Centered max-width frame so 27" iMacs don't stretch */}
+      <div className="sl-frame">
 
-      {/* ========== LEFT COLUMN — HERO ========== */}
-      <section className="sl-hero">
-        <div className="sl-heroArt" />
+        {/* ================= LEFT COLUMN (HERO) ================= */}
+        <aside className="sl-hero">
+          <header className="sl-heroHead">
+            <img src="/brand/petwash-logo-white.png" alt="PetWash" className="sl-logo" width={600} height={240} decoding="async" />
+            <div className="sl-eyebrow">{t.eyebrow}</div>
+          </header>
 
-        <div className="sl-logoWrap">
-          <img src="/brand/petwash-logo-white.png" alt="PetWash" className="sl-logo" width={600} height={240} decoding="async" />
-        </div>
-
-        <div className="sl-heroBody">
-          <div className="sl-eyebrow">{t.eyebrow}</div>
           <h1 className="sl-h1">
             {t.h1a}<br />
             <span className="sl-gold">{t.h1b}</span>
           </h1>
-          <p className="sl-sub">{t.sub}</p>
 
-          <div className="sl-badges">
-            {t.badges.map((label, i) => (
-              <div key={label} className="sl-badge">
-                <span className="sl-badgeIcon" aria-hidden>{['🤖','👑','📅','💚'][i]}</span>
-                <span>{label}</span>
-              </div>
-            ))}
+          <p className="sl-sub">{t.sub1}<br />{t.sub2}</p>
+
+          <div className="sl-divPaw" aria-hidden>
+            <span /><FaPaw /><span />
           </div>
 
-          <div className="sl-rating">
-            <span className="sl-stars" aria-hidden>★★★★★</span>
-            <span className="sl-ratingVal">4.9</span>
-            <span className="sl-ratingFrom">{t.ratingLabel}</span>
+          <div className="sl-dogWrap">
+            <img src="/brand/hero-dog-lux.jpg" alt="" className="sl-dog" loading="eager" decoding="async" aria-hidden />
           </div>
 
-          <div className="sl-trust">
-            <div className="sl-trustHead">{t.trust}</div>
+          <section className="sl-card">
+            <div className="sl-cardHead">
+              <div className="sl-cardTitle">{t.premium}</div>
+              <div className="sl-cardSub">{t.premiumSub}</div>
+            </div>
+            <div className="sl-badges">
+              {t.badges.map(({ t: label, I }) => (
+                <div key={label} className="sl-badge">
+                  <I className="sl-badgeIcon" aria-hidden />
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="sl-card sl-trustCard">
+            <div className="sl-cardTitle">{t.trusted}</div>
             <div className="sl-avatars" aria-hidden>
-              {['#F4D48A','#E8B04A','#C5A55A','#9D6F23','#6E4A1A'].map((bg, i) => (
+              {['#F4D48A','#E8B04A','#C5A55A','#9D6F23','#6E4A1A','#3A260A'].map((bg, i) => (
                 <span key={i} className="sl-avatar" style={{ background: `linear-gradient(135deg, ${bg}, #000)` }}>
-                  {['NH','AL','MK','RS','TY'][i]}
+                  {['NH','AL','MK','RS','TY','OS'][i]}
                 </span>
               ))}
-              <span className="sl-avatarMore">+12K</span>
+              <span className="sl-avatarMore">+25K</span>
+            </div>
+            <div className="sl-stars" aria-hidden>★★★★★</div>
+            <div className="sl-ratingTxt">{t.rating}</div>
+          </section>
+
+          <div className="sl-secBadge">
+            <FaShieldAlt aria-hidden />
+            <div>
+              <div className="sl-secBadgeTitle">{t.secure}</div>
+              <div className="sl-secBadgeSub">{t.secureSub}</div>
             </div>
           </div>
-        </div>
+        </aside>
 
-        <div className="sl-secureBadge">{t.secure}</div>
-      </section>
-
-      {/* ========== RIGHT COLUMN — PANEL ========== */}
-      <section className="sl-panelWrap">
-        <div className="sl-panel">
-          <div className="sl-panelHead">
-            <h2 className="sl-title">{t.create}</h2>
-            <p className="sl-helper">{t.helper}</p>
-          </div>
-
-          {/* Social row — 2x2 grid on small, 4x1 on roomy */}
-          <div className="sl-social4">
-            {signupFlags.googleSignin && (
-              <button className="sl-soc sl-soc--g" disabled={busy} onClick={() => social('google')} aria-label="Continue with Google">
-                <svg className="sl-gIcon" viewBox="0 0 48 48" aria-hidden>
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                </svg>
-                Google
+        {/* ================= RIGHT COLUMN (FORM) ================= */}
+        <main className="sl-panel" role="main">
+          <header className="sl-panelHead">
+            <div>
+              <h2 className="sl-title">{t.create}</h2>
+              <p className="sl-helper">{t.helper}</p>
+            </div>
+            {onLanguageChange && (
+              <button
+                type="button"
+                className="sl-lang"
+                onClick={() => onLanguageChange(he ? 'en' : 'he')}
+                aria-label="Switch language"
+              >
+                🌐 {he ? 'עברית' : 'English'} ▾
               </button>
             )}
+          </header>
 
-            {/* Apple — render even when flag-off, but mark "Coming soon" so the design stays whole */}
-            <button
-              className={`sl-soc sl-soc--apple${signupFlags.appleSignin ? '' : ' sl-soc--soon'}`}
-              disabled={busy || !signupFlags.appleSignin}
-              onClick={() => signupFlags.appleSignin && social('apple')}
-              aria-label="Continue with Apple"
-            >
-              <FaApple aria-hidden /> Apple
-              {!signupFlags.appleSignin && <span className="sl-soonPill">{t.soon}</span>}
+          {/* === Phone step 2 — back link === */}
+          {showStep2Phone && (
+            <button type="button" className="sl-back" onClick={() => setStep(1)}>
+              ← {t.back}
             </button>
+          )}
 
-            <button className="sl-soc sl-soc--fb sl-soc--soon" disabled aria-label="Continue with Facebook (coming soon)">
-              <FaFacebookF aria-hidden /> Facebook
-              <span className="sl-soonPill">{t.soon}</span>
-            </button>
+          {/* === Social tiles 2x2 — only on step 1 (or always on tablet+) === */}
+          {!showStep2Phone && (
+            <div className="sl-social4">
+              {signupFlags.googleSignin && (
+                <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
+                  <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
+                </button>
+              )}
 
-            <button className="sl-soc sl-soc--ig sl-soc--soon" disabled aria-label="Continue with Instagram (coming soon)">
-              <FaInstagram aria-hidden /> Instagram
-              <span className="sl-soonPill">{t.soon}</span>
-            </button>
-          </div>
-
-          <div className="sl-div">{t.or}</div>
-
-          {/* Method tabs */}
-          <div className="sl-tabs" role="tablist">
-            <button type="button" className="sl-tab" role="tab" aria-selected={method === 'mobile'} onClick={() => { setMethod('mobile'); setSent(false); }}>
-              {t.tabMobile}
-            </button>
-            {signupFlags.emailPassword && (
-              <button type="button" className="sl-tab" role="tab" aria-selected={method === 'email'} onClick={() => setMethod('email')}>
-                {t.tabEmail}
+              <button
+                className={`sl-soc sl-soc--apple${signupFlags.appleSignin ? '' : ' sl-soc--soon'}`}
+                disabled={busy || !signupFlags.appleSignin}
+                onClick={() => signupFlags.appleSignin && social('apple')}
+              >
+                <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
+                {!signupFlags.appleSignin && <span className="sl-soonPill">{t.soon}</span>}
               </button>
-            )}
-            {signupFlags.emailPassword && (
-              <button type="button" className="sl-tab" role="tab" aria-selected={method === 'other'} onClick={() => setMethod('other')}>
-                {t.tabOther}
-              </button>
-            )}
-          </div>
 
-          {/* Mobile path */}
-          {method === 'mobile' && !sent && (
+              <button className="sl-soc sl-soc--fb sl-soc--soon" disabled>
+                <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
+                <span className="sl-socLabel">{t.cwFb}</span>
+                <span className="sl-soonPill">{t.soon}</span>
+              </button>
+
+              <button className="sl-soc sl-soc--ig sl-soc--soon" disabled>
+                <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
+                <span className="sl-socLabel">{t.cwIg}</span>
+                <span className="sl-soonPill">{t.soon}</span>
+              </button>
+            </div>
+          )}
+
+          {!showStep2Phone && <div className="sl-div">{t.or}</div>}
+
+          {/* === Method tabs — only on step 1 (or always on tablet+) === */}
+          {!showStep2Phone && (
+            <div className="sl-tabs" role="tablist">
+              <button type="button" className="sl-tab" role="tab" aria-selected={method === 'mobile'} onClick={() => { setMethod('mobile'); setSent(false); }}>
+                <FaPhoneAlt aria-hidden /> {t.tabMobile}
+              </button>
+              {signupFlags.emailPassword && (
+                <button type="button" className="sl-tab" role="tab" aria-selected={method === 'email'} onClick={() => setMethod('email')}>
+                  <FaEnvelope aria-hidden /> {t.tabEmail}
+                </button>
+              )}
+              {signupFlags.emailPassword && (
+                <button type="button" className="sl-tab" role="tab" aria-selected={method === 'other'} onClick={() => setMethod('other')}>
+                  <YahooIcon /> {t.tabOther}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* === Auth method inputs — STEP 1 on phone, always on tablet+ === */}
+          {showFormOnPhone && method === 'mobile' && !sent && (
             <>
               <div className="sl-field">
                 <label className="sl-label">{t.phoneLabel}</label>
@@ -426,12 +513,49 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               </div>
               <div className="sl-field">
                 <label className="sl-label">{t.emailOpt}</label>
-                <input className="sl-input" type="email" inputMode="email" autoComplete="email"
-                  value={optionalEmail} onChange={(e) => setOptionalEmail(e.target.value)} placeholder={t.emailAny} />
+                <div className="sl-inputWrap">
+                  <FaEnvelope className="sl-inputIcon" aria-hidden />
+                  <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                    value={optionalEmail} onChange={(e) => setOptionalEmail(e.target.value)} placeholder={t.emailPh} />
+                </div>
+                <div className="sl-hint">{t.emailHelper}</div>
               </div>
+              <EntryCodeField value={entryCode} onChange={setEntryCode} t={t} />
             </>
           )}
 
+          {showFormOnPhone && (method === 'email' || method === 'other') && (
+            <>
+              <div className="sl-field">
+                <label className="sl-label">{t.emailLabel}</label>
+                <div className="sl-inputWrap">
+                  <FaEnvelope className="sl-inputIcon" aria-hidden />
+                  <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder={method === 'other' ? (he ? 'Outlook, Yahoo, ProtonMail, אחר…' : 'Outlook, Yahoo, ProtonMail, other…') : t.emailPh} />
+                </div>
+              </div>
+              <div className="sl-field">
+                <label className="sl-label">{t.pwd}</label>
+                <div className="sl-inputWrap">
+                  <FaLock className="sl-inputIcon" aria-hidden />
+                  <input className="sl-input sl-input--icon" type="password" autoComplete="current-password"
+                    value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                </div>
+              </div>
+              <div className="sl-field">
+                <label className="sl-label">{t.pwd2}</label>
+                <div className="sl-inputWrap">
+                  <FaLock className="sl-inputIcon" aria-hidden />
+                  <input className="sl-input sl-input--icon" type="password" autoComplete="new-password"
+                    value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
+                </div>
+              </div>
+              <EntryCodeField value={entryCode} onChange={setEntryCode} t={t} />
+            </>
+          )}
+
+          {/* === OTP — appears after we send the SMS === */}
           {method === 'mobile' && sent && (
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
@@ -440,178 +564,223 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {(method === 'email' || method === 'other') && (
+          {/* === Phone-only: STEP 1 → STEP 2 Continue button === */}
+          {isPhone && step === 1 && !sent && (
+            <button className="sl-cta sl-cta--ghost" disabled={busy} onClick={advance}>
+              {t.next} →
+            </button>
+          )}
+
+          {/* === Consent / security — STEP 2 on phone, always on tablet+ === */}
+          {showConsentOnPhone && !(method === 'mobile' && sent) && (
             <>
-              <div className="sl-field">
-                <label className="sl-label">{t.emailLabel}</label>
-                <input className="sl-input" type="email" inputMode="email" autoComplete="username email"
-                  value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder={method === 'other' ? (he ? 'Outlook, Yahoo, ProtonMail, אחר…' : 'Outlook, Yahoo, ProtonMail, other…') : t.emailAny} />
-              </div>
-              <div className="sl-field">
-                <label className="sl-label">{t.pwd}</label>
-                <input className="sl-input" type="password" autoComplete="current-password"
-                  value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-              </div>
-              <div className="sl-field">
-                <label className="sl-label">{t.pwd2}</label>
-                <input className="sl-input" type="password" autoComplete="new-password"
-                  value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
-              </div>
-            </>
-          )}
+              <section className="sl-adv">
+                <div className="sl-advTitle">{t.advTitle}</div>
+                <div className="sl-advCells">
+                  <AdvCell I={FaFingerprint} title={t.advPasskey} sub={t.advPasskeySub} />
+                  <AdvCell I={FaShieldAlt} title={t.advRecap} sub={t.advRecapSub} />
+                  <AdvCell I={FaLock} title={t.advOtp} sub={t.advOtpSub} />
+                </div>
+              </section>
 
-          {/* Next-time entry code — captured pre-signup, persisted post */}
-          {!(method === 'mobile' && sent) && (
-            <div className="sl-field">
-              <label className="sl-label">{t.entry}</label>
-              <input
-                className="sl-input sl-entry"
-                type="text" inputMode="numeric" pattern="\d{6}" maxLength={6}
-                value={entryCode}
-                onChange={(e) => setEntryCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="• • • • • •"
-                aria-describedby="sl-entry-hint"
-              />
-              <div id="sl-entry-hint" className="sl-hint">{t.entryHint}</div>
-            </div>
-          )}
+              <ConsentCard I={FaFingerprint} checked={biometric} setChecked={setBiometric} title={t.consentBio} sub={t.consentBioSub} />
+              <ConsentCard I={FaLock} checked={savePassword} setChecked={setSavePassword} title={t.consentSavePwd} sub={t.consentSavePwdSub} />
+              <ConsentCard I={FaCalendarAlt} checked={rememberMe} setChecked={setRememberMe} title={t.consentRemember} sub={t.consentRememberSub} />
+              <ConsentCard I={FaWallet} checked={walletConsent} setChecked={setWalletConsent} title={t.consentWallet} sub={t.consentWalletSub} />
 
-          {/* 2026 Advanced Security row */}
-          <div className="sl-secRow" aria-label={t.advSecurity}>
-            <div className="sl-secHead">{t.advSecurity}</div>
-            <div className="sl-secCells">
-              <div className="sl-secCell"><FaFingerprint aria-hidden /> <span>{t.passkey}</span></div>
-              <div className="sl-secCell"><FaShieldAlt aria-hidden /> <span>{t.recaptcha}</span></div>
-              <div className="sl-secCell"><FaLock aria-hidden /> <span>{t.otp}</span></div>
-            </div>
-          </div>
-
-          {/* Consent checkboxes */}
-          {!(method === 'mobile' && sent) && (
-            <div className="sl-consent">
-              <label className="sl-chk">
-                <input type="checkbox" checked={biometric} onChange={(e) => setBiometric(e.target.checked)} />
-                <FaFingerprint className="sl-chkIcon" aria-hidden />
-                <span>{t.biometric}</span>
-              </label>
-              <label className="sl-chk">
-                <input type="checkbox" checked={savePassword} onChange={(e) => setSavePassword(e.target.checked)} />
-                <FaLock className="sl-chkIcon" aria-hidden />
-                <span>{t.savePwd}</span>
-              </label>
-              <label className="sl-chk">
-                <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
-                <FaShieldAlt className="sl-chkIcon" aria-hidden />
-                <span>{t.remember}</span>
-              </label>
-              <label className="sl-chk">
-                <input type="checkbox" checked={walletConsent} onChange={(e) => setWalletConsent(e.target.checked)} />
-                <FaWallet className="sl-chkIcon" aria-hidden />
-                <span>{t.walletConsent}</span>
-              </label>
-            </div>
-          )}
-
-          {/* Wallet CTAs — visual now, real activation post-signup */}
-          {!(method === 'mobile' && sent) && (
-            <>
               <div className="sl-wallets">
-                <button
-                  type="button"
+                <button type="button"
                   className={`sl-wbtn sl-wbtn--apple${walletIntent === 'apple' ? ' is-on' : ''}`}
                   disabled={!walletConsent}
                   aria-pressed={walletIntent === 'apple'}
                   onClick={() => setWalletIntent(walletIntent === 'apple' ? null : 'apple')}
                 >
-                  <FaApple aria-hidden />
-                  <span className="sl-wbtnTxt">
-                    <small>{he ? 'הוסף ל-' : 'Add to'}</small>
-                    <strong>Apple Wallet</strong>
-                  </span>
+                  <WalletCardIcon variant="apple" /> <strong>{t.addApple}</strong>
                 </button>
-                <button
-                  type="button"
+                <button type="button"
                   className={`sl-wbtn sl-wbtn--google${walletIntent === 'google' ? ' is-on' : ''}`}
                   disabled={!walletConsent}
                   aria-pressed={walletIntent === 'google'}
                   onClick={() => setWalletIntent(walletIntent === 'google' ? null : 'google')}
                 >
-                  <FaGooglePlay aria-hidden />
-                  <span className="sl-wbtnTxt">
-                    <small>{he ? 'הוסף ל-' : 'Add to'}</small>
-                    <strong>Google Wallet</strong>
-                  </span>
+                  <WalletCardIcon variant="google" /> <strong>{t.addGoogle}</strong>
                 </button>
               </div>
-              <div className="sl-walletNote">{t.walletNote}</div>
+
+              <label className="sl-terms">
+                <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+                <span>
+                  {t.iAgree}
+                  <a href="/terms" target="_blank" rel="noreferrer">{t.termsLink}</a>
+                  {t.andTo}
+                  <a href="/privacy-policy" target="_blank" rel="noreferrer">{t.privLink}</a>
+                </span>
+              </label>
+
+              <label className={`sl-robot${robot ? ' is-on' : ''}`}>
+                <input type="checkbox" checked={robot} onChange={(e) => setRobot(e.target.checked)} />
+                <span className="sl-robotMark"><FaCheckCircle /></span>
+                <span className="sl-robotTxt">{t.notRobot}</span>
+                <span className="sl-robotBadge" aria-hidden>
+                  <span className="sl-robotLogo">reCAPTCHA</span>
+                  <span className="sl-robotFine">Privacy · Terms</span>
+                </span>
+              </label>
+
+              <button className="sl-cta" disabled={busy}
+                onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}>
+                <FaLock aria-hidden /> {ctaLabel}
+              </button>
+
+              <div className="sl-bank">
+                <FaShieldAlt aria-hidden /> <span>{t.bank}</span>
+                <span aria-hidden> · </span>
+                <span>{t.enc}</span>
+                <span aria-hidden> · </span>
+                <span>{t.safe}</span>
+              </div>
             </>
           )}
+        </main>
+      </div>
 
-          {/* Terms */}
-          {!(method === 'mobile' && sent) && (
-            <label className="sl-terms">
-              <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-              <span>
-                {t.iAgree}
-                <a href="/terms" target="_blank" rel="noreferrer">{t.termsLink}</a>
-                {t.andTo}
-                <a href="/privacy-policy" target="_blank" rel="noreferrer">{t.privLink}</a>
-              </span>
-            </label>
-          )}
-
-          {/* reCAPTCHA badge (visual — actual verification is server-side / invisible v3) */}
-          {!(method === 'mobile' && sent) && (
-            <div className="sl-recap" aria-label="reCAPTCHA v3 protected">
-              <FaShieldAlt aria-hidden />
-              <span>{he ? 'מוגן על-ידי' : 'Protected by'} <strong>reCAPTCHA v3</strong></span>
-            </div>
-          )}
-
-          {/* CTA */}
-          {!(method === 'mobile' && sent) && (
-            <button
-              className="sl-btn sl-primary"
-              disabled={busy}
-              onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}
-            >
-              {busy ? '…' : t.cta}
-            </button>
-          )}
-
-          {/* Bank-level security row */}
-          <div className="sl-bank">{t.bank}</div>
-        </div>
-
-        {/* Download Our App banner */}
-        <div className="sl-dl">
-          <div className="sl-dlText">
-            <div className="sl-dlTitle">{t.download}</div>
-            <div className="sl-dlSub">{t.downloadSub}</div>
-            <div className="sl-dlBtns">
-              <a className="sl-store" href="https://apps.apple.com/il/app/petwash/id1234567890" target="_blank" rel="noreferrer">
-                <FaAppStoreIos aria-hidden />
-                <span className="sl-storeTxt"><small>{he ? 'הורד מ-' : 'Download on the'}</small><strong>{t.appStore}</strong></span>
-              </a>
-              <a className="sl-store" href="https://play.google.com/store/apps/details?id=co.il.petwash" target="_blank" rel="noreferrer">
-                <FaGooglePlay aria-hidden />
-                <span className="sl-storeTxt"><small>{he ? 'הורד מ-' : 'Get it on'}</small><strong>{t.googlePlay}</strong></span>
-              </a>
-            </div>
+      {/* ================= DOWNLOAD APP BANNER ================= */}
+      <section className="sl-dl">
+        <div className="sl-dlLeft">
+          <span className="sl-dlPaw" aria-hidden><FaPaw /></span>
+          <div>
+            <div className="sl-dlTitle">{t.dlTitle}</div>
+            <div className="sl-dlSub">{t.dlSub}</div>
           </div>
+        </div>
+        <div className="sl-dlRight">
+          <a className="sl-store" href="https://apps.apple.com/il/app/petwash/id1234567890" target="_blank" rel="noreferrer">
+            <FaAppStoreIos aria-hidden />
+            <span><small>{t.storeAppleLine}</small><strong>{t.storeApple}</strong></span>
+          </a>
+          <a className="sl-store" href="https://play.google.com/store/apps/details?id=co.il.petwash" target="_blank" rel="noreferrer">
+            <FaGooglePlay aria-hidden />
+            <span><small>{t.storeGoogleLine}</small><strong>{t.storeGoogle}</strong></span>
+          </a>
           <div className="sl-qr" aria-hidden>
             <QrSquare />
-            <div className="sl-qrCap">{t.qrCaption}</div>
           </div>
         </div>
       </section>
+
+      {/* Sticky CTA on phones — duplicates the in-form CTA so the operator
+          never has to scroll to find it. Only visible on phones (≤767px),
+          only on Step 2, only when the OTP screen is not up. */}
+      {isPhone && step === 2 && !(method === 'mobile' && sent) && (
+        <div className="sl-stickyWrap">
+          <button className="sl-cta sl-cta--sticky" disabled={busy}
+            onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}>
+            <FaLock aria-hidden /> {ctaLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// Tiny inline QR-look placeholder. Real QR generation lives in the post-signup
-// app banner if/when we want a tracked download URL — purely visual here.
+// ============================================================
+// Sub-components
+// ============================================================
+
+function EntryCodeField({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
+  return (
+    <div className="sl-field">
+      <label className="sl-label sl-labelWithInfo">
+        {t.entryTitle}
+        <FaInfoCircle className="sl-infoIcon" aria-hidden />
+      </label>
+      <div className="sl-entryRow">
+        <div className="sl-inputWrap sl-entryInputWrap">
+          <FaShieldAlt className="sl-inputIcon" aria-hidden />
+          <input
+            className="sl-input sl-input--icon"
+            type="text" inputMode="numeric" pattern="\d{6}" maxLength={6}
+            value={value}
+            onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder={t.entryPh}
+          />
+        </div>
+        <button type="button" className="sl-entryBtn" disabled={!/^\d{6}$/.test(value)}>{t.entryBtn}</button>
+      </div>
+      <div className="sl-hint">{t.entryHelper}</div>
+    </div>
+  );
+}
+
+function AdvCell({ I, title, sub }: { I: any; title: string; sub: string }) {
+  return (
+    <div className="sl-advCell">
+      <I className="sl-advIcon" aria-hidden />
+      <div>
+        <div className="sl-advCellTitle">{title}</div>
+        <div className="sl-advCellSub">{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+function ConsentCard({ I, checked, setChecked, title, sub }: { I: any; checked: boolean; setChecked: (b: boolean) => void; title: string; sub: string }) {
+  return (
+    <label className={`sl-consent${checked ? ' is-on' : ''}`}>
+      <span className="sl-consentIcon"><I aria-hidden /></span>
+      <span className="sl-consentBody">
+        <span className="sl-consentTitle">{title}</span>
+        <span className="sl-consentSub">{sub}</span>
+      </span>
+      <span className="sl-consentBox">
+        <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+        <FaCheckCircle className="sl-consentMark" aria-hidden />
+      </span>
+    </label>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg className="sl-gIcon" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+  );
+}
+
+function YahooIcon() {
+  return (
+    <span className="sl-yIcon" aria-hidden>
+      <span className="sl-yText">Y!</span>
+    </span>
+  );
+}
+
+function WalletCardIcon({ variant }: { variant: 'apple' | 'google' }) {
+  return (
+    <svg className="sl-wcardIcon" viewBox="0 0 32 22" aria-hidden>
+      <rect x="0.5" y="0.5" width="31" height="21" rx="3" fill={variant === 'apple' ? 'url(#wgrad-a)' : 'url(#wgrad-g)'} stroke="rgba(255,255,255,.18)" />
+      <defs>
+        <linearGradient id="wgrad-a" x1="0" y1="0" x2="32" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#f4d48a" />
+          <stop offset=".5" stopColor="#d8ad55" />
+          <stop offset="1" stopColor="#9d6f23" />
+        </linearGradient>
+        <linearGradient id="wgrad-g" x1="0" y1="0" x2="32" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#4285F4" />
+          <stop offset=".33" stopColor="#34A853" />
+          <stop offset=".66" stopColor="#FBBC05" />
+          <stop offset="1" stopColor="#EA4335" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="13" width="9" height="2" rx="1" fill="rgba(255,255,255,.65)" />
+    </svg>
+  );
+}
+
 function QrSquare() {
   const cells = [
     '1111111011111110', '1000001011001010', '1011101010111010',
@@ -631,290 +800,406 @@ function QrSquare() {
   );
 }
 
-/** All styles live here so the component file stays portable. */
+// ============================================================
+// Styles
+// ============================================================
+
 function styles(he: boolean) {
   return `
-    .sl-root{
+    .sl-shell{
       --gold:#d8ad55; --gold2:#f4d48a; --white:#fffaf0;
-      --muted:rgba(255,250,240,.7); --line:rgba(255,255,255,.14);
-      position:relative; min-height:100dvh;
-      background:
-        radial-gradient(circle at 18% 8%, rgba(244,212,138,.16), transparent 30%),
-        radial-gradient(circle at 82% 90%, rgba(216,173,85,.12), transparent 32%),
-        linear-gradient(135deg, #050505, #111 50%, #050505);
+      --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
+      --line2:rgba(244,212,138,.22); --ink:#0a0a0a;
+      position:relative; min-height:100dvh; background:#000;
       color:var(--white);
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      display:flex; flex-direction:column;
     }
-    @supports not (height:100dvh){ .sl-root{ min-height:100vh } }
+    @supports not (height:100dvh){ .sl-shell{ min-height:100vh } }
 
-    .sl-lang{ position:absolute; top:max(14px, env(safe-area-inset-top)); ${he ? 'left' : 'right'}:16px; z-index:6; display:flex; gap:6px }
-    .sl-langBtn{ appearance:none; cursor:pointer; border:1px solid var(--line); background:rgba(0,0,0,.4); color:var(--white); font-weight:800; font-size:13px; border-radius:999px; padding:7px 13px; min-height:36px }
-    .sl-langBtn[aria-pressed="true"]{ background:linear-gradient(135deg, var(--gold2), var(--gold)); color:#0a0a0a; border-color:transparent }
+    /* Frame caps the layout at 1440px and centers it on big screens. */
+    .sl-frame{
+      max-width:1440px; margin:0 auto;
+      display:flex; flex-direction:column;
+      padding:clamp(20px,4vw,40px) clamp(16px,3vw,40px) 0;
+      gap:clamp(20px,3vw,32px);
+    }
 
     /* HERO LEFT */
-    .sl-hero{
-      position:relative; z-index:0; overflow:hidden;
-      padding:clamp(28px,6vw,52px) clamp(20px,5vw,52px);
-      display:flex; flex-direction:column; gap:18px; min-height:44dvh;
-    }
-    .sl-hero:after{
-      content:""; position:absolute; inset:auto 0 0 0; height:42%;
-      background:linear-gradient(transparent, rgba(5,5,5,.94)); z-index:1;
-    }
-    .sl-hero > *{ position:relative; z-index:2 }
-    .sl-heroArt{
-      position:absolute; inset:0; z-index:0;
-      background:center/cover no-repeat; background-image:url(/brand/hero-dog-lux.jpg);
-      opacity:.55; filter:contrast(1.08) saturate(1.12);
-      -webkit-mask-image:linear-gradient(180deg, transparent 18%, #000 70%);
-      mask-image:linear-gradient(180deg, transparent 18%, #000 70%);
-    }
-    .sl-logoWrap{ width:fit-content }
-    .sl-logo{ height:clamp(48px,13vw,104px); width:auto; display:block }
+    .sl-hero{ display:flex; flex-direction:column; gap:22px }
+    .sl-heroHead{ display:flex; flex-direction:column; gap:14px; align-items:flex-start }
+    .sl-logo{ height:clamp(48px,11vw,96px); width:auto; display:block }
+    .sl-eyebrow{ color:var(--muted); font-size:11px; letter-spacing:.32em; font-weight:800; text-transform:uppercase }
+    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(34px,5.2vw,64px); line-height:1; letter-spacing:-.03em; margin:0; font-weight:600 }
+    .sl-gold{ background:linear-gradient(180deg, var(--gold2), var(--gold) 60%, #b48830); -webkit-background-clip:text; background-clip:text; color:transparent; display:inline-block; padding-bottom:.08em }
+    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(15px,1.5vw,18px); line-height:1.55; max-width:520px }
 
-    .sl-heroBody{ display:flex; flex-direction:column; gap:14px; max-width:620px }
-    .sl-eyebrow{ letter-spacing:.22em; text-transform:uppercase; font-size:12px; color:var(--muted); font-weight:800 }
-    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(30px,4.6vw,64px); line-height:.95; letter-spacing:-.03em; margin:0 }
-    .sl-gold{ background:linear-gradient(90deg, var(--gold2), var(--gold), #9d6f23); -webkit-background-clip:text; background-clip:text; color:transparent }
-    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(15px,1.5vw,20px); line-height:1.5; max-width:560px }
+    .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:4px 0 }
+    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(244,212,138,.4), transparent); flex:1 }
+    .sl-divPaw svg{ width:14px; height:14px }
 
-    .sl-badges{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; margin-top:2px }
+    .sl-dogWrap{ display:flex; justify-content:center; padding:8px 0 }
+    .sl-dog{ width:min(78%, 380px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 30px 80px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+
+    .sl-card{
+      border:1px solid var(--line);
+      background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(0,0,0,.55));
+      border-radius:18px; padding:18px;
+      display:flex; flex-direction:column; gap:14px;
+    }
+    .sl-cardHead{ text-align:center; display:flex; flex-direction:column; gap:4px }
+    .sl-cardTitle{ color:var(--gold2); font-size:11.5px; letter-spacing:.32em; text-transform:uppercase; font-weight:900 }
+    .sl-cardSub{ color:var(--white); font-size:14px; opacity:.95 }
+
+    .sl-badges{ display:grid; grid-template-columns:repeat(4, 1fr); gap:8px }
     .sl-badge{
-      display:flex; align-items:center; gap:10px;
-      padding:10px 12px; border-radius:14px;
-      border:1px solid rgba(244,212,138,.22);
-      background:linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      color:var(--white); font-weight:700; font-size:13px;
-      backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+      display:flex; flex-direction:column; align-items:center; gap:8px;
+      padding:14px 8px; border-radius:14px;
+      background:rgba(0,0,0,.45); border:1px solid var(--line);
+      font-weight:700; font-size:11.5px; text-align:center; color:var(--white); line-height:1.25;
+      min-height:88px; justify-content:center;
     }
-    .sl-badgeIcon{ font-size:18px; line-height:1 }
+    .sl-badgeIcon{ font-size:24px; color:var(--gold2) }
 
-    .sl-rating{ display:flex; align-items:center; gap:10px; margin-top:4px; color:var(--white) }
-    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:2px; text-shadow:0 0 12px rgba(244,212,138,.5) }
-    .sl-ratingVal{ font-weight:900; font-size:18px }
-    .sl-ratingFrom{ color:var(--muted); font-size:13px; font-weight:700 }
-
-    .sl-trust{ display:flex; flex-direction:column; gap:8px; margin-top:4px }
-    .sl-trustHead{ color:var(--muted); font-size:12px; letter-spacing:.16em; text-transform:uppercase; font-weight:800 }
-    .sl-avatars{ display:flex; align-items:center; ${he ? 'gap:6px' : 'gap:0'} }
+    .sl-trustCard{ align-items:center; text-align:center }
+    .sl-avatars{ display:flex; align-items:center; ${he ? 'gap:6px' : 'gap:0'}; justify-content:center; flex-wrap:wrap }
     .sl-avatar{
       width:34px; height:34px; border-radius:50%;
       display:inline-flex; align-items:center; justify-content:center;
-      color:#fff; font-weight:900; font-size:12px;
-      border:2px solid #0a0a0a; box-shadow:0 2px 8px rgba(0,0,0,.45);
+      color:#fff; font-weight:900; font-size:11px;
+      border:2px solid #0a0a0a; box-shadow:0 4px 12px rgba(0,0,0,.5);
       margin-${he ? 'right' : 'left'}:-8px;
     }
     .sl-avatar:first-child{ margin-${he ? 'right' : 'left'}:0 }
     .sl-avatarMore{
-      margin-${he ? 'right' : 'left'}:8px; padding:4px 10px; border-radius:999px;
+      margin-${he ? 'right' : 'left'}:10px; padding:5px 10px; border-radius:999px;
       background:linear-gradient(135deg, var(--gold2), var(--gold));
-      color:#0a0a0a; font-weight:900; font-size:12px;
+      color:#0a0a0a; font-weight:900; font-size:11px;
     }
+    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(244,212,138,.5) }
+    .sl-ratingTxt{ color:var(--white); font-weight:800; font-size:14px }
 
-    .sl-secureBadge{
-      align-self:flex-start; margin-top:auto;
-      padding:8px 12px; border-radius:999px;
-      border:1px solid rgba(244,212,138,.24);
-      background:rgba(0,0,0,.4); color:var(--gold2);
-      font-weight:800; font-size:12px; letter-spacing:.06em;
+    .sl-secBadge{
+      display:flex; align-items:center; gap:12px;
+      padding:14px 16px; border-radius:14px;
+      background:rgba(0,0,0,.55); border:1px solid var(--line);
     }
+    .sl-secBadge > svg{ color:var(--gold2); font-size:22px; flex:0 0 auto }
+    .sl-secBadgeTitle{ font-size:11.5px; letter-spacing:.24em; font-weight:900; color:var(--white); text-transform:uppercase }
+    .sl-secBadgeSub{ color:var(--muted); font-size:12.5px; margin-top:2px }
 
     /* PANEL RIGHT */
-    .sl-panelWrap{
-      position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:24px;
-      padding:clamp(16px,5vw,28px) clamp(16px,5vw,28px) max(32px, env(safe-area-inset-bottom));
-    }
     .sl-panel{
-      width:100%; max-width:520px; border-radius:28px;
-      border:1px solid rgba(244,212,138,.22);
-      background:linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
-      -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px);
-      box-shadow:0 30px 90px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.16);
-      padding:clamp(22px,3.2vw,34px); display:flex; flex-direction:column; gap:16px;
+      display:flex; flex-direction:column; gap:14px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(20,20,20,.95), rgba(8,8,8,.95));
+      border-radius:24px; padding:clamp(20px,3vw,32px);
     }
-    .sl-panelHead{ display:grid; gap:6px }
-    .sl-title{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(26px,3.2vw,38px); margin:0; line-height:1 }
-    .sl-helper{ margin:0; color:var(--white); font-size:15px; font-weight:600; line-height:1.5 }
+    .sl-panelHead{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .sl-title{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(28px,3.6vw,42px); margin:0; line-height:1.05; font-weight:600 }
+    .sl-helper{ margin:4px 0 0; color:var(--muted); font-size:15px; line-height:1.5 }
     .sl-helper.sl-center{ text-align:center }
+    .sl-lang{
+      appearance:none; cursor:pointer;
+      border:1px solid var(--line); background:rgba(0,0,0,.5);
+      color:var(--white); font-weight:700; font-size:13px;
+      border-radius:999px; padding:8px 14px; min-height:38px;
+    }
+    .sl-lang:hover{ border-color:rgba(244,212,138,.5) }
 
-    /* Social 2x2 */
+    .sl-back{
+      align-self:flex-start; appearance:none; cursor:pointer;
+      background:transparent; border:0; color:var(--gold2);
+      font-weight:800; font-size:14px; padding:8px 4px;
+    }
+
+    /* Social tiles 2x2 */
     .sl-social4{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
     .sl-soc{
-      appearance:none; cursor:pointer; min-height:54px; border-radius:14px;
-      border:1px solid var(--line); background:rgba(0,0,0,.34); color:var(--white);
-      display:flex; align-items:center; justify-content:center; gap:10px;
-      font-weight:800; font-size:15px; padding:0 12px;
-      transition:transform .15s ease, border-color .15s ease; position:relative;
+      appearance:none; cursor:pointer; position:relative;
+      min-height:60px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(0,0,0,.55);
+      color:var(--white); display:flex; align-items:center; gap:12px; padding:0 16px;
+      font-weight:700; font-size:14px; line-height:1.2;
+      transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(244,212,138,.4) }
+    .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(244,212,138,.45); box-shadow:0 0 0 3px rgba(244,212,138,.10) }
     .sl-soc:disabled{ cursor:not-allowed }
     .sl-soc--soon{ opacity:.78 }
-    .sl-soc--fb{ background:linear-gradient(135deg, rgba(24,119,242,.16), rgba(24,119,242,.06)); border-color:rgba(24,119,242,.32); color:#bcd3ff }
-    .sl-soc--ig{ background:linear-gradient(135deg, rgba(255,86,159,.18), rgba(120,76,255,.08)); border-color:rgba(255,86,159,.32); color:#ffd1ea }
-    .sl-soc--apple{ background:linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.02)) }
-    .sl-gIcon{ width:20px; height:20px; flex:0 0 auto }
+    .sl-socLabel{ flex:1; text-align:start }
+    .sl-gIcon{ width:24px; height:24px; flex:0 0 auto }
+    .sl-fbIcon{ width:24px; height:24px; flex:0 0 auto; border-radius:6px; background:#1877F2; display:inline-flex; align-items:center; justify-content:center; color:#fff }
+    .sl-fbIcon svg{ font-size:14px }
+    .sl-igIcon{ width:24px; height:24px; flex:0 0 auto; border-radius:6px; background:linear-gradient(135deg, #fdc468 0%, #d83689 50%, #5b4ad0 100%); display:inline-flex; align-items:center; justify-content:center; color:#fff }
+    .sl-igIcon svg{ font-size:14px }
+    .sl-soc--apple svg{ font-size:22px }
     .sl-soonPill{
-      position:absolute; top:6px; ${he ? 'left' : 'right'}:8px;
-      font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
-      padding:2px 8px; border-radius:999px;
+      position:absolute; top:8px; ${he ? 'left:10px' : 'right:10px'};
+      font-size:9.5px; font-weight:900; letter-spacing:.1em; text-transform:uppercase;
+      padding:2px 7px; border-radius:999px;
       background:linear-gradient(135deg, var(--gold2), var(--gold)); color:#0a0a0a;
     }
 
-    .sl-div{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; color:rgba(255,250,240,.55); font-size:12px; text-transform:uppercase; letter-spacing:.14em; font-weight:800 }
-    .sl-div:before, .sl-div:after{ content:""; height:1px; background:linear-gradient(90deg, transparent, rgba(244,212,138,.3), transparent) }
+    .sl-div{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; color:var(--muted); font-size:13px; font-weight:600; padding:4px 0 }
+    .sl-div:before, .sl-div:after{ content:""; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent) }
 
-    .sl-tabs{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; background:rgba(0,0,0,.3); border:1px solid var(--line); border-radius:14px; padding:5px }
-    .sl-tab{ appearance:none; cursor:pointer; border:0; background:transparent; color:var(--muted); font-weight:800; font-size:14px; min-height:42px; border-radius:10px; padding:0 6px }
-    .sl-tab[aria-selected="true"]{ background:rgba(244,212,138,.16); color:var(--white) }
+    /* Method tabs */
+    .sl-tabs{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px }
+    .sl-tab{
+      appearance:none; cursor:pointer; min-height:54px;
+      background:rgba(0,0,0,.55); border:1px solid var(--line);
+      color:var(--muted); font-weight:700; font-size:13.5px;
+      border-radius:12px; display:flex; align-items:center; justify-content:center; gap:8px;
+      padding:0 8px; transition:background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .sl-tab svg{ font-size:16px }
+    .sl-tab[aria-selected="true"]{ background:rgba(244,212,138,.12); border-color:rgba(244,212,138,.4); color:var(--white) }
+    .sl-tab:hover{ border-color:rgba(244,212,138,.35) }
+    .sl-yIcon{ width:18px; height:18px; border-radius:4px; background:#5F01D1; display:inline-flex; align-items:center; justify-content:center }
+    .sl-yText{ color:#fff; font-weight:900; font-size:10.5px; letter-spacing:-.5px }
 
-    .sl-field{ display:grid; gap:7px }
-    .sl-label{ font-size:12px; color:var(--gold2); font-weight:800; text-transform:uppercase; letter-spacing:.1em }
+    /* Fields */
+    .sl-field{ display:grid; gap:8px }
+    .sl-label{ font-size:13.5px; color:var(--white); font-weight:700; letter-spacing:.01em }
+    .sl-labelWithInfo{ display:flex; align-items:center; gap:6px }
+    .sl-infoIcon{ color:var(--muted); font-size:12px }
+    .sl-inputWrap{ position:relative; display:flex }
+    .sl-inputIcon{
+      position:absolute; top:50%; transform:translateY(-50%);
+      ${he ? 'right:14px' : 'left:14px'}; color:var(--muted); font-size:16px; pointer-events:none;
+    }
     .sl-input{
-      min-height:54px; border-radius:14px; border:1px solid var(--line);
-      background:rgba(0,0,0,.3); color:var(--white); font-size:16px; font-weight:600;
-      padding:0 16px; width:100%; outline:none;
+      width:100%; min-height:54px; border-radius:12px;
+      border:1px solid var(--line); background:rgba(0,0,0,.55);
+      color:var(--white); font-size:16px; font-weight:500;
+      padding:0 16px; outline:none;
+      transition:border-color .15s ease, box-shadow .15s ease;
     }
-    .sl-input::placeholder{ color:rgba(255,250,240,.42) }
+    .sl-input--icon{ ${he ? 'padding-right:42px; padding-left:16px' : 'padding-left:42px; padding-right:16px'} }
+    .sl-input::placeholder{ color:rgba(255,250,240,.4); font-weight:400 }
     .sl-input:focus{ border-color:rgba(244,212,138,.55); box-shadow:0 0 0 3px rgba(244,212,138,.18) }
-    .sl-entry{ letter-spacing:.6em; text-align:center; font-size:22px; font-weight:800 }
-    .sl-hint{ font-size:12px; color:var(--muted); margin-top:-2px }
+    .sl-hint{ color:var(--muted); font-size:12.5px; line-height:1.4 }
 
-    .sl-secRow{
-      border:1px solid rgba(244,212,138,.22); border-radius:14px;
-      background:linear-gradient(145deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
-      padding:12px; display:grid; gap:10px;
+    .sl-entryRow{ display:grid; grid-template-columns:1fr auto; gap:8px }
+    .sl-entryInputWrap{ min-width:0 }
+    .sl-entryBtn{
+      appearance:none; cursor:pointer; min-height:54px; padding:0 18px;
+      border-radius:12px; border:1px solid var(--line); background:#fff; color:#0a0a0a;
+      font-weight:800; font-size:14px;
+      transition:transform .15s ease, box-shadow .15s ease;
+      white-space:nowrap;
     }
-    .sl-secHead{ color:var(--gold2); font-weight:800; font-size:12px; letter-spacing:.12em; text-transform:uppercase }
-    .sl-secCells{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px }
-    .sl-secCell{
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      padding:9px 8px; border-radius:10px; border:1px solid var(--line);
-      background:rgba(0,0,0,.32); color:var(--white); font-weight:700; font-size:12px; text-align:center;
-    }
-    .sl-secCell svg{ color:var(--gold2); flex:0 0 auto }
+    .sl-entryBtn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 6px 20px rgba(255,255,255,.18) }
+    .sl-entryBtn:disabled{ opacity:.45; cursor:not-allowed }
 
-    .sl-consent{ display:grid; gap:8px }
-    .sl-chk{
-      display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:10px;
-      padding:10px 12px; border-radius:12px;
-      border:1px solid var(--line); background:rgba(0,0,0,.26);
-      color:var(--white); font-size:13.5px; font-weight:600; line-height:1.3;
+    /* Advanced security panel */
+    .sl-adv{
+      border:1px solid var(--line); border-radius:14px;
+      background:rgba(0,0,0,.45); padding:14px; display:grid; gap:12px;
     }
-    .sl-chk input{ width:20px; height:20px; accent-color:var(--gold); flex:0 0 auto }
-    .sl-chkIcon{ color:var(--gold2); width:16px; height:16px }
+    .sl-advTitle{ color:var(--gold2); font-size:11.5px; letter-spacing:.28em; text-transform:uppercase; font-weight:900; text-align:center }
+    .sl-advCells{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px }
+    .sl-advCell{
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      padding:6px 4px; text-align:center;
+    }
+    .sl-advIcon{ font-size:22px; color:var(--gold2) }
+    .sl-advCellTitle{ font-size:12.5px; font-weight:800; color:var(--white) }
+    .sl-advCellSub{ font-size:11px; color:var(--muted); margin-top:2px }
 
+    /* Consent cards — large clickable rows */
+    .sl-consent{
+      display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:14px;
+      padding:14px 16px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(0,0,0,.55);
+      cursor:pointer; min-height:64px;
+      transition:border-color .15s ease, background .15s ease;
+    }
+    .sl-consent.is-on{ border-color:rgba(244,212,138,.5); background:rgba(244,212,138,.06) }
+    .sl-consent:hover{ border-color:rgba(244,212,138,.35) }
+    .sl-consentIcon{
+      width:40px; height:40px; border-radius:10px;
+      background:rgba(244,212,138,.10); border:1px solid rgba(244,212,138,.22);
+      display:inline-flex; align-items:center; justify-content:center;
+      color:var(--gold2); font-size:18px; flex:0 0 auto;
+    }
+    .sl-consentBody{ display:flex; flex-direction:column; gap:3px; min-width:0 }
+    .sl-consentTitle{ font-size:14px; font-weight:800; color:var(--white); line-height:1.2 }
+    .sl-consentSub{ font-size:12px; color:var(--muted); line-height:1.4 }
+    .sl-consentBox{
+      position:relative; width:26px; height:26px; flex:0 0 auto;
+      border-radius:7px; border:1.5px solid rgba(244,212,138,.45);
+      background:rgba(0,0,0,.55); display:inline-flex; align-items:center; justify-content:center;
+    }
+    .sl-consentBox input{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer }
+    .sl-consentMark{ color:var(--gold2); font-size:18px; opacity:0; transition:opacity .15s ease }
+    .sl-consent.is-on .sl-consentMark{ opacity:1 }
+    .sl-consent.is-on .sl-consentBox{ border-color:var(--gold2); background:rgba(244,212,138,.14) }
+
+    /* Wallet buttons */
     .sl-wallets{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
     .sl-wbtn{
       appearance:none; cursor:pointer; min-height:56px; border-radius:14px;
       display:flex; align-items:center; justify-content:center; gap:10px; padding:0 14px;
-      border:1px solid var(--line); color:#fff; font-weight:800;
-      transition:transform .15s ease, border-color .15s ease;
+      border:1px solid var(--line); color:#fff; font-weight:800; font-size:14px;
+      background:linear-gradient(180deg, #1d1d1f, #0a0a0a);
+      transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
     }
     .sl-wbtn:disabled{ opacity:.48; cursor:not-allowed }
-    .sl-wbtn:not(:disabled):hover{ transform:translateY(-1px); border-color:rgba(244,212,138,.4) }
-    .sl-wbtn--apple{ background:linear-gradient(135deg, #0a0a0a, #1d1d1f) }
-    .sl-wbtn--google{ background:linear-gradient(135deg, #1a1a1a, #2b2b2b) }
+    .sl-wbtn:not(:disabled):hover{ transform:translateY(-1px); border-color:rgba(244,212,138,.4); box-shadow:0 0 0 3px rgba(244,212,138,.12) }
     .sl-wbtn.is-on{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(244,212,138,.22) }
-    .sl-wbtn svg{ font-size:22px; flex:0 0 auto }
-    .sl-wbtnTxt{ display:flex; flex-direction:column; align-items:flex-start; line-height:1.05 }
-    .sl-wbtnTxt small{ font-size:10px; opacity:.75; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
-    .sl-wbtnTxt strong{ font-size:14px; font-weight:900 }
-    .sl-walletNote{ color:var(--muted); font-size:11.5px; text-align:center; margin-top:-4px }
+    .sl-wcardIcon{ width:32px; height:22px; flex:0 0 auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)) }
 
-    .sl-terms{ display:flex; align-items:flex-start; gap:10px; color:var(--muted); font-size:13px; line-height:1.45 }
-    .sl-terms input{ width:20px; height:20px; margin-top:1px; accent-color:var(--gold); flex:0 0 auto }
+    /* Terms + reCAPTCHA */
+    .sl-terms{
+      display:flex; align-items:flex-start; gap:10px; cursor:pointer;
+      color:var(--muted); font-size:13px; line-height:1.5;
+    }
+    .sl-terms input{ width:22px; height:22px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
     .sl-terms a{ color:var(--gold2); font-weight:700; text-decoration:underline }
-
-    .sl-recap{
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      padding:8px 12px; border-radius:10px;
-      border:1px solid var(--line); background:rgba(0,0,0,.28);
-      color:var(--muted); font-size:12px; font-weight:700;
+    .sl-robot{
+      display:grid; grid-template-columns:auto auto 1fr auto; align-items:center; gap:12px; cursor:pointer;
+      padding:14px 16px; border-radius:12px;
+      border:1px solid var(--line); background:rgba(255,255,255,.04);
     }
-    .sl-recap svg{ color:#4285F4 }
-    .sl-recap strong{ color:var(--white); font-weight:900; letter-spacing:.02em }
+    .sl-robot.is-on{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.06) }
+    .sl-robot input{ width:28px; height:28px; accent-color:#22c55e; flex:0 0 auto; cursor:pointer; opacity:0; position:absolute }
+    .sl-robotMark{
+      width:28px; height:28px; border-radius:6px;
+      border:1.5px solid rgba(255,255,255,.3); background:rgba(0,0,0,.4);
+      display:inline-flex; align-items:center; justify-content:center;
+      color:#22c55e; font-size:20px;
+    }
+    .sl-robot.is-on .sl-robotMark{ border-color:#22c55e; background:rgba(34,197,94,.18) }
+    .sl-robot:not(.is-on) .sl-robotMark svg{ opacity:0 }
+    .sl-robotTxt{ font-weight:600; color:var(--white); font-size:14.5px }
+    .sl-robotBadge{ display:flex; flex-direction:column; align-items:flex-end; color:var(--muted); line-height:1.05 }
+    .sl-robotLogo{ font-weight:900; letter-spacing:.02em; font-size:11.5px; color:var(--white) }
+    .sl-robotFine{ font-size:9.5px; letter-spacing:.04em; margin-top:2px }
 
+    /* CTA — big white button (matches mockup), with gold-glow hover */
+    .sl-cta{
+      appearance:none; cursor:pointer; width:100%; min-height:58px;
+      border-radius:14px; border:0;
+      background:#fff; color:#0a0a0a;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      font-weight:900; font-size:16px; letter-spacing:.01em;
+      box-shadow:0 18px 50px rgba(255,255,255,.16);
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); background:linear-gradient(180deg,#fff,#f4d48a); box-shadow:0 22px 64px rgba(244,212,138,.4) }
+    .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
+    .sl-cta svg{ font-size:18px }
+    .sl-cta--ghost{
+      background:rgba(255,255,255,.06); color:var(--white);
+      border:1px solid rgba(244,212,138,.4); box-shadow:none;
+    }
+    .sl-cta--ghost:hover:not(:disabled){ background:rgba(244,212,138,.12); border-color:var(--gold2) }
     .sl-btn{
-      appearance:none; border:1px solid var(--line); cursor:pointer;
-      min-height:56px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:9px;
-      font-weight:800; font-size:16px; background:rgba(0,0,0,.34); color:var(--white);
-      transition:.2s; -webkit-tap-highlight-color:transparent;
+      appearance:none; cursor:pointer; width:100%; min-height:48px;
+      border-radius:12px; border:1px solid var(--line);
+      background:rgba(0,0,0,.4); color:var(--white);
+      font-weight:700; font-size:14px;
     }
-    .sl-btn:hover{ transform:translateY(-1px); border-color:rgba(244,212,138,.4) }
-    .sl-btn:disabled{ opacity:.5; cursor:not-allowed }
-    .sl-primary{ width:100%; background:linear-gradient(135deg, var(--gold2), var(--gold), #9d6f23); color:#0a0a0a; border:0; box-shadow:0 16px 40px rgba(216,173,85,.26); font-size:17px }
 
-    .sl-bank{ text-align:center; color:rgba(255,250,240,.55); font-size:12.5px; line-height:1.5; letter-spacing:.04em }
+    .sl-bank{
+      display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
+      color:var(--muted); font-size:12.5px; padding-top:4px;
+    }
+    .sl-bank svg{ color:var(--gold2); font-size:13px }
 
     /* DOWNLOAD APP BANNER */
     .sl-dl{
-      width:100%; max-width:520px;
-      border-radius:24px; padding:18px;
-      border:1px solid rgba(244,212,138,.22);
-      background:linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
-      display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center;
-      box-shadow:0 18px 60px rgba(0,0,0,.45);
+      max-width:1440px; margin:clamp(24px,3vw,40px) auto 0;
+      padding:clamp(18px,2.5vw,24px) clamp(16px,3vw,32px);
+      border-top:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap;
     }
-    .sl-dlText{ display:flex; flex-direction:column; gap:6px }
-    .sl-dlTitle{ font-family:"Playfair Display", Georgia, serif; font-size:20px; color:var(--white) }
-    .sl-dlSub{ color:var(--muted); font-size:12.5px }
-    .sl-dlBtns{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap }
+    .sl-dlLeft{ display:flex; align-items:center; gap:14px; min-width:0 }
+    .sl-dlPaw{
+      width:54px; height:54px; border-radius:50%;
+      background:rgba(255,255,255,.06); border:1px solid var(--line);
+      display:inline-flex; align-items:center; justify-content:center;
+      color:var(--gold2); font-size:22px; flex:0 0 auto;
+    }
+    .sl-dlTitle{ font-family:"Playfair Display", Georgia, serif; font-size:22px; color:var(--white) }
+    .sl-dlSub{ color:var(--muted); font-size:13px; margin-top:2px }
+    .sl-dlRight{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
     .sl-store{
-      display:flex; align-items:center; gap:9px;
-      padding:9px 13px; border-radius:11px;
-      background:#0a0a0a; border:1px solid rgba(255,255,255,.12);
-      color:#fff; text-decoration:none; min-height:46px;
+      display:flex; align-items:center; gap:10px;
+      padding:10px 16px; border-radius:12px;
+      background:#0a0a0a; border:1px solid rgba(255,255,255,.14);
+      color:#fff; text-decoration:none; min-height:54px;
+      transition:border-color .15s ease, box-shadow .15s ease;
     }
-    .sl-store:hover{ border-color:rgba(244,212,138,.36) }
-    .sl-store svg{ font-size:22px; flex:0 0 auto }
-    .sl-storeTxt{ display:flex; flex-direction:column; line-height:1.05; align-items:flex-start }
-    .sl-storeTxt small{ font-size:9.5px; opacity:.78; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
-    .sl-storeTxt strong{ font-size:13px; font-weight:900 }
+    .sl-store:hover{ border-color:rgba(244,212,138,.4); box-shadow:0 0 0 3px rgba(244,212,138,.1) }
+    .sl-store svg{ font-size:26px; flex:0 0 auto }
+    .sl-store span{ display:flex; flex-direction:column; line-height:1.05; align-items:flex-start }
+    .sl-store small{ font-size:10px; opacity:.78; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
+    .sl-store strong{ font-size:14.5px; font-weight:900 }
+    .sl-qr{ width:54px; height:54px }
+    .sl-qrSvg{ width:54px; height:54px; border-radius:6px }
 
-    .sl-qr{ display:flex; flex-direction:column; align-items:center; gap:6px }
-    .sl-qrSvg{ width:84px; height:84px; border-radius:10px; box-shadow:0 8px 22px rgba(0,0,0,.45) }
-    .sl-qrCap{ color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase }
+    /* Sticky CTA on phones */
+    .sl-stickyWrap{
+      position:fixed; left:0; right:0; bottom:0; z-index:50;
+      padding:12px 16px max(12px, env(safe-area-inset-bottom));
+      background:linear-gradient(180deg, transparent, rgba(0,0,0,.95) 30%);
+      pointer-events:none;
+    }
+    .sl-cta--sticky{ pointer-events:auto; box-shadow:0 14px 40px rgba(0,0,0,.65) }
 
-    /* SMALL PHONES */
-    @media(max-width:430px){
+    /* ====== BREAKPOINTS ====== */
+
+    /* ≤ 767px (phones) — single column, progressive disclosure, sticky CTA */
+    @media(max-width:767px){
+      .sl-frame{ gap:18px; padding-bottom:120px }   /* leave room for sticky CTA */
+      .sl-hero{ gap:18px }
+      .sl-dog{ width:min(72%, 320px) }
       .sl-social4{ grid-template-columns:1fr 1fr }
-      .sl-panel{ padding:22px 18px; border-radius:22px }
       .sl-badges{ grid-template-columns:1fr 1fr }
-      .sl-secCells{ grid-template-columns:1fr }
+      .sl-advCells{ grid-template-columns:1fr }
       .sl-wallets{ grid-template-columns:1fr }
-      .sl-dl{ grid-template-columns:1fr; text-align:center }
-      .sl-qr{ margin:0 auto }
-      .sl-dlBtns{ justify-content:center }
+      .sl-tabs{ grid-template-columns:repeat(3, 1fr) }
+      .sl-dl{ flex-direction:column; align-items:stretch; gap:14px }
+      .sl-dlRight{ justify-content:center }
+      .sl-h1{ font-size:clamp(34px,9vw,46px) }
+      .sl-title{ font-size:clamp(26px,8vw,34px) }
     }
 
-    /* TABLET PORTRAIT */
-    @media(min-width:768px) and (max-width:979px){
-      .sl-hero{ min-height:50dvh; padding:clamp(40px,6vw,68px); gap:22px }
-      .sl-logo{ height:clamp(72px,9vw,116px) }
-      .sl-h1{ font-size:clamp(46px,7vw,62px) }
-      .sl-sub{ font-size:clamp(17px,2vw,21px); max-width:600px }
-      .sl-panel{ max-width:560px }
-      .sl-dl{ max-width:560px }
-      .sl-panelWrap{ padding:clamp(28px,5vw,44px) clamp(24px,5vw,40px) max(36px, env(safe-area-inset-bottom)) }
+    /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
+    @media(min-width:768px) and (max-width:1023px){
+      .sl-frame{ gap:28px }
+      .sl-hero{ gap:24px; align-items:stretch }
+      .sl-dog{ width:min(60%, 420px) }
+      .sl-h1{ font-size:clamp(48px,7vw,64px) }
+      .sl-title{ font-size:36px }
+      .sl-panel{ padding:30px }
+      .sl-advCells{ grid-template-columns:repeat(3, 1fr) }
+      .sl-wallets{ grid-template-columns:1fr 1fr }
     }
 
-    /* DESKTOP — two columns */
-    @media(min-width:980px){
-      .sl-root{ display:grid; grid-template-columns:1.02fr .98fr }
-      .sl-hero{ min-height:100dvh; justify-content:space-between; gap:22px; padding:clamp(36px,4vw,64px) }
-      .sl-hero:after{ display:none }
-      .sl-heroArt{ -webkit-mask-image:linear-gradient(90deg, transparent, #000 60%); mask-image:linear-gradient(90deg, transparent, #000 60%); opacity:.5 }
-      .sl-h1{ font-size:clamp(40px,4.6vw,64px) }
-      .sl-logo{ height:clamp(80px,7vw,132px) }
-      .sl-panelWrap{ align-items:center; justify-content:center; min-height:100dvh; padding:clamp(24px,3vw,44px) }
+    /* ≥ 1024px (iPad landscape, desktop) — two columns, sticky left */
+    @media(min-width:1024px){
+      .sl-frame{
+        display:grid; grid-template-columns:1fr 1.05fr;
+        gap:clamp(32px,4vw,56px);
+        align-items:start;
+        padding-top:clamp(32px,4vw,56px);
+      }
+      .sl-hero{ position:sticky; top:24px; gap:22px }
+      .sl-dog{ width:min(70%, 380px) }
+      .sl-panel{ padding:clamp(28px,2.6vw,38px) }
     }
 
-    @media(max-height:560px) and (orientation:landscape){
-      .sl-hero{ min-height:auto; padding:16px 22px }
+    /* Hover affordances (mouse-only) */
+    @media(hover:hover){
+      .sl-input:hover{ border-color:rgba(255,255,255,.2) }
     }
-    @media(prefers-reduced-motion:reduce){ .sl-btn, .sl-soc, .sl-wbtn{ transition:none } }
+
+    @media(prefers-reduced-motion:reduce){
+      .sl-soc, .sl-cta, .sl-wbtn, .sl-entryBtn, .sl-store, .sl-tab, .sl-consent{ transition:none }
+    }
   `;
 }
