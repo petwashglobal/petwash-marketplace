@@ -13,6 +13,11 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: 'Apply pending SQL migrations against the prod DB (use sparingly — only after merging a PR that adds a migration)'
+        type: boolean
+        default: false
 
 concurrency:
   group: production-deploy
@@ -152,36 +157,42 @@ jobs:
     name: Apply pending SQL migrations
     runs-on: ubuntu-latest
     needs: [gate-smoke-test-startup, gate-audit-env-vars]
-    # M-DEPLOY-1c: this step does NOT block deploy-backend any more.
+    # M-DEPLOY-2: opt-in via workflow_dispatch ONLY. Not on push.
     #
-    # Why: the auto-migration runner was added in PR #395 as an
-    # improvement, but the codebase's migration history pre-dates it by
-    # years — the actual prod schema was managed by a hybrid of file-
-    # migrations + out-of-band `drizzle-kit push` against
-    # shared/schema.ts. Walking the file list against the real prod
-    # schema keeps surfacing edge cases (orphaned ALTERs, CONCURRENTLY
-    # statements that need autocommit, etc.). Each one is a real bug,
-    # but together they have blocked every production deploy since
-    # #963.
+    # History: PR #395 shipped this as a deploy gate. #402 added a manual
+    # allowlist, #403 added lenient mode, #404 added continue-on-error +
+    # non-tx detection. Each PR fixed a real edge case the previous
+    # build surfaced. CI #970 still failed because the @neondatabase/
+    # serverless WebSocket driver wraps multi-statement queries in an
+    # implicit transaction (even when our code skips BEGIN/COMMIT), and
+    # the catch-up is endless.
     #
-    # Production deployed cleanly for months WITHOUT auto-migrations.
-    # The honest call is to keep the step (for visibility — operators
-    # see what didn't apply in the CI log) but stop letting it gate
-    # promotion. NEW migrations that we actually care about (slot-
-    # locks, nayax dedup, etc.) still need to land in prod somehow —
-    # but that has to be a deliberate operator action, not a blocking
-    # CI step that prevents unrelated PRs from deploying.
+    # Honest root cause: the codebase's actual schema source-of-truth is
+    # shared/schema.ts synced via out-of-band `drizzle-kit push`, NOT
+    # the migrations/*.sql files. Auto-walking files against a divergent
+    # prod will keep finding edge cases forever. PR #395 was a wrong
+    # call — built on the assumption that migration files were the
+    # source of truth. They aren't.
     #
-    # `continue-on-error: true` means: the job runs, may fail, the
-    # failure is visible in the GitHub Actions UI, BUT downstream jobs
-    # whose `needs:` includes this one still execute. Combined with
-    # deploy-backend's `needs: [..., apply-migrations]`, deploy-backend
-    # will now run regardless of the migration result.
+    # New contract:
+    #   - This job ONLY runs when an operator explicitly triggers it via
+    #     `gh workflow run petwash-ci.yml -f run_migrations=true` (or
+    #     the equivalent "Run workflow" button in the GitHub Actions UI
+    #     with the checkbox enabled).
+    #   - Operators trigger it after merging a PR that adds a real new
+    #     migration (e.g. slot-locks, nayax dedup, maya tables) — never
+    #     on every push.
+    #   - Auto-push to main NO LONGER runs this. Pipeline noise gone.
+    #   - The script keeps --lenient mode + the .manual-migrations.txt
+    #     allowlist + the (now correctly-implemented) split-statement
+    #     non-tx handling so when operators DO invoke it, it works.
     #
-    # Tracked follow-up: M-DEPLOY-3 (per-file --requires-table headers
-    # + to_regclass pre-check). Until then, schema-aligning migrations
-    # is a manual operator task documented in M-DEPLOY-7.
-    continue-on-error: true
+    # To re-enable auto-runs in the future, two things must be true:
+    #   (1) shared/schema.ts and migrations/*.sql are reconciled into a
+    #       single source of truth (no drizzle-kit push usage)
+    #   (2) _journal.json tracks every file (no hand-written migrations
+    #       outside the journal)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_migrations == true }}
     permissions:
       contents: read
       id-token: write
@@ -244,7 +255,11 @@ jobs:
   deploy-backend:
     name: Build & Deploy Backend (Cloud Run)
     runs-on: ubuntu-latest
-    needs: [gate-smoke-test-startup, gate-audit-env-vars, apply-migrations]
+    # M-DEPLOY-2: apply-migrations removed from needs[]. That job is now
+    # workflow_dispatch-only — on a normal push it never runs, so listing
+    # it in needs[] would skip deploy-backend forever. The two pre-deploy
+    # gates (routes-load smoke + env-var audit) remain required.
+    needs: [gate-smoke-test-startup, gate-audit-env-vars]
     permissions:
       contents: read
       id-token: write

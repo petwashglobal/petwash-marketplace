@@ -128,6 +128,38 @@ function isNonTransactional(sql: string): boolean {
   return NON_TRANSACTIONAL_RE.test(stripped);
 }
 
+/**
+ * Split a multi-statement SQL string into individual statements.
+ *
+ * Required for non-transactional migrations because
+ * @neondatabase/serverless wraps multi-statement client.query() calls
+ * in an implicit transaction at the WebSocket protocol layer — that is
+ * what made CI #970 fail with PG 25001 even after we removed our own
+ * BEGIN/COMMIT. Each individual single-statement client.query() runs
+ * in autocommit on Neon, which is the only shape that lets
+ * `CREATE INDEX CONCURRENTLY` execute.
+ *
+ * Strategy:
+ *   1. Strip line comments (`-- ...`) and block comments (slash-star
+ *      blocks) so a `;` inside a comment doesn't split a real statement.
+ *   2. Split on `;`.
+ *   3. Trim, drop empty, drop comment-only fragments.
+ *
+ * This intentionally does NOT try to parse strings / dollar-quoted
+ * bodies — the migrations using this path today (0016) are simple
+ * DDL with no embedded `;` in literals. If a future migration needs
+ * dollar-quoted functions, switch to a real SQL splitter.
+ */
+function splitSqlStatements(sql: string): string[] {
+  const stripped = sql
+    .replace(/--[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripped
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 function sha256(s: string): string {
   return createHash('sha256').update(s).digest('hex');
 }
@@ -251,12 +283,25 @@ async function main() {
       try {
         if (nonTx) {
           // CREATE INDEX CONCURRENTLY / VACUUM / REINDEX / etc. cannot
-          // run inside BEGIN/COMMIT (PG code 25001). Send the SQL in
-          // autocommit mode; each statement gets its own implicit
-          // transaction. IF NOT EXISTS guards make partial-failure on
+          // run inside BEGIN/COMMIT (PG code 25001). Two important
+          // details that CI #970 surfaced:
+          //   1. We must skip the explicit BEGIN/COMMIT wrap (done).
+          //   2. The @neondatabase/serverless WebSocket driver wraps
+          //      MULTI-statement client.query() calls in an implicit
+          //      transaction at the protocol layer — so we must also
+          //      send statements ONE AT A TIME. A single-statement
+          //      client.query() runs in autocommit and is the only
+          //      shape that lets CONCURRENTLY execute on Neon.
+          //
+          // Split on `;` with comments stripped first (so a `;` inside
+          // a comment doesn't fool us). Each statement runs in its own
+          // autocommit. IF NOT EXISTS guards make partial-failure on
           // retry safe for the migrations we use today.
-          console.log(`[migrate] (non-tx) ${file} contains CONCURRENTLY/VACUUM/etc — skipping BEGIN/COMMIT wrap.`);
-          await client.query(sql);
+          console.log(`[migrate] (non-tx) ${file} — running statements individually in autocommit.`);
+          const statements = splitSqlStatements(sql);
+          for (const stmt of statements) {
+            await client.query(stmt);
+          }
           await client.query(
             `INSERT INTO _petwash_migrations (filename, checksum, bootstrapped)
              VALUES ($1, $2, false)

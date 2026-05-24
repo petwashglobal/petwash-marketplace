@@ -212,7 +212,11 @@ describe('apply-pending-migrations — non-transactional statements (M-DEPLOY-1c
     )?.[0] ?? '';
     expect(block).not.toMatch(/client\.query\(['"]BEGIN['"]\)/);
     expect(block).not.toMatch(/client\.query\(['"]COMMIT['"]\)/);
-    expect(block).toMatch(/await client\.query\(sql\)/);
+    // M-DEPLOY-2 updated: the non-tx path now loops over splitSqlStatements
+    // and runs each statement individually (Neon WebSocket wraps multi-
+    // statement client.query() in implicit tx, see split-statement tests
+    // below). At least one client.query(stmt) call is present.
+    expect(block).toMatch(/await client\.query\(stmt\)/);
   });
 
   it('transactional path (else branch) preserves BEGIN/COMMIT', () => {
@@ -227,31 +231,80 @@ describe('apply-pending-migrations — non-transactional statements (M-DEPLOY-1c
   });
 });
 
-describe('CI workflow — apply-migrations no longer blocks deploy (M-DEPLOY-1c)', () => {
-  // Migration failures keep finding new edge cases (orphans, CONCURRENTLY,
-  // and likely more). Production deployed cleanly for months WITHOUT
-  // auto-migrations. The honest call is: keep the step for visibility
-  // (operators see what didn't apply in CI logs) but stop letting it
-  // gate deploy-backend. `continue-on-error: true` makes the job's
-  // failure non-blocking for downstream `needs:` evaluation.
+describe('CI workflow — apply-migrations is opt-in only (M-DEPLOY-2)', () => {
+  // M-DEPLOY-2: removed apply-migrations from the auto-push path.
+  // The job ONLY runs when an operator manually triggers the workflow
+  // with the `run_migrations` checkbox enabled. Push-to-main runs the
+  // gates + deploy-backend + deploy-frontend, never the migrations.
+  // History: PR #395 shipped this as a deploy gate; #402/#403/#404
+  // progressively defanged it; CI #970 still failed because Neon
+  // wraps multi-statement client.query() in an implicit transaction —
+  // the catch-up is endless. Auto-migrations were a wrong call.
 
-  it('apply-migrations job has continue-on-error: true', () => {
-    const yaml = fs.readFileSync(
-      path.join(REPO_ROOT, '.github', 'workflows', 'petwash-ci.yml'),
-      'utf8',
-    );
-    // Locate the apply-migrations job and verify the flag is set inside it.
-    const job = yaml.match(/apply-migrations:[\s\S]*?(?=\n  [a-z-]+:|\Z)/)?.[0] ?? '';
-    expect(job).toMatch(/continue-on-error:\s*true/);
+  const yaml = fs.readFileSync(
+    path.join(REPO_ROOT, '.github', 'workflows', 'petwash-ci.yml'),
+    'utf8',
+  );
+
+  it('workflow_dispatch declares a run_migrations boolean input (default false)', () => {
+    expect(yaml).toMatch(/workflow_dispatch:[\s\S]*?inputs:[\s\S]*?run_migrations:/);
+    expect(yaml).toMatch(/run_migrations:[\s\S]*?type:\s*boolean/);
+    expect(yaml).toMatch(/run_migrations:[\s\S]*?default:\s*false/);
   });
 
-  it('deploy-backend still has apply-migrations in its needs (visibility preserved)', () => {
-    const yaml = fs.readFileSync(
-      path.join(REPO_ROOT, '.github', 'workflows', 'petwash-ci.yml'),
-      'utf8',
-    );
-    const deployBlock = yaml.match(/deploy-backend:[\s\S]*?needs:\s*\[[^\]]+\]/)?.[0] ?? '';
-    expect(deployBlock).toMatch(/apply-migrations/);
+  it('apply-migrations job has an `if:` gating on workflow_dispatch + run_migrations==true', () => {
+    const job = yaml.match(/apply-migrations:[\s\S]*?(?=\n  [a-z-]+:|\Z)/)?.[0] ?? '';
+    expect(job).toMatch(/if:\s*\$\{\{\s*github\.event_name\s*===?\s*['"]workflow_dispatch['"]/);
+    expect(job).toMatch(/inputs\.run_migrations\s*===?\s*true/);
+  });
+
+  it('deploy-backend does NOT list apply-migrations in needs (would skip deploy forever)', () => {
+    // Extract JUST the needs array (not the surrounding comment block,
+    // which legitimately mentions "apply-migrations" in its explanation).
+    const needsArray =
+      yaml.match(/deploy-backend:[\s\S]*?\n    needs:\s*(\[[^\]]+\])/)?.[1] ?? '';
+    expect(needsArray).not.toMatch(/apply-migrations/);
+    // Sanity: the two pre-deploy gates are still required.
+    expect(needsArray).toMatch(/gate-smoke-test-startup/);
+    expect(needsArray).toMatch(/gate-audit-env-vars/);
+  });
+});
+
+describe('apply-pending-migrations — split-statement non-tx execution (M-DEPLOY-2)', () => {
+  // CI #970 surfaced that even after our code skipped BEGIN/COMMIT,
+  // the @neondatabase/serverless WebSocket driver still wrapped the
+  // multi-statement client.query() in an implicit transaction at the
+  // protocol layer — PG returned 25001. The fix is to send statements
+  // ONE AT A TIME so each runs in autocommit. A single-statement
+  // client.query() on Neon is the only shape that lets CONCURRENTLY
+  // execute.
+
+  it('declares a splitSqlStatements helper', () => {
+    expect(RUNNER_SRC).toMatch(/function splitSqlStatements\(sql: string\): string\[\]/);
+  });
+
+  it('splitSqlStatements strips comments before splitting on `;`', () => {
+    const block = RUNNER_SRC.match(
+      /function splitSqlStatements[\s\S]*?\n\}/,
+    )?.[0] ?? '';
+    // Must strip line + block comments first so a `;` inside a comment
+    // doesn't break a real statement in two.
+    expect(block).toMatch(/replace\(\/--\[\^\\n\]\*\/g/);
+    expect(block).toMatch(/replace\(\/\\\/\\\*\[\\s\\S\]\*\?\\\*\\\//);
+    expect(block).toMatch(/\.split\(';'\)/);
+    expect(block).toMatch(/\.filter\(/);
+  });
+
+  it('non-tx path loops over splitSqlStatements (one-at-a-time, not one client.query for the whole file)', () => {
+    const block = RUNNER_SRC.match(
+      /if \(nonTx\) \{[\s\S]*?\} else \{/,
+    )?.[0] ?? '';
+    expect(block).toMatch(/const statements\s*=\s*splitSqlStatements\(sql\)/);
+    expect(block).toMatch(/for \(const stmt of statements\)/);
+    expect(block).toMatch(/await client\.query\(stmt\)/);
+    // Must NOT pass the whole multi-statement SQL in one call — that's
+    // what caused #970 to fail with 25001.
+    expect(block).not.toMatch(/await client\.query\(sql\);[\s\S]*?await client\.query\(\s*`INSERT INTO _petwash_migrations[\s\S]*?bootstrapped\)\s*\n\s*VALUES \(\$1, \$2, false\)/);
   });
 });
 
