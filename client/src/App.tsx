@@ -254,10 +254,6 @@ const AdminMayaBookingDrafts = lazy(() => import("@/pages/admin/maya/AdminMayaBo
 const AdminMayaTasks = lazy(() => import("@/pages/admin/maya/AdminMayaTasks"));
 const AdminMayaEscalations = lazy(() => import("@/pages/admin/maya/AdminMayaEscalations"));
 const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
-// Maya Stage 3D — voice admin UI lazy imports
-const AdminMayaVoiceCalls = lazy(() => import("@/pages/admin/maya/AdminMayaVoiceCalls"));
-const AdminMayaVoiceCallDetail = lazy(() => import("@/pages/admin/maya/AdminMayaVoiceCallDetail"));
-
 
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
@@ -3195,17 +3191,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/admin/maya/escalations">
           <RoleProtectedRoute minRole="staff">
             <AdminMayaEscalations />
-          </RoleProtectedRoute>
-        </Route>
-        {/* Maya Stage 3D — voice admin UI */}
-        <Route path="/admin/maya/voice/calls">
-          <RoleProtectedRoute minRole="staff">
-            <AdminMayaVoiceCalls />
-          </RoleProtectedRoute>
-        </Route>
-        <Route path="/admin/maya/voice/calls/:id">
-          <RoleProtectedRoute minRole="staff">
-            <AdminMayaVoiceCallDetail />
           </RoleProtectedRoute>
         </Route>
         <Route path="/admin/maya/audit">
