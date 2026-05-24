@@ -119,7 +119,13 @@ const COPY = {
     heroAlt: 'לקוח PetWash מטייל עם כלבו ברחוב בתל אביב',
     logoAlt: 'PetWash',
   },
-} as const;
+};
+
+// Shared shape used by child component props — typed off COPY.en
+// AFTER `as const` was removed (above) so values widen to plain
+// strings. EN and HE then share an identical structural shape and
+// the union of the two narrows cleanly when passed as a prop.
+type Copy = typeof COPY['en'];
 
 const SERVICES: { key: ServiceType }[] = [
   { key: 'grooming' },
@@ -535,7 +541,7 @@ function IdleCard({
   setService,
   onStart,
 }: {
-  t: typeof COPY['en'];
+  t: Copy;
   service: ServiceType;
   setService: (s: ServiceType) => void;
   onStart: () => void;
@@ -631,8 +637,8 @@ function SearchingCard({
   reducedMotion,
   onCancel,
 }: {
-  t: typeof COPY['en'];
-  phase: typeof COPY['en']['phases'][number];
+  t: Copy;
+  phase: Copy['phases'][number];
   phaseIdx: number;
   reducedMotion: boolean;
   onCancel: () => void;
@@ -787,7 +793,7 @@ function MatchedCard({
   onContinue,
   onSearchAgain,
 }: {
-  t: typeof COPY['en'];
+  t: Copy;
   match: ProviderMatch;
   onContinue: () => void;
   onSearchAgain: () => void;
@@ -968,7 +974,7 @@ function EmptyStateCard({
   variant,
   onRetry,
 }: {
-  t: typeof COPY['en'];
+  t: Copy;
   variant: 'no_match' | 'error';
   onRetry: () => void;
 }) {
