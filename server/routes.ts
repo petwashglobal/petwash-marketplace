@@ -3479,15 +3479,62 @@ self.addEventListener('notificationclick', (event) => {
   // POST /api/system/provision-owner
   // One-time secure endpoint to set the owner's DB role and Firebase claims.
   // Requires x-admin-secret header (ADMIN_SECRET env var).
+  //
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S3):
+  //   Pre-fix: a single leaked ADMIN_SECRET = full admin takeover of ANY UID.
+  //   Attacker POSTs {ownerFirebaseUid:attackerUid, ownerEmail:any}, server
+  //   sets Firebase customClaims.role='admin' on the attacker's account.
+  //
+  //   Defense-in-depth layered now:
+  //     1. ADMIN_SECRET timing-safe match (existed) — keep
+  //     2. NEW: IP allowlist via PROVISION_OWNER_ALLOWED_IPS (comma-separated).
+  //        When set, only requests from those IPs are accepted. When unset,
+  //        a single LOOPBACK_ONLY default applies — operator runs this from
+  //        an SSH bastion or `gcloud beta compute ssh` tunnel, never from
+  //        the open internet.
+  //     3. NEW: ownerEmail MUST appear in SUPER_ADMIN_EMAILS — prevents the
+  //        attacker from elevating an unrelated UID even if they steal the
+  //        admin secret. The allowlist is the source of truth for who is
+  //        eligible to receive the admin claim.
+  //     4. NEW: explicit audit log on every call (success OR reject) so any
+  //        attempt shows up in Cloud Logging.
   app.post('/api/system/provision-owner', async (req: any, res) => {
+    const callerIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
     const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+
+    // Gate 1: admin secret
     if (!timingSafeAdminSecretMatch(req)) {
+      logger.warn('[provision-owner] DENIED — admin secret mismatch', { callerIp, ua: req.headers['user-agent']?.toString().substring(0, 80) });
       return res.status(403).json({ error: 'FORBIDDEN' });
     }
-    const { ownerFirebaseUid, ownerEmail } = req.body;
+
+    // Gate 2: IP allowlist
+    const allowedIps = (process.env.PROVISION_OWNER_ALLOWED_IPS || '127.0.0.1,::1,::ffff:127.0.0.1')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    if (!allowedIps.includes(callerIp)) {
+      logger.warn('[provision-owner] DENIED — IP not in PROVISION_OWNER_ALLOWED_IPS', { callerIp, allowedIps });
+      return res.status(403).json({ error: 'FORBIDDEN', reason: 'IP_NOT_ALLOWED' });
+    }
+
+    const { ownerFirebaseUid, ownerEmail } = req.body || {};
     if (!ownerFirebaseUid || !ownerEmail) {
       return res.status(400).json({ error: 'ownerFirebaseUid and ownerEmail are required' });
     }
+
+    // Gate 3: ownerEmail must be in SUPER_ADMIN_EMAILS
+    const superAdmins = (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!superAdmins.includes(String(ownerEmail).toLowerCase())) {
+      logger.warn('[provision-owner] DENIED — ownerEmail not in SUPER_ADMIN_EMAILS allowlist', {
+        callerIp, ownerEmail, ownerFirebaseUid,
+      });
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        reason: 'OWNER_EMAIL_NOT_IN_SUPER_ADMIN_ALLOWLIST',
+        hint: 'Add the email to the SUPER_ADMIN_EMAILS GCP secret first, then redeploy.',
+      });
+    }
+
     try {
       const { adminAuth } = await import('./lib/firebase-admin');
       await adminAuth.setCustomUserClaims(ownerFirebaseUid, {
@@ -3503,7 +3550,7 @@ self.addEventListener('notificationclick', (event) => {
           mfaEnrolled: false,
         });
       }
-      logger.info(`[provision-owner] Owner ${ownerEmail} (${ownerFirebaseUid}) provisioned as admin`);
+      logger.info('[provision-owner] PROVISIONED', { ownerEmail, ownerFirebaseUid, callerIp });
       res.json({ success: true, message: `Owner ${ownerEmail} provisioned as admin. Firebase claims updated. Please sign out and sign back in.` });
     } catch (err: any) {
       logger.error('[provision-owner] Error:', err);
