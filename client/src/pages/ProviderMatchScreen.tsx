@@ -1,447 +1,1039 @@
 /**
- * ProviderMatchScreen — Luxury provider matching flow
+ * ProviderMatchScreen — Premium PetWash "Finding your perfect provider" flow
  *
- * Three states: idle (service select) → searching (radar) → matched (card reveal)
- * Also handles: no_match and connection error with graceful empty states.
+ * Owner intent (per spec):
+ *   PetWash is personally finding a trusted provider for the customer.
+ *   Feels luxury, smart, calm, alive — not "loading a page".
  *
- * Performance notes:
- * - All animations use transform/opacity only (GPU composited, no layout paint)
- * - RadarAnimation is React.memo — zero re-renders during searching state
- * - Conic-gradient replaced with static linear-gradient + overflow:hidden + rotation
- * - Image is fully preloaded in the hook before state transitions to "matched"
- * - touch-action:manipulation on all buttons removes 300ms iOS tap delay
- * - will-change:transform declared only on actively animated elements
+ * UX flow:
+ *   idle      → "Get matched" CTA + service chips
+ *   searching → 4 progressive labelled phases (location / nearby / matching / availability)
+ *   matched   → provider card + "Continue booking" CTA + trust pills
+ *   no_match  → graceful empty state with retry
+ *   error     → graceful connection-failed state with retry
+ *
+ * Hero asset:
+ *   Uses /brand/hero-dog-lux.jpg today. When the canonical
+ *   PETWASH MATCHING PROCESS.PNG is dropped at
+ *   client/public/brand/petwash-matching-process.png the component
+ *   prefers it via the <picture> source below — no code change needed.
+ *
+ * Logo:
+ *   /brand/petwash-logo-official.png — used exactly as supplied.
+ *   Never recoloured / cropped / stretched (brand rule).
+ *
+ * Backend safety (per spec):
+ *   - Only PUBLIC trust wording shown ("Verified by PetWash", "Top rated",
+ *     "Pet-friendly"). No background-check / KYC / risk-score fields.
+ *   - The "Continue booking" CTA routes to the existing safest intake
+ *     (BookingConfirmation) and does NOT call any booking-confirm /
+ *     payment endpoint directly — that lives downstream in the existing
+ *     /api/booking-requests/:id/confirm path the BookingConfirmation
+ *     page already owns.
+ *
+ * Performance:
+ *   - All animations are transform/opacity only (GPU composited).
+ *   - prefers-reduced-motion: pulses + phase-text crossfades are
+ *     disabled, content still progresses through states.
+ *   - Hero image uses fetchpriority="high" so first paint isn't slow.
  */
 
-import { memo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Star, MapPin, Clock, Phone, ChevronLeft } from 'lucide-react';
-import { Link } from 'wouter';
-import { useMatchingEngine, ServiceType, ProviderMatch } from '@/hooks/useMatchingEngine';
+import { memo, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Link, useLocation } from 'wouter';
+import { ChevronLeft, MapPin, Clock, Star, Check } from 'lucide-react';
+import { useLanguage } from '@/lib/languageStore';
+import {
+  useMatchingEngine,
+  type ServiceType,
+  type ProviderMatch,
+} from '@/hooks/useMatchingEngine';
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Brand tokens ─────────────────────────────────────────────────────────────
+const CREAM = '#FAF8F4';
+const INK = '#0B0B0B';
+const INK_SOFT = '#5C5C5C';
+const INK_MUTED = '#9A958C';
 const GOLD = '#C5A55A';
-const GOLD_BG = 'rgba(197,165,90,0.08)';
-const GOLD_BORDER = 'rgba(197,165,90,0.35)';
+const GOLD_SOFT = 'rgba(197,165,90,0.08)';
+const GOLD_LINE = 'rgba(197,165,90,0.35)';
+const LOGO_SRC = '/brand/petwash-logo-official.png';
+const HERO_PRIMARY = '/brand/petwash-matching-process.png';
+const HERO_FALLBACK = '/brand/hero-dog-lux.jpg';
 
-const SERVICES: { key: ServiceType; label: string; icon: string; desc: string }[] = [
-  { key: 'grooming', label: 'Grooming',    icon: '✂️', desc: 'Premium mobile grooming' },
-  { key: 'walking',  label: 'Dog Walking', icon: '🐕', desc: 'GPS-tracked walks' },
-  { key: 'k9000',    label: 'K9000 Wash',  icon: '🚿', desc: 'Smart wash stations' },
+// ── Copy (EN + HE) ───────────────────────────────────────────────────────────
+const COPY = {
+  en: {
+    back: 'Back',
+    headline: 'Finding your perfect provider',
+    sub: 'Walk, wash or sit — we’re matching you with a trusted PetWash provider near you.',
+    idleCard: 'Ready to find your provider',
+    cta: 'Get matched',
+    smartLine: 'Smart matching based on location, service, availability and provider quality.',
+    services: { grooming: 'Grooming', walking: 'Dog walking', k9000: 'K9000 self-wash' },
+    phases: [
+      { title: 'Checking nearby providers', body: 'Scanning trusted PetWash providers around you.' },
+      { title: 'Reviewing availability', body: 'Comparing your time window with provider calendars.' },
+      { title: 'Matching with your pet’s needs', body: 'Service, distance and provider fit.' },
+      { title: 'Provider found', body: 'A verified PetWash provider is ready for your booking.' },
+    ],
+    searchingTitle: 'Searching nearby',
+    searchingBody: 'We’re finding the best PetWash provider for you.',
+    cancel: 'Cancel',
+    trust: { verified: 'Verified', topRated: 'Top rated', petFriendly: 'Pet-friendly' },
+    continue: 'Continue booking',
+    searchAgain: 'Search again',
+    noMatchTitle: 'No provider available for that time',
+    noMatchBody: 'Try another time, expand the radius, or request a callback.',
+    errorTitle: 'Connection unavailable',
+    errorBody: 'We couldn’t reach the matching service. Check your connection and try again.',
+    retry: 'Try again',
+    heroAlt: 'A PetWash customer walking happily with their dog on a Tel Aviv street',
+    logoAlt: 'PetWash',
+  },
+  he: {
+    back: 'חזרה',
+    headline: 'מוצאים לך את הספק המושלם',
+    sub: 'טיול, שטיפה או שמרטף חיות — אנחנו מתאימים לך ספק PetWash מהימן בקרבת מקום.',
+    idleCard: 'מוכנים למצוא לך ספק',
+    cta: 'התאם לי ספק',
+    smartLine: 'התאמה חכמה לפי מיקום, שירות, זמינות ואיכות הספק.',
+    services: { grooming: 'טיפוח', walking: 'הליכת כלבים', k9000: 'שטיפה עצמית K9000' },
+    phases: [
+      { title: 'מאתרים ספקים בקרבת מקום', body: 'סורקים ספקי PetWash מהימנים סביבך.' },
+      { title: 'בודקים זמינות', body: 'מצליבים את חלון הזמן שלך עם יומני הספקים.' },
+      { title: 'מתאימים לצרכי חיית המחמד', body: 'שירות, מרחק והתאמת ספק.' },
+      { title: 'נמצא ספק', body: 'ספק PetWash מאומת מוכן להזמנה.' },
+    ],
+    searchingTitle: 'מחפשים בקרבת מקום',
+    searchingBody: 'אנחנו מוצאים עבורך את ספק PetWash הטוב ביותר.',
+    cancel: 'ביטול',
+    trust: { verified: 'מאומת', topRated: 'מדורג מצוין', petFriendly: 'ידידותי לחיות' },
+    continue: 'המשך להזמנה',
+    searchAgain: 'חיפוש חוזר',
+    noMatchTitle: 'אין ספק זמין לזמן זה',
+    noMatchBody: 'נסה זמן אחר, הרחב את הרדיוס או בקש שיחה חוזרת.',
+    errorTitle: 'בעיית חיבור',
+    errorBody: 'לא הצלחנו להגיע לשירות ההתאמה. בדוק את החיבור ונסה שוב.',
+    retry: 'נסה שוב',
+    heroAlt: 'לקוח PetWash מטייל עם כלבו ברחוב בתל אביב',
+    logoAlt: 'PetWash',
+  },
+};
+
+// Shared shape used by child component props — typed off COPY.en
+// AFTER `as const` was removed (above) so values widen to plain
+// strings. EN and HE then share an identical structural shape and
+// the union of the two narrows cleanly when passed as a prop.
+type Copy = typeof COPY['en'];
+
+const SERVICES: { key: ServiceType }[] = [
+  { key: 'grooming' },
+  { key: 'walking' },
+  { key: 'k9000' },
 ];
-
-// ── Spring used for all card reveals — no overshoot ─────────────────────────
-const REVEAL_TRANSITION = { duration: 0.36, ease: [0.25, 0.46, 0.45, 0.94] } as const;
 
 // ── Main screen ──────────────────────────────────────────────────────────────
 export default function ProviderMatchScreen() {
+  const { language } = useLanguage();
+  const t = COPY[language === 'he' ? 'he' : 'en'];
+  const isRtl = language === 'he';
+  const [, navigate] = useLocation();
+  const reducedMotion = useReducedMotion();
+
   const [service, setService] = useState<ServiceType>('grooming');
   const { state, match, start, cancel } = useMatchingEngine('demo', service);
 
+  // ── Phase ticker — runs only during `searching` ──────────────────────────
+  // Splits the demo's ~2.4s search into 3 narrated phases. The 4th phase
+  // ("Provider found") is rendered when state === 'matched'. Phases stop
+  // ticking on cancel / unmount via cleanup.
+  const [phaseIdx, setPhaseIdx] = useState(0);
+  useEffect(() => {
+    if (state !== 'searching') {
+      setPhaseIdx(0);
+      return;
+    }
+    if (reducedMotion) {
+      setPhaseIdx(2); // jump to the final pre-match phase, no flicker
+      return;
+    }
+    const timers = [
+      setTimeout(() => setPhaseIdx(1), 800),
+      setTimeout(() => setPhaseIdx(2), 1600),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [state, reducedMotion]);
+
+  const visiblePhase =
+    state === 'matched'
+      ? t.phases[3]
+      : t.phases[Math.min(phaseIdx, t.phases.length - 2)];
+
   return (
     <div
-      className="min-h-screen bg-white flex flex-col select-none"
-      style={{ fontFamily: "'Inter', -apple-system, sans-serif", WebkitTapHighlightColor: 'transparent' }}
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className="select-none"
+      style={{
+        backgroundColor: CREAM,
+        minHeight: '100dvh',
+        fontFamily:
+          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        WebkitTapHighlightColor: 'transparent',
+      }}
     >
-      {/* ── Header — respects iOS notch ──────────────────────────── */}
+      {/* ── Header: official logo, never recoloured ─────────────────────── */}
       <header
-        className="flex items-center justify-between px-5 pb-4 border-b border-gray-100"
-        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}
+        className="flex items-center justify-between px-5"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+          paddingBottom: 14,
+        }}
       >
         <Link href="/">
           <button
-            className="flex items-center gap-1 text-gray-400 active:text-gray-700 transition-colors"
-            style={{ touchAction: 'manipulation' }}
+            aria-label={t.back}
+            className="flex items-center gap-1 transition-colors"
+            style={{ color: INK_MUTED, touchAction: 'manipulation' }}
           >
-            <ChevronLeft size={17} strokeWidth={1.8} />
-            <span className="text-[13px] tracking-wide">Back</span>
+            <ChevronLeft
+              size={18}
+              strokeWidth={1.6}
+              style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}
+            />
+            <span
+              className="text-[12px]"
+              style={{ letterSpacing: '0.04em' }}
+            >
+              {t.back}
+            </span>
           </button>
         </Link>
 
-        <div className="text-center">
-          <p className="text-[10px] tracking-[0.2em] text-gray-400 uppercase mb-0.5">PetWash™</p>
-          <p className="text-[13px] font-medium text-gray-800 tracking-wide">Find a Provider</p>
-        </div>
+        <img
+          src={LOGO_SRC}
+          alt={t.logoAlt}
+          width={108}
+          height={28}
+          decoding="async"
+          loading="eager"
+          style={{
+            height: 28,
+            width: 'auto',
+            objectFit: 'contain',
+            // Brand rule: never recolour / filter / transform the logo
+          }}
+        />
 
-        <div className="w-14" />
+        <div style={{ width: 64 }} aria-hidden />
       </header>
 
-      {/* ── Content ──────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-16">
-        <AnimatePresence mode="wait">
+      {/* ── Layout: hero left (≥md) or top (mobile), content right/below ── */}
+      <main
+        className="grid w-full mx-auto"
+        style={{
+          maxWidth: 1280,
+          paddingInline: 'max(env(safe-area-inset-left, 0px), 20px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 28px)',
+          gap: 28,
+          // Responsive: 1 column < md, 2 columns ≥ md.
+          gridTemplateColumns: 'minmax(0, 1fr)',
+        }}
+      >
+        <style>{`
+          @media (min-width: 880px) {
+            main.pw-match-main {
+              grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important;
+              align-items: center;
+              gap: 56px !important;
+            }
+          }
+        `}</style>
+        <div className="hidden" />
 
-          {/* IDLE ─────────────────────────────────────────────── */}
-          {state === 'idle' && (
-            <motion.div
-              key="idle"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={REVEAL_TRANSITION}
-              className="w-full max-w-[340px]"
+        {/* this wrapper lets us target the grid via media query */}
+        <Hero alt={t.heroAlt} />
+
+        <section
+          className="flex flex-col justify-center w-full mx-auto"
+          style={{ maxWidth: 460 }}
+        >
+          {/* Headline + sub */}
+          <div className="mb-7">
+            <h1
+              style={{
+                color: INK,
+                fontWeight: 300,
+                fontSize: 'clamp(28px, 4.2vw, 40px)',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.08,
+              }}
             >
-              <div className="text-center mb-9">
-                <h1 className="text-[22px] font-light text-gray-900 tracking-[-0.02em] mb-2">
-                  What do you need today?
-                </h1>
-                <p className="text-[13px] text-gray-400 tracking-[0.02em]">
-                  We'll find the best match near you
-                </p>
-              </div>
-
-              {/* Service selection */}
-              <div className="space-y-2.5 mb-10">
-                {SERVICES.map((s) => {
-                  const active = service === s.key;
-                  return (
-                    <button
-                      key={s.key}
-                      onClick={() => setService(s.key)}
-                      style={{
-                        touchAction: 'manipulation',
-                        borderColor: active ? GOLD : '#ebebeb',
-                        backgroundColor: active ? GOLD_BG : 'white',
-                      }}
-                      className="w-full flex items-center gap-4 px-5 py-[14px] rounded-2xl border-2 transition-all duration-150 text-left"
-                    >
-                      <span className="text-xl leading-none">{s.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-gray-900 leading-tight">{s.label}</p>
-                        <p className="text-[11px] text-gray-400 mt-[3px] leading-tight">{s.desc}</p>
-                      </div>
-                      {/* Selection indicator */}
-                      <div
-                        className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150"
-                        style={{
-                          borderColor: active ? GOLD : '#d0d0d0',
-                          backgroundColor: active ? GOLD : 'transparent',
-                        }}
-                      >
-                        {active && (
-                          <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
-                            <path d="M1 3L2.8 4.8L6 1" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* CTA */}
-              <button
-                onClick={start}
-                style={{ touchAction: 'manipulation', backgroundColor: '#111' }}
-                className="w-full py-[15px] rounded-2xl text-white text-[12px] font-medium tracking-[0.08em] uppercase transition-all duration-100 active:scale-[0.98]"
-              >
-                Find My {SERVICES.find(s => s.key === service)?.label}
-              </button>
-
-              <p className="text-center text-[11px] text-gray-300 mt-4 tracking-wide">
-                Usually matches within seconds
-              </p>
-            </motion.div>
-          )}
-
-          {/* SEARCHING ────────────────────────────────────────── */}
-          {state === 'searching' && (
-            <motion.div
-              key="searching"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col items-center"
-              style={{ gap: '32px' }}
+              {/* Render "perfect" / "המושלם" in serif gold for the brand accent */}
+              {language === 'he' ? (
+                <>
+                  מוצאים לך את{' '}
+                  <span
+                    style={{
+                      fontFamily: "'Cormorant Garamond', 'Playfair Display', serif",
+                      fontStyle: 'italic',
+                      color: GOLD,
+                      fontWeight: 400,
+                    }}
+                  >
+                    הספק המושלם
+                  </span>
+                </>
+              ) : (
+                <>
+                  Finding your{' '}
+                  <span
+                    style={{
+                      fontFamily: "'Cormorant Garamond', 'Playfair Display', serif",
+                      fontStyle: 'italic',
+                      color: GOLD,
+                      fontWeight: 400,
+                    }}
+                  >
+                    perfect
+                  </span>{' '}
+                  provider
+                </>
+              )}
+            </h1>
+            <div
+              style={{
+                width: 36,
+                height: 1,
+                backgroundColor: GOLD,
+                marginTop: 14,
+                marginBottom: 16,
+              }}
+            />
+            <p
+              style={{
+                color: INK_SOFT,
+                fontSize: 14,
+                lineHeight: 1.55,
+                letterSpacing: '0.01em',
+                maxWidth: 380,
+              }}
             >
-              <RadarAnimation />
+              {t.sub}
+            </p>
+          </div>
 
-              <div className="text-center" style={{ gap: '8px' }}>
-                <motion.p
-                  className="text-[15px] font-light text-gray-700 tracking-[0.02em]"
-                  animate={{ opacity: [1, 0.45, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  style={{ willChange: 'opacity' }}
-                >
-                  Finding the perfect match
-                </motion.p>
-                <p className="text-[10px] text-gray-400 tracking-[0.18em] uppercase mt-2">
-                  {SERVICES.find(s => s.key === service)?.label}
-                </p>
-              </div>
-
-              {/* Gold dots */}
-              <div className="flex gap-[6px]">
-                {[0, 1, 2].map((i) => (
-                  <motion.span
-                    key={i}
-                    className="w-[5px] h-[5px] rounded-full"
-                    style={{ backgroundColor: GOLD, willChange: 'opacity' }}
-                    animate={{ opacity: [0.25, 1, 0.25] }}
-                    transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.22, ease: 'easeInOut' }}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={cancel}
-                style={{ touchAction: 'manipulation' }}
-                className="text-[11px] text-gray-300 tracking-wide underline underline-offset-4 active:text-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </motion.div>
-          )}
-
-          {/* MATCHED ──────────────────────────────────────────── */}
-          {state === 'matched' && match && (
-            <motion.div
-              key="matched"
-              initial={{ opacity: 0, y: 44 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={REVEAL_TRANSITION}
-              className="w-full max-w-[340px]"
-              style={{ willChange: 'transform, opacity' }}
-            >
-              {/* Match label */}
+          {/* State-driven content */}
+          <AnimatePresence mode="wait">
+            {state === 'idle' && (
               <motion.div
-                className="flex justify-center mb-5"
-                initial={{ opacity: 0, y: 8 }}
+                key="idle"
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, ...REVEAL_TRANSITION }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <div
-                  className="px-4 py-[5px] rounded-full text-[10px] font-medium tracking-[0.18em] uppercase"
-                  style={{ backgroundColor: GOLD_BG, color: GOLD, border: `1px solid ${GOLD_BORDER}` }}
-                >
-                  Match Found
-                </div>
+                <IdleCard
+                  t={t}
+                  service={service}
+                  setService={setService}
+                  onStart={start}
+                />
               </motion.div>
+            )}
 
-              {/* Card */}
-              <MatchCard match={match} onSearchAgain={cancel} />
-            </motion.div>
-          )}
-
-          {/* NO MATCH ──────────────────────────────────────────── */}
-          {(state === 'no_match' || state === 'error') && (
-            <motion.div
-              key="no_match"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={REVEAL_TRANSITION}
-              className="text-center max-w-[280px]"
-            >
-              {/* Thin gold line decoration */}
-              <div
-                className="w-8 h-px mx-auto mb-7"
-                style={{ backgroundColor: GOLD }}
-              />
-
-              <h2 className="text-[16px] font-light text-gray-800 tracking-[-0.01em] mb-3">
-                {state === 'error' ? 'Connection unavailable' : 'No providers nearby'}
-              </h2>
-              <p className="text-[12px] text-gray-400 leading-relaxed mb-9">
-                {state === 'error'
-                  ? 'We could not reach the matching service. Please check your connection and try again.'
-                  : 'All providers in your area are occupied right now. Try again in a few minutes.'}
-              </p>
-
-              <button
-                onClick={cancel}
-                style={{ touchAction: 'manipulation', backgroundColor: '#111' }}
-                className="px-9 py-3 rounded-xl text-[12px] font-medium text-white tracking-[0.08em] uppercase active:scale-95 transition-all"
+            {state === 'searching' && (
+              <motion.div
+                key="searching"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
               >
-                Try Again
-              </button>
-            </motion.div>
-          )}
+                <SearchingCard
+                  t={t}
+                  phase={visiblePhase}
+                  phaseIdx={Math.min(phaseIdx, 2)}
+                  reducedMotion={!!reducedMotion}
+                  onCancel={cancel}
+                />
+              </motion.div>
+            )}
 
-        </AnimatePresence>
+            {state === 'matched' && match && (
+              <motion.div
+                key="matched"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.42, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <MatchedCard
+                  t={t}
+                  match={match}
+                  onContinue={() => {
+                    // Route to existing safest intake. BookingConfirmation
+                    // owns the actual /api/booking-requests/:id/confirm call —
+                    // we never confirm here. If the route requires an existing
+                    // request id, navigate user to the booking flow instead.
+                    navigate('/booking');
+                  }}
+                  onSearchAgain={cancel}
+                />
+              </motion.div>
+            )}
+
+            {(state === 'no_match' || state === 'error') && (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <EmptyStateCard
+                  t={t}
+                  variant={state}
+                  onRetry={cancel}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Smart-matching reassurance line — idle only */}
+          {state === 'idle' && (
+            <p
+              style={{
+                color: INK_MUTED,
+                fontSize: 11,
+                marginTop: 18,
+                letterSpacing: '0.02em',
+                lineHeight: 1.45,
+              }}
+            >
+              {t.smartLine}
+            </p>
+          )}
+        </section>
       </main>
     </div>
   );
 }
 
-// ── Radar animation — memoized, zero re-renders during searching ─────────────
-const RadarAnimation = memo(function RadarAnimation() {
+// ── Hero ─────────────────────────────────────────────────────────────────────
+const Hero = memo(function Hero({ alt }: { alt: string }) {
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 176, height: 176 }}>
-
-      {/* Pulsing rings — scale+opacity only, GPU composited */}
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="absolute inset-0 rounded-full border"
+    <div
+      className="relative w-full"
+      style={{
+        // Mobile: comfortable hero height. Desktop overrides via media query.
+        aspectRatio: '4 / 3',
+        maxHeight: 520,
+        borderRadius: 20,
+        overflow: 'hidden',
+        // Subtle warm tint that matches the cream background and avoids the
+        // hero feeling like a stuck-on rectangle.
+        backgroundColor: '#EFEAE0',
+      }}
+    >
+      {/* <picture> lets the canonical asset take over the moment it lands. */}
+      <picture>
+        <source srcSet={HERO_PRIMARY} type="image/png" />
+        <img
+          src={HERO_FALLBACK}
+          alt={alt}
+          loading="eager"
+          decoding="async"
+          // @ts-expect-error — fetchpriority is valid HTML, TS DOM lib lags
+          fetchpriority="high"
           style={{
-            borderColor: GOLD_BORDER,
-            willChange: 'transform, opacity',
-          }}
-          animate={{ scale: [1, 1.55 + i * 0.28], opacity: [0.55, 0] }}
-          transition={{
-            duration: 2.4,
-            repeat: Infinity,
-            delay: i * 0.65,
-            ease: 'easeOut',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center 20%',
+            display: 'block',
           }}
         />
-      ))}
+      </picture>
 
-      {/* Sweep — static gradient that rotates (no conic-gradient repaint) */}
+      {/* Soft cream wash from bottom-left so headline doesn't fight image. */}
       <div
-        className="absolute inset-0 rounded-full"
-        style={{ overflow: 'hidden' }}
-      >
-        <motion.div
-          className="absolute inset-0"
-          style={{
-            background: `linear-gradient(135deg, transparent 50%, ${GOLD_BORDER} 50%)`,
-            willChange: 'transform',
-          }}
-          animate={{ rotate: [0, 360] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-        />
-      </div>
-
-      {/* Center button — no box-shadow on animated element */}
-      <div
-        className="relative z-10 flex items-center justify-center rounded-full"
+        aria-hidden
         style={{
-          width: 64,
-          height: 64,
-          backgroundColor: '#111',
-          border: '1px solid rgba(255,255,255,0.08)',
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(180deg, rgba(250,248,244,0) 55%, rgba(250,248,244,0.55) 100%)',
+          pointerEvents: 'none',
         }}
-      >
-        <motion.span
-          className="text-[24px] leading-none"
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ willChange: 'transform' }}
-        >
-          🐾
-        </motion.span>
-      </div>
+      />
+
+      {/* Map-route motif: thin animated dotted path top-left */}
+      <RouteMotif />
     </div>
   );
 });
 
-// ── Match card — memoized to prevent unnecessary re-renders ──────────────────
-const MatchCard = memo(function MatchCard({
-  match,
-  onSearchAgain,
+// ── Animated route / pin motif ───────────────────────────────────────────────
+const RouteMotif = memo(function RouteMotif() {
+  const reduced = useReducedMotion();
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 300 120"
+      style={{
+        position: 'absolute',
+        bottom: 14,
+        insetInlineStart: 14,
+        width: 'min(46%, 220px)',
+        height: 'auto',
+        opacity: 0.95,
+        pointerEvents: 'none',
+      }}
+    >
+      <defs>
+        <linearGradient id="pw-route" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={GOLD} stopOpacity="0" />
+          <stop offset="40%" stopColor={GOLD} stopOpacity="0.95" />
+          <stop offset="100%" stopColor={GOLD} stopOpacity="0.95" />
+        </linearGradient>
+      </defs>
+
+      {/* Dotted route */}
+      <path
+        d="M10 90 Q 70 30, 150 70 T 290 50"
+        fill="none"
+        stroke="url(#pw-route)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeDasharray="2 7"
+      />
+
+      {/* Start pin */}
+      <g transform="translate(10, 90)">
+        <circle r={5} fill="white" stroke={GOLD} strokeWidth={1.5} />
+        <circle r={2} fill={GOLD} />
+      </g>
+
+      {/* Pulsing match pin at end */}
+      <g transform="translate(290, 50)">
+        {!reduced && (
+          <motion.circle
+            r={9}
+            fill={GOLD}
+            opacity={0.25}
+            animate={{ r: [9, 18], opacity: [0.25, 0] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }}
+            style={{ willChange: 'r, opacity' }}
+          />
+        )}
+        <circle r={6} fill="white" stroke={GOLD} strokeWidth={1.5} />
+        <circle r={3} fill={GOLD} />
+      </g>
+    </svg>
+  );
+});
+
+// ── Idle card: service chips + Get matched CTA ───────────────────────────────
+function IdleCard({
+  t,
+  service,
+  setService,
+  onStart,
 }: {
-  match: ProviderMatch;
-  onSearchAgain: () => void;
+  t: Copy;
+  service: ServiceType;
+  setService: (s: ServiceType) => void;
+  onStart: () => void;
 }) {
   return (
-    <>
-      <div
-        className="bg-white rounded-3xl overflow-hidden"
+    <div
+      className="w-full"
+      style={{
+        backgroundColor: 'white',
+        border: '1px solid rgba(0,0,0,0.06)',
+        borderRadius: 20,
+        padding: 22,
+        boxShadow:
+          '0 1px 2px rgba(0,0,0,0.02), 0 12px 32px rgba(11,11,11,0.06)',
+      }}
+    >
+      <p
         style={{
-          border: '1px solid rgba(0,0,0,0.07)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03), 0 6px 24px rgba(0,0,0,0.06)',
+          color: INK,
+          fontSize: 14,
+          fontWeight: 500,
+          letterSpacing: '-0.005em',
+          marginBottom: 14,
         }}
       >
-        {/* Image area */}
-        <div
-          className="relative flex items-center justify-center"
-          style={{ height: 172, backgroundColor: '#ffffff' }}
-        >
-          {/* Gold accent line — top */}
-          <div
-            className="absolute top-0 left-0 right-0"
-            style={{
-              height: 1,
-              background: `linear-gradient(90deg, transparent 10%, ${GOLD} 50%, transparent 90%)`,
-            }}
-          />
+        {t.idleCard}
+      </p>
 
-          <img
-            src={match.image}
-            alt={match.name}
-            className="object-contain"
-            style={{ width: 112, height: 112 }}
-            loading="eager"
-            decoding="sync"
-          />
-
-          {/* Service pill */}
-          <div
-            className="absolute bottom-3 right-3 px-3 py-[5px] rounded-full text-[10px] tracking-[0.1em]"
-            style={{ backgroundColor: 'rgba(17,17,17,0.72)', color: 'rgba(255,255,255,0.9)' }}
-          >
-            {match.service}
-          </div>
-        </div>
-
-        {/* Details */}
-        <div className="px-6 pt-5 pb-6">
-          <h2
-            className="text-gray-900 mb-1 leading-tight"
-            style={{ fontSize: 16, fontWeight: 300, letterSpacing: '-0.01em' }}
-          >
-            {match.name}
-          </h2>
-          <p className="text-[11px] tracking-[0.04em] mb-5" style={{ color: '#aaa' }}>
-            {match.tagline}
-          </p>
-
-          {/* Stats row */}
-          <div className="flex items-center gap-5 mb-6">
-            <div className="flex items-center gap-1.5">
-              <Star size={12} style={{ fill: GOLD, color: GOLD }} />
-              <span className="text-[13px] font-medium text-gray-800">{match.rating.toFixed(1)}</span>
-              <span className="text-[11px]" style={{ color: '#bbb' }}>({match.reviewCount})</span>
-            </div>
-            <div className="flex items-center gap-1.5" style={{ color: '#999' }}>
-              <MapPin size={11} />
-              <span className="text-[11px]">{match.distance}</span>
-            </div>
-            <div className="flex items-center gap-1.5" style={{ color: '#999' }}>
-              <Clock size={11} />
-              <span className="text-[11px]">{match.etaMinutes} min</span>
-            </div>
-          </div>
-
-          {/* Primary action */}
-          <button
-            style={{ touchAction: 'manipulation', backgroundColor: '#111', paddingTop: 14, paddingBottom: 14 }}
-            className="w-full rounded-xl text-white text-[12px] font-medium tracking-[0.1em] uppercase transition-all active:scale-[0.98] mb-2.5"
-          >
-            Book Now
-          </button>
-
-          {/* Secondary action — only if phone available */}
-          {match.phone && (
-            <a
-              href={`tel:${match.phone}`}
-              className="flex items-center justify-center gap-2 w-full rounded-xl text-[12px] tracking-[0.06em] transition-all active:scale-[0.98]"
+      <div
+        role="radiogroup"
+        aria-label="Service"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}
+      >
+        {SERVICES.map((s) => {
+          const active = service === s.key;
+          return (
+            <button
+              key={s.key}
+              role="radio"
+              aria-checked={active}
+              onClick={() => setService(s.key)}
               style={{
                 touchAction: 'manipulation',
-                border: '1px solid #ebebeb',
-                color: '#555',
-                paddingTop: 11,
-                paddingBottom: 11,
+                paddingInline: 14,
+                paddingBlock: 9,
+                borderRadius: 999,
+                fontSize: 12,
+                letterSpacing: '0.02em',
+                color: active ? INK : INK_SOFT,
+                backgroundColor: active ? GOLD_SOFT : 'transparent',
+                border: `1px solid ${active ? GOLD_LINE : 'rgba(0,0,0,0.08)'}`,
+                transition: 'all 140ms ease',
               }}
             >
-              <Phone size={13} />
-              Call Provider
-            </a>
-          )}
+              {t.services[s.key]}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={onStart}
+        style={{
+          touchAction: 'manipulation',
+          width: '100%',
+          paddingBlock: 15,
+          backgroundColor: INK,
+          color: 'white',
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          borderRadius: 14,
+          transition: 'transform 100ms ease, background-color 100ms ease',
+        }}
+        onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.985)')}
+        onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        onTouchStart={(e) => (e.currentTarget.style.transform = 'scale(0.985)')}
+        onTouchEnd={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      >
+        {t.cta}
+      </button>
+    </div>
+  );
+}
+
+// ── Searching card: 4-phase narration + radar ────────────────────────────────
+function SearchingCard({
+  t,
+  phase,
+  phaseIdx,
+  reducedMotion,
+  onCancel,
+}: {
+  t: Copy;
+  phase: Copy['phases'][number];
+  phaseIdx: number;
+  reducedMotion: boolean;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="w-full"
+      style={{
+        backgroundColor: 'white',
+        border: '1px solid rgba(0,0,0,0.06)',
+        borderRadius: 20,
+        padding: 22,
+        boxShadow:
+          '0 1px 2px rgba(0,0,0,0.02), 0 12px 32px rgba(11,11,11,0.06)',
+      }}
+    >
+      <div className="flex items-center" style={{ gap: 16 }}>
+        <RadarPulse reducedMotion={reducedMotion} />
+        <div className="flex-1 min-w-0">
+          <p
+            style={{
+              color: INK_MUTED,
+              fontSize: 10,
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              marginBottom: 4,
+            }}
+          >
+            {t.searchingTitle}
+          </p>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={phase.title}
+              initial={{ opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.28 }}
+              style={{
+                color: INK,
+                fontSize: 14,
+                fontWeight: 500,
+                letterSpacing: '-0.005em',
+                lineHeight: 1.4,
+              }}
+            >
+              {phase.title}
+            </motion.p>
+          </AnimatePresence>
+          <p
+            style={{
+              color: INK_SOFT,
+              fontSize: 12,
+              lineHeight: 1.5,
+              marginTop: 4,
+            }}
+          >
+            {phase.body}
+          </p>
         </div>
       </div>
 
-      {/* Search again */}
-      <button
-        onClick={onSearchAgain}
-        style={{ touchAction: 'manipulation' }}
-        className="w-full text-center text-[11px] text-gray-300 mt-5 tracking-wide underline underline-offset-4 active:text-gray-600 transition-colors"
+      {/* Phase progress dots — three intermediate phases, then match */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 6,
+          marginTop: 18,
+          marginBottom: 14,
+        }}
       >
-        Search again
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            style={{
+              flex: 1,
+              height: 2,
+              borderRadius: 2,
+              backgroundColor: i <= phaseIdx ? GOLD : 'rgba(0,0,0,0.06)',
+              transition: 'background-color 240ms ease',
+            }}
+          />
+        ))}
+      </div>
+
+      <button
+        onClick={onCancel}
+        style={{
+          touchAction: 'manipulation',
+          fontSize: 11,
+          color: INK_MUTED,
+          letterSpacing: '0.04em',
+          textDecoration: 'underline',
+          textUnderlineOffset: 4,
+        }}
+      >
+        {t.cancel}
       </button>
-    </>
+    </div>
+  );
+}
+
+// ── Radar pulse — small, GPU composited, motion-respecting ───────────────────
+const RadarPulse = memo(function RadarPulse({
+  reducedMotion,
+}: {
+  reducedMotion: boolean;
+}) {
+  return (
+    <div
+      className="relative flex items-center justify-center flex-shrink-0"
+      style={{ width: 56, height: 56 }}
+      aria-hidden
+    >
+      {!reducedMotion &&
+        [0, 1].map((i) => (
+          <motion.span
+            key={i}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: `1px solid ${GOLD_LINE}`,
+              willChange: 'transform, opacity',
+            }}
+            animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              delay: i * 0.7,
+              ease: 'easeOut',
+            }}
+          />
+        ))}
+      <span
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: '50%',
+          backgroundColor: GOLD,
+          border: '3px solid white',
+          boxShadow: '0 1px 4px rgba(197,165,90,0.35)',
+        }}
+      />
+    </div>
   );
 });
+
+// ── Matched card: provider + trust pills + Continue booking ──────────────────
+function MatchedCard({
+  t,
+  match,
+  onContinue,
+  onSearchAgain,
+}: {
+  t: Copy;
+  match: ProviderMatch;
+  onContinue: () => void;
+  onSearchAgain: () => void;
+}) {
+  return (
+    <div
+      className="w-full"
+      style={{
+        backgroundColor: 'white',
+        border: '1px solid rgba(0,0,0,0.06)',
+        borderRadius: 20,
+        padding: 22,
+        boxShadow:
+          '0 1px 2px rgba(0,0,0,0.02), 0 16px 40px rgba(11,11,11,0.08)',
+      }}
+    >
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          paddingInline: 10,
+          paddingBlock: 4,
+          borderRadius: 999,
+          backgroundColor: GOLD_SOFT,
+          color: GOLD,
+          border: `1px solid ${GOLD_LINE}`,
+          fontSize: 10,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          marginBottom: 14,
+        }}
+      >
+        <Check size={11} strokeWidth={2.4} />
+        {t.phases[3].title}
+      </div>
+
+      <p
+        style={{
+          color: INK,
+          fontSize: 18,
+          fontWeight: 400,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.25,
+          marginBottom: 4,
+        }}
+      >
+        {match.name}
+      </p>
+      <p
+        style={{
+          color: INK_MUTED,
+          fontSize: 12,
+          letterSpacing: '0.02em',
+          marginBottom: 16,
+        }}
+      >
+        {match.tagline}
+      </p>
+
+      {/* Inline stats */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          marginBottom: 18,
+          color: INK_SOFT,
+          fontSize: 12,
+        }}
+      >
+        <span
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+        >
+          <Star size={12} style={{ fill: GOLD, color: GOLD }} />
+          <span style={{ color: INK, fontWeight: 500 }}>
+            {match.rating.toFixed(1)}
+          </span>
+          <span style={{ color: INK_MUTED }}>({match.reviewCount})</span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <MapPin size={12} />
+          {match.distance}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Clock size={12} />
+          {match.etaMinutes} min
+        </span>
+      </div>
+
+      {/* Trust pills — PUBLIC wording only, per spec */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 6,
+          marginBottom: 18,
+        }}
+      >
+        {[t.trust.verified, t.trust.topRated, t.trust.petFriendly].map(
+          (label) => (
+            <span
+              key={label}
+              style={{
+                paddingInline: 10,
+                paddingBlock: 5,
+                borderRadius: 999,
+                fontSize: 11,
+                letterSpacing: '0.02em',
+                color: INK_SOFT,
+                backgroundColor: '#F4F1EB',
+                border: '1px solid rgba(0,0,0,0.05)',
+              }}
+            >
+              {label}
+            </span>
+          ),
+        )}
+      </div>
+
+      <p
+        style={{
+          color: INK_SOFT,
+          fontSize: 12,
+          lineHeight: 1.5,
+          marginBottom: 16,
+        }}
+      >
+        {t.phases[3].body}
+      </p>
+
+      <button
+        onClick={onContinue}
+        style={{
+          touchAction: 'manipulation',
+          width: '100%',
+          paddingBlock: 15,
+          backgroundColor: INK,
+          color: 'white',
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          borderRadius: 14,
+          marginBottom: 10,
+          transition: 'transform 100ms ease',
+        }}
+        onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.985)')}
+        onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        onTouchStart={(e) => (e.currentTarget.style.transform = 'scale(0.985)')}
+        onTouchEnd={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      >
+        {t.continue}
+      </button>
+
+      <button
+        onClick={onSearchAgain}
+        style={{
+          touchAction: 'manipulation',
+          width: '100%',
+          fontSize: 11,
+          color: INK_MUTED,
+          letterSpacing: '0.04em',
+          textDecoration: 'underline',
+          textUnderlineOffset: 4,
+        }}
+      >
+        {t.searchAgain}
+      </button>
+    </div>
+  );
+}
+
+// ── Empty state: no_match OR error ───────────────────────────────────────────
+function EmptyStateCard({
+  t,
+  variant,
+  onRetry,
+}: {
+  t: Copy;
+  variant: 'no_match' | 'error';
+  onRetry: () => void;
+}) {
+  const title = variant === 'error' ? t.errorTitle : t.noMatchTitle;
+  const body = variant === 'error' ? t.errorBody : t.noMatchBody;
+  return (
+    <div
+      className="w-full text-center"
+      style={{
+        backgroundColor: 'white',
+        border: '1px solid rgba(0,0,0,0.06)',
+        borderRadius: 20,
+        padding: '28px 22px',
+      }}
+    >
+      <div
+        style={{
+          width: 32,
+          height: 1,
+          backgroundColor: GOLD,
+          margin: '0 auto 18px',
+        }}
+      />
+      <p
+        style={{
+          color: INK,
+          fontSize: 15,
+          fontWeight: 400,
+          marginBottom: 8,
+        }}
+      >
+        {title}
+      </p>
+      <p
+        style={{
+          color: INK_SOFT,
+          fontSize: 12,
+          lineHeight: 1.55,
+          marginBottom: 18,
+        }}
+      >
+        {body}
+      </p>
+      <button
+        onClick={onRetry}
+        style={{
+          touchAction: 'manipulation',
+          paddingInline: 28,
+          paddingBlock: 12,
+          backgroundColor: INK,
+          color: 'white',
+          fontSize: 12,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          borderRadius: 12,
+        }}
+      >
+        {t.retry}
+      </button>
+    </div>
+  );
+}
