@@ -52,6 +52,13 @@ export interface SystemConfigMap {
   // score, admin notes, or any other internal trust field. Falls back to
   // a deterministic rating-based score when Gemini is unavailable.
   'ff.ai.provider_matching.enabled': boolean;
+  // AI smart slot suggestions (AI-B3) — turns a vague date/time intent
+  // ("tomorrow morning") into concrete, backend-validated slot windows
+  // from availability_slots. Honors active payment locks, service
+  // duration, timezone, and provider filtering. NEVER returns synthetic
+  // slots — every suggestion is a real available_slots row.
+  // Deterministic (no Gemini call) — safety + correctness > AI flair here.
+  'ff.ai.slot_suggestions.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -92,6 +99,8 @@ const DEFAULTS: SystemConfigMap = {
   'ff.ai.booking_intake.enabled': false,
   // AI-B2 default OFF
   'ff.ai.provider_matching.enabled': false,
+  // AI-B3 default OFF
+  'ff.ai.slot_suggestions.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
