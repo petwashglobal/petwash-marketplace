@@ -77,7 +77,8 @@ type SignupPrefs = {
 };
 
 function persistPrefs(prefs: SignupPrefs) {
-  try { localStorage.setItem('petwash_signup_prefs', JSON.stringify(prefs)); } catch { /* quota / private mode */ }
+  const { savePassword: _savePassword, ...safePrefs } = prefs;
+  try { localStorage.setItem('petwash_signup_prefs', JSON.stringify(safePrefs)); } catch { /* quota / private mode */ }
 }
 
 // Phone breakpoint — below this we switch on progressive disclosure.
