@@ -136,12 +136,51 @@ const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); //
 const PAYMENTS_PROVIDER = process.env.PAYMENTS_PROVIDER || 'NAYAX';
 const K9000_WASH_PRICE = parseFloat(process.env.K9000_WASH_PRICE || '50'); // Default wash price in ILS
 
-// K9000 Station Keys (JSON config) - MUST be set in production
-if (!process.env.STATION_KEYS) {
-  logger.error('CRITICAL: STATION_KEYS environment variable not set - station authentication will fail');
-  throw new Error('STATION_KEYS environment variable is required for K9000 station authentication');
+// K9000 Station Authentication map (JSON config).
+//
+// EXPECTED FORMAT when populated:
+//   STATION_KEYS='{"station_001":"<64-char-random-secret>","station_002":"..."}'
+//
+// CURRENT STATE: K9000 physical machines are NOT active yet (no real terminals
+// installed). When STATION_KEYS is absent, we DO NOT throw at module load —
+// throwing here would break the entire routes.ts import chain (lazy-imported
+// from server/routes.ts:4346 + others) and 500 every K9000 endpoint hit, AND
+// it would block Cloud Run deploys for the whole service even though K9000
+// is inactive.
+//
+// Instead: default to an empty map. The actual station validation goes
+// through Firestore (`nayax_terminals` collection) via validateStationKey()
+// below — that path already fails closed (returns null → caller 403s) when
+// no terminals exist. The parsed STATION_KEYS constant below is reserved
+// for any future env-driven validation; today it carries no security weight.
+//
+// When real K9000 stations come online:
+//   1. Generate one unique 64-char random secret per station
+//   2. Build the JSON map (stationId → secret)
+//   3. Store in GCP Secret Manager: gcloud secrets create STATION_KEYS ...
+//   4. Mount it to Cloud Run (add to required_mappings in petwash-ci.yml)
+//   5. Never commit, never expose to browser, rotate on any leak
+let STATION_KEYS: Record<string, string> = {};
+if (process.env.STATION_KEYS) {
+  try {
+    STATION_KEYS = JSON.parse(process.env.STATION_KEYS);
+  } catch (parseErr) {
+    logger.error('[K9000] STATION_KEYS is set but is not valid JSON — ignoring', { error: (parseErr as Error)?.message });
+    STATION_KEYS = {};
+  }
+} else {
+  logger.info('[K9000] STATION_KEYS not set — physical stations inactive. K9000 endpoints will fail closed via Firestore lookup.');
 }
-const STATION_KEYS: Record<string, string> = JSON.parse(process.env.STATION_KEYS);
+
+/**
+ * Returns true only when at least one physical K9000 station is configured
+ * (either via STATION_KEYS env map or registered in Firestore). Callers that
+ * gate K9000 endpoints should treat `false` as "feature offline, return 503
+ * with errorCode k9000_disabled".
+ */
+export function isK9000Configured(): boolean {
+  return Object.keys(STATION_KEYS).length > 0;
+}
 
 // Loyalty discount rates
 export const LOYALTY_DISCOUNT_RATES = {
