@@ -36,7 +36,12 @@ function sanitizeRecaptchaKey(raw: string): string {
   return raw.trim();
 }
 
-const RECAPTCHA_TIMEOUT_MS = 8000;
+// Raised from 8s → 15s 2026-05-24 (investigation finding 3.5). Pre-fix the
+// 8s timeout was too tight for weak mobile networks: the Google script
+// arrived after the timer fired and the verifier returned null, which
+// (combined with the silent-success bug above) silently passed forms with
+// no token. Mobile data in Israel + slow CDN = real users hit this.
+const RECAPTCHA_TIMEOUT_MS = 15000;
 
 // ── Single source of truth: always read site key from backend ─────────────────
 // This guarantees frontend and backend ALWAYS use the exact same key.
@@ -391,17 +396,31 @@ export function ReCaptcha({
 
       const token = await executeReCaptcha(action);
 
+      // SECURITY 2026-05-24 (CRITICAL fix — investigation finding 3.1):
+      //   Pre-fix this set `isVerified = true` REGARDLESS of whether
+      //   executeReCaptcha returned a token. Forms gated on `isVerified`
+      //   happily submitted; the backend then rejected because no token
+      //   was attached → user saw "Verified ✓" then a generic
+      //   "Security check failed" downstream with no signal that the
+      //   verifier never actually completed.
+      //   Fix: isVerified now reflects the truth — only true when a real
+      //   token came back. Empty-token path also fires onError so callers
+      //   surface a retry prompt instead of silently submitting an empty
+      //   value.
       if (token) {
         setIsVerified(true);
         onVerify?.(token);
       } else {
-        setIsVerified(true);
-        onVerify?.('');
+        setIsVerified(false);
+        executedRef.current = false; // allow retry
+        const err = new Error('reCAPTCHA returned an empty token (network / script load failure)');
+        logger.warn('[ReCaptcha] Empty token from executeReCaptcha — surfacing as error');
+        onError?.(err);
       }
     } catch (error) {
       logger.error('[ReCaptcha] Error:', error);
       executedRef.current = false;
-      setIsVerified(true);
+      setIsVerified(false);
       onError?.(error as Error);
     } finally {
       setIsVerifying(false);
