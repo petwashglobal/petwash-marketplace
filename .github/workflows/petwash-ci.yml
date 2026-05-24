@@ -919,9 +919,12 @@ jobs:
             "GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest"
             "GOOGLE_SERVICE_ACCOUNT_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest"
             "GOOGLE_APPLICATION_CREDENTIALS_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest"
-            "TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest"
-            "TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,TWILIO_VOICE_PUBLIC_URL=TWILIO_VOICE_PUBLIC_URL:latest"
-            "TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest"
+            # Twilio + ANTHROPIC_API_KEY + TWILIO_VOICE_PUBLIC_URL moved to
+            # optional_mappings 2026-05-24. Reason: operator deleted Twilio
+            # secrets from GCP (Twilio voice/SMS being phased out); CI was
+            # blocking every deploy because gcloud rejected mounts for
+            # secrets that no longer exist. Optional mappings are skipped
+            # gracefully when the GCP secret is absent — see line ~1000.
             "WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest"
             "WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest"
             "RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest"
@@ -969,7 +972,20 @@ jobs:
           optional_mappings=(
             "REDIS_URL=REDIS_URL:latest"
             "SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            # Twilio voice + SMS — moved from required to optional 2026-05-24
+            # so that deleting any Twilio secret from GCP no longer crashes
+            # the deploy. When a secret is missing, the helper below silently
+            # skips it instead of failing the gcloud run deploy --set-secrets.
+            "TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest"
+            "TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest"
+            "TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest"
+            "TWILIO_VOICE_PUBLIC_URL=TWILIO_VOICE_PUBLIC_URL:latest"
             "TWILIO_MESSAGING_SERVICE_SID=TWILIO_MESSAGING_SERVICE_SID:latest"
+            # ANTHROPIC_API_KEY — optional; only used by Maya Voice runtime,
+            # which is flag-gated OFF in production. If the secret is missing
+            # the deploy continues without it; Maya Voice code paths already
+            # fail-closed when the env var is unset.
+            "ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest"
             "TRANZILA_TERMINAL_NAME=TRANZILA_TERMINAL_NAME:latest"
             "TRANZILA_API_KEY=TRANZILA_API_KEY:latest"
             "TRANZILA_WEBHOOK_SECRET=TRANZILA_WEBHOOK_SECRET:latest"
