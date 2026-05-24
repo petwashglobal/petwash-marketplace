@@ -10563,7 +10563,18 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/k9000', k9000IotRoutes);
 
   // K9000 Supplier & Inventory routes
-  app.use('/api/k9000', adminLimiter, k9000SupplierRoutes);
+  //
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S4 K9000-zone):
+  //   Pre-fix this mount had ONLY adminLimiter (rate limit). No auth,
+  //   no admin gate. The inner PATCH routes (spare-parts, notification-
+  //   settings, etc) also lacked any auth, so any anonymous internet
+  //   request could mutate inventory rows and supplier alert settings.
+  //   The mass-assignment audit finding undersold the severity — the
+  //   real bug was the missing auth gate. Add validateFirebaseToken
+  //   + requireAdmin in front of every /api/k9000/* route (the inner
+  //   handlers continue to apply their own logic; this is the defense-
+  //   in-depth admin gate that should have been here from day one).
+  app.use('/api/k9000', validateFirebaseToken, requireAdmin, adminLimiter, k9000SupplierRoutes);
   
   // K9000 Backend Dashboard (Admin control panel for station management)
   app.use('/api/k9000', optionalFirebaseToken, adminLimiter, k9000DashboardRoutes);

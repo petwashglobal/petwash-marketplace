@@ -845,21 +845,52 @@ async function hasActiveECUFault(stationId: string): Promise<boolean> {
 
 // ==================== PING JOB ====================
 
-export async function pingStation(stationId: string): Promise<{ success: boolean; latency?: number }> {
+export async function pingStation(stationId: string): Promise<{ success: boolean; latency?: number; reason?: string }> {
   try {
     const station = await getStation(stationId);
-    if (!station) return { success: false };
+    if (!station) return { success: false, reason: 'station_not_found' };
 
-    // TODO: Implement actual HTTP ping to station controller
-    // For now, just update heartbeat (stub)
+    // HONESTY FIX 2026-05-24:
+    //   Pre-fix this returned `{success: true, latency}` ALWAYS, just by
+    //   running updateStationHeartbeat() locally — never actually pinged
+    //   the station controller. Dashboards reading pingStation() showed
+    //   green even when the station was unreachable. With K9000 currently
+    //   inactive (no real machines installed yet — see
+    //   nayaxFirestoreService.ts comment block), there's no controller
+    //   URL to ping at all.
+    //
+    //   Behaviour now: when no station controller URL is configured (the
+    //   normal state today), return `{success: false, reason:
+    //   'controller_unreachable_not_configured'}`. The caller can still
+    //   choose to update heartbeat for OTHER signals (transaction,
+    //   maintenance) — that path is unchanged. Real implementation lands
+    //   when STATION_KEYS + the per-station controllerUrl field exist.
+    const controllerUrl = (station as any).controllerUrl as string | undefined;
+    if (!controllerUrl) {
+      logger.info('[Stations] pingStation skipped — no controllerUrl configured', { stationId });
+      return { success: false, reason: 'controller_not_configured' };
+    }
+
     const start = Date.now();
-    await updateStationHeartbeat(stationId, 'ping');
-    const latency = Date.now() - start;
-
-    return { success: true, latency };
+    try {
+      const resp = await fetch(controllerUrl + '/ping', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      const latency = Date.now() - start;
+      if (resp.ok) {
+        await updateStationHeartbeat(stationId, 'ping');
+        return { success: true, latency };
+      }
+      return { success: false, latency, reason: `controller_http_${resp.status}` };
+    } catch (netErr: any) {
+      const latency = Date.now() - start;
+      logger.warn('[Stations] pingStation network error', { stationId, controllerUrl, latency, error: netErr?.message });
+      return { success: false, latency, reason: 'controller_unreachable' };
+    }
   } catch (error) {
     logger.error('[Stations] Ping error:', { stationId, error });
-    return { success: false };
+    return { success: false, reason: 'internal_error' };
   }
 }
 
