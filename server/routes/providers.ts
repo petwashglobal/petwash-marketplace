@@ -82,12 +82,59 @@ router.get("/sitters/:sitterId", async (req, res) => {
   }
 });
 
+// SECURITY 2026-05-24 (CRITICAL fix from audit finding S4):
+//   Pre-fix: each /(sitters|walkers|drivers)/profile POST spread `...req.body`
+//   directly into a Firestore `merge: true` write. Any authenticated user
+//   could PATCH `kycVerified:true`, `rating:5`, `commission_rate:0`,
+//   `verified:true`, `featured:true`, etc. on their OWN profile and bypass
+//   the platform's vetting + revenue model.
+//
+//   Fix: a denylist of fields the user is never allowed to set on their own
+//   profile. The denylist covers the actual escalation surface (privilege,
+//   verification, rating, commission, balance, payouts, role). An allowlist
+//   would risk breaking unknown legitimate UI fields; the denylist closes
+//   the security hole without that risk. Stripped keys are logged at warn
+//   level so attempts surface in Cloud Logging.
+const PROFILE_DENY_FIELDS = new Set([
+  // privilege & status
+  'kycVerified', 'verified', 'featured', 'approved', 'active',
+  'status', 'userStatus', 'accountStatus', 'role', 'isAdmin', 'isStaff', 'isSuperAdmin',
+  // rating manipulation
+  'rating', 'ratingCount', 'ratingSum', 'reviewCount', 'averageRating',
+  // commercial terms
+  'commission_rate', 'commissionRate', 'platformFee', 'platformFeePercent',
+  // money
+  'balance', 'walletBalance', 'earnings', 'totalEarnings', 'payouts', 'lifetimeEarnings',
+  // server-controlled audit fields
+  'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'adminNotes', 'internalNotes',
+  // identity (always pinned from req.user)
+  'userId', 'uid', 'firebaseUid', 'id',
+]);
+
+function sanitiseProfileBody(rawBody: unknown, route: string, userId: string): Record<string, unknown> {
+  if (!rawBody || typeof rawBody !== 'object') return {};
+  const out: Record<string, unknown> = {};
+  const stripped: string[] = [];
+  for (const [k, v] of Object.entries(rawBody as Record<string, unknown>)) {
+    if (PROFILE_DENY_FIELDS.has(k)) {
+      stripped.push(k);
+      continue;
+    }
+    out[k] = v;
+  }
+  if (stripped.length > 0) {
+    console.warn('[Providers] Stripped privileged fields from self-update',
+      { route, userId, stripped });
+  }
+  return out;
+}
+
 // Create/update sitter profile
 router.post("/sitters/profile", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const profileData = {
-      ...req.body,
+      ...sanitiseProfileBody(req.body, '/sitters/profile', userId),
       userId,
       active: true,
       updatedAt: new Date(),
@@ -148,7 +195,7 @@ router.post("/walkers/profile", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const profileData = {
-      ...req.body,
+      ...sanitiseProfileBody(req.body, '/walkers/profile', userId),
       userId,
       active: true,
       updatedAt: new Date(),
@@ -213,7 +260,7 @@ router.post("/drivers/profile", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const profileData = {
-      ...req.body,
+      ...sanitiseProfileBody(req.body, '/drivers/profile', userId),
       userId,
       active: true,
       updatedAt: new Date(),
