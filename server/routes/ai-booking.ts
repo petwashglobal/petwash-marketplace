@@ -768,4 +768,168 @@ router.post('/slot-suggestions', requireSlotSuggestionsFlag, async (req: Request
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// AI-B4 — Care tag extraction
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// POST /api/ai/booking/care-tags
+//
+// Maps customer free-text about their pet to a CLOSED allowlist of
+// provider-friendly structured tags. Per spec: "Do not diagnose. Do not
+// create medical authority." The output is a sanitised, fixed-vocabulary
+// list that providers can read at a glance — never a medical claim.
+//
+// The closed tag set below is curated for safety:
+//   - includes behaviour + temperament + age class tags
+//   - EXCLUDES anything that could be a medical diagnosis (no "diabetic",
+//     "epileptic", "arthritic", "deaf", "blind", etc.)
+//   - allows safe care hints like medication_reminder (the OWNER tells
+//     the provider when to give meds; AI never decides medication)
+//
+// Feature flag: ff.ai.care_notes.enabled  (default FALSE)
+// Fallback: when Gemini is unavailable, returns { tags: [], fallback: true }
+// — the customer's existing manual care-notes textarea still works.
+
+const CARE_TAGS = [
+  // behaviour / temperament
+  'anxious',
+  'shy',
+  'high_energy',
+  'leash_reactive',
+  'separation_anxiety',
+  'food_motivated',
+  // social
+  'friendly_with_kids',
+  'friendly_with_other_dogs',
+  'friendly_with_cats',
+  'avoid_other_dogs',
+  'avoid_men',
+  'avoid_women',
+  // age class
+  'puppy',
+  'senior_pet',
+  // handling preferences
+  'gentle_handling',
+  'firm_handling',
+  'medication_reminder', // owner-set reminder, NOT AI medical decision
+  'feeding_reminder',
+  // status
+  'house_trained',
+  'not_house_trained',
+  'recently_adopted',
+] as const;
+
+const CARE_TAG_SET = new Set<string>(CARE_TAGS);
+
+const CareTagsBodySchema = z.object({
+  text: z.string().min(1).max(1000),
+  locale: z.enum(['en', 'he']).optional().default('en'),
+});
+
+// Stricter than AI-B1's snake_case tag regex — must be in the closed set.
+// We Zod-filter to allowed values; anything else silently dropped.
+const CareTagsResponseSchema = z.object({
+  tags: z.array(z.string()).transform((arr) =>
+    Array.from(new Set(arr.filter((t) => CARE_TAG_SET.has(t)))),
+  ).pipe(z.array(z.string()).max(8)),
+  excerpts: z.record(z.string(), z.string().max(120)).optional().default({}),
+});
+
+function buildCareTagPrompt(text: string, locale: 'en' | 'he'): string {
+  const safeText = text.replace(/```/g, '').replace(/\r/g, '').slice(0, 1000);
+  return [
+    'You are PetWash care-note extractor. Map the CUSTOMER_TEXT about their pet into a fixed list of structured care tags. Return JSON only.',
+    '',
+    'You MUST NOT:',
+    '- diagnose the pet (no diabetes, arthritis, epilepsy, deafness, blindness, etc.)',
+    '- create medical authority',
+    '- invent tags not in ALLOWED_TAGS',
+    '- include PII about the owner or pet name',
+    '- pretend to be a vet',
+    '',
+    'ALLOWED_TAGS (CLOSED SET — return ONLY these strings):',
+    CARE_TAGS.map((t) => `- ${t}`).join('\n'),
+    '',
+    'Return EXACTLY this JSON shape:',
+    '{ "tags": ["anxious", "gentle_handling", ...], "excerpts": { "anxious": "around men", "gentle_handling": "needs gentle handling" } }',
+    '',
+    '- tags: array of strings from ALLOWED_TAGS only. Max 8. No duplicates.',
+    '- excerpts: optional short phrase per tag (≤80 chars) showing the source. Verbatim from CUSTOMER_TEXT only.',
+    '',
+    `Locale hint: ${locale}.`,
+    'Hebrew → tag mapping examples:',
+    '  חרד / מפחד → anxious',
+    '  בייש → shy',
+    '  צעיר / גור → puppy',
+    '  זקן / מבוגר → senior_pet',
+    '  אנרגטי → high_energy',
+    '  אגרסיבי לכלבים → avoid_other_dogs',
+    '  אנשים זרים → anxious (if context suggests fear)',
+    '  גברים → avoid_men (only if clearly stated)',
+    '',
+    'CUSTOMER_TEXT:',
+    safeText,
+    '',
+    'Return JSON only.',
+  ].join('\n');
+}
+
+async function requireCareTagsFlag(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const enabled = await getFeatureFlag('ff.ai.care_notes.enabled');
+    if (!enabled) return res.status(503).json({ ok: false, error: 'feature_disabled' });
+    next();
+  } catch (err) {
+    logger.warn('[ai-booking] care-tags flag read failed; treating as disabled', { err });
+    return res.status(503).json({ ok: false, error: 'feature_disabled' });
+  }
+}
+
+router.post('/care-tags', requireCareTagsFlag, async (req: Request, res: Response) => {
+  const body = CareTagsBodySchema.safeParse(req.body);
+  if (!body.success) {
+    return res.status(400).json({ ok: false, error: 'invalid_body', details: body.error.flatten() });
+  }
+  const { text, locale } = body.data;
+
+  const prompt = buildCareTagPrompt(text, locale);
+  const result = await safeGenerate('gemini-1.5-flash', prompt, 'ai-booking-care-tags');
+
+  if (!result.ok || !result.text) {
+    logger.info('[ai-booking] care-tags AI unavailable, returning safe empty', {
+      reason: result.error ?? 'no_text',
+    });
+    return res.json({ ok: true, tags: [], excerpts: {}, fallback: true, reason: result.error ?? 'no_text' });
+  }
+
+  const rawJson = tryParseJsonFromModel(result.text);
+  if (!rawJson) {
+    logger.warn('[ai-booking] care-tags model returned non-JSON', {
+      preview: result.text.slice(0, 200),
+    });
+    return res.json({ ok: true, tags: [], excerpts: {}, fallback: true, reason: 'invalid_model_output' });
+  }
+
+  const parsed = CareTagsResponseSchema.safeParse(rawJson);
+  if (!parsed.success) {
+    logger.warn('[ai-booking] care-tags model output failed Zod, returning safe empty');
+    return res.json({ ok: true, tags: [], excerpts: {}, fallback: true, reason: 'invalid_model_shape' });
+  }
+
+  // Final defense: only keep excerpts for tags that survived the allowlist
+  // filter. Drop any excerpt key whose tag didn't pass.
+  const allowedTags = new Set(parsed.data.tags);
+  const cleanExcerpts: Record<string, string> = {};
+  for (const [tag, excerpt] of Object.entries(parsed.data.excerpts)) {
+    if (allowedTags.has(tag)) cleanExcerpts[tag] = excerpt;
+  }
+
+  return res.json({
+    ok: true,
+    tags: parsed.data.tags,
+    excerpts: cleanExcerpts,
+    fallback: false,
+  });
+});
+
 export default router;

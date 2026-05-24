@@ -59,6 +59,12 @@ export interface SystemConfigMap {
   // slots — every suggestion is a real available_slots row.
   // Deterministic (no Gemini call) — safety + correctness > AI flair here.
   'ff.ai.slot_suggestions.enabled': boolean;
+  // AI care-tag extraction (AI-B4) — Gemini maps customer free-text
+  // about their pet ("anxious around men", "senior dog needs gentle
+  // handling") into a CLOSED allowlist of provider-friendly care tags.
+  // Never diagnoses. Never claims medical authority. Out-of-vocab tags
+  // from the model are silently dropped by Zod.
+  'ff.ai.care_notes.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -101,6 +107,8 @@ const DEFAULTS: SystemConfigMap = {
   'ff.ai.provider_matching.enabled': false,
   // AI-B3 default OFF
   'ff.ai.slot_suggestions.enabled': false,
+  // AI-B4 default OFF
+  'ff.ai.care_notes.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
