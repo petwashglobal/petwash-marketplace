@@ -324,6 +324,7 @@ import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
 import adminMayaVoiceRouter from './routes/admin-maya-voice';
 import aiBookingRouter from './routes/ai-booking';
 import adminPaymentDevicesRouter from './routes/admin-payment-devices';
+import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import mayaVoiceTwilioRouter from './routes/maya-voice-twilio';
 
 const MAX_QUERY_LIMIT = 500;
@@ -441,6 +442,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   // wallet credits, or payment sessions. Inherits the full /api/admin/
   // security stack (adminLimiter + requireRole + requireMfaEnrolled).
   app.use('/api/admin/payment-devices', adminPaymentDevicesRouter);
+  // AI wallet anomaly monitor (AI-W1) — admin-only. Reads recent
+  // wallet_ledger_entries, scores risk via Gemini (or deterministic
+  // fallback), surfaces flagged users for HUMAN admin review. NEVER
+  // refunds / credits / changes account status / notifies customers.
+  app.use('/api/admin/wallet/anomalies', adminWalletAnomaliesRouter);
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);
