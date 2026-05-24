@@ -1153,7 +1153,25 @@ self.addEventListener('notificationclick', (event) => {
 
       logger.debug('[Session] Verifying ID token and creating session cookie');
       const { createSessionCookie } = await import('./lib/sessionCookies');
-      await createSessionCookie(idToken, res);
+      try {
+        await createSessionCookie(idToken, res);
+      } catch (sessionCookieErr: any) {
+        // Distinguish a Firebase Admin SDK / IAM misconfiguration (the most
+        // common production failure mode for admin login) from a generic 500
+        // so the operator sees an actionable error instead of "please try
+        // again". Examples that land here: Cloud Run service account missing
+        // the Firebase Admin role, FIREBASE_SERVICE_ACCOUNT_KEY malformed,
+        // session cookie minting rate-limited by Identity Toolkit.
+        logger.error('[Session] createSessionCookie threw', {
+          message: sessionCookieErr?.message,
+          code: sessionCookieErr?.code,
+          traceId,
+        });
+        return res.status(500).json({
+          error: 'Could not mint session cookie. Verify Firebase Admin SDK / service-account IAM in Cloud Run.',
+          errorCode: 'SESSION_COOKIE_FAILED',
+        });
+      }
 
       // Synchronously set role custom claim for super_admin users so that
       // getIdTokenResult(true) on the client picks up the correct role immediately.

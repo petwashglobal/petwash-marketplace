@@ -459,22 +459,14 @@ jobs:
           # Cloud Run reads this secret as GOOGLE_APPLICATION_CREDENTIALS_JSON at runtime.
           # We reuse the same service-account JSON that authenticates this CI job.
           # SA_JSON is passed via the step env block to safely handle JSON with special chars.
-          if gcloud secrets describe "GOOGLE_SERVICE_ACCOUNT_JSON" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
-            if [ -n "$SA_JSON" ]; then
-              printf '%s' "$SA_JSON" | gcloud secrets versions add "GOOGLE_SERVICE_ACCOUNT_JSON" \
-                --project="$PROJECT" --data-file=- --quiet
-              echo "✅ GOOGLE_SERVICE_ACCOUNT_JSON: synced from CI credential"
-            else
-              echo "✅ Exists:  GOOGLE_SERVICE_ACCOUNT_JSON"
-            fi
+          # Idempotent — sync-gcp-secret.sh skips when the latest version already matches,
+          # so we don't accumulate a new version on every CI run.
+          if [ -n "$SA_JSON" ]; then
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "GOOGLE_SERVICE_ACCOUNT_JSON" "$SA_JSON"
+          elif gcloud secrets describe "GOOGLE_SERVICE_ACCOUNT_JSON" --project="$PROJECT" --quiet >/dev/null 2>&1; then
+            echo "✅ Exists:  GOOGLE_SERVICE_ACCOUNT_JSON (no GitHub credential to compare)"
           else
-            if [ -n "$SA_JSON" ]; then
-              printf '%s' "$SA_JSON" | gcloud secrets create "GOOGLE_SERVICE_ACCOUNT_JSON" \
-                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-              echo "✅ Created: GOOGLE_SERVICE_ACCOUNT_JSON"
-            else
-              echo "❌ GOOGLE_SERVICE_ACCOUNT_JSON not found in GCP Secret Manager and GOOGLE_APPLICATION_CREDENTIALS_JSON GitHub secret is absent." && exit 1
-            fi
+            echo "❌ GOOGLE_SERVICE_ACCOUNT_JSON not found in GCP Secret Manager and GOOGLE_APPLICATION_CREDENTIALS_JSON GitHub secret is absent." && exit 1
           fi
 
           # ── Known-default config values ───────────────────────────────────────────────────
@@ -544,16 +536,8 @@ jobs:
 
           if [ -n "$SUPER_ADMIN_EMAILS_VAL" ]; then
             # GitHub Secret is present — sync it to GCP, overwriting any placeholder.
-            printf '%s' "$SUPER_ADMIN_EMAILS_VAL" | gcloud secrets versions add "SUPER_ADMIN_EMAILS" \
-              --project="$PROJECT" \
-              --data-file=- \
-              --quiet 2>/dev/null || \
-            printf '%s' "$SUPER_ADMIN_EMAILS_VAL" | gcloud secrets create "SUPER_ADMIN_EMAILS" \
-              --project="$PROJECT" \
-              --replication-policy=automatic \
-              --data-file=- \
-              --quiet
-            echo "✅ SUPER_ADMIN_EMAILS: synced from GitHub secret (${#SUPER_ADMIN_EMAILS_VAL} chars)"
+            # Idempotent — only writes a new version when the value actually changed.
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "SUPER_ADMIN_EMAILS" "$SUPER_ADMIN_EMAILS_VAL"
           else
             # No GitHub Secret provided — check the existing GCP value.
             if ! gcloud secrets describe "SUPER_ADMIN_EMAILS" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
@@ -583,22 +567,17 @@ jobs:
         run: |
           PROJECT="$PROJECT_ID"
 
+          # All Firebase web-config secrets flow through the idempotent helper.
+          # Helper skips writes when the GCP latest version already matches —
+          # this is what stops the 330-versions/secret bloat we hit on
+          # TWILIO_AUTH_TOKEN and others.
           sync_optional_secret() {
             local NAME=$1
             local VALUE=$2
             if [ -n "$VALUE" ]; then
-              printf '%s' "$VALUE" | gcloud secrets versions add "$NAME" \
-                --project="$PROJECT" \
-                --data-file=- \
-                --quiet 2>/dev/null || \
-              printf '%s' "$VALUE" | gcloud secrets create "$NAME" \
-                --project="$PROJECT" \
-                --replication-policy=automatic \
-                --data-file=- \
-                --quiet
-              echo "✅ $NAME: synced from GitHub secret (${#VALUE} chars)"
+              PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "$NAME" "$VALUE"
             else
-              if gcloud secrets describe "$NAME" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              if gcloud secrets describe "$NAME" --project="$PROJECT" --quiet >/dev/null 2>&1; then
                 echo "✅ $NAME: exists in GCP Secret Manager (no GitHub secret to sync)"
               else
                 echo "⚠️  $NAME: not in GCP Secret Manager and no GitHub secret provided — server-side Firebase config injection will be partial"
@@ -608,18 +587,9 @@ jobs:
 
 
           if [ -n "$FIREBASE_WEB_API_KEY_VAL" ]; then
-            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets versions add "FIREBASE_WEB_API_KEY" \
-              --project="$PROJECT" \
-              --data-file=- \
-              --quiet 2>/dev/null || \
-            printf '%s' "$FIREBASE_WEB_API_KEY_VAL" | gcloud secrets create "FIREBASE_WEB_API_KEY" \
-              --project="$PROJECT" \
-              --replication-policy=automatic \
-              --data-file=- \
-              --quiet
-            echo "✅ FIREBASE_WEB_API_KEY: synced from VITE_FIREBASE_API_KEY GitHub secret (${#FIREBASE_WEB_API_KEY_VAL} chars)"
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "FIREBASE_WEB_API_KEY" "$FIREBASE_WEB_API_KEY_VAL"
           else
-            if gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            if gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet >/dev/null 2>&1; then
               echo "✅ FIREBASE_WEB_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
             else
               echo "❌ FIREBASE_WEB_API_KEY: not found in GCP Secret Manager and VITE_FIREBASE_API_KEY GitHub secret is absent." && exit 1
@@ -639,18 +609,9 @@ jobs:
           PROJECT="$PROJECT_ID"
 
           if [ -n "$MAPS_KEY" ]; then
-            printf '%s' "$MAPS_KEY" | gcloud secrets versions add "GOOGLE_MAPS_API_KEY" \
-              --project="$PROJECT" \
-              --data-file=- \
-              --quiet 2>/dev/null || \
-            printf '%s' "$MAPS_KEY" | gcloud secrets create "GOOGLE_MAPS_API_KEY" \
-              --project="$PROJECT" \
-              --replication-policy=automatic \
-              --data-file=- \
-              --quiet
-            echo "✅ GOOGLE_MAPS_API_KEY: synced from GitHub secret (${#MAPS_KEY} chars)"
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "GOOGLE_MAPS_API_KEY" "$MAPS_KEY"
           else
-            if gcloud secrets describe "GOOGLE_MAPS_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            if gcloud secrets describe "GOOGLE_MAPS_API_KEY" --project="$PROJECT" --quiet >/dev/null 2>&1; then
               echo "✅ GOOGLE_MAPS_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
             else
               echo "❌ GOOGLE_MAPS_API_KEY: not found in GCP Secret Manager and no GitHub secret provided" && exit 1
@@ -675,13 +636,9 @@ jobs:
           PROJECT="$PROJECT_ID"
 
           if [ -n "$SENDGRID_API_KEY_VAL" ]; then
-            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets versions add "SENDGRID_API_KEY" \
-              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
-            printf '%s' "$SENDGRID_API_KEY_VAL" | gcloud secrets create "SENDGRID_API_KEY" \
-              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-            echo "✅ SENDGRID_API_KEY: synced from GitHub secret (${#SENDGRID_API_KEY_VAL} chars)"
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "SENDGRID_API_KEY" "$SENDGRID_API_KEY_VAL"
           else
-            if gcloud secrets describe "SENDGRID_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            if gcloud secrets describe "SENDGRID_API_KEY" --project="$PROJECT" --quiet >/dev/null 2>&1; then
               echo "✅ SENDGRID_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
             else
               echo "❌ SENDGRID_API_KEY: not found in GCP Secret Manager and SENDGRID_API_KEY GitHub secret is absent." && exit 1
@@ -695,13 +652,9 @@ jobs:
           PROJECT="$PROJECT_ID"
 
           if [ -n "$GEMINI_API_KEY_VAL" ]; then
-            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets versions add "GEMINI_API_KEY" \
-              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
-            printf '%s' "$GEMINI_API_KEY_VAL" | gcloud secrets create "GEMINI_API_KEY" \
-              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-            echo "✅ GEMINI_API_KEY: synced from GitHub secret (${#GEMINI_API_KEY_VAL} chars)"
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "GEMINI_API_KEY" "$GEMINI_API_KEY_VAL"
           else
-            if gcloud secrets describe "GEMINI_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            if gcloud secrets describe "GEMINI_API_KEY" --project="$PROJECT" --quiet >/dev/null 2>&1; then
               echo "✅ GEMINI_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
             else
               echo "❌ GEMINI_API_KEY: not found in GCP Secret Manager and GEMINI_API_KEY GitHub secret is absent." && exit 1
@@ -716,6 +669,9 @@ jobs:
         run: |
           PROJECT="$PROJECT_ID"
 
+          # Idempotent — the helper compares against `latest` and skips when
+          # the value is unchanged. Before this change TWILIO_AUTH_TOKEN grew
+          # 330+ versions because every CI run blindly called `versions add`.
           for TWILIO_ENTRY in \
             "TWILIO_ACCOUNT_SID:$TWILIO_ACCOUNT_SID_VAL" \
             "TWILIO_AUTH_TOKEN:$TWILIO_AUTH_TOKEN_VAL" \
@@ -723,13 +679,9 @@ jobs:
             TWILIO_VAR="${TWILIO_ENTRY%%:*}"
             TWILIO_VAL="${TWILIO_ENTRY#*:}"
             if [ -n "$TWILIO_VAL" ]; then
-              printf '%s' "$TWILIO_VAL" | gcloud secrets versions add "$TWILIO_VAR" \
-                --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
-              printf '%s' "$TWILIO_VAL" | gcloud secrets create "$TWILIO_VAR" \
-                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-              echo "✅ $TWILIO_VAR: synced from GitHub secret (${#TWILIO_VAL} chars)"
+              PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "$TWILIO_VAR" "$TWILIO_VAL"
             else
-              if gcloud secrets describe "$TWILIO_VAR" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              if gcloud secrets describe "$TWILIO_VAR" --project="$PROJECT" --quiet >/dev/null 2>&1; then
                 echo "✅ $TWILIO_VAR: exists in GCP Secret Manager (no GitHub secret to sync)"
               else
                 echo "❌ $TWILIO_VAR: not found in GCP Secret Manager and GitHub secret is absent." && exit 1
@@ -744,13 +696,9 @@ jobs:
           PROJECT="$PROJECT_ID"
 
           if [ -n "$RECAPTCHA_SECRET_KEY_VAL" ]; then
-            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets versions add "RECAPTCHA_SECRET_KEY" \
-              --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
-            printf '%s' "$RECAPTCHA_SECRET_KEY_VAL" | gcloud secrets create "RECAPTCHA_SECRET_KEY" \
-              --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-            echo "✅ RECAPTCHA_SECRET_KEY: synced from GitHub secret (${#RECAPTCHA_SECRET_KEY_VAL} chars)"
+            PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "RECAPTCHA_SECRET_KEY" "$RECAPTCHA_SECRET_KEY_VAL"
           else
-            if gcloud secrets describe "RECAPTCHA_SECRET_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            if gcloud secrets describe "RECAPTCHA_SECRET_KEY" --project="$PROJECT" --quiet >/dev/null 2>&1; then
               echo "✅ RECAPTCHA_SECRET_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
             else
               echo "❌ RECAPTCHA_SECRET_KEY: not found in GCP Secret Manager and RECAPTCHA_SECRET_KEY GitHub secret is absent." && exit 1
@@ -775,16 +723,15 @@ jobs:
           TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL: ${{ secrets.TRANZILA_PAYMENT_REQUESTS_ENABLED }}
         run: |
           PROJECT="$PROJECT_ID"
+          # Idempotent via sync-gcp-secret.sh — skips writing a new version
+          # when the latest payload already matches. Optional features stay
+          # optional: absent value + absent secret is a warning, not an error.
           sync_optional() {
             local VAR_NAME="$1"
             local VAR_VAL="$2"
             if [ -n "$VAR_VAL" ]; then
-              printf '%s' "$VAR_VAL" | gcloud secrets versions add "$VAR_NAME" \
-                --project="$PROJECT" --data-file=- --quiet 2>/dev/null || \
-              printf '%s' "$VAR_VAL" | gcloud secrets create "$VAR_NAME" \
-                --project="$PROJECT" --replication-policy=automatic --data-file=- --quiet
-              echo "✅ $VAR_NAME: synced from GitHub secret (${#VAR_VAL} chars)"
-            elif gcloud secrets describe "$VAR_NAME" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              PROJECT="$PROJECT" ./scripts/sync-gcp-secret.sh "$VAR_NAME" "$VAR_VAL"
+            elif gcloud secrets describe "$VAR_NAME" --project="$PROJECT" --quiet >/dev/null 2>&1; then
               echo "✅ $VAR_NAME: exists in GCP Secret Manager (skipping sync)"
             else
               echo "⚠️  $VAR_NAME: not set in GitHub or GCP — feature will be gracefully disabled"
