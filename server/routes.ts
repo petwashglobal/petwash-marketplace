@@ -322,6 +322,7 @@ import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import adminMayaRouter from './routes/admin-maya';
 import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
 import adminMayaVoiceRouter from './routes/admin-maya-voice';
+import aiBookingRouter from './routes/ai-booking';
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -436,6 +437,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);  // Maya Stage 1b
+  // AI-B1 conversational booking intake — parse-only, never creates bookings.
+  // Public (uses apiLimiter inherited at app level). Feature-flag gated.
+  app.use('/api/ai/booking', aiBookingRouter);
   app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================
