@@ -151,9 +151,25 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     if (!requireTerms()) return;
     setBusy(true);
     try {
+      // SECURITY 2026-05-24 (investigation finding 1.5):
+      // Pre-fix the signup page advertised "reCAPTCHA v3" in the security row
+      // but never actually obtained a token before hitting /api/auth/sms/start.
+      // Bots rotating phone numbers could burn the 150 SMS/day global cap and
+      // lock out real customers for the rest of the day. Now we execute
+      // reCAPTCHA v3 with action 'phone_send' and attach the token; the
+      // backend can verify it (via existing verifyCaptchaToken helper).
+      // Empty token is non-blocking — server falls back to the per-phone
+      // cooldown that already exists.
+      let captchaToken = '';
+      try {
+        const { executeReCaptcha } = await import('@/components/ReCaptcha');
+        captchaToken = (await executeReCaptcha('phone_send')) || '';
+      } catch (capErr) {
+        logger.warn('[signup] reCAPTCHA execute failed (non-blocking)', capErr);
+      }
       const r = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ phone, language, flow }),
+        body: JSON.stringify({ phone, language, flow, captchaToken }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'SMS אינו זמין כעת — נסה אימייל או Google' : 'SMS is temporarily unavailable. Please use email or Google.')); return; }

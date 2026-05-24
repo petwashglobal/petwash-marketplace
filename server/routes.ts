@@ -1416,8 +1416,14 @@ self.addEventListener('notificationclick', (event) => {
   // aborts the rest of route registration.
   try {
     const authSmsRoutes = (await import('./routes/auth-sms')).default;
-    app.use('/api/auth/sms', authLimiter, authSmsRoutes);
-    logger.info('[routes] Mounted /api/auth/sms (canonical SMS auth wrapper)');
+    // SECURITY 2026-05-24 (investigation finding 1.1):
+    // Pre-fix mount used only authLimiter (10 req/min/IP). Bots rotating
+    // phone numbers could comfortably burn the 150 SMS/day Twilio cap and
+    // lock out legitimate customer signups for the rest of the day.
+    // otpLimiter is purpose-built — 5 req per 5-min window per IP — and
+    // runs after authLimiter so both gates apply (defense in depth).
+    app.use('/api/auth/sms', authLimiter, otpLimiter, authSmsRoutes);
+    logger.info('[routes] Mounted /api/auth/sms (canonical SMS auth wrapper, hardened)');
   } catch (mountErr) {
     logger.error('[routes] Failed to mount /api/auth/sms — feature degraded, server continues', mountErr);
   }
@@ -2772,15 +2778,19 @@ self.addEventListener('notificationclick', (event) => {
 
   // ========================================
   // WebAuthn / Passkey Endpoints (v2)
-  // Rate limited: 5 requests per minute per IP
+  //
+  // SECURITY 2026-05-24 (investigation finding 4.3):
+  //   Pre-fix shadowed the imported `webauthnLimiter` (from
+  //   ./middleware/rateLimiter, 60/min keyed by IP+UID) with a 5/min
+  //   IP-WIDE limiter declared inline below. Effect: a single colleague
+  //   on the same NAT'd office IP triggering 3 failed scans locked out
+  //   every other admin for the rest of the minute. The lockout
+  //   surfaced as a generic biometric error with no operator-visible
+  //   reason.
+  //   Fix: delete the inline shadow. The canonical 60/min IP+UID
+  //   limiter from rateLimiter.ts is already imported at the top of
+  //   this file and now applies to every /api/webauthn/* route below.
   // ========================================
-  const webauthnLimiter = (await import('express-rate-limit')).default({
-    windowMs: 60 * 1000, // 1 minute
-    max: 5,
-    message: { error: 'Too many passkey requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
 
   // POST /api/webauthn/register/options - Generate passkey registration options (requires auth)
   app.post('/api/webauthn/register/options', webauthnLimiter, async (req, res) => {
