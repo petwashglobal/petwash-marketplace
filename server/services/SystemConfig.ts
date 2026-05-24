@@ -40,6 +40,11 @@ export interface SystemConfigMap {
   'ff.maya.voice.outbound.enabled': boolean;
   'ff.maya.voice.extraction.enabled': boolean;
   'ff.maya.voice.recording.enabled': boolean;
+  // AI booking intake (AI-B1) — Gemini parses natural-language booking
+  // requests ("walk my dog tomorrow morning in Tel Aviv") into structured
+  // BookingRequest prefills. AI never confirms / assigns / quotes / charges.
+  // Default OFF; backend returns 503 feature_disabled when off.
+  'ff.ai.booking_intake.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -76,6 +81,8 @@ const DEFAULTS: SystemConfigMap = {
   'ff.maya.voice.outbound.enabled': false,
   'ff.maya.voice.extraction.enabled': false,
   'ff.maya.voice.recording.enabled': false,
+  // AI-B1 default OFF
+  'ff.ai.booking_intake.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,

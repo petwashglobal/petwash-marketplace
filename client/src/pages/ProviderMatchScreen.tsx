@@ -48,6 +48,11 @@ import {
   type ServiceType,
   type ProviderMatch,
 } from '@/hooks/useMatchingEngine';
+import {
+  ConversationalBookingIntake,
+  mapAiServiceToChip,
+  type ParsedIntake,
+} from '@/components/booking/ConversationalBookingIntake';
 
 // ── Brand tokens ─────────────────────────────────────────────────────────────
 const CREAM = '#FAF8F4';
@@ -333,6 +338,19 @@ export default function ProviderMatchScreen() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
+                {/* AI-B1 conversational intake. Renders nothing if backend
+                    returns 503 feature_disabled — graceful degradation, the
+                    manual IdleCard below always works. When a parse lands,
+                    the service chip is prefilled (if mappable) but the
+                    customer still explicitly clicks "Get matched" — AI never
+                    submits a booking. */}
+                <ConversationalBookingIntake
+                  language={language === 'he' ? 'he' : 'en'}
+                  onParsed={(intake: ParsedIntake) => {
+                    const chip = mapAiServiceToChip(intake.serviceType);
+                    if (chip) setService(chip);
+                  }}
+                />
                 <IdleCard
                   t={t}
                   service={service}
