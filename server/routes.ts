@@ -3450,6 +3450,29 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // POST /api/admin/ops-tasks/test - manually trigger a Maya ops task for testing
+  //   Used by ops to verify Google Tasks API delegation is wired before the
+  //   automatic rules engine starts firing. Body: { title, notes? }.
+  //   Returns the wired/reason result from MayaOpsTasksService.
+  app.post('/api/admin/ops-tasks/test', requireAdmin, async (req, res) => {
+    try {
+      const { title, notes } = req.body || {};
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'title is required (string)' });
+      }
+      const { enqueueOpsTask } = await import('./services/MayaOpsTasksService');
+      const result = await enqueueOpsTask({
+        title: `[TEST] ${title}`,
+        notes: notes || `Manual test task created by admin via /api/admin/ops-tasks/test at ${new Date().toISOString()}.`,
+        dedupKey: `admin-test:${Date.now()}`,
+      });
+      res.json(result);
+    } catch (err: any) {
+      logger.error('[admin/ops-tasks/test] error', err);
+      res.status(500).json({ error: err?.message || 'unknown' });
+    }
+  });
+
   // GET /api/auth/firebase-admin-test - Test Firebase Admin SDK capabilities (admin-only: exposes project internals)
   app.get('/api/auth/firebase-admin-test', requireAdmin, async (req, res) => {
     try {
