@@ -28,6 +28,12 @@ export interface SystemConfigMap {
   // even if the parent supplier-invoice flag is ON. Defense in depth — must
   // flip BOTH flags to actually send a document. Default OFF.
   'ff.supplier_invoice_control.sumit_send.enabled': boolean;
+  // Maya reception/intake (Stage 1b)
+  'ff.maya.enabled': boolean;
+  'ff.maya.provider_intake.enabled': boolean;
+  'ff.maya.booking_intake.enabled': boolean;
+  'ff.maya.tasks.enabled': boolean;
+  'ff.maya.escalations.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -52,6 +58,12 @@ const DEFAULTS: SystemConfigMap = {
   'matching.boost_new_providers': true,
   'ff.supplier_invoice_control.enabled': false,
   'ff.supplier_invoice_control.sumit_send.enabled': false,
+  // Maya reception/intake (Stage 1b) — default OFF
+  'ff.maya.enabled': false,
+  'ff.maya.provider_intake.enabled': false,
+  'ff.maya.booking_intake.enabled': false,
+  'ff.maya.tasks.enabled': false,
+  'ff.maya.escalations.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
@@ -114,3 +126,21 @@ class SystemConfigService {
 }
 
 export const systemConfig = new SystemConfigService();
+
+/**
+ * Thin async wrapper around `systemConfig.get(key)`.
+ *
+ * Maya admin routes (server/routes/admin-maya.ts) imported a named
+ * `getFeatureFlag` export that did not exist — the import threw
+ * `SyntaxError` at module load and the routes.ts smoke test caught it
+ * (CI run #965 gate failure). Adding the wrapper as a named export
+ * restores module-load without touching any Maya code.
+ *
+ * Async signature matches the call sites which `await` the result, and
+ * leaves room for a future DB-backed flag store without changing
+ * callers. Today this is a synchronous lookup against the in-memory
+ * `systemConfig` instance.
+ */
+export async function getFeatureFlag<K extends ConfigKey>(key: K): Promise<SystemConfigMap[K]> {
+  return systemConfig.get(key);
+}

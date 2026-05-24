@@ -15675,5 +15675,31 @@ export const marketplaceBookingSlotLocks = pgTable("marketplace_booking_slot_loc
 
 export type MarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferSelect;
 export type InsertMarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferInsert;
+
+// ──────────────────────────────────────────────────────────────────────────
+// Nayax webhook deduplication (migration 0029)
+//
+// Insert-first dedup table — every Nayax webhook hits this table BEFORE
+// any handler runs. INSERT ... ON CONFLICT DO NOTHING RETURNING event_id
+// is atomic: if returning() is empty, the event_id was already processed
+// and we return 200 OK without reprocessing.
+//
+// Replaces the previous Redis-backed dedup that failed OPEN when Redis
+// was unavailable. Postgres backed = survives process restart + horizontal
+// scale, no race window.
+// ──────────────────────────────────────────────────────────────────────────
+export const nayaxProcessedEventIds = pgTable("nayax_processed_event_ids", {
+  eventId: text("event_id").primaryKey(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+  sourceRoute: varchar("source_route", { length: 60 }),
+}, (table) => [
+  index("idx_nayax_processed_event_ids_processed_at").on(table.processedAt),
+]);
+
+export type NayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferSelect;
+export type InsertNayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferInsert;
 export type SumitOutboundEvent = typeof sumitOutboundEvents.$inferSelect;
 export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
+
+// Maya reception/intake — see migration 0028_maya_reception_intake_foundation.sql
+export * from './schema-maya';

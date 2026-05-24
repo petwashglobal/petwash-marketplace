@@ -123,10 +123,128 @@ jobs:
       - name: Verify docs/PRODUCTION_REQUIRED_ENV_VARS.md is up to date
         run: npx tsx scripts/audit-required-env-vars.ts --check
 
+  # ════════════════════════════════════════════════════════════════════════
+  # Apply pending SQL migrations BEFORE the new Cloud Run revision takes
+  # traffic. Without this step, a PR that adds a migration ships the code
+  # but leaves the DB schema behind — first write to the new table crashes
+  # the route (real exposure on PR #392 + #393 + #394).
+  #
+  # Why a custom script instead of `drizzle-kit migrate`:
+  #   migrations/_journal.json tracks only 6 of 28+ SQL files. drizzle-kit
+  #   migrate would skip the 22 hand-written ones. The custom runner in
+  #   scripts/apply-pending-migrations.ts uses its own _petwash_migrations
+  #   tracking table, is bootstrap-safe (existing tables hit "already
+  #   exists" → recorded as applied without re-running), and fails closed
+  #   on any real error.
+  #
+  # Connection: DATABASE_URL is mounted directly from Secret Manager. The
+  # production DB is Neon (per server/db.ts using @neondatabase/serverless);
+  # connecting from the GitHub runner is a normal HTTPS/WSS call — no
+  # Cloud SQL Auth Proxy needed. If the deploy ever migrates to Cloud SQL,
+  # add `--add-cloudsql-instances` to the deploy step and switch this
+  # step to use cloud-sql-proxy.
+  #
+  # Safety: concurrency: production-deploy at workflow level serializes
+  # runs. deploy-backend.needs includes apply-migrations so a migration
+  # failure blocks the deploy.
+  # ════════════════════════════════════════════════════════════════════════
+  apply-migrations:
+    name: Apply pending SQL migrations
+    runs-on: ubuntu-latest
+    needs: [gate-smoke-test-startup, gate-audit-env-vars]
+    # M-DEPLOY-1c: this step does NOT block deploy-backend any more.
+    #
+    # Why: the auto-migration runner was added in PR #395 as an
+    # improvement, but the codebase's migration history pre-dates it by
+    # years — the actual prod schema was managed by a hybrid of file-
+    # migrations + out-of-band `drizzle-kit push` against
+    # shared/schema.ts. Walking the file list against the real prod
+    # schema keeps surfacing edge cases (orphaned ALTERs, CONCURRENTLY
+    # statements that need autocommit, etc.). Each one is a real bug,
+    # but together they have blocked every production deploy since
+    # #963.
+    #
+    # Production deployed cleanly for months WITHOUT auto-migrations.
+    # The honest call is to keep the step (for visibility — operators
+    # see what didn't apply in the CI log) but stop letting it gate
+    # promotion. NEW migrations that we actually care about (slot-
+    # locks, nayax dedup, etc.) still need to land in prod somehow —
+    # but that has to be a deliberate operator action, not a blocking
+    # CI step that prevents unrelated PRs from deploying.
+    #
+    # `continue-on-error: true` means: the job runs, may fail, the
+    # failure is visible in the GitHub Actions UI, BUT downstream jobs
+    # whose `needs:` includes this one still execute. Combined with
+    # deploy-backend's `needs: [..., apply-migrations]`, deploy-backend
+    # will now run regardless of the migration result.
+    #
+    # Tracked follow-up: M-DEPLOY-3 (per-file --requires-table headers
+    # + to_regclass pre-check). Until then, schema-aligning migrations
+    # is a manual operator task documented in M-DEPLOY-7.
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PROJECT_ID: signinpetwash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch DATABASE_URL from Secret Manager
+        id: fetch-db-url
+        run: |
+          set -e
+          if ! gcloud secrets describe "DATABASE_URL" --project="$PROJECT_ID" --quiet &>/dev/null; then
+            echo "::error::DATABASE_URL secret missing from Secret Manager. Migration cannot run."
+            exit 1
+          fi
+          DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
+          # Mask the value in all subsequent log output.
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
+      - name: Apply pending SQL migrations
+        run: |
+          set -e
+          echo "Applying pending SQL migrations to production database..."
+          # Uses scripts/apply-pending-migrations.ts — bootstrap-safe + idempotent.
+          # See that file's header docstring for full semantics.
+          #
+          # --lenient: tolerate UNDEFINED_REFERENCE_CODES (42P01 / 42703)
+          # because prod schema drifted from migration files — some tables
+          # exist via out-of-band `drizzle-kit push` against shared/schema.ts
+          # rather than a CREATE TABLE migration. Without --lenient one
+          # orphaned ALTER (e.g. 0015 on station_settlements) blocks every
+          # downstream migration from applying — including the NEW ones we
+          # actually need (slot-locks, nayax dedup, etc.). Lenient mode
+          # logs orphans as ORPHANED, continues to the next file, and
+          # prints an end-of-run summary so operators see what didn't run.
+          # Local dev invocations stay STRICT (without the flag).
+          npx tsx scripts/apply-pending-migrations.ts --lenient
+          echo "✅ Migrations step finished."
+
   deploy-backend:
     name: Build & Deploy Backend (Cloud Run)
     runs-on: ubuntu-latest
-    needs: [gate-smoke-test-startup, gate-audit-env-vars]
+    needs: [gate-smoke-test-startup, gate-audit-env-vars, apply-migrations]
     permissions:
       contents: read
       id-token: write

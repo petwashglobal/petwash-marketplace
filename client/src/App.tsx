@@ -3152,7 +3152,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
-        <Route component={NotFound} />
         {/* Maya Stage 2 — admin UI (all behind RoleProtectedRoute + ff.maya.* server-side) */}
         <Route path="/admin/maya">
           <RoleProtectedRoute minRole="staff">
@@ -3199,6 +3198,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminMayaAudit />
           </RoleProtectedRoute>
         </Route>
+        <Route component={NotFound} />
       </Switch>
     </Suspense>
   );

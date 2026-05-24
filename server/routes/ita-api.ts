@@ -9,7 +9,7 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import { requireAuth } from '../customAuth';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdmin, isSuperAdminVerified } from '../middleware/rbac';
 
 const router = Router();
 
@@ -105,12 +105,38 @@ router.post('/invoices/create', async (req, res) => {
   }
 });
 
+// Per-invoice ownership gate: any authenticated user used to be able to
+// trigger ITA submission for ANY invoice id, or read ANY invoice's full
+// status (including customer name/tax-id/amounts) by walking ids. Both
+// routes now require the caller to be a verified super-admin OR the
+// invoice's createdBy. 404 is returned to non-owners so existence is not
+// confirmed.
 router.post('/invoices/:id/submit', async (req, res) => {
   try {
     const invoiceId = parseInt(req.params.id);
-    
+    if (!Number.isFinite(invoiceId)) {
+      return res.status(400).json({ error: 'Invalid invoice id' });
+    }
+
+    const [invoice] = await db
+      .select({ id: electronicInvoices.id, createdBy: electronicInvoices.createdBy })
+      .from(electronicInvoices)
+      .where(eq(electronicInvoices.id, invoiceId))
+      .limit(1);
+
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    const callerUid = (req as any).user?.uid as string | undefined;
+    const isAdmin = isSuperAdminVerified(req);
+    if (!isAdmin && invoice.createdBy !== callerUid) {
+      logger.warn('[ITA API] Submit BOLA blocked', { invoiceDbId: invoiceId, callerUid });
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
     const result = await ElectronicInvoicingService.submitToITA(invoiceId);
-    
+
     res.json({
       success: result.success,
       result,
@@ -124,9 +150,25 @@ router.post('/invoices/:id/submit', async (req, res) => {
 router.get('/invoices/:invoiceId/status', async (req, res) => {
   try {
     const { invoiceId } = req.params;
-    
+
+    const [row] = await db
+      .select({ createdBy: electronicInvoices.createdBy })
+      .from(electronicInvoices)
+      .where(eq(electronicInvoices.invoiceId, invoiceId))
+      .limit(1);
+
+    if (!row) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    const callerUid = (req as any).user?.uid as string | undefined;
+    const isAdmin = isSuperAdminVerified(req);
+    if (!isAdmin && row.createdBy !== callerUid) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
     const invoice = await ElectronicInvoicingService.getInvoiceStatus(invoiceId);
-    
+
     res.json({
       success: true,
       invoice,
