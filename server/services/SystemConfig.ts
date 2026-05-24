@@ -34,6 +34,12 @@ export interface SystemConfigMap {
   'ff.maya.booking_intake.enabled': boolean;
   'ff.maya.tasks.enabled': boolean;
   'ff.maya.escalations.enabled': boolean;
+  // Maya Voice (Stage 3A) — provider-signature webhook; admin GETs stay under /api/admin
+  'ff.maya.voice.enabled': boolean;
+  'ff.maya.voice.inbound.enabled': boolean;
+  'ff.maya.voice.outbound.enabled': boolean;
+  'ff.maya.voice.extraction.enabled': boolean;
+  'ff.maya.voice.recording.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -64,6 +70,12 @@ const DEFAULTS: SystemConfigMap = {
   'ff.maya.booking_intake.enabled': false,
   'ff.maya.tasks.enabled': false,
   'ff.maya.escalations.enabled': false,
+  // Maya Voice (Stage 3A) — all default OFF
+  'ff.maya.voice.enabled': false,
+  'ff.maya.voice.inbound.enabled': false,
+  'ff.maya.voice.outbound.enabled': false,
+  'ff.maya.voice.extraction.enabled': false,
+  'ff.maya.voice.recording.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
