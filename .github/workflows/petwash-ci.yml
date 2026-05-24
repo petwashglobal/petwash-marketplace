@@ -72,9 +72,13 @@ jobs:
           NAYAX_ENABLED: 'false'
           PAYMENT_PROVIDER_MODE: mock
           # Module-load REQUIRED (per audit ⚠️ MODULE_LOAD tag) — server fails
-          # to import server/routes.ts without these. Both verified locally.
+          # to import server/routes.ts without these. Verified locally.
           SENDGRID_FROM_EMAIL: noreply@petwash.invalid
-          STATION_KEYS: '{"smoke-dummy-station":"smoke-dummy-station-key"}'
+          # STATION_KEYS removed 2026-05-24: K9000 stations are inactive.
+          # server/nayaxFirestoreService.ts now defaults the map to {} when
+          # the env var is absent and validateStationKey() fails closed via
+          # Firestore lookup, so the build smoke test no longer needs a
+          # dummy value to satisfy a module-load throw.
           # Function-body REQUIRED (REQUIRED but not MODULE_LOAD) — these throw
           # only when the specific feature is exercised at runtime. Setting
           # them here keeps the smoke test aligned with production env shape.
