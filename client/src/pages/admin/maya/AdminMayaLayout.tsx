@@ -23,7 +23,6 @@ const NAV: Array<{ path: string; label: string }> = [
   { path: '/admin/maya/booking-drafts', label: 'Booking drafts' },
   { path: '/admin/maya/tasks', label: 'Tasks' },
   { path: '/admin/maya/escalations', label: 'Escalations' },
-  { path: '/admin/maya/voice/calls', label: 'Voice' },
   { path: '/admin/maya/audit', label: 'Audit' },
 ];
 
