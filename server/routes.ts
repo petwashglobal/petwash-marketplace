@@ -2963,16 +2963,24 @@ self.addEventListener('notificationclick', (event) => {
         throw new Error('User ID not found');
       }
 
-      // Create Firebase custom token for client to exchange
+      // Create Firebase custom token for client to exchange.
+      //
+      // SECURITY 2026-05-24 (CRITICAL fix — investigation finding 4.2):
+      //   Pre-fix attempted `firebaseAdmin.auth().createSessionCookie(customToken, ...)`
+      //   — Firebase Admin REQUIRES an ID token at this call site, not a
+      //   custom token. Every passkey verify therefore threw
+      //   `auth/invalid-id-token` and the catch returned 400 to the
+      //   client. Result: Touch ID / Face ID admin sign-in was 100%
+      //   non-functional even when WebAuthn validation succeeded.
+      //
+      //   Fix: do NOT mint a session cookie server-side here. Return
+      //   the customToken to the client; the client uses the same
+      //   chain as the SMS flow:
+      //     signInWithCustomToken(auth, customToken)
+      //       → cred.user.getIdToken(true)
+      //         → POST /api/auth/session { idToken } (mints the cookie)
+      //   The chain is in client/src/pages/admin/AdminLoginV2.tsx.
       const customToken = await firebaseAdmin.auth().createCustomToken(uid);
-      
-      // Create session cookie directly (bypassing the need for client to exchange token)
-      const { setSessionCookie } = await import('./lib/sessionCookies');
-      
-      // For passkey auth, we create session cookie directly using custom token
-      // Note: createSessionCookie() expects an ID token, so we use the custom claims workaround
-      const sessionCookie = await firebaseAdmin.auth().createSessionCookie(customToken, { expiresIn: 432000000 });
-      setSessionCookie(res, sessionCookie);
 
       // Get city for location-based alerts
       const city = await getCityFromIP(ip);

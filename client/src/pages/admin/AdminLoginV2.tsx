@@ -257,11 +257,24 @@ export default function AdminLoginV2() {
         return;
       }
 
-      const optionsRes = await apiRequest("/webauthn/authenticate/options", {
+      // CRITICAL FIX 2026-05-24 (investigation finding 4.1):
+      //   Pre-fix called `/webauthn/authenticate/options` — there is no
+      //   such route on the server. The dead v1 router at server/routes/
+      //   webauthn.ts was DISABLED at routes.ts:11031. The canonical
+      //   endpoints are mounted inline at routes.ts:2903 / :2935 under
+      //   `/api/webauthn/login/...`. Every biometric tap from the admin
+      //   login was therefore 404-ing through the Firebase Hosting
+      //   rewrite, which the user described as "scan and maybe he kill
+      //   the entry to back end". Fixed.
+      const optionsRes = await apiRequest("/api/webauthn/login/options", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      const options = await optionsRes.json();
+      const optionsBody = await optionsRes.json();
+      // Server may wrap options under { options, challengeKey, discoverable }
+      // depending on whether email was provided. Unwrap so the rest of the
+      // code (which expects `.challenge`, `.allowCredentials`) keeps working.
+      const options = optionsBody.options || optionsBody;
 
       const credential = await navigator.credentials.get({
         publicKey: {
@@ -291,11 +304,15 @@ export default function AdminLoginV2() {
         },
       };
 
-      const verifyRes = await apiRequest("/webauthn/authenticate/verify", {
+      // CRITICAL FIX 2026-05-24 (investigation finding 4.1):
+      //   Pre-fix called `/webauthn/authenticate/verify` (404) AND sent
+      //   `{response, email}` — the canonical handler at routes.ts:2935
+      //   expects only `{response}` (and optional `discoverable: true`
+      //   when no email was used for the options call).
+      const verifyRes = await apiRequest("/api/webauthn/login/verify", {
         method: "POST",
         body: JSON.stringify({
           response: serializedCredential,
-          email,
         }),
       });
       const verifyResponse = await verifyRes.json();
