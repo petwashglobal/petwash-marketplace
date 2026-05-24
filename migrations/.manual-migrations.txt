@@ -13,13 +13,7 @@
 # Comments start with `#`. Blank lines are ignored. One filename per line.
 # Filenames must exactly match the file in migrations/ (no path prefix).
 
-# 0009 ALTERs tranzila_transactions, which lives in shared/schema-tranzila.ts
-# (out-of-band managed). The table does not exist in this deployment
-# because Tranzila is being deprecated. Without this skip the runner
-# fails 42P01 (undefined_table) and blocks every production deploy.
-# Self-documented in the migration's own header comment:
-#   "The tranzila_transactions table is managed outside the main
-#    drizzle.config.ts ... Apply this migration manually or via a
-#    dedicated migration runner before deploying code that uses
-#    this column."
-0009_tranzila_processor_auth_number.sql
+# 0009_tranzila_processor_auth_number.sql was DELETED 2026-05-24 as part
+# of the Tranzila Option A kill. The orphan ALTER no longer exists in
+# the migrations/ folder, so the runner won't see it and won't fail.
+# This allowlist file remains in place for future manual migrations.

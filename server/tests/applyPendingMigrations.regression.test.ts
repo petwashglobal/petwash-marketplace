@@ -316,13 +316,21 @@ describe('apply-pending-migrations — allowlist content', () => {
     expect(fs.existsSync(ALLOWLIST_PATH)).toBe(true);
   });
 
-  it('declares 0009_tranzila_processor_auth_number.sql as manual', () => {
+  // 0009_tranzila_processor_auth_number.sql was DELETED 2026-05-24 as
+  // part of the Tranzila Option A kill. The runner no longer needs to
+  // skip it because the file itself is gone. The allowlist remains in
+  // place for future manual migrations.
+  it('does not require 0009 entry — the file was deleted with Tranzila kill', () => {
     const lines = fs
       .readFileSync(ALLOWLIST_PATH, 'utf8')
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith('#'));
-    expect(lines).toContain('0009_tranzila_processor_auth_number.sql');
+    // No entry needed because the migration file is gone.
+    expect(lines).not.toContain('0009_tranzila_processor_auth_number.sql');
+    // Sanity: confirm the underlying file is actually gone.
+    const migrationFile = path.join(REPO_ROOT, 'migrations', '0009_tranzila_processor_auth_number.sql');
+    expect(fs.existsSync(migrationFile)).toBe(false);
   });
 
   it('every non-comment line matches the migration filename pattern', () => {

@@ -32,8 +32,10 @@ const ROUTES_SRC = fs.readFileSync(
   'utf8',
 );
 
+// /api/admin/finance/tranzila was DELETED 2026-05-24 with the Tranzila
+// Option A kill. The remaining 4 mounts still carry the
+// validateFirebaseToken + adminLimiter contract from Issue #153 PR-TAX-2.
 const FINANCE_MOUNTS = [
-  { path: '/api/admin/finance/tranzila',                router: 'tranzilaAdminRoutes' },
   { path: '/api/admin/finance/adjustment',              router: 'manualAdjustmentRoutes' },
   { path: '/api/admin/finance/payout-reconciliation',   router: 'payoutReconciliationRoutes' },
   { path: '/api/admin/finance/israel-compliance',       router: 'israelComplianceRoutes' },
@@ -78,7 +80,7 @@ describe('Issue #153 PR-TAX-2 — /api/admin/finance/* validateFirebaseToken at 
     // only adds the token-validation middleware. Pin that the routers are
     // still imported and referenced — no scope creep removing them.
     const FINANCE_IMPORTS = [
-      `tranzilaAdminRoutes from "./routes/finance/tranzila-admin"`,
+      // tranzilaAdminRoutes removed 2026-05-24 (Tranzila Option A kill)
       `manualAdjustmentRoutes from "./routes/finance/manual-adjustment"`,
       `payoutReconciliationRoutes from "./routes/finance/payout-reconciliation"`,
       `israelComplianceRoutes from "./routes/finance/israel-compliance"`,
