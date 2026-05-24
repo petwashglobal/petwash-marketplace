@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   flag: false as boolean,
   matchFlag: false as boolean,
   slotFlag: false as boolean,
+  careFlag: false as boolean,
   // Per-test AI response. Either a JSON string the model would return, or
   // null to simulate AI unavailable, or a synthetic non-JSON to test the
   // tryParseJsonFromModel fallback.
@@ -43,6 +44,7 @@ vi.mock('../services/SystemConfig', () => ({
     if (key === 'ff.ai.booking_intake.enabled') return state.flag;
     if (key === 'ff.ai.provider_matching.enabled') return state.matchFlag;
     if (key === 'ff.ai.slot_suggestions.enabled') return state.slotFlag;
+    if (key === 'ff.ai.care_notes.enabled') return state.careFlag;
     return false;
   }),
   systemConfig: { get: vi.fn(), set: vi.fn() },
@@ -119,6 +121,7 @@ beforeEach(() => {
   state.flag = true; // most tests assume flag ON; the OFF test flips it
   state.matchFlag = true;
   state.slotFlag = true;
+  state.careFlag = true;
   state.aiResponse = null;
   state.lastPrompt = '';
   state.dbResponse = [];
@@ -809,5 +812,155 @@ describe('AI-B3 smart slot suggestions', () => {
       .send({ dateText: 'tomorrow', serviceDurationMinutes: 9999 });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_body');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI-B4 — care tag extraction
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('AI-B4 care tag extraction', () => {
+  it('Test 1 — single tag: "anxious around men" → anxious', async () => {
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        tags: ['anxious'],
+        excerpts: { anxious: 'around men' },
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'My dog is anxious around men' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.tags).toContain('anxious');
+    expect(res.body.excerpts.anxious).toBe('around men');
+    expect(res.body.fallback).toBe(false);
+  });
+
+  it('Test 2 — multiple tags: senior + gentle + shy', async () => {
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        tags: ['senior_pet', 'gentle_handling', 'shy'],
+        excerpts: {
+          senior_pet: 'old dog',
+          gentle_handling: 'needs gentle handling',
+          shy: 'very shy',
+        },
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'My senior dog needs gentle handling and is very shy' });
+    expect(res.body.tags).toEqual(
+      expect.arrayContaining(['senior_pet', 'gentle_handling', 'shy']),
+    );
+  });
+
+  it('Test 3 — Hebrew input parses', async () => {
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        tags: ['anxious'],
+        excerpts: { anxious: 'מאנשים זרים' },
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'הכלב שלי חרד מאנשים זרים', locale: 'he' });
+    expect(res.body.tags).toContain('anxious');
+    // Locale carried into prompt
+    expect(state.lastPrompt).toMatch(/Locale hint:\s*he/);
+  });
+
+  it('Test 4 — medical claims are NOT in the allowlist → dropped', async () => {
+    // Model misbehaves and tries to emit a medical tag. Allowlist drops it.
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        tags: ['diabetic', 'arthritic', 'epileptic', 'anxious'],
+        excerpts: { diabetic: 'has diabetes', anxious: 'around dogs' },
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'My dog has diabetes and is anxious around other dogs' });
+    expect(res.body.tags).toEqual(['anxious']);
+    // Excerpt for the dropped tag must NOT leak through either.
+    expect(res.body.excerpts).not.toHaveProperty('diabetic');
+    expect(res.body.excerpts.anxious).toBe('around dogs');
+  });
+
+  it('Test 5 — out-of-vocab tags from model → silently dropped', async () => {
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        tags: ['anxious', 'unicorn', 'banana', 'FRIENDLY_WITH_KIDS'],
+        excerpts: {},
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'whatever' });
+    // 'anxious' kept. 'unicorn'/'banana' not in allowlist. 'FRIENDLY_WITH_KIDS'
+    // wrong case (allowlist is lowercase).
+    expect(res.body.tags).toEqual(['anxious']);
+  });
+
+  it('Test 6 — flag OFF → 503 feature_disabled', async () => {
+    state.careFlag = false;
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'anxious dog' });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('feature_disabled');
+  });
+
+  it('Test 7 — AI unavailable → 200 + empty tags + fallback:true', async () => {
+    state.aiResponse = { ok: false, error: 'no_client' };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'my dog' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.fallback).toBe(true);
+    expect(res.body.tags).toEqual([]);
+  });
+
+  it('Test 8 — empty text → 400 invalid_body', async () => {
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: '' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid_body');
+  });
+
+  it('Test 9 — prompt never tells the model to invent medical tags', async () => {
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({ tags: ['anxious'], excerpts: {} }),
+    };
+    await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'anxious dog' });
+    // The prompt MUST explicitly forbid diagnosis and medical authority.
+    expect(state.lastPrompt).toMatch(/do not diagnose|MUST NOT/i);
+    expect(state.lastPrompt).toMatch(/medical authority/i);
+    expect(state.lastPrompt).toMatch(/no diabetes/i);
+  });
+
+  it('Test 10 — duplicates from model are de-duped', async () => {
+    state.aiResponse = {
+      ok: true,
+      text: JSON.stringify({
+        tags: ['anxious', 'anxious', 'anxious', 'shy', 'shy'],
+        excerpts: {},
+      }),
+    };
+    const res = await request(buildApp())
+      .post('/api/ai/booking/care-tags')
+      .send({ text: 'whatever' });
+    expect(res.body.tags.sort()).toEqual(['anxious', 'shy']);
   });
 });
