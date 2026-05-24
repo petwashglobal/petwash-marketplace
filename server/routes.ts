@@ -320,6 +320,8 @@ import { hashPassword, verifyPassword } from './simpleAuth';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import adminMayaRouter from './routes/admin-maya';
+import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
+import adminMayaVoiceRouter from './routes/admin-maya-voice';
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -427,7 +429,13 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ADMIN_ROLES is the single canonical list — imported from @shared/adminRoles.
   // requireStaffApproved skips the staff_active status check for elevated roles (admin/management/etc).
   app.use('/api/admin/', requireRole(...ADMIN_ROLES_ARRAY), requireStaffApproved, requireMfaEnrolled);
-  app.use('/api/admin/maya', adminMayaRouter);  // Maya Stage 1b
+  // Maya Voice admin review routes (Stage 3A) — gated by ff.maya.voice.enabled.
+  // Mounted BEFORE /api/admin/maya so /voice/* routes through this voice gate first.
+  app.use('/api/admin/maya/voice', adminMayaVoiceRouter);
+  app.use('/api/admin/maya', adminMayaRouter);
+  // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
+  // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
+  app.use('/api/maya/voice', mayaVoiceWebhookRouter);  // Maya Stage 1b
   app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================

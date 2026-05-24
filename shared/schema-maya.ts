@@ -1,15 +1,18 @@
 /**
  * Maya reception/intake — Drizzle table definitions.
  *
- * Mirrors migration 0028_maya_reception_intake_foundation.sql exactly.
- * Re-exported from shared/schema.ts so the rest of the codebase can use
- * the typed tables.
+ * Stage 1b shipped the original eight maya_* tables.
+ * Stage 3A (this version) extends mayaConversations with voice columns
+ * (channel='phone' now valid) and updates the channel CHECK accordingly.
+ *
+ * Mirrors:
+ *   - migrations/0028_maya_reception_intake_foundation.sql (Stage 1)
+ *   - migrations/0030_maya_voice_channel.sql               (Stage 3A)
  *
  * SAFETY: these tables hold reception/intake state only. Maya cannot approve
  * providers, confirm bookings, change wallet balances, refund, start K9000
  * machines, override fraud blocks, or create free washes. Wallet/K9000
- * redemption stays on the existing WalletLedger + AuditLedgerService path
- * (see docs/design/2026-05-22-petwash-pass-k9000-redemption.md).
+ * redemption stays on the existing WalletLedger + AuditLedgerService path.
  */
 import {
   pgTable,
@@ -18,6 +21,7 @@ import {
   text,
   timestamp,
   jsonb,
+  boolean,
   bigserial,
   index,
   check,
@@ -25,7 +29,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
-// maya_conversations
+// maya_conversations — Stage 1b + Stage 3A voice columns
 // ---------------------------------------------------------------------------
 export const mayaConversations = pgTable(
   'maya_conversations',
@@ -40,18 +44,28 @@ export const mayaConversations = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+    // Voice (Stage 3A) — all nullable. NULL on web/admin channels.
+    voiceProvider: varchar('voice_provider', { length: 20 }),
+    externalCallSid: varchar('external_call_sid', { length: 128 }),
+    callStartedAt: timestamp('call_started_at', { withTimezone: true, mode: 'string' }),
+    callEndedAt: timestamp('call_ended_at', { withTimezone: true, mode: 'string' }),
+    recordingConsent: boolean('recording_consent'),
+    recordingUrl: text('recording_url'),
   },
   (table) => [
     index('idx_maya_conversations_status').on(table.status).where(sql`${table.deletedAt} IS NULL`),
     index('idx_maya_conversations_created_at').on(table.createdAt),
-    check('maya_conversations_channel_chk', sql`${table.channel} IN ('web','admin','test')`),
+    index('idx_maya_conversations_call_sid')
+      .on(table.externalCallSid)
+      .where(sql`${table.externalCallSid} IS NOT NULL`),
+    check('maya_conversations_channel_chk', sql`${table.channel} IN ('web','admin','test','phone')`),
     check('maya_conversations_locale_chk', sql`${table.locale} IN ('he','en')`),
     check('maya_conversations_status_chk', sql`${table.status} IN ('open','closed','archived')`),
   ],
 );
 
 // ---------------------------------------------------------------------------
-// maya_messages
+// maya_messages (unchanged from Stage 1b)
 // ---------------------------------------------------------------------------
 export const mayaMessages = pgTable(
   'maya_messages',
@@ -73,7 +87,7 @@ export const mayaMessages = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// maya_leads
+// maya_leads (unchanged from Stage 1b)
 // ---------------------------------------------------------------------------
 export const mayaLeads = pgTable(
   'maya_leads',
@@ -102,8 +116,7 @@ export const mayaLeads = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// maya_provider_intake_drafts — DRAFT-ONLY. 'approved' is intentionally not a
-// valid intake_status. Provider approval is handled outside Maya.
+// maya_provider_intake_drafts (unchanged from Stage 1b)
 // ---------------------------------------------------------------------------
 export const mayaProviderIntakeDrafts = pgTable(
   'maya_provider_intake_drafts',
@@ -137,10 +150,7 @@ export const mayaProviderIntakeDrafts = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// maya_booking_intake_drafts — DRAFT-ONLY. 'confirmed' is intentionally not a
-// valid intake_status. Final booking confirmation is handled by the existing
-// booking system. Price is NOT stored here; it must be resolved from the
-// source-of-truth pricing module at confirm time.
+// maya_booking_intake_drafts (unchanged from Stage 1b)
 // ---------------------------------------------------------------------------
 export const mayaBookingIntakeDrafts = pgTable(
   'maya_booking_intake_drafts',
@@ -178,7 +188,7 @@ export const mayaBookingIntakeDrafts = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// maya_tasks
+// maya_tasks (unchanged from Stage 1b)
 // ---------------------------------------------------------------------------
 export const mayaTasks = pgTable(
   'maya_tasks',
@@ -204,7 +214,7 @@ export const mayaTasks = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// maya_escalations
+// maya_escalations (unchanged from Stage 1b)
 // ---------------------------------------------------------------------------
 export const mayaEscalations = pgTable(
   'maya_escalations',
@@ -236,9 +246,7 @@ export const mayaEscalations = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// maya_audit_log — APPEND-ONLY at the DB level (trigger blocks UPDATE/DELETE).
-// Drizzle is a typed read/insert interface; UPDATE/DELETE attempts will hit
-// the DB-level trigger and raise, which is intentional.
+// maya_audit_log (unchanged from Stage 1b — append-only at DB level)
 // ---------------------------------------------------------------------------
 export const mayaAuditLog = pgTable(
   'maya_audit_log',
