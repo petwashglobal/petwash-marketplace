@@ -40,6 +40,31 @@ export interface SystemConfigMap {
   'ff.maya.voice.outbound.enabled': boolean;
   'ff.maya.voice.extraction.enabled': boolean;
   'ff.maya.voice.recording.enabled': boolean;
+  // AI booking intake (AI-B1) — Gemini parses natural-language booking
+  // requests ("walk my dog tomorrow morning in Tel Aviv") into structured
+  // BookingRequest prefills. AI never confirms / assigns / quotes / charges.
+  // Default OFF; backend returns 503 feature_disabled when off.
+  'ff.ai.booking_intake.enabled': boolean;
+  // AI provider matching score (AI-B2) — Gemini ranks a set of candidate
+  // provider IDs against the parsed booking intake using PUBLIC profile
+  // fields only (bio, rating, response rate, services, languages, badges,
+  // working hours, home setup). Never sees background check, KYC, risk
+  // score, admin notes, or any other internal trust field. Falls back to
+  // a deterministic rating-based score when Gemini is unavailable.
+  'ff.ai.provider_matching.enabled': boolean;
+  // AI smart slot suggestions (AI-B3) — turns a vague date/time intent
+  // ("tomorrow morning") into concrete, backend-validated slot windows
+  // from availability_slots. Honors active payment locks, service
+  // duration, timezone, and provider filtering. NEVER returns synthetic
+  // slots — every suggestion is a real available_slots row.
+  // Deterministic (no Gemini call) — safety + correctness > AI flair here.
+  'ff.ai.slot_suggestions.enabled': boolean;
+  // AI care-tag extraction (AI-B4) — Gemini maps customer free-text
+  // about their pet ("anxious around men", "senior dog needs gentle
+  // handling") into a CLOSED allowlist of provider-friendly care tags.
+  // Never diagnoses. Never claims medical authority. Out-of-vocab tags
+  // from the model are silently dropped by Zod.
+  'ff.ai.care_notes.enabled': boolean;
   /**
    * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
    * the integration method:
@@ -76,6 +101,14 @@ const DEFAULTS: SystemConfigMap = {
   'ff.maya.voice.outbound.enabled': false,
   'ff.maya.voice.extraction.enabled': false,
   'ff.maya.voice.recording.enabled': false,
+  // AI-B1 default OFF
+  'ff.ai.booking_intake.enabled': false,
+  // AI-B2 default OFF
+  'ff.ai.provider_matching.enabled': false,
+  // AI-B3 default OFF
+  'ff.ai.slot_suggestions.enabled': false,
+  // AI-B4 default OFF
+  'ff.ai.care_notes.enabled': false,
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,

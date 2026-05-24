@@ -322,6 +322,8 @@ import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import adminMayaRouter from './routes/admin-maya';
 import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
 import adminMayaVoiceRouter from './routes/admin-maya-voice';
+import aiBookingRouter from './routes/ai-booking';
+import adminPaymentDevicesRouter from './routes/admin-payment-devices';
 import mayaVoiceTwilioRouter from './routes/maya-voice-twilio';
 
 const MAX_QUERY_LIMIT = 500;
@@ -434,11 +436,19 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Mounted BEFORE /api/admin/maya so /voice/* routes through this voice gate first.
   app.use('/api/admin/maya/voice', adminMayaVoiceRouter);
   app.use('/api/admin/maya', adminMayaRouter);
+  // Admin payment-device stock (Nayax VPOS Touch). Asset / lifecycle
+  // tracking only — does NOT touch Nayax payment runtime, K9000 polling,
+  // wallet credits, or payment sessions. Inherits the full /api/admin/
+  // security stack (adminLimiter + requireRole + requireMfaEnrolled).
+  app.use('/api/admin/payment-devices', adminPaymentDevicesRouter);
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);
   // Maya Voice Twilio adapter (Stage 3B) — public, HMAC-verified.
   app.use('/api/maya/voice/twilio', mayaVoiceTwilioRouter);  // Maya Stage 1b
+  // AI-B1 conversational booking intake — parse-only, never creates bookings.
+  // Public (uses apiLimiter inherited at app level). Feature-flag gated.
+  app.use('/api/ai/booking', aiBookingRouter);
   app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================
