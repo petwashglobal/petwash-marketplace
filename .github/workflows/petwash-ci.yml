@@ -1287,6 +1287,9 @@ jobs:
             local ENDPOINT="$URL$PATH_"
             echo "── $ENDPOINT ──"
             local STATUS="000"
+            # 429 = Cloud Run per-revision quota throttle. Back off exponentially
+            # (15s → 30s → 60s → 120s → 240s) so we stop hammering the rate limiter
+            # while still failing fast on genuine errors (4xx other than 403/429).
             for attempt in 1 2 3 4 5; do
               STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
               if [ "$STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
@@ -1294,9 +1297,17 @@ jobs:
                   -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
               fi
               [ "$STATUS" = "200" ] && break
-              [ "$STATUS" = "000" ] || [ "$STATUS" = "503" ] || break
-              echo "   attempt $attempt: HTTP $STATUS — retrying in 15s..."
-              sleep 15
+              case "$STATUS" in
+                000|429|503) ;;
+                *) break ;;
+              esac
+              if [ "$STATUS" = "429" ]; then
+                DELAY=$((15 * (2 ** (attempt - 1))))
+              else
+                DELAY=15
+              fi
+              echo "   attempt $attempt: HTTP $STATUS — retrying in ${DELAY}s..."
+              sleep "$DELAY"
             done
             if [ "$STATUS" = "200" ]; then
               echo "   ✅ HTTP $STATUS"
@@ -1322,11 +1333,22 @@ jobs:
           echo "Testing: $ENDPOINT"
 
           STATUS="000"
+          # Retry on transport failure (000), startup guard (503), and Cloud Run
+          # quota throttle (429). 429 uses exponential backoff (15s → 30s → 60s)
+          # to give the rate limiter time to drain.
           for attempt in 1 2 3; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-            [ "$STATUS" != "000" ] && [ "$STATUS" != "503" ] && break
-            echo "  Attempt $attempt: HTTP $STATUS — retrying in 15s..."
-            sleep 15
+            case "$STATUS" in
+              000|429|503) ;;
+              *) break ;;
+            esac
+            if [ "$STATUS" = "429" ]; then
+              DELAY=$((15 * (2 ** (attempt - 1))))
+            else
+              DELAY=15
+            fi
+            echo "  Attempt $attempt: HTTP $STATUS — retrying in ${DELAY}s..."
+            sleep "$DELAY"
           done
 
           if [ "$STATUS" = "200" ]; then
@@ -1397,6 +1419,15 @@ jobs:
             if [ "$HTTP_STATUS" = "000" ]; then
               echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 20 s..."
               sleep 20
+              continue
+            fi
+
+            # Cloud Run per-revision quota throttle — back off exponentially
+            # (20s → 40s → 80s → 160s → 320s) so we don't keep hitting the limiter.
+            if [ "$HTTP_STATUS" = "429" ]; then
+              DELAY=$((20 * (2 ** (attempt - 1))))
+              echo "   Attempt $attempt: HTTP 429 (rate exceeded) — retrying in ${DELAY}s..."
+              sleep "$DELAY"
               continue
             fi
 
