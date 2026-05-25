@@ -59,7 +59,7 @@ router.get('/uptime', async (_req, res) => {
     const endTime = process.hrtime(startTime);
     const responseTime = Math.round((endTime[0] * 1000 + endTime[1] / 1000000) * 100) / 100;
 
-    const isProd = process.env.REPLIT_DEPLOYMENT === '1';
+    const isProd = process.env.NODE_ENV === 'production';
 
     res.status(200).json({
       ok: true,

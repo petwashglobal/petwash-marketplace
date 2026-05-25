@@ -562,28 +562,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       // to the internal handler with no identity.
     }
 
-    // 🔧 DEV-ONLY bypass — never active in production (hard-guarded)
-    // Allows automated HTTP proofs without a real Firebase token.
-    if (process.env.NODE_ENV !== 'production') {
-      const testUid = req.headers['x-test-provider-uid'] as string | undefined;
-      if (testUid) {
-        logger.warn('[RBAC Guard] DEV BYPASS — x-test-provider-uid', { testUid, path });
-        (req as any).firebaseUser = { uid: testUid, email_verified: true };
-        return next();
-      }
-      // playwright-test bypass — aligns with customAuth.ts: only active when TEST_BYPASS_TOKEN is set.
-      // Using a static string was a security gap — anyone who knew it could bypass auth in staging.
-      const testBypassToken = process.env.TEST_BYPASS_TOKEN;
-      if (testBypassToken && req.headers['x-test-user-bypass'] === testBypassToken) {
-        const testUserId = (req.headers['x-test-user-id'] as string) || 'test-user-default';
-        const testEmail  = (req.headers['x-test-user-email'] as string) || `${testUserId}@test.petwash.local`;
-        logger.warn('[RBAC Guard] DEV BYPASS — TEST_BYPASS_TOKEN matched', { testUserId, path });
-        (req as any).firebaseUser = { uid: testUserId, email: testEmail, email_verified: true };
-        (req as any).userId = testUserId;
-        (req as any).user   = { uid: testUserId, email: testEmail };
-        return next();
-      }
-    }
+    // SECURITY: Header-based dev bypasses (x-test-provider-uid, TEST_BYPASS_TOKEN)
+    // removed. These were gated only on `NODE_ENV !== 'production'`, which is
+    // a single-point-of-failure — if NODE_ENV is ever unset on a Cloud Run
+    // revision (config typo, accidental override), the entire auth layer is
+    // bypassable via curl. Use a real synthetic Firebase test account for
+    // E2E tests instead. Issued auth tokens are revocable; static headers are not.
 
     // 🔑 Admin secret bypass — allows server-side and automation access to internal routes (timing-safe)
     if (timingSafeAdminSecretMatch(req)) {
@@ -15609,9 +15593,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
   // In dev mode, Vite's middleware (registered in server/index.ts) handles all routing
-  if (process.env.NODE_ENV === 'production' || 
-      process.env.REPLIT_DEPLOYMENT === '1' || 
-      process.env.REPLIT_DEPLOYMENT === 'true') {
+  if (process.env.NODE_ENV === 'production') {
 
     // Cache the Firebase-injected index.html in memory to avoid file I/O on every request.
     // Cache is valid for 5 minutes; invalidated automatically on restart.
