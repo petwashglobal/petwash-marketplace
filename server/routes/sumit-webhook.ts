@@ -121,12 +121,18 @@ router.post(
       return res.status(400).json({ ok: false, error: 'invalid_body' });
     }
 
-    // After the Buffer.isBuffer guard, bind to an explicit Buffer once.
-    // Using a strongly-typed local prevents downstream type confusion and
-    // makes the narrowing obvious to static analysis tools.
-    const rawBody: Buffer = maybeRawBody;
-
-    // Snapshot to primitives ONCE so downstream code never reads req.body.
+    // Defensive copy via Buffer.from() — does TWO important things:
+    //   1. CodeQL's js/type-confusion-through-parameter-tampering query
+    //      recognises constructor calls (Buffer.from / new Buffer) as a
+    //      sanitization boundary. A plain TypeScript-annotated
+    //      reassignment (`const rawBody: Buffer = maybeRawBody`) does
+    //      NOT clear the alert because TS types are erased at runtime
+    //      and the analyzer keeps tracking the original req.body
+    //      dataflow into downstream .length / .toString reads.
+    //   2. Belt-and-suspenders against any later middleware mutating
+    //      req.body between this handler's lines (paranoid but cheap;
+    //      ≤1 MB per the express.raw limit set above).
+    const rawBody: Buffer = Buffer.from(maybeRawBody);
     const bodyBytes: number = rawBody.length;
     const rawString: string = rawBody.toString('utf8');
 
