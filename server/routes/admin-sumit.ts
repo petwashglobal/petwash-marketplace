@@ -182,4 +182,78 @@ router.get(
   },
 );
 
+/**
+ * GET /api/admin/sumit/sync-dryrun
+ *
+ * Mission-5+ skeleton — "if SUMIT were enabled today, here's what would
+ * sync." Read-only; never fires a real SUMIT call. Useful for verifying
+ * the data is ready (providers classified, secrets bound, jobs queue
+ * healthy) BEFORE flipping sumit.mode='api'.
+ *
+ * Surfaces:
+ *   - sumit.mode + SumitClient.isWired() — the gates
+ *   - Supplier osek_type distribution — how many providers are still
+ *     `unknown`; those would be skipped by SumitSyncService until
+ *     classified
+ *   - SUMIT_* job queue depth (PENDING / PROCESSING / DONE / FAILED)
+ *   - Latest 5 SUMIT audit events from the immutable ledger
+ */
+router.get('/sync-dryrun', ...requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const { sumitClient } = await import('../services/SumitClient');
+    const mode = systemConfig.get('sumit.mode') as SumitMode;
+    const health = sumitClient.health();
+
+    // Supplier osek_type breakdown.
+    const osekRows = await db.execute<{ bucket: string; count: number }>(sql`
+      SELECT coalesce(osek_type, 'unknown') AS bucket, count(*)::int AS count
+      FROM suppliers
+      GROUP BY 1
+      ORDER BY 1
+    `);
+    const osekBuckets: Record<string, number> = {};
+    for (const r of osekRows.rows ?? []) osekBuckets[r.bucket] = Number(r.count);
+
+    // SUMIT_* job queue depth.
+    const queueRows = await db.execute<{ status: string; count: number }>(sql`
+      SELECT status, count(*)::int AS count
+      FROM pw_async_jobs
+      WHERE job_type IN ('SUMIT_CUSTOMER_SYNC', 'SUMIT_DOCUMENT_CREATE', 'SUMIT_DOCUMENT_CANCEL')
+      GROUP BY status
+      ORDER BY status
+    `);
+    const queue: Record<string, number> = {};
+    for (const r of queueRows.rows ?? []) queue[r.status] = Number(r.count);
+
+    // Last 5 sumit-prefixed audit events for a quick glance.
+    const auditRows = await db.execute<{
+      created_at: string; event_type: string; metadata: string | null;
+    }>(sql`
+      SELECT created_at, event_type, metadata
+      FROM audit_ledger
+      WHERE event_type LIKE 'sumit.%'
+      ORDER BY created_at DESC
+      LIMIT 5
+    `);
+
+    return res.json({
+      mode,
+      wired: health.wired,
+      wiredReason: health.reason,
+      baseUrl: health.baseUrl,
+      env: envFlags(),
+      osekBuckets,
+      queue,
+      recentEvents: (auditRows.rows ?? []).map((r) => ({
+        createdAt: r.created_at,
+        eventType: r.event_type,
+        metadata: (() => { try { return JSON.parse(r.metadata ?? 'null'); } catch { return r.metadata; } })(),
+      })),
+    });
+  } catch (err: any) {
+    logger.error('[AdminSumit] sync-dryrun failed', err);
+    return res.status(500).json({ error: 'Sync dry-run failed', message: err.message });
+  }
+});
+
 export default router;
