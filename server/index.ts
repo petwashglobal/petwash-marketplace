@@ -1,3 +1,63 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// EARLY UNCAUGHT-EXCEPTION HANDLERS — first lines of the file on purpose.
+//
+// Cloud Run silent-startup-failure debugging: when something in the import
+// chain throws synchronously, Node prints the error to stderr and exits.
+// Cloud Run's revision log captures stderr fine — but a previous CI bug
+// hid those lines behind a missing logging.viewer IAM grant for the
+// "Diagnose failed revision" workflow step. So operators saw only
+// "startup probe failed" with no signal.
+//
+// These handlers force a clear, unmistakable error block to stdout
+// (which Cloud Run ALWAYS captures regardless of severity filter
+// settings). They are installed BEFORE the first import below so they
+// catch errors raised during the very first imported module's top-level
+// code — exactly the place where everything has been silently dying.
+//
+// Cost: zero. If nothing throws, these listeners are inert. If
+// something throws, the next deploy log will have a giant
+// "🆘 BOOT-CRASH" block visible without needing IAM grants or
+// Logs Explorer queries.
+// ─────────────────────────────────────────────────────────────────────────────
+process.stdout.write('🟢 [BOOT] server/index.ts module loading t=' + Date.now() + '\n');
+process.on('uncaughtException', (err: any) => {
+  const block = [
+    '',
+    '🆘══════════════════════════════════════════════════════════════════',
+    ' 🆘 UNCAUGHT EXCEPTION DURING SERVER BOOT',
+    ' 🆘 (this is why Cloud Run startup probe failed)',
+    '🆘══════════════════════════════════════════════════════════════════',
+    `  name:    ${err?.name || '(no name)'}`,
+    `  message: ${err?.message || String(err)}`,
+    `  code:    ${(err as any)?.code || '(no code)'}`,
+    `  cause:   ${(err as any)?.cause ? JSON.stringify((err as any).cause).slice(0, 200) : '(no cause)'}`,
+    '  stack:',
+    String(err?.stack || '(no stack)').split('\n').slice(0, 20).map(l => '    ' + l).join('\n'),
+    '🆘══════════════════════════════════════════════════════════════════',
+    '',
+  ].join('\n');
+  process.stdout.write(block);
+  process.stderr.write(block);
+  // Give the runtime a beat to flush before exiting, then exit 1 so
+  // Cloud Run gets a clean signal and doesn't wait 240 s on the probe.
+  setTimeout(() => process.exit(1), 250).unref();
+});
+process.on('unhandledRejection', (reason: any) => {
+  const block = [
+    '',
+    '⚠️══════════════════════════════════════════════════════════════════',
+    ' ⚠️  UNHANDLED PROMISE REJECTION DURING BOOT',
+    '⚠️══════════════════════════════════════════════════════════════════',
+    `  reason: ${reason?.message || String(reason)}`,
+    '  stack:',
+    String(reason?.stack || '(no stack)').split('\n').slice(0, 20).map(l => '    ' + l).join('\n'),
+    '⚠️══════════════════════════════════════════════════════════════════',
+    '',
+  ].join('\n');
+  process.stdout.write(block);
+  process.stderr.write(block);
+});
+
 // When both GOOGLE_API_KEY (Maps/Places) and GEMINI_API_KEY (Replit integration) are injected,
 // the Google AI SDK prints "Both GOOGLE_API_KEY and GEMINI_API_KEY are set" for every client
 // instantiation (43+ times at startup). The SDK already uses GOOGLE_API_KEY in this case,
