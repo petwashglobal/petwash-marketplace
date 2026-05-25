@@ -1492,14 +1492,25 @@ jobs:
             local ENDPOINT="$URL$PATH_"
             echo "── $ENDPOINT ──"
             local STATUS="000"
-            # 429 = Cloud Run per-revision quota throttle. Back off exponentially
-            # (15s → 30s → 60s → 120s → 240s) so we stop hammering the rate limiter
-            # while still failing fast on genuine errors (4xx other than 403/429).
+            # Cloud Run's allUsers IAM binding is blocked by the org policy on
+            # this project (see "Grant public access" step ~line 1456, which
+            # has `continue-on-error: true` because it fails with
+            # FAILED_PRECONDITION on every deploy). Without the binding,
+            # Cloud Run returns:
+            #   • 403 for some unauthenticated requests (older behavior), OR
+            #   • 429 "Rate exceeded" for tagged-revision unauthenticated
+            #     requests (current behavior — observed on run #1015, 2026-05-25)
+            # Either way, the github-actions service account has roles/run.invoker
+            # so an OIDC Identity Token bypasses both. Send it from attempt 1
+            # whenever it's available — this used to only happen on 403 retry
+            # (line "$STATUS" = "403" check), which never triggered for 429
+            # and caused 5x 7+ minute timeouts on every deploy.
             for attempt in 1 2 3 4 5; do
-              STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-              if [ "$STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
+              if [ -n "$OIDC_TOKEN" ]; then
                 STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 \
                   -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+              else
+                STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
               fi
               [ "$STATUS" = "200" ] && break
               case "$STATUS" in
@@ -1602,24 +1613,19 @@ jobs:
           RESULT=""
           HTTP_STATUS=""
           for attempt in 1 2 3 4 5; do
-            # Try unauthenticated first; fall back to Identity Token on 403
-            HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-            if [ "$HTTP_STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
+            # Always send OIDC token if available. Org policy blocks the
+            # allUsers IAM binding (see "Grant public access" step above —
+            # continue-on-error: true, FAILED_PRECONDITION on every deploy),
+            # which causes Cloud Run to return 403 OR 429 ("Rate exceeded")
+            # to unauthenticated requests against tagged-revision URLs.
+            # Authenticating from attempt 1 sidesteps both responses.
+            if [ -n "$OIDC_TOKEN" ]; then
               HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
                 -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+            else
+              HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
             fi
             RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
-
-            # On 403 retry with OIDC token — org policy may be blocking allUsers IAM binding
-            if [ "$HTTP_STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
-              echo "   Attempt $attempt: HTTP 403 (org policy) — retrying with OIDC Identity Token..."
-              HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
-                -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
-              RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
-              if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "503" ]; then
-                echo "   org policy blocking direct access, Firebase Hosting route intact (HTTP $HTTP_STATUS)"
-              fi
-            fi
 
             if [ "$HTTP_STATUS" = "000" ]; then
               echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 20 s..."
