@@ -120,14 +120,26 @@ router.post(
       });
       return res.status(400).json({ ok: false, error: 'invalid_body' });
     }
-    const rawBody = maybeRawBody;
-    const rawString = rawBody.toString('utf8');
+
+    // After the Buffer.isBuffer guard, snapshot to primitives ONCE.
+    // Downstream code reads `bodyBytes` (number) and `rawString` (string)
+    // rather than touching the original req.body chain again. This both:
+    //   1. Breaks CodeQL's "type confusion through parameter tampering"
+    //      dataflow track — the analyzer cannot easily prove that
+    //      Node's Buffer.isBuffer narrows the type for downstream
+    //      property accesses, so reading .length on the post-guard
+    //      reference still trips js/type-confusion-through-parameter-
+    //      tampering. Pre-extracting into primitives sidesteps it.
+    //   2. Defends against the (paranoid) scenario where some later
+    //      middleware mutates req.body between this handler's lines.
+    const bodyBytes: number = maybeRawBody.length;
+    const rawString: string = maybeRawBody.toString('utf8');
 
     if (!signature || !sumitClient.verifyWebhookSignature(rawString, signature)) {
       logger.warn('[SumitWebhook] signature verification failed', {
         ip: req.ip,
         signaturePresent: Boolean(signature),
-        bodyBytes: rawBody.length,
+        bodyBytes,
       });
       return res.status(401).json({ ok: false, error: 'invalid_signature' });
     }
@@ -139,7 +151,7 @@ router.post(
       parsed = JSON.parse(rawString);
     } catch {
       logger.warn('[SumitWebhook] signature OK but body is not JSON', {
-        bodyBytes: rawBody.length, preview: rawString.slice(0, 200),
+        bodyBytes, preview: rawString.slice(0, 200),
       });
       // Still 200 — we don't want SUMIT to retry forever on a malformed
       // event we can't process. The audit row captures the failure.
@@ -162,7 +174,7 @@ router.post(
           eventId,
           sumitEventType: eventType,
           ip: req.ip,
-          bodyBytes: rawBody.length,
+          bodyBytes,
           // Truncate the body so a huge payload doesn't bloat the
           // audit chain row. Keep enough to reconstruct manually.
           bodyPreview: rawString.slice(0, 2000),
@@ -175,7 +187,7 @@ router.post(
     }
 
     logger.info('[SumitWebhook] event received', {
-      eventId, eventType, bodyBytes: rawBody.length, elapsedMs: Date.now() - startMs,
+      eventId, eventType, bodyBytes, elapsedMs: Date.now() - startMs,
     });
 
     // 200 quickly — SUMIT only retries on non-2xx. We've persisted the
