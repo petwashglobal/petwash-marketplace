@@ -1106,6 +1106,7 @@ jobs:
             --set-env-vars=NODE_ENV=production
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
+            --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
           secrets: ${{ steps.build-cloudrun-secrets.outputs.secret_mappings }}
 
       # Issue #143 — capture everything operators need to diagnose a bad revision
