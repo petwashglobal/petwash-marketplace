@@ -55,6 +55,70 @@ below must be verified against the live swagger.
 | GeneralBilling | `POST /billing/generalbilling/openupayterminal/` | UPay terminal (Sumit's modern card-present rail) |
 | General | `POST /accounting/general/getvatrate/` | Get VAT rate by date (cross-check against our own VAT logic) |
 
+### 1.2 Document-type rules per Osek classification (VERIFIED 2026-05-25)
+
+From SUMIT help center articles (`/he/articles/...kabalot-osek-patur`,
+`/he/articles/...nihul-esek-osek-patur`, `/he/articles/...maavar-osek-murshe-le-osek-patur`):
+
+| Provider tax status | CAN issue | CANNOT issue |
+|---|---|---|
+| `osek_patur` (עוסק פטור — VAT-exempt) | `הצעת מחיר` (quote), `דרישת תשלום` (payment demand), `חשבון/קבלה` (combined invoice+receipt), `קבלה` (receipt only) | **`חשבונית מס`** (tax invoice), **`חשבונית מס/קבלה`** (combined tax invoice+receipt) |
+| `osek_murshe` (עוסק מורשה — VAT-registered) | All of the above PLUS `חשבונית מס`, `חשבונית מס/קבלה`, `חשבונית זיכוי` (credit note) | — |
+| `chevra` (חברה — corporation) | Same as `osek_murshe` | — |
+
+**Implication for PetWash**: `SumitClient.createDocument` currently
+hardcodes `DocumentType: 1`. That choice MUST be derived from the
+provider's Osek classification — the same field already stored on
+`providers.osek_type` via PR-S5c (merged 2026-05-23, see
+petwash-platform skill §7). If we send a tax-invoice document type for
+a `osek_patur` provider, SUMIT will reject the call. The DocumentType
+mapping table (which integer maps to which document type) is still
+ASSUMED until the swagger lands — see §2.3.
+
+### 1.3 Standard עוסק פטור business flow per SUMIT
+
+SUMIT documents teach this 3-document sequence for עוסק פטור businesses:
+
+```
+הצעת מחיר        →    דרישת תשלום         →    חשבון/קבלה
+(price quote)         (payment demand)          (combined doc on payment)
+```
+
+PetWash today goes directly from "booking confirmed" → "charge card" with no
+intermediate `דרישת תשלום` step. For B2C customers this is fine. For B2B
+provider-to-platform flows where the provider needs a payment-terms document
+(שוטף+30, etc.) before remitting, the `דרישת תשלום` document type is the
+sanctioned vehicle. Not a blocker for Mission-5, but worth knowing when
+PR-T0 / payment-rail dispatcher decisions get made.
+
+### 1.4 Legal timing rule for `חשבון/קבלה` (CRITICAL for booking flow)
+
+SUMIT help: *"החוק מחייב אותך להפיק את המסמך הזה מיד בעת קבלת התשלום"*
+(the law requires you to issue this document **immediately** upon receipt
+of payment).
+
+**Implication**: when SUMIT becomes our payment rail (Mission-11), the
+`POST /accounting/documents/create/` call cannot be deferred to a
+background job. It must execute either:
+  - in the synchronous charge-confirmation handler (preferred), or
+  - in a guaranteed-delivery queue that completes within seconds, with
+    a tight SLA + alarm on backlog
+A best-effort fire-and-forget pattern would violate ITA timing rules
+and create audit liability. Document this constraint up front so the
+Mission-11 architect doesn't accidentally architect the integration
+async.
+
+### 1.5 Free-tier ceiling (matters for test environments)
+
+SUMIT free plan: **10 documents/month, no credit card, no time limit**.
+
+**Implication**: dev / staging test orgs can run fully on the free tier as
+long as test runs stay under 10 documents/month. CI runs that create
+documents on every PR will burn through this quickly — wire any
+auto-generated documents in CI behind a `SUMIT_DRYRUN=true` flag (don't
+fire the actual `create/` call) unless we explicitly opt into a paid
+test plan.
+
 ## 2. ASSUMED in Mission-5 (must verify before prod)
 
 These are the choices `SumitClient.createDocument` makes today based
