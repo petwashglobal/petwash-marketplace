@@ -632,6 +632,12 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
     // HMAC-verified webhooks are authenticated out-of-band; not CSRF-vulnerable.
     if (/^\/api\/webhooks\//.test(req.path)) return true;
+    // Maya voice provider webhooks (Twilio, Vapi, Retell, etc.) are server-to-server
+    // and authenticated by provider HMAC at the route level (e.g. X-Twilio-Signature
+    // in TwilioVoiceProvider). Browsers never originate these requests, so there is
+    // no CSRF attack surface. Without this exemption every inbound call is rejected
+    // with EBADCSRFTOKEN before the route handler runs.
+    if (/^\/api\/maya\/voice\//.test(req.path)) return true;
     // Bearer-authenticated requests: browsers cannot auto-attach Authorization headers
     // on cross-origin requests, so there is no CSRF attack surface here.
     const authHeader = req.headers['authorization'] as string | undefined;
