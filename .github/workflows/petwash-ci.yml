@@ -1036,35 +1036,37 @@ jobs:
             "GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest"
             "GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest"
             "FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest"
-            # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
-            # These were defined ONLY in the legacy `.replit` file and never
-            # made it into Cloud Run, so production has been silently
-            # degraded since the migration:
-            #
-            #   SUPER_ADMIN_UID (missing) →
-            #     server/routes/disputes.ts:27-36 emits "FATAL CONFIG" at
-            #     startup; every super-admin dispute endpoint returns 503.
-            #     Also used by prestige-pass.ts:1588 and provider-trust.ts:41.
-            #     Operator: create the secret in GCP Secret Manager with
-            #     `gcloud secrets create SUPER_ADMIN_UID --replication-policy=automatic`
-            #     then `echo -n "<the-firebase-uid>" | gcloud secrets versions
-            #     add SUPER_ADMIN_UID --data-file=-`. Source value: .replit.
-            #
-            #   ADMIN_APPROVER_EMAIL (missing) →
-            #     server/routes/post-login.ts:13 logs "approval emails will
-            #     be skipped". Operator: same secret-create pattern.
-            #
-            #   FINANCE_AUTHORIZED_EMAILS (missing) →
-            #     server/routes/bank.ts:83 — financial admin gating depends
-            #     on this. Comma-separated email list.
-            "SUPER_ADMIN_UID=SUPER_ADMIN_UID:latest"
-            "ADMIN_APPROVER_EMAIL=ADMIN_APPROVER_EMAIL:latest"
-            "FINANCE_AUTHORIZED_EMAILS=FINANCE_AUTHORIZED_EMAILS:latest"
           )
 
           optional_mappings=(
             "REDIS_URL=REDIS_URL:latest"
             "SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
+            # These were defined ONLY in the legacy .replit file and never
+            # made it into Cloud Run. Originally added to required_mappings
+            # in PR #447 — that broke the deploy because the secrets don't
+            # yet exist in GCP Secret Manager (deploy fails fast on missing
+            # required secrets). Moved to optional so the deploy proceeds;
+            # the helper script silently skips missing optional secrets.
+            #
+            # When the operator gets around to creating the secrets, they
+            # come online on the next deploy with no code change needed:
+            #
+            #   SUPER_ADMIN_UID (currently missing) →
+            #     server/routes/disputes.ts:27-36 emits FATAL CONFIG at
+            #     startup; every super-admin dispute endpoint returns 503.
+            #     Also degrades prestige-pass.ts:1588 + provider-trust.ts:41.
+            #     gcloud secrets create SUPER_ADMIN_UID --replication-policy=automatic
+            #     echo -n "<firebase-uid>" | gcloud secrets versions add SUPER_ADMIN_UID --data-file=-
+            #
+            #   ADMIN_APPROVER_EMAIL (currently missing) →
+            #     server/routes/post-login.ts:13 logs approval emails skipped.
+            #
+            #   FINANCE_AUTHORIZED_EMAILS (currently missing) →
+            #     server/routes/bank.ts:83 financial admin gating degraded.
+            "SUPER_ADMIN_UID=SUPER_ADMIN_UID:latest"
+            "ADMIN_APPROVER_EMAIL=ADMIN_APPROVER_EMAIL:latest"
+            "FINANCE_AUTHORIZED_EMAILS=FINANCE_AUTHORIZED_EMAILS:latest"
             # Restored from legacy .replit (2026-05-25 audit). Nice-to-have
             # alerting channel — emergency SMS to a single phone. If absent,
             # the alert simply isn't sent. Marked optional because security
