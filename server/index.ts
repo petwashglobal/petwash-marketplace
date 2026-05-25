@@ -644,6 +644,18 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     if (authHeader?.startsWith('Bearer ')) return true;
     // Auth session / OTP endpoints (see AUTH_CSRF_EXEMPT above).
     if (AUTH_CSRF_EXEMPT.has(req.path)) return true;
+    // navigator.sendBeacon() cannot attach custom headers per the W3C Beacon spec,
+    // so an X-CSRF-Token header is physically impossible from the call site at
+    // client/src/lib/interactionTracker.ts:294. The endpoint only records
+    // anonymous UX telemetry (no auth-sensitive state mutation), so the lack of a
+    // CSRF token is acceptable. Live production was returning 403 on every flush.
+    if (req.path === '/api/track/interactions') return true;
+    // Public cookie-banner consent capture (client/src/lib/consent.ts:70).
+    // Hit by unauthenticated visitors on first-page-load before a pw.csrf cookie
+    // is established, and the endpoint only writes the visitor's own consent
+    // choices. Same path was returning 403 in production; exempt until a token
+    // round-trip helper is added to the client.
+    if (req.path === '/api/consent') return true;
     return false;
   },
 });
