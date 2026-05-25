@@ -1203,6 +1203,21 @@ jobs:
       # 0% production traffic until smoke tests pass below. Previous revision
       # continues serving 100% traffic, so a failed deploy never breaks prod and
       # rollback is implicit (just don't promote).
+      #
+      # GOOGLE_PLACES_LIVE=true in --set-env-vars: declared in cloudrun-service.yaml:199
+      # but that yaml is NOT applied by this deploy step (it uses
+      # google-github-actions/deploy-cloudrun, not gcloud run services replace).
+      # Without setting it explicitly here, the var is unset on Cloud Run, and
+      # the behaviour falls through to the NODE_ENV=production branch in
+      # server/lib/feature-flags/googlePlaces.ts:60. Wiring it explicitly keeps
+      # the documented kill-switch operable and removes the silent dependency
+      # on NODE_ENV.
+      #
+      # NOTE on flags block syntax: only `--flag=value` lines below — comments
+      # inside the `flags: |` literal block scalar are passed through to the
+      # action's shell invocation as positional args and break gcloud parsing
+      # if they contain quotes or apostrophes. Keep explanatory text here, not
+      # inline. (Lesson from PR #448 main-deploy break, 2026-05-25.)
       - name: Deploy to Cloud Run (no-traffic candidate)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -1220,17 +1235,6 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            # GOOGLE_PLACES_LIVE explicitly ON — declared in cloudrun-service.yaml:199
-            # but that yaml is NOT applied by this deploy step (it uses
-            # google-github-actions/deploy-cloudrun, not `gcloud run services
-            # replace cloudrun-service.yaml`). Without setting it here, the
-            # value is unset on Cloud Run; today's behaviour relies on the
-            # NODE_ENV=production fallback in server/lib/feature-flags/
-            # googlePlaces.ts:60. Wiring it explicitly:
-            #   - makes the kill-switch real (set to 'false' and redeploy
-            #     to disable the proxy without a code change)
-            #   - removes the silent dependency on NODE_ENV
-            #   - matches the documented intent at cloudrun-service.yaml:199
             --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
