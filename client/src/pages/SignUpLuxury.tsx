@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { signupFlags } from '@/lib/authSignupFlags';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
   FaApple, FaFacebookF, FaInstagram, FaFingerprint, FaLock, FaWallet,
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
@@ -123,7 +124,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [walletConsent, setWalletConsent] = useState(true);
   const [walletIntent, setWalletIntent] = useState<'apple' | 'google' | null>(null);
   const [terms, setTerms] = useState(false);
-  const [robot, setRobot] = useState(false); // visual "I'm not a robot" — real reCAPTCHA v3 is invisible server-side
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<1 | 2>(1); // mobile progressive disclosure
@@ -151,9 +151,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     if (!requireTerms()) return;
     setBusy(true);
     try {
+      // Real bot protection via Cloudflare Turnstile (invisible).
+      // Returns null when VITE_TURNSTILE_SITE_KEY is unset (dev/staging
+      // without the secret) — the server treats Turnstile as best-effort
+      // bonus signal, never blocking, so a missing token is safe.
+      const turnstileToken = await executeTurnstileInvisible('signup_sms_start').catch(() => null);
       const r = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ phone, language, flow }),
+        body: JSON.stringify({ phone, language, flow, turnstileToken }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'SMS אינו זמין כעת — נסה אימייל או Google' : 'SMS is temporarily unavailable. Please use email or Google.')); return; }
@@ -342,7 +347,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     termsLink: he ? 'תנאי השימוש' : 'Terms of Service',
     andTo: he ? ' ול' : ' and ',
     privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
-    notRobot: he ? 'אני לא רובוט' : "I'm not a robot",
 
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
     bank: he ? 'אבטחה ברמת בנק' : 'Bank-level security',
@@ -618,16 +622,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </span>
               </label>
 
-              <label className={`sl-robot${robot ? ' is-on' : ''}`}>
-                <input type="checkbox" checked={robot} onChange={(e) => setRobot(e.target.checked)} />
-                <span className="sl-robotMark"><FaCheckCircle /></span>
-                <span className="sl-robotTxt">{t.notRobot}</span>
-                <span className="sl-robotBadge" aria-hidden>
-                  <span className="sl-robotLogo">reCAPTCHA</span>
-                  <span className="sl-robotFine">Privacy · Terms</span>
-                </span>
-              </label>
-
+              {/*
+                Removed the fake "I'm not a robot" CSS checkbox (was a plain
+                <input type="checkbox"> with a reCAPTCHA-style badge — pure
+                visual decoration, never invoked any captcha). The real
+                anti-abuse signal is `executeTurnstileInvisible(...)` called
+                inside sendCode() below; the OTP code itself is the
+                authentication factor; Twilio rate-limits + per-phone caps
+                provide additional defense. Honest UI > security theater.
+                See PR #452 (SDD §17) for the design rationale.
+              */}
               <button className="sl-cta" disabled={busy}
                 onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}>
                 <FaLock aria-hidden /> {ctaLabel}
@@ -1058,25 +1062,6 @@ function styles(he: boolean) {
     }
     .sl-terms input{ width:22px; height:22px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
     .sl-terms a{ color:var(--gold2); font-weight:700; text-decoration:underline }
-    .sl-robot{
-      display:grid; grid-template-columns:auto auto 1fr auto; align-items:center; gap:12px; cursor:pointer;
-      padding:14px 16px; border-radius:12px;
-      border:1px solid var(--line); background:rgba(255,255,255,.04);
-    }
-    .sl-robot.is-on{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.06) }
-    .sl-robot input{ width:28px; height:28px; accent-color:#22c55e; flex:0 0 auto; cursor:pointer; opacity:0; position:absolute }
-    .sl-robotMark{
-      width:28px; height:28px; border-radius:6px;
-      border:1.5px solid rgba(255,255,255,.3); background:rgba(0,0,0,.4);
-      display:inline-flex; align-items:center; justify-content:center;
-      color:#22c55e; font-size:20px;
-    }
-    .sl-robot.is-on .sl-robotMark{ border-color:#22c55e; background:rgba(34,197,94,.18) }
-    .sl-robot:not(.is-on) .sl-robotMark svg{ opacity:0 }
-    .sl-robotTxt{ font-weight:600; color:var(--white); font-size:14.5px }
-    .sl-robotBadge{ display:flex; flex-direction:column; align-items:flex-end; color:var(--muted); line-height:1.05 }
-    .sl-robotLogo{ font-weight:900; letter-spacing:.02em; font-size:11.5px; color:var(--white) }
-    .sl-robotFine{ font-size:9.5px; letter-spacing:.04em; margin-top:2px }
 
     /* CTA — big white button (matches mockup), with gold-glow hover */
     .sl-cta{

@@ -23,6 +23,7 @@ import { Router, type Request, type Response } from 'express';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { logger } from '../lib/logger';
 import { logAuditEvent } from '../middleware/auditLog';
+import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 
 // Last-4 only — never log a full phone number (PII) or the OTP code.
 function maskPhone(phone: unknown): string | undefined {
@@ -57,12 +58,29 @@ router.post('/start', async (req: Request, res: Response) => {
   const phone = body.phone;
   const language = typeof body.language === 'string' ? body.language : 'he';
   const flow = normalizeFlow(body.flow);
+  const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : undefined;
 
   if (!phone || typeof phone !== 'string') {
     return res.status(400).json({ ok: false, error: 'phone_required' });
   }
 
   const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+
+  // Best-effort Turnstile verification (NEVER blocks).
+  // Mirrors the existing pattern in publicAuthRoutes.ts:294-317. The OTP code
+  // itself is the authentication factor; Turnstile is bonus signal. Blocking
+  // on missing/invalid token would lock users out whenever
+  // VITE_TURNSTILE_SITE_KEY is unset (PR #447 dependency) — that risk is not
+  // acceptable for the primary signup path.
+  let captchaSignal: 'turnstile_passed' | 'turnstile_failed' | 'turnstile_absent' = 'turnstile_absent';
+  if (turnstileToken) {
+    const tr = await verifyTurnstileToken(turnstileToken, callerIp);
+    captchaSignal = tr.valid ? 'turnstile_passed' : 'turnstile_failed';
+    if (!tr.valid) {
+      logger.warn('[auth-sms] Turnstile failed (non-blocking)', { phone: maskPhone(phone), reason: tr.reason });
+    }
+  }
+
   try {
     const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
     if (!result.success) {
@@ -78,7 +96,7 @@ router.post('/start', async (req: Request, res: Response) => {
     void logAuditEvent({
       actionType: 'SIGNUP_OTP_SENT',
       ip: callerIp, userAgent: req.headers['user-agent'],
-      metadata: { method: 'mobile', flow, phone: maskPhone(phone) },
+      metadata: { method: 'mobile', flow, phone: maskPhone(phone), captchaSignal },
     });
     return res.status(200).json({ ok: true, message: result.message, expiresIn: result.expiresIn, flow });
   } catch (err) {
