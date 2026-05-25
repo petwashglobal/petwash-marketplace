@@ -5,9 +5,7 @@ import crypto from 'crypto';
 
 const PostgresSessionStore = connectPg(session);
 
-const isProd = process.env.NODE_ENV === 'production' || 
-               process.env.REPLIT_DEPLOYMENT === '1' || 
-               process.env.REPLIT_DEPLOYMENT === 'true';
+const isProd = process.env.NODE_ENV === 'production';
 const isDev = process.env.NODE_ENV === 'development';
 
 // Get session secret with proper fallback handling
@@ -25,7 +23,7 @@ function getSessionSecret(): string {
   // Production: throw error if secret is missing
   throw new Error(
     'SESSION_SECRET environment variable is required in production.\n' +
-    'Please set SESSION_SECRET in Replit Secrets or your environment configuration.'
+    'Please set SESSION_SECRET in GCP Secret Manager and bind it to the Cloud Run service.'
   );
 }
 

@@ -1439,7 +1439,12 @@ jobs:
               continue
             fi
 
-            # Got a real response — exit retry loop
+            # Got a real response — exit retry loop. NETWORK_ERROR is NOT
+            # retried here: this gate's job is to verify the secret bound to
+            # the Cloud Run revision, which is answered by apiKeyConfigured /
+            # apiKeyLength in the body. Whether Google is reachable from a
+            # brand-new container is unrelated to binding, flaky by physics,
+            # and re-verified post-deploy by the live-URL health check.
             break
           done
 
@@ -1466,6 +1471,8 @@ jobs:
           REASON=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('reason',''))" 2>/dev/null || echo "")
           KEY_LEN=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('apiKeyLength',0))" 2>/dev/null || echo "0")
 
+          KEY_CONFIGURED=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(str(d.get('apiKeyConfigured',False)).lower())" 2>/dev/null || echo "false")
+
           case "$PLACES_STATUS" in
             OK)
               echo "✅ Places API: key valid (Google HTTP $GOOGLE_HTTP)"
@@ -1482,6 +1489,25 @@ jobs:
               echo "   → Google error: $REASON"
               echo "   → Fix: add GOOGLE_MAPS_API_KEY as a GitHub Actions secret to sync the correct value"
               exit 1
+              ;;
+            NETWORK_ERROR)
+              # SOFT PASS: outbound fetch from the freshly-booted candidate container to
+              # Google failed (cold DNS / TLS / one-off blip). This does NOT mean the
+              # secret failed to bind — apiKeyConfigured / apiKeyLength tell us that.
+              # The post-deploy live-URL health check (later in this workflow) re-verifies
+              # real Google reachability on the promoted revision.
+              if [ "$KEY_CONFIGURED" = "true" ] && [ "$KEY_LEN" -ge 30 ]; then
+                echo "⚠️  NETWORK_ERROR but key binding verified — candidate gate PASSED"
+                echo "   apiKeyConfigured=true, apiKeyLength=$KEY_LEN chars"
+                echo "   Cold-start outbound fetch to Google failed: $REASON"
+                echo "   This gate verifies binding, not Google reachability."
+                echo "   Live-URL post-deploy health check will verify Google reachability."
+              else
+                echo "❌ NETWORK_ERROR and key binding could NOT be verified"
+                echo "   apiKeyConfigured=$KEY_CONFIGURED, apiKeyLength=$KEY_LEN"
+                echo "   Reason: $REASON"
+                exit 1
+              fi
               ;;
             PARSE_FAIL)
               echo "❌ PARSE_FAIL: endpoint returned HTTP $HTTP_STATUS but body is not valid JSON"

@@ -40,13 +40,11 @@ const db = admin.firestore();
 // matching server/auth/passkey.ts. Fallback to environment-derived values only in dev.
 const RP_NAME = "Pet Wash Ltd";
 const RP_ID = process.env.WEBAUTHN_RP_ID
-  || (process.env.NODE_ENV === "production"
-      ? "petwash.co.il"
-      : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "localhost"));
+  || (process.env.NODE_ENV === "production" ? "petwash.co.il" : "localhost");
 const ORIGIN = process.env.WEBAUTHN_ORIGIN
   || (process.env.NODE_ENV === "production"
       ? "https://petwash.co.il"
-      : (process.env.BASE_URL || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "http://localhost:5000")));
+      : (process.env.BASE_URL || "http://localhost:5000"));
 
 /**
  * POST /webauthn/register/options
