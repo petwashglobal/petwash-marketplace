@@ -1081,6 +1081,70 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Cloud Run keeps a service-level "RoutingTraffic" condition that
+      # references the most recent failed revision. Once a revision is left in
+      # Ready=False state, every subsequent `gcloud run deploy` returns the
+      # stale "Revision 'X' is not ready and cannot serve traffic" error in
+      # the deploy step's stderr — even when the NEW revision it just created
+      # is healthy. The workflow then exits before promotion, the new revision
+      # sits at 0% traffic, and operators chase phantom startup-probe failures
+      # in server/index.ts that aren't real. Diagnosed 2026-05-25 on revisions
+      # 01123-ges + 01124-xeq.
+      #
+      # Fix: before each deploy, list revisions in Ready=False state and delete
+      # them. The currently-serving revision is filtered out as defense in depth
+      # (a Ready=False revision should never have traffic, but skip just in case).
+      # Cloud Run clears the stale service condition automatically once the
+      # failed revisions are gone, and the next deploy promotes normally.
+      - name: Clean up failed Cloud Run revisions before deploy
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          SVC="${{ env.SERVICE_NAME }}"
+          REGION="${{ env.REGION }}"
+          PROJECT="${{ env.PROJECT_ID }}"
+
+          trafficked=$(gcloud run services describe "$SVC" \
+            --region="$REGION" --project="$PROJECT" \
+            --format=json 2>/dev/null | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          for t in d.get('status', {}).get('traffic', []):
+              if (t.get('percent') or 0) > 0:
+                  print(t.get('revisionName', ''))
+          " || echo "")
+
+          failed=$(gcloud run revisions list \
+            --service="$SVC" \
+            --region="$REGION" \
+            --project="$PROJECT" \
+            --filter="status.conditions.type:Ready AND status.conditions.status:False" \
+            --format="value(metadata.name)" 2>/dev/null || echo "")
+
+          if [ -z "$failed" ]; then
+            echo "✅ No failed revisions to clean."
+            exit 0
+          fi
+
+          echo "Failed revisions detected:"
+          echo "$failed"
+          echo ""
+
+          while IFS= read -r rev; do
+            [ -z "$rev" ] && continue
+            if echo "$trafficked" | grep -q "^${rev}$"; then
+              echo "⚠️  Skipping $rev — currently has traffic (defense in depth)"
+              continue
+            fi
+            echo "🧹 Deleting failed revision: $rev"
+            gcloud run revisions delete "$rev" \
+              --region="$REGION" --project="$PROJECT" --quiet \
+              || echo "   Could not delete $rev (continuing)"
+          done <<< "$failed"
+
+          echo ""
+          echo "✅ Failed revision cleanup complete — next deploy can proceed without stale RoutingTraffic condition."
+
       # Issue #143 — deploy with --no-traffic + a unique --tag.
       # The new revision gets a per-tag URL (https://<tag>---<service-host>) but
       # 0% production traffic until smoke tests pass below. Previous revision
