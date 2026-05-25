@@ -1,4 +1,37 @@
 /**
+ * ╔════════════════════════════════════════════════════════════════════╗
+ * ║  🛑 LOCKED DESIGN — DO NOT REDESIGN, RESTYLE, OR HIDE SECTIONS    ║
+ * ╠════════════════════════════════════════════════════════════════════╣
+ * ║                                                                    ║
+ * ║  This signup page MUST visually match the approved reference:      ║
+ * ║      client/public/design-reference/signup-approved.png            ║
+ * ║                                                                    ║
+ * ║  See: client/public/design-reference/README.md for the full        ║
+ * ║  binding rules from the operator (2026-05-25).                     ║
+ * ║                                                                    ║
+ * ║  ALLOWED changes:                                                  ║
+ * ║   - Wire real backend behaviour (auth, validation, secrets)        ║
+ * ║   - Responsive SCALING so the exact approved kit fits iPhone,      ║
+ * ║     iPad/tablet, and desktop screens                               ║
+ * ║   - Fixes that don't alter visual appearance (a11y, perf, bugs)    ║
+ * ║                                                                    ║
+ * ║  FORBIDDEN without explicit operator approval:                     ║
+ * ║   - Hiding sections, images, or buttons at any breakpoint          ║
+ * ║   - Cropping or fading any approved element                        ║
+ * ║   - Replacing the approved design with a "mobile-first" variant    ║
+ * ║   - Recoloring, restyling, or rearranging buttons                  ║
+ * ║   - Removing or modifying the dog photo, premium card, trust       ║
+ * ║     card, security badge, social login buttons, wallet buttons,    ║
+ * ║     or the Download Our App banner                                 ║
+ * ║   - Adding "creative improvements" the operator did not request    ║
+ * ║                                                                    ║
+ * ║  History of violations:                                            ║
+ * ║   - PR #458 (REVERTED in PR #459): hid the dog photo on small      ║
+ * ║     mobile + landscape "as a polish". Operator rejected — the      ║
+ * ║     approved kit stays visible on every breakpoint.                ║
+ * ║                                                                    ║
+ * ╚════════════════════════════════════════════════════════════════════╝
+ *
  * SignUpLuxury — canonical /signup front door (black-luxury 2026, full
  * mockup). Locked to the owner's design brief: pure-black background, gold
  * accent, two-column on landscape iPad + desktop, stacked on portrait iPad,
@@ -1162,35 +1195,6 @@ function styles(he: boolean) {
       .sl-dlRight{ justify-content:center }
       .sl-h1{ font-size:clamp(34px,9vw,46px) }
       .sl-title{ font-size:clamp(26px,8vw,34px) }
-    }
-
-    /* ≤ 480px (small phones — iPhone SE, iPhone mini, low-end Android):
-     * Hide the hero dog photo + its decorative paw divider. The form is
-     * the action; with this little screen real estate, the brand still
-     * comes through via the logo, eyebrow, h1, and the cards below.
-     * Operator request 2026-05-25: "if iPhone too small take out the
-     * picture if people in Bottom left". Buttons + colours untouched.
-     */
-    @media(max-width:480px){
-      .sl-dogWrap, .sl-divPaw{ display:none }
-      .sl-hero{ gap:14px }
-      .sl-h1{ font-size:clamp(30px,8.5vw,40px) }
-      .sl-sub{ font-size:14.5px }
-    }
-
-    /* Landscape on phones (height is the scarce resource — iPhones held
-     * sideways, foldables in landscape): hide the hero image and tighten
-     * vertical padding so the form is reachable without scrolling. Also
-     * honors iOS safe-area insets so the home indicator never overlaps
-     * the sticky CTA.
-     */
-    @media(max-height:600px) and (orientation:landscape){
-      .sl-dogWrap, .sl-divPaw{ display:none }
-      .sl-hero{ gap:14px }
-      .sl-frame{
-        padding-top:max(env(safe-area-inset-top), 12px);
-        padding-bottom:max(env(safe-area-inset-bottom), 90px);
-      }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
