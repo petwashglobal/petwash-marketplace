@@ -1167,7 +1167,18 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production
+            # GOOGLE_PLACES_LIVE explicitly ON — declared in cloudrun-service.yaml:199
+            # but that yaml is NOT applied by this deploy step (it uses
+            # google-github-actions/deploy-cloudrun, not `gcloud run services
+            # replace cloudrun-service.yaml`). Without setting it here, the
+            # value is unset on Cloud Run; today's behaviour relies on the
+            # NODE_ENV=production fallback in server/lib/feature-flags/
+            # googlePlaces.ts:60. Wiring it explicitly:
+            #   - makes the kill-switch real (set to 'false' and redeploy
+            #     to disable the proxy without a code change)
+            #   - removes the silent dependency on NODE_ENV
+            #   - matches the documented intent at cloudrun-service.yaml:199
+            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
             --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
