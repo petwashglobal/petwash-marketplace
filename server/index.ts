@@ -795,41 +795,6 @@ async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string 
   }
 }
 
-app.get('/health', (_req, res) => {
-  res.set('X-Octopus-Source', 'petwash-backend-global');
-  const runtime = classifyRuntimeServices(process.env, isDatabaseAvailable);
-  const status =
-    runtime.productionCriticalMissing.length > 0
-      ? 'CRITICAL'
-      : (_startupConfigErrors.length > 0 || _startupSecurityViolations.length > 0)
-        ? 'DEGRADED'
-        : 'OK';
-  // PR-HEALTH-BUILD-SHA: surface PUBLIC deploy identifiers so the CEO /
-  // ops can confirm the production build matches the latest merge from
-  // any device with no GCP auth. Helper reads ONLY non-secret deploy
-  // identifiers (K_SERVICE / K_REVISION / K_CONFIGURATION from Cloud
-  // Run, GIT_SHA / COMMIT_SHA / GITHUB_SHA from CI). Never throws.
-  // See server/lib/buildInfo.ts.
-  // PR-CI-SMOKE-HOTFIX: imported at module top (ESM-correct).
-  res.status(200).json({
-    status,
-    timestamp: new Date().toISOString(),
-    bootTs: healthState.bootTs,
-    build: _getBuildInfo(),
-    runtimeServices: runtime,
-    checks: {
-      process: true,
-      env: process.env.NODE_ENV || 'unknown',
-      ...(_startupConfigErrors.length > 0 ? { configErrors: _startupConfigErrors } : {}),
-      ...(_startupSecurityViolations.length > 0 ? { securityViolations: _startupSecurityViolations } : {}),
-    },
-    metrics: {
-      uptimeSeconds: Math.floor(process.uptime()),
-      memoryRss: process.memoryUsage().rss,
-    },
-  });
-});
-
 // /health/strict — CI deployment gate.
 //
 // Returns 503 ONLY when _startupSecurityViolations is non-empty, i.e. when the app

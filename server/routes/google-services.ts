@@ -277,61 +277,9 @@ function isAllowedPlacesOrigin(req: any): boolean {
   return isAllowedHostname(hostname, [...defaultAllowed, ...envAllowed]);
 }
 
-router.get('/places-health', async (req, res) => {
-  const traceId = randomUUID().slice(0, 12);
-  const checks: Record<string, any> = {
-    traceId,
-    timestamp: new Date().toISOString(),
-    apiKeyConfigured: !!process.env.GOOGLE_MAPS_API_KEY,
-    apiKeyLength: process.env.GOOGLE_MAPS_API_KEY?.length || 0,
-  };
-
-  if (!process.env.GOOGLE_MAPS_API_KEY) {
-    checks.status = 'GOOGLE_KEY_MISSING';
-    checks.reason = 'GOOGLE_MAPS_API_KEY env var not present in runtime';
-    logger.error('[Places Health] API key missing', { traceId });
-    // Always return HTTP 200 — callers must read the JSON status field, not the HTTP code.
-    // Returning 4xx/5xx here causes curl -f to discard the body and hide the real cause.
-    return res.status(200).json(checks);
-  }
-
-  try {
-    const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY!,
-        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
-      },
-      body: JSON.stringify({ input: 'Tel Aviv', languageCode: 'en', includedRegionCodes: ['il'] }),
-    });
-    const data = await response.json();
-
-    checks.googleHttpStatus = response.status;
-    checks.apiVersion = 'v1';
-    checks.predictionsCount = (data.suggestions || []).length;
-
-    if (response.ok) {
-      checks.status = 'OK';
-      logger.info('[Places Health] Google Places API v1 is working', { traceId, httpStatus: response.status });
-    } else if (response.status === 401 || response.status === 403) {
-      checks.status = 'GOOGLE_KEY_INVALID';
-      checks.reason = data.error?.message || `Google rejected key (HTTP ${response.status})`;
-      logger.error('[Places Health] Google rejected API key', { traceId, httpStatus: response.status, googleError: data.error?.message });
-    } else {
-      checks.status = `HTTP_${response.status}`;
-      checks.reason = data.error?.message || `Unexpected HTTP ${response.status} from Google`;
-      logger.error('[Places Health] Google Places API unexpected error', { traceId, httpStatus: response.status, googleError: data.error?.message });
-    }
-  } catch (error: any) {
-    checks.status = 'NETWORK_ERROR';
-    checks.reason = `Could not reach Google Places API: ${error.message}`;
-    logger.error('[Places Health] Network error contacting Google', { traceId, message: error.message });
-  }
-
-  // Always HTTP 200 — status is encoded in the JSON body, not the HTTP code.
-  res.status(200).json(checks);
-});
+// NOTE: GET /places-health is owned by the early-mount handler in server/index.ts
+// (registered before the startup guard so it answers during cold-start). A second
+// handler here would be shadowed by Express first-match ordering and never run.
 
 /**
  * GET /api/google/places-autocomplete - Server-side Google Places API v1 Autocomplete proxy
