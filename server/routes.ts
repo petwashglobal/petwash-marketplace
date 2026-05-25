@@ -668,26 +668,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // Private health check (requires X-Health-Key header for monitoring services)
-  app.get('/_health', (req, res) => {
-    const healthKey = process.env.HEALTH_KEY;
-    
-    // If HEALTH_KEY is configured, require it
-    if (healthKey && req.headers['x-health-key'] !== healthKey) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
-    
-    res.set('Cache-Control', 'no-store').json({
-      ok: true,
-      status: 'healthy',
-      service: '⁦Pet Wash™⁩ API',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      memory: process.memoryUsage(),
-      pid: process.pid,
-    });
-  });
+  // NOTE: /_health is owned by the early-mount handler in server/index.ts
+  // (registered before the startup guard). A second handler here was shadowed
+  // by Express first-match and never ran — its X-Health-Key auth gate never
+  // protected anything because the unauthenticated early handler answered
+  // first. Removed.
 
   // PRODUCTION FIX: Firebase config endpoint (NO rate limiting, NO auth required)
   // This endpoint must be accessible immediately on page load for Firebase to initialize
@@ -774,15 +759,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // PUBLIC HEALTH CHECK - No auth required
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      version: '2.0.0',
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
+  // NOTE: /api/health is owned by the rich handler in server/index.ts:853
+  // (registered before the startup guard, does real DB + startup-phase checks).
+  // This stub was shadowed by Express first-match and never ran. Removed.
 
   // PUBLIC WASH PACKAGES - No auth required (for marketing display)
   app.get('/api/credit-wallet/packages', (req, res) => {
@@ -14573,26 +14552,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // Simple Health Check for Load Balancers
-  app.get('/health', async (req, res) => {
-    try {
-      const memOK = process.memoryUsage().heapUsed < (150 * 1024 * 1024); // 150MB threshold
-      const status = memOK ? 'ok' : 'degraded';
-      
-      res.json({
-        status,
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: {
-          heapUsed: process.memoryUsage().heapUsed,
-          heapTotal: process.memoryUsage().heapTotal,
-          threshold: 150 * 1024 * 1024,
-        },
-      });
-    } catch (error: any) {
-      res.status(503).json({ status: 'error', error: error.message });
-    }
-  });
+  // NOTE: /health is owned by _earlyHealthHandler in server/index.ts:439.
+  // The memory-aware handler that used to live here was shadowed by Express
+  // first-match and never ran — no load balancer ever saw heap thresholds.
+  // Removed. If memory-aware health is desired, fold it into
+  // _earlyHealthHandler in index.ts.
 
   // Performance Metrics Tracking
   app.post('/api/performance/track', async (req, res) => {
