@@ -829,6 +829,29 @@ jobs:
           # docs/GOOGLE_PLACES_AUTOCOMPLETE_AUDIT.md §1.
           VITE_GOOGLE_PLACES_LIVE: 'true'
 
+          # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
+          # These were defined ONLY in the legacy `.replit` file and never
+          # made it into the GitHub Actions build env, so the production
+          # client bundle has been shipping with them undefined:
+          #
+          #   VITE_TURNSTILE_SITE_KEY (missing) →
+          #     client/src/components/TurnstileWidget.tsx:50 logs
+          #     "VITE_TURNSTILE_SITE_KEY not set — skipping Turnstile" and
+          #     returns null. Every form using executeTurnstileInvisible()
+          #     ships without bot protection. Site keys are public per
+          #     Cloudflare design — safe to commit the secret reference.
+          #
+          #   VITE_FIREBASE_APPCHECK_SITE_KEY (missing) →
+          #     Firebase App Check (anti-abuse on /api/* endpoints) is
+          #     silently disabled in the production client.
+          #
+          # Add the actual values to GitHub Actions secrets:
+          #   Settings → Secrets and variables → Actions → New repository
+          #   secret. Use the names below. Source of the legacy values is
+          #   .replit at the repo root.
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -1013,11 +1036,41 @@ jobs:
             "GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest"
             "GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest"
             "FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest"
+            # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
+            # These were defined ONLY in the legacy `.replit` file and never
+            # made it into Cloud Run, so production has been silently
+            # degraded since the migration:
+            #
+            #   SUPER_ADMIN_UID (missing) →
+            #     server/routes/disputes.ts:27-36 emits "FATAL CONFIG" at
+            #     startup; every super-admin dispute endpoint returns 503.
+            #     Also used by prestige-pass.ts:1588 and provider-trust.ts:41.
+            #     Operator: create the secret in GCP Secret Manager with
+            #     `gcloud secrets create SUPER_ADMIN_UID --replication-policy=automatic`
+            #     then `echo -n "<the-firebase-uid>" | gcloud secrets versions
+            #     add SUPER_ADMIN_UID --data-file=-`. Source value: .replit.
+            #
+            #   ADMIN_APPROVER_EMAIL (missing) →
+            #     server/routes/post-login.ts:13 logs "approval emails will
+            #     be skipped". Operator: same secret-create pattern.
+            #
+            #   FINANCE_AUTHORIZED_EMAILS (missing) →
+            #     server/routes/bank.ts:83 — financial admin gating depends
+            #     on this. Comma-separated email list.
+            "SUPER_ADMIN_UID=SUPER_ADMIN_UID:latest"
+            "ADMIN_APPROVER_EMAIL=ADMIN_APPROVER_EMAIL:latest"
+            "FINANCE_AUTHORIZED_EMAILS=FINANCE_AUTHORIZED_EMAILS:latest"
           )
 
           optional_mappings=(
             "REDIS_URL=REDIS_URL:latest"
             "SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            # Restored from legacy .replit (2026-05-25 audit). Nice-to-have
+            # alerting channel — emergency SMS to a single phone. If absent,
+            # the alert simply isn't sent. Marked optional because security
+            # incidents already alert via Slack/email; SMS is the extra
+            # belt-and-suspenders signal for after-hours pager.
+            "SUPER_ADMIN_ALERT_PHONE=SUPER_ADMIN_ALERT_PHONE:latest"
             # Twilio voice + SMS — moved from required to optional 2026-05-24
             # so that deleting any Twilio secret from GCP no longer crashes
             # the deploy. When a secret is missing, the helper below silently
