@@ -14,15 +14,110 @@ below must be verified against the live swagger.
 |---|---|
 | SUMIT is ITA-registered (Software #00215702) | SUMIT marketing site |
 | PCI DSS Level 1 certified | SUMIT marketing site |
-| REST API exists | `app.sumit.co.il/help/developers/swagger/index.html` (Swagger UI link itself is public, content gated) |
-| Endpoint families: Accounting (Documents), Payments (Methods), Payments (Payments) | CEO research summary, 2026-05-23 |
-| Webhooks for payment success/failure | SUMIT marketing site |
-| Sandbox environment exists | SUMIT marketing site |
+| Base URL: `https://api.sumit.co.il/` | **VERIFIED 2026-05-25** — Developer Portal |
+| Authentication: API Key + Company ID **in request body** | **VERIFIED 2026-05-25** — Developer Portal note |
+| Sandbox = a "testing organization" + test cards on the **same** `api.sumit.co.il/` endpoint — NOT a separate sandbox subdomain. `sandbox-api.sumit.co.il` is NXDOMAIN. | **VERIFIED 2026-05-25** — raw DNS lookup + Developer Portal sandbox note |
+| Sumit was formerly OfficeGuy (useful for searching legacy SDKs/docs) | **VERIFIED 2026-05-25** — Developer Portal |
 | Direct integration with חשבוניות ישראל (ITA) for SHAAM allocation | SUMIT marketing site |
 | Supports עוסק פטור (חשבונית עסקה), עוסק מורשה (חשבונית מס), חברה (חשבונית מס) | Bank-of-Israel attachment confirmation |
-| Tokenisation of cards | SUMIT marketing site |
-| JavaScript embed for payment forms | SUMIT marketing site |
-| WooCommerce plugin exists (proves the API is production-grade) | wordpress.org plugin page |
+| Tokenisation: `POST /creditguy/vault/tokenize/` (PAN→token) and `tokenizesingleuse/` | **VERIFIED 2026-05-25** — endpoint list |
+| Marketplace split-charge: `POST /billing/payments/multivendorcharge/` (matches PetWash's split-between-station-owner-and-platform model) | **VERIFIED 2026-05-25** — endpoint list |
+| Recurring/subscription: `POST /billing/recurring/charge/` + manage endpoints | **VERIFIED 2026-05-25** — endpoint list |
+| Webhook registration via `POST /triggers/triggers/subscribe/` | **VERIFIED 2026-05-25** — endpoint list |
+| Hosted payment redirect: `POST /billing/payments/beginredirect/` | **VERIFIED 2026-05-25** — endpoint list |
+| Integration tools: WooCommerce plugin, Make.com module, Zapier module, n8n community `sumit-api` TypeScript SDK | **VERIFIED 2026-05-25** — Developer Portal |
+
+### 1.1 Confirmed endpoint inventory (PetWash-relevant subset)
+
+| Family | Endpoint | Purpose |
+|---|---|---|
+| Documents | `POST /accounting/documents/create/` | Create document (חשבונית מס / קבלה / etc.) |
+| Documents | `POST /accounting/documents/send/` | Email document to customer |
+| Documents | `POST /accounting/documents/getpdf/` | Download document as PDF |
+| Documents | `POST /accounting/documents/getdetails/` | Fetch document metadata |
+| Documents | `POST /accounting/documents/cancel/` | Cancel document (זיכוי flow) |
+| Documents | `POST /accounting/documents/movetobooks/` | Finalize a draft document |
+| Documents | `POST /accounting/documents/list/` | List documents |
+| Documents | `POST /accounting/documents/addexpense/` | Record an expense |
+| Customers | `POST /accounting/customers/create/` | Create-or-find customer (SearchMode-based dedup) |
+| Customers | `POST /accounting/customers/update/` | Update existing customer |
+| **Payments** | `POST /billing/payments/charge/` | **Tranzila replacement — one-time card charge** |
+| **Payments** | `POST /billing/payments/multivendorcharge/` | **Marketplace split-payment** (PetWash use case) |
+| Payments | `POST /billing/payments/get/` / `list/` | Retrieve charges |
+| PaymentMethods | `POST /billing/paymentmethods/setforcustomer/` | Save card-on-file token |
+| PaymentMethods | `POST /billing/paymentmethods/getforcustomer/` / `remove/` | Read / delete stored tokens |
+| Recurring | `POST /billing/recurring/charge/` | Charge + create recurring schedule |
+| Recurring | `POST /billing/recurring/listforcustomer/` / `cancel/` / `update/` | Manage subscriptions |
+| Vault | `POST /creditguy/vault/tokenize/` | PAN → token (stored cards) |
+| Vault | `POST /creditguy/vault/tokenizesingleuse/` | Single-use token (one-off without storing) |
+| Gateway | `POST /creditguy/gateway/transaction/` | Lower-level card transaction (rarely needed if `/billing/payments/charge/` is used) |
+| **Triggers** | `POST /triggers/triggers/subscribe/` / `unsubscribe/` | **Webhook registration** — register the URL where SUMIT POSTs events |
+| GeneralBilling | `POST /billing/generalbilling/openupayterminal/` | UPay terminal (Sumit's modern card-present rail) |
+| General | `POST /accounting/general/getvatrate/` | Get VAT rate by date (cross-check against our own VAT logic) |
+
+### 1.2 Document-type rules per Osek classification (VERIFIED 2026-05-25)
+
+From SUMIT help center articles (`/he/articles/...kabalot-osek-patur`,
+`/he/articles/...nihul-esek-osek-patur`, `/he/articles/...maavar-osek-murshe-le-osek-patur`):
+
+| Provider tax status | CAN issue | CANNOT issue |
+|---|---|---|
+| `osek_patur` (עוסק פטור — VAT-exempt) | `הצעת מחיר` (quote), `דרישת תשלום` (payment demand), `חשבון/קבלה` (combined invoice+receipt), `קבלה` (receipt only) | **`חשבונית מס`** (tax invoice), **`חשבונית מס/קבלה`** (combined tax invoice+receipt) |
+| `osek_murshe` (עוסק מורשה — VAT-registered) | All of the above PLUS `חשבונית מס`, `חשבונית מס/קבלה`, `חשבונית זיכוי` (credit note) | — |
+| `chevra` (חברה — corporation) | Same as `osek_murshe` | — |
+
+**Implication for PetWash**: `SumitClient.createDocument` currently
+hardcodes `DocumentType: 1`. That choice MUST be derived from the
+provider's Osek classification — the same field already stored on
+`providers.osek_type` via PR-S5c (merged 2026-05-23, see
+petwash-platform skill §7). If we send a tax-invoice document type for
+a `osek_patur` provider, SUMIT will reject the call. The DocumentType
+mapping table (which integer maps to which document type) is still
+ASSUMED until the swagger lands — see §2.3.
+
+### 1.3 Standard עוסק פטור business flow per SUMIT
+
+SUMIT documents teach this 3-document sequence for עוסק פטור businesses:
+
+```
+הצעת מחיר        →    דרישת תשלום         →    חשבון/קבלה
+(price quote)         (payment demand)          (combined doc on payment)
+```
+
+PetWash today goes directly from "booking confirmed" → "charge card" with no
+intermediate `דרישת תשלום` step. For B2C customers this is fine. For B2B
+provider-to-platform flows where the provider needs a payment-terms document
+(שוטף+30, etc.) before remitting, the `דרישת תשלום` document type is the
+sanctioned vehicle. Not a blocker for Mission-5, but worth knowing when
+PR-T0 / payment-rail dispatcher decisions get made.
+
+### 1.4 Legal timing rule for `חשבון/קבלה` (CRITICAL for booking flow)
+
+SUMIT help: *"החוק מחייב אותך להפיק את המסמך הזה מיד בעת קבלת התשלום"*
+(the law requires you to issue this document **immediately** upon receipt
+of payment).
+
+**Implication**: when SUMIT becomes our payment rail (Mission-11), the
+`POST /accounting/documents/create/` call cannot be deferred to a
+background job. It must execute either:
+  - in the synchronous charge-confirmation handler (preferred), or
+  - in a guaranteed-delivery queue that completes within seconds, with
+    a tight SLA + alarm on backlog
+A best-effort fire-and-forget pattern would violate ITA timing rules
+and create audit liability. Document this constraint up front so the
+Mission-11 architect doesn't accidentally architect the integration
+async.
+
+### 1.5 Free-tier ceiling (matters for test environments)
+
+SUMIT free plan: **10 documents/month, no credit card, no time limit**.
+
+**Implication**: dev / staging test orgs can run fully on the free tier as
+long as test runs stay under 10 documents/month. CI runs that create
+documents on every PR will burn through this quickly — wire any
+auto-generated documents in CI behind a `SUMIT_DRYRUN=true` flag (don't
+fire the actual `create/` call) unless we explicitly opt into a paid
+test plan.
 
 ## 2. ASSUMED in Mission-5 (must verify before prod)
 
@@ -48,14 +143,12 @@ on common .NET conventions + the SDD pattern. **They may be wrong.**
 - Body field names differ (e.g. `companyId` camelCase, `company_id`
   snake_case)
 
-### 2.2 Endpoint path
+### 2.2 Endpoint path — **VERIFIED 2026-05-25**
 
-**Assumption**: `POST /accounting/documents/create/` (trailing slash).
+`POST /accounting/documents/create/` (trailing slash). Matches the Developer
+Portal operation list verbatim. The original guess was correct.
 
-**Possible alternatives**:
-- `POST /accounting/documents/Create/` (PascalCase, .NET convention)
-- `POST /v1/accounting/documents`
-- `POST /api/accounting/documents/create`
+(No version prefix. No PascalCase. No `/api/` mount point.)
 
 ### 2.3 Request body shape
 
@@ -122,16 +215,22 @@ are NOT yet parsed; the dispatcher persists the raw body in
 ## 3. Sandbox-first safety
 
 `SumitClient.readEnv()` defaults `sandbox = true` (any non-`'false'`
-value of `SUMIT_SANDBOX` → sandbox URL). Operators must explicitly
-set `SUMIT_SANDBOX='false'` to opt into production. This is intentional:
-- A misconfigured deploy never accidentally hits production SUMIT.
+value of `SUMIT_SANDBOX` → caller is treated as sandbox). Operators must
+explicitly set `SUMIT_SANDBOX='false'` to opt into production. This is
+intentional:
+- A misconfigured deploy never accidentally treats production SUMIT
+  credentials as production.
 - The "any other value → sandbox" rule defends against typos like
   `SUMIT_SANDBOX='False'` (capital F) or `'0'`.
 
-Default sandbox URL: `https://sandbox-api.sumit.co.il`
-Default production URL: `https://api.sumit.co.il`
-
-Both can be overridden with `SUMIT_API_BASE_URL`.
+**There is only one base URL: `https://api.sumit.co.il/`.** Sandbox vs
+production is determined by which `SUMIT_COMPANY_ID` / `SUMIT_API_KEY`
+credentials are passed — a "testing organization" with test cards lives
+on the same endpoint, gated by credentials, not by host. (Previous
+versions of this doc and `SumitClient.ts` referenced
+`sandbox-api.sumit.co.il`; that subdomain is NXDOMAIN and was a
+fabrication.) `SUMIT_API_BASE_URL` override is retained for tests/mocks
+only — there is no real alternate host.
 
 The `X-PetWash-Sandbox: true|false` header is sent on every call so
 SUMIT's side logs can confirm which environment we believed we were
@@ -152,9 +251,14 @@ Step 8 (eventual API-mode upgrade), before flipping production:
       `DocumentType` enum value for חשבונית מס).
 - [ ] Verify the response shape matches §2.4 (which field holds the
       document id).
+- [ ] Provision a TEST organization on the SUMIT side (separate
+      Company ID + API key, distinct from the production merchant).
+      Set those credentials in staging env.
 - [ ] Run one sandbox test invoice end-to-end via mode=api against
-      `https://sandbox-api.sumit.co.il`. Confirm `sumit_document_id`
-      gets populated and `sumit_outbound_events` shows the success
+      `https://api.sumit.co.il/` (same URL as production — the
+      test-org credentials determine which org is charged). Confirm
+      `sumit_document_id` gets populated and `sumit_outbound_events`
+      shows the success
       row with a valid `response_body`.
 - [ ] Run one webhook simulation through `verifyWebhookSignature`
       using a real SUMIT webhook payload (so we know the signature
