@@ -121,19 +121,14 @@ router.post(
       return res.status(400).json({ ok: false, error: 'invalid_body' });
     }
 
-    // After the Buffer.isBuffer guard, snapshot to primitives ONCE.
-    // Downstream code reads `bodyBytes` (number) and `rawString` (string)
-    // rather than touching the original req.body chain again. This both:
-    //   1. Breaks CodeQL's "type confusion through parameter tampering"
-    //      dataflow track — the analyzer cannot easily prove that
-    //      Node's Buffer.isBuffer narrows the type for downstream
-    //      property accesses, so reading .length on the post-guard
-    //      reference still trips js/type-confusion-through-parameter-
-    //      tampering. Pre-extracting into primitives sidesteps it.
-    //   2. Defends against the (paranoid) scenario where some later
-    //      middleware mutates req.body between this handler's lines.
-    const bodyBytes: number = maybeRawBody.length;
-    const rawString: string = maybeRawBody.toString('utf8');
+    // After the Buffer.isBuffer guard, bind to an explicit Buffer once.
+    // Using a strongly-typed local prevents downstream type confusion and
+    // makes the narrowing obvious to static analysis tools.
+    const rawBody: Buffer = maybeRawBody;
+
+    // Snapshot to primitives ONCE so downstream code never reads req.body.
+    const bodyBytes: number = rawBody.length;
+    const rawString: string = rawBody.toString('utf8');
 
     if (!signature || !sumitClient.verifyWebhookSignature(rawString, signature)) {
       logger.warn('[SumitWebhook] signature verification failed', {
