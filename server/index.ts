@@ -350,7 +350,53 @@ const PORT = Number(process.env.PORT || 8080);
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);
 
-// Production early listen is handled below (single listen point at line ~239)
+// ── EARLY PORT BINDING — fixes Cloud Run startup-probe failures ────────────
+// Pre-fix: app.listen() lived ~600 lines below, AFTER all of helmet/CORS/
+// session/csrf/route-registration synchronous setup. If any one of those
+// hung or threw, the port never bound and Cloud Run's startup probe
+// (240s TCP check) failed with "user-provided container failed the
+// configured startup probe checks". Burned hours diagnosing why.
+//
+// Fix: bind the port HERE, immediately, with only a minimal /health
+// handler. All the heavyweight middleware and route registration then
+// runs in the background — failures happen AFTER Cloud Run already
+// saw a listening socket, so the deploy succeeds and the operator
+// can read the real error from /health (which switches state from
+// "starting" → "ok" once routes are registered, or surfaces an
+// errors list if registration fails).
+let _initStartedTs = Date.now();
+let _initPhase = 'pre_middleware';
+let _initError: string | null = null;
+const _earlyHealthHandler = (_req: any, res: any) => {
+  res.status(200).json({
+    status: _initPhase === 'ready' ? 'ok' : _initError ? 'degraded' : 'starting',
+    phase: _initPhase,
+    elapsedMs: Date.now() - _initStartedTs,
+    error: _initError,
+    ts: new Date().toISOString(),
+  });
+};
+app.get('/health', _earlyHealthHandler);
+app.get('/_health', _earlyHealthHandler);
+
+const _earlyServer = process.env.NODE_ENV === 'production'
+  ? app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🟢 [Startup t=0ms] Port ${PORT} bound BEFORE middleware setup`);
+    })
+  : null;
+
+// Heartbeat: emits a line every 10s with current init phase. If the next
+// deploy ever fails again, the Cloud Run revision log will show exactly
+// which phase the server died in, instead of total silence.
+const _startupHeartbeat = setInterval(() => {
+  if (_initPhase === 'ready') {
+    clearInterval(_startupHeartbeat);
+    return;
+  }
+  const elapsed = ((Date.now() - _initStartedTs) / 1000).toFixed(1);
+  console.log(`[Startup t=${elapsed}s] phase=${_initPhase}${_initError ? ` error=${_initError}` : ''}`);
+}, 10_000);
+_startupHeartbeat.unref();
 
 // 1. Security and basic middleware
 const isProduction = process.env.NODE_ENV === 'production';
@@ -952,10 +998,17 @@ import("./compliance/google-cloud-dpa-registry").then(({ validateGCPCompliance }
   validateGCPCompliance();
 }).catch((err) => console.error("[GCP Compliance] registry load failed", err));
 
-// --- CRITICAL FIX: Start server IMMEDIATELY in production (Cloud Run requires fast port binding) ---
-// In production, start listening BEFORE route registration to satisfy Cloud Run health checks
+// --- Late-init diagnostic + signal handlers ---
+// NOTE 2026-05-24: app.listen() now fires at line ~360 (right after
+// const app = express()) so Cloud Run's startup probe never times out.
+// The block below USED to call app.listen() here too, which would now
+// throw EADDRINUSE. Re-use the early-bound server instead.
 if (isProduction) {
-  const server = app.listen(PORT, "0.0.0.0", () => {
+  _initPhase = 'late_init_diagnostics';
+  const server = _earlyServer!;
+  // Stash a no-op IIFE that fires the same diagnostic logging the original
+  // listen callback used to do. Cosmetic; safe to skip if anything throws.
+  setImmediate(() => {
     console.log('--------------------------------------------------');
     console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
     // PR-CONFIG-HEALTH: log the canonical env-var manifest snapshot.
@@ -979,8 +1032,8 @@ if (isProduction) {
       console.error('   GET /health/strict returns 503 DANGEROUS — CI deploy gate will block promotion.');
     }
     console.log('--------------------------------------------------');
-  });
-  
+  }); // end setImmediate
+
   // Store server reference for later use
   (app as any)._server = server;
 
@@ -1081,11 +1134,15 @@ if (isProduction) {
     // serverReady=false, making every non-health route return 503 indefinitely.
     console.log('[Server] Loading routes module (dynamic import)...');
     startupPhase = 'loading_routes';
+    _initPhase = 'loading_routes';
     const { registerRoutes } = await import("./routes");
     console.log('[Server] Routes module loaded, registering routes...');
     startupPhase = 'registering_routes';
+    _initPhase = 'registering_routes';
     await registerRoutes(app);
     healthState.app.routesReady = true;
+    _initPhase = 'ready';
+    console.log(`[Startup] ✅ Routes registered. Total init time: ${((Date.now() - _initStartedTs) / 1000).toFixed(1)}s`);
 
     // Log Firebase client config availability immediately after routes are ready.
     // This makes it trivial to verify in Cloud Run logs whether the browser will
@@ -1473,8 +1530,12 @@ if (isProduction) {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errStack = error instanceof Error ? error.stack : undefined;
+    // Surface the failure phase + error on the /health endpoint so the next
+    // failed deploy shows what actually broke instead of a silent timeout.
+    _initError = `${_initPhase}: ${errMsg}`;
     console.error('--------------------------------------------------');
     console.error("❌ [FATAL] Server startup failed:", errMsg);
+    console.error(`   Phase at failure: ${_initPhase}`);
     if (errStack) console.error("   Stack:", errStack);
     console.error('--------------------------------------------------');
     // Surface the failure in /api/health so it is visible without needing Cloud Run logs
