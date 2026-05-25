@@ -112,7 +112,15 @@ router.post(
 
     // SumitClient.verifyWebhookSignature returns false when
     // SUMIT_WEBHOOK_SECRET is unset → we 401 immediately. No DB writes.
-    const rawBody = (req.body as Buffer) ?? Buffer.from('');
+    const maybeRawBody = req.body;
+    if (!Buffer.isBuffer(maybeRawBody)) {
+      logger.warn('[SumitWebhook] invalid raw body type', {
+        ip: req.ip,
+        bodyType: typeof maybeRawBody,
+      });
+      return res.status(400).json({ ok: false, error: 'invalid_body' });
+    }
+    const rawBody = maybeRawBody;
     const rawString = rawBody.toString('utf8');
 
     if (!signature || !sumitClient.verifyWebhookSignature(rawString, signature)) {
