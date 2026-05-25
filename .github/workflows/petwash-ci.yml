@@ -112,36 +112,38 @@ jobs:
           if-no-files-found: warn
 
   gate-audit-env-vars:
-    # 2026-style fix: stop blocking deploys on a doc drift the machine can
-    # fix itself. Pre-fix this job ran `audit-required-env-vars.ts --check`,
-    # exited non-zero on fingerprint mismatch, and required a human to run
-    # the regenerator + push a chore commit. Every PR that added a single
-    # `process.env.X` read triggered this dance — twice in the past 24h
-    # alone (PR #429 Maya + PR #432 deploy-fix). That is robot work.
+    # 2026-style fix v2: pure-advisory, never-blocking, never-pushing.
     #
-    # New behaviour:
-    #   - On PR:     just print the drift (advisory). PR does not fail.
-    #   - On main:   regenerate the doc; if anything changed, commit it
-    #                back as the github-actions[bot] with [skip ci] so we
-    #                don't loop. Deploy proceeds either way.
+    # History:
+    #   v0  ran `--check` and failed the deploy on drift.  Pre-fix this
+    #       blocked PR #429 (Maya) and PR #432 (deploy-startup-probe).
+    #       Robot work for humans.
+    #   v1  tried to auto-commit the regenerated doc back to main as
+    #       github-actions[bot] with [skip ci].  Repository ruleset
+    #       requires PRs for ALL changes to main, even bot pushes →
+    #       remote rejected with GH013 → deploy still blocked.
+    #   v2  (this) — drop the push entirely. The job regenerates the
+    #       doc, logs the drift as a GitHub Actions ::notice, and
+    #       always exits 0. Deploy is NEVER blocked.
     #
-    # Result: the env-audit doc stays current automatically, deploys never
-    # block on it, and operators still see fresh `process.env.*` inventory
-    # in docs/PRODUCTION_REQUIRED_ENV_VARS.md after every push.
-    name: Gate — env-var audit (auto-regenerate)
+    # Cost of v2: the committed doc may temporarily fall behind the
+    # actual code. That's fine — the doc is documentation, not the
+    # source of truth. The source of truth is the `process.env.*`
+    # reads in the code itself.
+    #
+    # Cure for stale doc: whenever someone wants to refresh it,
+    # they include the regenerator's output in a normal PR:
+    #     npx tsx scripts/audit-required-env-vars.ts
+    #     git add docs/PRODUCTION_REQUIRED_ENV_VARS.md
+    #     git commit -m "chore(env-audit): resync"
+    # That PR goes through normal review like everything else.
+    name: env-audit doc (advisory, never blocks)
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to push the auto-regenerated doc back to main
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          # Need history so we can commit + push on main pushes
-          fetch-depth: 0
-          # Use the GITHUB_TOKEN so the push back to main is allowed and
-          # tagged as github-actions[bot] (covered by branch protection
-          # bypass for the actions bot).
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -152,38 +154,25 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Regenerate docs/PRODUCTION_REQUIRED_ENV_VARS.md
-        run: npx tsx scripts/audit-required-env-vars.ts
-
-      - name: Detect drift
-        id: drift
+      - name: Regenerate (in-memory) and report drift
         run: |
+          npx tsx scripts/audit-required-env-vars.ts
           if git diff --quiet docs/PRODUCTION_REQUIRED_ENV_VARS.md; then
-            echo "drifted=false" >> "$GITHUB_OUTPUT"
-            echo "✅ env-audit doc is in sync — no action needed"
+            echo "✅ env-audit doc is in sync"
           else
-            echo "drifted=true" >> "$GITHUB_OUTPUT"
-            echo "ℹ️  env-audit doc drifted — fingerprint will be auto-updated"
+            echo "ℹ️  env-audit doc has drifted (advisory — does NOT block deploy)"
+            echo "    To refresh on the next PR run:"
+            echo "       npx tsx scripts/audit-required-env-vars.ts"
+            echo "       git add docs/PRODUCTION_REQUIRED_ENV_VARS.md"
+            echo "       git commit -m 'chore(env-audit): resync'"
+            echo ""
+            echo "Drift summary:"
             git --no-pager diff --stat docs/PRODUCTION_REQUIRED_ENV_VARS.md
+            echo ""
+            echo "::notice title=env-audit drift::The env-audit doc has drifted. Advisory only; deploy continues. Run the regenerator in your next PR to refresh."
           fi
-
-      - name: Auto-commit on main pushes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.drift.outputs.drifted == 'true'
-        run: |
-          git config user.name  'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add docs/PRODUCTION_REQUIRED_ENV_VARS.md
-          git commit -m "chore(env-audit): auto-regenerate fingerprint [skip ci]
-
-          Generated by .github/workflows/petwash-ci.yml gate-audit-env-vars
-          step. No human action required.
-          "
-          git push
-
-      - name: Advisory message on PRs
-        if: github.event_name == 'pull_request' && steps.drift.outputs.drifted == 'true'
-        run: |
-          echo "::notice title=env-audit doc drift::The env-audit fingerprint has drifted on this PR. It will be auto-regenerated and committed by the bot when this PR merges to main. No action required from the contributor."
+          # Always exit clean. NEVER block the deploy on this.
+          exit 0
 
   # ════════════════════════════════════════════════════════════════════════
   # Apply pending SQL migrations BEFORE the new Cloud Run revision takes
