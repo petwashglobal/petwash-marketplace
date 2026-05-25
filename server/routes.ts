@@ -17,6 +17,7 @@ import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminSumitRoutes from "./routes/admin-sumit";
+import sumitWebhookRoutes from "./routes/sumit-webhook";
 import providerMyInvoicesRoutes from "./routes/provider-my-invoices";
 import accountantRoutes from "./routes/accountant";
 import { requireDpaAccepted } from "./middleware/dpa-guard";
@@ -9747,6 +9748,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
   app.use('/api/admin/sumit', adminSumitRoutes);
+  // SUMIT webhook receiver — public route (HMAC-verified at the handler).
+  // Mounted at /api/sumit so the full path is POST /api/sumit/webhook.
+  // No-op until SUMIT_WEBHOOK_SECRET is provisioned (returns 401 without it).
+  app.use('/api/sumit', sumitWebhookRoutes);
   app.use('/api/provider', providerMyInvoicesRoutes);
   app.use('/api/accountant', accountantRoutes);
 
