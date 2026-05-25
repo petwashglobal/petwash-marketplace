@@ -32,6 +32,110 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Workflow self-lint: blocks merge of PRs that re-introduce the specific
+  # YAML/shell traps that have caused production-deploy breaks in this repo.
+  # Cheap (no auth, no build), runs on every push, fails in <10s.
+  #
+  # If you find yourself wanting to silence one of these checks, instead
+  # fix the workflow file — the checks exist because each pattern caused
+  # real broken deploys (PR #448 = apostrophes in flags-block comments,
+  # 2026-05-25).
+  # ─────────────────────────────────────────────────────────────────────────
+  gate-workflow-self-lint:
+    name: Gate — workflow self-lint (deploy traps)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: "Detect hash-comments inside flags blocks"
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+
+          # YAML literal block scalars (`flags: |`) preserve every line as
+          # part of the string value, INCLUDING lines that start with `#`.
+          # google-github-actions/deploy-cloudrun then forwards each line to
+          # the shell invocation of gcloud as a positional arg. Apostrophes
+          # or single-quote characters inside those comments are interpreted
+          # as unterminated shell quotes and abort the deploy with:
+          #
+          #   Error: unterminated single quote in --cpu=2 ... # ... today's ...
+          #
+          # PR #448 (2026-05-25) shipped exactly this pattern and broke
+          # production deploys. This check catches the regression.
+
+          with open('.github/workflows/petwash-ci.yml') as f:
+              wf = yaml.safe_load(f)
+
+          offenders = []
+          def walk(node, path=''):
+              if isinstance(node, dict):
+                  for k, v in node.items():
+                      sub = f'{path}.{k}' if path else k
+                      if k == 'flags' and isinstance(v, str):
+                          for n, raw in enumerate(v.splitlines(), 1):
+                              if raw.lstrip().startswith('#'):
+                                  offenders.append((sub, n, raw.strip()))
+                      else:
+                          walk(v, sub)
+              elif isinstance(node, list):
+                  for i, item in enumerate(node):
+                      walk(item, f'{path}[{i}]')
+          walk(wf)
+
+          if offenders:
+              print('::error::Inline # comments found inside `flags: |` block(s).')
+              print('These are passed to the shell as positional args and break gcloud')
+              print('parsing on apostrophes or single quotes (real outage: PR #448).')
+              print('')
+              print('Fix: move the explanation OUT of the `flags: |` block.')
+              print('Put it as a real YAML comment above the step instead.')
+              print('')
+              for path, ln, line in offenders:
+                  print(f'  • {path} line {ln}: {line}')
+              sys.exit(1)
+
+          print('✅ No # comments inside any `flags: |` block.')
+          PY
+
+      - name: "Detect apostrophes inside flags blocks"
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+          with open('.github/workflows/petwash-ci.yml') as f:
+              wf = yaml.safe_load(f)
+
+          offenders = []
+          def walk(node, path=''):
+              if isinstance(node, dict):
+                  for k, v in node.items():
+                      sub = f'{path}.{k}' if path else k
+                      if k == 'flags' and isinstance(v, str):
+                          for n, raw in enumerate(v.splitlines(), 1):
+                              if "'" in raw:
+                                  offenders.append((sub, n, raw.strip()))
+                      else:
+                          walk(v, sub)
+              elif isinstance(node, list):
+                  for i, item in enumerate(node):
+                      walk(item, f'{path}[{i}]')
+          walk(wf)
+
+          if offenders:
+              print('::error::Single-quote characters found in `flags: |` block(s).')
+              print('These break gcloud shell parsing with "unterminated single quote".')
+              print('Use double quotes or rephrase to avoid apostrophes inside flags.')
+              for path, ln, line in offenders:
+                  print(f'  • {path} line {ln}: {line}')
+              sys.exit(1)
+
+          print('✅ No apostrophes in any `flags: |` block.')
+          PY
+
+
   # ════════════════════════════════════════════════════════════════════════
   # PR-STARTUP-HARDEN-1 — Pre-deploy gates
   # These two jobs run BEFORE deploy-backend. The deploy job has `needs: [...]`
@@ -305,7 +409,7 @@ jobs:
     # workflow_dispatch-only — on a normal push it never runs, so listing
     # it in needs[] would skip deploy-backend forever. The two pre-deploy
     # gates (routes-load smoke + env-var audit) remain required.
-    needs: [gate-smoke-test-startup, gate-audit-env-vars]
+    needs: [gate-smoke-test-startup, gate-audit-env-vars, gate-workflow-self-lint]
     permissions:
       contents: read
       id-token: write
@@ -966,6 +1070,7 @@ jobs:
         run: |
           PROJECT="$PROJECT_ID"
           secrets_file="$(mktemp)"
+          missing_required=()
 
           required_mappings=(
             "BASE_URL=BASE_URL:latest"
@@ -1115,8 +1220,38 @@ jobs:
           )
 
           for mapping in "${required_mappings[@]}"; do
-            printf '%s\n' "$mapping" >> "$secrets_file"
+            secret_ref="${mapping#*=}"
+            secret_name="${secret_ref%%:*}"
+
+            if gcloud secrets describe "$secret_name" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              printf '%s\n' "$mapping" >> "$secrets_file"
+            else
+              missing_required+=("$secret_name")
+            fi
           done
+
+          if [ ${#missing_required[@]} -gt 0 ]; then
+            echo ""
+            echo "::error::Required deploy secrets missing from GCP Secret Manager:"
+            printf '  - %s\n' "${missing_required[@]}"
+            echo ""
+            echo "Without these, gcloud run deploy fails at the secret-mount step"
+            echo "after 5+ minutes of building. This pre-flight check converts"
+            echo "that into a fast, actionable failure here."
+            echo ""
+            echo "Pick one per missing secret:"
+            echo "  A) Create the secret in GCP Secret Manager:"
+            echo "       gcloud secrets create <NAME> --project=$PROJECT --replication-policy=automatic"
+            echo "       echo -n '<value>' | gcloud secrets versions add <NAME> --data-file=- --project=$PROJECT"
+            echo "  B) Move the entry from required_mappings to optional_mappings in"
+            echo "     .github/workflows/petwash-ci.yml (deploy then skips it with a warning)"
+            echo "  C) Remove the entry entirely if the env var is no longer needed"
+            echo ""
+            echo "Historical context: PR #447 added 3 required secrets that didn't"
+            echo "exist in GCP, causing 2 days of broken deploys. This guard prevents"
+            echo "that exact pattern from recurring."
+            exit 1
+          fi
 
           for mapping in "${optional_mappings[@]}"; do
             secret_ref="${mapping#*=}"
