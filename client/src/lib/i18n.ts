@@ -2504,6 +2504,86 @@ export const translations: TranslationStrings = {
   'providerBanner.contactWithin48': { en: 'Our team will contact you within 48 hours', he: 'נציג מטעמנו יחזור אליכם תוך 48 שעות', ar: 'سيتواصل معكم فريقنا خلال 48 ساعة', ru: 'Наша команда свяжется с вами в течение 48 часов', fr: 'Notre équipe vous contactera dans les 48 heures', es: 'Nuestro equipo se comunicará contigo en 48 horas' },
   'providerBanner.submissionError': { en: 'Submission Error', he: 'שגיאה בשליחה', ar: 'خطأ في الإرسال', ru: 'Ошибка отправки', fr: 'Erreur d\'envoi', es: 'Error de envío' },
   'providerBanner.tryAgainLater': { en: 'Please try again later', he: 'אנא נסו שוב מאוחר יותר', ar: 'يرجى المحاولة مرة أخرى لاحقاً', ru: 'Пожалуйста, попробуйте позже', fr: 'Veuillez réessayer plus tard', es: 'Por favor intente nuevamente más tarde' },
+
+  // ============================================================
+  // Platform pages — English-sentence-as-key entries (2026-05-26)
+  // Source pages: Academy.tsx, academy/TrainerProfile.tsx,
+  // Franchise.tsx, Shop.tsx. These pages call t('English sentence')
+  // directly; without these dictionary entries the t() fallback
+  // returns the English key, showing English even in Hebrew mode.
+  // Per operator directive 2026-05-26: fill `en` + `he` only.
+  // Other languages fall back to `en` until a follow-up fill.
+  // ============================================================
+
+  // Pet Wash Academy — trainer marketplace landing
+  '⁦Pet Wash Academy™⁩': { en: '⁦Pet Wash Academy™⁩', he: 'אקדמיית ⁦Pet Wash™⁩' },
+  'Professional Pet Trainers': { en: 'Professional Pet Trainers', he: 'מאמני חיות מקצועיים' },
+  'Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.': { en: 'Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.', he: 'הזמינו מאמנים מוסמכים לאילוף ציות, אג׳יליטי, אימון התנהגותי ועוד. כל המאמנים עוברים אימות ובדיקת רקע.' },
+  'Are you a trainer? Manage your session requests': { en: 'Are you a trainer? Manage your session requests', he: 'אתם מאמנים? נהלו את בקשות האימון שלכם' },
+  'Search trainers by name or specialty...': { en: 'Search trainers by name or specialty...', he: 'חיפוש מאמנים לפי שם או התמחות...' },
+  'Filters': { en: 'Filters', he: 'סינונים' },
+  'City': { en: 'City', he: 'עיר' },
+  'All Cities': { en: 'All Cities', he: 'כל הערים' },
+  'Hourly Rate (₪)': { en: 'Hourly Rate (₪)', he: 'תעריף לשעה (₪)' },
+  'Minimum Rating': { en: 'Minimum Rating', he: 'דירוג מינימלי' },
+  'Any Rating': { en: 'Any Rating', he: 'כל דירוג' },
+  'Specialties': { en: 'Specialties', he: 'התמחויות' },
+  'Reset filters': { en: 'Reset filters', he: 'איפוס סינונים' },
+  'Clear all filters': { en: 'Clear all filters', he: 'נקה את כל הסינונים' },
+  'Available Trainers': { en: 'Available Trainers', he: 'מאמנים זמינים' },
+  'Certified Trainers': { en: 'Certified Trainers', he: 'מאמנים מוסמכים' },
+  'Sessions Completed': { en: 'Sessions Completed', he: 'מפגשי אימון שהושלמו' },
+  'Average Rating': { en: 'Average Rating', he: 'דירוג ממוצע' },
+  'Certified & Verified': { en: 'Certified & Verified', he: 'מוסמכים ומאומתים' },
+  'All trainers background-checked and certified': { en: 'All trainers background-checked and certified', he: 'כל המאמנים עם בדיקת רקע והסמכה' },
+  'View Profile': { en: 'View Profile', he: 'צפו בפרופיל' },
+  'Verified': { en: 'Verified', he: 'מאומת' },
+  'Certified': { en: 'Certified', he: 'מוסמך' },
+  'No trainers found': { en: 'No trainers found', he: 'לא נמצאו מאמנים' },
+  'Try adjusting your filters or search criteria': { en: 'Try adjusting your filters or search criteria', he: 'נסו לשנות את הסינונים או את קריטריוני החיפוש' },
+  'Failed to load trainers. Please try again.': { en: 'Failed to load trainers. Please try again.', he: 'טעינת המאמנים נכשלה. אנא נסו שוב.' },
+
+  // Trainer Profile — detail page
+  'About Me': { en: 'About Me', he: 'עליי' },
+  'Availability': { en: 'Availability', he: 'זמינות' },
+  'Available Days': { en: 'Available Days', he: 'ימים זמינים' },
+  'Back to Trainers': { en: 'Back to Trainers', he: 'חזרה למאמנים' },
+  'Background Verified': { en: 'Background Verified', he: 'רקע מאומת' },
+  'Book Training Session': { en: 'Book Training Session', he: 'הזמינו מפגש אימון' },
+  'Browse All Trainers': { en: 'Browse All Trainers', he: 'עיינו בכל המאמנים' },
+  'Certified Professional': { en: 'Certified Professional', he: 'מקצוען מוסמך' },
+  'Full refund if cancelled within 24 hours': { en: 'Full refund if cancelled within 24 hours', he: 'החזר מלא בביטול עד 24 שעות לפני המפגש' },
+  'Hourly Rate': { en: 'Hourly Rate', he: 'תעריף לשעה' },
+  'Languages': { en: 'Languages', he: 'שפות' },
+  'Loading trainer profile...': { en: 'Loading trainer profile...', he: 'טוען פרופיל מאמן...' },
+  'Message Trainer': { en: 'Message Trainer', he: 'שלחו הודעה למאמן' },
+  'Navigate': { en: 'Navigate', he: 'נווט אליו' },
+  'No reviews yet': { en: 'No reviews yet', he: 'אין ביקורות עדיין' },
+  'Platform Fee': { en: 'Platform Fee', he: 'עמלת פלטפורמה' },
+  'Professional Certifications': { en: 'Professional Certifications', he: 'הסמכות מקצועיות' },
+  'Rating': { en: 'Rating', he: 'דירוג' },
+  'Reviews': { en: 'Reviews', he: 'ביקורות' },
+  'Secure Payment Processing': { en: 'Secure Payment Processing', he: 'עיבוד תשלום מאובטח' },
+  'Service Types': { en: 'Service Types', he: 'סוגי שירות' },
+  'This trainer is not currently accepting bookings': { en: 'This trainer is not currently accepting bookings', he: 'המאמן אינו מקבל הזמנות כרגע' },
+  'This trainer profile could not be found.': { en: 'This trainer profile could not be found.', he: 'פרופיל המאמן לא נמצא.' },
+  'Total per Hour': { en: 'Total per Hour', he: 'סה״כ לשעה' },
+  'Trainer Not Found': { en: 'Trainer Not Found', he: 'המאמן לא נמצא' },
+  'Training Specialties': { en: 'Training Specialties', he: 'התמחויות אימון' },
+  'Trust & Safety': { en: 'Trust & Safety', he: 'אמון ובטיחות' },
+  'VAT on Fee': { en: 'VAT on Fee', he: 'מע״מ על העמלה' },
+  'Years Experience': { en: 'Years Experience', he: 'שנות ניסיון' },
+  'All payments processed by ⁦Pet Wash™⁩ Ltd': { en: 'All payments processed by ⁦Pet Wash™⁩ Ltd', he: 'כל התשלומים מעובדים על ידי ⁦Pet Wash™⁩ בע״מ' },
+  '72-hour payment hold with automatic release': { en: '72-hour payment hold with automatic release', he: 'החזקת תשלום ל-72 שעות ושחרור אוטומטי לאחר מכן' },
+
+  // Franchise — application + outreach mailto subjects/bodies
+  'PetWash Franchise — Talk': { en: 'PetWash Franchise — Talk', he: 'זכיינות PetWash — שיחת ייעוץ' },
+  'PetWash Franchise — Application': { en: 'PetWash Franchise — Application', he: 'זכיינות PetWash — הגשת מועמדות' },
+  'PetWash Franchise — Information Pack Request': { en: 'PetWash Franchise — Information Pack Request', he: 'זכיינות PetWash — בקשת מארז מידע' },
+  'City:\n\nRole (operator / real estate / municipality):\n\nTimeline:\n\nCapital range (NIS):\n\nReal-estate access:\n\nBrief background:': { en: 'City:\n\nRole (operator / real estate / municipality):\n\nTimeline:\n\nCapital range (NIS):\n\nReal-estate access:\n\nBrief background:', he: 'עיר:\n\nתפקיד (מפעיל / נדל״ן / רשות מקומית):\n\nלוח זמנים:\n\nטווח הון (₪):\n\nגישה לנדל״ן:\n\nרקע קצר:' },
+
+  // Shop — waitlist subject line
+  'PetWash Shop — Waitlist': { en: 'PetWash Shop — Waitlist', he: 'חנות PetWash — רשימת המתנה' },
 };
 // Supported languages with English as global default
 export type Language = 'en' | 'he' | 'ar' | 'ru' | 'fr' | 'es';
