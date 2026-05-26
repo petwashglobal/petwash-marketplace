@@ -1,31 +1,34 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════╗
- * ║  SIGNUP — PREMIUM RESPONSIVE REBUILD (operator brief 2026-05-26)  ║
+ * ║  🛑 LOCKED DESIGN — DO NOT REDESIGN, RESTYLE, OR HIDE SECTIONS    ║
  * ╠════════════════════════════════════════════════════════════════════╣
  * ║                                                                    ║
- * ║  Operator brief on 2026-05-26 supersedes the previous 2026-05-25  ║
- * ║  lock. New binding rules:                                          ║
+ * ║  This signup page MUST visually match the approved reference:      ║
+ * ║      client/public/design-reference/signup-approved.png            ║
  * ║                                                                    ║
- * ║   1. PetWash logo MUST be visually dominant — larger than the      ║
- * ║      "The Future of Pet Lifestyle" headline.                       ║
- * ║   2. Hero dog photo must SUPPORT the brand, not dominate.          ║
- * ║      On phones it scales down (and may shrink further on very      ║
- * ║      small screens) so it never pushes the CTA out of reach.       ║
- * ║   3. CTA "Create Secure Account" / OTP send button must always     ║
- * ║      be reachable. On phones a sticky bottom CTA is mandatory      ║
- * ║      whenever the in-form CTA is below the fold.                   ║
- * ║   4. Tap targets ≥44 px (Apple HIG) — already the case for         ║
- * ║      every interactive element here, do not regress.               ║
- * ║   5. Use 100dvh + env(safe-area-inset-*) so the page survives      ║
- * ║      iOS Safari toolbar + home indicator without dead bands.       ║
- * ║   6. Two-column on ≥1024 px (iPad landscape, desktop). Single      ║
- * ║      column on ≤1023 px. Mobile = single column + sticky CTA.      ║
- * ║   7. RTL parity — every layout primitive switches sides on `he`.   ║
+ * ║  See: client/public/design-reference/README.md for the full        ║
+ * ║  binding rules from the operator (2026-05-25).                     ║
  * ║                                                                    ║
- * ║  Previous lock history (kept for context):                         ║
- * ║   - PR #458 (REVERTED in PR #459): hid dog on small mobile. The    ║
- * ║     2026-05-26 brief explicitly permits scaling the dog DOWN       ║
- * ║     (and hiding it on <480 px) so the CTA stays reachable.         ║
+ * ║  ALLOWED changes:                                                  ║
+ * ║   - Wire real backend behaviour (auth, validation, secrets)        ║
+ * ║   - Responsive SCALING so the exact approved kit fits iPhone,      ║
+ * ║     iPad/tablet, and desktop screens                               ║
+ * ║   - Fixes that don't alter visual appearance (a11y, perf, bugs)    ║
+ * ║                                                                    ║
+ * ║  FORBIDDEN without explicit operator approval:                     ║
+ * ║   - Hiding sections, images, or buttons at any breakpoint          ║
+ * ║   - Cropping or fading any approved element                        ║
+ * ║   - Replacing the approved design with a "mobile-first" variant    ║
+ * ║   - Recoloring, restyling, or rearranging buttons                  ║
+ * ║   - Removing or modifying the dog photo, premium card, trust       ║
+ * ║     card, security badge, social login buttons, wallet buttons,    ║
+ * ║     or the Download Our App banner                                 ║
+ * ║   - Adding "creative improvements" the operator did not request    ║
+ * ║                                                                    ║
+ * ║  History of violations:                                            ║
+ * ║   - PR #458 (REVERTED in PR #459): hid the dog photo on small      ║
+ * ║     mobile + landscape "as a polish". Operator rejected — the      ║
+ * ║     approved kit stays visible on every breakpoint.                ║
  * ║                                                                    ║
  * ╚════════════════════════════════════════════════════════════════════╝
  *
@@ -59,7 +62,7 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider } from '@/lib/iosAuthHandler';
+import { getAuthStrategy, createGoogleProvider, createAppleProvider } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
 import { type Language } from '@/lib/i18n';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -225,14 +228,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
-  async function social(which: 'google' | 'apple' | 'facebook') {
+  async function social(which: 'google' | 'apple') {
     if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
     setBusy(true);
     try {
-      const provider =
-        which === 'google' ? createGoogleProvider() :
-        which === 'apple'  ? createAppleProvider()  :
-                             createFacebookProvider();
+      const provider = which === 'google' ? createGoogleProvider() : createAppleProvider();
       if (getAuthStrategy() === 'redirect') {
         snapshotPrefs();
         await signInWithRedirect(auth, provider);
@@ -248,28 +248,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     } catch (e: any) {
       if (e?.code === 'auth/popup-closed-by-user') return;
       logger.error('[signup] social', e);
-      const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
-      fail(he
-        ? `התחברות ${label} לא הושלמה — נסה נייד או אימייל`
-        : `${label} sign-in did not complete. Please try mobile or email.`);
-    } finally { setBusy(false); }
-  }
-
-  /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
-   *  authorize URL with provider secrets and we redirect the browser there. */
-  async function socialExternal(which: 'instagram' | 'tiktok') {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
-    setBusy(true);
-    try {
-      snapshotPrefs();
-      const r = await fetch(getApiUrl(`/api/auth/social/${which}/authorize`), { credentials: 'include' });
-      const d = await r.json().catch(() => ({}));
-      if (d?.authUrl) { window.location.href = d.authUrl; return; }
-      const label = which === 'instagram' ? 'Instagram' : 'TikTok';
-      fail(he ? `${label} עדיין לא פעיל — נסה Google, נייד או אימייל` : `${label} sign-in is not active yet — please try Google, mobile or email.`);
-    } catch (e) {
-      logger.error('[signup] socialExternal', e);
-      fail(he ? 'שגיאת רשת' : 'Network error');
+      fail(which === 'google'
+        ? (he ? 'התחברות Google לא הושלמה — נסה נייד או אימייל' : 'Google sign-in did not complete. Please try mobile or email.')
+        : (he ? 'התחברות Apple לא הושלמה — נסה נייד או אימייל' : 'Apple sign-in did not complete. Please try mobile or email.'));
     } finally { setBusy(false); }
   }
 
@@ -526,14 +507,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 {!signupFlags.appleSignin && <span className="sl-soonPill">{t.soon}</span>}
               </button>
 
-              <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
+              <button className="sl-soc sl-soc--fb sl-soc--soon" disabled>
                 <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
                 <span className="sl-socLabel">{t.cwFb}</span>
+                <span className="sl-soonPill">{t.soon}</span>
               </button>
 
-              <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
+              <button className="sl-soc sl-soc--ig sl-soc--soon" disabled>
                 <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
                 <span className="sl-socLabel">{t.cwIg}</span>
+                <span className="sl-soonPill">{t.soon}</span>
               </button>
             </div>
           )}
@@ -878,12 +861,6 @@ function styles(he: boolean) {
       position:relative; min-height:100dvh; background:#000;
       color:var(--white);
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      /* iOS notch + bottom home indicator. Top inset is added once at the
-       * shell so it applies before any internal scroll; bottom inset is
-       * handled per-component (sticky CTA below adds its own). */
-      padding-top:env(safe-area-inset-top);
-      padding-left:env(safe-area-inset-left);
-      padding-right:env(safe-area-inset-right);
     }
     @supports not (height:100dvh){ .sl-shell{ min-height:100vh } }
 
@@ -895,24 +872,21 @@ function styles(he: boolean) {
       gap:clamp(20px,3vw,32px);
     }
 
-    /* HERO LEFT — logo dominant, headline subordinate, dog supports */
-    .sl-hero{ display:flex; flex-direction:column; gap:18px }
-    .sl-heroHead{ display:flex; flex-direction:column; gap:10px; align-items:flex-start }
-    /* Logo is the dominant brand mark — larger than the headline below. */
-    .sl-logo{ height:clamp(96px,18vw,180px); width:auto; display:block }
+    /* HERO LEFT */
+    .sl-hero{ display:flex; flex-direction:column; gap:22px }
+    .sl-heroHead{ display:flex; flex-direction:column; gap:14px; align-items:flex-start }
+    .sl-logo{ height:clamp(48px,11vw,96px); width:auto; display:block }
     .sl-eyebrow{ color:var(--muted); font-size:11px; letter-spacing:.32em; font-weight:800; text-transform:uppercase }
-    /* Headline is intentionally smaller than the logo above. */
-    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(24px,3.6vw,42px); line-height:1.05; letter-spacing:-.02em; margin:0; font-weight:600 }
+    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(34px,5.2vw,64px); line-height:1; letter-spacing:-.03em; margin:0; font-weight:600 }
     .sl-gold{ background:linear-gradient(180deg, var(--gold2), var(--gold) 60%, #b48830); -webkit-background-clip:text; background-clip:text; color:transparent; display:inline-block; padding-bottom:.08em }
-    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(14px,1.4vw,17px); line-height:1.5; max-width:520px }
+    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(15px,1.5vw,18px); line-height:1.55; max-width:520px }
 
-    .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:2px 0 }
+    .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:4px 0 }
     .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(244,212,138,.4), transparent); flex:1 }
     .sl-divPaw svg{ width:14px; height:14px }
 
-    /* Dog supports the brand — never larger than the logo, never dominant. */
-    .sl-dogWrap{ display:flex; justify-content:center; padding:4px 0 }
-    .sl-dog{ width:min(50%, 240px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+    .sl-dogWrap{ display:flex; justify-content:center; padding:8px 0 }
+    .sl-dog{ width:min(78%, 380px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 30px 80px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
 
     .sl-card{
       border:1px solid var(--line);
@@ -976,14 +950,14 @@ function styles(he: boolean) {
       appearance:none; cursor:pointer;
       border:1px solid var(--line); background:rgba(0,0,0,.5);
       color:var(--white); font-weight:700; font-size:13px;
-      border-radius:999px; padding:10px 16px; min-height:44px;
+      border-radius:999px; padding:8px 14px; min-height:38px;
     }
     .sl-lang:hover{ border-color:rgba(244,212,138,.5) }
 
     .sl-back{
       align-self:flex-start; appearance:none; cursor:pointer;
       background:transparent; border:0; color:var(--gold2);
-      font-weight:800; font-size:14px; padding:10px 6px; min-height:44px;
+      font-weight:800; font-size:14px; padding:8px 4px;
     }
 
     /* Social tiles 2x2 */
@@ -1124,30 +1098,26 @@ function styles(he: boolean) {
     .sl-wbtn.is-on{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(244,212,138,.22) }
     .sl-wcardIcon{ width:32px; height:22px; flex:0 0 auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)) }
 
-    /* Terms — entire row is the tap target (label wraps the checkbox + text).
-     * Checkbox visible size is 24 px and min-height:44 px gives an easy tap. */
+    /* Terms + reCAPTCHA */
     .sl-terms{
-      display:flex; align-items:flex-start; gap:12px; cursor:pointer;
+      display:flex; align-items:flex-start; gap:10px; cursor:pointer;
       color:var(--muted); font-size:13px; line-height:1.5;
-      min-height:44px; padding:6px 0;
     }
-    .sl-terms input{ width:24px; height:24px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
+    .sl-terms input{ width:22px; height:22px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
     .sl-terms a{ color:var(--gold2); font-weight:700; text-decoration:underline }
 
-    /* CTA — premium gold gradient (luxury house brand). Min-height 58px keeps
-     * it well above the 44 px tap-target floor on every device. */
+    /* CTA — big white button (matches mockup), with gold-glow hover */
     .sl-cta{
       appearance:none; cursor:pointer; width:100%; min-height:58px;
       border-radius:14px; border:0;
-      background:linear-gradient(180deg, var(--gold2) 0%, var(--gold) 55%, #b48830 100%);
-      color:#0a0a0a;
+      background:#fff; color:#0a0a0a;
       display:flex; align-items:center; justify-content:center; gap:10px;
-      font-weight:900; font-size:16px; letter-spacing:.02em;
-      box-shadow:0 18px 50px rgba(244,212,138,.28);
-      transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+      font-weight:900; font-size:16px; letter-spacing:.01em;
+      box-shadow:0 18px 50px rgba(255,255,255,.16);
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(244,212,138,.5) }
+    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); background:linear-gradient(180deg,#fff,#f4d48a); box-shadow:0 22px 64px rgba(244,212,138,.4) }
     .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
     .sl-cta svg{ font-size:18px }
     .sl-cta--ghost{
@@ -1211,15 +1181,11 @@ function styles(he: boolean) {
 
     /* ====== BREAKPOINTS ====== */
 
-    /* ≤ 767px (phones) — single column, progressive disclosure, sticky CTA.
-     * Operator brief 2026-05-26: keep CTA reachable, never let the dog push
-     * the form down. Logo stays dominant; dog scales down accordingly. */
+    /* ≤ 767px (phones) — single column, progressive disclosure, sticky CTA */
     @media(max-width:767px){
-      .sl-frame{ gap:16px; padding-bottom:calc(120px + env(safe-area-inset-bottom)) }
-      .sl-hero{ gap:14px }
-      .sl-logo{ height:clamp(80px,22vw,140px) }
-      .sl-h1{ font-size:clamp(22px,6.6vw,32px) }
-      .sl-dog{ width:min(40%, 180px) }
+      .sl-frame{ gap:18px; padding-bottom:120px }   /* leave room for sticky CTA */
+      .sl-hero{ gap:18px }
+      .sl-dog{ width:min(72%, 320px) }
       .sl-social4{ grid-template-columns:1fr 1fr }
       .sl-badges{ grid-template-columns:1fr 1fr }
       .sl-advCells{ grid-template-columns:1fr }
@@ -1227,30 +1193,23 @@ function styles(he: boolean) {
       .sl-tabs{ grid-template-columns:repeat(3, 1fr) }
       .sl-dl{ flex-direction:column; align-items:stretch; gap:14px }
       .sl-dlRight{ justify-content:center }
-      .sl-title{ font-size:clamp(24px,7vw,30px) }
-    }
-
-    /* ≤ 420px (very small phones, iPhone SE) — hide the dog so the form
-     * fits without scroll for the primary action. Logo + brand stay. */
-    @media(max-width:420px){
-      .sl-dogWrap{ display:none }
+      .sl-h1{ font-size:clamp(34px,9vw,46px) }
+      .sl-title{ font-size:clamp(26px,8vw,34px) }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
     @media(min-width:768px) and (max-width:1023px){
-      .sl-frame{ gap:24px }
-      .sl-hero{ gap:18px; align-items:stretch }
-      .sl-logo{ height:clamp(120px,14vw,160px) }
-      .sl-h1{ font-size:clamp(28px,4.4vw,40px) }
-      .sl-dog{ width:min(38%, 260px) }
-      .sl-title{ font-size:32px }
-      .sl-panel{ padding:28px }
+      .sl-frame{ gap:28px }
+      .sl-hero{ gap:24px; align-items:stretch }
+      .sl-dog{ width:min(60%, 420px) }
+      .sl-h1{ font-size:clamp(48px,7vw,64px) }
+      .sl-title{ font-size:36px }
+      .sl-panel{ padding:30px }
       .sl-advCells{ grid-template-columns:repeat(3, 1fr) }
       .sl-wallets{ grid-template-columns:1fr 1fr }
     }
 
-    /* ≥ 1024px (iPad landscape, desktop) — two columns, sticky left.
-     * The hero is sticky so the brand stays visible while the form scrolls. */
+    /* ≥ 1024px (iPad landscape, desktop) — two columns, sticky left */
     @media(min-width:1024px){
       .sl-frame{
         display:grid; grid-template-columns:1fr 1.05fr;
@@ -1258,10 +1217,8 @@ function styles(he: boolean) {
         align-items:start;
         padding-top:clamp(32px,4vw,56px);
       }
-      .sl-hero{ position:sticky; top:24px; gap:18px }
-      .sl-logo{ height:clamp(140px,12vw,180px) }
-      .sl-h1{ font-size:clamp(30px,2.8vw,42px) }
-      .sl-dog{ width:min(48%, 240px) }
+      .sl-hero{ position:sticky; top:24px; gap:22px }
+      .sl-dog{ width:min(70%, 380px) }
       .sl-panel{ padding:clamp(28px,2.6vw,38px) }
     }
 

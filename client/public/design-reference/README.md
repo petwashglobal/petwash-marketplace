@@ -1,4 +1,4 @@
-# Design Reference — Operator-Approved Designs
+# Design Reference — Locked Approved Designs
 
 This directory holds **operator-approved visual references** that are the
 source of truth for specific user-facing surfaces in PetWash. Code that
@@ -6,56 +6,44 @@ implements these surfaces must visually match the reference image. Period.
 
 ---
 
-## Binding rules (operator brief, 2026-05-26 — SUPERSEDES 2026-05-25)
+## Binding rules (operator brief, 2026-05-25)
 
-The earlier 2026-05-25 brief froze the layout at the pixel level. The
-2026-05-26 brief replaces it with a **size-hierarchy + tap-target +
-reachability** rule set, in response to a real device review:
+For every file in this directory:
 
-> 1. **Logo dominates.** The PetWash logo must be visually larger and
->    stronger than the "The Future of Pet Lifestyle" headline. Brand
->    first, marketing copy second.
-> 2. **Dog supports.** The hero dog photo is a supporting element, not
->    the centerpiece. It must never push the primary CTA below the fold
->    on any device. On very small phones (≤420 px) it may be hidden so
->    the form fits without scroll for the primary action.
-> 3. **CTA reachable.** "Create Secure Account" / OTP send must always be
->    reachable — sticky bottom CTA on phones is mandatory whenever the
->    in-form CTA is below the fold.
-> 4. **Tap targets ≥44 px** (Apple HIG) for every interactive element.
-> 5. **Safe areas.** `100dvh` + `env(safe-area-inset-*)` so the page
->    survives iOS Safari toolbar + home indicator without dead bands.
-> 6. **Premium black/gold/white** styling — Rolex/Cartier/LV restraint,
->    Apple cleanliness. Main CTA in luxury gold, not white.
-> 7. **RTL parity** — every layout primitive switches sides on `he`.
-> 8. **Provider routing.** Each social tile must invoke the *correct*
->    provider: Google → Google OAuth, Apple → Apple OAuth, Facebook →
->    Facebook OAuth, Instagram → server-mediated OAuth. No silent dead
->    buttons; show a clear "coming soon" toast if a provider is gated.
+> The approved kit must stay **exactly** as shown in the reference image.
+>
+> No creative changes, layout changes, button changes, text changes,
+> spacing changes, color changes, font changes, image changes, logo changes,
+> icon changes, form changes, or "improvements."
+>
+> Responsive means ONLY this: make the exact approved kit fit correctly on
+> iPhone, iPad/tablet, and MacBook/desktop.
+>
+> Responsive does NOT mean redesigning the page.
 
 ### What IS allowed
 
 - Wire real backend behaviour (auth, form submission, secrets)
-- Responsive sizing so the layout uses 100% of the screen at every breakpoint
-- Hiding the hero dog photo on ≤420 px to keep CTA reachable
-- Bug fixes that do not alter brand hierarchy (a11y, performance, type safety)
-- Translation strings for new languages
+- Responsive **scaling** so the exact approved kit fits every screen size
+- Bug fixes that do not alter visual appearance (a11y, performance, type safety)
+- Translation strings for new languages — but the visual layout stays put
 
 ### What is NOT allowed (without explicit operator approval)
 
-- Removing or downsizing the PetWash logo so the headline rivals or exceeds it
-- Removing the premium card, trust card, security badge, social login buttons,
-  wallet buttons, or the Download Our App banner
-- Recoloring the main CTA away from the luxury gold gradient
-- Replacing the design with a generic "auth boilerplate" page
-- Adding fake/demo elements not explicitly marked as coming soon
+- Hiding any section, image, or button at any breakpoint
+- Cropping or fading any approved element
+- Replacing the approved design with a "mobile-first" or "simplified" variant
+- Recoloring, restyling, or rearranging buttons
+- Removing or modifying the hero photo, premium card, trust card, security
+  badge, social login buttons, wallet buttons, or the Download Our App banner
+- Adding "creative improvements" the operator did not request
+- "Polish" PRs that subtract elements to make mobile "cleaner"
 
-### Decisions on record
+### Violations on record
 
-| Date | Decision |
-|---|---|
-| 2026-05-25 | Original "locked-pixel" brief. Hero dog must stay visible on every breakpoint. |
-| 2026-05-26 | **Replaced** by the size-hierarchy + reachability + provider-routing brief above. Hero dog may now scale down on phones (and hide on ≤420 px) so CTA stays reachable; CTA recolored to luxury gold; Facebook/Instagram tiles wired to real OAuth flows. |
+| PR | What it did wrong | Resolution |
+|---|---|---|
+| #458 | Hid the hero dog photo on iPhone ≤480px and in landscape mode "as a polish." Operator rejected — the approved kit must stay visible on every breakpoint. | Reverted in PR #459 + this README + locked-design header on `SignUpLuxury.tsx`. |
 
 ---
 
