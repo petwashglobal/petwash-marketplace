@@ -7,6 +7,7 @@
 **Author:** Operator vision (nir.h@petwash.co.il) + engineering annotation.
 
 **Related documents:**
+- `docs/architecture/2026-05-27-petwash-octopus-vision-v2-amendment.md` — **v2 amendment (2026-05-27)**: extends this doc from 9 to 14 tentacles, adds the 5th central-core orb (Pricing & Promotions Engine), splits Tentacle 5 (Partners) into A/B/C, adds the accessibility global-features badge, and adds a Rover.com competitive-positioning frame. Read alongside this v1 doc; v2 does not supersede.
 - `docs/architecture/OCTOPUS_ARCHITECTURE_RESET_RFC.md` — authoritative implementation RFC (domain boundaries, role resolvers, state machines, migration phases). This document does NOT supersede it.
 - `docs/design/2026-05-25-smart-identity-routing.md` — Smart Identity & Routing SDD (covers tentacle 1).
 - `docs/architecture/00-master-roadmap.md` — overall roadmap.
