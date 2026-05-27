@@ -92,6 +92,7 @@ const FOUNDER = {
 // ARG PARSING
 // ─────────────────────────────────────────────────────────────
 const EXECUTE = process.argv.includes("--execute");
+const NOTIFY = process.argv.includes("--notify");
 const DRY_RUN = !EXECUTE;
 
 // ─────────────────────────────────────────────────────────────
@@ -246,6 +247,68 @@ async function main(): Promise<void> {
   const passPath = path.resolve(process.cwd(), "first-founder-pass.pkpass");
   fs.writeFileSync(passPath, passBuffer);
   log(`  → wrote ${passBuffer.length.toLocaleString()} bytes to ${passPath}`);
+
+  // ─── 4. Send welcome email (optional, --notify) ──────────────
+  if (NOTIFY) {
+    log("");
+    log("Step 4/5: sending welcome email via SendGrid…");
+    if (process.env.SENDGRID_API_KEY) {
+      try {
+        const { generateCustomerWelcomeEmail } = await import("../../server/email/templates/welcome-customer-signup-2026");
+        const { createMailService } = await import("../../server/lib/sendgrid");
+        const { subject, html } = generateCustomerWelcomeEmail({
+          firstName: FOUNDER.firstName,
+          lastName: FOUNDER.lastName,
+          email: FOUNDER.email,
+          language: FOUNDER.language as "he" | "en",
+          loyaltyTier: FOUNDER.loyaltyTier,
+        });
+        const sg = createMailService();
+        await sg.send({
+          to: FOUNDER.email,
+          from: process.env.SENDGRID_FROM_EMAIL || "noreply@petwash.co.il",
+          subject,
+          html,
+          attachments: [
+            {
+              content: passBuffer.toString("base64"),
+              filename: "petwash-founder-001c.pkpass",
+              type: "application/vnd.apple.pkpass",
+              disposition: "attachment",
+            },
+          ],
+        });
+        log(`  → email sent to ${FOUNDER.email} with .pkpass attached`);
+      } catch (e: any) {
+        console.error(`  ❌ email send failed: ${e?.message || e}`);
+      }
+    } else {
+      log("  → SENDGRID_API_KEY not set — email skipped");
+    }
+
+    // ─── 5. Send welcome SMS (optional, --notify) ──────────────
+    log("");
+    log("Step 5/5: sending welcome SMS via Twilio…");
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+      try {
+        const { twilioSMSService } = await import("../../server/services/TwilioSMSService");
+        const smsBody =
+          FOUNDER.language === "he"
+            ? `Pet Wash™: ברוך הבא, ${FOUNDER.firstName}! אתה חבר מייסד ${FOUNDER.founderBadge}. כרטיס Apple Wallet נשלח לאימייל ${FOUNDER.email}. פתח באייפון והוסף לארנק.`
+            : `PetWash™: Welcome, ${FOUNDER.firstName}! You're Founder Member ${FOUNDER.founderBadge}. Your Apple Wallet pass is in your email at ${FOUNDER.email}. Open on iPhone and tap the .pkpass to add to Wallet.`;
+        const result = await twilioSMSService.sendSMS(FOUNDER.phone, smsBody, { userId: actualUserId });
+        if (result.success) {
+          log(`  → SMS sent to ${FOUNDER.phone} (messageId=${result.messageId})`);
+        } else {
+          console.error(`  ❌ SMS failed: ${result.error}`);
+        }
+      } catch (e: any) {
+        console.error(`  ❌ SMS send threw: ${e?.message || e}`);
+      }
+    } else {
+      log("  → TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER not all set — SMS skipped");
+    }
+  }
 
   // ─── 6. Done ────────────────────────────────────────────────
   log("");
