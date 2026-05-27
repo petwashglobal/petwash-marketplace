@@ -400,6 +400,8 @@ interface FeeSnapshot {
 
 **Rule of thumb**: public website rates are starting points; the router only treats a rate as **applicable to a purchase** when the rate row exists in `payment_provider_routes` with status `finance_confirmed` for the customer segment in question. Until then, `requiresContractConfirmation=true` and the surface either (a) falls back to the next cheapest finance-confirmed channel or (b) refuses checkout (per-surface configurable, default = refuse).
 
+**Operator strategic input (2026-05-26)** — Nayax Israel beyond kiosk: operator notes Nayax offers terminal-owned acquiring ("100% ownership and profit without rent"). For high-volume non-kiosk surfaces (shop, bookings) this could have a lower TCO than UPAY-via-SUMIT over the terminal's lifetime (terminal capex amortised vs ongoing percentage fees). Currently scoped as kiosk-only in v1 because the TCO model does not exist yet. See §19.13 for the open question that gates expansion.
+
 ### 6.5 Routing rules
 
 1. **If `paymentMethod === 'wallet_redemption'`** and the user's wallet balance covers `amountCents` → `acquirer='wallet_only'`. No acquirer call.
@@ -1272,6 +1274,8 @@ Each phase has a corresponding rollback. Order matters — undo in reverse.
 10. **Cross-surface transactionId collisions** — v1 default: enforce uniqueness per `(acquirer, transaction_id)`. UPAY-direct and Nayax could legitimately reuse a numeric ID. Question: do we enforce platform-wide uniqueness (`transaction_id` alone) instead? Cleaner but may collide. Recommend: keep per-acquirer in v1.
 11. **(Bonus)** — When `acquirer='wallet_only'`, do we still mint a SUMIT receipt? Today: yes for booking via existing wiring (zero-cash receipt). Confirm for every surface; especially gift-card redemption against wallet (the redemption may not need a separate receipt if the receiving surface already gets one).
 12. **(Bonus)** — `manual_review` SLA — how long should the finance queue allow a purchase to sit before auto-cancelling with a refund? Per-surface or platform-wide? Proposed: 72 hours platform-wide, configurable per surface.
+13. **Nayax-as-general-acquirer (operator strategic input, 2026-05-26)** — beyond the existing kiosk wiring, operator suggests Nayax Israel for non-kiosk surfaces because terminal ownership eliminates monthly rental and may yield a lower lifetime fee profile than UPAY-via-SUMIT at high volumes. Open: finance to model TCO (terminal capex + per-transaction card fees + maintenance + chargeback handling) vs SUMIT-aggregated UPAY at projected PetWash volume across shop and bookings. Decision blocks any `acquirer='nayax'` rule for surfaces other than `kiosk`. Until decided, the router will refuse to route shop/booking traffic to Nayax even if a rate row is seeded.
+14. **SUMIT API provisioning timing (operator-resolved 2026-05-26)** — operator confirms SUMIT API access has been provisioned and PetWash's business account is sync-ready. Implementation PR-7+ (§20) can call SUMIT directly without a separate provisioning step. Open: does the existing SUMIT account use the SUMIT-aggregated UPAY billing path (1.1%+VAT) or a custom contract? Finance must surface this before PR-7 codes the fee snapshot.
 
 ## 20. First implementation PR
 
