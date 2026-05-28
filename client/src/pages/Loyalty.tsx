@@ -196,7 +196,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       marginBottom: 'clamp(6px, 2%, 12px)',
                     }}
                   >
-                    5678 9012 3456 7890
+                    •••• •••• •••• ••••
                   </div>
                   {/* Gold divider line */}
                   <div style={{
@@ -218,7 +218,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                           fontWeight: 500,
                         }}
                       >
-                        MRS. L. PAWSHINGTON
+                        PETWASH™ MEMBER
                       </div>
                     </div>
                     <div style={{ textAlign: 'end' }}>
@@ -234,7 +234,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                           fontWeight: 500,
                         }}
                       >
-                        12/28
+                        MM/YY
                       </div>
                     </div>
                     <div className="flex items-center">
