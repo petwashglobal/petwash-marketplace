@@ -51,12 +51,14 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
       data-pr-premium-grid="true"
       aria-labelledby="petwash-platform-universe-heading"
     >
-      {/* Container width matches the CEO 2026-05-14 directive:
-          min(94%, 1400px) — 3% breathing room on each side of the
-          card column on every viewport, capped at 1400px on large
-          desktops to keep the editorial feel. No horizontal padding
-          on the inner container; the 94% width creates the margin. */}
-      <div className="mx-auto w-[min(94%,1400px)]">
+      {/* Container width: min(92%, 1560px) — 4% breathing room on
+          each side of the card column on every viewport, capped at
+          1560px on large desktops so 3 cards at xl get a real
+          editorial width (~480px each at 1560px ÷ 3 col − gaps)
+          instead of the cramped ~430px the older 1400px cap produced.
+          No horizontal padding on the inner container; the 92% width
+          creates the margin. */}
+      <div className="mx-auto w-[min(92%,1560px)]">
         <header className="mb-[clamp(28px,5vw,56px)] text-center">
           <h2
             id="petwash-platform-universe-heading"
@@ -77,7 +79,13 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
             - xl (≥1280px): 3 columns — only true desktop / large laptop,
               where the cards have room to breathe side-by-side without
               cropping or text overflow. */}
-        <div className="grid grid-cols-1 gap-[clamp(20px,4vw,44px)] xl:grid-cols-3">
+        {/* Gap: clamp(32px,5vw,72px) — larger inter-card gap so each
+            card reads as its own standalone surface on large laptops
+            (≥xl, 3-col layout), where white-on-cream card-vs-shell
+            contrast is otherwise too low for a small gap to register
+            visually. On 1-col layouts the same gap becomes vertical
+            rhythm between stacked cards. */}
+        <div className="grid grid-cols-1 gap-[clamp(32px,5vw,72px)] xl:grid-cols-3">
           {PLATFORM_CARDS.map((card) => (
             <PremiumPlatformCard key={card.id} card={card} locale={locale} />
           ))}
