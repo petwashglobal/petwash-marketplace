@@ -411,6 +411,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     storeAppleLine: he ? 'הורד מ-' : 'Download on the',
     storeGoogle: 'Google Play',
     storeGoogleLine: 'GET IT ON',
+    comingSoon: he ? 'בקרוב' : 'Coming soon',
     back: he ? 'חזרה' : 'Back',
     next: he ? 'המשך' : 'Continue',
   };
@@ -709,14 +710,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           </div>
         </div>
         <div className="sl-dlRight">
-          <a className="sl-store" href="https://apps.apple.com/il/app/petwash/id1234567890" target="_blank" rel="noreferrer">
+          {/* App-store badges intentionally disabled until the native app is
+              actually published. The Apple URL still carried the placeholder
+              `id1234567890` (broken App Store page) and the Google Play bundle
+              id `co.il.petwash` did not match the registered Expo scaffold
+              `il.co.petwash.staff`. Both badges now render as disabled spans
+              with a "בקרוב / Coming soon" label so visitors get honest UX
+              instead of broken store links. When the app ships, swap the
+              spans back to <a> with the real URLs. */}
+          <span className="sl-store" aria-disabled="true" style={{ cursor: 'not-allowed', opacity: 0.6 }} title={t.comingSoon ?? 'בקרוב'}>
             <FaAppStoreIos aria-hidden />
             <span><small>{t.storeAppleLine}</small><strong>{t.storeApple}</strong></span>
-          </a>
-          <a className="sl-store" href="https://play.google.com/store/apps/details?id=co.il.petwash" target="_blank" rel="noreferrer">
+          </span>
+          <span className="sl-store" aria-disabled="true" style={{ cursor: 'not-allowed', opacity: 0.6 }} title={t.comingSoon ?? 'בקרוב'}>
             <FaGooglePlay aria-hidden />
             <span><small>{t.storeGoogleLine}</small><strong>{t.storeGoogle}</strong></span>
-          </a>
+          </span>
           <div className="sl-qr" aria-hidden>
             <QrSquare />
           </div>
