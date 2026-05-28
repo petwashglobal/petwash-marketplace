@@ -609,6 +609,14 @@ const AUTH_CSRF_EXEMPT = new Set([
   '/api/auth/phone-session',
   '/api/auth/phone/send-code',
   '/api/auth/phone/verify-code',
+  // Canonical "Sprint 2" SMS auth front door (server/routes/auth-sms.ts). Same
+  // pre-session origin and same Twilio-OTP-as-primary-auth property as the
+  // legacy /phone/send-code + /phone/verify-code pair above. Without these
+  // entries the live login page (SignIn.tsx) and signup page (SignUpLuxury.tsx)
+  // get EBADCSRFTOKEN on every "send code" attempt, since both call
+  // /api/auth/sms/start and /api/auth/sms/verify directly.
+  '/api/auth/sms/start',
+  '/api/auth/sms/verify',
   // Post-login role-routing and onboarding steps — all require a valid Firebase
   // session cookie (requireAuth) which already scopes them to the authenticated user.
   '/api/auth/post-login',
