@@ -427,6 +427,7 @@ const LegalPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
 const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
 const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
+const Trademarks = lazy(() => import("@/pages/legal/Trademarks"));
 const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
 const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 const LegalDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
@@ -1055,6 +1056,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/legal/cookies">
           {() => <CookiesPolicy />}
+        </Route>
+        <Route path="/legal/trademarks">
+          {() => <Trademarks />}
         </Route>
         {/* PR-NAV-2: redirect to canonical /accessibility (was 1 of 3 split paths) */}
         <Route path="/legal/accessibility">{() => <Redirect to="/accessibility" />}</Route>
