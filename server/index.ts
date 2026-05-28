@@ -656,6 +656,16 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // choices. Same path was returning 403 in production; exempt until a token
     // round-trip helper is added to the client.
     if (req.path === '/api/consent') return true;
+    // Public lead-capture / marketing forms (server/routes/globalForms.ts mounted
+    // at /api/global-forms, and the franchise-prospect inquiry at
+    // /api/franchise/inquiry from server/routes/franchise.ts). These accept
+    // submissions from unauthenticated visitors who have no pw.csrf cookie yet,
+    // each handler validates its own payload with Zod, and rate limiting is
+    // already enforced upstream (apiLimiter). Without this exemption every
+    // contact/newsletter/franchise/sales-lead/refund-request POST was returning
+    // 403 in production — the public lead-capture pipeline was silently dead.
+    if (/^\/api\/global-forms\//.test(req.path)) return true;
+    if (req.path === '/api/franchise/inquiry') return true;
     return false;
   },
 });
