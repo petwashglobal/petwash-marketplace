@@ -871,6 +871,16 @@ jobs:
           TRANZILA_MARKETPLACE_ENABLED_VAL: ${{ secrets.TRANZILA_MARKETPLACE_ENABLED }}
           TRANZILA_WALLET_TOPUP_ENABLED_VAL: ${{ secrets.TRANZILA_WALLET_TOPUP_ENABLED }}
           TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL: ${{ secrets.TRANZILA_PAYMENT_REQUESTS_ENABLED }}
+          # Social OAuth (TikTok Login Kit + Instagram Basic Display). When set,
+          # /api/auth/social/{tiktok|instagram}/{authorize,callback} routes go
+          # live. When absent, the SignIn "Continue with TikTok"/"Continue with
+          # Instagram" buttons gracefully return 503 "not configured" and the
+          # button stays present but inert. Server-side OAuth flow already
+          # implemented in server/routes/social-oauth.ts.
+          TIKTOK_CLIENT_KEY_VAL: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET_VAL: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          INSTAGRAM_CLIENT_ID_VAL: ${{ secrets.INSTAGRAM_CLIENT_ID }}
+          INSTAGRAM_CLIENT_SECRET_VAL: ${{ secrets.INSTAGRAM_CLIENT_SECRET }}
         run: |
           PROJECT="$PROJECT_ID"
           # Idempotent via sync-gcp-secret.sh — skips writing a new version
@@ -898,6 +908,10 @@ jobs:
           sync_optional "TRANZILA_MARKETPLACE_ENABLED"      "$TRANZILA_MARKETPLACE_ENABLED_VAL"
           sync_optional "TRANZILA_WALLET_TOPUP_ENABLED"     "$TRANZILA_WALLET_TOPUP_ENABLED_VAL"
           sync_optional "TRANZILA_PAYMENT_REQUESTS_ENABLED" "$TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL"
+          sync_optional "TIKTOK_CLIENT_KEY"                 "$TIKTOK_CLIENT_KEY_VAL"
+          sync_optional "TIKTOK_CLIENT_SECRET"              "$TIKTOK_CLIENT_SECRET_VAL"
+          sync_optional "INSTAGRAM_CLIENT_ID"               "$INSTAGRAM_CLIENT_ID_VAL"
+          sync_optional "INSTAGRAM_CLIENT_SECRET"           "$INSTAGRAM_CLIENT_SECRET_VAL"
 
       - name: Set up Node 22
         uses: actions/setup-node@v5
@@ -1200,6 +1214,19 @@ jobs:
             "TRANZILA_MARKETPLACE_ENABLED=TRANZILA_MARKETPLACE_ENABLED:latest"
             "TRANZILA_WALLET_TOPUP_ENABLED=TRANZILA_WALLET_TOPUP_ENABLED:latest"
             "TRANZILA_PAYMENT_REQUESTS_ENABLED=TRANZILA_PAYMENT_REQUESTS_ENABLED:latest"
+            # Social OAuth (TikTok Login Kit + Instagram Basic Display).
+            # server/routes/social-oauth.ts already implements the full OAuth
+            # flow for both providers. When the env var is unset on the live
+            # revision the corresponding /api/auth/social/{provider}/* routes
+            # return 503 "{provider} sign-in not configured" — the UI button
+            # remains visible but inert. To go live: set TIKTOK_CLIENT_KEY +
+            # TIKTOK_CLIENT_SECRET (or INSTAGRAM_CLIENT_ID + _SECRET) as GitHub
+            # Actions secrets — the sync_optional step above pushes them to
+            # GCP Secret Manager, and this mapping wires them into Cloud Run.
+            "TIKTOK_CLIENT_KEY=TIKTOK_CLIENT_KEY:latest"
+            "TIKTOK_CLIENT_SECRET=TIKTOK_CLIENT_SECRET:latest"
+            "INSTAGRAM_CLIENT_ID=INSTAGRAM_CLIENT_ID:latest"
+            "INSTAGRAM_CLIENT_SECRET=INSTAGRAM_CLIENT_SECRET:latest"
             # Firebase client config vars — synced from VITE_* GitHub secrets.
             # Used by buildFirebaseInjectedHtml to inject full config into index.html
             # so the browser always gets messagingSenderId, appId, measurementId
