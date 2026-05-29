@@ -7778,7 +7778,9 @@ router.post('/admin/wallet/payout-batches/:batchId/send-remittances', async (req
           const appRow: any = await db.execute(sql`SELECT email FROM provider_applications WHERE user_id = ${providerUid} ORDER BY id DESC LIMIT 1`);
           providerEmail = (appRow?.rows ?? appRow ?? [])[0]?.email ?? null;
         }
-      } catch (_) {}
+      } catch (err) {
+        logger.warn('[Remittance] Provider email lookup failed (bulk-send)', { batchId, providerUid, error: (err as Error)?.message });
+      }
 
       if (!providerEmail) {
         await db.execute(sql`
@@ -8169,7 +8171,9 @@ router.post('/admin/wallet/payout-batches/:batchId/resend-remittance/:providerUi
         const appRow: any = await db.execute(sql`SELECT email FROM provider_applications WHERE user_id = ${providerUid} ORDER BY id DESC LIMIT 1`);
         providerEmail = (appRow?.rows ?? appRow ?? [])[0]?.email ?? null;
       }
-    } catch (_) {}
+    } catch (err) {
+      logger.warn('[Remittance] Provider email lookup failed (single-resend)', { batchId, providerUid, error: (err as Error)?.message });
+    }
 
     if (!providerEmail) {
       const newRetry = (existingRow?.retry_count ?? 0) + 1;
@@ -8276,7 +8280,9 @@ router.post('/admin/wallet/payout-batches/:batchId/retry-failed', async (req: Re
           const appRow: any = await db.execute(sql`SELECT email FROM provider_applications WHERE user_id = ${providerUid} ORDER BY id DESC LIMIT 1`);
           providerEmail = (appRow?.rows ?? appRow ?? [])[0]?.email ?? null;
         }
-      } catch (_) {}
+      } catch (err) {
+        logger.warn('[Remittance] Provider email lookup failed (retry-failed-batch)', { batchId, providerUid, error: (err as Error)?.message });
+      }
 
       if (!providerEmail) {
         await db.execute(sql`
