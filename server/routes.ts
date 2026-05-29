@@ -530,6 +530,19 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // ✅ Public franchise inquiry — prospective franchisees submit this form
+    // BEFORE they have any account. The /api/franchise/* prefix is otherwise
+    // listed in INTERNAL_ROUTE_PREFIXES above, which blocks unauthenticated
+    // callers. This exact path is the only public inquiry endpoint inside
+    // the franchise prefix; it is also CSRF-exempt (server/index.ts
+    // AUTH_CSRF_EXEMPT) and rate-limited (apiLimiter on the public POST
+    // handler around line 10125 of this file). Without this bypass, the
+    // RBAC guard returns 401 "Authentication required" before Express can
+    // route the request to the public POST handler.
+    if (path === '/api/franchise/inquiry') {
+      return next();
+    }
+
     // ✅ K9000 IoT hardware bypass — kiosks authenticate via either:
     //   A) HMAC signed headers (X-K9000-ID + X-K9000-TS + X-K9000-SIGN) — production path
     //   B) body.machineSecret — DEV fallback
