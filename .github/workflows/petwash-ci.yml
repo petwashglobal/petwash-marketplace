@@ -1660,6 +1660,20 @@ jobs:
               continue
             fi
 
+            # HTTP 503 + non-JSON "Service Unavailable" plaintext body =
+            # Cloud Run proxy returned an error before the container responded.
+            # This happens during candidate-revision cold start: the tagged URL
+            # accepts the request but the container isn't ready yet, so Cloud
+            # Run's load balancer returns its own 503 page (not a JSON response
+            # from our app's startup guard). Retry — the container needs more
+            # time. Distinguishes from JSON-bodied SERVICE_STARTING (handled
+            # below): both are "wait longer", but only one comes from our app.
+            if [ "$HTTP_STATUS" = "503" ] && ! echo "$RESULT" | python3 -c "import sys,json; json.load(sys.stdin)" >/dev/null 2>&1; then
+              echo "   Attempt $attempt: HTTP 503 with non-JSON body (Cloud Run proxy, container cold start) — retrying in 20 s..."
+              sleep 20
+              continue
+            fi
+
             # Cloud Run per-revision quota throttle — back off exponentially
             # (20s → 40s → 80s → 160s → 320s) so we don't keep hitting the limiter.
             if [ "$HTTP_STATUS" = "429" ]; then
