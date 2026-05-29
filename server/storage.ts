@@ -228,7 +228,7 @@ import {
 } from "@shared/schema-chat";
 import crypto from "crypto";
 import { db } from "./db";
-import { eq, desc, and, or, lt, gte, lte, like, sql, asc } from "drizzle-orm";
+import { eq, desc, and, or, lt, gte, lte, like, sql, asc, isNull } from "drizzle-orm";
 import { NotFoundError } from "./errors";
 
 export interface IStorage {
@@ -4828,34 +4828,48 @@ export class DatabaseStorage implements IStorage {
   }
   
   // =================== FINANCE - ACCOUNTS PAYABLE ===================
-  
+  //
+  // Soft-delete (migration 0033). Per Israeli Tax Ordinance §130 + VAT Law
+  // §49 financial records must be retained for 7 years. deleteAccountsPayable
+  // marks the row with deletedAt = now() instead of hard-deleting; all
+  // read paths below filter `deletedAt IS NULL` so the default behaviour
+  // is unchanged (the row is hidden) but the underlying data is preserved
+  // for tax-audit purposes.
+
   async getAllAccountsPayable(): Promise<AccountsPayable[]> {
-    return await db.select().from(accountsPayable).orderBy(desc(accountsPayable.dueDate));
+    return await db.select().from(accountsPayable)
+      .where(isNull(accountsPayable.deletedAt))
+      .orderBy(desc(accountsPayable.dueDate));
   }
-  
+
   async getAccountsPayableById(id: number): Promise<AccountsPayable | undefined> {
-    const results = await db.select().from(accountsPayable).where(eq(accountsPayable.id, id));
+    const results = await db.select().from(accountsPayable)
+      .where(and(eq(accountsPayable.id, id), isNull(accountsPayable.deletedAt)));
     return results[0];
   }
-  
+
   async createAccountsPayable(data: InsertAccountsPayable): Promise<AccountsPayable> {
     const results = await db.insert(accountsPayable).values(data).returning();
     return results[0];
   }
-  
+
   async updateAccountsPayable(id: number, updates: Partial<AccountsPayable>): Promise<AccountsPayable> {
     const results = await db.update(accountsPayable)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(accountsPayable.id, id))
+      .where(and(eq(accountsPayable.id, id), isNull(accountsPayable.deletedAt)))
       .returning();
     if (!results[0]) throw new Error("Accounts payable not found");
     return results[0];
   }
-  
+
   async deleteAccountsPayable(id: number): Promise<void> {
-    await db.delete(accountsPayable).where(eq(accountsPayable.id, id));
+    // Soft-delete: mark deletedAt, do NOT hard-delete. See block comment
+    // above for the legal basis (Israeli 7-year retention requirement).
+    await db.update(accountsPayable)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(accountsPayable.id, id), isNull(accountsPayable.deletedAt)));
   }
-  
+
   async getOverduePayables(): Promise<AccountsPayable[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -4863,6 +4877,7 @@ export class DatabaseStorage implements IStorage {
       .from(accountsPayable)
       .where(
         and(
+          isNull(accountsPayable.deletedAt),
           lt(accountsPayable.dueDate, today.toISOString().split('T')[0]),
           or(
             eq(accountsPayable.paymentStatus, 'pending'),
@@ -4872,18 +4887,18 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(accountsPayable.dueDate);
   }
-  
+
   async getPayablesBySupplier(supplierId: number): Promise<AccountsPayable[]> {
     return await db.select()
       .from(accountsPayable)
-      .where(eq(accountsPayable.supplierId, supplierId))
+      .where(and(eq(accountsPayable.supplierId, supplierId), isNull(accountsPayable.deletedAt)))
       .orderBy(desc(accountsPayable.invoiceDate));
   }
-  
+
   async getPayablesByStatus(status: string): Promise<AccountsPayable[]> {
     return await db.select()
       .from(accountsPayable)
-      .where(eq(accountsPayable.paymentStatus, status))
+      .where(and(eq(accountsPayable.paymentStatus, status), isNull(accountsPayable.deletedAt)))
       .orderBy(desc(accountsPayable.dueDate));
   }
   
@@ -4908,34 +4923,45 @@ export class DatabaseStorage implements IStorage {
   }
   
   // =================== FINANCE - ACCOUNTS RECEIVABLE ===================
-  
+  //
+  // Soft-delete (migration 0033). Same legal basis as accounts_payable above.
+  // deleteAccountsReceivable marks deletedAt instead of hard-deleting; all
+  // read paths below filter `deletedAt IS NULL`.
+
   async getAllAccountsReceivable(): Promise<AccountsReceivable[]> {
-    return await db.select().from(accountsReceivable).orderBy(desc(accountsReceivable.dueDate));
+    return await db.select().from(accountsReceivable)
+      .where(isNull(accountsReceivable.deletedAt))
+      .orderBy(desc(accountsReceivable.dueDate));
   }
-  
+
   async getAccountsReceivableById(id: number): Promise<AccountsReceivable | undefined> {
-    const results = await db.select().from(accountsReceivable).where(eq(accountsReceivable.id, id));
+    const results = await db.select().from(accountsReceivable)
+      .where(and(eq(accountsReceivable.id, id), isNull(accountsReceivable.deletedAt)));
     return results[0];
   }
-  
+
   async createAccountsReceivable(data: InsertAccountsReceivable): Promise<AccountsReceivable> {
     const results = await db.insert(accountsReceivable).values(data).returning();
     return results[0];
   }
-  
+
   async updateAccountsReceivable(id: number, updates: Partial<AccountsReceivable>): Promise<AccountsReceivable> {
     const results = await db.update(accountsReceivable)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(accountsReceivable.id, id))
+      .where(and(eq(accountsReceivable.id, id), isNull(accountsReceivable.deletedAt)))
       .returning();
     if (!results[0]) throw new Error("Accounts receivable not found");
     return results[0];
   }
-  
+
   async deleteAccountsReceivable(id: number): Promise<void> {
-    await db.delete(accountsReceivable).where(eq(accountsReceivable.id, id));
+    // Soft-delete: mark deletedAt, do NOT hard-delete. See block comment
+    // above for the legal basis (Israeli 7-year retention requirement).
+    await db.update(accountsReceivable)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(accountsReceivable.id, id), isNull(accountsReceivable.deletedAt)));
   }
-  
+
   async getOverdueReceivables(): Promise<AccountsReceivable[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -4943,6 +4969,7 @@ export class DatabaseStorage implements IStorage {
       .from(accountsReceivable)
       .where(
         and(
+          isNull(accountsReceivable.deletedAt),
           lt(accountsReceivable.dueDate, today.toISOString().split('T')[0]),
           or(
             eq(accountsReceivable.paymentStatus, 'pending'),
@@ -4953,18 +4980,18 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(accountsReceivable.dueDate);
   }
-  
+
   async getReceivablesByCustomer(customerId: string): Promise<AccountsReceivable[]> {
     return await db.select()
       .from(accountsReceivable)
-      .where(eq(accountsReceivable.customerId, customerId))
+      .where(and(eq(accountsReceivable.customerId, customerId), isNull(accountsReceivable.deletedAt)))
       .orderBy(desc(accountsReceivable.invoiceDate));
   }
-  
+
   async getReceivablesByStatus(status: string): Promise<AccountsReceivable[]> {
     return await db.select()
       .from(accountsReceivable)
-      .where(eq(accountsReceivable.paymentStatus, status))
+      .where(and(eq(accountsReceivable.paymentStatus, status), isNull(accountsReceivable.deletedAt)))
       .orderBy(desc(accountsReceivable.dueDate));
   }
   
