@@ -360,7 +360,12 @@ const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
-const AdminOperatingControl = lazy(() => import("@/pages/admin/AdminOperatingControl"));
+// NOTE: AdminOperatingControl import temporarily removed (hotfix). The lazy
+// import referenced @/pages/admin/AdminOperatingControl but that file is NOT
+// committed to main — only the import + usage landed in a previous PR. Vite
+// build fails with ENOENT, blocking every Cloud Run deploy + Firebase
+// Hosting build. When the actual AdminOperatingControl.tsx file ships in
+// a separate PR alongside its import, restore this line.
 const AdminLiveEvents = lazy(() => import("@/pages/admin/AdminLiveEvents"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
 const PawFinderAdmin = lazy(() => import("@/pages/admin/PawFinderAdmin"));
@@ -2020,15 +2025,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        <Route path="/admin/operating-control">
-          {() => (
-            <AdminRouteGuard>
-              <Suspense fallback={<div />}>
-                <AdminOperatingControl />
-              </Suspense>
-            </AdminRouteGuard>
-          )}
-        </Route>
+        {/* Route /admin/operating-control temporarily removed (hotfix).
+            Pairs with the commented-out AdminOperatingControl lazy import
+            above. Restore both together once AdminOperatingControl.tsx
+            actually ships in a committed file. Until then, visitors to
+            /admin/operating-control fall through to the catch-all 404
+            handler — better than a build failure that blocks every
+            deploy in the pipeline. */}
 
         {/* Gemini AI Watchdog Dashboard */}
         <Route path="/admin/gemini-watchdog">
