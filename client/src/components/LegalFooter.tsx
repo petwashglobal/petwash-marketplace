@@ -304,7 +304,7 @@ Support Phone: 1-700-700-PET (738)
   const currentLang = language === 'he' ? 'he' : 'en';
 
   return (
-    <div className="border-t-2 border-black dark:border-white bg-gradient-to-r from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black py-8 px-4">
+    <div className="border-t-2 border-black dark:border-white bg-gradient-to-r from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black py-8 px-4 pb-44 sm:pb-32">{/* pb-44 / pb-32: floating button column (WhatsApp, AI, Accessibility, VIP) sits at bottom 16-232px with `position: fixed` — see client/src/styles/floating-stack.css. Extra footer bottom padding pushes the copyright line clear of the button stack so "© 2026 PetWash Ltd. All rights reserved." is never visually covered. Original bug report #21 ("WhatsApp button overlaps copyright text on every page"). */}
       <div className="max-w-6xl mx-auto text-center">
         <h3 className="text-lg font-bold text-black dark:text-black mb-4">
           {t('legal.title', language)}
