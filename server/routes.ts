@@ -10113,6 +10113,46 @@ self.addEventListener('notificationclick', (event) => {
   const franchiseFinanceRoutes = await import('./routes/franchise-finance');
   app.use('/api/franchise', apiLimiter, franchiseFinanceRoutes.default);
 
+  // PUBLIC franchise inquiry endpoint — registered BEFORE the protected
+  // franchiseRoutes mount below so Express matches this specific route first
+  // and bypasses validateFirebaseToken. Prospective franchisees submitting
+  // the inquiry form have no Firebase session by definition (they haven't
+  // signed up yet), so requiring auth here makes the form unusable. CSRF
+  // exemption for this path is provided separately via AUTH_CSRF_EXEMPT in
+  // server/index.ts (already merged via hotfix/public-forms-csrf-exempt).
+  // Handler mirrors server/routes/franchise.ts:26 but is mounted at the
+  // public layer so it actually receives the request.
+  app.post('/api/franchise/inquiry', apiLimiter, async (req, res) => {
+    try {
+      const { fullName, email, phone, country, city, message } = req.body ?? {};
+      if (!fullName || !email || !phone) {
+        return res.status(400).json({ error: 'Name, email, and phone are required' });
+      }
+      const inquiryData = {
+        fullName,
+        email,
+        phone,
+        country: country || '',
+        city: city || '',
+        message: message || '',
+        submittedAt: new Date().toISOString(),
+        status: 'new' as const,
+      };
+      try {
+        const { db: firestore } = await import('./lib/firebase-admin');
+        const inquiriesRef = firestore.collection('franchise_inquiries');
+        await inquiriesRef.add(inquiryData);
+      } catch (firestoreErr) {
+        logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
+      }
+      logger.info('[Franchise/inquiry] received', { fullName, email, country, city });
+      return res.json({ success: true, message: 'Inquiry submitted successfully' });
+    } catch (error) {
+      logger.error('[Franchise/inquiry] handler error', error);
+      return res.status(500).json({ error: 'Failed to process inquiry' });
+    }
+  });
+
   // Franchise routes (Firebase auth applied here; registered after finance routes)
   const franchiseRoutes = await import('./routes/franchise');
   app.use('/api/franchise', validateFirebaseToken, apiLimiter, franchiseRoutes.default);
@@ -10987,7 +11027,7 @@ self.addEventListener('notificationclick', (event) => {
   // Marketplace Provider Search — online service domains only (pet_sitting, dog_walking, grooming, transport, daycare)
   // NOT for K9000. GET /api/providers/search
   const providerSearchRoutes = (await import('./routes/provider-search')).default;
-  app.use('/api/providers', apiLimiter, providerSearchRoutes);
+  app.use('/api/providers', optionalFirebaseToken, apiLimiter, providerSearchRoutes);
 
   // Provider Slot Management — providers create/list/cancel their availability_slots
   // NOT for K9000. Requires provider identity (Firebase UID → providers row).
@@ -15809,5 +15849,4 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
 }
-
 
