@@ -410,20 +410,16 @@ const PORT = Number(process.env.PORT || 8080);
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);
 
-// ── EARLY PORT BINDING — fixes Cloud Run startup-probe failures ────────────
-// Pre-fix: app.listen() lived ~600 lines below, AFTER all of helmet/CORS/
-// session/csrf/route-registration synchronous setup. If any one of those
-// hung or threw, the port never bound and Cloud Run's startup probe
-// (240s TCP check) failed with "user-provided container failed the
-// configured startup probe checks". Burned hours diagnosing why.
+// ── STARTUP PHASE TRACKING ─────────────────────────────────────────────────
+// Previous production builds bound the Cloud Run port here and continued route
+// registration "in the background". That looked clever, but it created a real
+// Cloud Run failure mode: once the startup/health request completed, background
+// CPU could be throttled and a cold instance could sit forever in loading_routes,
+// returning SERVICE_STARTING to every real API request.
 //
-// Fix: bind the port HERE, immediately, with only a minimal /health
-// handler. All the heavyweight middleware and route registration then
-// runs in the background — failures happen AFTER Cloud Run already
-// saw a listening socket, so the deploy succeeds and the operator
-// can read the real error from /health (which switches state from
-// "starting" → "ok" once routes are registered, or surfaces an
-// errors list if registration fails).
+// Production now binds only after routes/static/catchall are installed. The
+// no-traffic candidate deploy + startup probe may take a little longer, but it
+// either promotes a truly ready backend or fails closed before customer traffic.
 let _initStartedTs = Date.now();
 let _initPhase = 'pre_middleware';
 let _initError: string | null = null;
@@ -439,11 +435,7 @@ const _earlyHealthHandler = (_req: any, res: any) => {
 app.get('/health', _earlyHealthHandler);
 app.get('/_health', _earlyHealthHandler);
 
-const _earlyServer = process.env.NODE_ENV === 'production'
-  ? app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🟢 [Startup t=0ms] Port ${PORT} bound BEFORE middleware setup`);
-    })
-  : null;
+type HttpServer = ReturnType<typeof app.listen>;
 
 // Heartbeat: emits a line every 10s with current init phase. If the next
 // deploy ever fails again, the Cloud Run revision log will show exactly
@@ -1059,19 +1051,28 @@ import("./compliance/google-cloud-dpa-registry").then(({ validateGCPCompliance }
   validateGCPCompliance();
 }).catch((err) => console.error("[GCP Compliance] registry load failed", err));
 
-// --- Late-init diagnostic + signal handlers ---
-// NOTE 2026-05-24: app.listen() now fires at line ~360 (right after
-// const app = express()) so Cloud Run's startup probe never times out.
-// The block below USED to call app.listen() here too, which would now
-// throw EADDRINUSE. Re-use the early-bound server instead.
+function attachGracefulShutdown(server: HttpServer): void {
+  const shutdownHandler = (signal: string) => {
+    console.warn(`[Graceful] ${signal} received — closing HTTP server`);
+    server.close(() => {
+      console.warn('[Graceful] HTTP server closed cleanly');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('[Graceful] Forced exit after 10 s timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  };
+  process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
+  process.on('SIGINT',  () => shutdownHandler('SIGINT'));
+}
+
+// --- Late-init diagnostic ---
 if (isProduction) {
   _initPhase = 'late_init_diagnostics';
-  const server = _earlyServer!;
-  // Stash a no-op IIFE that fires the same diagnostic logging the original
-  // listen callback used to do. Cosmetic; safe to skip if anything throws.
   setImmediate(() => {
     console.log('--------------------------------------------------');
-    console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
+    console.log(`🚀 [Server] Production initialization running before port bind...`);
     // PR-CONFIG-HEALTH: log the canonical env-var manifest snapshot.
     // Names only — never values. Surfaces missing required/recommended
     // vars in deploy logs so the next misconfiguration fails LOUD,
@@ -1094,25 +1095,6 @@ if (isProduction) {
     }
     console.log('--------------------------------------------------');
   }); // end setImmediate
-
-  // Store server reference for later use
-  (app as any)._server = server;
-
-  // Graceful shutdown — Cloud Run sends SIGTERM before replacing the instance.
-  // Stop accepting new connections and drain existing requests within 10 s.
-  const shutdownHandler = (signal: string) => {
-    console.warn(`[Graceful] ${signal} received — closing HTTP server`);
-    server.close(() => {
-      console.warn('[Graceful] HTTP server closed cleanly');
-      process.exit(0);
-    });
-    setTimeout(() => {
-      console.error('[Graceful] Forced exit after 10 s timeout');
-      process.exit(1);
-    }, 10_000).unref();
-  };
-  process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
-  process.on('SIGINT',  () => shutdownHandler('SIGINT'));
 }
 
 // 3. Static assets, API routes, and server startup
@@ -1569,6 +1551,25 @@ if (isProduction) {
       });
     });
     
+    // Bind production port only after API routes, static assets, and SPA
+    // fallback are registered. This keeps Cloud Run from promoting an instance
+    // that can answer health checks while real API routes are still unavailable.
+    if (isProduction && !(app as any)._server) {
+      const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log('--------------------------------------------------');
+        console.log(`✅ [Server] listening on port ${PORT} in production mode`);
+        console.log('✅ [Server] Routes/static/catchall are registered before traffic');
+        try {
+          _logStartupConfigDiagnostic();
+        } catch (e) {
+          console.error('[Server] config-health diagnostic failed (non-fatal):', e);
+        }
+        console.log('--------------------------------------------------');
+      });
+      (app as any)._server = server;
+      attachGracefulShutdown(server);
+    }
+
     // Wire provider matching WebSocket (production path)
     if (isProduction) {
       const httpServer = (app as any)._server;
