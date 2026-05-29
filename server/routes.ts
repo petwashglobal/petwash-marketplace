@@ -9470,6 +9470,28 @@ self.addEventListener('notificationclick', (event) => {
 
   // =================== BULK OPERATIONS ===================
 
+  // Substitute {{handlebars-style}} placeholders in a template string with
+  // values from the recipient + customData payload. Used by the bulk email
+  // and bulk SMS endpoints below so the stored communication record reflects
+  // what the recipient would actually see, not the raw template syntax.
+  //
+  // Replaces tokens like {{firstName}}, {{first_name}}, {{ email }}.
+  // Unknown tokens are removed (replaced with empty string) to avoid leaking
+  // raw {{...}} into customer-visible content if the actual send code is
+  // ever uncommented.
+  const renderTemplateContent = (
+    content: string,
+    recipient: Record<string, unknown> = {},
+    customData: Record<string, unknown> = {}
+  ): string => {
+    if (!content || typeof content !== 'string') return content ?? '';
+    const data: Record<string, unknown> = { ...recipient, ...customData };
+    return content.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => {
+      const value = data[key];
+      return value === undefined || value === null ? '' : String(value);
+    });
+  };
+
   // Send bulk emails
   app.post('/api/crm/communications/bulk/send-email', requireAdmin, async (req: any, res) => {
     try {
@@ -9489,17 +9511,33 @@ self.addEventListener('notificationclick', (event) => {
 
       for (const recipient of recipients) {
         try {
+          // Render the template now so the stored audit record (and the
+          // commented-out send code below, when it gets uncommented) sees
+          // substituted content instead of raw {{firstName}} tokens.
+          const renderedSubject = renderTemplateContent(template.subject ?? '', recipient, customData);
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+
           // Create communication record
           const communication = await storage.createCommunication({
             leadId: recipient.leadId,
             customerId: recipient.customerId,
             userId: recipient.userId,
             communicationType: 'email',
-            subject: template.subject,
-            content: template.content, // TODO: Replace placeholders with recipient data
+            subject: renderedSubject,
+            content: renderedContent,
             sentBy: req.session?.adminId,
             status: 'sending',
             templateId: templateId,
+          });
+
+          // KNOWN GAP: the actual outbound send is still commented out below.
+          // The communication record is created and marked 'sent' but no email
+          // leaves the server. Until the emailService call is wired up, this
+          // endpoint is a no-op for delivery — log a warn so operators see it
+          // and don't trust the "sent" count blindly.
+          logger.warn('[CRM bulk-email] send is not wired — communication record stored but no email dispatched', {
+            recipient: recipient.email,
+            templateId,
           });
 
           // Send email (placeholder - integrate with actual email service)
@@ -9562,6 +9600,10 @@ self.addEventListener('notificationclick', (event) => {
 
       for (const recipient of recipients) {
         try {
+          // Render the template now so the stored audit record reflects
+          // the substituted content instead of raw {{firstName}} tokens.
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+
           // Create communication record
           const communication = await storage.createCommunication({
             leadId: recipient.leadId,
@@ -9569,10 +9611,18 @@ self.addEventListener('notificationclick', (event) => {
             userId: recipient.userId,
             communicationType: 'sms',
             subject: template.name,
-            content: template.content, // TODO: Replace placeholders with recipient data
+            content: renderedContent,
             sentBy: req.session?.adminId,
             status: 'sending',
             templateId: templateId,
+          });
+
+          // KNOWN GAP: the actual outbound send is still commented out below.
+          // Same situation as bulk-email above — record stored, no SMS sent.
+          // Logging a warn so operators see it.
+          logger.warn('[CRM bulk-sms] send is not wired — communication record stored but no SMS dispatched', {
+            recipient: recipient.phone,
+            templateId,
           });
 
           // Send SMS (placeholder - integrate with actual SMS service)
