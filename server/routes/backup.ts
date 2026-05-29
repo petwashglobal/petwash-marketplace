@@ -461,11 +461,15 @@ async function runDailyBackup(): Promise<void> {
     try {
       const sysEvts = await db.execute(sql`SELECT * FROM system_events ORDER BY created_at DESC LIMIT 3000`);
       if (sysEvts.rows.length) tables.push({ name: 'system_events', data: sysEvts.rows as any[] });
-    } catch (_) {}
+    } catch (err) {
+      logger.warn('[AutoBackup] system_events backup skipped', { error: (err as Error)?.message });
+    }
     try {
       const ledger = await db.execute(sql`SELECT id, user_uid, entry_type, amount_cents, balance_cents_after, reference_id, description, created_at FROM wallet_ledger ORDER BY created_at DESC LIMIT 10000`);
       if (ledger.rows.length) tables.push({ name: 'wallet_ledger', data: ledger.rows as any[] });
-    } catch (_) {}
+    } catch (err) {
+      logger.error('[AutoBackup] wallet_ledger backup failed — money records not backed up this run', err as Error);
+    }
 
     if (tables.length === 0) {
       logger.warn('[AutoBackup] No data found — backup skipped');
