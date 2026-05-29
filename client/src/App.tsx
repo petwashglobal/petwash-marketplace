@@ -360,6 +360,7 @@ const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
+const AdminOperatingControl = lazy(() => import("@/pages/admin/AdminOperatingControl"));
 const AdminLiveEvents = lazy(() => import("@/pages/admin/AdminLiveEvents"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
 const PawFinderAdmin = lazy(() => import("@/pages/admin/PawFinderAdmin"));
@@ -485,12 +486,34 @@ const ProviderRankingPanel = lazy(() => import("@/pages/ProviderRankingPanel"));
 const StationDashboard = lazy(() => import("@/pages/StationDashboard"));
 const DisputeDetail = lazy(() => import("@/pages/DisputeDetail"));
 
-// Loading fallback component
+// Loading fallback component.
+// Reads pw_lang directly from localStorage (same canonical key as
+// languageStore.tsx) so the spinner copy is correctly localized even
+// when this renders before any React context provider is mounted —
+// e.g. on the first lazy-chunk download during cold start. Defaults to
+// Hebrew because the site is Hebrew-first.
+const PAGE_LOADER_COPY: Record<string, string> = {
+  he: 'טוען...',
+  en: 'Loading...',
+  ar: 'جاري التحميل...',
+  ru: 'Загрузка...',
+  fr: 'Chargement...',
+  es: 'Cargando...',
+};
+const getPageLoaderLabel = (): string => {
+  try {
+    const lang = typeof window !== 'undefined' ? localStorage.getItem('pw_lang') : null;
+    return (lang && PAGE_LOADER_COPY[lang]) || PAGE_LOADER_COPY.he;
+  } catch {
+    return PAGE_LOADER_COPY.he;
+  }
+};
+
 const PageLoader = () => (
   <div data-build-version="BUILD_2026_01_25_1769349430610" className="min-h-[100dvh] bg-white flex items-center justify-center">
     <div className="text-center">
       <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-gray-600 font-medium">Loading...</p>
+      <p className="text-gray-600 font-medium">{getPageLoaderLabel()}</p>
     </div>
   </div>
 );
@@ -1992,6 +2015,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<div />}>
                 <AdminSystemConfig />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        <Route path="/admin/operating-control">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<div />}>
+                <AdminOperatingControl />
               </Suspense>
             </AdminRouteGuard>
           )}
