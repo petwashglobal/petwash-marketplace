@@ -256,7 +256,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                   <Input
                     value={formData.recipientName}
                     onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
-                    placeholder="John Doe"
+                    placeholder={language === 'he' ? 'ישראל ישראלי' : language === 'ar' ? 'الاسم الكامل' : 'Full name'}
                     autoComplete="name"
                     className="luxury-glass-minimal"
                     required
@@ -403,7 +403,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                   <Input
                     value={formData.senderName}
                     onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
-                    placeholder="Anonymous"
+                    placeholder={language === 'he' ? 'אנונימי' : language === 'ar' ? 'مجهول' : 'Anonymous'}
                     autoComplete="name"
                     data-testid="input-sender-name"
                   />
@@ -414,7 +414,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                     type="email"
                     value={formData.senderEmail}
                     onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
-                    placeholder="For confirmation"
+                    placeholder={language === 'he' ? 'לשליחת אישור' : language === 'ar' ? 'للتأكيد' : 'For confirmation'}
                     autoComplete="email"
                     data-testid="input-sender-email"
                   />
