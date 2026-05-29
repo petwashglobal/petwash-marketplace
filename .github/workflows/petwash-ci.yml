@@ -1011,6 +1011,14 @@ jobs:
           # credentials. Per Rule H ("no fake success"), mock providers return ok:false
           # for any payment call. Live deploy to Cloud Run uses PAYMENT_PROVIDER_MODE=live
           # (default) and real GCP Secret Manager values.
+          # Throw-at-startup secrets: server/lib/env-validation.ts and
+          # server/routes/prestige-pass.ts throw FATAL during module load when
+          # NODE_ENV=production AND these secrets are missing. Without dummies,
+          # routes-load fails → port never binds (since PR #498) → /health 000
+          # → smoke fails. Production gets the real values from GCP Secret Mgr
+          # at workflow lines 456-460 (ensure_secret + Cloud Run mapping). The
+          # dummies here only need to satisfy presence + format (length ≥ 32
+          # for COOKIE_SECRET / PASS_TOKEN_SECRET, 64-hex for encryption keys).
           docker run -d --name petwash-smoke \
             -p 18080:8080 \
             -e PORT=8080 \
@@ -1018,6 +1026,11 @@ jobs:
             -e PAYMENT_PROVIDER_MODE=mock \
             -e NAYAX_ENABLED=false \
             -e SUMIT_ENABLED=false \
+            -e PRESTIGE_QR_SECRET=smoke-dummy-prestige-do-not-use-this-value-anywhere \
+            -e DOCUMENT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+            -e TREASURY_FIELD_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+            -e IP_HASH_SALT=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+            -e COOKIE_SECRET=smoke-dummy-cookie-secret-32chars-min-do-not-use \
             "${{ env.IMAGE }}:${{ github.sha }}"
 
           # ── Phase 1: wait for /health to return 200 ──────────────────────────
