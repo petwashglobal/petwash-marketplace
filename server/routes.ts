@@ -13550,7 +13550,7 @@ self.addEventListener('notificationclick', (event) => {
         nextReviewDue: latestReview.nextReviewDue,
         daysUntilDue,
         lastReviewDate: latestReview.reviewDate,
-        adminEmail: 'legal@petwash.co.il', // TODO: Get from config
+        adminEmail: process.env.LEGAL_COMPLIANCE_EMAIL || process.env.REPORTS_EMAIL_TO || 'legal@petwash.co.il',
       });
 
       // Update reminder count and timestamp
