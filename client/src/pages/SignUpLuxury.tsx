@@ -148,8 +148,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [entryCode, setEntryCode] = useState('');
-  const [biometric, setBiometric] = useState(true);
-  const [savePassword, setSavePassword] = useState(true);
+  // Consent toggles default OFF (opt-in). Israeli Privacy Law 2025 + GDPR
+  // require explicit affirmative consent for processing biometric data;
+  // pre-checking a "I consent to Face ID" box is not valid consent. Same
+  // privacy-by-default principle applies to "save password on device" —
+  // visitors must actively choose to store credentials. Original bug
+  // report #17 flagged both as visibly pre-checked on the live signup.
+  const [biometric, setBiometric] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [walletConsent, setWalletConsent] = useState(true);
   const [walletIntent, setWalletIntent] = useState<'apple' | 'google' | null>(null);
