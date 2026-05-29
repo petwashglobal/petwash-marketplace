@@ -1605,7 +1605,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦The Sitter Suite™⁩ - Platform Overview (Marketing/Gateway) */}
+        {/* ⁦The Sitter Suite™⁩ - Platform Overview (Marketing/Gateway).
+            The /overview alias is mounted FIRST so a direct /sitter-suite/overview
+            URL (referenced historically from menus, marketing emails, and the
+            original bug report) resolves to the SitterSuiteOverview page instead
+            of falling through to a 404. /sitter-suite remains the canonical path. */}
+        <Route path="/sitter-suite/overview">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SitterSuiteOverview />
+            </Suspense>
+          )}
+        </Route>
         <Route path="/sitter-suite">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1613,7 +1624,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </Suspense>
           )}
         </Route>
-        
+
         {/* ⁦The Sitter Suite™⁩ - Browse/Explore Sitters */}
         <Route path="/sitter-suite/explore">
           {() => (
