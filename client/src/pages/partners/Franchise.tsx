@@ -235,7 +235,7 @@ export default function FranchisePartners() {
                     <Input
                       value={formData.country}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      placeholder={isHe ? 'קנדה, ארה"ב...' : 'Canada, USA...'}
+                      placeholder={isHe ? 'ישראל' : 'Israel'}
                       className="mt-1"
                       data-testid="input-franchise-country"
                     />
@@ -248,7 +248,7 @@ export default function FranchisePartners() {
                     <Input
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder={isHe ? 'טורונטו' : 'Toronto'}
+                      placeholder={isHe ? 'תל אביב' : 'Tel Aviv'}
                       className="mt-1"
                       data-testid="input-franchise-city"
                     />
