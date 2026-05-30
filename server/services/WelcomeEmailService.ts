@@ -3,27 +3,14 @@ import { emailAudit } from '@shared/schema';
 import { EmailService } from '../emailService';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
+import { PETWASH_LOGO_BASE64 } from '../email/templates/logo-base64';
 
 type WelcomeAudience = 'public_customer' | 'provider_applicant' | 'staff_request';
 
-let logoBase64: string | null = null;
-try {
-  const logoPath = path.resolve('brand/petwash-logo-official.png');
-  if (fs.existsSync(logoPath)) {
-    const logoBuffer = fs.readFileSync(logoPath);
-    logoBase64 = logoBuffer.toString('base64');
-  }
-} catch {}
 
 function getLogo(): string {
-  if (logoBase64) {
-    return `<img src="data:image/png;base64,${logoBase64}" alt="Pet Wash™" style="max-width:180px;height:auto;" />`;
-  }
-  return `<span style="font-size:28px;font-weight:700;color:#c9a96e;letter-spacing:1px;">⁦Pet Wash™⁩</span>`;
+    return `<img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width:180px;height:auto;" />`;
 }
-
 function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, language: string): string {
   const isHe = language === 'he';
   const dir = isHe ? 'rtl' : 'ltr';
