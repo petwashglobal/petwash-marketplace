@@ -140,6 +140,54 @@ Merge to main → CI deploys → CTO verifies live
 
 ---
 
+## 2.5. Hard Enforcement (added 2026-05-30 after PR #508 incident)
+
+The advisory rules above were not enough. **PR #508 shipped 2,381 lines of server code from the wrong agent**, including 15 high-severity security vulnerabilities, references to non-existent database tables, and unauthorized wallet/Nayax changes. Trust + advisory alone is not enough; we need automated gates.
+
+### Layer 1 — CODEOWNERS (hard gate, GitHub enforced)
+
+`.github/CODEOWNERS` now locks the CTO domain:
+- All `server/*` paths require `@petwashglobal/owners` approval
+- All `shared/schema*` paths require `@petwashglobal/owners` approval
+- All `migrations/*` paths require `@petwashglobal/owners` approval
+- All `.github/workflows/*` paths require `@petwashglobal/owners` approval
+- Specific sacred files (wallet, Nayax, K9000, Tranzila, audit log, finance) are double-locked
+
+A PR touching any of these files **cannot merge** until an owner approves. This is the hard wall.
+
+### Layer 2 — `agent-boundary-check.yml` (advisory, automated comment)
+
+`.github/workflows/agent-boundary-check.yml` runs on every PR and:
+1. Categorizes every changed file by agent domain (CTO / Chrome / Desktop / Xcode)
+2. If the PR touches **more than one domain**, posts an advisory comment listing which files belong to which agent
+3. Hints at the expected agent from the branch prefix (e.g. `hotfix/*` → CTO, `creative/*` → Chrome)
+4. Reminds the author of the split-PR rule from §3
+
+This is the early-warning system — even before CODEOWNERS blocks the merge, the author sees the boundary violation in the PR conversation.
+
+### Layer 3 — Branch protection (configured in GitHub UI)
+
+Repo owner should enable in `Settings → Branches → main`:
+- "Require a pull request before merging" ✅
+- "Require approvals: 1" ✅
+- "Require review from Code Owners" ✅
+- "Require status checks to pass before merging" ✅
+- "Require linear history" ✅
+
+This is a one-time CEO action that turns the file-level CODEOWNERS into actual merge-blocking enforcement.
+
+### Why three layers
+
+| Layer | Catches | Speed |
+|---|---|---|
+| CODEOWNERS | Wrong-domain merges | Hard, blocks at merge time |
+| Boundary workflow | Wrong-domain PRs | Soft, comments at PR open time |
+| Branch protection | Auto-merge bypass | Hard, configured once |
+
+Belt + suspenders + parachute. Apple, Tesla, LVMH all run this kind of architecture for their internal repos. No one ships into production without explicit owner review.
+
+---
+
 ## 3. Collision Prevention Rules
 
 ### Rule 1: Branch prefix matches your role
