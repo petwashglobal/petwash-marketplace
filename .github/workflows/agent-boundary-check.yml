@@ -1,0 +1,176 @@
+name: Agent Boundary Check
+
+# Auto-detects when a PR crosses agent ownership boundaries (per
+# docs/architecture/AGENT-OWNERSHIP.md). Posts a clear advisory comment
+# explaining which domain the PR touches and which agent owns it.
+#
+# This is an ADVISORY check (does not block merge directly). The hard gate
+# is .github/CODEOWNERS which requires owner approval before any merge.
+# Together they form belt + suspenders against the agent-collision pattern
+# that triggered this workflow (PR #508, 2,381 lines of server code from
+# the wrong agent).
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  detect-boundary-crossings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files + categorize by agent domain
+        id: detect
+        run: |
+          # Get the list of files changed in this PR
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          echo "Changed files:"
+          echo "$CHANGED"
+          echo "----"
+
+          # Categorize each changed file by domain (CTO / Chrome / Desktop / Xcode)
+          CTO_FILES=""
+          CHROME_FILES=""
+          DESKTOP_FILES=""
+          XCODE_FILES=""
+          AMBIGUOUS_FILES=""
+
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              # CTO domain — server, schema, CI, middleware, security
+              server/routes/*|server/services/*|server/middleware/*|server/lib/*|server/*.ts|shared/schema*|migrations/*|.github/workflows/*|.github/CODEOWNERS|scripts/*)
+                CTO_FILES="$CTO_FILES\n  - $f"
+                ;;
+              # Email templates — shared between CTO + Chrome but content owned by Chrome
+              server/email/templates/*)
+                CHROME_FILES="$CHROME_FILES\n  - $f (email template — Chrome content / CTO infra)"
+                ;;
+              # Chrome domain — client UI, marketing, brand
+              client/*|public/*|brand/*)
+                CHROME_FILES="$CHROME_FILES\n  - $f"
+                ;;
+              # Desktop Claude — docs (NOT architecture docs that ARE rules)
+              docs/architecture/AGENT-OWNERSHIP.md|.claude/skills/*)
+                CTO_FILES="$CTO_FILES\n  - $f (rule doc — CTO)"
+                ;;
+              docs/*)
+                DESKTOP_FILES="$DESKTOP_FILES\n  - $f"
+                ;;
+              # Xcode Agent — iOS + Wallet
+              mobile-app/*|ios/*|server/appleWallet.ts|server/googleWallet.ts)
+                XCODE_FILES="$XCODE_FILES\n  - $f"
+                ;;
+              *)
+                AMBIGUOUS_FILES="$AMBIGUOUS_FILES\n  - $f"
+                ;;
+            esac
+          done <<< "$CHANGED"
+
+          # Count how many distinct domains this PR touches
+          DOMAINS_TOUCHED=0
+          [ -n "$CTO_FILES" ] && DOMAINS_TOUCHED=$((DOMAINS_TOUCHED + 1))
+          [ -n "$CHROME_FILES" ] && DOMAINS_TOUCHED=$((DOMAINS_TOUCHED + 1))
+          [ -n "$DESKTOP_FILES" ] && DOMAINS_TOUCHED=$((DOMAINS_TOUCHED + 1))
+          [ -n "$XCODE_FILES" ] && DOMAINS_TOUCHED=$((DOMAINS_TOUCHED + 1))
+
+          echo "DOMAINS_TOUCHED=$DOMAINS_TOUCHED" >> "$GITHUB_OUTPUT"
+
+          # Persist categorized lists for the comment step
+          {
+            echo "cto_files<<__EOF__"
+            printf "%b" "$CTO_FILES"
+            echo
+            echo "__EOF__"
+            echo "chrome_files<<__EOF__"
+            printf "%b" "$CHROME_FILES"
+            echo
+            echo "__EOF__"
+            echo "desktop_files<<__EOF__"
+            printf "%b" "$DESKTOP_FILES"
+            echo
+            echo "__EOF__"
+            echo "xcode_files<<__EOF__"
+            printf "%b" "$XCODE_FILES"
+            echo
+            echo "__EOF__"
+            echo "ambiguous_files<<__EOF__"
+            printf "%b" "$AMBIGUOUS_FILES"
+            echo
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post boundary advisory comment
+        if: steps.detect.outputs.DOMAINS_TOUCHED != '1'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const cto = `${{ steps.detect.outputs.cto_files }}`.trim();
+            const chrome = `${{ steps.detect.outputs.chrome_files }}`.trim();
+            const desktop = `${{ steps.detect.outputs.desktop_files }}`.trim();
+            const xcode = `${{ steps.detect.outputs.xcode_files }}`.trim();
+            const ambiguous = `${{ steps.detect.outputs.ambiguous_files }}`.trim();
+            const branch = context.payload.pull_request.head.ref;
+
+            // Friendly branch-prefix → expected agent map
+            const branchPrefixHint = (() => {
+              if (branch.startsWith('hotfix/') || branch.startsWith('feat/') ||
+                  branch.startsWith('chore/') || branch.startsWith('fix/') ||
+                  branch.startsWith('security/')) return 'CTO (Claude Code)';
+              if (branch.startsWith('creative/') || branch.startsWith('design/') ||
+                  branch.startsWith('ui/') || branch.startsWith('i18n/')) return 'Chrome Claude (Creative)';
+              if (branch.startsWith('docs/') || branch.startsWith('sdd/') ||
+                  branch.startsWith('legal/') || branch.startsWith('strategy/')) return 'Desktop Claude (Strategy)';
+              if (branch.startsWith('ios/') || branch.startsWith('wallet/') ||
+                  branch.startsWith('pkpass/') || branch.startsWith('gwallet/')) return 'Xcode Agent';
+              return 'UNKNOWN (branch prefix does not match any agent)';
+            })();
+
+            const body = [
+              '## 🔍 Agent Boundary Advisory',
+              '',
+              'This PR touches **multiple agent domains**. Per `docs/architecture/AGENT-OWNERSHIP.md`, each PR should normally stay within a single domain.',
+              '',
+              `**Branch prefix suggests author:** ${branchPrefixHint}`,
+              `**Branch:** \`${branch}\``,
+              '',
+              cto ? `### 🛠 CTO domain (Claude Code on desktop)\n${cto}\n` : '',
+              chrome ? `### 🎨 Chrome Claude domain (Creative + Visual Director)\n${chrome}\n` : '',
+              desktop ? `### 📐 Desktop Claude domain (Strategy + Docs)\n${desktop}\n` : '',
+              xcode ? `### 🍎 Xcode Agent domain (iOS + Wallet)\n${xcode}\n` : '',
+              ambiguous ? `### ❓ Uncategorized\n${ambiguous}\n` : '',
+              '---',
+              '',
+              '### What this means',
+              '',
+              '- If you are the **CTO**, this is fine — cross-domain work is expected for coordination.',
+              '- If you are **any other agent**, please split this PR so each domain has its own PR. The CTO will review and merge them in the right order.',
+              '- **`server/*` paths require CTO review** (enforced by `.github/CODEOWNERS`) — this PR will not merge without an explicit approval.',
+              '',
+              'See `docs/architecture/AGENT-OWNERSHIP.md` §3 for the full PR flow.',
+              '',
+              '— Posted by `.github/workflows/agent-boundary-check.yml`'
+            ].filter(Boolean).join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+
+      - name: Single-domain PR — passing
+        if: steps.detect.outputs.DOMAINS_TOUCHED == '1'
+        run: |
+          echo "✅ PR touches a single agent domain. No advisory needed."
