@@ -28,9 +28,35 @@ interface SendGiftCardEmailsParams {
 }
 
 /**
- * Send gift card emails to recipient and buyer.
+ * Detect whether the buyer is purchasing for themselves.
+ * Normalises both emails (lowercase + trim) before comparison so
+ * "Nir@PetWash.co.IL" and "nir@petwash.co.il " count as the same person.
+ * Returns false if either email is missing/empty.
+ */
+function isSelfPurchase(senderEmail: string | null | undefined, recipientEmail: string): boolean {
+  if (!senderEmail) return false;
+  const a = senderEmail.trim().toLowerCase();
+  const b = recipientEmail.trim().toLowerCase();
+  if (!a || !b) return false;
+  return a === b;
+}
+
+/**
+ * Send gift card emails — branches on buyer-vs-recipient identity:
+ *
+ * - GIFT TO SOMEONE ELSE → 2 emails:
+ *   1. Recipient gets "You received a PetWash E-Gift Card from [sender]"
+ *      with QR + wallet pass buttons.
+ *   2. Buyer gets a purchase confirmation (receipt + transaction hash)
+ *      with wallet pass buttons.
+ *
+ * - SELF-PURCHASE (buyer = recipient) → 1 email:
+ *   Single combined email with subject "Your PetWash E-Gift Card is ready",
+ *   QR code, redemption details, wallet pass buttons, AND transaction hash
+ *   for receipt purposes. The duplicate "gift discovery" framing is dropped
+ *   because the person already knows they bought it.
+ *
  * Called by both the purchase route and the Nayax webhook.
- * Both emails include Apple Wallet + Google Wallet pass buttons with secure 72h tokens.
  */
 export async function sendGiftCardEmails(params: SendGiftCardEmailsParams): Promise<void> {
   const [voucher] = await db.select().from(eVouchers).where(eq(eVouchers.id, params.voucherId)).limit(1);
@@ -56,6 +82,32 @@ export async function sendGiftCardEmails(params: SendGiftCardEmailsParams): Prom
   // Generate secure wallet pass URLs (HMAC-signed, 72h expiry)
   const { appleWalletUrl, googleWalletUrl } = buildWalletUrls(params.voucherId, BASE_URL);
 
+  const selfPurchase = isSelfPurchase(params.senderEmail, params.recipientEmail);
+
+  if (selfPurchase) {
+    // Self-purchase: ONE combined email. Sent to the recipient (== buyer)
+    // with subject + opening adjusted to "Your e-gift is ready" rather than
+    // the gift-discovery framing. The duplicate buyer-receipt email is
+    // suppressed to avoid sending the same person two emails for one action.
+    logger.info('[E-Gift] Self-purchase detected — sending single combined email', {
+      voucherId: params.voucherId,
+      buyerEmail: params.senderEmail,
+    });
+    await sendGiftCardToRecipient({
+      voucher,
+      recipientEmail: params.recipientEmail,
+      recipientName: params.recipientName,
+      senderName: params.senderName || 'Customer',
+      message: params.message,
+      qrCodeDataURL,
+      appleWalletUrl,
+      googleWalletUrl,
+      isSelfPurchase: true,
+    });
+    return;
+  }
+
+  // Gift to someone else: 2 emails (recipient + buyer confirmation).
   // Email 1: recipient gets QR + wallet pass buttons
   await sendGiftCardToRecipient({
     voucher,
@@ -66,6 +118,7 @@ export async function sendGiftCardEmails(params: SendGiftCardEmailsParams): Prom
     qrCodeDataURL,
     appleWalletUrl,
     googleWalletUrl,
+    isSelfPurchase: false,
   });
 
   // Email 2: buyer gets luxury purchase confirmation + wallet pass buttons
@@ -92,12 +145,23 @@ async function sendGiftCardToRecipient(params: {
   qrCodeDataURL: string;
   appleWalletUrl: string | null;
   googleWalletUrl: string | null;
+  /**
+   * When true, the recipient IS the buyer — adjust subject + header to
+   * "your e-gift is ready" framing rather than "gift discovery" framing.
+   * Defaults to false (legacy gift-to-someone-else behavior).
+   */
+  isSelfPurchase?: boolean;
 }) {
-  const { voucher, recipientEmail, recipientName, senderName, message, qrCodeDataURL, appleWalletUrl, googleWalletUrl } = params;
+  const { voucher, recipientEmail, recipientName, senderName, message, qrCodeDataURL, appleWalletUrl, googleWalletUrl, isSelfPurchase } = params;
 
-  const emailSubject = senderName !== 'A friend'
-    ? `🎁 You received a ⁦PetWash™⁩ E-Gift Card from ${senderName}!`
-    : `🎁 You received a ⁦PetWash™⁩ E-Gift Card!`;
+  // Subject + header copy branches on self-purchase vs gift-to-other.
+  // Self-purchase: receipt-style language because the person knows they bought it.
+  // Gift-to-other: discovery language because the recipient is being surprised.
+  const emailSubject = isSelfPurchase
+    ? `✨ Your ⁦PetWash™⁩ E-Gift Card is ready`
+    : (senderName !== 'A friend'
+        ? `🎁 You received a ⁦PetWash™⁩ E-Gift Card from ${senderName}!`
+        : `🎁 You received a ⁦PetWash™⁩ E-Gift Card!`);
 
   // Wallet pass buttons block (shown only when passes are configured)
   const walletButtonsHtml = (appleWalletUrl || googleWalletUrl) ? `
@@ -137,13 +201,15 @@ async function sendGiftCardToRecipient(params: {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🎁 You've received a gift!</h1>
-          <p style="margin:8px 0 0;opacity:0.9;">${senderName} sent you a Pet Wash™ E-Gift Card</p>
+          <h1>${isSelfPurchase ? '✨ Your e-gift is ready' : "🎁 You've received a gift!"}</h1>
+          <p style="margin:8px 0 0;opacity:0.9;">${isSelfPurchase ? 'Your Pet Wash™ E-Gift Card — ready to redeem' : `${senderName} sent you a Pet Wash™ E-Gift Card`}</p>
         </div>
 
         <div class="content">
           <p style="font-size:16px;color:#333;">Hi <strong>${recipientName}</strong>,</p>
-          <p style="color:#555;">You've received a Pet Wash™ E-Gift Card — premium organic pet care, whenever you need it.</p>
+          <p style="color:#555;">${isSelfPurchase
+            ? 'Thank you for your purchase. Your Pet Wash™ E-Gift Card is loaded and ready — scan the QR or add it to your wallet to redeem at any K9000 station.'
+            : "You've received a Pet Wash™ E-Gift Card — premium organic pet care, whenever you need it."}</p>
 
           <div class="gift-amount">₪${voucher.initialAmount || voucher.remainingAmount}</div>
 
