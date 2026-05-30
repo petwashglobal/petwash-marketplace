@@ -49,11 +49,37 @@ import { EscrowService } from '../services/EscrowService';
 import { emailService } from '../email';
 import { shopOrderConfirmation } from '../email/templates/shop-order-confirmation-2026';
 import { ShopService } from '../services/ShopService';
-import { paymentLimiter } from '../middleware/rateLimiter';
+import { apiLimiter, paymentLimiter, adminLimiter } from '../middleware/rateLimiter';
 import { auditLog } from '../services/AuditLedgerService';
 
 const router = Router();
 const shopService = new ShopService();
+
+// ─── Feature flag guard ────────────────────────────────────────────────────────
+// The shop module references database tables (shop_products, shop_carts,
+// shop_cart_items, shop_orders) that DO NOT yet exist in shared/schema*.ts
+// or migrations/. Until the schema migration is shipped in a separate
+// CEO-approved PR, every route here would 500 with "relation does not exist".
+//
+// This guard returns 503 when SHOP_ENABLED is not 'true', so the module can
+// merge safely without crashing production. Once the schema migration is
+// applied and tables exist, set SHOP_ENABLED=true in Cloud Run env to flip
+// the shop live. The flag also gives ops a fast kill-switch if needed.
+//
+// See CTO review on PR #508 for the full list of blockers this PR addresses
+// only Blocker 3 (rate limiting); Blockers 1/2/4/5 remain for a follow-up.
+const SHOP_ENABLED = process.env.SHOP_ENABLED === 'true';
+
+router.use((req: Request, res: Response, next) => {
+    if (!SHOP_ENABLED) {
+        return res.status(503).json({
+            error: 'Shop module not yet enabled',
+            code: 'SHOP_DISABLED',
+            message: 'The PetWash shop is launching soon. Schema migration pending.',
+        });
+    }
+    next();
+});
 
 // ─── Validation schemas ────────────────────────────────────────────────────────
 
@@ -157,7 +183,7 @@ router.get('/delivery/estimate', async (req: Request, res: Response) => {
  * GET /api/shop/cart
  * Get or create active cart for the current user
  */
-router.get('/cart', requireAuth, async (req: Request, res: Response) => {
+router.get('/cart', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const cart = await shopService.getOrCreateCart(uid);
@@ -172,7 +198,7 @@ router.get('/cart', requireAuth, async (req: Request, res: Response) => {
  * POST /api/shop/cart/items
  * Add product to cart (creates cart if not exists)
  */
-router.post('/cart/items', requireAuth, async (req: Request, res: Response) => {
+router.post('/cart/items', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const body = AddToCartSchema.parse(req.body);
@@ -189,7 +215,7 @@ router.post('/cart/items', requireAuth, async (req: Request, res: Response) => {
  * PATCH /api/shop/cart/items/:itemId
  * Update item quantity (0 = remove)
  */
-router.patch('/cart/items/:itemId', requireAuth, async (req: Request, res: Response) => {
+router.patch('/cart/items/:itemId', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const itemId = parseInt(req.params.itemId);
@@ -207,7 +233,7 @@ router.patch('/cart/items/:itemId', requireAuth, async (req: Request, res: Respo
  * DELETE /api/shop/cart/items/:itemId
  * Remove item from cart
  */
-router.delete('/cart/items/:itemId', requireAuth, async (req: Request, res: Response) => {
+router.delete('/cart/items/:itemId', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const itemId = parseInt(req.params.itemId);
@@ -362,7 +388,7 @@ router.post('/checkout', requireAuth, paymentLimiter, async (req: Request, res: 
  * GET /api/shop/orders
  * Customer order history (paginated)
  */
-router.get('/orders', requireAuth, async (req: Request, res: Response) => {
+router.get('/orders', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const page = parseInt((req.query.page as string) || '1');
@@ -379,7 +405,7 @@ router.get('/orders', requireAuth, async (req: Request, res: Response) => {
  * GET /api/shop/orders/:id
  * Single order detail
  */
-router.get('/orders/:id', requireAuth, async (req: Request, res: Response) => {
+router.get('/orders/:id', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const orderId = parseInt(req.params.id);
@@ -397,7 +423,7 @@ router.get('/orders/:id', requireAuth, async (req: Request, res: Response) => {
  * POST /api/shop/orders/:id/cancel
  * Cancel order — allowed only if status is pending/confirmed (before dispatch)
  */
-router.post('/orders/:id/cancel', requireAuth, async (req: Request, res: Response) => {
+router.post('/orders/:id/cancel', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     const uid = (req as any).user.uid;
     try {
           const orderId = parseInt(req.params.id);
@@ -423,7 +449,7 @@ router.post('/orders/:id/cancel', requireAuth, async (req: Request, res: Respons
  * POST /api/shop/delivery/address
  * Validate and save a delivery address for the current user
  */
-router.post('/delivery/address', requireAuth, async (req: Request, res: Response) => {
+router.post('/delivery/address', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const body = DeliveryAddressSchema.parse(req.body);
@@ -439,7 +465,7 @@ router.post('/delivery/address', requireAuth, async (req: Request, res: Response
  * GET /api/shop/delivery/addresses
  * List saved delivery addresses for current user
  */
-router.get('/delivery/addresses', requireAuth, async (req: Request, res: Response) => {
+router.get('/delivery/addresses', apiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
           const uid = (req as any).user.uid;
           const addresses = await shopService.getDeliveryAddresses(uid);
@@ -455,7 +481,7 @@ router.get('/delivery/addresses', requireAuth, async (req: Request, res: Respons
  * POST /api/shop/admin/products
  * Create new product in catalog
  */
-router.post('/admin/products', requireAdmin, async (req: Request, res: Response) => {
+router.post('/admin/products', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
     try {
           const product = await shopService.createProduct(req.body);
           res.status(201).json(product);
@@ -469,7 +495,7 @@ router.post('/admin/products', requireAdmin, async (req: Request, res: Response)
  * PATCH /api/shop/admin/products/:id
  * Update product details / stock / price
  */
-router.patch('/admin/products/:id', requireAdmin, async (req: Request, res: Response) => {
+router.patch('/admin/products/:id', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
     try {
           const id = parseInt(req.params.id);
           if (isNaN(id)) return res.status(400).json({ error: 'Invalid product ID' });
@@ -484,7 +510,7 @@ router.patch('/admin/products/:id', requireAdmin, async (req: Request, res: Resp
  * DELETE /api/shop/admin/products/:id
  * Soft-delete product (sets isActive = false)
  */
-router.delete('/admin/products/:id', requireAdmin, async (req: Request, res: Response) => {
+router.delete('/admin/products/:id', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
     try {
           const id = parseInt(req.params.id);
           if (isNaN(id)) return res.status(400).json({ error: 'Invalid product ID' });
@@ -499,7 +525,7 @@ router.delete('/admin/products/:id', requireAdmin, async (req: Request, res: Res
  * GET /api/shop/admin/orders
  * All orders — admin view (paginated, filterable by status)
  */
-router.get('/admin/orders', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/orders', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
     try {
           const page = parseInt((req.query.page as string) || '1');
           const limit = Math.min(parseInt((req.query.limit as string) || '50'), 100);
@@ -517,7 +543,7 @@ router.get('/admin/orders', requireAdmin, async (req: Request, res: Response) =>
  * On dispatched: triggers dispatch notification email + SMS
  * On delivered: releases escrow to company ledger
  */
-router.patch('/admin/orders/:id/status', requireAdmin, async (req: Request, res: Response) => {
+router.patch('/admin/orders/:id/status', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
     const adminUid = (req as any).user.uid;
     try {
           const orderId = parseInt(req.params.id);
