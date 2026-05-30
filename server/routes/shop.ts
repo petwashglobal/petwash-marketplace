@@ -252,7 +252,7 @@ router.delete('/cart/items/:itemId', apiLimiter, requireAuth, async (req: Reques
  * Place order: validate cart → apply coupon → charge payment → create order →
  * send confirmation email → write CRM log → return order summary
  */
-router.post('/checkout', requireAuth, paymentLimiter, async (req: Request, res: Response) => {
+router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: Response) => {
     const uid = (req as any).user.uid;
     try {
           const body = CheckoutSchema.parse(req.body);
