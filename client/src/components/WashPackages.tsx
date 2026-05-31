@@ -93,7 +93,7 @@ const tierConfig: Record<string, {
     icon: '♦',
   },
   ELITE: {
-    labels: { en: 'Maison Collection', he: 'קולקציית מזון', ar: 'مجموعة ميزون', ru: 'Коллекция Мезон', fr: 'Collection Maison', es: 'Colección Maison' },
+    labels: { en: 'Maison Collection', he: 'חבילת יוקרה', ar: 'مجموعة ميزون', ru: 'Коллекция Мезон', fr: 'Collection Maison', es: 'Colección Maison' },
     accent: '#2c2c2c',
     icon: '✦',
   },
