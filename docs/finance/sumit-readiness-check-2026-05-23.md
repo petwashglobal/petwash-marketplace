@@ -238,9 +238,72 @@ enabled when there's a specific operational need.
 
 ---
 
+## 11. 2026-05-31 reality check — PR-S2 already shipped
+
+During a CTO sweep on 2026-05-31, the schema additions described in
+§3 PR-S2 were found to already exist in the repo. Either a previous
+CTO session shipped them or they were authored as part of the
+initial supplier-invoice screening work and never re-flagged here.
+
+### Evidence
+
+**Schema** — `shared/schema.ts:15585-15608`:
+```
+// SUMIT (sumit.co.il) linkage — populated by PR-S4 once the admin
+// "Send to SUMIT" button + ff.supplier_invoice_control.sumit_send.enabled
+sumitDocumentId:      varchar("sumit_document_id", { length: 64 }),
+sumitStatus:          varchar("sumit_status", { length: 20 }),
+sumitSentAt:          timestamp("sumit_sent_at", { withTimezone: true }),
+sumitConfirmedAt:     timestamp("sumit_confirmed_at", { withTimezone: true }),
+sumitLastError:       text("sumit_last_error"),
+sumitIdempotencyKey:  varchar("sumit_idempotency_key", { length: 80 }),
+```
+Plus 3 indexes: `idx_supplier_invoices_sumit_status`, `idx_supplier_invoices_sumit_document`, `idx_supplier_invoices_sumit_idem`.
+
+**Audit-log table** — `shared/schema.ts:15627`:
+```
+export const sumitOutboundEvents = pgTable("sumit_outbound_events", { ... });
+```
+With 4 indexes: by invoice, by created-desc, by idempotency, by document.
+
+**Migration file** — `migrations/0025_supplier_invoices_sumit_linkage.sql` exists.
+
+### Implication
+
+The PR-by-PR breakdown in §3 is now: PR-S2 ✅, PR-S1 ⏳ (you/CEO), PR-S3 + PR-S4 + PR-S5 still ahead.
+
+### What's actually blocking PR-S3
+
+The `SumitClient.ts` service (PR-S3) cannot be written responsibly
+until PR-S1 unblocks it: SUMIT support must confirm the API auth
+model, endpoint base URLs, sandbox credentials, webhook signature
+scheme, document-number assignment rules, and marketplace-vendor
+model. The 22-question email at `docs/SUMIT_SUPPORT_EMAIL.md` is
+drafted; the CEO has not yet sent it.
+
+Without those answers, writing `SumitClient.ts` means guessing the
+API shape. Per platform §0 (verify before guessing) and §3 (no
+autonomous sends), the CTO will NOT speculate on SUMIT's API.
+
+### Updated remaining-steps sequence (replaces §8)
+
+1. **CEO sends the SUMIT support email** (`docs/SUMIT_SUPPORT_EMAIL.md`).
+2. CEO completes gov.il "מורשה-על" registration Sunday morning.
+3. CEO re-tests SUMIT connection — expects success.
+4. SUMIT replies to support email with API specs (may take 1-5 business days).
+5. CTO writes PR-S3 (`SumitClient.ts`) using the confirmed API specs.
+6. CTO writes PR-S4 (admin "Send to SUMIT" button + feature flag, default OFF).
+7. End-to-end sandbox round-trip with one test invoice.
+8. CTO writes PR-S5 (webhook receiver + reconciliation).
+9. Flip `ff.supplier_invoice_control.sumit_send.enabled` to ON for one pilot supplier.
+10. Watch for one week, then roll out to all suppliers.
+
+---
+
 ## 10. Last updated
 
 | Date | Change | By |
 |---|---|---|
 | 2026-05-23 | Doc created | CTO |
 | 2026-05-30 | §7-9 added — SUMIT↔TaxAuth account link established, one regulatory gap remaining | CTO |
+| 2026-05-31 | §11 added — PR-S2 found already shipped; remaining sequence updated; PR-S3 blocked on PR-S1 (CEO sends support email) | CTO |
