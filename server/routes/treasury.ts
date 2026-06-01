@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import { reconcileBatch, runReconciliationSweep } from '../lib/reconciliation';
 import {
   forecastSnapshot,
@@ -135,6 +136,17 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
     const total = (settlements.rows as any[]).reduce((sum, s) => sum + (s.station_amount_cents ?? 0), 0);
     const batchRef = `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
+    if (!assertOperatingControl(req, res, {
+      actionType: 'PROVIDER_PAYOUT',
+      route: 'POST /api/treasury/batches',
+      targetId: `treasury-payout-batch:${batchRef}`,
+      money: {
+        amountCents: total,
+      },
+    })) {
+      return;
+    }
+
     const user = (req as any).firebaseUser;
     const createdByUid = user?.uid ?? user?.email ?? 'admin';
     const batchRaw = await db.execute(sql`
@@ -164,6 +176,14 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
 router.post('/batches/:id/submit', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
+    if (!assertOperatingControl(req, res, {
+      actionType: 'PROVIDER_PAYOUT',
+      route: 'POST /api/treasury/batches/:id/submit',
+      targetId: `treasury-payout-batch:${id}`,
+    })) {
+      return;
+    }
+
     const result = await db.execute(sql`
       UPDATE payout_batches SET status = 'submitted', submitted_at = NOW()
       WHERE id = ${id} AND status = 'approved'
@@ -185,6 +205,14 @@ router.post('/batches/:id/submit', requireTreasuryAdmin, async (req: Request, re
 router.post('/batches/:id/mark-paid', requireTreasuryAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
+    if (!assertOperatingControl(req, res, {
+      actionType: 'PROVIDER_PAYOUT',
+      route: 'POST /api/treasury/batches/:id/mark-paid',
+      targetId: `treasury-payout-batch:${id}`,
+    })) {
+      return;
+    }
+
     const result = await db.execute(sql`
       UPDATE payout_batches SET status = 'paid', paid_at = NOW()
       WHERE id = ${id} AND status = 'submitted'

@@ -26,6 +26,7 @@ import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFr
 import { decideProviderKyc } from '../services/providerDecisionEngine';
 import { pool } from '../db';
 import { DocumentEncryption } from '../document-security-2025';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import {
   buildAdminReviewAlertEmail,
   buildResubmissionNeededEmail,
@@ -1504,6 +1505,14 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       return res.status(400).json({ error: 'Application already processed', errorCode: 'APPLICATION_ALREADY_PROCESSED' });
     }
 
+    if (!assertOperatingControl(req, res, {
+      actionType: 'PROVIDER_ACTIVATION',
+      route: 'POST /api/provider-onboarding/admin/applications/approve',
+      targetId: `provider-application:${applicationId}`,
+    })) {
+      return;
+    }
+
     // Generate provider ID based on type
     const providerPrefix = application.providerType.toUpperCase().substring(0, 6);
     const randomId = randomBytes(5).toString('hex').toUpperCase();
@@ -2504,4 +2513,3 @@ router.get('/mgmt/analytics', requireManagement, async (req: Request, res: Respo
 });
 
 export default router;
-
