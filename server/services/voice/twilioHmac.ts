@@ -72,3 +72,37 @@ export function buildPublicUrl(req: Request, override?: string): string {
     'localhost';
   return `${proto}://${host}${req.originalUrl}`;
 }
+
+/**
+ * Candidate public URLs to verify a Twilio signature against.
+ *
+ * Twilio signs the EXACT public URL it called (e.g. https://petwash.co.il/...).
+ * But petwash.co.il is fronted by Firebase Hosting which proxies /api/** to the
+ * Cloud Run service — so by the time the request reaches the app, the Host /
+ * X-Forwarded-Host header is the internal *.run.app address, NOT petwash.co.il.
+ * Header-reconstruction therefore produces the wrong URL and every signature
+ * fails (root cause of "An application error has occurred" on real calls).
+ *
+ * Fix: verify against the KNOWN public host(s) + the real request path, and try
+ * the proxy-reconstructed URL as a fallback (covers direct *.run.app and dev).
+ *
+ * Security: each candidate is still HMAC-checked against TWILIO_AUTH_TOKEN, so
+ * trying several known-legitimate URLs does NOT weaken verification — an
+ * attacker still cannot forge X-Twilio-Signature without the secret token.
+ */
+export function buildCandidatePublicUrls(req: Request, override?: string): string[] {
+  if (override) return [override];
+  const path = req.originalUrl;
+  const bases: string[] = [];
+  const envBase =
+    process.env.TWILIO_VOICE_PUBLIC_BASE_URL ||
+    process.env.PUBLIC_SITE_URL ||
+    process.env.BASE_URL;
+  if (envBase) bases.push(envBase.replace(/\/+$/, ''));
+  // Canonical PetWash public hosts Twilio actually dials.
+  bases.push('https://petwash.co.il', 'https://www.petwash.co.il');
+  const candidates = bases.map((b) => `${b}${path}`);
+  // Fallback: the proxy-header reconstruction (direct *.run.app access / local dev).
+  candidates.push(buildPublicUrl(req));
+  return [...new Set(candidates)];
+}
