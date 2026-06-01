@@ -26,6 +26,7 @@ import { requireAdmin } from '../../adminAuth';
 import { logger } from '../../lib/logger';
 import { FinanceSettlementService } from '../../services/FinanceSettlementService';
 import { ImmutableStampService } from '../../services/ImmutableStampService';
+import { assertOperatingControl } from '../../lib/petwashOperatingControlGateway';
 
 const router = Router();
 
@@ -279,7 +280,19 @@ router.patch('/:id/approve', async (req, res) => {
       });
     }
 
-    const userId = req.user?.id || 'unknown';
+    const userId = String(req.user?.id ?? 'unknown');
+
+    if (!assertOperatingControl(req, res, {
+      actionType: 'SUPPLIER_PAYMENT',
+      route: 'PATCH /api/finance/settlements/:id/approve',
+      targetId: `settlement:${settlementId}`,
+      bankMatchStatus: 'pending_match',
+      facts: {
+        paymentApproved: true,
+      },
+    })) {
+      return;
+    }
 
     logger.info('[FinanceAPI] Settlement approval requested', {
       settlementId,
@@ -344,6 +357,19 @@ router.patch('/:id/pay', async (req, res) => {
 
     const { paymentReference, notes } = validationResult.data;
 
+    if (!assertOperatingControl(req, res, {
+      actionType: 'SUPPLIER_PAYMENT',
+      route: 'PATCH /api/finance/settlements/:id/pay',
+      targetId: `settlement:${settlementId}`,
+      bankMatchStatus: 'pending_match',
+      facts: {
+        paymentApproved: true,
+        bankTransferReferenceCreated: Boolean(paymentReference),
+      },
+    })) {
+      return;
+    }
+
     logger.info('[FinanceAPI] Settlement payment recording requested', {
       settlementId,
       paymentReference,
@@ -375,8 +401,8 @@ router.patch('/:id/pay', async (req, res) => {
       entityId: String(settlementId),
       eventType: 'payout_sent',
       actorRole: 'admin',
-      amountCents: updatedSettlement.totalAmountIls
-        ? Math.round(Number(updatedSettlement.totalAmountIls) * 100)
+      amountCents: updatedSettlement.partnerShare
+        ? Math.round(Number(updatedSettlement.partnerShare) * 100)
         : undefined,
       currency: 'ILS',
       metadata: {

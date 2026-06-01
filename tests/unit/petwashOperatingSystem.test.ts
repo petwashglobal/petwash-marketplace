@@ -277,7 +277,11 @@ describe('PetWash operating system control logic', () => {
     }));
 
     expect(result.allowed).toBe(false);
-    expect(codes(result)).toContain('MANUAL_CREDIT_NIR_APPROVAL_REQUIRED');
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'MANUAL_CREDIT_NIR_APPROVAL_REQUIRED',
+      'MANUAL_CREDIT_CONTROL_APPROVAL_REQUIRED',
+      'MANUAL_CREDIT_EVIDENCE_REQUIRED',
+    ]));
   });
 
   it('blocks official SUMIT posting without local approval, document type, VAT review, evidence, idempotency, and עוסק פטור VAT protection', () => {
@@ -338,6 +342,28 @@ describe('PetWash operating system control logic', () => {
       'OWNER_LOAN_NO_VAT_REQUIRED',
       'K9000_ASSET_CAPITALIZATION_REQUIRED',
       'OWNER_REPAYMENT_CLASSIFICATION_REQUIRED',
+    ]));
+  });
+
+  it('blocks manual financial adjustments without evidence, control approval, VAT review, idempotency, and owner approval above threshold', () => {
+    const result = evaluateOperatingAction(baseInput({
+      actionType: 'MANUAL_FINANCIAL_ADJUSTMENT',
+      facts: {
+        refundReasonSelected: true,
+      },
+      money: {
+        amountCents: 75_000,
+        manualCreditThresholdCents: 50_000,
+      },
+    }));
+
+    expect(result.allowed).toBe(false);
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'MANUAL_ADJUSTMENT_EVIDENCE_REQUIRED',
+      'MANUAL_ADJUSTMENT_CONTROL_APPROVAL_REQUIRED',
+      'MANUAL_ADJUSTMENT_VAT_REVIEW_REQUIRED',
+      'MANUAL_ADJUSTMENT_IDEMPOTENCY_REQUIRED',
+      'MANUAL_ADJUSTMENT_NIR_APPROVAL_REQUIRED',
     ]));
   });
 

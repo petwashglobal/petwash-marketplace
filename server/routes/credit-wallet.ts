@@ -10,6 +10,8 @@ import { isSuperAdmin } from '../middleware/rbac';
 import { deriveTopupIdempotencyKey } from '../lib/topup-idempotency';
 import { deriveAdminCreditIdempotencyKey } from '../lib/admin-credit-idempotency';
 import { verifyNayaxTopup, type WalletTopupVerifyReason } from '../lib/wallet-topup-verify';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
+import type { CreditType } from '../../shared/petwash-operating-system';
 
 const router = Router();
 
@@ -53,6 +55,17 @@ const addCreditsSchema = z.object({
   sourceId: z.string().optional(),
   description: z.string().optional(),
 });
+
+function mapWalletCreditType(creditType: z.infer<typeof addCreditsSchema>['creditType']): CreditType {
+  if (creditType === 'egift') return 'E_GIFT_CARD';
+  if (creditType === 'wash_package') return 'STORE_CREDIT';
+  if (creditType === 'loyalty_points') return 'LOYALTY_CREDIT';
+  return 'PROMOTIONAL_CREDIT';
+}
+
+function sourceLooksPaid(sourceType: string): boolean {
+  return /payment|receipt|sumit|nayax|paid/i.test(sourceType);
+}
 
 const topupRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -596,6 +609,27 @@ router.post('/credits/add', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Target userId required' });
     }
 
+    if (!assertOperatingControl(req, res, {
+      actionType: 'WALLET_CREDIT_CREATE',
+      route: 'POST /api/credit-wallet/credits/add',
+      targetId: `wallet:${targetUserId}`,
+      creditType: mapWalletCreditType(creditType),
+      paidOrFree: sourceLooksPaid(sourceType) ? 'paid' : 'free',
+      facts: {
+        manualStaffCredit: true,
+        paymentReferenceExists: Boolean(sourceId && sourceLooksPaid(sourceType)),
+        receiptReferenceExists: Boolean(sourceId && /receipt|sumit/i.test(sourceType)),
+        refundCaseExists: Boolean(sourceId && /refund/i.test(sourceType)),
+        sourceEvidenceExists: Boolean(sourceId),
+      },
+      money: {
+        creditOriginalAmountCents: amount,
+        manualCreditThresholdCents: 5_000,
+      },
+    })) {
+      return;
+    }
+
     // ── PR-W7: idempotency guard (mirrors the PR-W4 /topup pattern) ─────────
     // Prevents an admin double-click from creating two credit_transactions
     // rows for the same logical "add credits" action. Uses an explicit
@@ -821,6 +855,26 @@ router.post('/admin/inject', async (req, res) => {
     }
 
     const { targetUserId, creditType, amount, reason, expiresAt, ticketId, approvalReference } = parsed.data;
+
+    if (!assertOperatingControl(req, res, {
+      actionType: 'WALLET_CREDIT_CREATE',
+      route: 'POST /api/credit-wallet/admin/inject',
+      targetId: `wallet:${targetUserId}`,
+      creditType: mapWalletCreditType(creditType),
+      paidOrFree: 'free',
+      facts: {
+        manualStaffCredit: true,
+        refundCaseExists: Boolean(ticketId && /refund/i.test(ticketId)),
+        sourceEvidenceExists: Boolean(ticketId || approvalReference),
+        localControlApproved: Boolean(approvalReference),
+      },
+      money: {
+        creditOriginalAmountCents: amount,
+        manualCreditThresholdCents: 5_000,
+      },
+    })) {
+      return;
+    }
 
     // ── PR-W7: idempotency guard (mirrors PR-W4 /topup) ─────────────────────
     // Same de-dup mechanic as /credits/add. Reason text is used in the
