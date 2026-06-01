@@ -1305,12 +1305,19 @@ jobs:
           for mapping in "${optional_mappings[@]}"; do
             secret_ref="${mapping#*=}"
             secret_name="${secret_ref%%:*}"
+            secret_version="${secret_ref#*:}"
 
-            if gcloud secrets describe "$secret_name" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            # Check the actual VERSION, not just the container. PR #450 used
+            # `gcloud secrets describe`, which returns 0 when the secret
+            # container exists even if no versions have been added. The deploy
+            # mount syntax `NAME=NAME:latest` requires a usable :latest version
+            # — if the container exists but has no versions, gcloud run deploy
+            # fails with "Secret .../versions/latest was not found" (run #1014).
+            if gcloud secrets versions describe "$secret_version" --secret="$secret_name" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
               printf '%s\n' "$mapping" >> "$secrets_file"
-              echo "✅ Optional deploy secret included: $secret_name"
+              echo "✅ Optional deploy secret included: $secret_name:$secret_version"
             else
-              echo "⚠️  Optional deploy secret missing, skipping: $secret_name"
+              echo "⚠️  Optional deploy secret missing or no usable version, skipping: $secret_name:$secret_version"
             fi
           done
 
