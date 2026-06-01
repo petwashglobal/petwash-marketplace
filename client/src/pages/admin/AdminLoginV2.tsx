@@ -114,6 +114,19 @@ export default function AdminLoginV2() {
     if (tag === 'ACCESS_DENIED') {
       return `This account (${err?.email || 'unknown'}) does not have admin privileges. Role: ${err?.role || 'none'}.`;
     }
+    // Investigation finding 5.2 — surface EMAIL_NOT_VERIFIED clearly and
+    // wire a follow-up "Resend verification email" path. The toast tells
+    // the operator exactly what to do; the Forgot-password helper below
+    // also doubles as a resend route since Firebase's password-reset
+    // email re-verifies the address on click.
+    if (tag === 'SESSION_CREATION_FAILED' && code === 'EMAIL_NOT_VERIFIED') {
+      return `Email not verified for this admin account. Open your inbox and click the Firebase verification link, then sign in again. (Tap "Forgot password?" below to resend the link.)`;
+    }
+    if (tag === 'SESSION_CREATION_FAILED' && code === 'STALE_TOKEN') {
+      // Finding 5.3 — explain the >24h iat gate so the operator knows
+      // to hard-refresh + re-auth instead of generic "try again".
+      return `Sign-in token is older than 24 hours and was rejected for an admin role. Hard-refresh this page (Cmd+Shift+R) and sign in again.`;
+    }
     if (tag === 'SESSION_CREATION_FAILED') {
       const codeHint = code ? ` (${code})` : '';
       const srv = err?.serverMsg ? ` — ${err.serverMsg}` : '';
