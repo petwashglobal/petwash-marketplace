@@ -15,6 +15,7 @@ import ExcelJS from "exceljs";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
+import { assertOperatingControl } from "../lib/petwashOperatingControlGateway";
 
 // ─── T09: Bank account field encryption (AES-256-GCM, deterministic IV) ──────
 // Deterministic: same plaintext → same ciphertext so UNIQUE constraint is preserved.
@@ -69,6 +70,12 @@ function decryptBankAccount(row: Record<string, any>): Record<string, any> {
 }
 
 const router = Router();
+
+function isBankTransactionOlderThan7Days(transactionDate: unknown): boolean {
+  const parsed = new Date(String(transactionDate));
+  if (Number.isNaN(parsed.getTime())) return false;
+  return Date.now() - parsed.getTime() > 7 * 24 * 60 * 60 * 1000;
+}
 
 // Type for authenticated user
 interface AuthenticatedUser {
@@ -399,6 +406,19 @@ router.post("/reconcile/auto", async (req: Request, res: Response) => {
     if (!accountId) {
       return res.status(400).json({ error: "Missing required field: accountId" });
     }
+
+    if (!assertOperatingControl(req, res, {
+      actionType: 'BANK_MATCH_CLOSE',
+      route: 'POST /api/bank/reconcile/auto',
+      targetId: `bank-account:${accountId}`,
+      facts: {
+        bankTransactionImported: true,
+        sourceAccountKnown: true,
+        linkedRecordExists: true,
+      },
+    })) {
+      return;
+    }
     
     // Get unmatched bank transactions
     const conditions = [
@@ -442,6 +462,21 @@ router.post("/reconcile/auto", async (req: Request, res: Response) => {
           
           // Store the ID for reconciliation - transaction_records uses varchar(id)
           const matchIdStr = match.id; // Already a string from schema
+
+          if (!assertOperatingControl(req, res, {
+            actionType: 'BANK_MATCH_CLOSE',
+            route: 'POST /api/bank/reconcile/auto',
+            targetId: `bank-transaction:${txn.id}`,
+            facts: {
+              bankTransactionImported: true,
+              sourceAccountKnown: Boolean(txn.accountId),
+              transactionCategorySelected: Boolean(txn.category),
+              linkedRecordExists: true,
+              unmatchedOlderThan7Days: isBankTransactionOlderThan7Days(txn.transactionDate),
+            },
+          })) {
+            return;
+          }
           
           // Create reconciliation record
           await db.insert(bankReconciliations).values({
@@ -514,17 +549,36 @@ router.post("/reconcile/manual", async (req: Request, res: Response) => {
     
     // Get entity amount based on type
     let entityAmount = "0";
+    let linkedRecordExists = false;
     if (matchedEntityType === 'transaction_record') {
       // transaction_records uses varchar(id), not integer
       const [entity] = await db.select().from(transactionRecords).where(eq(transactionRecords.id, matchedEntityId.toString()));
+      linkedRecordExists = Boolean(entity);
       entityAmount = entity?.totalAmount || "0";
     } else if (matchedEntityType === 'tax_invoice') {
       const [entity] = await db.select().from(taxInvoices).where(eq(taxInvoices.id, parseInt(matchedEntityId)));
+      linkedRecordExists = Boolean(entity);
       entityAmount = entity?.totalAmount || "0";
     }
     
     const bankAmount = parseFloat(bankTxn.creditAmount as string) || parseFloat(bankTxn.debitAmount as string) || 0;
     const discrepancy = Math.abs(bankAmount - parseFloat(entityAmount));
+
+    if (!assertOperatingControl(req, res, {
+      actionType: 'BANK_MATCH_CLOSE',
+      route: 'POST /api/bank/reconcile/manual',
+      targetId: `bank-transaction:${bankTransactionId}`,
+      facts: {
+        bankTransactionImported: true,
+        sourceAccountKnown: Boolean(bankTxn.accountId),
+        transactionCategorySelected: Boolean(bankTxn.category),
+        linkedRecordExists,
+        exceptionReasonExists: Boolean(notes),
+        unmatchedOlderThan7Days: isBankTransactionOlderThan7Days(bankTxn.transactionDate),
+      },
+    })) {
+      return;
+    }
     
     // Create reconciliation
     const [reconciliation] = await db.insert(bankReconciliations).values({

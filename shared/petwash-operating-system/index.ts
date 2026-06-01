@@ -11,7 +11,8 @@ export type OperatingActionType =
   | 'WALLET_CREDIT_EXPIRE'
   | 'SUMIT_OFFICIAL_POSTING'
   | 'BANK_MATCH_CLOSE'
-  | 'OWNER_FUNDING_RECORD';
+  | 'OWNER_FUNDING_RECORD'
+  | 'MANUAL_FINANCIAL_ADJUSTMENT';
 
 export type OperatingActorRole =
   | 'system'
@@ -203,6 +204,7 @@ const MONEY_ACTIONS: OperatingActionType[] = [
   'SUMIT_OFFICIAL_POSTING',
   'BANK_MATCH_CLOSE',
   'OWNER_FUNDING_RECORD',
+  'MANUAL_FINANCIAL_ADJUSTMENT',
 ];
 
 function blocker(
@@ -483,6 +485,10 @@ function applyWalletCredit(input: OperatingInput, blockers: OperatingBlocker[]):
   ) {
     requireApproval(blockers, input, 'NIR', 'MANUAL_CREDIT_NIR_APPROVAL_REQUIRED', 'Manual staff credit above threshold requires owner approval.', 'Route manual credit to Nir approval queue.');
   }
+  if (input.actionType === 'WALLET_CREDIT_CREATE' && f.manualStaffCredit) {
+    requireFact(blockers, f, 'localControlApproved', 'MANUAL_CREDIT_CONTROL_APPROVAL_REQUIRED', 'FINANCE', 'Manual staff credit is missing local control approval.', 'Approve the credit in the operating-control queue before changing balance.');
+    requireFact(blockers, f, 'sourceEvidenceExists', 'MANUAL_CREDIT_EVIDENCE_REQUIRED', 'FINANCE', 'Manual staff credit is missing source evidence.', 'Link support ticket, refund case, owner approval, or campaign evidence before issuing credit.');
+  }
   if (input.actionType === 'WALLET_CREDIT_REDEEM') {
     requireFact(blockers, f, 'redemptionOrderLinked', 'CREDIT_REDEMPTION_ORDER_REQUIRED', 'FINANCE', 'Credit redemption requires linked order.', 'Link redemption to order/booking.');
     if ((money.creditRedemptionAmountCents ?? 0) > (money.creditRemainingBalanceCents ?? 0)) {
@@ -544,6 +550,18 @@ function applyOwnerFunding(input: OperatingInput, blockers: OperatingBlocker[]):
   requireFact(blockers, f, 'repaymentClassificationAccountantApproved', 'OWNER_REPAYMENT_CLASSIFICATION_REQUIRED', 'ACCOUNTANT', 'Repayment to Nir must not be salary/supplier/dividend unless accountant classifies it.', 'Accountant must classify repayment.');
 }
 
+function applyManualFinancialAdjustment(input: OperatingInput, blockers: OperatingBlocker[]): void {
+  const f = input.facts;
+  requireFact(blockers, f, 'refundReasonSelected', 'MANUAL_ADJUSTMENT_REASON_REQUIRED', 'FINANCE', 'Manual adjustment reason is missing.', 'Record a specific correction reason.');
+  requireFact(blockers, f, 'sourceEvidenceExists', 'MANUAL_ADJUSTMENT_EVIDENCE_REQUIRED', 'ACCOUNTANT', 'Manual adjustment source evidence is missing.', 'Attach invoice, receipt, payment, booking, or correction evidence.');
+  requireFact(blockers, f, 'localControlApproved', 'MANUAL_ADJUSTMENT_CONTROL_APPROVAL_REQUIRED', 'FINANCE', 'Manual adjustment local control is not approved.', 'Approve adjustment through finance control.');
+  requireFact(blockers, f, 'vatStatusReviewed', 'MANUAL_ADJUSTMENT_VAT_REVIEW_REQUIRED', 'ACCOUNTANT', 'Manual adjustment VAT/accounting treatment is not reviewed.', 'Route adjustment to accountant/SUMIT review.');
+  requireFact(blockers, f, 'idempotencyKeyExists', 'MANUAL_ADJUSTMENT_IDEMPOTENCY_REQUIRED', 'ENGINEERING', 'Manual adjustment idempotency key is missing.', 'Create stable idempotency key before recording adjustment.');
+  if ((input.money?.amountCents ?? 0) >= (input.money?.manualCreditThresholdCents ?? Number.MAX_SAFE_INTEGER)) {
+    requireApproval(blockers, input, 'NIR', 'MANUAL_ADJUSTMENT_NIR_APPROVAL_REQUIRED', 'Manual financial adjustment above threshold requires Nir approval.', 'Route adjustment to Nir approval queue.');
+  }
+}
+
 export function evaluateOperatingAction(input: OperatingInput): OperatingDecision {
   const blockers: OperatingBlocker[] = [];
   applyCommonControls(input, blockers);
@@ -578,6 +596,9 @@ export function evaluateOperatingAction(input: OperatingInput): OperatingDecisio
       break;
     case 'OWNER_FUNDING_RECORD':
       applyOwnerFunding(input, blockers);
+      break;
+    case 'MANUAL_FINANCIAL_ADJUSTMENT':
+      applyManualFinancialAdjustment(input, blockers);
       break;
   }
 

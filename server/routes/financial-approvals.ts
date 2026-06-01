@@ -10,6 +10,7 @@ import {
   explainFinancialApproval,
   type ApprovalRule,
 } from '../lib/financial-approvals';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 
 const router = Router();
 
@@ -76,6 +77,45 @@ function getActingRole(req: Request): string {
 function getActingUid(req: Request): string | null {
   const decoded = (req as any).decodedToken ?? (req as any).firebaseUser;
   return decoded?.uid ?? null;
+}
+
+function assertFinancialExecutionControl(
+  req: Request,
+  res: Response,
+  params: { caseType: string; caseRefId: string; actionType: string; amountCents?: number },
+): boolean {
+  if (params.caseType === 'refund') {
+    return assertOperatingControl(req, res, {
+      actionType: 'CUSTOMER_REFUND',
+      route: `POST /api/financial-approvals/${params.actionType}`,
+      targetId: `refund:${params.caseRefId}`,
+      bankMatchStatus: 'pending_match',
+      facts: {
+        approvalThresholdApplied: true,
+        highRiskRefund: (params.amountCents ?? 0) >= 50_000,
+      },
+      money: {
+        amountCents: params.amountCents,
+      },
+    });
+  }
+
+  if (params.caseType === 'payout_release') {
+    return assertOperatingControl(req, res, {
+      actionType: 'PROVIDER_PAYOUT',
+      route: `POST /api/financial-approvals/${params.actionType}`,
+      targetId: `payout-release:${params.caseRefId}`,
+      bankMatchStatus: 'pending_match',
+      facts: {
+        payoutApproved: true,
+      },
+      money: {
+        amountCents: params.amountCents,
+      },
+    });
+  }
+
+  return true;
 }
 
 // P0-SEC: requireFinancialAdmin — per-route defense-in-depth guard.
@@ -354,6 +394,15 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
 
     const status = decision.secondApprovalRequired ? 'pending' : 'approved';
 
+    if (status === 'approved' && !assertFinancialExecutionControl(req, res, {
+      caseType: case_type,
+      caseRefId: case_ref_id,
+      actionType: 'approve',
+      amountCents: amount_cents,
+    })) {
+      return;
+    }
+
     const logId = await logFinancialApproval({
       case_type,
       case_ref_id,
@@ -416,6 +465,15 @@ router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request
       }
     }
 
+    if (!assertFinancialExecutionControl(req, res, {
+      caseType: logRow.case_type,
+      caseRefId: logRow.case_ref_id,
+      actionType: 'second-approve',
+      amountCents: Number(logRow.amount_cents ?? 0),
+    })) {
+      return;
+    }
+
     await db.execute(sql`
       UPDATE financial_approval_log SET
         status = 'approved',
@@ -425,9 +483,7 @@ router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request
       WHERE id = ${logId}
     `);
 
-    await executeFinancialAction(
-      logRow.case_type, logRow.case_ref_id, logRow.action_type, actingUid, logId
-    );
+    await executeFinancialAction(logRow.case_type, logRow.case_ref_id, logRow.action_type, actingUid, logId);
 
     return res.json({ logId, status: 'approved', message: 'Second approval granted and executed' });
   } catch (err: any) {
@@ -531,6 +587,15 @@ router.post('/payout-release-gate', requireFinancialAdmin, async (req: Request, 
         decision,
         message: `Payout held — awaiting second approval from '${decision.secondApprovalRole}'`,
       });
+    }
+
+    if (!assertFinancialExecutionControl(req, res, {
+      caseType: 'payout_release',
+      caseRefId: String(settlement_id),
+      actionType: 'payout-release-gate',
+      amountCents: amount_cents,
+    })) {
+      return;
     }
 
     // Immediate release authorized
