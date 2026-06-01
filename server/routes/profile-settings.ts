@@ -6,6 +6,7 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import multer from 'multer';
 import { authService } from '../services/AuthService';
 
@@ -281,10 +282,11 @@ router.post('/settings/email/request-change', async (req, res) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const firestore = admin.firestore();
-    
+
+    // Persist ONLY the HMAC of the code — never the plaintext code at rest.
     await firestore.collection('pending_email_changes').doc(uid).set({
       newEmail,
-      code: verificationCode,
+      codeHmac: hashOtpCode(verificationCode),
       expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
       oldEmail: firebaseUser.email || '',
       requestedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -351,7 +353,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
       return res.status(400).json({ error: 'Verification code expired' });
     }
 
-    if (pending.code !== verificationCode) {
+    if (!verifyOtpCode(verificationCode, pending.codeHmac)) {
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 
