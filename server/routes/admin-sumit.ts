@@ -27,6 +27,7 @@ import { systemConfig } from '../services/SystemConfig';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { loadUserRole, checkAccessLevel, isSuperAdminVerified } from '../middleware/rbac';
 import { runPreflight, type SumitMode } from '../services/SumitPreflightCheck';
+import { buildSumitActivationReadiness } from '../services/SumitActivationReadiness';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -77,11 +78,41 @@ function envFlags() {
   };
 }
 
+async function readSupplierOsekBuckets(): Promise<Record<string, number>> {
+  const osekRows = await db.execute<{ bucket: string; count: number }>(sql`
+    SELECT coalesce(osek_classification, 'unknown') AS bucket, count(*)::int AS count
+    FROM suppliers
+    GROUP BY 1
+    ORDER BY 1
+  `);
+
+  const buckets: Record<string, number> = {};
+  for (const r of osekRows.rows ?? []) buckets[r.bucket] = Number(r.count);
+  return buckets;
+}
+
+async function readSumitQueueDepth(): Promise<Record<string, number>> {
+  const queueRows = await db.execute<{ status: string; count: number }>(sql`
+    SELECT status, count(*)::int AS count
+    FROM pw_async_jobs
+    WHERE job_type IN ('SUMIT_CUSTOMER_SYNC', 'SUMIT_DOCUMENT_CREATE', 'SUMIT_DOCUMENT_CANCEL')
+    GROUP BY status
+    ORDER BY status
+  `);
+
+  const queue: Record<string, number> = {};
+  for (const r of queueRows.rows ?? []) queue[r.status] = Number(r.count);
+  return queue;
+}
+
 router.get('/health', ...requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
     const mode = systemConfig.get('sumit.mode') as SumitMode;
     const parentFlag = systemConfig.get('ff.supplier_invoice_control.enabled');
     const sendFlag = systemConfig.get('ff.supplier_invoice_control.sumit_send.enabled');
+    const { sumitClient } = await import('../services/SumitClient');
+    const clientHealth = sumitClient.health();
+    const env = envFlags();
 
     // Aggregate sumit_status counts. Cheap on tables this small; if it
     // grows, swap for an indexed materialised count.
@@ -98,13 +129,32 @@ router.get('/health', ...requireSuperAdmin, async (_req: Request, res: Response)
       counts[r.bucket] = Number(r.count);
     }
 
+    const osekBuckets = await readSupplierOsekBuckets();
+    const queue = await readSumitQueueDepth();
+    const readiness = buildSumitActivationReadiness({
+      mode,
+      parentFlag,
+      sendFlag,
+      env,
+      wired: clientHealth.wired,
+      wiredReason: clientHealth.reason,
+      osekBuckets,
+      queue,
+      invoiceCounts: counts,
+    });
+
     return res.json({
       mode,
       flags: { parent: parentFlag, send: sendFlag },
-      env: envFlags(),
+      env,
       counts,
+      readiness,
       // Snapshot facts — never the secret values themselves.
-      sumitApiBaseUrl: process.env.SUMIT_API_BASE_URL || 'https://api.sumit.co.il',
+      sumitApiBaseUrl: clientHealth.baseUrl,
+      sumitClient: {
+        wired: clientHealth.wired,
+        reason: clientHealth.reason,
+      },
       accountantEmailDomain: process.env.ACCOUNTANT_EMAIL
         ? `***@${process.env.ACCOUNTANT_EMAIL.split('@')[1] ?? '***'}`
         : null,
@@ -192,7 +242,7 @@ router.get(
  *
  * Surfaces:
  *   - sumit.mode + SumitClient.isWired() — the gates
- *   - Supplier osek_type distribution — how many providers are still
+ *   - Supplier osek_classification distribution — how many providers are still
  *     `unknown`; those would be skipped by SumitSyncService until
  *     classified
  *   - SUMIT_* job queue depth (PENDING / PROCESSING / DONE / FAILED)
@@ -203,27 +253,12 @@ router.get('/sync-dryrun', ...requireSuperAdmin, async (_req: Request, res: Resp
     const { sumitClient } = await import('../services/SumitClient');
     const mode = systemConfig.get('sumit.mode') as SumitMode;
     const health = sumitClient.health();
+    const parentFlag = systemConfig.get('ff.supplier_invoice_control.enabled');
+    const sendFlag = systemConfig.get('ff.supplier_invoice_control.sumit_send.enabled');
+    const env = envFlags();
 
-    // Supplier osek_type breakdown.
-    const osekRows = await db.execute<{ bucket: string; count: number }>(sql`
-      SELECT coalesce(osek_type, 'unknown') AS bucket, count(*)::int AS count
-      FROM suppliers
-      GROUP BY 1
-      ORDER BY 1
-    `);
-    const osekBuckets: Record<string, number> = {};
-    for (const r of osekRows.rows ?? []) osekBuckets[r.bucket] = Number(r.count);
-
-    // SUMIT_* job queue depth.
-    const queueRows = await db.execute<{ status: string; count: number }>(sql`
-      SELECT status, count(*)::int AS count
-      FROM pw_async_jobs
-      WHERE job_type IN ('SUMIT_CUSTOMER_SYNC', 'SUMIT_DOCUMENT_CREATE', 'SUMIT_DOCUMENT_CANCEL')
-      GROUP BY status
-      ORDER BY status
-    `);
-    const queue: Record<string, number> = {};
-    for (const r of queueRows.rows ?? []) queue[r.status] = Number(r.count);
+    const osekBuckets = await readSupplierOsekBuckets();
+    const queue = await readSumitQueueDepth();
 
     // Last 5 sumit-prefixed audit events for a quick glance.
     const auditRows = await db.execute<{
@@ -235,13 +270,25 @@ router.get('/sync-dryrun', ...requireSuperAdmin, async (_req: Request, res: Resp
       ORDER BY created_at DESC
       LIMIT 5
     `);
+    const readiness = buildSumitActivationReadiness({
+      mode,
+      parentFlag,
+      sendFlag,
+      env,
+      wired: health.wired,
+      wiredReason: health.reason,
+      osekBuckets,
+      queue,
+    });
 
     return res.json({
       mode,
       wired: health.wired,
       wiredReason: health.reason,
       baseUrl: health.baseUrl,
-      env: envFlags(),
+      flags: { parent: parentFlag, send: sendFlag },
+      env,
+      readiness,
       osekBuckets,
       queue,
       recentEvents: (auditRows.rows ?? []).map((r) => ({
