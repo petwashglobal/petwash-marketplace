@@ -38,7 +38,18 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
 
     observer.observe(element);
 
-    return () => observer.disconnect();
+    // Safety net: iOS Safari can miss the initial IntersectionObserver
+    // callback, which leaves content stuck at opacity-0 forever — faded
+    // hero text and washed-out grey cards on the live homepage. Content
+    // must NEVER stay hidden waiting on a JS observer. Reveal after a short
+    // grace period regardless; the observer still drives the nicer scroll
+    // timing whenever it fires normally.
+    const fallback = window.setTimeout(() => setIsRevealed(true), 600);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallback);
+    };
   }, [threshold, rootMargin, triggerOnce]);
 
   return { ref, isRevealed };
@@ -80,7 +91,14 @@ export function useMultipleScrollReveal(count: number, options: UseScrollRevealO
       observers.push(observer);
     });
 
-    return () => observers.forEach(o => o.disconnect());
+    // Same safety net as useScrollReveal: never leave items stuck at
+    // opacity-0 if iOS Safari's observers miss their initial callback.
+    const fallback = window.setTimeout(() => setRevealedStates(Array(count).fill(true)), 600);
+
+    return () => {
+      observers.forEach(o => o.disconnect());
+      window.clearTimeout(fallback);
+    };
   }, [count, threshold, rootMargin, triggerOnce]);
 
   const setRef = (index: number) => (el: HTMLDivElement | null) => {
