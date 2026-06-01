@@ -9511,10 +9511,19 @@ self.addEventListener('notificationclick', (event) => {
   };
 
   // Send bulk emails
+  //
+  // HONESTY FIX 2026-05-24: previously this route set status='sent' on every
+  // record even though the actual emailService.sendTemplatedEmail() call was
+  // commented out (lines below). Operators saw "sent" in the CRM log but
+  // zero emails actually went out — silent failure of an admin-trusted
+  // feature. The route now returns 501 Not Implemented with a clear message
+  // and writes status='not_sent_feature_disabled' to the audit log so the
+  // operator can see the truth in the CRM UI. Real send wiring (SendGrid
+  // template + placeholder rendering) is a separate PR.
   app.post('/api/crm/communications/bulk/send-email', requireAdmin, async (req: any, res) => {
     try {
-      const { templateId, recipients, customData } = req.body;
-      
+      const { templateId, recipients, customData: _customData } = req.body;
+
       if (!templateId || !recipients || !Array.isArray(recipients)) {
         return res.status(400).json({ message: "Template ID and recipients array required" });
       }
@@ -9524,9 +9533,10 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(404).json({ message: "Email template not found" });
       }
 
+      // Log the (would-be) recipients so the admin sees who was queued, but
+      // mark each record as not_sent_feature_disabled so the dashboard truth
+      // matches reality. No actual emails are dispatched.
       const results = [];
-      const emailService = new EmailService();
-
       for (const recipient of recipients) {
         try {
           // Render the template now so the stored audit record (and the
@@ -9544,7 +9554,7 @@ self.addEventListener('notificationclick', (event) => {
             subject: renderedSubject,
             content: renderedContent,
             sentBy: req.session?.adminId,
-            status: 'sending',
+            status: 'not_sent_feature_disabled',
             templateId: templateId,
           });
 
@@ -9573,38 +9583,48 @@ self.addEventListener('notificationclick', (event) => {
 
           results.push({
             recipient: recipient.email,
-            status: 'sent',
-            communicationId: communication.id
+            status: 'not_sent_feature_disabled',
+            communicationId: communication.id,
           });
-
         } catch (error) {
-          logger.error(`Failed to send email to ${recipient.email}:`, error);
+          logger.error(`Failed to log email recipient ${recipient.email}:`, error);
           results.push({
             recipient: recipient.email,
             status: 'failed',
-            error: error.message
+            error: error.message,
           });
         }
       }
 
-      res.json({
-        message: "Bulk email operation completed",
-        results,
-        totalSent: results.filter(r => r.status === 'sent').length,
-        totalFailed: results.filter(r => r.status === 'failed').length
+      logger.warn('[CRM] bulk/send-email called but feature is not wired', {
+        templateId,
+        recipientCount: recipients.length,
+        sentBy: req.session?.adminId,
       });
 
+      res.status(501).json({
+        message: 'Bulk email campaign sending is NOT yet wired. Recipients were logged to CRM with status="not_sent_feature_disabled". Nothing was actually emailed. Wire the SendGrid template render path before re-enabling.',
+        errorCode: 'CAMPAIGN_SEND_NOT_IMPLEMENTED',
+        loggedRecipients: results.length,
+        results,
+      });
     } catch (error) {
       logger.error('Bulk email send error:', error);
-      res.status(500).json({ message: "Failed to send bulk emails" });
+      res.status(500).json({ message: "Failed to log bulk email recipients" });
     }
   });
 
   // Send bulk SMS
+  //
+  // HONESTY FIX 2026-05-24: mirror of the bulk send-email fix above.
+  // Pre-fix: status set to 'sent' even though the actual smsService call
+  // was commented out — admins thought campaigns went out, nothing did.
+  // Post-fix: route returns 501 with explicit message, records logged
+  // as 'not_sent_feature_disabled'.
   app.post('/api/crm/communications/bulk/send-sms', requireAdmin, async (req: any, res) => {
     try {
-      const { templateId, recipients, customData } = req.body;
-      
+      const { templateId, recipients, customData: _customData } = req.body;
+
       if (!templateId || !recipients || !Array.isArray(recipients)) {
         return res.status(400).json({ message: "Template ID and recipients array required" });
       }
@@ -9615,7 +9635,6 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       const results = [];
-
       for (const recipient of recipients) {
         try {
           // Render the template now so the stored audit record reflects
@@ -9631,7 +9650,7 @@ self.addEventListener('notificationclick', (event) => {
             subject: template.name,
             content: renderedContent,
             sentBy: req.session?.adminId,
-            status: 'sending',
+            status: 'not_sent_feature_disabled',
             templateId: templateId,
           });
 
@@ -9658,25 +9677,30 @@ self.addEventListener('notificationclick', (event) => {
 
           results.push({
             recipient: recipient.phone,
-            status: 'sent',
-            communicationId: communication.id
+            status: 'not_sent_feature_disabled',
+            communicationId: communication.id,
           });
-
         } catch (error) {
-          logger.error(`Failed to send SMS to ${recipient.phone}:`, error);
+          logger.error(`Failed to log SMS recipient ${recipient.phone}:`, error);
           results.push({
             recipient: recipient.phone,
             status: 'failed',
-            error: error.message
+            error: error.message,
           });
         }
       }
 
-      res.json({
-        message: "Bulk SMS operation completed",
+      logger.warn('[CRM] bulk/send-sms called but feature is not wired', {
+        templateId,
+        recipientCount: recipients.length,
+        sentBy: req.session?.adminId,
+      });
+
+      res.status(501).json({
+        message: 'Bulk SMS campaign sending is NOT yet wired. Recipients were logged to CRM with status="not_sent_feature_disabled". Nothing was actually sent. Wire the SMS provider (Twilio Messaging Service) before re-enabling.',
+        errorCode: 'CAMPAIGN_SEND_NOT_IMPLEMENTED',
+        loggedRecipients: results.length,
         results,
-        totalSent: results.filter(r => r.status === 'sent').length,
-        totalFailed: results.filter(r => r.status === 'failed').length
       });
 
     } catch (error) {
