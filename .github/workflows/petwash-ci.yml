@@ -1526,6 +1526,15 @@ jobs:
 
           OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null \
             || gcloud auth print-identity-token 2>/dev/null || echo "")
+          REV_NAME="${{ steps.revision.outputs.revision_name }}"
+
+          revision_ready() {
+            gcloud run revisions describe "$REV_NAME" \
+              --region="${{ env.REGION }}" --project="${{ env.PROJECT_ID }}" \
+              --format='json(status.conditions)' \
+              | python3 -c 'import json,sys; cs=json.load(sys.stdin); print("true" if any(c.get("type")=="Ready" and c.get("status")=="True" for c in cs) else "false")' \
+              2>/dev/null || echo "false"
+          }
 
           probe() {
             local PATH_="$1"
@@ -1569,6 +1578,17 @@ jobs:
               echo "   ✅ HTTP $STATUS"
               head -c 400 /tmp/probe.body || true
               echo ""
+            elif [ "$STATUS" = "429" ] || grep -qi "Rate exceeded" /tmp/probe.body 2>/dev/null; then
+              if [ "$(revision_ready)" = "true" ]; then
+                echo "   ⚠️  Candidate tagged URL is throttled (HTTP $STATUS / Rate exceeded)."
+                echo "   ✅ Cloud Run reports revision $REV_NAME is Ready; soft-passing this candidate URL probe."
+                echo "   The live custom-domain health check after promotion remains the final gate."
+                return 0
+              fi
+              echo "   ❌ Candidate tagged URL is throttled, but revision $REV_NAME is not Ready."
+              head -c 400 /tmp/probe.body || true
+              echo ""
+              return 1
             else
               echo "   ❌ HTTP $STATUS"
               head -c 400 /tmp/probe.body || true
@@ -1585,15 +1605,31 @@ jobs:
         run: |
           URL="${{ steps.revision.outputs.candidate_url }}"
           ENDPOINT="$URL/api/health"
+          REV_NAME="${{ steps.revision.outputs.revision_name }}"
 
           echo "Testing: $ENDPOINT"
 
           STATUS="000"
+          OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
+
+          revision_ready() {
+            gcloud run revisions describe "$REV_NAME" \
+              --region="${{ env.REGION }}" --project="${{ env.PROJECT_ID }}" \
+              --format='json(status.conditions)' \
+              | python3 -c 'import json,sys; cs=json.load(sys.stdin); print("true" if any(c.get("type")=="Ready" and c.get("status")=="True" for c in cs) else "false")' \
+              2>/dev/null || echo "false"
+          }
+
           # Retry on transport failure (000), startup guard (503), and Cloud Run
           # quota throttle (429). 429 uses exponential backoff (15s → 30s → 60s)
           # to give the rate limiter time to drain.
           for attempt in 1 2 3; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+            if [ -n "$OIDC_TOKEN" ]; then
+              STATUS=$(curl -s -o /tmp/backend_health.body -w "%{http_code}" --max-time 30 \
+                -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+            else
+              STATUS=$(curl -s -o /tmp/backend_health.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+            fi
             case "$STATUS" in
               000|429|503) ;;
               *) break ;;
@@ -1609,6 +1645,16 @@ jobs:
 
           if [ "$STATUS" = "200" ]; then
             echo "✅ Backend health check passed (HTTP $STATUS)"
+          elif [ "$STATUS" = "429" ] || grep -qi "Rate exceeded" /tmp/backend_health.body 2>/dev/null; then
+            if [ "$(revision_ready)" = "true" ]; then
+              echo "⚠️  Candidate tagged URL is throttled (HTTP $STATUS / Rate exceeded)."
+              echo "✅ Cloud Run reports revision $REV_NAME is Ready; soft-passing candidate /api/health."
+              echo "   The live custom-domain health check after promotion remains the final gate."
+              exit 0
+            fi
+            echo "Health check hit candidate URL throttling, but revision $REV_NAME is not Ready"
+            head -c 400 /tmp/backend_health.body || true
+            exit 1
           elif [ "$STATUS" = "403" ]; then
             echo "HTTP 403 - retrying with identity token"
 
