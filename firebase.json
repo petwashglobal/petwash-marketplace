@@ -31,13 +31,6 @@
           }
         },
         {
-          "source": "/webauthn/**",
-          "run": {
-            "serviceId": "petwash-api",
-            "region": "me-west1"
-          }
-        },
-        {
           "source": "/uploads/**",
           "run": {
             "serviceId": "petwash-api",
