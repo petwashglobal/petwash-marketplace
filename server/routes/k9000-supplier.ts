@@ -140,16 +140,40 @@ router.post('/spare-parts', async (req: Request, res: Response) => {
   }
 });
 
+// SECURITY 2026-05-24 (audit finding S4 K9000-zone):
+// Strip server-controlled / privileged fields from any client-supplied
+// PATCH body to prevent mass-assignment escalation. These routes are
+// behind requireAdmin (gate added in routes.ts mount) but the inner
+// guard is defense in depth — a future deploy that loosens the mount
+// must still hit this filter.
+const K9000_PATCH_DENY = new Set([
+  'id', 'createdAt', 'createdBy', 'updatedBy', 'tenantId',
+  'verified', 'isVerified', 'approved', 'auditNotes', 'systemFlags',
+]);
+function sanitiseK9000Patch(rawBody: unknown, route: string): Record<string, unknown> {
+  if (!rawBody || typeof rawBody !== 'object') return {};
+  const out: Record<string, unknown> = {};
+  const stripped: string[] = [];
+  for (const [k, v] of Object.entries(rawBody as Record<string, unknown>)) {
+    if (K9000_PATCH_DENY.has(k)) { stripped.push(k); continue; }
+    out[k] = v;
+  }
+  if (stripped.length > 0) {
+    logger.warn('[K9000 Supplier] Stripped privileged fields from PATCH body', { route, stripped });
+  }
+  return out;
+}
+
 /**
  * PATCH /api/k9000/spare-parts/:id - Update spare part
  */
 router.patch('/spare-parts/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     const [updatedPart] = await db
       .update(spareParts)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...sanitiseK9000Patch(req.body, '/spare-parts/:id'), updatedAt: new Date() })
       .where(eq(spareParts.id, parseInt(id)))
       .returning();
     
@@ -319,8 +343,11 @@ router.patch('/orders/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status, approvedBy, rejectionReason, trackingNumber, ...otherUpdates } = req.body;
-    
-    const updateData: any = { ...otherUpdates, updatedAt: new Date() };
+
+    // Same denylist as the other K9000 PATCH routes — strips id, createdAt,
+    // tenantId, verified, etc from the rest-spread otherUpdates so a client
+    // can't piggyback privileged fields under an unrelated update payload.
+    const updateData: any = { ...sanitiseK9000Patch(otherUpdates, '/orders/:id'), updatedAt: new Date() };
     
     if (status) {
       updateData.status = status;
@@ -579,10 +606,10 @@ router.post('/notification-settings', async (req: Request, res: Response) => {
 router.patch('/notification-settings/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     const [updatedSetting] = await db
       .update(supplierNotificationSettings)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...sanitiseK9000Patch(req.body, '/notification-settings/:id'), updatedAt: new Date() })
       .where(eq(supplierNotificationSettings.id, parseInt(id)))
       .returning();
     

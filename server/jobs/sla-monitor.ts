@@ -69,6 +69,14 @@ function roleBudget(caseType: string, baseBudget: number, role: 'agent' | 'manag
 // ─── Notification hook ────────────────────────────────────────────────────────
 // Phase 12.11: replace console/logger with real push/email/in-app delivery.
 
+// 2026-05-24 fix (audit landmine — SLA notify was silent):
+//   Pre-fix only `logger.info` fired. SLA breach events disappeared into
+//   Cloud Logging where nobody read them. Now we also send a SendGrid
+//   email to ops@petwash.co.il (fire-and-forget) so the operator's inbox
+//   actually surfaces a breach. Push / in-app delivery (the real Phase
+//   12.11 plan) remains TODO and is intentionally not implemented here
+//   — that requires the notification-system service that's still being
+//   built. The email is an honest stopgap, not a fake "wired" claim.
 function notifyHook(
   event: 'assigned' | 'escalated' | 'breached',
   caseType: string,
@@ -76,7 +84,31 @@ function notifyHook(
   toUid: string,
 ): void {
   logger.info('[SLANotify]', { event, caseType, caseRefId, toUid });
-  // TODO Phase 12.11: push to notification system
+
+  // Fire-and-forget — wrapped so caller signature stays void, no dangling
+  // promise warnings. Only email on the high-severity events; 'assigned'
+  // is informational. Real push / in-app dispatch (Phase 12.11) lands in
+  // a separate PR.
+  if (event === 'assigned') return;
+
+  (async () => {
+    try {
+      const { EmailService } = await import('../emailService');
+      const opsEmail = process.env.OPS_ALERT_EMAIL || 'ops@petwash.co.il';
+      const subject = `[SLA ${event.toUpperCase()}] ${caseType} ${caseRefId}`;
+      const html = `
+        <h2>SLA ${event}</h2>
+        <p><strong>Case type:</strong> ${caseType}</p>
+        <p><strong>Case ref:</strong> ${caseRefId}</p>
+        <p><strong>Assigned to UID:</strong> ${toUid}</p>
+        <p><strong>Detected at:</strong> ${new Date().toISOString()}</p>
+        <hr>
+        <p><small>Open admin → case dashboard to action.</small></p>`;
+      await new EmailService().sendEmail({ to: opsEmail, subject, html });
+    } catch (err) {
+      logger.warn('[SLANotify] Email dispatch failed (non-blocking)', { err, event, caseType, caseRefId });
+    }
+  })();
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
