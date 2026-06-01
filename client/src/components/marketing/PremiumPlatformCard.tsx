@@ -40,7 +40,7 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
 
   return (
     <article
-      className="relative isolate overflow-hidden rounded-[clamp(22px,3vw,34px)] bg-white border border-black/[0.045] shadow-[0_8px_24px_rgba(0,0,0,0.045),0_22px_60px_rgba(0,0,0,0.055)] transition-shadow duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06),0_28px_72px_rgba(0,0,0,0.07)] motion-reduce:transition-none focus-within:shadow-[0_12px_32px_rgba(0,0,0,0.06),0_28px_72px_rgba(0,0,0,0.07)]"
+      className="relative isolate overflow-hidden rounded-[clamp(22px,3vw,34px)] bg-white border border-black/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.045),0_22px_60px_rgba(0,0,0,0.055)] transition-shadow duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06),0_28px_72px_rgba(0,0,0,0.07)] motion-reduce:transition-none focus-within:shadow-[0_12px_32px_rgba(0,0,0,0.06),0_28px_72px_rgba(0,0,0,0.07)]"
       data-pr-premium-card="true"
       data-platform-id={card.id}
     >
@@ -52,7 +52,7 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
           Only ≥lg (1024px desktop) reverts to object-cover for the
           immersive layout. White background fills the contain
           letterbox space. */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-white">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
         <img
           src={assetSrc}
           alt={`${title} — ${headline}`}

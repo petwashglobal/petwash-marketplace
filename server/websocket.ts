@@ -64,7 +64,7 @@ export function setupWebSocket(server: Server) {
       const origin = info.origin || info.req.headers.origin;
       
       // In production, strictly enforce allowed origins
-      const isProduction = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === 'production';
       if (isProduction) {
         // Reject connections with missing Origin in production
         if (!origin) {
@@ -103,7 +103,7 @@ export function setupWebSocket(server: Server) {
   });
 
   logger.info('[WebSocket] Initializing real-time IoT & telemetry server at /realtime');
-  logger.info(`[WebSocket] Security: Origin validation ${process.env.REPLIT_DEPLOYMENT === '1' ? 'ENABLED' : 'RELAXED (dev)'}`);
+  logger.info(`[WebSocket] Security: Origin validation ${process.env.NODE_ENV === 'production' ? 'ENABLED' : 'RELAXED (dev)'}`);
   logger.info(`[WebSocket] Per-IP limiting: ${ENABLE_PER_IP_LIMITING ? `ENABLED (max ${MAX_CONNECTIONS_PER_IP}/IP)` : 'DISABLED (recommended for production behind proxy)'}`);
   logger.info(`[WebSocket] Limits: ${MAX_TOTAL_CONNECTIONS} total connections, ${MAX_MESSAGES_PER_MINUTE} msgs/min per client`);
 

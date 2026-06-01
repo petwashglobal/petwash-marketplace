@@ -527,26 +527,36 @@ export default function Hub() {
           </p>
         </div>
 
-        <div className="luxury-glass-card luxury-shadow-lg p-8 mb-12 luxury-animate-slide-up luxury-delay-1">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {quickStats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.labelKey} className="text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-4">
-                    <Icon className="w-8 h-8 text-white" />
+        {/* Quick stats panel — only shown to authenticated users.
+            The values rendered here (activeBookings, loyaltyPoints, servicesUsed)
+            are currently hardcoded placeholders ("3", "1,250", "12") and not
+            yet wired to live data. Showing them to logged-out visitors
+            displays misleading fake activity to people who have no account,
+            violating platform skill §2 ("no fake data in production").
+            Until these are wired to real per-user values, the entire panel
+            is hidden for unauthenticated visitors. */}
+        {user && (
+          <div className="luxury-glass-card luxury-shadow-lg p-8 mb-12 luxury-animate-slide-up luxury-delay-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {quickStats.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.labelKey} className="text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-4">
+                      <Icon className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="luxury-heading-lg luxury-text-gradient mb-1">
+                      {stat.value}
+                    </div>
+                    <div className="luxury-text-small">
+                      {tx(stat.labelKey, language)}
+                    </div>
                   </div>
-                  <div className="luxury-heading-lg luxury-text-gradient mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="luxury-text-small">
-                    {tx(stat.labelKey, language)}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mb-12">
           <h2 className="luxury-heading-md text-center mb-8 luxury-animate-fade-in luxury-delay-2">
@@ -599,6 +609,15 @@ export default function Hub() {
           </div>
         </div>
 
+        {/* Recent activity + loyalty status panels — both contain hardcoded
+            demo content ("Wash station booking — Tel Aviv Marina", "Gold
+            member", etc.) that is not derived from any real user data. Same
+            §2 "no fake data in production" issue as the quick-stats panel
+            above. Wrapping the whole grid in {user && (...)} so logged-out
+            visitors see neither — only authenticated users will see this
+            section, and once the demo strings are replaced with live data,
+            this gate can be relaxed if/when appropriate. */}
+        {user && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           <div className="luxury-animate-slide-up luxury-delay-3">
             <h3 className="luxury-heading-md mb-6">{tx('recentActivity', language)}</h3>
@@ -665,6 +684,7 @@ export default function Hub() {
             </div>
           </div>
         </div>
+        )}
 
         <div className="mt-16 text-center luxury-animate-fade-in luxury-delay-5">
           <div className="luxury-glass-card luxury-shadow-xl p-10">

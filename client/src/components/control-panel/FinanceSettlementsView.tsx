@@ -35,7 +35,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 type SettlementStatus = "pending" | "approved" | "paid";
-type PartnerType = "city" | "council" | "mall" | "franchise" | "sponsor";
+type PartnerType = "city" | "council" | "mall" | "licensed_operator" | "location_partner" | "sponsor";
 
 interface Settlement {
   id: string;
@@ -65,23 +65,40 @@ interface Commission {
   createdAt: string;
 }
 
+interface SettlementsResponse {
+  settlements?: Settlement[];
+}
+
+interface CommissionsResponse {
+  commissions?: Commission[];
+}
+
+interface FinanceSummaryResponse {
+  summary?: {
+    totalRevenue: string;
+    totalCommissions: string;
+    totalVAT: string;
+    pendingSettlements: number;
+  };
+}
+
 export default function FinanceSettlementsView() {
   const [periodFilter, setPeriodFilter] = useState<string>("current");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
   // Fetch settlements
-  const { data: settlementsData, isLoading: settlementsLoading } = useQuery({
+  const { data: settlementsData, isLoading: settlementsLoading } = useQuery<SettlementsResponse>({
     queryKey: ["/api/finance/settlements", periodFilter, statusFilter],
   });
 
   // Fetch commissions
-  const { data: commissionsData } = useQuery({
+  const { data: commissionsData } = useQuery<CommissionsResponse>({
     queryKey: ["/api/finance/commissions", "recent"],
   });
 
   // Fetch financial summary
-  const { data: summaryData } = useQuery({
+  const { data: summaryData } = useQuery<FinanceSummaryResponse>({
     queryKey: ["/api/finance/summary"],
   });
 
@@ -184,7 +201,7 @@ export default function FinanceSettlementsView() {
             <div>
               <CardTitle>Partner Settlements</CardTitle>
               <CardDescription>
-                Monthly revenue sharing with cities, councils, and franchises
+                Monthly revenue sharing with approved cities, councils, sites, and operators
               </CardDescription>
             </div>
             <Button variant="outline" data-testid="button-generate-settlements">

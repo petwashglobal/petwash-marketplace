@@ -12,6 +12,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { db, auth as firebaseAuth } from '../lib/firebase-admin';
 import { twilioSMSService } from '../services/TwilioSMSService';
+import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import { logger } from '../lib/logger';
 
 const router = express.Router();
@@ -57,16 +58,18 @@ router.post('/send-otp', async (req, res) => {
 
     const normalizedPhone = phone.replace(/\s+/g, '').replace(/^00/, '+');
 
-    // Generate 6-digit code
+    // Generate 6-digit code. Persist ONLY its HMAC — never the raw code.
+    // The plaintext code is sent over SMS and then discarded.
     const code = crypto.randomInt(100000, 999999).toString();
+    const codeHmac = hashOtpCode(code);
     const otpId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Store in Firestore
+    // Store in Firestore (HMAC only — no plaintext OTP at rest)
     await db.collection('provider_phone_otps').doc(otpId).set({
       uid,
       phone: normalizedPhone,
-      code,
+      codeHmac,
       expiresAt,
       verified: false,
       attempts: 0,
@@ -142,8 +145,8 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(429).json({ error: 'TOO_MANY_ATTEMPTS', message: language === 'he' ? 'יותר מדי ניסיונות, שלח קוד חדש' : 'Too many attempts, request a new code' });
     }
 
-    // Wrong code
-    if (otpData.code !== code) {
+    // Wrong code — timing-safe HMAC comparison (never plaintext)
+    if (!verifyOtpCode(code, otpData.codeHmac)) {
       await db.collection('provider_phone_otps').doc(otpId).update({
         attempts: (otpData.attempts || 0) + 1,
       });

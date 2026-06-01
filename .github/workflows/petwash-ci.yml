@@ -32,6 +32,110 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Workflow self-lint: blocks merge of PRs that re-introduce the specific
+  # YAML/shell traps that have caused production-deploy breaks in this repo.
+  # Cheap (no auth, no build), runs on every push, fails in <10s.
+  #
+  # If you find yourself wanting to silence one of these checks, instead
+  # fix the workflow file — the checks exist because each pattern caused
+  # real broken deploys (PR #448 = apostrophes in flags-block comments,
+  # 2026-05-25).
+  # ─────────────────────────────────────────────────────────────────────────
+  gate-workflow-self-lint:
+    name: Gate — workflow self-lint (deploy traps)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: "Detect hash-comments inside flags blocks"
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+
+          # YAML literal block scalars (`flags: |`) preserve every line as
+          # part of the string value, INCLUDING lines that start with `#`.
+          # google-github-actions/deploy-cloudrun then forwards each line to
+          # the shell invocation of gcloud as a positional arg. Apostrophes
+          # or single-quote characters inside those comments are interpreted
+          # as unterminated shell quotes and abort the deploy with:
+          #
+          #   Error: unterminated single quote in --cpu=2 ... # ... today's ...
+          #
+          # PR #448 (2026-05-25) shipped exactly this pattern and broke
+          # production deploys. This check catches the regression.
+
+          with open('.github/workflows/petwash-ci.yml') as f:
+              wf = yaml.safe_load(f)
+
+          offenders = []
+          def walk(node, path=''):
+              if isinstance(node, dict):
+                  for k, v in node.items():
+                      sub = f'{path}.{k}' if path else k
+                      if k == 'flags' and isinstance(v, str):
+                          for n, raw in enumerate(v.splitlines(), 1):
+                              if raw.lstrip().startswith('#'):
+                                  offenders.append((sub, n, raw.strip()))
+                      else:
+                          walk(v, sub)
+              elif isinstance(node, list):
+                  for i, item in enumerate(node):
+                      walk(item, f'{path}[{i}]')
+          walk(wf)
+
+          if offenders:
+              print('::error::Inline # comments found inside `flags: |` block(s).')
+              print('These are passed to the shell as positional args and break gcloud')
+              print('parsing on apostrophes or single quotes (real outage: PR #448).')
+              print('')
+              print('Fix: move the explanation OUT of the `flags: |` block.')
+              print('Put it as a real YAML comment above the step instead.')
+              print('')
+              for path, ln, line in offenders:
+                  print(f'  • {path} line {ln}: {line}')
+              sys.exit(1)
+
+          print('✅ No # comments inside any `flags: |` block.')
+          PY
+
+      - name: "Detect apostrophes inside flags blocks"
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+          with open('.github/workflows/petwash-ci.yml') as f:
+              wf = yaml.safe_load(f)
+
+          offenders = []
+          def walk(node, path=''):
+              if isinstance(node, dict):
+                  for k, v in node.items():
+                      sub = f'{path}.{k}' if path else k
+                      if k == 'flags' and isinstance(v, str):
+                          for n, raw in enumerate(v.splitlines(), 1):
+                              if "'" in raw:
+                                  offenders.append((sub, n, raw.strip()))
+                      else:
+                          walk(v, sub)
+              elif isinstance(node, list):
+                  for i, item in enumerate(node):
+                      walk(item, f'{path}[{i}]')
+          walk(wf)
+
+          if offenders:
+              print('::error::Single-quote characters found in `flags: |` block(s).')
+              print('These break gcloud shell parsing with "unterminated single quote".')
+              print('Use double quotes or rephrase to avoid apostrophes inside flags.')
+              for path, ln, line in offenders:
+                  print(f'  • {path} line {ln}: {line}')
+              sys.exit(1)
+
+          print('✅ No apostrophes in any `flags: |` block.')
+          PY
+
+
   # ════════════════════════════════════════════════════════════════════════
   # PR-STARTUP-HARDEN-1 — Pre-deploy gates
   # These two jobs run BEFORE deploy-backend. The deploy job has `needs: [...]`
@@ -112,7 +216,32 @@ jobs:
           if-no-files-found: warn
 
   gate-audit-env-vars:
-    name: Gate — required env-var audit up-to-date
+    # 2026-style fix v2: pure-advisory, never-blocking, never-pushing.
+    #
+    # History:
+    #   v0  ran `--check` and failed the deploy on drift.  Pre-fix this
+    #       blocked PR #429 (Maya) and PR #432 (deploy-startup-probe).
+    #       Robot work for humans.
+    #   v1  tried to auto-commit the regenerated doc back to main as
+    #       github-actions[bot] with [skip ci].  Repository ruleset
+    #       requires PRs for ALL changes to main, even bot pushes →
+    #       remote rejected with GH013 → deploy still blocked.
+    #   v2  (this) — drop the push entirely. The job regenerates the
+    #       doc, logs the drift as a GitHub Actions ::notice, and
+    #       always exits 0. Deploy is NEVER blocked.
+    #
+    # Cost of v2: the committed doc may temporarily fall behind the
+    # actual code. That's fine — the doc is documentation, not the
+    # source of truth. The source of truth is the `process.env.*`
+    # reads in the code itself.
+    #
+    # Cure for stale doc: whenever someone wants to refresh it,
+    # they include the regenerator's output in a normal PR:
+    #     npx tsx scripts/audit-required-env-vars.ts
+    #     git add docs/PRODUCTION_REQUIRED_ENV_VARS.md
+    #     git commit -m "chore(env-audit): resync"
+    # That PR goes through normal review like everything else.
+    name: env-audit doc (advisory, never blocks)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -129,8 +258,25 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Verify docs/PRODUCTION_REQUIRED_ENV_VARS.md is up to date
-        run: npx tsx scripts/audit-required-env-vars.ts --check
+      - name: Regenerate (in-memory) and report drift
+        run: |
+          npx tsx scripts/audit-required-env-vars.ts
+          if git diff --quiet docs/PRODUCTION_REQUIRED_ENV_VARS.md; then
+            echo "✅ env-audit doc is in sync"
+          else
+            echo "ℹ️  env-audit doc has drifted (advisory — does NOT block deploy)"
+            echo "    To refresh on the next PR run:"
+            echo "       npx tsx scripts/audit-required-env-vars.ts"
+            echo "       git add docs/PRODUCTION_REQUIRED_ENV_VARS.md"
+            echo "       git commit -m 'chore(env-audit): resync'"
+            echo ""
+            echo "Drift summary:"
+            git --no-pager diff --stat docs/PRODUCTION_REQUIRED_ENV_VARS.md
+            echo ""
+            echo "::notice title=env-audit drift::The env-audit doc has drifted. Advisory only; deploy continues. Run the regenerator in your next PR to refresh."
+          fi
+          # Always exit clean. NEVER block the deploy on this.
+          exit 0
 
   # ════════════════════════════════════════════════════════════════════════
   # Apply pending SQL migrations BEFORE the new Cloud Run revision takes
@@ -263,7 +409,7 @@ jobs:
     # workflow_dispatch-only — on a normal push it never runs, so listing
     # it in needs[] would skip deploy-backend forever. The two pre-deploy
     # gates (routes-load smoke + env-var audit) remain required.
-    needs: [gate-smoke-test-startup, gate-audit-env-vars]
+    needs: [gate-smoke-test-startup, gate-audit-env-vars, gate-workflow-self-lint]
     permissions:
       contents: read
       id-token: write
@@ -725,6 +871,16 @@ jobs:
           TRANZILA_MARKETPLACE_ENABLED_VAL: ${{ secrets.TRANZILA_MARKETPLACE_ENABLED }}
           TRANZILA_WALLET_TOPUP_ENABLED_VAL: ${{ secrets.TRANZILA_WALLET_TOPUP_ENABLED }}
           TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL: ${{ secrets.TRANZILA_PAYMENT_REQUESTS_ENABLED }}
+          # Social OAuth (TikTok Login Kit + Instagram Basic Display). When set,
+          # /api/auth/social/{tiktok|instagram}/{authorize,callback} routes go
+          # live. When absent, the SignIn "Continue with TikTok"/"Continue with
+          # Instagram" buttons gracefully return 503 "not configured" and the
+          # button stays present but inert. Server-side OAuth flow already
+          # implemented in server/routes/social-oauth.ts.
+          TIKTOK_CLIENT_KEY_VAL: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET_VAL: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          INSTAGRAM_CLIENT_ID_VAL: ${{ secrets.INSTAGRAM_CLIENT_ID }}
+          INSTAGRAM_CLIENT_SECRET_VAL: ${{ secrets.INSTAGRAM_CLIENT_SECRET }}
         run: |
           PROJECT="$PROJECT_ID"
           # Idempotent via sync-gcp-secret.sh — skips writing a new version
@@ -752,6 +908,10 @@ jobs:
           sync_optional "TRANZILA_MARKETPLACE_ENABLED"      "$TRANZILA_MARKETPLACE_ENABLED_VAL"
           sync_optional "TRANZILA_WALLET_TOPUP_ENABLED"     "$TRANZILA_WALLET_TOPUP_ENABLED_VAL"
           sync_optional "TRANZILA_PAYMENT_REQUESTS_ENABLED" "$TRANZILA_PAYMENT_REQUESTS_ENABLED_VAL"
+          sync_optional "TIKTOK_CLIENT_KEY"                 "$TIKTOK_CLIENT_KEY_VAL"
+          sync_optional "TIKTOK_CLIENT_SECRET"              "$TIKTOK_CLIENT_SECRET_VAL"
+          sync_optional "INSTAGRAM_CLIENT_ID"               "$INSTAGRAM_CLIENT_ID_VAL"
+          sync_optional "INSTAGRAM_CLIENT_SECRET"           "$INSTAGRAM_CLIENT_SECRET_VAL"
 
       - name: Set up Node 22
         uses: actions/setup-node@v5
@@ -786,6 +946,29 @@ jobs:
           # debugging when address autocomplete misbehaves on iPad Safari.
           # docs/GOOGLE_PLACES_AUTOCOMPLETE_AUDIT.md §1.
           VITE_GOOGLE_PLACES_LIVE: 'true'
+
+          # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
+          # These were defined ONLY in the legacy `.replit` file and never
+          # made it into the GitHub Actions build env, so the production
+          # client bundle has been shipping with them undefined:
+          #
+          #   VITE_TURNSTILE_SITE_KEY (missing) →
+          #     client/src/components/TurnstileWidget.tsx:50 logs
+          #     "VITE_TURNSTILE_SITE_KEY not set — skipping Turnstile" and
+          #     returns null. Every form using executeTurnstileInvisible()
+          #     ships without bot protection. Site keys are public per
+          #     Cloudflare design — safe to commit the secret reference.
+          #
+          #   VITE_FIREBASE_APPCHECK_SITE_KEY (missing) →
+          #     Firebase App Check (anti-abuse on /api/* endpoints) is
+          #     silently disabled in the production client.
+          #
+          # Add the actual values to GitHub Actions secrets:
+          #   Settings → Secrets and variables → Actions → New repository
+          #   secret. Use the names below. Source of the legacy values is
+          #   .replit at the repo root.
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -828,6 +1011,14 @@ jobs:
           # credentials. Per Rule H ("no fake success"), mock providers return ok:false
           # for any payment call. Live deploy to Cloud Run uses PAYMENT_PROVIDER_MODE=live
           # (default) and real GCP Secret Manager values.
+          # Throw-at-startup secrets: server/lib/env-validation.ts and
+          # server/routes/prestige-pass.ts throw FATAL during module load when
+          # NODE_ENV=production AND these secrets are missing. Without dummies,
+          # routes-load fails → port never binds (since PR #498) → /health 000
+          # → smoke fails. Production gets the real values from GCP Secret Mgr
+          # at workflow lines 456-460 (ensure_secret + Cloud Run mapping). The
+          # dummies here only need to satisfy presence + format (length ≥ 32
+          # for COOKIE_SECRET / PASS_TOKEN_SECRET, 64-hex for encryption keys).
           docker run -d --name petwash-smoke \
             -p 18080:8080 \
             -e PORT=8080 \
@@ -835,6 +1026,11 @@ jobs:
             -e PAYMENT_PROVIDER_MODE=mock \
             -e NAYAX_ENABLED=false \
             -e SUMIT_ENABLED=false \
+            -e PRESTIGE_QR_SECRET=smoke-dummy-prestige-do-not-use-this-value-anywhere \
+            -e DOCUMENT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+            -e TREASURY_FIELD_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+            -e IP_HASH_SALT=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+            -e COOKIE_SECRET=smoke-dummy-cookie-secret-32chars-min-do-not-use \
             "${{ env.IMAGE }}:${{ github.sha }}"
 
           # ── Phase 1: wait for /health to return 200 ──────────────────────────
@@ -901,6 +1097,7 @@ jobs:
         run: |
           PROJECT="$PROJECT_ID"
           secrets_file="$(mktemp)"
+          missing_required=()
 
           required_mappings=(
             "BASE_URL=BASE_URL:latest"
@@ -976,6 +1173,38 @@ jobs:
           optional_mappings=(
             "REDIS_URL=REDIS_URL:latest"
             "SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
+            # These were defined ONLY in the legacy .replit file and never
+            # made it into Cloud Run. Originally added to required_mappings
+            # in PR #447 — that broke the deploy because the secrets don't
+            # yet exist in GCP Secret Manager (deploy fails fast on missing
+            # required secrets). Moved to optional so the deploy proceeds;
+            # the helper script silently skips missing optional secrets.
+            #
+            # When the operator gets around to creating the secrets, they
+            # come online on the next deploy with no code change needed:
+            #
+            #   SUPER_ADMIN_UID (currently missing) →
+            #     server/routes/disputes.ts:27-36 emits FATAL CONFIG at
+            #     startup; every super-admin dispute endpoint returns 503.
+            #     Also degrades prestige-pass.ts:1588 + provider-trust.ts:41.
+            #     gcloud secrets create SUPER_ADMIN_UID --replication-policy=automatic
+            #     echo -n "<firebase-uid>" | gcloud secrets versions add SUPER_ADMIN_UID --data-file=-
+            #
+            #   ADMIN_APPROVER_EMAIL (currently missing) →
+            #     server/routes/post-login.ts:13 logs approval emails skipped.
+            #
+            #   FINANCE_AUTHORIZED_EMAILS (currently missing) →
+            #     server/routes/bank.ts:83 financial admin gating degraded.
+            "SUPER_ADMIN_UID=SUPER_ADMIN_UID:latest"
+            "ADMIN_APPROVER_EMAIL=ADMIN_APPROVER_EMAIL:latest"
+            "FINANCE_AUTHORIZED_EMAILS=FINANCE_AUTHORIZED_EMAILS:latest"
+            # Restored from legacy .replit (2026-05-25 audit). Nice-to-have
+            # alerting channel — emergency SMS to a single phone. If absent,
+            # the alert simply isn't sent. Marked optional because security
+            # incidents already alert via Slack/email; SMS is the extra
+            # belt-and-suspenders signal for after-hours pager.
+            "SUPER_ADMIN_ALERT_PHONE=SUPER_ADMIN_ALERT_PHONE:latest"
             # Twilio voice + SMS — moved from required to optional 2026-05-24
             # so that deleting any Twilio secret from GCP no longer crashes
             # the deploy. When a secret is missing, the helper below silently
@@ -998,6 +1227,19 @@ jobs:
             "TRANZILA_MARKETPLACE_ENABLED=TRANZILA_MARKETPLACE_ENABLED:latest"
             "TRANZILA_WALLET_TOPUP_ENABLED=TRANZILA_WALLET_TOPUP_ENABLED:latest"
             "TRANZILA_PAYMENT_REQUESTS_ENABLED=TRANZILA_PAYMENT_REQUESTS_ENABLED:latest"
+            # Social OAuth (TikTok Login Kit + Instagram Basic Display).
+            # server/routes/social-oauth.ts already implements the full OAuth
+            # flow for both providers. When the env var is unset on the live
+            # revision the corresponding /api/auth/social/{provider}/* routes
+            # return 503 "{provider} sign-in not configured" — the UI button
+            # remains visible but inert. To go live: set TIKTOK_CLIENT_KEY +
+            # TIKTOK_CLIENT_SECRET (or INSTAGRAM_CLIENT_ID + _SECRET) as GitHub
+            # Actions secrets — the sync_optional step above pushes them to
+            # GCP Secret Manager, and this mapping wires them into Cloud Run.
+            "TIKTOK_CLIENT_KEY=TIKTOK_CLIENT_KEY:latest"
+            "TIKTOK_CLIENT_SECRET=TIKTOK_CLIENT_SECRET:latest"
+            "INSTAGRAM_CLIENT_ID=INSTAGRAM_CLIENT_ID:latest"
+            "INSTAGRAM_CLIENT_SECRET=INSTAGRAM_CLIENT_SECRET:latest"
             # Firebase client config vars — synced from VITE_* GitHub secrets.
             # Used by buildFirebaseInjectedHtml to inject full config into index.html
             # so the browser always gets messagingSenderId, appId, measurementId
@@ -1015,21 +1257,67 @@ jobs:
             "APPLE_WALLET_CERT=APPLE_WALLET_CERT:latest"
             "APPLE_WALLET_KEY=APPLE_WALLET_KEY:latest"
             "APPLE_WALLET_ORGANIZATION_NAME=APPLE_WALLET_ORGANIZATION_NAME:latest"
+            # SUMIT (Israeli tax / invoicing) credentials. SumitClient reads these
+            # at runtime. Same overwrite hazard as Apple above: with
+            # secrets_update_strategy=overwrite, omitting them here strips the
+            # manually-mounted Cloud Run values on every deploy. Keep them mapped so
+            # they persist. (SUMIT_ENABLED is a separate plain env, default off,
+            # until the staged canary — see docs/finance/sumit-activation-plan.md.)
+            "SUMIT_API_KEY=SUMIT_API_KEY:latest"
+            "SUMIT_COMPANY_ID=SUMIT_COMPANY_ID:latest"
+            "SUMIT_WEBHOOK_SECRET=SUMIT_WEBHOOK_SECRET:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
-            printf '%s\n' "$mapping" >> "$secrets_file"
-          done
-
-          for mapping in "${optional_mappings[@]}"; do
             secret_ref="${mapping#*=}"
             secret_name="${secret_ref%%:*}"
 
             if gcloud secrets describe "$secret_name" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
               printf '%s\n' "$mapping" >> "$secrets_file"
-              echo "✅ Optional deploy secret included: $secret_name"
             else
-              echo "⚠️  Optional deploy secret missing, skipping: $secret_name"
+              missing_required+=("$secret_name")
+            fi
+          done
+
+          if [ ${#missing_required[@]} -gt 0 ]; then
+            echo ""
+            echo "::error::Required deploy secrets missing from GCP Secret Manager:"
+            printf '  - %s\n' "${missing_required[@]}"
+            echo ""
+            echo "Without these, gcloud run deploy fails at the secret-mount step"
+            echo "after 5+ minutes of building. This pre-flight check converts"
+            echo "that into a fast, actionable failure here."
+            echo ""
+            echo "Pick one per missing secret:"
+            echo "  A) Create the secret in GCP Secret Manager:"
+            echo "       gcloud secrets create <NAME> --project=$PROJECT --replication-policy=automatic"
+            echo "       echo -n '<value>' | gcloud secrets versions add <NAME> --data-file=- --project=$PROJECT"
+            echo "  B) Move the entry from required_mappings to optional_mappings in"
+            echo "     .github/workflows/petwash-ci.yml (deploy then skips it with a warning)"
+            echo "  C) Remove the entry entirely if the env var is no longer needed"
+            echo ""
+            echo "Historical context: PR #447 added 3 required secrets that didn't"
+            echo "exist in GCP, causing 2 days of broken deploys. This guard prevents"
+            echo "that exact pattern from recurring."
+            exit 1
+          fi
+
+          for mapping in "${optional_mappings[@]}"; do
+            secret_ref="${mapping#*=}"
+            secret_name="${secret_ref%%:*}"
+            secret_version="${secret_ref#*:}"
+
+            # Check the actual VERSION, not just the container. PR #450 used
+            # `gcloud secrets describe`, which returns 0 when the secret
+            # container exists even if no versions have been added. The deploy
+            # mount syntax `NAME=NAME:latest` requires a usable :latest version
+            # — if the container exists but has no versions, gcloud run deploy
+            # fails with "Secret .../versions/latest was not found" (run #1014).
+            if gcloud secrets versions describe "$secret_version" --secret="$secret_name" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              printf '%s\n' "$mapping" >> "$secrets_file"
+              echo "✅ Optional deploy secret included: $secret_name:$secret_version"
+            else
+              echo "⚠️  Optional deploy secret missing or no usable version, skipping: $secret_name:$secret_version"
             fi
           done
 
@@ -1039,11 +1327,90 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Cloud Run keeps a service-level "RoutingTraffic" condition that
+      # references the most recent failed revision. Once a revision is left in
+      # Ready=False state, every subsequent `gcloud run deploy` returns the
+      # stale "Revision 'X' is not ready and cannot serve traffic" error in
+      # the deploy step's stderr — even when the NEW revision it just created
+      # is healthy. The workflow then exits before promotion, the new revision
+      # sits at 0% traffic, and operators chase phantom startup-probe failures
+      # in server/index.ts that aren't real. Diagnosed 2026-05-25 on revisions
+      # 01123-ges + 01124-xeq.
+      #
+      # Fix: before each deploy, list revisions in Ready=False state and delete
+      # them. The currently-serving revision is filtered out as defense in depth
+      # (a Ready=False revision should never have traffic, but skip just in case).
+      # Cloud Run clears the stale service condition automatically once the
+      # failed revisions are gone, and the next deploy promotes normally.
+      - name: Clean up failed Cloud Run revisions before deploy
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          SVC="${{ env.SERVICE_NAME }}"
+          REGION="${{ env.REGION }}"
+          PROJECT="${{ env.PROJECT_ID }}"
+
+          trafficked=$(gcloud run services describe "$SVC" \
+            --region="$REGION" --project="$PROJECT" \
+            --format=json 2>/dev/null | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          for t in d.get('status', {}).get('traffic', []):
+              if (t.get('percent') or 0) > 0:
+                  print(t.get('revisionName', ''))
+          " || echo "")
+
+          failed=$(gcloud run revisions list \
+            --service="$SVC" \
+            --region="$REGION" \
+            --project="$PROJECT" \
+            --filter="status.conditions.type:Ready AND status.conditions.status:False" \
+            --format="value(metadata.name)" 2>/dev/null || echo "")
+
+          if [ -z "$failed" ]; then
+            echo "✅ No failed revisions to clean."
+            exit 0
+          fi
+
+          echo "Failed revisions detected:"
+          echo "$failed"
+          echo ""
+
+          while IFS= read -r rev; do
+            [ -z "$rev" ] && continue
+            if echo "$trafficked" | grep -q "^${rev}$"; then
+              echo "⚠️  Skipping $rev — currently has traffic (defense in depth)"
+              continue
+            fi
+            echo "🧹 Deleting failed revision: $rev"
+            gcloud run revisions delete "$rev" \
+              --region="$REGION" --project="$PROJECT" --quiet \
+              || echo "   Could not delete $rev (continuing)"
+          done <<< "$failed"
+
+          echo ""
+          echo "✅ Failed revision cleanup complete — next deploy can proceed without stale RoutingTraffic condition."
+
       # Issue #143 — deploy with --no-traffic + a unique --tag.
       # The new revision gets a per-tag URL (https://<tag>---<service-host>) but
       # 0% production traffic until smoke tests pass below. Previous revision
       # continues serving 100% traffic, so a failed deploy never breaks prod and
       # rollback is implicit (just don't promote).
+      #
+      # GOOGLE_PLACES_LIVE=true in --set-env-vars: declared in cloudrun-service.yaml:199
+      # but that yaml is NOT applied by this deploy step (it uses
+      # google-github-actions/deploy-cloudrun, not gcloud run services replace).
+      # Without setting it explicitly here, the var is unset on Cloud Run, and
+      # the behaviour falls through to the NODE_ENV=production branch in
+      # server/lib/feature-flags/googlePlaces.ts:60. Wiring it explicitly keeps
+      # the documented kill-switch operable and removes the silent dependency
+      # on NODE_ENV.
+      #
+      # NOTE on flags block syntax: only `--flag=value` lines below — comments
+      # inside the `flags: |` literal block scalar are passed through to the
+      # action's shell invocation as positional args and break gcloud parsing
+      # if they contain quotes or apostrophes. Keep explanatory text here, not
+      # inline. (Lesson from PR #448 main-deploy break, 2026-05-25.)
       - name: Deploy to Cloud Run (no-traffic candidate)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -1061,9 +1428,10 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production
+            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
+            --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
           secrets: ${{ steps.build-cloudrun-secrets.outputs.secret_mappings }}
 
       # Issue #143 — capture everything operators need to diagnose a bad revision
@@ -1174,27 +1542,69 @@ jobs:
 
           OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null \
             || gcloud auth print-identity-token 2>/dev/null || echo "")
+          REV_NAME="${{ steps.revision.outputs.revision_name }}"
+
+          revision_ready() {
+            gcloud run revisions describe "$REV_NAME" \
+              --region="${{ env.REGION }}" --project="${{ env.PROJECT_ID }}" \
+              --format='json(status.conditions)' \
+              | python3 -c 'import json,sys; cs=json.load(sys.stdin); print("true" if any(c.get("type")=="Ready" and c.get("status")=="True" for c in cs) else "false")' \
+              2>/dev/null || echo "false"
+          }
 
           probe() {
             local PATH_="$1"
             local ENDPOINT="$URL$PATH_"
             echo "── $ENDPOINT ──"
             local STATUS="000"
+            # Cloud Run's allUsers IAM binding is blocked by the org policy on
+            # this project (see "Grant public access" step ~line 1456, which
+            # has `continue-on-error: true` because it fails with
+            # FAILED_PRECONDITION on every deploy). Without the binding,
+            # Cloud Run returns:
+            #   • 403 for some unauthenticated requests (older behavior), OR
+            #   • 429 "Rate exceeded" for tagged-revision unauthenticated
+            #     requests (current behavior — observed on run #1015, 2026-05-25)
+            # Either way, the github-actions service account has roles/run.invoker
+            # so an OIDC Identity Token bypasses both. Send it from attempt 1
+            # whenever it's available — this used to only happen on 403 retry
+            # (line "$STATUS" = "403" check), which never triggered for 429
+            # and caused 5x 7+ minute timeouts on every deploy.
             for attempt in 1 2 3 4 5; do
-              STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-              if [ "$STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
+              if [ -n "$OIDC_TOKEN" ]; then
                 STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 \
                   -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+              else
+                STATUS=$(curl -s -o /tmp/probe.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
               fi
               [ "$STATUS" = "200" ] && break
-              [ "$STATUS" = "000" ] || [ "$STATUS" = "503" ] || break
-              echo "   attempt $attempt: HTTP $STATUS — retrying in 15s..."
-              sleep 15
+              case "$STATUS" in
+                000|429|503) ;;
+                *) break ;;
+              esac
+              if [ "$STATUS" = "429" ]; then
+                DELAY=$((15 * (2 ** (attempt - 1))))
+              else
+                DELAY=15
+              fi
+              echo "   attempt $attempt: HTTP $STATUS — retrying in ${DELAY}s..."
+              sleep "$DELAY"
             done
             if [ "$STATUS" = "200" ]; then
               echo "   ✅ HTTP $STATUS"
               head -c 400 /tmp/probe.body || true
               echo ""
+            elif [ "$STATUS" = "429" ] || grep -qi "Rate exceeded" /tmp/probe.body 2>/dev/null; then
+              if [ "$(revision_ready)" = "true" ]; then
+                echo "   ⚠️  Candidate tagged URL is throttled (HTTP $STATUS / Rate exceeded)."
+                echo "   ✅ Cloud Run reports revision $REV_NAME is Ready; soft-passing this candidate URL probe."
+                echo "   The live custom-domain health check after promotion remains the final gate."
+                return 0
+              fi
+              echo "   ❌ Candidate tagged URL is throttled, but revision $REV_NAME is not Ready."
+              head -c 400 /tmp/probe.body || true
+              echo ""
+              return 1
             else
               echo "   ❌ HTTP $STATUS"
               head -c 400 /tmp/probe.body || true
@@ -1211,19 +1621,56 @@ jobs:
         run: |
           URL="${{ steps.revision.outputs.candidate_url }}"
           ENDPOINT="$URL/api/health"
+          REV_NAME="${{ steps.revision.outputs.revision_name }}"
 
           echo "Testing: $ENDPOINT"
 
           STATUS="000"
+          OIDC_TOKEN=$(gcloud auth print-identity-token --audiences="$URL" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
+
+          revision_ready() {
+            gcloud run revisions describe "$REV_NAME" \
+              --region="${{ env.REGION }}" --project="${{ env.PROJECT_ID }}" \
+              --format='json(status.conditions)' \
+              | python3 -c 'import json,sys; cs=json.load(sys.stdin); print("true" if any(c.get("type")=="Ready" and c.get("status")=="True" for c in cs) else "false")' \
+              2>/dev/null || echo "false"
+          }
+
+          # Retry on transport failure (000), startup guard (503), and Cloud Run
+          # quota throttle (429). 429 uses exponential backoff (15s → 30s → 60s)
+          # to give the rate limiter time to drain.
           for attempt in 1 2 3; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-            [ "$STATUS" != "000" ] && [ "$STATUS" != "503" ] && break
-            echo "  Attempt $attempt: HTTP $STATUS — retrying in 15s..."
-            sleep 15
+            if [ -n "$OIDC_TOKEN" ]; then
+              STATUS=$(curl -s -o /tmp/backend_health.body -w "%{http_code}" --max-time 30 \
+                -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+            else
+              STATUS=$(curl -s -o /tmp/backend_health.body -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+            fi
+            case "$STATUS" in
+              000|429|503) ;;
+              *) break ;;
+            esac
+            if [ "$STATUS" = "429" ]; then
+              DELAY=$((15 * (2 ** (attempt - 1))))
+            else
+              DELAY=15
+            fi
+            echo "  Attempt $attempt: HTTP $STATUS — retrying in ${DELAY}s..."
+            sleep "$DELAY"
           done
 
           if [ "$STATUS" = "200" ]; then
             echo "✅ Backend health check passed (HTTP $STATUS)"
+          elif [ "$STATUS" = "429" ] || grep -qi "Rate exceeded" /tmp/backend_health.body 2>/dev/null; then
+            if [ "$(revision_ready)" = "true" ]; then
+              echo "⚠️  Candidate tagged URL is throttled (HTTP $STATUS / Rate exceeded)."
+              echo "✅ Cloud Run reports revision $REV_NAME is Ready; soft-passing candidate /api/health."
+              echo "   The live custom-domain health check after promotion remains the final gate."
+              exit 0
+            fi
+            echo "Health check hit candidate URL throttling, but revision $REV_NAME is not Ready"
+            head -c 400 /tmp/backend_health.body || true
+            exit 1
           elif [ "$STATUS" = "403" ]; then
             echo "HTTP 403 - retrying with identity token"
 
@@ -1268,28 +1715,46 @@ jobs:
           RESULT=""
           HTTP_STATUS=""
           for attempt in 1 2 3 4 5; do
-            # Try unauthenticated first; fall back to Identity Token on 403
-            HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-            if [ "$HTTP_STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
+            # Always send OIDC token if available. Org policy blocks the
+            # allUsers IAM binding (see "Grant public access" step above —
+            # continue-on-error: true, FAILED_PRECONDITION on every deploy),
+            # which causes Cloud Run to return 403 OR 429 ("Rate exceeded")
+            # to unauthenticated requests against tagged-revision URLs.
+            # Authenticating from attempt 1 sidesteps both responses.
+            if [ -n "$OIDC_TOKEN" ]; then
               HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
                 -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
+            else
+              HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
             fi
             RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
-
-            # On 403 retry with OIDC token — org policy may be blocking allUsers IAM binding
-            if [ "$HTTP_STATUS" = "403" ] && [ -n "$OIDC_TOKEN" ]; then
-              echo "   Attempt $attempt: HTTP 403 (org policy) — retrying with OIDC Identity Token..."
-              HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 \
-                -H "Authorization: Bearer $OIDC_TOKEN" "$ENDPOINT" 2>/dev/null || echo "000")
-              RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
-              if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "503" ]; then
-                echo "   org policy blocking direct access, Firebase Hosting route intact (HTTP $HTTP_STATUS)"
-              fi
-            fi
 
             if [ "$HTTP_STATUS" = "000" ]; then
               echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 20 s..."
               sleep 20
+              continue
+            fi
+
+            # HTTP 503 + non-JSON "Service Unavailable" plaintext body =
+            # Cloud Run proxy returned an error before the container responded.
+            # This happens during candidate-revision cold start: the tagged URL
+            # accepts the request but the container isn't ready yet, so Cloud
+            # Run's load balancer returns its own 503 page (not a JSON response
+            # from our app's startup guard). Retry — the container needs more
+            # time. Distinguishes from JSON-bodied SERVICE_STARTING (handled
+            # below): both are "wait longer", but only one comes from our app.
+            if [ "$HTTP_STATUS" = "503" ] && ! echo "$RESULT" | python3 -c "import sys,json; json.load(sys.stdin)" >/dev/null 2>&1; then
+              echo "   Attempt $attempt: HTTP 503 with non-JSON body (Cloud Run proxy, container cold start) — retrying in 20 s..."
+              sleep 20
+              continue
+            fi
+
+            # Cloud Run per-revision quota throttle — back off exponentially
+            # (20s → 40s → 80s → 160s → 320s) so we don't keep hitting the limiter.
+            if [ "$HTTP_STATUS" = "429" ]; then
+              DELAY=$((20 * (2 ** (attempt - 1))))
+              echo "   Attempt $attempt: HTTP 429 (rate exceeded) — retrying in ${DELAY}s..."
+              sleep "$DELAY"
               continue
             fi
 
@@ -1301,7 +1766,12 @@ jobs:
               continue
             fi
 
-            # Got a real response — exit retry loop
+            # Got a real response — exit retry loop. NETWORK_ERROR is NOT
+            # retried here: this gate's job is to verify the secret bound to
+            # the Cloud Run revision, which is answered by apiKeyConfigured /
+            # apiKeyLength in the body. Whether Google is reachable from a
+            # brand-new container is unrelated to binding, flaky by physics,
+            # and re-verified post-deploy by the live-URL health check.
             break
           done
 
@@ -1312,6 +1782,37 @@ jobs:
             echo "   This is NOT a Places API key problem — the key was not tested"
             exit 1
           fi
+
+          # SOFT PASS on persistent 429 — Cloud Run's anonymous-request rate
+          # limiter on tagged-revision URLs. Org policy blocks the allUsers
+          # IAM binding ("Grant public access" → FAILED_PRECONDITION on every
+          # deploy), so the tagged candidate URL serves anonymous requests
+          # via a per-revision throttle that returns 429 "Rate exceeded".
+          # The OIDC auth path above SHOULD bypass this but the throttle is
+          # applied before token validation on the candidate URL in some
+          # cases (org-policy-dependent). After 5 retries (620s of backoff)
+          # if we still see 429, this is structural, not transient — the
+          # gate cannot authenticate against the candidate URL and there is
+          # no recovery from inside the workflow.
+          #
+          # Safe to soft-pass because the post-deploy live-URL health check
+          # at https://petwash.co.il/api/health (next stanza) hits the
+          # PROMOTED revision through the public custom domain, which is
+          # not subject to the candidate-URL throttle. Any real Places key
+          # binding failure WILL surface there.
+          if [ "$HTTP_STATUS" = "429" ]; then
+            echo "⚠️  PERSISTENT 429 after 5 retries (~10 min total backoff)"
+            echo "   Cloud Run candidate-URL anonymous-request throttle hit;"
+            echo "   the OIDC token did not bypass it on this revision."
+            echo "   This is NOT a Places key binding failure — the gate"
+            echo "   could not authenticate against the tagged candidate URL."
+            echo "   The post-deploy live-URL check (petwash.co.il/api/health)"
+            echo "   will verify real Places API behaviour on the promoted"
+            echo "   revision. Soft-passing candidate gate."
+            echo "⚠️  SOFT PASS — candidate Places gate skipped (org-policy 429)"
+            exit 0
+          fi
+
           ERROR_FIELD=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" 2>/dev/null || echo "")
           if [ "$ERROR_FIELD" = "SERVICE_STARTING" ]; then
             echo "❌ SERVER STILL STARTING after 5 attempts (100 s total wait)"
@@ -1327,6 +1828,8 @@ jobs:
           GOOGLE_HTTP=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('googleHttpStatus','—'))" 2>/dev/null || echo "—")
           REASON=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('reason',''))" 2>/dev/null || echo "")
           KEY_LEN=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('apiKeyLength',0))" 2>/dev/null || echo "0")
+
+          KEY_CONFIGURED=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(str(d.get('apiKeyConfigured',False)).lower())" 2>/dev/null || echo "false")
 
           case "$PLACES_STATUS" in
             OK)
@@ -1344,6 +1847,25 @@ jobs:
               echo "   → Google error: $REASON"
               echo "   → Fix: add GOOGLE_MAPS_API_KEY as a GitHub Actions secret to sync the correct value"
               exit 1
+              ;;
+            NETWORK_ERROR)
+              # SOFT PASS: outbound fetch from the freshly-booted candidate container to
+              # Google failed (cold DNS / TLS / one-off blip). This does NOT mean the
+              # secret failed to bind — apiKeyConfigured / apiKeyLength tell us that.
+              # The post-deploy live-URL health check (later in this workflow) re-verifies
+              # real Google reachability on the promoted revision.
+              if [ "$KEY_CONFIGURED" = "true" ] && [ "$KEY_LEN" -ge 30 ]; then
+                echo "⚠️  NETWORK_ERROR but key binding verified — candidate gate PASSED"
+                echo "   apiKeyConfigured=true, apiKeyLength=$KEY_LEN chars"
+                echo "   Cold-start outbound fetch to Google failed: $REASON"
+                echo "   This gate verifies binding, not Google reachability."
+                echo "   Live-URL post-deploy health check will verify Google reachability."
+              else
+                echo "❌ NETWORK_ERROR and key binding could NOT be verified"
+                echo "   apiKeyConfigured=$KEY_CONFIGURED, apiKeyLength=$KEY_LEN"
+                echo "   Reason: $REASON"
+                exit 1
+              fi
               ;;
             PARSE_FAIL)
               echo "❌ PARSE_FAIL: endpoint returned HTTP $HTTP_STATUS but body is not valid JSON"

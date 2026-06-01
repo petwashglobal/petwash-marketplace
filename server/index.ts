@@ -1,3 +1,63 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// EARLY UNCAUGHT-EXCEPTION HANDLERS — first lines of the file on purpose.
+//
+// Cloud Run silent-startup-failure debugging: when something in the import
+// chain throws synchronously, Node prints the error to stderr and exits.
+// Cloud Run's revision log captures stderr fine — but a previous CI bug
+// hid those lines behind a missing logging.viewer IAM grant for the
+// "Diagnose failed revision" workflow step. So operators saw only
+// "startup probe failed" with no signal.
+//
+// These handlers force a clear, unmistakable error block to stdout
+// (which Cloud Run ALWAYS captures regardless of severity filter
+// settings). They are installed BEFORE the first import below so they
+// catch errors raised during the very first imported module's top-level
+// code — exactly the place where everything has been silently dying.
+//
+// Cost: zero. If nothing throws, these listeners are inert. If
+// something throws, the next deploy log will have a giant
+// "🆘 BOOT-CRASH" block visible without needing IAM grants or
+// Logs Explorer queries.
+// ─────────────────────────────────────────────────────────────────────────────
+process.stdout.write('🟢 [BOOT] server/index.ts module loading t=' + Date.now() + '\n');
+process.on('uncaughtException', (err: any) => {
+  const block = [
+    '',
+    '🆘══════════════════════════════════════════════════════════════════',
+    ' 🆘 UNCAUGHT EXCEPTION DURING SERVER BOOT',
+    ' 🆘 (this is why Cloud Run startup probe failed)',
+    '🆘══════════════════════════════════════════════════════════════════',
+    `  name:    ${err?.name || '(no name)'}`,
+    `  message: ${err?.message || String(err)}`,
+    `  code:    ${(err as any)?.code || '(no code)'}`,
+    `  cause:   ${(err as any)?.cause ? JSON.stringify((err as any).cause).slice(0, 200) : '(no cause)'}`,
+    '  stack:',
+    String(err?.stack || '(no stack)').split('\n').slice(0, 20).map(l => '    ' + l).join('\n'),
+    '🆘══════════════════════════════════════════════════════════════════',
+    '',
+  ].join('\n');
+  process.stdout.write(block);
+  process.stderr.write(block);
+  // Give the runtime a beat to flush before exiting, then exit 1 so
+  // Cloud Run gets a clean signal and doesn't wait 240 s on the probe.
+  setTimeout(() => process.exit(1), 250).unref();
+});
+process.on('unhandledRejection', (reason: any) => {
+  const block = [
+    '',
+    '⚠️══════════════════════════════════════════════════════════════════',
+    ' ⚠️  UNHANDLED PROMISE REJECTION DURING BOOT',
+    '⚠️══════════════════════════════════════════════════════════════════',
+    `  reason: ${reason?.message || String(reason)}`,
+    '  stack:',
+    String(reason?.stack || '(no stack)').split('\n').slice(0, 20).map(l => '    ' + l).join('\n'),
+    '⚠️══════════════════════════════════════════════════════════════════',
+    '',
+  ].join('\n');
+  process.stdout.write(block);
+  process.stderr.write(block);
+});
+
 // When both GOOGLE_API_KEY (Maps/Places) and GEMINI_API_KEY (Replit integration) are injected,
 // the Google AI SDK prints "Both GOOGLE_API_KEY and GEMINI_API_KEY are set" for every client
 // instantiation (43+ times at startup). The SDK already uses GOOGLE_API_KEY in this case,
@@ -350,7 +410,45 @@ const PORT = Number(process.env.PORT || 8080);
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);
 
-// Production early listen is handled below (single listen point at line ~239)
+// ── STARTUP PHASE TRACKING ─────────────────────────────────────────────────
+// Previous production builds bound the Cloud Run port here and continued route
+// registration "in the background". That looked clever, but it created a real
+// Cloud Run failure mode: once the startup/health request completed, background
+// CPU could be throttled and a cold instance could sit forever in loading_routes,
+// returning SERVICE_STARTING to every real API request.
+//
+// Production now binds only after routes/static/catchall are installed. The
+// no-traffic candidate deploy + startup probe may take a little longer, but it
+// either promotes a truly ready backend or fails closed before customer traffic.
+let _initStartedTs = Date.now();
+let _initPhase = 'pre_middleware';
+let _initError: string | null = null;
+const _earlyHealthHandler = (_req: any, res: any) => {
+  res.status(200).json({
+    status: _initPhase === 'ready' ? 'ok' : _initError ? 'degraded' : 'starting',
+    phase: _initPhase,
+    elapsedMs: Date.now() - _initStartedTs,
+    error: _initError,
+    ts: new Date().toISOString(),
+  });
+};
+app.get('/health', _earlyHealthHandler);
+app.get('/_health', _earlyHealthHandler);
+
+type HttpServer = ReturnType<typeof app.listen>;
+
+// Heartbeat: emits a line every 10s with current init phase. If the next
+// deploy ever fails again, the Cloud Run revision log will show exactly
+// which phase the server died in, instead of total silence.
+const _startupHeartbeat = setInterval(() => {
+  if (_initPhase === 'ready') {
+    clearInterval(_startupHeartbeat);
+    return;
+  }
+  const elapsed = ((Date.now() - _initStartedTs) / 1000).toFixed(1);
+  console.log(`[Startup t=${elapsed}s] phase=${_initPhase}${_initError ? ` error=${_initError}` : ''}`);
+}, 10_000);
+_startupHeartbeat.unref();
 
 // 1. Security and basic middleware
 const isProduction = process.env.NODE_ENV === 'production';
@@ -503,6 +601,14 @@ const AUTH_CSRF_EXEMPT = new Set([
   '/api/auth/phone-session',
   '/api/auth/phone/send-code',
   '/api/auth/phone/verify-code',
+  // Canonical "Sprint 2" SMS auth front door (server/routes/auth-sms.ts). Same
+  // pre-session origin and same Twilio-OTP-as-primary-auth property as the
+  // legacy /phone/send-code + /phone/verify-code pair above. Without these
+  // entries the live login page (SignIn.tsx) and signup page (SignUpLuxury.tsx)
+  // get EBADCSRFTOKEN on every "send code" attempt, since both call
+  // /api/auth/sms/start and /api/auth/sms/verify directly.
+  '/api/auth/sms/start',
+  '/api/auth/sms/verify',
   // Post-login role-routing and onboarding steps — all require a valid Firebase
   // session cookie (requireAuth) which already scopes them to the authenticated user.
   '/api/auth/post-login',
@@ -526,12 +632,40 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
     // HMAC-verified webhooks are authenticated out-of-band; not CSRF-vulnerable.
     if (/^\/api\/webhooks\//.test(req.path)) return true;
+    // Maya voice provider webhooks (Twilio, Vapi, Retell, etc.) are server-to-server
+    // and authenticated by provider HMAC at the route level (e.g. X-Twilio-Signature
+    // in TwilioVoiceProvider). Browsers never originate these requests, so there is
+    // no CSRF attack surface. Without this exemption every inbound call is rejected
+    // with EBADCSRFTOKEN before the route handler runs.
+    if (/^\/api\/maya\/voice\//.test(req.path)) return true;
     // Bearer-authenticated requests: browsers cannot auto-attach Authorization headers
     // on cross-origin requests, so there is no CSRF attack surface here.
     const authHeader = req.headers['authorization'] as string | undefined;
     if (authHeader?.startsWith('Bearer ')) return true;
     // Auth session / OTP endpoints (see AUTH_CSRF_EXEMPT above).
     if (AUTH_CSRF_EXEMPT.has(req.path)) return true;
+    // navigator.sendBeacon() cannot attach custom headers per the W3C Beacon spec,
+    // so an X-CSRF-Token header is physically impossible from the call site at
+    // client/src/lib/interactionTracker.ts:294. The endpoint only records
+    // anonymous UX telemetry (no auth-sensitive state mutation), so the lack of a
+    // CSRF token is acceptable. Live production was returning 403 on every flush.
+    if (req.path === '/api/track/interactions') return true;
+    // Public cookie-banner consent capture (client/src/lib/consent.ts:70).
+    // Hit by unauthenticated visitors on first-page-load before a pw.csrf cookie
+    // is established, and the endpoint only writes the visitor's own consent
+    // choices. Same path was returning 403 in production; exempt until a token
+    // round-trip helper is added to the client.
+    if (req.path === '/api/consent') return true;
+    // Public lead-capture / marketing forms (server/routes/globalForms.ts mounted
+    // at /api/global-forms, and the franchise-prospect inquiry at
+    // /api/franchise/inquiry from server/routes/franchise.ts). These accept
+    // submissions from unauthenticated visitors who have no pw.csrf cookie yet,
+    // each handler validates its own payload with Zod, and rate limiting is
+    // already enforced upstream (apiLimiter). Without this exemption every
+    // contact/newsletter/franchise/sales-lead/refund-request POST was returning
+    // 403 in production — the public lead-capture pipeline was silently dead.
+    if (/^\/api\/global-forms\//.test(req.path)) return true;
+    if (req.path === '/api/franchise/inquiry') return true;
     return false;
   },
 });
@@ -670,41 +804,6 @@ async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string 
     return { ok: false, ms, error: msg };
   }
 }
-
-app.get('/health', (_req, res) => {
-  res.set('X-Octopus-Source', 'petwash-backend-global');
-  const runtime = classifyRuntimeServices(process.env, isDatabaseAvailable);
-  const status =
-    runtime.productionCriticalMissing.length > 0
-      ? 'CRITICAL'
-      : (_startupConfigErrors.length > 0 || _startupSecurityViolations.length > 0)
-        ? 'DEGRADED'
-        : 'OK';
-  // PR-HEALTH-BUILD-SHA: surface PUBLIC deploy identifiers so the CEO /
-  // ops can confirm the production build matches the latest merge from
-  // any device with no GCP auth. Helper reads ONLY non-secret deploy
-  // identifiers (K_SERVICE / K_REVISION / K_CONFIGURATION from Cloud
-  // Run, GIT_SHA / COMMIT_SHA / GITHUB_SHA from CI). Never throws.
-  // See server/lib/buildInfo.ts.
-  // PR-CI-SMOKE-HOTFIX: imported at module top (ESM-correct).
-  res.status(200).json({
-    status,
-    timestamp: new Date().toISOString(),
-    bootTs: healthState.bootTs,
-    build: _getBuildInfo(),
-    runtimeServices: runtime,
-    checks: {
-      process: true,
-      env: process.env.NODE_ENV || 'unknown',
-      ...(_startupConfigErrors.length > 0 ? { configErrors: _startupConfigErrors } : {}),
-      ...(_startupSecurityViolations.length > 0 ? { securityViolations: _startupSecurityViolations } : {}),
-    },
-    metrics: {
-      uptimeSeconds: Math.floor(process.uptime()),
-      memoryRss: process.memoryUsage().rss,
-    },
-  });
-});
 
 // /health/strict — CI deployment gate.
 //
@@ -952,12 +1051,28 @@ import("./compliance/google-cloud-dpa-registry").then(({ validateGCPCompliance }
   validateGCPCompliance();
 }).catch((err) => console.error("[GCP Compliance] registry load failed", err));
 
-// --- CRITICAL FIX: Start server IMMEDIATELY in production (Cloud Run requires fast port binding) ---
-// In production, start listening BEFORE route registration to satisfy Cloud Run health checks
+function attachGracefulShutdown(server: HttpServer): void {
+  const shutdownHandler = (signal: string) => {
+    console.warn(`[Graceful] ${signal} received — closing HTTP server`);
+    server.close(() => {
+      console.warn('[Graceful] HTTP server closed cleanly');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('[Graceful] Forced exit after 10 s timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  };
+  process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
+  process.on('SIGINT',  () => shutdownHandler('SIGINT'));
+}
+
+// --- Late-init diagnostic ---
 if (isProduction) {
-  const server = app.listen(PORT, "0.0.0.0", () => {
+  _initPhase = 'late_init_diagnostics';
+  setImmediate(() => {
     console.log('--------------------------------------------------');
-    console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
+    console.log(`🚀 [Server] Production initialization running before port bind...`);
     // PR-CONFIG-HEALTH: log the canonical env-var manifest snapshot.
     // Names only — never values. Surfaces missing required/recommended
     // vars in deploy logs so the next misconfiguration fails LOUD,
@@ -979,26 +1094,7 @@ if (isProduction) {
       console.error('   GET /health/strict returns 503 DANGEROUS — CI deploy gate will block promotion.');
     }
     console.log('--------------------------------------------------');
-  });
-  
-  // Store server reference for later use
-  (app as any)._server = server;
-
-  // Graceful shutdown — Cloud Run sends SIGTERM before replacing the instance.
-  // Stop accepting new connections and drain existing requests within 10 s.
-  const shutdownHandler = (signal: string) => {
-    console.warn(`[Graceful] ${signal} received — closing HTTP server`);
-    server.close(() => {
-      console.warn('[Graceful] HTTP server closed cleanly');
-      process.exit(0);
-    });
-    setTimeout(() => {
-      console.error('[Graceful] Forced exit after 10 s timeout');
-      process.exit(1);
-    }, 10_000).unref();
-  };
-  process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
-  process.on('SIGINT',  () => shutdownHandler('SIGINT'));
+  }); // end setImmediate
 }
 
 // 3. Static assets, API routes, and server startup
@@ -1081,11 +1177,15 @@ if (isProduction) {
     // serverReady=false, making every non-health route return 503 indefinitely.
     console.log('[Server] Loading routes module (dynamic import)...');
     startupPhase = 'loading_routes';
+    _initPhase = 'loading_routes';
     const { registerRoutes } = await import("./routes");
     console.log('[Server] Routes module loaded, registering routes...');
     startupPhase = 'registering_routes';
+    _initPhase = 'registering_routes';
     await registerRoutes(app);
     healthState.app.routesReady = true;
+    _initPhase = 'ready';
+    console.log(`[Startup] ✅ Routes registered. Total init time: ${((Date.now() - _initStartedTs) / 1000).toFixed(1)}s`);
 
     // Log Firebase client config availability immediately after routes are ready.
     // This makes it trivial to verify in Cloud Run logs whether the browser will
@@ -1451,6 +1551,25 @@ if (isProduction) {
       });
     });
     
+    // Bind production port only after API routes, static assets, and SPA
+    // fallback are registered. This keeps Cloud Run from promoting an instance
+    // that can answer health checks while real API routes are still unavailable.
+    if (isProduction && !(app as any)._server) {
+      const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log('--------------------------------------------------');
+        console.log(`✅ [Server] listening on port ${PORT} in production mode`);
+        console.log('✅ [Server] Routes/static/catchall are registered before traffic');
+        try {
+          _logStartupConfigDiagnostic();
+        } catch (e) {
+          console.error('[Server] config-health diagnostic failed (non-fatal):', e);
+        }
+        console.log('--------------------------------------------------');
+      });
+      (app as any)._server = server;
+      attachGracefulShutdown(server);
+    }
+
     // Wire provider matching WebSocket (production path)
     if (isProduction) {
       const httpServer = (app as any)._server;
@@ -1473,8 +1592,12 @@ if (isProduction) {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errStack = error instanceof Error ? error.stack : undefined;
+    // Surface the failure phase + error on the /health endpoint so the next
+    // failed deploy shows what actually broke instead of a silent timeout.
+    _initError = `${_initPhase}: ${errMsg}`;
     console.error('--------------------------------------------------');
     console.error("❌ [FATAL] Server startup failed:", errMsg);
+    console.error(`   Phase at failure: ${_initPhase}`);
     if (errStack) console.error("   Stack:", errStack);
     console.error('--------------------------------------------------');
     // Surface the failure in /api/health so it is visible without needing Cloud Run logs

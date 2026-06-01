@@ -39,6 +39,11 @@ export const accountsPayable = pgTable("accounts_payable", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Soft-delete (migration 0033). Israeli Tax Ordinance §130 + VAT Law §49
+  // require financial records to be retained for 7 years. deleted_at marks
+  // a row as hidden from default queries while preserving the data for
+  // tax-audit purposes. Hard DELETE on this table is forbidden.
+  deletedAt: timestamp("deleted_at"),
 }, (table) => ({
   supplierIdx: index("idx_ap_supplier").on(table.supplierId),
   statusIdx: index("idx_ap_status").on(table.paymentStatus),
@@ -69,6 +74,9 @@ export const accountsReceivable = pgTable("accounts_receivable", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Soft-delete (migration 0033). Same Israeli 7-year retention rule as
+  // accounts_payable above. Hard DELETE on this table is forbidden.
+  deletedAt: timestamp("deleted_at"),
 }, (table) => ({
   customerIdx: index("idx_ar_customer").on(table.customerId),
   statusIdx: index("idx_ar_status").on(table.paymentStatus),

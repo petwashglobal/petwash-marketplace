@@ -100,19 +100,57 @@ export interface RedeemCouponInput {
 
 // ─────────────────────────────────────────────────────────────
 // SCOPE PLATFORM MAP
+//
+// 🔒 LEGAL COMPLIANCE — K9000-ONLY DISCOUNT DOCTRINE (operator directive
+// 2026-05-27). Discounts (coupons, promo codes, member-tier rates,
+// loyalty rewards, comp codes) apply ONLY to K9000 kiosk transactions.
+// "Platforms" (sitter / walker / trainer / academy / groomer / driver /
+// shop / gift card purchase / wallet top-up / franchise fees) and any
+// service rendered by a third-party provider are FULL retail price.
+//
+// Allowed exceptions: per-transaction operator override (MFA-gated,
+// audit-logged via couponRedemptions.adminOverride*). A future PR will
+// codify the override surface; until then, this map is the only gate.
+//
+// Pre-fix history: 'global' scope included all 8 orderTypes; 'sitter' /
+// 'walker' / 'trainer' / 'provider_marketplace' / 'booking' /
+// 'wallet_topup' / 'first_order' scopes routed discounts to non-K9000
+// surfaces. Those entries were the systemic legal breach.
+//
+// Doctrine: docs/compliance/2026-05-27-discount-scope-k9000-only.md
 // ─────────────────────────────────────────────────────────────
-const SCOPE_ORDER_MAP: Record<string, string[]> = {
-  global:               ['kiosk_wash', 'sitter_booking', 'walker_booking', 'trainer_booking', 'provider_marketplace', 'wallet_topup', 'loyalty_reward', 'package_purchase'],
+export const SCOPE_ORDER_MAP: Record<string, string[]> = {
+  // 'global' is now the K9000-only universal scope. Existing DB rows
+  // with scopeType=null fall through to 'global' (see line ~217) and
+  // therefore land on kiosk_wash exclusively.
+  global:               ['kiosk_wash'],
+
+  // Explicit K9000 surfaces — kept as-is.
   kiosk:                ['kiosk_wash'],
+
+  // Loyalty redemption is a K9000-wash redemption against loyalty points.
+  // Not a platform discount. Retained.
   loyalty_club:         ['loyalty_reward'],
-  sitter:               ['sitter_booking'],
-  walker:               ['walker_booking'],
-  trainer:              ['trainer_booking'],
-  provider_marketplace: ['provider_marketplace'],
-  booking:              ['sitter_booking', 'walker_booking', 'trainer_booking'],
-  wallet_topup:         ['wallet_topup'],
-  first_order:          ['kiosk_wash', 'sitter_booking', 'walker_booking', 'trainer_booking'],
+
+  // Wash-package PURCHASE (the package itself) — K9000 wash credit pack.
+  // Retained because the package is consumed at K9000.
   package:              ['package_purchase'],
+
+  // First-time customer discount — restricted to K9000. Was previously
+  // allowed on sitter/walker/trainer bookings (breach).
+  first_order:          ['kiosk_wash'],
+
+  // ── REMOVED 2026-05-27 per K9000-only doctrine ────────────────────
+  // sitter:               ['sitter_booking'],
+  // walker:               ['walker_booking'],
+  // trainer:              ['trainer_booking'],
+  // provider_marketplace: ['provider_marketplace'],
+  // booking:              ['sitter_booking', 'walker_booking', 'trainer_booking'],
+  // wallet_topup:         ['wallet_topup'],
+  // ──────────────────────────────────────────────────────────────────
+  // Any DB coupon row with one of these scopeType values will fail
+  // validation with SCOPE_NOT_K9000 (see isScopeAllowed below). This
+  // is intentional — those coupons should never have been issuable.
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -212,13 +250,20 @@ export class CouponService {
       issuanceId = iss.rows[0].id;
     }
 
-    // Scope check
+    // Scope check — ALWAYS runs (no 'global' exemption per K9000-only
+    // doctrine 2026-05-27). A coupon whose scopeType is null falls
+    // through to 'global', which is now ['kiosk_wash'] only.
     const scopeType = coupon.scopeType ?? 'global';
-    if (scopeType !== 'global') {
-      if (!this.isScopeAllowed(scopeType, orderType)) {
-        await this.trackAttempt({ userId, ipAddress, deviceFingerprint, code, result: 'invalid', errorCode: 'SCOPE_MISMATCH' });
-        return { valid: false, errorCode: 'SCOPE_MISMATCH', error: `קופון זה אינו תקף עבור ${this.orderTypeLabel(orderType)}` };
-      }
+    if (!this.isScopeAllowed(scopeType, orderType)) {
+      await this.trackAttempt({ userId, ipAddress, deviceFingerprint, code, result: 'invalid', errorCode: 'SCOPE_NOT_K9000' });
+      const isNonK9000 = orderType !== 'kiosk_wash' && orderType !== 'loyalty_reward' && orderType !== 'package_purchase';
+      return {
+        valid: false,
+        errorCode: isNonK9000 ? 'SCOPE_NOT_K9000' : 'SCOPE_MISMATCH',
+        error: isNonK9000
+          ? `קופונים חלים רק על שטיפת K9000 — לא על ${this.orderTypeLabel(orderType)}`
+          : `קופון זה אינו תקף עבור ${this.orderTypeLabel(orderType)}`,
+      };
     }
 
     // Scope platform constraints (city / country / station)

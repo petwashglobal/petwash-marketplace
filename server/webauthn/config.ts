@@ -33,11 +33,6 @@ const buildRpIds = (): string[] => {
     '127.0.0.1'
   ];
   
-  // Add current Replit dev domain dynamically
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    baseIds.push(process.env.REPLIT_DEV_DOMAIN);
-  }
-  
   // Add staging domain if configured
   if (process.env.STAGING_DOMAIN) {
     baseIds.push(process.env.STAGING_DOMAIN);
@@ -68,11 +63,6 @@ const buildOrigins = (): string[] => {
     'http://127.0.0.1:5000',
     'http://127.0.0.1:5173'   // Vite default dev server
   ];
-  
-  // Add current Replit dev domain with HTTPS
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    baseOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-  }
   
   // Add staging domain with HTTPS
   if (process.env.STAGING_DOMAIN) {

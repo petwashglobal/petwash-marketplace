@@ -136,11 +136,6 @@ export class MapKitService {
       'http://localhost:5000',
     ];
 
-    // Auto-detect Replit preview domain in development
-    if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      origins.push(`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-    }
-
     return origins;
   }
 

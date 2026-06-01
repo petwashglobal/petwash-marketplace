@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import { logger } from "../lib/logger";
 
 export type MessageDirection = "outbound" | "inbound" | "internal_note";
 export type MessageChannel = "email" | "sms" | "system" | "internal_note" | "portal";
@@ -95,7 +96,9 @@ export async function incrementUnreadCount(applicationId: number): Promise<void>
         WHERE application_id = $1`,
       [applicationId]
     );
-  } catch (_) {}
+  } catch (err) {
+    logger.warn('[ProviderMessageLog] incrementUnreadCount failed', { applicationId, error: (err as Error)?.message });
+  }
 }
 
 export async function clearUnreadCount(applicationId: number): Promise<void> {
@@ -104,5 +107,7 @@ export async function clearUnreadCount(applicationId: number): Promise<void> {
       `UPDATE provider_review_queue SET unread_count = 0 WHERE application_id = $1`,
       [applicationId]
     );
-  } catch (_) {}
+  } catch (err) {
+    logger.warn('[ProviderMessageLog] clearUnreadCount failed', { applicationId, error: (err as Error)?.message });
+  }
 }

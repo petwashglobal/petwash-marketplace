@@ -70,9 +70,9 @@ export const pageSEO: Record<string, SEOConfig> = {
     ogType: 'product',
   },
   franchise: {
-    title: 'Franchise Opportunities - ⁦Pet Wash™⁩ | הזדמנויות זיכיון',
-    description: 'Join Israel\'s fastest-growing pet care franchise. Global expansion planned for 2026. Complete support, proven business model. הצטרף לזיכיון טיפול בחיות מחמד המתפתח ביותר בישראל.',
-    keywords: 'pet wash franchise, business opportunity, זיכיון, הזדמנות עסקית',
+    title: 'Location Partner Review - ⁦Pet Wash™⁩ | בדיקת שותף מיקום',
+    description: 'Controlled Pet Wash™ location-partner and licensed-operator review for approved Israeli sites. NDA, site review, support/supply terms, legal/accountant review, and owner approval required.',
+    keywords: 'pet wash location partner, licensed operator review, site review, שותף מיקום, מפעיל מורשה, בדיקת אתר',
     ogType: 'website',
   },
   k9000: {
@@ -312,7 +312,7 @@ export function generateServiceSchema() {
  */
 export function injectStructuredData(schema: object) {
   const scriptId = 'structured-data';
-  let script = document.getElementById(scriptId);
+  let script = document.getElementById(scriptId) as HTMLScriptElement | null;
   
   if (!script) {
     script = document.createElement('script');
