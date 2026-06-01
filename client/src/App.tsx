@@ -51,6 +51,13 @@ const EmployeeExpenses = lazy(() => import("@/pages/EmployeeExpenses"));
 const NewExpense = lazy(() => import("@/pages/NewExpense"));
 const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
+const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
+const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
+const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
+const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
+const AdminSumitControl = lazy(() => import("@/pages/AdminSumitControl"));
+const ProviderMyInvoices = lazy(() => import("@/pages/ProviderMyInvoices"));
+const AccountantQueue = lazy(() => import("@/pages/AccountantQueue"));
 const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
 const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
@@ -86,6 +93,7 @@ const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
 const ProviderSearchPage = lazy(() => import("@/pages/ProviderSearchPage"));
 const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
+const PrestigeInterestWaitlist = lazy(() => import("@/pages/PrestigeInterestWaitlist"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -237,6 +245,17 @@ const UnifiedEntityManagement = lazy(() => import("@/pages/UnifiedEntityManageme
 const PolicyManagementDashboard = lazy(() => import("@/pages/PolicyManagementDashboard"));
 const FranchiseManagementDashboard = lazy(() => import("@/pages/FranchiseManagementDashboard"));
 const AdminRouteGuard = lazy(() => import("@/components/AdminRouteGuard").then(m => ({ default: m.AdminRouteGuard })));
+// Maya Stage 2 — admin UI lazy imports
+const AdminMaya = lazy(() => import("@/pages/admin/maya/AdminMaya"));
+const AdminMayaInbox = lazy(() => import("@/pages/admin/maya/AdminMayaInbox"));
+const AdminMayaConversationDetail = lazy(() => import("@/pages/admin/maya/AdminMayaConversationDetail"));
+const AdminMayaLeads = lazy(() => import("@/pages/admin/maya/AdminMayaLeads"));
+const AdminMayaProviderDrafts = lazy(() => import("@/pages/admin/maya/AdminMayaProviderDrafts"));
+const AdminMayaBookingDrafts = lazy(() => import("@/pages/admin/maya/AdminMayaBookingDrafts"));
+const AdminMayaTasks = lazy(() => import("@/pages/admin/maya/AdminMayaTasks"));
+const AdminMayaEscalations = lazy(() => import("@/pages/admin/maya/AdminMayaEscalations"));
+const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
+
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
@@ -342,6 +361,12 @@ const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
+// NOTE: AdminOperatingControl import temporarily removed (hotfix). The lazy
+// import referenced @/pages/admin/AdminOperatingControl but that file is NOT
+// committed to main — only the import + usage landed in a previous PR. Vite
+// build fails with ENOENT, blocking every Cloud Run deploy + Firebase
+// Hosting build. When the actual AdminOperatingControl.tsx file ships in
+// a separate PR alongside its import, restore this line.
 const AdminLiveEvents = lazy(() => import("@/pages/admin/AdminLiveEvents"));
 const GeminiFinancialMonitor = lazy(() => import("@/pages/admin/GeminiFinancialMonitor"));
 const PawFinderAdmin = lazy(() => import("@/pages/admin/PawFinderAdmin"));
@@ -409,6 +434,7 @@ const LegalPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
 const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
 const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
+const Trademarks = lazy(() => import("@/pages/legal/Trademarks"));
 const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
 const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 const LegalDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
@@ -466,12 +492,34 @@ const ProviderRankingPanel = lazy(() => import("@/pages/ProviderRankingPanel"));
 const StationDashboard = lazy(() => import("@/pages/StationDashboard"));
 const DisputeDetail = lazy(() => import("@/pages/DisputeDetail"));
 
-// Loading fallback component
+// Loading fallback component.
+// Reads pw_lang directly from localStorage (same canonical key as
+// languageStore.tsx) so the spinner copy is correctly localized even
+// when this renders before any React context provider is mounted —
+// e.g. on the first lazy-chunk download during cold start. Defaults to
+// Hebrew because the site is Hebrew-first.
+const PAGE_LOADER_COPY: Record<string, string> = {
+  he: 'טוען...',
+  en: 'Loading...',
+  ar: 'جاري التحميل...',
+  ru: 'Загрузка...',
+  fr: 'Chargement...',
+  es: 'Cargando...',
+};
+const getPageLoaderLabel = (): string => {
+  try {
+    const lang = typeof window !== 'undefined' ? localStorage.getItem('pw_lang') : null;
+    return (lang && PAGE_LOADER_COPY[lang]) || PAGE_LOADER_COPY.he;
+  } catch {
+    return PAGE_LOADER_COPY.he;
+  }
+};
+
 const PageLoader = () => (
   <div data-build-version="BUILD_2026_01_25_1769349430610" className="min-h-[100dvh] bg-white flex items-center justify-center">
     <div className="text-center">
       <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-gray-600 font-medium">Loading...</p>
+      <p className="text-gray-600 font-medium">{getPageLoaderLabel()}</p>
     </div>
   </div>
 );
@@ -834,6 +882,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/prestige-club">
           {() => <PrestigeClub />}
         </Route>
+        <Route path="/prestige/waitlist">
+          {() => <PrestigeInterestWaitlist />}
+        </Route>
+        <Route path="/prestige/apply">
+          {() => <PrestigeInterestWaitlist />}
+        </Route>
 
         {/* PetWash Prestige Pass Wallet — luxury digital pass with live QR (auth required) */}
         <Route path="/prestige-pass">
@@ -1037,6 +1091,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/legal/cookies">
           {() => <CookiesPolicy />}
+        </Route>
+        <Route path="/legal/trademarks">
+          {() => <Trademarks />}
         </Route>
         {/* PR-NAV-2: redirect to canonical /accessibility (was 1 of 3 split paths) */}
         <Route path="/legal/accessibility">{() => <Redirect to="/accessibility" />}</Route>
@@ -1555,7 +1612,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦The Sitter Suite™⁩ - Platform Overview (Marketing/Gateway) */}
+        {/* ⁦The Sitter Suite™⁩ - Platform Overview (Marketing/Gateway).
+            The /overview alias is mounted FIRST so a direct /sitter-suite/overview
+            URL (referenced historically from menus, marketing emails, and the
+            original bug report) resolves to the SitterSuiteOverview page instead
+            of falling through to a 404. /sitter-suite remains the canonical path. */}
+        <Route path="/sitter-suite/overview">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SitterSuiteOverview />
+            </Suspense>
+          )}
+        </Route>
         <Route path="/sitter-suite">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1563,7 +1631,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </Suspense>
           )}
         </Route>
-        
+
         {/* ⁦The Sitter Suite™⁩ - Browse/Explore Sitters */}
         <Route path="/sitter-suite/explore">
           {() => (
@@ -1975,6 +2043,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
+        {/* Route /admin/operating-control temporarily removed (hotfix).
+            Pairs with the commented-out AdminOperatingControl lazy import
+            above. Restore both together once AdminOperatingControl.tsx
+            actually ships in a committed file. Until then, visitors to
+            /admin/operating-control fall through to the catch-all 404
+            handler — better than a build failure that blocks every
+            deploy in the pipeline. */}
+
         {/* Gemini AI Watchdog Dashboard */}
         <Route path="/admin/gemini-watchdog">
           {() => (
@@ -2140,7 +2216,56 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
-        
+
+        {/* Supplier-invoice screening (PR #370 + #375) admin pages */}
+        <Route path="/admin/supplier-invoices">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSupplierInvoices />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/supplier-invoices/:id">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSupplierInvoiceDetail />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/suppliers">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSuppliers />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/suppliers/:id">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSupplierDetail />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/sumit">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSumitControl />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/accountant">
+          {() => (
+            <AdminRouteGuard>
+              <AccountantQueue />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Provider self-service — Mission-7 */}
+        <Route path="/provider/my-invoices">
+          {() => <ProviderMyInvoices />}
+        </Route>
+
         {/* Staff Onboarding & Fraud Prevention */}
         <Route path="/careers/apply">
           {() => <StaffApplication />}
@@ -3084,6 +3209,52 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <OpsDashboard language={language} onLanguageChange={handleLanguageChange} />
             </RoleProtectedRoute>
           )}
+        </Route>
+        {/* Maya Stage 2 — admin UI (all behind RoleProtectedRoute + ff.maya.* server-side) */}
+        <Route path="/admin/maya">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMaya />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/inbox">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaInbox />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/conversations/:id">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaConversationDetail />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/leads">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaLeads />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/provider-drafts">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaProviderDrafts />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/booking-drafts">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaBookingDrafts />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/tasks">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaTasks />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/escalations">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaEscalations />
+          </RoleProtectedRoute>
+        </Route>
+        <Route path="/admin/maya/audit">
+          <RoleProtectedRoute minRole="staff">
+            <AdminMayaAudit />
+          </RoleProtectedRoute>
         </Route>
         <Route component={NotFound} />
       </Switch>

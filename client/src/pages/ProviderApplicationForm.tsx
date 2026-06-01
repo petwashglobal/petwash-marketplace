@@ -110,6 +110,8 @@ const PLATFORMS = [
   },
 ] as const;
 
+const PROVIDER_PAYOUT_PREVIEW_BPS = 8500;
+
 const applicationSchema = z.object({
   firstName: z.string().min(2, { message: "First name is required" }),
   lastName: z.string().min(2, { message: "Last name is required" }),
@@ -359,12 +361,12 @@ export default function ProviderApplicationForm() {
   const t = {
     title: isHebrew ? 'הפוך לספק שירות' : 'Become a Provider',
     subtitle: isHebrew 
-      ? 'הצטרף למשפחת ⁦Pet Wash™⁩ והתחל להרוויח! הפלטפורמה המובילה לשירותי חיות מחמד בישראל'
-      : 'Join the ⁦Pet Wash™⁩ family and start earning! The leading pet services platform in Israel',
+      ? 'הגש בקשה להצטרפות כספק שירות. אישור דורש תמונה, כתובת, תעריפים, מסמכים, בדיקת ציות ואישור מנהל.'
+      : 'Apply to join as a service provider. Approval requires photo, address, rates, documents, compliance review and manager approval.',
     step1Title: isHebrew ? 'בחר את הפלטפורמות שלך' : 'Choose Your Platforms',
     step1Desc: isHebrew ? 'בחר אחד או יותר שירותים שתרצה להציע' : 'Select one or more services you\'d like to offer',
     step2Title: isHebrew ? 'קבע את המחירים שלך' : 'Set Your Prices',
-    step2Desc: isHebrew ? 'אתה שולט במחירים - קבע תעריפים תחרותיים' : 'You\'re in control - set competitive rates',
+    step2Desc: isHebrew ? 'הגדר תעריפים מוצעים. התעריפים הסופיים כפופים לאישור, הסכם וכללי מס/תשלום.' : 'Set proposed rates. Final rates are subject to approval, agreement and tax/payment rules.',
     step3Title: isHebrew ? 'פרטים אישיים' : 'Personal Details',
     step4Title: isHebrew ? 'ניסיון ופרופיל' : 'Experience & Profile',
     step5Title: isHebrew ? 'הסכמים משפטיים' : 'Legal Agreements',
@@ -413,8 +415,8 @@ export default function ProviderApplicationForm() {
     perDay: isHebrew ? 'ליום' : 'per day',
     additionalPet: isHebrew ? 'תוספת לחיה נוספת' : 'Additional pet surcharge',
     suggested: isHebrew ? 'מומלץ' : 'Suggested',
-    commission: isHebrew ? '15% עמלת פלטפורמה' : '15% platform commission',
-    youEarn: isHebrew ? 'אתה מרוויח' : 'You earn',
+    commission: isHebrew ? 'תצוגת תשלום מקדימה בלבד — ההסכם הסופי קובע' : 'Payout preview only — final agreement controls',
+    youEarn: isHebrew ? 'תשלום משוער לספק' : 'Estimated provider payout',
   };
 
   const handlePlatformToggle = (platformId: string) => {
@@ -1106,7 +1108,7 @@ export default function ProviderApplicationForm() {
                       if (!platform) return null;
                       const Icon = platform.icon;
                       const currentPricing = pricing[platformId] || { baseRate: platform.suggestedRate, additionalPet: 2500 };
-                      const providerEarnings = Math.round(currentPricing.baseRate * 0.85);
+                      const providerEarnings = Math.round((currentPricing.baseRate * PROVIDER_PAYOUT_PREVIEW_BPS) / 10000);
                       
                       return (
                         <div 

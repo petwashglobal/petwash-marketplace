@@ -15660,5 +15660,112 @@ export type SupplierInvoice = typeof supplierInvoices.$inferSelect;
 export type InsertSupplierInvoice = typeof supplierInvoices.$inferInsert;
 export type SupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferSelect;
 export type InsertSupplierInvoiceCheck = typeof supplierInvoiceChecks.$inferInsert;
+
+// ──────────────────────────────────────────────────────────────────────────
+// Marketplace booking slot locks (migration 0028)
+//
+// Closes the hostile-audit critical: two customers booking the same
+// provider for overlapping time. The Postgres EXCLUDE constraint (added
+// in the SQL migration, not directly expressible in Drizzle) makes
+// overlapping inserts fail at the DB level. Drizzle definition exists
+// so the helper in server/lib/marketplaceSlotLock.ts can type-check
+// inserts; the actual no-overlap guarantee comes from the EXCLUDE.
+// ──────────────────────────────────────────────────────────────────────────
+export const marketplaceBookingSlotLocks = pgTable("marketplace_booking_slot_locks", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+  bookingRef: text("booking_ref").notNull(),
+  serviceType: varchar("service_type", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_marketplace_slot_locks_provider").on(table.providerId, table.startAt),
+  index("idx_marketplace_slot_locks_booking_ref").on(table.bookingRef),
+]);
+
+export type MarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferSelect;
+export type InsertMarketplaceBookingSlotLock = typeof marketplaceBookingSlotLocks.$inferInsert;
+
+// ──────────────────────────────────────────────────────────────────────────
+// Nayax webhook deduplication (migration 0029)
+//
+// Insert-first dedup table — every Nayax webhook hits this table BEFORE
+// any handler runs. INSERT ... ON CONFLICT DO NOTHING RETURNING event_id
+// is atomic: if returning() is empty, the event_id was already processed
+// and we return 200 OK without reprocessing.
+//
+// Replaces the previous Redis-backed dedup that failed OPEN when Redis
+// was unavailable. Postgres backed = survives process restart + horizontal
+// scale, no race window.
+// ──────────────────────────────────────────────────────────────────────────
+export const nayaxProcessedEventIds = pgTable("nayax_processed_event_ids", {
+  eventId: text("event_id").primaryKey(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+  sourceRoute: varchar("source_route", { length: 60 }),
+}, (table) => [
+  index("idx_nayax_processed_event_ids_processed_at").on(table.processedAt),
+]);
+
+export type NayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferSelect;
+export type InsertNayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferInsert;
 export type SumitOutboundEvent = typeof sumitOutboundEvents.$inferSelect;
 export type InsertSumitOutboundEvent = typeof sumitOutboundEvents.$inferInsert;
+
+// Maya reception/intake — see migration 0028_maya_reception_intake_foundation.sql
+export * from './schema-maya';
+
+// ──────────────────────────────────────────────────────────────────────────
+// Payment device stock (Nayax VPOS Touch) — migration 0031.
+// Admin asset/stock management for physical payment terminals. NOT the
+// payment runtime — this table only tracks WHICH device is at WHICH
+// machine and its lifecycle. NayaxOnlinePaymentService, webhooks, and
+// K9000 polling are untouched.
+// ──────────────────────────────────────────────────────────────────────────
+export const paymentDevices = pgTable("payment_devices", {
+  id: serial("id").primaryKey(),
+  provider: varchar("provider", { length: 40 }).notNull().default("nayax"),
+  model: varchar("model", { length: 80 }).notNull(),
+  serialNumber: varchar("serial_number", { length: 64 }).notNull(),
+  partNumber: varchar("part_number", { length: 64 }),
+  nayaxTerminalId: varchar("nayax_terminal_id", { length: 64 }),
+  simIccid: varchar("sim_iccid", { length: 64 }),
+  status: varchar("status", { length: 24 }).notNull().default("in_stock"),
+  assignedMachineId: varchar("assigned_machine_id", { length: 64 }),
+  assignedLocationId: varchar("assigned_location_id", { length: 64 }),
+  installationDate: timestamp("installation_date", { withTimezone: true }),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("payment_devices_provider_serial_unique").on(table.provider, table.serialNumber),
+  index("idx_payment_devices_status").on(table.status),
+  index("idx_payment_devices_assigned_machine").on(table.assignedMachineId),
+  index("idx_payment_devices_assigned_location").on(table.assignedLocationId),
+  index("idx_payment_devices_provider").on(table.provider),
+]);
+
+export type PaymentDevice = typeof paymentDevices.$inferSelect;
+export type InsertPaymentDevice = typeof paymentDevices.$inferInsert;
+
+// Append-only history. Trigger in migration 0031 blocks UPDATE/DELETE
+// at the DB level so even admin code cannot rewrite history.
+export const paymentDeviceAssignments = pgTable("payment_device_assignments", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").notNull().references(() => paymentDevices.id, { onDelete: "restrict" }),
+  machineId: varchar("machine_id", { length: 64 }),
+  locationId: varchar("location_id", { length: 64 }),
+  statusAtEvent: varchar("status_at_event", { length: 24 }).notNull(),
+  eventType: varchar("event_type", { length: 24 }).notNull(),
+  performedBy: varchar("performed_by", { length: 128 }).notNull(),
+  performedAt: timestamp("performed_at", { withTimezone: true }).notNull().defaultNow(),
+  note: text("note"),
+}, (table) => [
+  index("idx_payment_device_assignments_device").on(table.deviceId),
+  index("idx_payment_device_assignments_machine").on(table.machineId),
+  index("idx_payment_device_assignments_time").on(table.performedAt),
+]);
+
+export type PaymentDeviceAssignment = typeof paymentDeviceAssignments.$inferSelect;
+export type InsertPaymentDeviceAssignment = typeof paymentDeviceAssignments.$inferInsert;

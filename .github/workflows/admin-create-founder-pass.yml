@@ -1,0 +1,169 @@
+name: 🎫 Admin — Create Founder Member + Apple Wallet Pass (one-shot)
+
+# ────────────────────────────────────────────────────────────
+# ONE-CLICK FOUNDER PASS CREATION
+#
+# Triggered manually from the GitHub Actions tab → "Run workflow".
+# Pulls secrets from GCP Secret Manager (the existing canonical place
+# for production secrets in this repo). Runs the admin script with
+# --execute. Uploads the signed .pkpass as a downloadable artifact.
+#
+# Operator path:
+#   1. GitHub → Actions tab → "🎫 Admin — Create Founder Member ..."
+#   2. Click "Run workflow" (right side, branch = main).
+#   3. Wait ~2 minutes.
+#   4. When the run is green, click the run → Artifacts section →
+#      download "first-founder-pass" → unzip → AirDrop the .pkpass
+#      to your iPhone → "Add to Apple Wallet."
+#
+# Required secrets in GCP Secret Manager (project from secrets.GCP_PROJECT_ID):
+#   DATABASE_URL                — Postgres connection string
+#   APPLE_TEAM_IDENTIFIER       — 10-char Apple Team ID
+#   APPLE_WWDR_PEM              — Apple WWDR CA cert PEM string
+#   APPLE_SIGNER_CERT_PEM       — pass signing cert PEM string
+#   APPLE_SIGNER_KEY_PEM        — signing private key PEM string
+#   APPLE_SIGNER_KEY_PASSPHRASE — (optional) key passphrase
+#
+# If any are missing, the workflow fails with a clear list and
+# instructions on which secret to add.
+# ────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: 'Set to "yes" to actually write DB + create pass. Any other value = dry-run.'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
+
+permissions:
+  contents: read
+  id-token: write   # for google-github-actions/auth WIF, if used
+
+jobs:
+  create-founder-pass:
+    name: Create founder member + Apple Wallet pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Pull secrets from GCP Secret Manager
+        id: secrets
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -e
+          REQUIRED=("DATABASE_URL" "APPLE_TEAM_IDENTIFIER" "APPLE_WWDR_PEM" "APPLE_SIGNER_CERT_PEM" "APPLE_SIGNER_KEY_PEM")
+          OPTIONAL=("APPLE_SIGNER_KEY_PASSPHRASE")
+          MISSING=()
+
+          for s in "${REQUIRED[@]}"; do
+            if ! gcloud secrets describe "$s" --project="$PROJECT_ID" --quiet &>/dev/null; then
+              MISSING+=("$s")
+            fi
+          done
+
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets in GCP Secret Manager: ${MISSING[*]}"
+            echo ""
+            echo "Add them via GCP Console (no terminal needed):"
+            echo "  https://console.cloud.google.com/security/secret-manager?project=$PROJECT_ID"
+            echo ""
+            echo "For each missing secret:"
+            echo "  1. Click 'CREATE SECRET'"
+            echo "  2. Name = the missing name above (e.g. APPLE_TEAM_IDENTIFIER)"
+            echo "  3. Paste the value (for PEM secrets, paste the entire ----BEGIN CERTIFICATE----- ... block including headers)"
+            echo "  4. Click 'CREATE SECRET'"
+            echo "  5. Re-run this workflow."
+            exit 1
+          fi
+
+          echo "All required secrets present. Loading into runner env."
+          for s in "${REQUIRED[@]}"; do
+            VAL=$(gcloud secrets versions access latest --secret="$s" --project="$PROJECT_ID")
+            # Mask the value in logs
+            echo "::add-mask::$VAL"
+            # Multiline secrets need the heredoc form
+            {
+              echo "$s<<__SECRET_EOF__"
+              echo "$VAL"
+              echo "__SECRET_EOF__"
+            } >> "$GITHUB_ENV"
+          done
+
+          for s in "${OPTIONAL[@]}"; do
+            if gcloud secrets describe "$s" --project="$PROJECT_ID" --quiet &>/dev/null; then
+              VAL=$(gcloud secrets versions access latest --secret="$s" --project="$PROJECT_ID")
+              echo "::add-mask::$VAL"
+              echo "$s=$VAL" >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: Run founder-member admin script
+        env:
+          # All APPLE_* and DATABASE_URL come from $GITHUB_ENV (loaded in previous step).
+          # APPLE_PASS_TYPE_IDENTIFIER has a default in code; override here only if needed.
+          BASE_URL: https://petwash.co.il
+          NODE_OPTIONS: --max-old-space-size=2048
+        run: |
+          MODE_FLAG=""
+          if [ "${{ inputs.execute }}" = "yes" ]; then
+            MODE_FLAG="--execute"
+            echo "::warning::Running in EXECUTE mode — will write to DB and create real .pkpass"
+          else
+            echo "Running in DRY-RUN mode — no DB writes, no .pkpass file."
+            echo "To actually create the founder, re-run with execute = yes."
+          fi
+
+          npx tsx scripts/admin/create-first-founder-member.ts $MODE_FLAG
+
+      - name: Upload .pkpass artifact (only on real run)
+        if: inputs.execute == 'yes' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: first-founder-pass
+          path: first-founder-pass.pkpass
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## 🎫 Founder Pass Workflow"
+            echo ""
+            echo "**Mode:** \`${{ inputs.execute }}\` ${{ inputs.execute == 'yes' && '(real run — DB + pass written)' || '(dry-run only)' }}"
+            echo ""
+            if [ "${{ inputs.execute }}" = "yes" ] && [ "${{ job.status }}" = "success" ]; then
+              echo "✅ **Founder member created.**"
+              echo ""
+              echo "Download the \`first-founder-pass\` artifact below ↓, unzip, AirDrop the \`.pkpass\` file to your iPhone."
+            elif [ "${{ inputs.execute }}" = "no" ]; then
+              echo "ℹ️ Dry-run only. To create the founder for real, re-run with execute = yes."
+            else
+              echo "❌ Run failed. Check logs above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

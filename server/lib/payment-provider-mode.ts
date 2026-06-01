@@ -45,7 +45,34 @@ export function getPaymentProviderMode(
   const raw = (env.PAYMENT_PROVIDER_MODE || '').toLowerCase().trim();
   // Mock must be opted-in explicitly. Default is live so unset values in
   // production never silently weaken the secret guards.
-  return raw === MOCK ? MOCK : LIVE;
+  if (raw !== MOCK) return LIVE;
+
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S6):
+  //   Pre-fix: PAYMENT_PROVIDER_MODE=mock was honoured in production with
+  //   NO additional guard. An operator typo, a Cloud Run env-var paste
+  //   mistake, or an attacker with Console access could flip ONE env var
+  //   and have every payment silently mock-approve (ledger drift, free
+  //   washes, fake gift-card top-ups, the works).
+  //   Fix: in production, mock mode ALSO requires an explicit second
+  //   opt-in `PAYMENT_MOCK_PROD_ALLOWED=true`. CI smoke tests on the
+  //   production container image must set BOTH env vars; a real prod
+  //   deploy never sets either, so a single-var typo can no longer
+  //   weaken the gates.
+  const nodeEnv = (env.NODE_ENV || '').toLowerCase().trim();
+  if (nodeEnv === 'production' && env.PAYMENT_MOCK_PROD_ALLOWED !== 'true') {
+    // Refuse to enter mock mode silently in production — pretend the env
+    // var was never set. This forces the rest of the validator into
+    // live-mode handling, which will then surface a clear secret-error
+    // if real provider credentials are missing. Surface a stderr line
+    // so operators can see why the override was ignored.
+    if (typeof console !== 'undefined' && console.error) {
+      console.error(
+        '[payment-provider-mode] SECURITY: PAYMENT_PROVIDER_MODE=mock IGNORED in production because PAYMENT_MOCK_PROD_ALLOWED is not "true". Refusing to weaken payment gates.',
+      );
+    }
+    return LIVE;
+  }
+  return MOCK;
 }
 
 export function isMockModeActive(env: NodeJS.ProcessEnv = process.env): boolean {

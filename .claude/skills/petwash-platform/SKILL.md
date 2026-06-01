@@ -210,6 +210,38 @@ These are not preferences. They are blockers. Violating them blocks the PR.
 - **Every admin mutation must have an audit log.** Same rule as above for non-money admin actions (provider approve/reject/hold, ban, role grant, content moderation override).
 - **Every audit entry must include actor, action, target, before/after where relevant.** No anonymous mutations.
 
+### Pricing disclosure (Israeli Consumer Protection Law 1981 §17a)
+**Precedent:** Wolt class action 53918-06-23 (Olifant v Wolt Enterprises Israel, 2025) — Wolt settled for **3,750,000 ₪ in customer credits** + lawyer fees, plaintiff's lawyer Ohad Rozen of Kalai-Rosen now has a winning template against Israeli platforms that split fees. We will not be the next defendant.
+
+**Rule:** Every consumer-facing surface that shows a price MUST display the **total inclusive price** (כולל מע"מ, כולל משלוח, כולל דמי פלטפורמה, כולל כל תוספת) at the first moment the customer sees a number. Component breakdowns (VAT, delivery, platform fee, service fee) may appear in a secondary view (hover, expand, line-item tooltip) but must NEVER appear only at the final checkout step as a "surprise" addition.
+
+**What this applies to:**
+- eGift purchase (`/buy-gift-card`, `/egift`)
+- All booking flows (K9000, grooming, dog walking, pet sitting, PetTrek, plush lab)
+- Marketplace bookings (sitter, walker, trek) — commission split must be folded into the total displayed price
+- Wallet top-up — any processing fee folded in
+- Shop checkout (when launched)
+- Subscription / loyalty tier sign-up
+- K9000 station signage (physical) — printed prices must include VAT + any platform fee
+- Push / SMS / email price quotations
+
+**What it forbids:**
+- A product page showing "₪40" and the checkout showing "₪47" without VAT/delivery/fee disclosed on the product page
+- A separate "operating fee" / "service fee" / "platform fee" line that didn't appear earlier
+- Showing prices ex-VAT to consumers (B2C). Ex-VAT pricing is fine for B2B / franchise / supplier interfaces only.
+
+**What's acceptable:**
+- Total upfront: `₪147.89 ✓ כולל הכל` with collapsible breakdown showing `₪120 product + ₪20.40 VAT + ₪7.49 delivery`
+- Range estimates upfront if final total depends on user input (delivery distance, quantity), with the final total locked at confirm step — but no NEW components added between the estimate and final
+- Promotional discount applied at checkout (reduces total) — adding value is fine; subtracting promised value is not
+
+**CTO review on any pricing-UI PR:**
+- "Does the user see the total before they commit?" — must be YES
+- "Are all components disclosed upfront, even if collapsed?" — must be YES
+- "Could the user reasonably feel surprised by anything at checkout?" — must be NO
+
+**File-level reference for future audits:** `docs/legal/pricing-display-audit-2026-05-30.md` (when produced).
+
 ### Mobile-first
 - **iPhone Safari is mandatory** for any UX flow a customer or provider touches. Test on iPhone Safari before claiming UX work is complete.
 - **Use `100dvh`** (not `100vh`) for full-screen layouts — Safari toolbar handling.
@@ -361,6 +393,7 @@ PetWash is a premium brand. Every UI surface must look it.
 - **Popup #81** — Pure-white popup shell (kill dark backdrop / blur / card framing)
 - **PR-PREMIUM-CARDS-2** (#255) — Ship premium platform cards on public homepage (default ON); 12 design binaries converted to .webp + relocated to client/public/; legacy PetWashDivisions retained as `VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false'` emergency disable.
 - **PR-MOBILE-SCAFFOLD** (#372) — Expo submission scaffold for App Store + Play Store (bundle id `il.co.petwash.staff`, NSFaceIDUsageDescription, Apple Privacy Manifest, EAS build/submit profiles, asset specs). App.tsx auth/biometric runtime untouched. Companion: `docs/finance/sumit-readiness-check-2026-05-23.md` documenting the 5 sequenced PRs needed before a real sumit.co.il send.
+- **PR-S5c + PR-OCR-1** (#375) — Israel-tax compliance pair. PR-S5c: 3-way Osek classification (`patur` / `murshe` / `chevra` / `unknown`) on suppliers (migration 0027 + 4 new columns + CHECK constraint), new `osek_vat_mismatch` screening rule (HARD FAIL when a patur supplier invoices VAT > 0 — protects against un-deductible VAT loss), `osek_classification_unknown` warning so finance must classify before approval, full VAT attribution matrix doc covering K9000 100%-revenue model vs marketplace 15%-commission model with worked numeric examples. PR-OCR-1: SHAAM allocation number (מספר הקצאה) regex extraction from receipt OCR text (Hebrew + English label variants, 9–12 digit capture, 18 vitest cases). No wallet/escrow/agent-model touch.
 
 ### Open PRs
 - None.

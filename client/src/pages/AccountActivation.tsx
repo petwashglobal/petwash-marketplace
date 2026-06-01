@@ -140,7 +140,7 @@ export default function AccountActivation() {
     mutationFn: async () => {
       if (!user?.phoneNumber && !user?.email) throw new Error("No phone number on account");
       const res = await apiRequest("POST", "/api/auth/phone/send-code", {
-        phoneNumber: user.phoneNumber,
+        phone: user.phoneNumber,
       });
       return res.json();
     },
@@ -157,7 +157,7 @@ export default function AccountActivation() {
   const verifyOtpMutation = useMutation({
     mutationFn: async (code: string) => {
       const res = await apiRequest("POST", "/api/auth/phone/verify-code", {
-        phoneNumber: user?.phoneNumber,
+        phone: user?.phoneNumber,
         code,
       });
       const data = await res.json();

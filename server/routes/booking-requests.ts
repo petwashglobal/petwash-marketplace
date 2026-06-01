@@ -51,6 +51,7 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
+import { acquireSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -293,49 +294,79 @@ router.post('/', async (req, res) => {
       customerPlaceId:      addrSrc.placeId?.toString().slice(0, 200) ?? null,
     } : {};
 
-    // ── Create booking request row ─────────────────────────────────────────────
-    const [booking] = await db.insert(bookingRequests).values({
-      requestId,
-      ownerId: userId,
-      providerId: data.providerId,
-      providerProfileId: data.providerProfileId || null,
-      providerType: data.providerType,
-      serviceType: data.serviceType,
-      startDate,
-      endDate,
-      ...addressSnapshot,
-      petIds: data.petIds || (data.petDetails?.map(p => String(p.petId ?? '')).filter(Boolean) ?? []),
-      petCount: data.petCount,
-      petDetails: petDetailsForRow,
-      dailyRateCents: dailyRateCents || null,
-      hourlyRateCents: hourlyRateCents || null,
-      totalDays,
-      totalHours: null,
-      subtotalCents,
-      serviceFeePercent: serviceFeePercent.toString(),
-      serviceFeeCents,
-      totalCents,
-      // Quote engine columns (stored when finalQuote is provided)
-      ...(fq && fq.success ? {
-        quoteSubtotalCents: fq.totals.subtotalCents,
-        quoteDiscountCents: fq.totals.discountCents,
-        quoteCreditCents: fq.totals.walletCreditAppliedCents,
-        quoteGiftCardCents: fq.totals.giftCardAppliedCents,
-        quoteTaxCents: fq.totals.taxCents,
-        quoteTotalCents: fq.totals.totalCents,
-        quoteCurrency: fq.currency || 'ILS',
-        quoteBreakdown: fq,
-        pricingVersion: fq.pricingVersion || 'v1.0.0',
-        promoCode: data.promoCode || null,
-        loyaltyRedeemedCents: fq.totals.loyaltyRedeemedCents ?? 0,
-      } : {}),
-      currency: 'ILS',
-      status: 'pending',
-      statusHistory: [{ status: 'pending', timestamp: new Date().toISOString(), note: 'Booking request created' }],
-      ownerMessage: data.message || null,
-      specialRequirements: data.specialRequirements || null,
-      searchId: data.searchId || null,
-    }).returning();
+    // ── Create booking request row + atomic slot lock ──────────────────────────
+    // Wraps both in a single transaction. The slot-lock table has a
+    // Postgres EXCLUDE constraint (migration 0028) — overlapping inserts
+    // for the same provider fail at the DB level, rolling back the whole
+    // transaction (lock + booking). Closes the hostile-audit critical
+    // "two customers booking the same provider at the same minute".
+    let booking: typeof bookingRequests.$inferSelect;
+    try {
+      booking = await db.transaction(async (tx) => {
+        await acquireSlotLock(tx as unknown as typeof db, {
+          providerId: data.providerId,
+          startAt: startDate,
+          endAt: endDate,
+          bookingRef: requestId,
+          serviceType: data.serviceType,
+        });
+
+        const [row] = await tx.insert(bookingRequests).values({
+          requestId,
+          ownerId: userId,
+          providerId: data.providerId,
+          providerProfileId: data.providerProfileId || null,
+          providerType: data.providerType,
+          serviceType: data.serviceType,
+          startDate,
+          endDate,
+          ...addressSnapshot,
+          petIds: data.petIds || (data.petDetails?.map(p => String(p.petId ?? '')).filter(Boolean) ?? []),
+          petCount: data.petCount,
+          petDetails: petDetailsForRow,
+          dailyRateCents: dailyRateCents || null,
+          hourlyRateCents: hourlyRateCents || null,
+          totalDays,
+          totalHours: null,
+          subtotalCents,
+          serviceFeePercent: serviceFeePercent.toString(),
+          serviceFeeCents,
+          totalCents,
+          // Quote engine columns (stored when finalQuote is provided)
+          ...(fq && fq.success ? {
+            quoteSubtotalCents: fq.totals.subtotalCents,
+            quoteDiscountCents: fq.totals.discountCents,
+            quoteCreditCents: fq.totals.walletCreditAppliedCents,
+            quoteGiftCardCents: fq.totals.giftCardAppliedCents,
+            quoteTaxCents: fq.totals.taxCents,
+            quoteTotalCents: fq.totals.totalCents,
+            quoteCurrency: fq.currency || 'ILS',
+            quoteBreakdown: fq,
+            pricingVersion: fq.pricingVersion || 'v1.0.0',
+            promoCode: data.promoCode || null,
+            loyaltyRedeemedCents: fq.totals.loyaltyRedeemedCents ?? 0,
+          } : {}),
+          currency: 'ILS',
+          status: 'pending',
+          statusHistory: [{ status: 'pending', timestamp: new Date().toISOString(), note: 'Booking request created' }],
+          ownerMessage: data.message || null,
+          specialRequirements: data.specialRequirements || null,
+          searchId: data.searchId || null,
+        }).returning();
+        return row;
+      });
+    } catch (err) {
+      if (err instanceof BookingSlotConflictError) {
+        return res.status(409).json({
+          error: 'Slot conflict',
+          message: 'This provider is already booked for an overlapping time window.',
+          providerId: err.providerId,
+          startAt: err.startAt.toISOString(),
+          endAt: err.endAt.toISOString(),
+        });
+      }
+      throw err;
+    }
     
     // ── Persist multi-pet rows ─────────────────────────────────────────────────
     // Map clientRef → DB row ID so we can attach per-pet addons

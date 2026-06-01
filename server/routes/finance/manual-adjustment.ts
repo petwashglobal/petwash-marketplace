@@ -15,6 +15,7 @@ import { processManualAdjustment } from '../../services/TransactionEngine';
 import { ImmutableStampService } from '../../services/ImmutableStampService';
 import { logger } from '../../lib/logger';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
+import { assertOperatingControl } from '../../lib/petwashOperatingControlGateway';
 
 const router = Router();
 
@@ -49,6 +50,26 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     const adjustedBy = (req.user as any)?.uid ?? 'admin-secret';
+    const idempotencyKeyExists =
+      typeof req.headers['idempotency-key'] === 'string' &&
+      (req.headers['idempotency-key'] as string).trim().length > 0;
+
+    if (!assertOperatingControl(req, res, {
+      actionType: 'MANUAL_FINANCIAL_ADJUSTMENT',
+      route: 'POST /api/admin/finance/adjustment',
+      targetId: `manual-adjustment:${parsed.data.relatedPaymentId ?? parsed.data.customerId ?? parsed.data.providerId ?? 'unlinked'}`,
+      facts: {
+        refundReasonSelected: Boolean(parsed.data.reason),
+        sourceEvidenceExists: Boolean(parsed.data.relatedPaymentId),
+        idempotencyKeyExists,
+      },
+      money: {
+        amountCents: Math.abs(parsed.data.adjustmentCents),
+        manualCreditThresholdCents: 50_000,
+      },
+    })) {
+      return;
+    }
 
     const result = await processManualAdjustment({
       ...parsed.data,

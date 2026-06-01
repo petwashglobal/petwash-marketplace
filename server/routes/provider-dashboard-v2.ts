@@ -23,17 +23,10 @@ import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 const router = Router();
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
-// DEV-ONLY: accepts x-test-provider-uid header to bypass Firebase token verification.
-// Hard-rejected in production so it can never be exploited in a live environment.
+// SECURITY: x-test-provider-uid dev bypass removed — was gated only on
+// NODE_ENV which is a single point of failure. Use a real synthetic Firebase
+// test account for E2E tests.
 async function getAuthenticatedUser(req: Request, res: Response) {
-  if (process.env.NODE_ENV !== 'production') {
-    const testUid = req.headers['x-test-provider-uid'] as string | undefined;
-    if (testUid) {
-      logger.warn('[ProviderDashboardV2] DEV AUTH BYPASS — x-test-provider-uid', { testUid });
-      return { uid: testUid } as any;
-    }
-  }
-
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Authentication required' });

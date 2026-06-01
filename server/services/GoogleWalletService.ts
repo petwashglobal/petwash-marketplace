@@ -26,6 +26,7 @@ const ISSUER_ID    = process.env.GOOGLE_WALLET_ISSUER_ID;
 const CLASS_SUFFIX = process.env.GOOGLE_WALLET_CLASS_ID || 'petwash_premium_v1';
 const SA_RAW       = process.env.GOOGLE_WALLET_SA_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 const BASE_URL     = process.env.BASE_URL || 'https://petwash.co.il';
+const PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || process.env.APP_PUBLIC_URL || 'https://petwash.co.il';
 
 export interface PassVisual {
   passId: string;
@@ -79,14 +80,14 @@ async function getWalletClient() {
 }
 
 function buildObjectBody(visual: PassVisual): Record<string, unknown> {
-  const isDark   = ['BLACK', 'ELITE', 'DIAMOND'].includes(visual.tier.toUpperCase());
   const qrToken  = buildQrRedeemToken(visual.passId, visual.userId, visual.qrTokenVersion);
   const header   = visual.primaryPetName
     ? `${visual.ownerName} • ${visual.primaryPetName}`
     : visual.ownerName;
 
   const textModules: { id: string; header: string; body: string }[] = [
-    { id: 'credit',   header: 'Available Credit', body: `₪${visual.availableCreditIls.toFixed(0)}` },
+    { id: 'tier', header: 'TIER', body: `${visual.tier} TIER` },
+    { id: 'credit', header: 'STORED CREDIT', body: `₪${visual.availableCreditIls.toFixed(0)} verified` },
     { id: 'memberId', header: 'Member ID',         body: visual.passId },
     ...(visual.validUntil ? [{ id: 'validUntil', header: 'Valid Until', body: visual.validUntil }] : []),
   ];
@@ -102,7 +103,7 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
       sourceUri: { uri: 'https://petwash.co.il/logo.png' },
       contentDescription: { defaultValue: { language: 'en-US', value: 'PetWash logo' } },
     },
-    hexBackgroundColor: isDark ? '#000000' : '#B48728',
+    hexBackgroundColor: '#FFFFFF',
     // Primary barcode: 45-second signed QR redeem token
     barcode: {
       type:          'QR_CODE',
@@ -120,11 +121,11 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
     },
     textModulesData: textModules,
     linksModuleData: {
-      uris: [{
-        uri:         `${BASE_URL}/dashboard`,
-        description: 'Open PetWash',
-        id:          'app_link',
-      }],
+      uris: [
+        { uri: PUBLIC_SITE_URL, description: 'Open PetWash', id: 'site_link' },
+        { uri: `${PUBLIC_SITE_URL}/book`, description: 'Book services', id: 'book_link' },
+        { uri: `${PUBLIC_SITE_URL}/prestige-pass`, description: 'Prestige member portal', id: 'prestige_link' },
+      ],
     },
     expiryNotification: { enableNotification: true },
   };

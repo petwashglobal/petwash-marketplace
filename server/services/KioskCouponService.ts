@@ -30,7 +30,32 @@ import { nanoid } from 'nanoid';
 import { createHmac } from 'crypto';
 
 const TOKEN_TTL_MINUTES = 5;
-const HMAC_SECRET = process.env.MACHINE_SECRET_KEY ?? 'kiosk-coupon-fallback-secret';
+
+// SECURITY 2026-05-24 (CRITICAL fix from audit finding S5):
+//   Pre-fix: `process.env.MACHINE_SECRET_KEY ?? 'kiosk-coupon-fallback-secret'`.
+//   If MACHINE_SECRET_KEY ever became unset in production (Cloud Run secret
+//   rotation, deploy misconfig, secret deletion), the HMAC signing key
+//   silently fell back to the literal string above — open source, anyone
+//   could read it, anyone could forge kiosk coupon tokens and get free
+//   K9000 washes at every station.
+//
+//   Fix: NO FALLBACK. The HMAC secret is resolved lazily inside the
+//   signing function so the module still loads (and pricing.ts still
+//   imports cleanly even on a misconfigured environment). Any actual
+//   call into a signing/verification path with the secret unset now
+//   THROWS with a clear error, so the request fails closed at the
+//   route level instead of silently signing with a public string.
+function getHmacSecret(): string {
+  const v = process.env.MACHINE_SECRET_KEY;
+  if (!v || v.length < 32) {
+    logger.error('[KioskCoupon] MACHINE_SECRET_KEY missing/short — refusing to sign with default key');
+    throw new Error(
+      'kiosk_coupon_misconfigured: MACHINE_SECRET_KEY is required (≥32 chars). ' +
+      'Set it in GCP Secret Manager and mount to Cloud Run before issuing kiosk coupons.',
+    );
+  }
+  return v;
+}
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -266,9 +291,11 @@ export class KioskCouponService {
     };
   }
 
-  /** HMAC sign the token + userId for machine-level verification */
+  /** HMAC sign the token + userId for machine-level verification.
+   *  getHmacSecret() throws if MACHINE_SECRET_KEY is unset/short —
+   *  fail-closed; never silently sign with a public default. */
   private signToken(token: string, userId: string): string {
-    return createHmac('sha256', HMAC_SECRET)
+    return createHmac('sha256', getHmacSecret())
       .update(`${token}:${userId}`)
       .digest('hex');
   }

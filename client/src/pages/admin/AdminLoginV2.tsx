@@ -49,27 +49,94 @@ export default function AdminLoginV2() {
   
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
 
+  // Pre-fix this never surfaced what the server actually said — every failure
+  // hid behind "Please try again", so an operator hitting INVALID_TOKEN /
+  // EMAIL_NOT_VERIFIED / STALE_TOKEN / 500 all saw the same thing. We now
+  // attach the server errorCode (and HTTP status if no code) to the thrown
+  // Error so the catch can show it.
   const createServerSession = async (idToken: string) => {
-    const sessionRes = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
-    });
+    let sessionRes: Response;
+    try {
+      sessionRes = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
+      });
+    } catch (netErr: any) {
+      const e = new Error('SESSION_NETWORK_ERROR');
+      (e as any).detail = String(netErr?.message || netErr || 'unreachable');
+      throw e;
+    }
     if (!sessionRes.ok) {
-      throw new Error('SESSION_CREATION_FAILED');
+      let body: any = null;
+      try { body = await sessionRes.json(); } catch { /* non-JSON */ }
+      const e = new Error('SESSION_CREATION_FAILED');
+      (e as any).status = sessionRes.status;
+      (e as any).code = body?.errorCode || null;
+      (e as any).serverMsg = body?.error || null;
+      throw e;
     }
   };
 
   const assertAdminAccess = async () => {
-    const whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
+    let whoamiRes: Response;
+    try {
+      whoamiRes = await fetch('/api/session/whoami', { credentials: 'include' });
+    } catch (netErr: any) {
+      const e = new Error('WHOAMI_NETWORK_ERROR');
+      (e as any).detail = String(netErr?.message || netErr || 'unreachable');
+      throw e;
+    }
     if (!whoamiRes.ok) {
-      throw new Error('SESSION_VERIFICATION_FAILED');
+      const e = new Error('SESSION_VERIFICATION_FAILED');
+      (e as any).status = whoamiRes.status;
+      throw e;
     }
     const whoami = await whoamiRes.json();
     if (!whoami.isSuperAdmin && !isAdminRole(whoami.role)) {
-      throw new Error('ACCESS_DENIED');
+      const e = new Error('ACCESS_DENIED');
+      (e as any).role = whoami.role || '(no role)';
+      (e as any).email = whoami.email || '(no email)';
+      throw e;
     }
+  };
+
+  // Translate an internal error into something the operator can read.
+  // Critical because "Please try again" on the admin entry point is useless
+  // when the failure is a config issue (INVALID_TOKEN = Firebase Admin SDK
+  // not configured, EMAIL_NOT_VERIFIED = missing email verification, etc.).
+  const explainError = (err: any): string => {
+    if (!err) return 'Unknown error.';
+    const tag = err?.message || 'UNKNOWN';
+    const code = err?.code || '';
+    const status = err?.status ? ` [HTTP ${err.status}]` : '';
+    if (tag === 'ACCESS_DENIED') {
+      return `This account (${err?.email || 'unknown'}) does not have admin privileges. Role: ${err?.role || 'none'}.`;
+    }
+    // Investigation finding 5.2 — surface EMAIL_NOT_VERIFIED clearly and
+    // wire a follow-up "Resend verification email" path. The toast tells
+    // the operator exactly what to do; the Forgot-password helper below
+    // also doubles as a resend route since Firebase's password-reset
+    // email re-verifies the address on click.
+    if (tag === 'SESSION_CREATION_FAILED' && code === 'EMAIL_NOT_VERIFIED') {
+      return `Email not verified for this admin account. Open your inbox and click the Firebase verification link, then sign in again. (Tap "Forgot password?" below to resend the link.)`;
+    }
+    if (tag === 'SESSION_CREATION_FAILED' && code === 'STALE_TOKEN') {
+      // Finding 5.3 — explain the >24h iat gate so the operator knows
+      // to hard-refresh + re-auth instead of generic "try again".
+      return `Sign-in token is older than 24 hours and was rejected for an admin role. Hard-refresh this page (Cmd+Shift+R) and sign in again.`;
+    }
+    if (tag === 'SESSION_CREATION_FAILED') {
+      const codeHint = code ? ` (${code})` : '';
+      const srv = err?.serverMsg ? ` — ${err.serverMsg}` : '';
+      return `Server rejected the sign-in${codeHint}${status}${srv}.`;
+    }
+    if (tag === 'SESSION_VERIFICATION_FAILED') return `Session check failed${status}. The session cookie was not accepted on /api/session/whoami.`;
+    if (tag === 'SESSION_NETWORK_ERROR' || tag === 'WHOAMI_NETWORK_ERROR') return `Network error reaching the API: ${err?.detail || 'no response'}.`;
+    if (tag === 'NO_USER_AFTER_POPUP') return 'Google popup closed without returning a user. Check popup blockers.';
+    if (err?.code?.startsWith?.('auth/')) return `Firebase: ${err.code}. ${err?.message || ''}`.trim();
+    return `${tag}${status}${err?.detail ? ` — ${err.detail}` : ''}`;
   };
 
   useEffect(() => {
@@ -107,13 +174,12 @@ export default function AdminLoginV2() {
           toast({ title: "Welcome back", description: "Successfully logged in with Google" });
           setLocation("/admin/dashboard");
         } catch (err: any) {
-          const isAccessDenied = err?.message === 'ACCESS_DENIED';
+          trackAuthError(err, 'admin_google_redirect').catch(() => {});
           toast({
             title: "Google Sign-In Failed",
-            description: isAccessDenied
-              ? "This account does not have admin privileges."
-              : "Google sign-in failed. Please try again.",
+            description: explainError(err),
             variant: "destructive",
+            duration: 10000,
           });
         } finally {
           setIsGoogleLoading(false);
@@ -154,18 +220,13 @@ export default function AdminLoginV2() {
       const isFirebaseCredError = error?.code === 'auth/wrong-password'
         || error?.code === 'auth/user-not-found'
         || error?.code === 'auth/invalid-credential';
-      const isAccessDenied = error?.message === 'ACCESS_DENIED';
-      const msg = isFirebaseCredError
-        ? 'Invalid email or password'
-        : isAccessDenied
-          ? 'This account does not have admin privileges.'
-          : (typeof error?.message === 'string' && error.message) ||
-            'Session could not be created. Please try again.';
+      const msg = isFirebaseCredError ? 'Invalid email or password' : explainError(error);
       trackAuthError(error, 'admin_email_password').catch(() => {});
       toast({
         title: "Login Failed",
         description: msg,
         variant: "destructive",
+        duration: 10000,
       });
     } finally {
       setIsLoading(false);
@@ -209,11 +270,24 @@ export default function AdminLoginV2() {
         return;
       }
 
-      const optionsRes = await apiRequest("/webauthn/authenticate/options", {
+      // CRITICAL FIX 2026-05-24 (investigation finding 4.1):
+      //   Pre-fix called `/webauthn/authenticate/options` — there is no
+      //   such route on the server. The dead v1 router at server/routes/
+      //   webauthn.ts was DISABLED at routes.ts:11031. The canonical
+      //   endpoints are mounted inline at routes.ts:2903 / :2935 under
+      //   `/api/webauthn/login/...`. Every biometric tap from the admin
+      //   login was therefore 404-ing through the Firebase Hosting
+      //   rewrite, which the user described as "scan and maybe he kill
+      //   the entry to back end". Fixed.
+      const optionsRes = await apiRequest("/api/webauthn/login/options", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      const options = await optionsRes.json();
+      const optionsBody = await optionsRes.json();
+      // Server may wrap options under { options, challengeKey, discoverable }
+      // depending on whether email was provided. Unwrap so the rest of the
+      // code (which expects `.challenge`, `.allowCredentials`) keeps working.
+      const options = optionsBody.options || optionsBody;
 
       const credential = await navigator.credentials.get({
         publicKey: {
@@ -243,11 +317,15 @@ export default function AdminLoginV2() {
         },
       };
 
-      const verifyRes = await apiRequest("/webauthn/authenticate/verify", {
+      // CRITICAL FIX 2026-05-24 (investigation finding 4.1):
+      //   Pre-fix called `/webauthn/authenticate/verify` (404) AND sent
+      //   `{response, email}` — the canonical handler at routes.ts:2935
+      //   expects only `{response}` (and optional `discoverable: true`
+      //   when no email was used for the options call).
+      const verifyRes = await apiRequest("/api/webauthn/login/verify", {
         method: "POST",
         body: JSON.stringify({
           response: serializedCredential,
-          email,
         }),
       });
       const verifyResponse = await verifyRes.json();
@@ -275,10 +353,11 @@ export default function AdminLoginV2() {
       trackAuthError(error, 'admin_biometric').catch(() => {});
       toast({
         title: "Biometric Authentication Failed",
-        description: "Biometric sign-in failed. Please use email and password.",
+        description: explainError(error) || "Biometric sign-in failed. Please use email and password.",
         variant: "destructive",
+        duration: 10000,
       });
-      
+
       setTimeout(() => setBiometricStatus("idle"), 2000);
     }
   };
@@ -324,13 +403,11 @@ export default function AdminLoginV2() {
         return;
       }
       trackAuthError(error, 'admin_google').catch(() => {});
-      const isAccessDenied = error?.message === 'ACCESS_DENIED';
       toast({
         title: "Google Sign-In Failed",
-        description: isAccessDenied
-          ? "This account does not have admin privileges."
-          : "Google sign-in failed. Please try again.",
+        description: explainError(error),
         variant: "destructive",
+        duration: 10000,
       });
     } finally {
       setIsGoogleLoading(false);
@@ -338,22 +415,30 @@ export default function AdminLoginV2() {
   };
 
   return (
-    <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
+    <div
+      className="luxury-bg-mesh flex items-start sm:items-center justify-center px-3 sm:px-4 py-6 sm:py-8"
+      style={{
+        minHeight: '100dvh',
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+      }}
+    >
       {/* Main Login Card */}
-      <Card className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-8">
+      <Card className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-5 sm:p-7 md:p-8">
         {/* Header — PetWash™ logo */}
-        <div className="text-center mb-8">
-          <div className="mb-4 flex justify-center">
-            <img 
-              src="/brand/petwash-logo-official.png" 
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="mb-3 sm:mb-4 flex justify-center">
+            <img
+              src="/brand/petwash-logo-official.png"
               alt="PetWash"
-              className="h-16 w-auto object-contain"
+              className="h-12 sm:h-14 md:h-16 w-auto object-contain"
+              decoding="async"
             />
           </div>
-          <h1 className="luxury-heading-lg luxury-text-gradient mb-2">
+          <h1 className="luxury-heading-lg luxury-text-gradient mb-1 sm:mb-2 text-2xl sm:text-3xl">
             PetWash Admin Platform
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm sm:text-base">
             Secure Business Management
           </p>
         </div>
@@ -368,9 +453,10 @@ export default function AdminLoginV2() {
               <Button
                 onClick={handleBiometricLogin}
                 disabled={!email || biometricStatus === "scanning"}
+                title={!email ? "Type your email below first — Touch ID needs to know which account" : undefined}
                 className={`
-                  w-full h-12 text-white shadow-lg hover:shadow-xl transition-all
-                  ${biometricStatus === 'error' ? 'bg-red-500 hover:bg-red-600' : 
+                  w-full min-h-[48px] sm:h-12 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base
+                  ${biometricStatus === 'error' ? 'bg-red-500 hover:bg-red-600' :
                     biometricStatus === 'success' ? 'bg-green-500 hover:bg-green-600' :
                     biometricStatus === 'scanning' ? 'bg-purple-400 animate-pulse' :
                     'luxury-btn-primary'}
@@ -425,7 +511,7 @@ export default function AdminLoginV2() {
               variant="outline"
               onClick={handleGoogleLogin}
               disabled={isGoogleLoading}
-              className="w-full h-12 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 border border-gray-200 hover:border-gray-300 shadow-sm transition-all font-medium"
+              className="w-full min-h-[48px] sm:h-12 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 border border-gray-200 hover:border-gray-300 shadow-sm transition-all font-medium text-sm sm:text-base"
               data-testid="button-google-login"
             >
               {isGoogleLoading ? (
@@ -468,16 +554,21 @@ export default function AdminLoginV2() {
         {/* Standard Login Form */}
         <form onSubmit={handleStandardLogin} className="space-y-4">
           <div>
-            <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
+            <Label htmlFor="email" className="text-gray-700 font-medium text-sm">Email</Label>
             <div className="relative mt-1">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
                 id="email"
                 type="email"
+                inputMode="email"
+                autoComplete="username email"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@petwash.co.il"
-                className="luxury-glass-minimal pl-10 h-11 border-purple-200 focus:border-purple-400"
+                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-purple-200 focus:border-purple-400 text-base sm:text-sm"
                 required
                 data-testid="input-email"
               />
@@ -485,16 +576,17 @@ export default function AdminLoginV2() {
           </div>
 
           <div>
-            <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
+            <Label htmlFor="password" className="text-gray-700 font-medium text-sm">Password</Label>
             <div className="relative mt-1">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="luxury-glass-minimal pl-10 h-11 border-purple-200 focus:border-purple-400"
+                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-purple-200 focus:border-purple-400 text-base sm:text-sm"
                 required
                 data-testid="input-password"
               />
@@ -504,7 +596,8 @@ export default function AdminLoginV2() {
           <Button
             type="submit"
             disabled={isLoading || !email || !password}
-            className="luxury-btn-primary w-full h-11"
+            title={!email || !password ? 'Type your email and password to enable Sign In' : undefined}
+            className="luxury-btn-primary w-full min-h-[48px] sm:h-11 text-sm sm:text-base"
             data-testid="button-login"
           >
             {isLoading ? (
@@ -518,17 +611,56 @@ export default function AdminLoginV2() {
           </Button>
         </form>
 
-        {/* Footer */}
+        {/* Footer — Forgot password.
+            Wired to Firebase sendPasswordResetEmail. The previous build
+            shipped a button with no onClick; an operator clicking it saw
+            nothing happen, which read as "buttons broken". */}
         <div className="mt-6 text-center">
-          <Button variant="ghost" className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
+            onClick={async () => {
+              if (!email) {
+                toast({
+                  title: 'Email required',
+                  description: 'Enter your admin email above, then tap Forgot password.',
+                  variant: 'destructive',
+                });
+                return;
+              }
+              try {
+                const { sendPasswordResetEmail } = await import('firebase/auth');
+                const { auth: fbAuth } = await import('@/lib/firebase');
+                await sendPasswordResetEmail(fbAuth, email);
+                toast({
+                  title: 'Password reset sent',
+                  description: `If an account exists for ${email}, a reset email is on its way.`,
+                });
+              } catch (err: any) {
+                trackAuthError(err, 'admin_password_reset').catch(() => {});
+                toast({
+                  title: 'Could not send reset email',
+                  description: explainError(err),
+                  variant: 'destructive',
+                  duration: 10000,
+                });
+              }
+            }}
+          >
             Forgot password?
           </Button>
         </div>
 
+        {/* Operator diagnostics — quick visibility into backend health from
+            the login screen so when sign-in fails the operator can see
+            instantly whether the API is reachable, instead of guessing. */}
+        <BackendHealthRow />
+
         {/* Security badge — PR admin-login-immersive: typographic
             treatment replaces LuxuryEmoji glyphs per §0 (no emojis in
             professional surfaces). */}
-        <div className="mt-8 flex flex-col items-center gap-2">
+        <div className="mt-6 flex flex-col items-center gap-2">
           <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-gray-400">
             <span>Secure</span>
             <span aria-hidden="true">·</span>
@@ -541,6 +673,63 @@ export default function AdminLoginV2() {
           </p>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// Pings /api/health on mount and surfaces the result. When the API is down,
+// the operator sees it immediately — instead of "Google sign-in failed" with
+// no clue that the actual root cause is a backend outage. Two endpoints are
+// probed so a config-degraded state (200 from /health but 503 from
+// /health/strict) is visible too.
+function BackendHealthRow() {
+  const [base, setBase] = useState<'ok' | 'down' | 'checking'>('checking');
+  const [strict, setStrict] = useState<'ok' | 'degraded' | 'down' | 'checking'>('checking');
+  const [whoami, setWhoami] = useState<'session' | 'anon' | 'down' | 'checking'>('checking');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/health', { credentials: 'omit' });
+        setBase(r.ok ? 'ok' : 'down');
+      } catch { setBase('down'); }
+      try {
+        const r = await fetch('/api/health/strict', { credentials: 'omit' });
+        if (r.ok) setStrict('ok');
+        else if (r.status === 503) setStrict('degraded');
+        else setStrict('down');
+      } catch { setStrict('down'); }
+      try {
+        const r = await fetch('/api/session/whoami', { credentials: 'include' });
+        if (!r.ok) { setWhoami('down'); return; }
+        const j = await r.json();
+        setWhoami(j?.uid ? 'session' : 'anon');
+      } catch { setWhoami('down'); }
+    })();
+  }, []);
+
+  const dot = (s: string) => (
+    s === 'ok' || s === 'session' ? 'bg-emerald-500' :
+    s === 'anon' ? 'bg-amber-400' :
+    s === 'degraded' ? 'bg-amber-500' :
+    s === 'checking' ? 'bg-gray-300 animate-pulse' :
+    'bg-red-500'
+  );
+
+  return (
+    <div className="mt-6 grid grid-cols-3 gap-2 text-[10px] font-medium text-gray-500">
+      <div className="flex items-center gap-1.5 justify-center" title="API reachability (/api/health)">
+        <span className={`inline-block w-2 h-2 rounded-full ${dot(base)}`} />
+        <span className="uppercase tracking-wider">API</span>
+      </div>
+      <div className="flex items-center gap-1.5 justify-center" title="Strict health (/api/health/strict — env/secret integrity)">
+        <span className={`inline-block w-2 h-2 rounded-full ${dot(strict)}`} />
+        <span className="uppercase tracking-wider">Config</span>
+      </div>
+      <div className="flex items-center gap-1.5 justify-center" title="Session (/api/session/whoami)">
+        <span className={`inline-block w-2 h-2 rounded-full ${dot(whoami)}`} />
+        <span className="uppercase tracking-wider">Session</span>
+      </div>
     </div>
   );
 }

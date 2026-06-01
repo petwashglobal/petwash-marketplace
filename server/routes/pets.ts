@@ -190,14 +190,33 @@ router.delete('/:petId', validateFirebaseToken, async (req, res) => {
 // ============================================
 
 const isAdmin = (req: any, res: any, next: any) => {
-  const adminEmail = req.firebaseUser?.email;
-  // SECURITY (T07): Use env-driven super-admin list instead of hardcoded personal email
-  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-  if ((adminEmail && superAdminEmails.includes(adminEmail.toLowerCase())) || adminEmail?.includes('@petwash.co.il')) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Admin access required' });
+  const adminEmail: string | undefined = req.firebaseUser?.email;
+  const emailVerified: boolean = !!req.firebaseUser?.email_verified;
+
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S1):
+  //   1. Pre-fix used `adminEmail?.includes('@petwash.co.il')` — a
+  //      SUBSTRING match — so a Firebase account with email like
+  //      `attacker@petwash.co.il.evil.com` matched and got admin read
+  //      on every pet record (PII, medical notes, GPS-via-walker).
+  //      `.includes` → `.endsWith` closes the substring escape.
+  //   2. Pre-fix did NOT require `email_verified`. Firebase Auth allows
+  //      signup with an arbitrary unverified email; the admin SDK does
+  //      NOT auto-reject. We now require email_verified=true so an
+  //      attacker can't claim *@petwash.co.il without proving inbox
+  //      control.
+  //   3. The env-driven SUPER_ADMIN_EMAILS allowlist is still honored
+  //      and ALSO gated on email_verified.
+  if (!emailVerified || !adminEmail) {
+    return res.status(403).json({ error: 'Admin access required (verified email)' });
   }
+  const lowered = adminEmail.toLowerCase();
+  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const isAllowed = superAdminEmails.includes(lowered) || lowered.endsWith('@petwash.co.il');
+  if (isAllowed) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Admin access required' });
 };
 
 // Admin: Get all pets (read-only)

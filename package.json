@@ -12,6 +12,10 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "scan:ui": "tsx scripts/petwash-preflight.ts",
+    "audit:franchise-claims": "node scripts/audit/franchise-claims-audit.mjs",
+    "pass:founder:generate": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/pass/generate-first-founder-pass.ts",
+    "pass:founder:open": "bash scripts/pass/open-founder-pass.sh",
+    "pass:images:prepare": "bash scripts/pass/prepare-luxury-pass-images.sh --apply",
     "prebuild": "npm run preflight",
     "preflight": "tsx scripts/petwash-preflight.ts"
   },

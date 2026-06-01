@@ -136,9 +136,13 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
     const email = req.firebaseUser!.email || (typeof req.body?.email === 'string' ? req.body.email : null);
     const displayName = req.firebaseUser!.displayName || (typeof req.body?.displayName === 'string' ? req.body.displayName : null);
 
-    const allowedRoles = ['pet_parent', 'provider'];
-    const rawRole = typeof req.body?.role === 'string' ? req.body.role : 'pet_parent';
-    const userRole = allowedRoles.includes(rawRole) ? rawRole : 'pet_parent';
+    // Auto-enrollment is for pet_parent (customer) loyalty only. The legacy
+    // `role` body field is IGNORED — accepting it allowed any authenticated
+    // user to grant themselves Firebase `accountType: provider` claim plus the
+    // `certified_provider` badge by POSTing `{role:'provider'}`. Provider
+    // status is granted exclusively by the vetted provider-application +
+    // admin-approval flow (`/api/providers/*` + `/api/admin/providers/*`).
+    const userRole = 'pet_parent' as const;
 
     const [existing] = await db
       .select()
@@ -150,7 +154,7 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       return res.json({ success: true, enrolled: false, message: 'Already enrolled', profile: existing });
     }
 
-    const welcomePoints = userRole === 'pet_parent' ? 100 : 100;
+    const welcomePoints = 100;
 
     const [profile] = await db
       .insert(loyaltyProfiles)
@@ -189,10 +193,13 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
 
     try {
       const existingClaims = (await adminAuth.getUser(userId)).customClaims || {};
+      // Never elevate accountType/role here — auto-enroll only writes loyalty
+      // claims. Provider status is set by the vetted approval flow, not by
+      // any client-callable endpoint.
       await adminAuth.setCustomUserClaims(userId, {
         ...existingClaims,
-        accountType: userRole === 'provider' ? 'provider' : 'pet_parent',
-        role: userRole === 'provider' ? 'provider' : 'public',
+        accountType: 'pet_parent',
+        role: 'public',
         loyaltyTier: 'bronze',
         loyaltyMember: true,
         program: 'PetWash Privilege',
@@ -200,27 +207,6 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       logger.info('[Loyalty] Custom claims set for user', { userId, accountType: userRole });
     } catch (claimsErr) {
       logger.warn('[Loyalty] Failed to set custom claims (non-blocking)', { claimsErr, userId });
-    }
-
-    if (userRole === 'provider') {
-      try {
-        const [certifiedBadge] = await db
-          .select()
-          .from(badges)
-          .where(eq(badges.code, 'certified_provider'))
-          .limit(1);
-
-        if (certifiedBadge) {
-          await db.insert(userBadges).values({
-            userId,
-            badgeId: certifiedBadge.id,
-            isNew: true,
-          });
-          logger.info('[Loyalty] Certified badge awarded to provider', { userId });
-        }
-      } catch (badgeErr) {
-        logger.warn('[Loyalty] Failed to award certified badge', { badgeErr, userId });
-      }
     }
 
     try {

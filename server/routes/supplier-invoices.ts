@@ -22,6 +22,7 @@ import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../mi
 import { supplierInvoiceScreeningService } from '../services/SupplierInvoiceScreeningService';
 import { supplierInvoiceSumitSendService } from '../services/SupplierInvoiceSumitSendService';
 import { logger } from '../lib/logger';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 
 const router = Router();
 
@@ -119,6 +120,25 @@ router.post('/', ...requireFinanceOrAdmin, upload.single('file'), async (req: Re
   }
 });
 
+// GET /api/supplier-invoices — admin list with optional filters
+router.get('/', ...requireFinanceOrAdmin, async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const rawOffset = Number(req.query.offset);
+    const limit = Number.isFinite(rawLimit) ? rawLimit : undefined;
+    const offset = Number.isFinite(rawOffset) ? rawOffset : undefined;
+    const riskLevel = typeof req.query.riskLevel === 'string'
+      ? (req.query.riskLevel as 'green' | 'yellow' | 'red')
+      : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const out = await supplierInvoiceScreeningService.list({ limit, offset, riskLevel, status });
+    return res.json(out);
+  } catch (err) {
+    logger.error('[SupplierInvoices] list failed', err);
+    return res.status(500).json({ error: 'List failed' });
+  }
+});
+
 // GET /api/supplier-invoices/:id
 router.get('/:id', ...requireFinanceOrAdmin, async (req: Request, res: Response) => {
   const id = Number(req.params.id);
@@ -212,6 +232,17 @@ router.post(
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id' });
     const uid = authReq.firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    if (!assertOperatingControl(req, res, {
+      actionType: 'SUMIT_OFFICIAL_POSTING',
+      route: 'POST /api/supplier-invoices/:id/send-to-sumit',
+      targetId: `supplier-invoice:${id}`,
+      facts: {
+        sourceEvidenceExists: true,
+        idempotencyKeyExists: true,
+      },
+    })) {
+      return;
+    }
     try {
       const result = await supplierInvoiceSumitSendService.send({
         invoiceId: id,

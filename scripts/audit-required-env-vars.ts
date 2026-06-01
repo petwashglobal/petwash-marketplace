@@ -32,6 +32,7 @@ import {
   writeFileSync,
   existsSync,
 } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(process.cwd());
@@ -230,9 +231,91 @@ function aggregate(reads: EnvRead[]): AggregatedVar[] {
   return out;
 }
 
+// ─── Stable fingerprint (M-DEPLOY-4) ─────────────────────────────────────────
+//
+// BEFORE M-DEPLOY-4: --check compared the full rendered markdown character-
+// for-character. Any change in any read site's LINE NUMBER caused the doc to
+// go STALE and the gate to fail — even when the actual env-var surface
+// (which vars exist, classification, MODULE_LOAD vs FUNCTION_BODY, guarded
+// or not) had not changed at all. Every PR that added/moved code near an
+// env read triggered a "regen the doc" companion commit. This blocked
+// deploys for ~6 hours on 2026-05-23 / 24 across PRs #401, #408, #410, #411.
+//
+// AFTER M-DEPLOY-4: --check compares a STABLE FINGERPRINT instead. The
+// fingerprint is computed from each env var's identity tuple:
+//   - varName
+//   - classification (REQUIRED / WARN / OPTIONAL)
+//   - whether any read is at MODULE_LOAD scope (high-blast-radius)
+//   - whether any read is at FUNCTION_BODY scope
+//   - whether a `throw new Error` guard exists somewhere
+//   - count of read sites (so silently removing a critical read still fails)
+//
+// File path and line number are explicitly EXCLUDED. Comments, formatting,
+// and unrelated code movement no longer trip the gate.
+//
+// What still fails the gate (these are real production risks):
+//   - a NEW env var is read by server code
+//   - an env var is REMOVED from the codebase
+//   - an env var changes classification (e.g. OPTIONAL → REQUIRED)
+//   - an env var gains/loses a MODULE_LOAD read site
+//   - an env var gains/loses a guard
+//   - read-site count changes (catches "we deleted the only check")
+//
+// The fingerprint is embedded at the TOP of the rendered doc as an HTML
+// comment. --check extracts it from the existing doc, compares to a fresh
+// scan's fingerprint, and exits 0 if they match.
+
+interface VarFingerprint {
+  varName: string;
+  classification: 'REQUIRED' | 'WARN' | 'OPTIONAL';
+  hasModuleLoad: boolean;
+  hasFunctionBody: boolean;
+  hasGuard: boolean;
+  readCount: number;
+}
+
+function computeFingerprint(vars: AggregatedVar[]): VarFingerprint[] {
+  return vars.map((v) => ({
+    varName: v.varName,
+    classification: v.classification,
+    hasModuleLoad: v.reads.some((r) => r.scope === 'MODULE_LOAD'),
+    hasFunctionBody: v.reads.some((r) => r.scope === 'FUNCTION_BODY'),
+    hasGuard: v.reads.some((r) => !!r.guardLine),
+    readCount: v.reads.length,
+  }));
+}
+
+/**
+ * Canonicalise + hash the fingerprint. Stable across whitespace / ordering;
+ * sensitive only to the tuple of {varName, classification, scope set,
+ * guard presence, read count}.
+ */
+function fingerprintHash(fps: VarFingerprint[]): string {
+  // Sort for determinism (vars are already alpha-sorted within class, but be
+  // defensive — re-sort by varName globally so a classification flip doesn't
+  // re-order and hash-diff for spurious reasons).
+  const sorted = [...fps].sort((a, b) => a.varName.localeCompare(b.varName));
+  const canonical = sorted
+    .map(
+      (f) =>
+        `${f.varName}|${f.classification}|${f.hasModuleLoad ? 'M' : '-'}|` +
+        `${f.hasFunctionBody ? 'F' : '-'}|${f.hasGuard ? 'G' : '-'}|n${f.readCount}`,
+    )
+    .join('\n');
+  return createHash('sha256').update(canonical).digest('hex').slice(0, 16);
+}
+
+const FINGERPRINT_MARKER_RE =
+  /<!--\s*env-audit-fingerprint:\s*([a-f0-9]{16})\s*-->/;
+
+function extractFingerprint(docContent: string): string | null {
+  const m = docContent.match(FINGERPRINT_MARKER_RE);
+  return m ? m[1] : null;
+}
+
 // ─── Render ──────────────────────────────────────────────────────────────────
 
-function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
+function renderMarkdown(vars: AggregatedVar[], scannedFiles: number, fingerprint: string): string {
   // NOTE: intentionally NO generated-date stamp. The audit gate compares this
   // file against a fresh regeneration; embedding today's date made the file go
   // STALE on every UTC midnight regardless of code, blocking deploys. The doc
@@ -244,6 +327,12 @@ function renderMarkdown(vars: AggregatedVar[], scannedFiles: number): string {
   };
 
   const lines: string[] = [];
+  // M-DEPLOY-4 stable-identity fingerprint. The --check gate compares THIS
+  // value against a fresh scan's fingerprint — NOT the rendered body. So
+  // line-only drift below this marker is informational and never blocks a
+  // deploy. Only a change in the set of env vars / their classification /
+  // their scope-or-guard status changes the fingerprint.
+  lines.push(`<!-- env-audit-fingerprint: ${fingerprint} -->`);
   lines.push('# Production required env vars — auto-generated');
   lines.push('');
   lines.push('> **Auto-generated by `scripts/audit-required-env-vars.ts`. Do NOT edit by hand.**');
@@ -357,35 +446,65 @@ function main(): void {
   }
 
   const vars = aggregate(allReads);
-  const rendered = renderMarkdown(vars, files.length);
+  const freshFingerprint = fingerprintHash(computeFingerprint(vars));
+  const rendered = renderMarkdown(vars, files.length, freshFingerprint);
 
   if (CHECK_ONLY) {
+    // M-DEPLOY-4: compare STABLE FINGERPRINTS, not the full rendered doc.
+    // Line-only drift in the markdown body does not fail the gate any more.
+    // Only changes to the set of vars / their classification / scope / guard
+    // status change the fingerprint and fail the gate.
     if (!existsSync(OUTPUT_PATH)) {
       console.error(`[env-audit] FAIL: ${relative(ROOT, OUTPUT_PATH)} does not exist.`);
       console.error(`[env-audit] Run: npx tsx scripts/audit-required-env-vars.ts`);
       process.exit(5);
     }
     const existing = readFileSync(OUTPUT_PATH, 'utf8');
-    if (existing === rendered) {
-      console.log(`[env-audit] OK: ${relative(ROOT, OUTPUT_PATH)} is up to date.`);
-      console.log(`[env-audit] Scanned ${files.length} files, found ${vars.length} env vars.`);
-      process.exit(0);
-    } else {
-      console.error(`[env-audit] FAIL: ${relative(ROOT, OUTPUT_PATH)} is STALE.`);
-      console.error(`[env-audit] A source-tree change introduced or removed an env-var read.`);
+    const existingFp = extractFingerprint(existing);
+
+    if (existingFp === null) {
+      // Doc exists but lacks the fingerprint marker — first run after the
+      // M-DEPLOY-4 migration. Don't penalise this PR; require a regen so
+      // subsequent runs have something to compare to.
+      console.error(`[env-audit] FAIL: ${relative(ROOT, OUTPUT_PATH)} is missing the env-audit-fingerprint header.`);
       console.error(`[env-audit] Run: npx tsx scripts/audit-required-env-vars.ts`);
-      console.error(`[env-audit] Then commit the regenerated docs file.`);
-      // Print a short diff hint
-      const aLines = existing.split('\n');
-      const bLines = rendered.split('\n');
-      console.error(`[env-audit] (existing ${aLines.length} lines, new ${bLines.length} lines)`);
+      console.error(`[env-audit] Then commit the regenerated docs file (it will gain the marker).`);
       process.exit(5);
     }
+
+    if (existingFp === freshFingerprint) {
+      // Stable identity unchanged → gate passes, regardless of line drift in
+      // the body. Warn (but don't fail) if the rendered body has drifted, so
+      // an operator who wants the doc fully fresh can regen at their leisure.
+      const linesDrifted = existing !== rendered;
+      console.log(`[env-audit] OK: stable fingerprint matches (${freshFingerprint}).`);
+      console.log(`[env-audit] Scanned ${files.length} files, found ${vars.length} env vars.`);
+      if (linesDrifted) {
+        console.log(`[env-audit] NOTE: line numbers / context strings in the rendered doc have drifted.`);
+        console.log(`[env-audit] Run \`npx tsx scripts/audit-required-env-vars.ts\` at your leisure to refresh. This is informational only — NOT a deploy blocker.`);
+      }
+      process.exit(0);
+    }
+
+    console.error(`[env-audit] FAIL: stable fingerprint changed.`);
+    console.error(`[env-audit]   existing: ${existingFp}`);
+    console.error(`[env-audit]   fresh:    ${freshFingerprint}`);
+    console.error(`[env-audit] This means a REAL change to the env-var surface:`);
+    console.error(`[env-audit]   • new var added, OR`);
+    console.error(`[env-audit]   • var removed from server code, OR`);
+    console.error(`[env-audit]   • classification changed (e.g. OPTIONAL → REQUIRED), OR`);
+    console.error(`[env-audit]   • MODULE_LOAD / FUNCTION_BODY scope set changed, OR`);
+    console.error(`[env-audit]   • guard added/removed, OR`);
+    console.error(`[env-audit]   • read-site count changed.`);
+    console.error(`[env-audit] Run: npx tsx scripts/audit-required-env-vars.ts`);
+    console.error(`[env-audit] Then commit the regenerated docs file.`);
+    process.exit(5);
   }
 
   writeFileSync(OUTPUT_PATH, rendered);
   console.log(`[env-audit] Wrote ${relative(ROOT, OUTPUT_PATH)}`);
   console.log(`[env-audit] Scanned ${files.length} files, found ${vars.length} env vars`);
+  console.log(`[env-audit] Stable fingerprint: ${freshFingerprint}`);
   const counts = {
     REQUIRED: vars.filter(v => v.classification === 'REQUIRED').length,
     WARN: vars.filter(v => v.classification === 'WARN').length,

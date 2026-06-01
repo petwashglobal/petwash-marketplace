@@ -1,0 +1,19 @@
+# Manual migrations — DO NOT auto-apply
+#
+# Each line below is a filename in migrations/ that the auto-migration
+# runner (scripts/apply-pending-migrations.ts) must NOT execute. The
+# runner records each listed file in _petwash_migrations as
+# `bootstrapped: true` and moves on.
+#
+# Use this when a migration depends on a table or subsystem that is
+# managed outside the canonical Drizzle schema — for example, a
+# deprecated subsystem whose tables were never created in this
+# deployment.
+#
+# Comments start with `#`. Blank lines are ignored. One filename per line.
+# Filenames must exactly match the file in migrations/ (no path prefix).
+
+# 0009_tranzila_processor_auth_number.sql was DELETED 2026-05-24 as part
+# of the Tranzila Option A kill. The orphan ALTER no longer exists in
+# the migrations/ folder, so the runner won't see it and won't fail.
+# This allowlist file remains in place for future manual migrations.

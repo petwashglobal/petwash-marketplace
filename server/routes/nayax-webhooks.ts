@@ -19,6 +19,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { redis } from '../services/redis';
+import { tryClaimWebhookEvent } from '../lib/nayaxWebhookDedup';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
 import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings } from '@shared/schema';
@@ -142,9 +143,20 @@ function validateNayaxSignature(
 }
 
 /**
- * Check if webhook has already been processed (idempotency)
- * Uses Redis SET NX (atomic) — survives server restarts and horizontal scaling.
- * Falls back gracefully when Redis is unavailable (logs a WARN, does not block).
+ * Check if webhook has already been processed (idempotency).
+ *
+ * DB-backed insert-first dedup using nayax_processed_event_ids (PK on
+ * event_id). The INSERT is atomic — survives Node restart and works
+ * across horizontally-scaled Cloud Run instances without shared state.
+ *
+ * Behavior:
+ *   - new event → INSERT succeeds, next()
+ *   - duplicate event → INSERT short-circuits via ON CONFLICT DO NOTHING,
+ *     returns 200 OK with { deduplicated: true } so Nayax stops retrying
+ *   - DB failure → 503 (fail closed). Nayax retries on its own schedule.
+ *     This is intentional: failing OPEN here is what caused the prior
+ *     vulnerability (Redis fallback allowed duplicates through and
+ *     could double-credit wallets on Nayax's retry).
  */
 async function checkIdempotency(
   req: express.Request,
@@ -152,27 +164,36 @@ async function checkIdempotency(
   next: express.NextFunction
 ) {
   const eventId = req.body.eventId || req.body.transactionId;
-  
+
   if (!eventId) {
     logger.warn('[NayaxWebhook] Missing event ID');
     return res.status(400).json({ error: 'Missing event ID' });
   }
-  
-  const dedupKey = `nayax:webhook:dedup:${eventId}`;
-  
-  if (redis.isConnected()) {
-    // setNx returns true if key was newly set (first time), false if already existed (replay)
-    const isNew = await redis.setNx(dedupKey, { processedAt: new Date().toISOString() }, WEBHOOK_DEDUP_TTL_SECONDS);
-    if (!isNew) {
-      logger.info('[NayaxWebhook] Duplicate webhook ignored (Redis dedup)', { eventId });
-      return res.status(200).json({ received: true, message: 'Webhook already processed' });
+
+  try {
+    const result = await tryClaimWebhookEvent({
+      eventId: String(eventId),
+      sourceRoute: req.originalUrl || req.url,
+    });
+    if (result.processed === 'duplicate') {
+      return res.status(200).json({
+        received: true,
+        deduplicated: true,
+        message: 'Webhook already processed',
+      });
     }
-  } else {
-    // Redis unavailable — log degraded dedup so ops knows, but do not block payments
-    logger.warn('[NayaxWebhook] Redis unavailable — webhook dedup degraded. Manual review may be required.', { eventId });
+    return next();
+  } catch (err) {
+    // Fail CLOSED on DB outage — Nayax will retry. Better than failing
+    // open and risking duplicate processing of a real payment event.
+    logger.error('[NayaxWebhook] DB dedup unavailable — failing closed', {
+      eventId,
+      err: (err as Error).message,
+    });
+    return res.status(503).json({
+      error: 'Webhook deduplication service unavailable — Nayax should retry',
+    });
   }
-  
-  next();
 }
 
 // ==================== ROUTES ====================

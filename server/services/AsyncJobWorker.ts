@@ -31,7 +31,12 @@ type JobType =
   | 'EXPORT_RECONCILIATION_TO_SHEETS'
   | 'EXPORT_BOOKING_TO_SHEETS'
   | 'CREATE_CALENDAR_EVENT'
-  | 'SEND_GMAIL_FALLBACK';
+  | 'SEND_GMAIL_FALLBACK'
+  // Mission-5+ SUMIT sync jobs. Routed via SumitSyncService.handleSumitJob().
+  // Each is no-op when sumit.mode='off' (the production default today).
+  | 'SUMIT_CUSTOMER_SYNC'
+  | 'SUMIT_DOCUMENT_CREATE'
+  | 'SUMIT_DOCUMENT_CANCEL';
 
 interface AsyncJob {
   id: string;
@@ -170,6 +175,20 @@ async function executeJob(job: AsyncJob): Promise<boolean> {
         return true;
       } catch (err: any) {
         logger.error('[AsyncJobWorker] SEND_GMAIL_FALLBACK failed', { err: err.message });
+        return false;
+      }
+    }
+
+    case 'SUMIT_CUSTOMER_SYNC':
+    case 'SUMIT_DOCUMENT_CREATE':
+    case 'SUMIT_DOCUMENT_CANCEL': {
+      try {
+        const { sumitSyncService } = await import('./SumitSyncService');
+        return await sumitSyncService.handleSumitJob(job.job_type, job.payload);
+      } catch (err: any) {
+        logger.error('[AsyncJobWorker] SUMIT_* job failed', {
+          jobType: job.job_type, jobId: job.id, err: err.message,
+        });
         return false;
       }
     }

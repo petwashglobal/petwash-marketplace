@@ -28,6 +28,61 @@ export interface SystemConfigMap {
   // even if the parent supplier-invoice flag is ON. Defense in depth — must
   // flip BOTH flags to actually send a document. Default OFF.
   'ff.supplier_invoice_control.sumit_send.enabled': boolean;
+  // Maya reception/intake (Stage 1b)
+  'ff.maya.enabled': boolean;
+  'ff.maya.provider_intake.enabled': boolean;
+  'ff.maya.booking_intake.enabled': boolean;
+  'ff.maya.tasks.enabled': boolean;
+  'ff.maya.escalations.enabled': boolean;
+  // Maya Voice (Stage 3A) — provider-signature webhook; admin GETs stay under /api/admin
+  'ff.maya.voice.enabled': boolean;
+  'ff.maya.voice.inbound.enabled': boolean;
+  'ff.maya.voice.outbound.enabled': boolean;
+  'ff.maya.voice.extraction.enabled': boolean;
+  'ff.maya.voice.recording.enabled': boolean;
+  // AI booking intake (AI-B1) — Gemini parses natural-language booking
+  // requests ("walk my dog tomorrow morning in Tel Aviv") into structured
+  // BookingRequest prefills. AI never confirms / assigns / quotes / charges.
+  // Default OFF; backend returns 503 feature_disabled when off.
+  'ff.ai.booking_intake.enabled': boolean;
+  // AI provider matching score (AI-B2) — Gemini ranks a set of candidate
+  // provider IDs against the parsed booking intake using PUBLIC profile
+  // fields only (bio, rating, response rate, services, languages, badges,
+  // working hours, home setup). Never sees background check, KYC, risk
+  // score, admin notes, or any other internal trust field. Falls back to
+  // a deterministic rating-based score when Gemini is unavailable.
+  'ff.ai.provider_matching.enabled': boolean;
+  // AI smart slot suggestions (AI-B3) — turns a vague date/time intent
+  // ("tomorrow morning") into concrete, backend-validated slot windows
+  // from availability_slots. Honors active payment locks, service
+  // duration, timezone, and provider filtering. NEVER returns synthetic
+  // slots — every suggestion is a real available_slots row.
+  // Deterministic (no Gemini call) — safety + correctness > AI flair here.
+  'ff.ai.slot_suggestions.enabled': boolean;
+  // AI care-tag extraction (AI-B4) — Gemini maps customer free-text
+  // about their pet ("anxious around men", "senior dog needs gentle
+  // handling") into a CLOSED allowlist of provider-friendly care tags.
+  // Never diagnoses. Never claims medical authority. Out-of-vocab tags
+  // from the model are silently dropped by Zod.
+  'ff.ai.care_notes.enabled': boolean;
+  // AI wallet anomaly monitor (AI-W1) — admin-only. Reads recent
+  // wallet_ledger_entries, aggregates per user (PII-stripped), asks
+  // Gemini to score 0..100 risk + flag the worst. NEVER refunds /
+  // credits / changes account status — flags-only for human admin
+  // review. Falls back to deterministic threshold scoring when Gemini
+  // is unavailable. Zero new infrastructure cost.
+  'ff.ai.wallet_anomaly_monitor.enabled': boolean;
+  /**
+   * SUMIT activation mode. Mission-4 strategy-pattern dispatcher chooses
+   * the integration method:
+   *   'off'        — every send returns sent:false reason:"mode is off" (default)
+   *   'email'      — forward to ACCOUNTANT_EMAIL with the original file attached
+   *   'api'        — direct sumit.co.il REST call via SumitClient (needs API spec)
+   *   'csv_export' — write a CSV row + PDF copy to firebase storage for manual upload
+   * Independent of the two ff. flags above; activation requires BOTH the flags
+   * AND mode != 'off'. Default 'off' means production behaviour is unchanged.
+   */
+  'sumit.mode': 'off' | 'email' | 'api' | 'csv_export';
   'recovery.signup_reminder_enabled': boolean;
   'recovery.booking_followup_enabled': boolean;
 }
@@ -41,6 +96,42 @@ const DEFAULTS: SystemConfigMap = {
   'matching.boost_new_providers': true,
   'ff.supplier_invoice_control.enabled': false,
   'ff.supplier_invoice_control.sumit_send.enabled': false,
+  // Maya reception/intake (Stage 1b) — default OFF
+  'ff.maya.enabled': false,
+  'ff.maya.provider_intake.enabled': false,
+  'ff.maya.booking_intake.enabled': false,
+  'ff.maya.tasks.enabled': false,
+  'ff.maya.escalations.enabled': false,
+  // Maya Voice (Stage 3A) — inbound activated per CEO request 2026-05-25
+  // (+16292059682 was hitting the 503 "busy" gate on every call).
+  //
+  // Activated ON by default:
+  //   ff.maya.voice.enabled          — master switch for the voice subsystem
+  //   ff.maya.voice.inbound.enabled  — accept Twilio /voice + /gather webhooks
+  //
+  // Left OFF by default (privacy / cost / not-yet-needed):
+  //   ff.maya.voice.outbound.enabled    — Maya-initiated callbacks
+  //   ff.maya.voice.extraction.enabled  — intent extraction → booking/task creation
+  //   ff.maya.voice.recording.enabled   — call audio recording (PII; flip only after DPA review)
+  //
+  // Operator can still disable in /admin/system-config at runtime — the in-memory
+  // store accepts patches and they take effect immediately for the current instance.
+  'ff.maya.voice.enabled': true,
+  'ff.maya.voice.inbound.enabled': true,
+  'ff.maya.voice.outbound.enabled': false,
+  'ff.maya.voice.extraction.enabled': false,
+  'ff.maya.voice.recording.enabled': false,
+  // AI-B1 default OFF
+  'ff.ai.booking_intake.enabled': false,
+  // AI-B2 default OFF
+  'ff.ai.provider_matching.enabled': false,
+  // AI-B3 default OFF
+  'ff.ai.slot_suggestions.enabled': false,
+  // AI-B4 default OFF
+  'ff.ai.care_notes.enabled': false,
+  // AI-W1 default OFF
+  'ff.ai.wallet_anomaly_monitor.enabled': false,
+  'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
 };
@@ -102,3 +193,21 @@ class SystemConfigService {
 }
 
 export const systemConfig = new SystemConfigService();
+
+/**
+ * Thin async wrapper around `systemConfig.get(key)`.
+ *
+ * Maya admin routes (server/routes/admin-maya.ts) imported a named
+ * `getFeatureFlag` export that did not exist — the import threw
+ * `SyntaxError` at module load and the routes.ts smoke test caught it
+ * (CI run #965 gate failure). Adding the wrapper as a named export
+ * restores module-load without touching any Maya code.
+ *
+ * Async signature matches the call sites which `await` the result, and
+ * leaves room for a future DB-backed flag store without changing
+ * callers. Today this is a synchronous lookup against the in-memory
+ * `systemConfig` instance.
+ */
+export async function getFeatureFlag<K extends ConfigKey>(key: K): Promise<SystemConfigMap[K]> {
+  return systemConfig.get(key);
+}

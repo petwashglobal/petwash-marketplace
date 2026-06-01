@@ -187,50 +187,89 @@ describe('four-eyes + risk-tier approval gate', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Israel ITA Digital Invoice Law 2026 — SHAAM allocation requirement
+// Osek classification — VAT mismatch detection (PR-S5c)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('supplier-invoice screening — SHAAM allocation', () => {
-  it('does not add the check when shaamAllocationRequired is false (below threshold)', () => {
-    const checks = buildChecks({ ...okFacts, shaamAllocationRequired: false });
-    expect(checks.find(c => c.type === 'shaam_allocation_missing')).toBeUndefined();
-  });
-
-  it('does not add the check when allocation number IS present', () => {
+describe('supplier-invoice screening — Osek classification', () => {
+  it('patur supplier charging VAT > 0 is a HARD FAIL (loses us VAT money)', () => {
     const checks = buildChecks({
       ...okFacts,
-      shaamAllocationRequired: true,
-      shaamAllocationNumberOnInvoice: '123456789',
+      supplierOsekClassification: 'patur',
+      amountBeforeVat: 100,
+      vatAmount: 18,
+      totalAmount: 118,
     });
-    expect(checks.find(c => c.type === 'shaam_allocation_missing')).toBeUndefined();
-  });
-
-  it('adds a hard fail (90 score) when SHAAM is required but allocation is missing', () => {
-    const checks = buildChecks({
-      ...okFacts,
-      shaamAllocationRequired: true,
-      shaamAllocationNumberOnInvoice: null,
-    });
-    const c = checks.find(c => c.type === 'shaam_allocation_missing');
+    const c = checks.find(c => c.type === 'osek_vat_mismatch');
     expect(c).toBeDefined();
     expect(c?.result).toBe('fail');
-    expect(c?.scoreImpact).toBe(90);
+    expect(c?.scoreImpact).toBe(85);
+    expect((c?.details as any)?.reason).toBe('patur_supplier_charged_vat');
   });
 
-  it('treats an empty / whitespace-only allocation number as missing', () => {
+  it('patur supplier with VAT=0 is fine (no check fires)', () => {
     const checks = buildChecks({
       ...okFacts,
-      shaamAllocationRequired: true,
-      shaamAllocationNumberOnInvoice: '   ',
+      supplierOsekClassification: 'patur',
+      amountBeforeVat: 100,
+      vatAmount: 0,
+      totalAmount: 100,
     });
-    expect(checks.find(c => c.type === 'shaam_allocation_missing')).toBeDefined();
+    expect(checks.find(c => c.type === 'osek_vat_mismatch')).toBeUndefined();
   });
 
-  it('shaam_allocation_missing pushes the invoice into RED (score >= 70)', () => {
+  it('murshe supplier with VAT=0 on positive base is a WARNING', () => {
     const checks = buildChecks({
       ...okFacts,
-      shaamAllocationRequired: true,
-      shaamAllocationNumberOnInvoice: null,
+      supplierOsekClassification: 'murshe',
+      amountBeforeVat: 100,
+      vatAmount: 0,
+      totalAmount: 100,
+    });
+    const c = checks.find(c => c.type === 'osek_vat_mismatch');
+    expect(c).toBeDefined();
+    expect(c?.result).toBe('warning');
+  });
+
+  it('chevra supplier with VAT=0 on positive base is a WARNING (same as murshe)', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      supplierOsekClassification: 'chevra',
+      amountBeforeVat: 100,
+      vatAmount: 0,
+      totalAmount: 100,
+    });
+    expect(checks.find(c => c.type === 'osek_vat_mismatch')?.result).toBe('warning');
+  });
+
+  it('murshe supplier with proper VAT passes the check', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      supplierOsekClassification: 'murshe',
+      amountBeforeVat: 100,
+      vatAmount: 18,
+      totalAmount: 118,
+    });
+    expect(checks.find(c => c.type === 'osek_vat_mismatch')).toBeUndefined();
+  });
+
+  it('unknown classification adds an osek_classification_unknown warning', () => {
+    const checks = buildChecks({ ...okFacts, supplierOsekClassification: 'unknown' });
+    expect(checks.find(c => c.type === 'osek_classification_unknown')).toBeDefined();
+  });
+
+  it('omitting the classification (undefined) does not fire any osek check', () => {
+    const checks = buildChecks({ ...okFacts });
+    expect(checks.find(c => c.type === 'osek_vat_mismatch')).toBeUndefined();
+    expect(checks.find(c => c.type === 'osek_classification_unknown')).toBeUndefined();
+  });
+
+  it('patur + VAT mismatch pushes the invoice into RED (score >= 70)', () => {
+    const checks = buildChecks({
+      ...okFacts,
+      supplierOsekClassification: 'patur',
+      amountBeforeVat: 100,
+      vatAmount: 18,
+      totalAmount: 118,
     });
     const score = computeRiskScore(checks);
     expect(score).toBeGreaterThanOrEqual(70);

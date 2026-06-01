@@ -218,7 +218,7 @@ export function VerificationStatus({ uid, language }: VerificationStatusProps) {
   };
 
   if (!verificationData) {
-    return <div className="text-sm text-gray-500">Loading...</div>;
+    return <div className="text-sm text-gray-500">{t('common.loading', language)}</div>;
   }
 
   return (
