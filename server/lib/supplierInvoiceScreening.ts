@@ -158,6 +158,21 @@ export function buildChecks(input: ScreeningInput): CheckResult[] {
     checks.push({ type: 'ocr_unavailable', result: 'warning', scoreImpact: 10 });
   }
 
+  // Israel ITA Digital Invoice Law 2026 — block invoices above the SHAAM
+  // threshold that lack an allocation number. Approving such an invoice
+  // would forfeit our VAT deduction, so this is a hard fail, not a warning.
+  if (input.shaamAllocationRequired) {
+    const alloc = input.shaamAllocationNumberOnInvoice?.trim();
+    if (!alloc) {
+      checks.push({
+        type: 'shaam_allocation_missing',
+        result: 'fail',
+        scoreImpact: 90,
+        details: { reason: 'required_above_threshold_but_not_extracted' },
+      });
+    }
+  }
+
   if (!input.fraudEngineAvailable) {
     checks.push({ type: 'fraud_engine_unavailable', result: 'warning', scoreImpact: 10 });
   } else if (typeof input.fraudEngineScore === 'number') {
