@@ -1,11 +1,11 @@
 name: Cloud Run Failure Diagnostics
 
 on:
-  workflow_run:
-    workflows:
-      - "PetWash CI 2026 — Production Deploy"
-    types:
-      - completed
+  # Manual-only on purpose:
+  # The production deploy workflow already runs inline failure diagnostics.
+  # Keeping this workflow on `workflow_run` created a noisy skipped Actions run
+  # after every successful deploy, which polluted the repo history without
+  # adding launch value.
   workflow_dispatch:
     inputs:
       revision:
@@ -36,10 +36,6 @@ jobs:
   cloud-run-diagnostics:
     name: Diagnose Cloud Run revision
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure')
-
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
