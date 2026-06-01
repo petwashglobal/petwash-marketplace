@@ -36,9 +36,11 @@ describe('signup service-worker cache safety', () => {
   it('runs a no-bundle inline cache purge before app startup', () => {
     const html = fs.readFileSync(path.join(repoRoot, 'client/index.html'), 'utf8');
     const purgeIndex = html.indexOf('2026-06-01-inline-signup-cache-purge');
+    const headCloseIndex = html.indexOf('</head>');
     const appIndex = html.indexOf('<script type="module" src="/src/main.tsx"></script>');
 
     expect(purgeIndex).toBeGreaterThan(0);
+    expect(headCloseIndex).toBeGreaterThan(purgeIndex);
     expect(appIndex).toBeGreaterThan(purgeIndex);
     expect(html).toContain('navigator.serviceWorker.getRegistrations');
     expect(html).toContain('window.caches.delete');
