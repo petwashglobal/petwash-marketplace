@@ -240,9 +240,34 @@ router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
+    // SECURITY 2026-05-24 (CRITICAL fix from audit finding S4):
+    //   Pre-fix: `.set({ ...req.body, updatedAt })` let an authenticated
+    //   walker set ANY column on their own row including kycVerified,
+    //   commissionRate, isVerified, rating, totalEarnings. Strip the
+    //   privileged columns before the update runs.
+    const DENY = new Set([
+      'kycVerified', 'isVerified', 'verified', 'featured', 'approved',
+      'status', 'userStatus', 'accountStatus', 'role',
+      'rating', 'ratingCount', 'averageRating', 'reviewCount',
+      'commission_rate', 'commissionRate', 'platformFee', 'platformFeePercent',
+      'balance', 'walletBalance', 'earnings', 'totalEarnings', 'lifetimeEarnings',
+      'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'adminNotes', 'internalNotes',
+      'userId', 'uid', 'firebaseUid', 'id', 'walkerId',
+    ]);
+    const safeUpdates: Record<string, unknown> = {};
+    const stripped: string[] = [];
+    for (const [k, v] of Object.entries(req.body || {})) {
+      if (DENY.has(k)) { stripped.push(k); continue; }
+      safeUpdates[k] = v;
+    }
+    if (stripped.length > 0) {
+      console.warn('[Walk My Pet] Stripped privileged fields from self-update',
+        { walkerId, userId, stripped });
+    }
+
     const [updatedWalker] = await db
       .update(walkerProfiles)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...safeUpdates, updatedAt: new Date() })
       .where(eq(walkerProfiles.walkerId, walkerId))
       .returning();
 
