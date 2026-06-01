@@ -212,6 +212,56 @@
       };
     </script>
 
+    <script>
+      // PetWash stale-app-shell guard. Keep this inline so returning Safari
+      // users get the cleanup before any bundled app code runs.
+      (function petwashInlineCachePurge() {
+        var version = '2026-06-01-inline-signup-cache-purge';
+        if (!('serviceWorker' in navigator) && !('caches' in window)) return;
+
+        Promise.resolve()
+          .then(function () {
+            var tasks = [];
+            if ('serviceWorker' in navigator) {
+              tasks.push(
+                navigator.serviceWorker.getRegistrations()
+                  .then(function (registrations) {
+                    return Promise.all(registrations.map(function (registration) {
+                      return registration.unregister().catch(function () { return false; });
+                    })).then(function () { return registrations.length > 0; });
+                  })
+                  .catch(function () { return false; })
+              );
+            }
+
+            if ('caches' in window) {
+              tasks.push(
+                window.caches.keys()
+                  .then(function (names) {
+                    return Promise.all(names.map(function (name) {
+                      return window.caches.delete(name).catch(function () { return false; });
+                    })).then(function () { return names.length > 0; });
+                  })
+                  .catch(function () { return false; })
+              );
+            }
+
+            return Promise.all(tasks);
+          })
+          .then(function (results) {
+            if (!results.some(Boolean)) return;
+            try {
+              if (sessionStorage.getItem(version) === '1') return;
+              sessionStorage.setItem(version, '1');
+            } catch (e) {
+              // Private browsing can block sessionStorage; one reload is OK.
+            }
+            window.location.reload();
+          })
+          .catch(function () {});
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
 
     <!-- Google Analytics 4 — lazy loaded after first user interaction or 3 seconds.
