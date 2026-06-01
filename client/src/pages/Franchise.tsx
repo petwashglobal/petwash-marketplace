@@ -2,9 +2,7 @@
  * Franchise — public marketing page for PetWash franchise program.
  *
  * Owner direction 2026-05-24: the previous version of this page carried
- * invented numbers (an "ROI Calculator" with hardcoded $90,000 investment
- * / 500 customers / $35 ticket presented as if factual) plus empty
- * "Success Stories" / "Franchise Locations" arrays that read as fake.
+ * invented numbers and empty testimonial/location arrays that read as fake.
  * Under Israeli consumer-protection + Israeli franchise-disclosure law,
  * publishing made-up financial projections on a public page is at best
  * misleading and at worst illegal. Killed completely.
@@ -15,8 +13,8 @@
  *
  * Hard rules followed:
  *   - NO revenue projections.
- *   - NO claimed average ROI.
- *   - NO empty-array "success stories" / "locations" arrays.
+ *   - NO claimed average financial return.
+ *   - NO empty-array testimonial / location arrays.
  *   - NO "X stations sold" / "Y partners onboarded" stats.
  *   - NO greenwashing / activist tone (skill §0.4).
  *   - Eco appears ONLY as a supporting proof bullet, never headline.
@@ -60,7 +58,7 @@ const COPY = {
     fiveTruths: [
       { title: 'Human convenience', body: 'Older customers, apartment residents, families, renters, and anyone who cannot safely wash a dog at home.' },
       { title: 'Pet safety and comfort', body: 'A calm, controlled, clean, pet-safe experience. Soft water, gentle products, trained operators.' },
-      { title: 'Premium lifestyle', body: 'Modern, restrained, design-led. Apple, Tesla, Hermès-grade discipline in every customer surface.' },
+      { title: 'Premium lifestyle', body: 'Modern, restrained, design-led. Every customer surface must feel calm, premium, clear, and trustworthy.' },
       { title: 'Urban infrastructure value', body: 'Helps cities, councils, commercial centers, and residential towers offer a cleaner organized pet-care service.' },
       { title: 'Environmental + ecological value', body: 'Controlled washing instead of random home or street washing. Less dog hair in shared plumbing. Pet-safe organic products. Cleaner shared apartment living.' },
     ],
@@ -68,7 +66,7 @@ const COPY = {
     process: [
       { step: '01', title: 'Expression of interest', body: 'You submit a short application — capital range, target city, real-estate access, timeline.' },
       { step: '02', title: 'Site + commercial review', body: 'PetWash team reviews the proposed location, foot-traffic, infrastructure, and economics with you. Investment terms and the full information pack are shared at this step.' },
-      { step: '03', title: 'Agreement + commitment', body: 'Standard franchise agreement, site survey, training plan, and operational hand-off.' },
+      { step: '03', title: 'Agreement + commitment', body: 'NDA, partner agreement, site survey, training plan, supply/support responsibilities, insurance evidence, and operational hand-off.' },
       { step: '04', title: 'Deployment + opening', body: 'Station fabrication, installation, software activation, soft launch. Ongoing support from the PetWash team.' },
     ],
     eligibilityTitle: 'Who this is for',
@@ -81,19 +79,19 @@ const COPY = {
     notForTitle: 'Not a fit if you want',
     notFor: [
       'Quick-flip / short-hold investments. PetWash deployments are multi-year.',
-      'A franchise-in-a-box with zero local involvement. Operators are hands-on.',
+      'A box-only deal with zero local responsibility. Approved operators are hands-on.',
       'A side-hustle. The station + software + supply + brand layer is a real operating business.',
     ],
     citiesTitle: 'Cities accepting interest',
     citiesBody:
       'Israel-first deployment focus. We are reviewing site proposals in:',
     cities: ['Tel Aviv', 'Ramat Gan', 'Givatayim', 'Herzliya', 'Haifa', 'Jerusalem', 'Beer Sheva', 'Netanya', 'Rishon LeZion', 'Petah Tikva'],
-    citiesFooter: 'Other cities considered case by case. International expansion 2027+.',
+    citiesFooter: 'Other cities considered case by case. Any non-Israel activity requires separate legal/accountant/owner review.',
     legalTitle: 'Important — what we do NOT publish on this page',
     legal: [
-      'We do not publish revenue projections, average-customer assumptions, or ROI claims on a public page.',
+      'We do not publish revenue projections, average-customer assumptions, or return claims on a public page.',
       'Every commercial figure is shared during the site-review step with NDA — that is the responsible way to discuss franchise economics.',
-      'Earlier versions of this page included an "ROI calculator" with hardcoded numbers. That has been removed; we do not present invented data as fact.',
+      'Earlier versions of this page included hardcoded finance assumptions. That has been removed; we do not present invented data as fact.',
     ],
     contactTitle: 'Talk to the franchise team',
     contactBody:
@@ -119,7 +117,7 @@ const COPY = {
     fiveTruths: [
       { title: 'נוחות אנושית', body: 'לקוחות מבוגרים, דיירי דירות, משפחות, שוכרים, וכל מי שאינו יכול לרחוץ כלב בבית בצורה בטוחה.' },
       { title: 'בטיחות ונוחות החיה', body: 'חוויה רגועה, נקייה, מבוקרת ובטוחה. מים רכים, מוצרים עדינים, מפעילים מיומנים.' },
-      { title: 'אורח חיים פרימיום', body: 'מודרני, מאופק, מובל-עיצוב. דיסציפלינה ברמת Apple, Tesla, Hermès בכל ממשק לקוח.' },
+      { title: 'אורח חיים פרימיום', body: 'מודרני, מאופק ומובל-עיצוב. כל ממשק לקוח חייב להרגיש רגוע, יוקרתי, ברור ואמין.' },
       { title: 'ערך תשתית עירונית', body: 'מסייע לערים, רשויות, מרכזים מסחריים ומגדלי מגורים להציע שירות מסודר ונקי לבעלי חיות מחמד.' },
       { title: 'ערך סביבתי ואקולוגי', body: 'רחצה מבוקרת במקום רחצת רחוב או בית מאולתרת. פחות שיער כלבים באינסטלציה משותפת. מוצרים אורגניים. סביבה משותפת נקייה יותר.' },
     ],
@@ -149,9 +147,9 @@ const COPY = {
     citiesFooter: 'ערים נוספות נשקלות לפי מקרה. התרחבות בינלאומית מ-2027 ואילך.',
     legalTitle: 'חשוב — מה אנחנו לא מפרסמים בעמוד זה',
     legal: [
-      'אנו לא מפרסמים תחזיות הכנסה, הנחות לקוחות ממוצעים, או טענות ROI בעמוד ציבורי.',
+      'אנו לא מפרסמים תחזיות הכנסה, הנחות לקוחות ממוצעים או טענות תשואה בעמוד ציבורי.',
       'כל נתון מסחרי משותף בשלב סקירת האתר תחת NDA — זו הדרך האחראית לדון בכלכלת זיכיון.',
-      'גרסאות קודמות של עמוד זה כללו "מחשבון ROI" עם מספרים קבועים. הוסר; אנו לא מציגים נתונים בדויים כעובדה.',
+      'גרסאות קודמות של עמוד זה כללו הנחות פיננסיות קבועות. הוסר; אנו לא מציגים נתונים בדויים כעובדה.',
     ],
     contactTitle: 'דבר עם צוות הזיכיון',
     contactBody: 'שלח הודעה קצרה. כלול עיר יעד, יחסך למיקום (מפעיל / נדל"ן / רשות), ולוח הזמנים שלך. נחזיר בתוך חמישה ימי עסקים.',

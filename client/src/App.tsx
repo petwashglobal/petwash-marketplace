@@ -93,6 +93,7 @@ const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
 const ProviderSearchPage = lazy(() => import("@/pages/ProviderSearchPage"));
 const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
+const PrestigeInterestWaitlist = lazy(() => import("@/pages/PrestigeInterestWaitlist"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -880,6 +881,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* PetWash Prestige Club - Luxury Loyalty Landing */}
         <Route path="/prestige-club">
           {() => <PrestigeClub />}
+        </Route>
+        <Route path="/prestige/waitlist">
+          {() => <PrestigeInterestWaitlist />}
+        </Route>
+        <Route path="/prestige/apply">
+          {() => <PrestigeInterestWaitlist />}
         </Route>
 
         {/* PetWash Prestige Pass Wallet — luxury digital pass with live QR (auth required) */}

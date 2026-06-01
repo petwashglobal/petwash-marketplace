@@ -4,7 +4,7 @@
  * Two distinct token types — never mix them:
  *
  *   wallet-link  (72 hours)  — embedded in email / SMS / web links.
- *                               Routes: /api/pass/:token, /api/wallet/apple/:token, /api/wallet/google/:token
+ *                               Routes: /api/pass/:token, /api/pass/apple/:token, /api/pass/google/:token
  *                               Secret: PASS_LINK_SECRET
  *
  *   qr-redeem    (45 seconds) — lives inside the wallet barcode only.
@@ -20,6 +20,7 @@ import { logger } from './logger';
 
 const PASS_LINK_SECRET = process.env.PASS_LINK_SECRET || process.env.PRESTIGE_QR_SECRET || '';
 const PRESTIGE_QR_SECRET = process.env.PRESTIGE_QR_SECRET || '';
+const APPLE_PASS_AUTH_SECRET = process.env.APPLE_PASS_AUTH_SECRET || PASS_LINK_SECRET || PRESTIGE_QR_SECRET;
 
 export interface PassTokenPayload {
   passId: string;
@@ -110,6 +111,34 @@ export function verifyQrRedeemToken(token: string): PassTokenPayload {
   const payload = verify(token, PRESTIGE_QR_SECRET);
   if (payload.purpose !== 'qr-redeem') throw new Error('INVALID_PURPOSE');
   return payload;
+}
+
+// ─── Apple Pass Web-Service Auth Token (stable, non-PII) ─────────────────────
+
+export function buildApplePassAuthToken(
+  passId: string,
+  userId: string,
+  qrTokenVersion: number,
+): string {
+  if (!APPLE_PASS_AUTH_SECRET || APPLE_PASS_AUTH_SECRET.length < 16) {
+    throw new Error('APPLE_PASS_AUTH_SECRET_NOT_CONFIGURED');
+  }
+
+  return crypto
+    .createHmac('sha256', APPLE_PASS_AUTH_SECRET)
+    .update(['apple-pass', passId, userId, qrTokenVersion].join('|'))
+    .digest('base64url');
+}
+
+export function verifyApplePassAuthToken(
+  token: string,
+  passId: string,
+  userId: string,
+  qrTokenVersion: number,
+): boolean {
+  const expected = buildApplePassAuthToken(passId, userId, qrTokenVersion);
+  if (token.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
 }
 
 // ─── SendGrid member pass payload ─────────────────────────────────────────────
