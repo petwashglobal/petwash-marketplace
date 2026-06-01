@@ -1257,6 +1257,15 @@ jobs:
             "APPLE_WALLET_CERT=APPLE_WALLET_CERT:latest"
             "APPLE_WALLET_KEY=APPLE_WALLET_KEY:latest"
             "APPLE_WALLET_ORGANIZATION_NAME=APPLE_WALLET_ORGANIZATION_NAME:latest"
+            # SUMIT (Israeli tax / invoicing) credentials. SumitClient reads these
+            # at runtime. Same overwrite hazard as Apple above: with
+            # secrets_update_strategy=overwrite, omitting them here strips the
+            # manually-mounted Cloud Run values on every deploy. Keep them mapped so
+            # they persist. (SUMIT_ENABLED is a separate plain env, default off,
+            # until the staged canary — see docs/finance/sumit-activation-plan.md.)
+            "SUMIT_API_KEY=SUMIT_API_KEY:latest"
+            "SUMIT_COMPANY_ID=SUMIT_COMPANY_ID:latest"
+            "SUMIT_WEBHOOK_SECRET=SUMIT_WEBHOOK_SECRET:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
