@@ -28,9 +28,60 @@
 # ─── Financial / compliance ──────────────────────────────────────────────────
 /shared/schema-payments.ts                @petwashglobal/owners
 /shared/schema-billing.ts                 @petwashglobal/owners
+/shared/schema-finance.ts                 @petwashglobal/owners
 /shared/finance-identity.ts               @petwashglobal/owners
 /server/utils/sitterFeeCalculator.ts      @petwashglobal/owners
 /server/services/ProviderPayoutService.ts @petwashglobal/owners
 /server/services/EscrowService.ts         @petwashglobal/owners
+/server/services/WalletService.ts         @petwashglobal/owners
+/server/services/AuditLedgerService.ts    @petwashglobal/owners
+/server/services/BillingLedger.ts         @petwashglobal/owners
+/server/routes/prestige-pass.ts           @petwashglobal/owners
+/server/emailService.ts                   @petwashglobal/owners
+
+# ─── K9000 / Nayax / Tranzila sacred runtime (PR-AGENT-BOUNDARY) ─────────────
+# Hardware kiosks + Israeli payment processors. Visibility may be added by any
+# CTO PR; runtime behaviour change requires explicit CEO approval per
+# .claude/skills/petwash-platform/SKILL.md §2.
+/server/routes/k9000.ts                   @petwashglobal/owners
+/server/routes/nayax-monyx-events.ts      @petwashglobal/owners
+/server/nayaxFirestoreService.ts          @petwashglobal/owners
+/server/nayaxService.ts                   @petwashglobal/owners
+/server/routes/nayax-webhooks.ts          @petwashglobal/owners
+/server/services/K9000TransactionService.ts @petwashglobal/owners
+
+# ─── Schema (every migration is sacred) ──────────────────────────────────────
+# Adding a column counts. Renaming a column counts. New tables count.
+# See SKILL.md §2: "No schema migrations unless separately approved."
+/shared/schema.ts                         @petwashglobal/owners
+/shared/schema-*.ts                       @petwashglobal/owners
+/migrations/                              @petwashglobal/owners
+
+# ─── Auth, RBAC, CSRF, signatures (security-critical middleware) ─────────────
+/server/middleware/                       @petwashglobal/owners
+/server/lib/csrf.ts                       @petwashglobal/owners
+/server/lib/signatures.ts                 @petwashglobal/owners
+/server/lib/passwordless-auth.ts          @petwashglobal/owners
+/server/lib/firebase-auth.ts              @petwashglobal/owners
+/server/routes/social-oauth.ts            @petwashglobal/owners
+/server/routes/publicAuthRoutes.ts        @petwashglobal/owners
+/server/routes/mobile-auth.ts             @petwashglobal/owners
+
+# ─── Agent boundary enforcement (AGENT-OWNERSHIP.md PR #501) ─────────────────
+# CTO-only zone — server logic, routes, services. NOT for Chrome Claude,
+# NOT for Codex, NOT for any agent outside CTO. The agent-boundary-check
+# workflow at .github/workflows/agent-boundary-check.yml auto-comments on
+# violations; CODEOWNERS adds the hard gate. See docs/architecture/
+# AGENT-OWNERSHIP.md §1.1 for the full rules.
+/server/routes/                           @petwashglobal/owners
+/server/services/                         @petwashglobal/owners
+/server/                                  @petwashglobal/owners
+/scripts/                                 @petwashglobal/owners
+
+# ─── Docs that ARE the rules ─────────────────────────────────────────────────
+# These docs DEFINE the platform. Changing them changes the rules. Only the
+# CEO/owner can approve a rule change.
+/docs/architecture/AGENT-OWNERSHIP.md     @petwashglobal/owners
+/.claude/skills/                          @petwashglobal/owners
 
 # ─── If adding a new owner: append carefully, do not remove existing entries ─

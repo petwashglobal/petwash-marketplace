@@ -11,8 +11,8 @@ interface PrestigeWalletCTAProps {
  * Homepage Prestige Pass call-to-action.
  *
  * Membership-gated by design — a Prestige Wallet pass is a member artifact, so
- * anonymous visitors are routed to signup, never handed a pass:
- *   • logged-out          → "Join PetWash Prestige" → /signup
+ * anonymous visitors are routed to the 18+ interest gate, never handed a pass:
+ *   • logged-out          → "Join PetWash Prestige" → /prestige/waitlist
  *   • logged-in (member)  → Apple / Google Wallet buttons → /prestige-pass
  *
  * The /prestige-pass flow is the single source of truth for pass generation:
@@ -92,7 +92,7 @@ export default function PrestigeWalletCTA({ language }: PrestigeWalletCTAProps) 
             </div>
           ) : (
             <Link
-              href="/signup"
+              href="/prestige/waitlist"
               className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-[#1a1a1a] text-white text-sm font-medium tracking-[0.05em] uppercase hover:bg-[#333] transition-all duration-300"
               style={{ borderRadius: '10px' }}
               data-testid="cta-join-prestige"

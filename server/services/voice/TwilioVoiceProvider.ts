@@ -34,7 +34,7 @@ import type {
   VoiceResponse,
   VoiceResponseOpts,
 } from './MayaVoiceProvider';
-import { verifyTwilioSignature, buildPublicUrl } from './twilioHmac';
+import { verifyTwilioSignature, buildCandidatePublicUrls } from './twilioHmac';
 
 const SYSTEM_ACTOR: Maya.MayaActor = { type: 'system', id: 'voice-twilio' };
 
@@ -77,8 +77,15 @@ export class TwilioVoiceProvider implements MayaVoiceProvider {
       logger.warn({}, 'TwilioVoiceProvider: TWILIO_AUTH_TOKEN not set; rejecting');
       return false;
     }
-    const publicUrl = buildPublicUrl(req, this.getPublicUrlOverride());
-    return verifyTwilioSignature(req, { authToken, publicUrl });
+    // Try each known-legitimate public URL (apex/www/env base + proxy fallback).
+    // Behind Firebase Hosting → Cloud Run the request's Host header is the
+    // internal *.run.app address, so a single header-reconstructed URL never
+    // matches the petwash.co.il URL Twilio actually signed. Each candidate is
+    // still HMAC-verified, so this does not weaken the check.
+    const candidateUrls = buildCandidatePublicUrls(req, this.getPublicUrlOverride());
+    return candidateUrls.some((publicUrl) =>
+      verifyTwilioSignature(req, { authToken, publicUrl }),
+    );
   }
 
   // ---------------------------------------------------------------------------

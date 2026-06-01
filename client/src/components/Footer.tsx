@@ -71,6 +71,11 @@ export function Footer({ language }: FooterProps) {
                   {t('footer.disclaimer', language)}
                 </Link>
               </div>
+              <div>
+                <Link href="/legal/trademarks" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
+                  {language === 'he' ? 'סימני מסחר' : 'Trademarks'}
+                </Link>
+              </div>
             </nav>
           </div>
 

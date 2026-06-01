@@ -1,13 +1,32 @@
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/languageStore";
 import { MapPin, Building, ShoppingCart, Fuel, Coffee } from "lucide-react";
 
 export default function LocationPartners() {
+  const { language } = useLanguage();
+  const isHe = language === 'he';
+
   const locationTypes = [
-    { icon: ShoppingCart, name: "Shopping Centers", desc: "High foot traffic retail locations" },
-    { icon: Fuel, name: "Fuel Stations", desc: "Convenience stop pet wash services" },
-    { icon: Coffee, name: "Service Plazas", desc: "Highway rest stops and service areas" },
-    { icon: Building, name: "Business Parks", desc: "Corporate campus amenities" },
+    {
+      icon: ShoppingCart,
+      name: isHe ? 'מרכזי קניות' : 'Shopping Centers',
+      desc: isHe ? 'מיקומי מסחר עם תנועת לקוחות גבוהה.' : 'High foot traffic retail locations',
+    },
+    {
+      icon: Fuel,
+      name: isHe ? 'תחנות דלק' : 'Fuel Stations',
+      desc: isHe ? 'שירותי שטיפת חיות מחמד בעצירה נוחה.' : 'Convenience stop pet wash services',
+    },
+    {
+      icon: Coffee,
+      name: isHe ? 'מתחמי שירות' : 'Service Plazas',
+      desc: isHe ? 'תחנות מנוחה ואזורי שירות בכבישים מהירים.' : 'Highway rest stops and service areas',
+    },
+    {
+      icon: Building,
+      name: isHe ? 'פארקי עסקים' : 'Business Parks',
+      desc: isHe ? 'פתרונות שירות לקמפוסים עסקיים.' : 'Corporate campus amenities',
+    },
   ];
 
   return (
@@ -17,9 +36,13 @@ export default function LocationPartners() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full mb-4 luxury-shadow-lg luxury-animate-scale-in">
             <MapPin className="w-10 h-10 text-white" />
           </div>
-          <h1 className="luxury-heading-xl mb-4">Business Locations & Landlords</h1>
+          <h1 className="luxury-heading-xl mb-4">
+            {isHe ? 'מיקומים עסקיים ובעלי נכסים' : 'Business Locations & Landlords'}
+          </h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
-            Partner with ⁦Pet Wash™⁩ to add premium pet care amenities to your property
+            {isHe
+              ? 'הצטרפו ל-⁦Pet Wash™⁩ והוסיפו לנכס שלכם פתרון טיפוח חיות מחמד פרימיום.'
+              : 'Partner with ⁦Pet Wash™⁩ to add premium pet care amenities to your property'}
           </p>
         </div>
 
@@ -37,12 +60,16 @@ export default function LocationPartners() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-purple-500/10 to-pink-500/10 luxury-animate-fade-in luxury-delay-6">
-          <h2 className="luxury-heading-lg mb-4">Interested in Hosting a ⁦K9000™⁩ Station?</h2>
+          <h2 className="luxury-heading-lg mb-4">
+            {isHe ? 'מעוניינים לארח תחנת ⁦K9000™⁩?' : 'Interested in Hosting a ⁦K9000™⁩ Station?'}
+          </h2>
           <p className="luxury-text-body mb-6">
-            Add value to your property with premium pet care amenities
+            {isHe
+              ? 'הוסיפו ערך לנכס שלכם עם פתרון טיפוח חיות מחמד פרימיום.'
+              : 'Add value to your property with premium pet care amenities'}
           </p>
           <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-submit-enquiry">
-            Submit Partnership Enquiry
+            {isHe ? 'שלחו בקשת שותפות' : 'Submit Partnership Enquiry'}
           </Button>
         </div>
       </div>
