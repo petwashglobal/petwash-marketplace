@@ -119,6 +119,144 @@ auto-generated documents in CI behind a `SUMIT_DRYRUN=true` flag (don't
 fire the actual `create/` call) unless we explicitly opt into a paid
 test plan.
 
+### 1.6 PetWash merchant-account state audit (2026-05-25)
+
+From a screen-share of the live SUMIT merchant dashboard for
+**פט וואש בע"מ (ח.פ. 517145033)**. These are NOT API surface facts —
+they are configuration facts about OUR specific Sumit account that
+gate when `sumit.mode='api'` can actually do useful work. Without
+these resolved, even a perfectly correct `SumitClient` will fail or
+no-op on real calls.
+
+#### 🔴 BLOCKER — ITA (חשבוניות ישראל) connection: INACTIVE
+
+The Sumit settings page shows TWO connections to חשבוניות ישראל
+(Israel Tax Authority), both with:
+- Owner: **ניר חדד** (ID redacted, ending `4437`)
+- User: `nir.h@petwash.co.il`
+- **Status: "חיבור לא פעיל" (Connection NOT ACTIVE)**
+- Action available: "חידוש תוקף החיבור" (Renew connection validity)
+- Action available: "סגירת החיבור לרשות המיסים" (Close connection)
+
+**Two duplicate ITA connections** is a misconfig — they will race on
+SHAAM allocation lookups. One must be deleted before the other is
+renewed.
+
+**Impact while INACTIVE**:
+- SUMIT cannot fetch the SHAAM allocation number (מספר הקצאה) from
+  ITA on PetWash's behalf — the marketing claim that "SUMIT obtains
+  it for you" only works when this connection is GREEN.
+- Above-threshold `חשבונית מס` documents will be issued WITHOUT a
+  valid SHAAM allocation, which violates ITA rules for invoices
+  above the threshold (configurable, currently ~₪25,000 per single
+  document for 2026, subject to ITA updates).
+- ITA-side document confirmation webhooks (when ITA acknowledges a
+  document via SUMIT) will not fire.
+
+**Required operator action BEFORE flipping `sumit.mode='api'` in any
+environment that issues real invoices**:
+1. Open settings → connections (סטטוס חיבור לשירותים).
+2. Click "חידוש תוקף החיבור" on the connection you want to keep.
+3. Complete the OAuth re-auth (browser flow with tax-portal creds).
+4. DELETE the duplicate connection via "סגירת החיבור לרשות המיסים".
+5. Verify status flips to "פעיל" (active).
+
+#### 🔴 BLOCKER — UPay (card clearing): INACTIVE
+
+The Sumit settings page shows:
+> **"סטטוס סליקת אשראי בחשבון: סליקת האשראי אינה פעילה (UPay)"**
+> (Credit-card clearing status: card clearing is NOT ACTIVE — UPay)
+
+UPay is SUMIT's payment-processing arm (their alternative to
+Tranzila/CardCom/etc. for the actual card-clearing rail). Until
+UPay is activated on the merchant account, every endpoint under
+`/billing/payments/*` and `/billing/recurring/*` will return some
+flavor of "merchant not provisioned for clearing." This means
+Mission-11 (the actual Tranzila replacement via SUMIT card
+clearing) cannot start until UPay is GREEN.
+
+**Required operator action BEFORE Mission-11**:
+1. From the Sumit admin, locate the UPay activation flow (usually
+   labeled "פתיחת תיק סליקה" / "Activate UPay").
+2. Complete SUMIT's KYC for card clearing — this is a SEPARATE
+   process from the accounting-Sumit account. Expect 2–7 business
+   days for approval.
+3. Provide PCI scope documentation: SUMIT will need to know whether
+   PetWash holds card data (we don't — we use server-side proxying
+   to whichever processor) and which channels are involved
+   (marketplace bookings, K9000 station bypass, recurring on saved
+   tokens).
+4. Verify status flips to GREEN.
+
+#### ⚠️ ISSUE — Outbound sender email is a generic Sumit subdomain
+
+Sumit dashboard shows:
+> **"מיילים יוצאים יישלחו מהכתובת: c+1455151432@sumit.co.il"**
+
+When SUMIT auto-emails customers (invoice issued, receipt link,
+overdue reminder), the From address will be this auto-generated
+sumit.co.il subdomain. Customers will see what looks like a spam
+sender and trust will be lower.
+
+**Required operator action BEFORE inviting customer mail volume**:
+- Configure a branded sender like `billing@petwash.co.il` in Sumit.
+- Add the SPF / DKIM / DMARC TXT records SUMIT will require for
+  domain verification.
+
+#### ⚠️ ISSUE — SMS sender not configured
+
+Sumit dashboard shows:
+> **"לא מוגדר מספר לשליחת סמסים"** — no SMS sender number set.
+
+**Architectural recommendation: DO NOT configure SUMIT SMS.**
+
+PetWash already runs all customer-facing SMS through Twilio with
+a local Israeli number (e.g., `054-983-3355`). SUMIT's SMS module
+would emit messages through SUMIT's own SMS partner, with the
+caller-ID set to whatever number is entered in the SUMIT dashboard.
+
+Risks if SUMIT SMS were enabled using the PetWash Twilio number as
+sender ID:
+1. **Reply leakage** — customer replies route to whoever actually
+   owns the number (Twilio → PetWash backend), not to SUMIT. PetWash
+   backend receives an unsolicited reply it didn't initiate and
+   doesn't know how to handle.
+2. **ICTA compliance risk** — displaying a sender-ID at the
+   SMS-gateway level for a number you don't own at the SUMIT
+   side can violate Israeli telecom rules.
+
+Cleaner architecture (recommended):
+- All customer SMS originates from PetWash backend via Twilio.
+- SUMIT-originated events (invoice issued, payment received, etc.)
+  flow back to PetWash via the webhook receiver
+  (`POST /api/sumit/webhook`) — PetWash then dispatches the SMS
+  via Twilio with full reply handling and unified branding.
+
+#### ℹ️ NOTE — Single user account, single accountant
+
+Sumit account has:
+- **1 user** (Nir / `nir.h@petwash.co.il`) — fine for now; consider
+  inviting the CPA firm as a read-only "מייצג" user when ready.
+- **Accountant on file: "רו"ח קופרברג עזרא ושות'"** (Kuperberg
+  Ezra & Co. CPA) — confirmed. This is the firm that needs to
+  receive the supplier-invoice email pipeline (Mission-4
+  `ACCOUNTANT_EMAIL` env var should point here, with the firm's
+  intake email verified).
+
+#### Updated activation gate checklist
+
+The original §4 checklist (verify swagger schemas before flipping
+`SUMIT_SANDBOX='false'`) is necessary but NOT sufficient. Before
+ANY environment activates real SUMIT calls, this expanded set must
+all be green:
+
+- [ ] ITA connection GREEN, duplicates removed
+- [ ] UPay activated (only if intending to use SUMIT for card clearing)
+- [ ] Branded sender email configured + DNS verified
+- [ ] SMS — explicitly left DISABLED (PetWash sends all customer SMS)
+- [ ] Swagger schemas verified (§4 checklist below)
+- [ ] CPA firm has visibility on the test invoices that will flow
+
 ## 2. ASSUMED in Mission-5 (must verify before prod)
 
 These are the choices `SumitClient.createDocument` makes today based
