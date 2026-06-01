@@ -38,6 +38,8 @@ load-test-results.json
 *.key
 *.pem
 petwash-wallet.key
+*.pkpass
+*.pkpasses
 # Secrets files — never commit
 *.secrets*.txt
 .secrets-for-nir-only.txt

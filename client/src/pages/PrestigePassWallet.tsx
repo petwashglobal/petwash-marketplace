@@ -557,6 +557,7 @@ function DigitalCardSection({
   qrToken, secondsLeft, isGenerating, generateQr,
   setShowTopUpDialog, navigate,
   resendEmailMutation,
+  walletDownloadMutation,
   toast,
   petEditOpen, setPetEditOpen, petForm, setPetForm, savingPet, setSavingPet, queryClient,
 }: any) {
@@ -810,14 +811,14 @@ function DigitalCardSection({
             : 'Receive your PetWash Privilege in Apple Wallet and Google Wallet. Auto-updates automatically.'}
         </p>
         <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-          <a href={`/api/prestige-pass/apple-wallet?userId=${pass.userId}`} target="_blank" rel="noopener noreferrer"
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#000', color:'#fff', padding:'13px', borderRadius:'12px', textDecoration:'none', fontWeight:700, fontSize:'0.9rem' }}>
-            <span>🍎</span> {he ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet'}
-          </a>
-          <a href={`/api/prestige-pass/google-wallet?userId=${pass.userId}`} target="_blank" rel="noopener noreferrer"
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#4285F4', color:'#fff', padding:'13px', borderRadius:'12px', textDecoration:'none', fontWeight:700, fontSize:'0.9rem' }}>
-            <span>🔵</span> {he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
-          </a>
+          <button onClick={() => walletDownloadMutation.mutate('apple')} disabled={walletDownloadMutation.isPending}
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#000', color:'#fff', padding:'13px', borderRadius:'12px', border:'none', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer', fontWeight:700, fontSize:'0.9rem' }}>
+            <span>🍎</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
+          </button>
+          <button onClick={() => walletDownloadMutation.mutate('google')} disabled={walletDownloadMutation.isPending}
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#4285F4', color:'#fff', padding:'13px', borderRadius:'12px', border:'none', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer', fontWeight:700, fontSize:'0.9rem' }}>
+            <span>🔵</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet')}
+          </button>
           <button onClick={() => resendEmailMutation.mutate()} disabled={resendEmailMutation.isPending}
             style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.3)', color:'#B8941F', padding:'12px', borderRadius:'12px', cursor:'pointer', fontWeight:600, fontSize:'0.85rem' }}>
             <Clock size={15} />
@@ -1171,6 +1172,25 @@ export default function PrestigePassWallet() {
     onError: () => toast({ title: he ? 'שגיאת רשת' : 'Network error', variant:'destructive' }),
   });
 
+  const walletDownloadMutation = useMutation({
+    mutationFn: async (platform: 'apple' | 'google') => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/generate-wallet-links', {});
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || 'Wallet link unavailable');
+      const url = platform === 'apple' ? data.appleWalletUrl : data.googleWalletUrl;
+      if (!url) throw new Error('Wallet provider is not configured for this pass yet');
+      return url as string;
+    },
+    onSuccess: (url) => {
+      window.location.assign(url);
+    },
+    onError: (err: any) => toast({
+      title: he ? 'Wallet לא זמין' : 'Wallet unavailable',
+      description: err?.message || (he ? 'לא ניתן ליצור קישור Wallet כרגע.' : 'Could not create a Wallet link right now.'),
+      variant: 'destructive',
+    }),
+  });
+
   // ── Loading ──
   if (isLoading) {
     return (
@@ -1393,6 +1413,7 @@ export default function PrestigePassWallet() {
           setShowTopUpDialog={setShowTopUpDialog}
           navigate={navigate}
           resendEmailMutation={resendEmailMutation}
+          walletDownloadMutation={walletDownloadMutation}
           toast={toast}
           petEditOpen={petEditOpen}
           setPetEditOpen={setPetEditOpen}

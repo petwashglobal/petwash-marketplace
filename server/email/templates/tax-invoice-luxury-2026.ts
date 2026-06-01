@@ -3,7 +3,7 @@
  *
  * Type: LEGAL DOCUMENT — NO unsubscribe footer (it's a legal tax doc)
  * NO emoji in finance/legal emails (Israeli Tax Authority requirement)
- * ח.פ. 515895671 MUST appear prominently in body
+ * ח.פ. 517145033 MUST appear prominently in body
  * BCC: support@petwash.co.il on all legal documents
  * Bilingual: Hebrew primary + English secondary
  *
@@ -16,7 +16,7 @@
 
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
-import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { COMPANY_TAX_ID, ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 // Brand tokens — legal doc uses muted palette, no gold gradient
 const HEADER_BG   = '#0F0F0F';
@@ -33,9 +33,18 @@ const GOLD_FADE   = '#F5EDD8';
 const VAT_RATE    = ISRAEL_VAT_RATE;
 const BUSINESS_HE = 'פט ווש בע"מ';
 const BUSINESS_EN = 'Pet Wash Ltd';
-const COMPANY_REG = '515895671';
+const COMPANY_REG = COMPANY_TAX_ID;
 const COMPANY_ADDRESS_HE = 'ישראל';
-const NOREPLY     = 'noreply@petwash.co.il';
+const NOREPLY     = SUPPORT_EMAIL;
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 function formatILS(cents: number): string {
   return `₪${(cents / 100).toFixed(2)}`;
@@ -74,6 +83,12 @@ export interface TaxInvoiceParams {
 export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
   const lang = p.language ?? 'he';
   const isHe = lang === 'he';
+  const customerName = escapeHtml(p.customerName);
+  const customerEmail = escapeHtml(p.customerEmail);
+  const customerAddress = p.customerAddress ? escapeHtml(p.customerAddress) : '';
+  const customerTaxId = p.customerTaxId ? escapeHtml(p.customerTaxId) : '';
+  const orderId = escapeHtml(p.orderId);
+  const paymentMethod = p.paymentMethod ? escapeHtml(p.paymentMethod) : '';
   const invoiceTypeLabel = {
     tax_invoice: { he: 'חשבונית מס', en: 'Tax Invoice' },
     receipt:     { he: 'קבלה', en: 'Receipt' },
@@ -85,10 +100,11 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
   const itemRows = p.items.map((item, i) => {
     const bg = i % 2 === 0 ? BODY_BG : STRIPE_BG;
     const netUnit = Math.round(item.unitPriceCents / (1 + VAT_RATE));
+    const description = escapeHtml(item.description);
     return `
     <tr style="background:${bg}">
       <td style="padding:10px 12px;font-size:13px;color:${TEXT_PRI};direction:rtl;border-bottom:1px solid ${DIVIDER}">
-        ${item.description}
+        ${description}
       </td>
       <td align="center" style="padding:10px 8px;font-size:13px;color:${TEXT_SEC};border-bottom:1px solid ${DIVIDER};width:50px">
         ${item.quantity}
@@ -105,13 +121,13 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
     </tr>`;
   }).join('');
 
-  const customerTaxRow = p.customerTaxId ? `
+  const customerTaxRow = customerTaxId ? `
     <tr>
       <td style="padding:4px 0;direction:rtl">
-        <span style="font-size:12px;color:${TEXT_DIM}">${isHe ? 'מס' עסק/עוסק לקוח' : 'Customer Tax ID'}</span>
+        <span style="font-size:12px;color:${TEXT_DIM}">${isHe ? 'מספר עוסק / ח.פ. לקוח' : 'Customer Tax ID'}</span>
       </td>
       <td style="padding:4px 0">
-        <span style="font-size:12px;color:${TEXT_PRI};font-family:monospace">${p.customerTaxId}</span>
+        <span style="font-size:12px;color:${TEXT_PRI};font-family:monospace">${customerTaxId}</span>
       </td>
     </tr>` : '';
 
@@ -146,7 +162,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
               <tr>
                 <td style="padding:4px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15)">
                   <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">
-                    ${isHe ? 'מס' חשבונית' : 'Invoice No.'}
+                    ${isHe ? 'מספר חשבונית' : 'Invoice No.'}
                   </div>
                   <div style="font-size:16px;font-weight:700;color:#fff;font-family:monospace">
                     ${padInvoice(p.invoiceNumber)}
@@ -171,7 +187,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
           <!-- Supplier (us) -->
           <td width="50%" style="vertical-align:top;direction:rtl">
             <div style="font-size:11px;font-weight:700;color:${TEXT_DIM};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
-              ${isHe ? 'מוכר / שורת השירות' : 'Seller'}
+              ${isHe ? 'מוכר / נותן השירות' : 'Seller'}
             </div>
             <div style="font-size:13px;color:${TEXT_PRI};line-height:1.7">
               <strong>${BUSINESS_HE}</strong><br/>
@@ -186,11 +202,11 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
               ${isHe ? 'לקוח' : 'Customer'}
             </div>
             <div style="font-size:13px;color:${TEXT_PRI};line-height:1.7">
-              ${p.customerName}<br/>
-              ${p.customerEmail}
-              ${p.customerAddress ? '<br/>' + p.customerAddress : ''}
+              ${customerName}<br/>
+              ${customerEmail}
+              ${customerAddress ? '<br/>' + customerAddress : ''}
             </div>
-            ${p.customerTaxId ? `
+            ${customerTaxId ? `
             <table cellpadding="0" cellspacing="0" style="margin-top:8px">
               ${customerTaxRow}
             </table>` : ''}
@@ -205,8 +221,8 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
   <tr>
     <td style="padding:12px 32px;background:${STRIPE_BG};border-bottom:1px solid ${DIVIDER};direction:rtl">
       <span style="font-size:12px;color:${TEXT_DIM}">
-        ${isHe ? 'מס' הזמנה' : 'Order ref.'}: 
-        <strong style="font-family:monospace">${p.orderId}</strong>
+        ${isHe ? 'מספר הזמנה' : 'Order ref.'}:
+        <strong style="font-family:monospace">${orderId}</strong>
         ${p.orderDate ? ` &nbsp;|  ${formatDate(p.orderDate)}` : ''}
       </span>
     </td>
@@ -246,7 +262,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
         <tr>
           <td style="padding:10px 12px;direction:rtl">
             <span style="font-size:13px;color:${TEXT_SEC}">
-              ${isHe ? 'סער ללא מע"מ' : 'Net amount (ex. VAT)'}
+              ${isHe ? 'סכום ללא מע"מ' : 'Net amount (ex. VAT)'}
             </span>
           </td>
           <td style="padding:10px 12px">
@@ -280,7 +296,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
           <td colspan="2" style="padding:8px 12px;border-top:1px solid ${DIVIDER};direction:rtl">
             <span style="font-size:11px;color:${TEXT_DIM}">
               ${isHe
-                ? `ח.פ. ${COMPANY_REG} | רשום למע"מ בישראל | שיעור מע"ם: ${vatPercent}%`
+                ? `ח.פ. ${COMPANY_REG} | רשום למע"מ בישראל | שיעור מע"מ: ${vatPercent}%`
                 : `Reg. No. ${COMPANY_REG} | Registered for VAT in Israel | VAT rate: ${vatPercent}%`}
             </span>
           </td>
@@ -290,12 +306,12 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
   </tr>
 
   <!-- PAYMENT METHOD (if provided) -->
-  ${p.paymentMethod ? `
+  ${paymentMethod ? `
   <tr>
     <td style="padding:0 32px 24px;direction:rtl">
       <div style="font-size:12px;color:${TEXT_DIM}">
         ${isHe ? 'אמצעי תשלום' : 'Payment method'}: 
-        <strong style="color:${TEXT_SEC}">${p.paymentMethod}</strong>
+        <strong style="color:${TEXT_SEC}">${paymentMethod}</strong>
       </div>
     </td>
   </tr>` : ''}
@@ -305,10 +321,10 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
     <td style="padding:16px 32px;background:${STRIPE_BG};border-top:1px solid ${DIVIDER};direction:rtl">
       <p style="margin:0;font-size:11px;color:${TEXT_DIM};line-height:1.6">
         ${isHe
-          ? `מסמך זה הוא חשבונית מס בהתאם לתקנות מע"ם התשש"ץ-2024.
-             לשמירת המסמך לצרכי מס וחשבונאות. אנא צור קשר לפני ביטול / גיוס בתוך 30 יום.`
-          : `This document constitutes a tax invoice per Israeli VAT Regulations 5736-1976 (as amended 2024).
-             Retain for tax and accounting purposes. Contact us within 30 days for any corrections or disputes.`}
+          ? `מסמך זה הוא מסמך חשבונאי/מס בהתאם לדין הישראלי ולנתוני העסק המאושרים במערכת.
+             יש לשמור את המסמך לצרכי מס וחשבונאות. לכל תיקון או בירור נא לפנות לתמיכה.`
+          : `This document is an accounting/tax document issued according to Israeli law and the approved business data in the system.
+             Retain for tax and accounting purposes. Contact support for corrections or questions.`}
       </p>
     </td>
   </tr>

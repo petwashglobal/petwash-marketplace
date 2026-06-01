@@ -57,7 +57,10 @@ async function buildPrestigePassWalletUrls(
 ): Promise<{ appleWalletUrl: string | null; googleWalletUrl: string | null }> {
   try {
     const [acc] = await db
-      .select({ passId: petwashPassAccounts.passId })
+      .select({
+        passId: petwashPassAccounts.passId,
+        qrTokenVersion: petwashPassAccounts.qrTokenVersion,
+      })
       .from(petwashPassAccounts)
       .where(eq(petwashPassAccounts.userId, userId))
       .limit(1);
@@ -68,7 +71,7 @@ async function buildPrestigePassWalletUrls(
       return { appleWalletUrl: null, googleWalletUrl: null };
     }
 
-    const token = buildPassLinkToken({ passId, userId });
+    const token = buildPassLinkToken(passId, userId, acc.qrTokenVersion ?? 1);
     if (!token) {
       logger.warn('[PrestigePass] buildPrestigePassWalletUrls — PASS_LINK_SECRET not configured');
       return { appleWalletUrl: null, googleWalletUrl: null };

@@ -1,295 +1,198 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Smartphone, Download, Apple, CheckCircle, QrCode, Zap, Shield } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useLanguage } from "@/lib/languageStore";
+import type { ReactNode } from "react";
+import {
+  Apple,
+  CheckCircle2,
+  Globe2,
+  LogIn,
+  Mail,
+  ShieldCheck,
+  Smartphone,
+  Wallet,
+} from "lucide-react";
 import { SiAndroid } from "react-icons/si";
 import { useLocation } from "wouter";
 
+type WalletStep = {
+  title: string;
+  copy: string;
+};
+
 export default function WalletDownload() {
   const { language } = useLanguage();
-  const isHebrew = language === 'he';
+  const { user, loading } = useFirebaseAuth();
   const [, setLocation] = useLocation();
+  const he = language === "he";
 
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
+  const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+  const isAndroid = /Android/i.test(userAgent);
+
+  const steps: WalletStep[] = he
+    ? [
+        { title: "נרשמים ומאמתים", copy: "שם מלא, מעל גיל 18, אימייל ונייד מאומתים לפני יצירת כרטיס." },
+        { title: "מאשרים שימוש ב-Wallet", copy: "המשתמש נותן הסכמה ברורה לכרטיס דיגיטלי, עדכונים ותנאי Pet Wash Ltd." },
+        { title: "מורידים מהמקום הנכון", copy: "iPhone מקבל Apple Wallet, Android/Galaxy מקבל Google Wallet, ומכשיר ללא Wallet מקבל כרטיס Web מאובטח." },
+      ]
+    : [
+        { title: "Register and verify", copy: "Full name, over-18 confirmation, verified email and verified mobile before pass issue." },
+        { title: "Consent to Wallet", copy: "The member gives clear consent for the digital pass, updates, and Pet Wash Ltd terms." },
+        { title: "Download from one place", copy: "iPhone gets Apple Wallet, Android/Galaxy gets Google Wallet, and no-Wallet devices get a secure web card." },
+      ];
+
+  const goToPass = () => setLocation("/prestige-pass");
+  const goToSignup = () => setLocation("/signup?flow=prestige&returnTo=/prestige-pass");
+  const goToSignin = () => setLocation("/signin?returnTo=/prestige-pass");
 
   return (
-    <div className="min-h-screen luxury-bg-mesh">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-24">
-          <div className="text-center mb-16 luxury-animate-fade-in">
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <Smartphone className="w-16 h-16 text-blue-600 dark:text-blue-400" />
+    <main className="min-h-screen bg-[#fbfaf7] text-[#111111]" dir={he ? "rtl" : "ltr"}>
+      <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-5 py-10 sm:px-8">
+        <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#b0841c]/35 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#8a6414] shadow-sm">
+              <ShieldCheck className="h-4 w-4" />
+              {he ? "PetWash Prestige Wallet" : "PetWash Prestige Wallet"}
             </div>
-            
-            <h1 className="luxury-heading-xl mb-6">
-              {isHebrew ? 'כרטיס ה-VIP שלך ב-Wallet' : 'Your VIP Card in Wallet'}
-            </h1>
-            
-            <p className="luxury-text-body max-w-3xl mx-auto mb-8">
-              {isHebrew 
-                ? 'הורד את כרטיס ה-VIP והביקור הדיגיטלי שלך ישירות ל-Apple Wallet או Google Wallet. תמיד זמין, תמיד מאובטח.'
-                : 'Download your VIP loyalty and digital business cards directly to Apple Wallet or Google Wallet. Always available, always secure.'}
-            </p>
 
-            {/* Device Detection Banner */}
-            {isIOS && (
-              <div className="inline-flex items-center gap-3 px-6 py-3 bg-black text-white rounded-full text-lg font-medium shadow-lg">
-                <Apple className="w-6 h-6" />
-                <span>{isHebrew ? 'נמצא iPhone - מוכן ל-Apple Wallet!' : 'iPhone Detected - Ready for Apple Wallet!'}</span>
-              </div>
-            )}
-            
-            {isAndroid && (
-              <div className="inline-flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-full text-lg font-medium shadow-lg">
-                <SiAndroid className="w-6 h-6" />
-                <span>{isHebrew ? 'נמצא Android - מוכן ל-Google Wallet!' : 'Android Detected - Ready for Google Wallet!'}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Coming Soon Banner */}
-          <div className="flex flex-col items-center justify-center mb-16 luxury-animate-fade-in luxury-delay-1">
-            <div className="relative w-full max-w-2xl">
-              {/* Premium Glass Card */}
-              <div 
-                className="relative overflow-hidden rounded-3xl p-8 sm:p-12 text-center"
-                style={{
-                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,248,250,0.95) 100%)',
-                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
-                  border: '1px solid rgba(198,166,100,0.2)',
-                }}
-              >
-                {/* Holographic Shimmer */}
-                <div 
-                  className="absolute inset-0 opacity-30 pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(125deg, transparent 0%, rgba(198,166,100,0.2) 25%, transparent 50%, rgba(198,166,100,0.15) 75%, transparent 100%)',
-                    backgroundSize: '200% 200%',
-                    animation: 'shimmer 3s ease-in-out infinite',
-                  }}
-                />
-                
-                <div className="relative z-10">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 mb-6">
-                    <Smartphone className="w-10 h-10 text-amber-600" />
-                  </div>
-                  
-                  <div className="inline-block px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-sm font-semibold mb-4">
-                    {isHebrew ? 'בקרוב' : 'COMING SOON'}
-                  </div>
-                  
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-                    {isHebrew ? 'Apple Wallet & Google Wallet' : 'Apple Wallet & Google Wallet'}
-                  </h2>
-                  
-                  <p className="text-gray-600 max-w-md mx-auto mb-8">
-                    {isHebrew 
-                      ? 'אנחנו עובדים על אינטגרציה מלאה עם Apple Wallet ו-Google Wallet. הכרטיסים הדיגיטליים שלכם יהיו זמינים בקרוב!'
-                      : "We're working on full integration with Apple Wallet and Google Wallet. Your digital cards will be available soon!"}
-                  </p>
-
-                  {/* View Loyalty Dashboard Link */}
-                  <Button 
-                    onClick={() => setLocation('/loyalty/dashboard')}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black text-white font-medium hover:bg-gray-900 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                    data-testid="link-loyalty-dashboard"
-                  >
-                    <CreditCard className="w-5 h-5" />
-                    {isHebrew ? 'צפייה בכרטיס ה-VIP שלי' : 'View My VIP Card'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-2">
-              <CardHeader>
-                <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mb-4">
-                  <CreditCard className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                </div>
-                <CardTitle className="text-xl">
-                  {isHebrew ? 'כרטיס VIP יוקרתי' : 'Luxury VIP Card'}
-                </CardTitle>
-                <CardDescription>
-                  {isHebrew 
-                    ? 'עיצוב בסגנון כרטיס בנק פרימיום עם עדכוני נקודות בזמן אמת'
-                    : 'Premium bank-card style design with real-time points updates'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'עדכונים אוטומטיים' : 'Automatic updates'}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? '4 רמות VIP' : '4 VIP tiers'}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'הנחות בלעדיות' : 'Exclusive discounts'}</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-3">
-              <CardHeader>
-                <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900 rounded-2xl flex items-center justify-center mb-4">
-                  <QrCode className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                </div>
-                <CardTitle className="text-xl">
-                  {isHebrew ? 'QR מהיר' : 'Quick QR Scan'}
-                </CardTitle>
-                <CardDescription>
-                  {isHebrew 
-                    ? 'סרוק בתחנות Pet Wash לתשלום מיידי עם ההנחה שלך'
-                    : 'Scan at Pet Wash stations for instant payment with your discount'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'תשלום ללא מגע' : 'Contactless payment'}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'תואם Nayax' : 'Nayax compatible'}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'גישה מהירה' : 'Lock screen access'}</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-4">
-              <CardHeader>
-                <div className="w-14 h-14 bg-pink-100 dark:bg-pink-900 rounded-2xl flex items-center justify-center mb-4">
-                  <Shield className="w-8 h-8 text-pink-600 dark:text-pink-400" />
-                </div>
-                <CardTitle className="text-xl">
-                  {isHebrew ? 'מאובטח לחלוטין' : 'Totally Secure'}
-                </CardTitle>
-                <CardDescription>
-                  {isHebrew 
-                    ? 'הצפנה ברמת בנק עם אימות קריפטוגרפי'
-                    : 'Bank-level encryption with cryptographic authentication'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'הצפנה 256-bit' : '256-bit encryption'}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'אימות Firebase' : 'Firebase auth'}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>{isHebrew ? 'תקן ISO 27001' : 'ISO 27001 compliant'}</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* How It Works */}
-          <div className="mt-20 max-w-4xl mx-auto luxury-animate-fade-in luxury-delay-5">
-            <h2 className="luxury-heading-lg text-center mb-12">
-              {isHebrew ? 'איך זה עובד?' : 'How It Works?'}
-            </h2>
-            
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 luxury-shadow-md">
-                  1
-                </div>
-                <h3 className="luxury-heading-sm mb-2">
-                  {isHebrew ? 'לחץ להורדה' : 'Click Download'}
-                </h3>
-                <p className="luxury-text-body">
-                  {isHebrew 
-                    ? 'בחר Apple Wallet או Google Wallet לפי המכשיר שלך'
-                    : 'Choose Apple Wallet or Google Wallet for your device'}
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 luxury-shadow-md">
-                  2
-                </div>
-                <h3 className="luxury-heading-sm mb-2">
-                  {isHebrew ? 'התחבר לחשבון' : 'Sign In'}
-                </h3>
-                <p className="luxury-text-body">
-                  {isHebrew 
-                    ? 'התחבר כדי לקבל את כרטיס ה-VIP האישי שלך'
-                    : 'Sign in to get your personalized VIP card'}
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 luxury-shadow-md">
-                  3
-                </div>
-                <h3 className="luxury-heading-sm mb-2">
-                  {isHebrew ? 'השתמש בתחנות' : 'Use at Stations'}
-                </h3>
-                <p className="luxury-text-body">
-                  {isHebrew 
-                    ? 'סרוק את ה-QR מהכרטיס שלך בתחנות Pet Wash'
-                    : 'Scan the QR from your card at Pet Wash stations'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom CTA */}
-          <div className="mt-20 text-center luxury-animate-fade-in luxury-delay-6">
-            <div className="inline-block p-8 luxury-glass-card luxury-shadow-xl rounded-3xl">
-              <h3 className="luxury-heading-lg mb-4">
-                {isHebrew ? 'מוכן להתחיל?' : 'Ready to Start?'}
-              </h3>
-              <p className="luxury-text-body mb-6">
-                {isHebrew 
-                  ? 'הצטרף לאלפי לקוחות VIP שכבר נהנים מחוויית Wallet דיגיטלית'
-                  : 'Join thousands of VIP customers already enjoying the digital Wallet experience'}
+            <div className="space-y-4">
+              <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-black sm:text-5xl lg:text-6xl">
+                {he ? "כרטיס PetWash שלך, במקום אחד." : "Your PetWash pass, in one trusted place."}
+              </h1>
+              <p className="max-w-2xl text-base leading-7 text-[#4b4b4b] sm:text-lg">
+                {he
+                  ? "זה שער ההורדה הרשמי. אין כרטיסים מזויפים ואין מספרים ידניים: המשתמש נרשם, מאמת נייד ואימייל, נותן הסכמה, ואז מוריד את הכרטיס המתאים למכשיר."
+                  : "This is the official download gateway. No fake passes and no manual numbers: the member registers, verifies mobile and email, consents, then downloads the correct pass for their device."}
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="lg" 
-                  className="luxury-btn-primary luxury-shadow-xl text-lg px-8 py-6"
-                  onClick={() => setLocation('/loyalty/dashboard')}
-                  data-testid="button-get-started"
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  {isHebrew ? 'התחל עכשיו' : 'Get Started Now'}
-                </Button>
-                
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className="luxury-btn-secondary text-lg px-8 py-6"
-                  onClick={() => setLocation('/team-cards')}
-                  data-testid="button-team-cards"
-                >
-                  {isHebrew ? 'כרטיסי הצוות שלנו' : 'Our Team Cards'}
-                </Button>
-              </div>
             </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {user ? (
+                <Button
+                  className="h-[52px] rounded-full bg-black px-7 text-base font-semibold text-white hover:bg-[#242424]"
+                  onClick={goToPass}
+                  disabled={loading}
+                  data-testid="button-open-prestige-pass"
+                >
+                  <Wallet className="mr-2 h-5 w-5" />
+                  {he ? "פתח את הכרטיס שלי" : "Open My Prestige Pass"}
+                </Button>
+              ) : (
+                <Button
+                  className="h-[52px] rounded-full bg-black px-7 text-base font-semibold text-white hover:bg-[#242424]"
+                  onClick={goToSignup}
+                  disabled={loading}
+                  data-testid="button-join-prestige-wallet"
+                >
+                  <Wallet className="mr-2 h-5 w-5" />
+                  {he ? "הצטרפות והורדת Wallet" : "Join and Download Wallet"}
+                </Button>
+              )}
+
+              {!user && (
+                <Button
+                  variant="outline"
+                  className="h-[52px] rounded-full border-[#b0841c]/45 bg-white px-7 text-base font-semibold text-black hover:bg-[#fff8e7]"
+                  onClick={goToSignin}
+                  disabled={loading}
+                  data-testid="button-signin-prestige-wallet"
+                >
+                  <LogIn className="mr-2 h-5 w-5" />
+                  {he ? "כבר חבר? התחברות" : "Already a member? Sign in"}
+                </Button>
+              )}
+            </div>
+
+            {(isIOS || isAndroid) && (
+              <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-[#2a2a2a] shadow-sm ring-1 ring-black/5">
+                {isIOS ? <Apple className="h-5 w-5" /> : <SiAndroid className="h-5 w-5 text-[#3ddc84]" />}
+                {isIOS
+                  ? he ? "זוהה iPhone: אחרי התחברות, הכפתור יוריד Apple Wallet." : "iPhone detected: after sign-in, the button downloads Apple Wallet."
+                  : he ? "זוהה Android: אחרי התחברות, הכפתור יפתח Google Wallet." : "Android detected: after sign-in, the button opens Google Wallet."}
+              </div>
+            )}
           </div>
+
+          <Card className="overflow-hidden rounded-[28px] border border-[#b0841c]/25 bg-white shadow-[0_24px_70px_rgba(20,20,20,0.12)]">
+            <CardContent className="p-0">
+              <div className="border-b border-[#f0e3bf] bg-gradient-to-br from-white via-[#fffdf8] to-[#f8f4ea] p-6 sm:p-8">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#b0841c]">
+                      {he ? "הורדה חכמה" : "Smart download"}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-black">
+                      {he ? "מה קורה כשמשתמש לוחץ?" : "What happens when a user taps?"}
+                    </h2>
+                  </div>
+                  <Smartphone className="h-10 w-10 text-[#b0841c]" />
+                </div>
+
+                <div className="space-y-4">
+                  {steps.map((step, index) => (
+                    <div key={step.title} className="flex gap-4 rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#b0841c] text-sm font-bold text-white">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-black">{step.title}</h3>
+                        <p className="mt-1 text-sm leading-6 text-[#5c5c5c]">{step.copy}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-0 divide-y divide-[#f0e3bf] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                <WalletTarget
+                  icon={<Apple className="h-7 w-7" />}
+                  title="Apple Wallet"
+                  copy={he ? "iPhone ו-iPad. הקובץ נפתח ישירות בארנק Apple." : "iPhone and iPad. The pass opens directly in Apple Wallet."}
+                />
+                <WalletTarget
+                  icon={<SiAndroid className="h-7 w-7 text-[#3ddc84]" />}
+                  title="Google Wallet"
+                  copy={he ? "Android, Samsung Galaxy ומכשירי Google Play." : "Android, Samsung Galaxy, and Google Play devices."}
+                />
+                <WalletTarget
+                  icon={<Globe2 className="h-7 w-7" />}
+                  title={he ? "כרטיס Web" : "Secure Web Card"}
+                  copy={he ? "גיבוי למכשירים ללא Apple/Google Wallet, כולל QR מאובטח." : "Fallback for devices without Apple/Google Wallet, with secure QR."}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        <div className="mt-8 grid gap-4 rounded-[24px] border border-black/10 bg-white p-5 text-sm text-[#4b4b4b] shadow-sm md:grid-cols-3">
+          <TrustNote icon={<CheckCircle2 className="h-5 w-5 text-[#b0841c]" />} text={he ? "הורדת Wallet מתבצעת רק אחרי אימות והרשאה." : "Wallet download happens only after verification and consent."} />
+          <TrustNote icon={<ShieldCheck className="h-5 w-5 text-[#b0841c]" />} text={he ? "אם ספק Apple/Google לא מוגדר, המערכת נכשלת נקי ולא מזייפת כרטיס." : "If Apple/Google provider is not configured, the system fails cleanly and never fakes a pass."} />
+          <TrustNote icon={<Mail className="h-5 w-5 text-[#b0841c]" />} text={he ? "אפשר לשלוח לינק מאובטח גם באימייל אחרי התחברות." : "A secure pass link can also be sent by email after sign-in."} />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function WalletTarget({ icon, title, copy }: { icon: ReactNode; title: string; copy: string }) {
+  return (
+    <div className="p-6">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fff7e3] text-black ring-1 ring-[#b0841c]/25">
+        {icon}
       </div>
+      <h3 className="text-base font-semibold text-black">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#616161]">{copy}</p>
+    </div>
+  );
+}
+
+function TrustNote({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 shrink-0">{icon}</div>
+      <p className="leading-6">{text}</p>
     </div>
   );
 }
