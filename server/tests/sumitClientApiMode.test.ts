@@ -49,15 +49,17 @@ describe('SumitClient — sandbox-by-default safety', () => {
   beforeEach(() => clearSumitEnv());
   afterEach(() => clearSumitEnv());
 
-  it('health() reports sandbox URL when SUMIT_SANDBOX is unset (defaults sandbox)', () => {
+  it('health() reports the single api host when SUMIT_SANDBOX is unset', () => {
     setSumitEnv();
     const h = new SumitClient().health();
-    expect(h.baseUrl).toBe('https://sandbox-api.sumit.co.il');
+    // SUMIT exposes ONE host. Sandbox vs production is the credential pair,
+    // not the URL. (sandbox-api.sumit.co.il never existed — NXDOMAIN.)
+    expect(h.baseUrl).toBe('https://api.sumit.co.il');
   });
 
-  it('health() reports sandbox URL when SUMIT_SANDBOX="true"', () => {
+  it('health() reports the api host even when SUMIT_SANDBOX="true" (host is not sandbox-selected)', () => {
     setSumitEnv({ SUMIT_SANDBOX: 'true' });
-    expect(new SumitClient().health().baseUrl).toBe('https://sandbox-api.sumit.co.il');
+    expect(new SumitClient().health().baseUrl).toBe('https://api.sumit.co.il');
   });
 
   it('health() flips to production URL only when SUMIT_SANDBOX="false"', () => {
@@ -65,13 +67,20 @@ describe('SumitClient — sandbox-by-default safety', () => {
     expect(new SumitClient().health().baseUrl).toBe('https://api.sumit.co.il');
   });
 
-  it('any non-"false" value keeps sandbox (defense against typos)', () => {
-    setSumitEnv({ SUMIT_SANDBOX: 'prod' });
-    expect(new SumitClient().health().baseUrl).toBe('https://sandbox-api.sumit.co.il');
-    setSumitEnv({ SUMIT_SANDBOX: 'FALSE' });
-    expect(new SumitClient().health().baseUrl).toBe('https://sandbox-api.sumit.co.il');
-    setSumitEnv({ SUMIT_SANDBOX: '0' });
-    expect(new SumitClient().health().baseUrl).toBe('https://sandbox-api.sumit.co.il');
+  it('any non-"false" value keeps the sandbox header tag true (defense against typos)', async () => {
+    // Host is always api.sumit.co.il now; the typo-defense moved to the
+    // X-PetWash-Sandbox tag — a typo must NOT flip into production-send mode.
+    for (const typo of ['prod', 'FALSE', '0']) {
+      setSumitEnv({ SUMIT_SANDBOX: typo });
+      const fetchMock = vi.fn(async () => new Response('{"DocumentNumber":"t"}', { status: 200 }));
+      vi.stubGlobal('fetch', fetchMock);
+      await new SumitClient().createDocument(sampleInput);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url, `typo=${typo}`).toBe('https://api.sumit.co.il/accounting/documents/create/');
+      expect((init as RequestInit).headers as Record<string, string>, `typo=${typo}`)
+        .toMatchObject({ 'X-PetWash-Sandbox': 'true' });
+      vi.restoreAllMocks();
+    }
   });
 
   it('explicit SUMIT_API_BASE_URL overrides both', () => {
@@ -93,7 +102,7 @@ describe('SumitClient — createDocument HTTP shape (sandbox)', () => {
     expect(r.sumitDocumentId).toBeUndefined();
   });
 
-  it('POSTs to sandbox URL with body-embedded Credentials + Idempotency-Key header', async () => {
+  it('POSTs to the api host with body-embedded Credentials + Idempotency-Key header', async () => {
     setSumitEnv();
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ DocumentNumber: 'doc-1' }), { status: 200 }),
@@ -106,7 +115,7 @@ describe('SumitClient — createDocument HTTP shape (sandbox)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://sandbox-api.sumit.co.il/accounting/documents/create/');
+    expect(url).toBe('https://api.sumit.co.il/accounting/documents/create/');
     expect((init as RequestInit).method).toBe('POST');
     const headers = (init as RequestInit).headers as Record<string, string>;
     expect(headers['Content-Type']).toBe('application/json');
