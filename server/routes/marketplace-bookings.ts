@@ -1636,8 +1636,19 @@ router.post('/provider/:providerId/availability', requireAuth, async (req, res) 
     // P1-FIX: Enforce that the caller IS the provider — or is an admin.
     // Before this fix the ownership check was commented out ("for testing"),
     // meaning any authenticated user could block/unblock any provider's calendar.
-    const callerIsAdmin = req.user?.customClaims?.admin === true ||
-      req.user?.email?.endsWith('@petwash.co.il');
+    //
+    // SECURITY 2026-05-24 (CRITICAL fix from audit finding S2):
+    // The .endsWith('@petwash.co.il') admin path did NOT check email_verified.
+    // Firebase Auth allows signup with an unverified email; an attacker minting
+    // an unverified `attacker@petwash.co.il` Firebase account could pass this
+    // check and sabotage any provider's calendar. Now requires email_verified
+    // = true (which is what the Firebase ID token's `email_verified` claim
+    // resolves to in req.user when validated by validateFirebaseToken).
+    const callerEmail: string | undefined = req.user?.email;
+    const callerEmailVerified: boolean = !!req.user?.email_verified;
+    const callerIsAdmin =
+      req.user?.customClaims?.admin === true ||
+      (callerEmailVerified && callerEmail?.toLowerCase().endsWith('@petwash.co.il'));
     if (userId !== providerId && !callerIsAdmin) {
       return res.status(403).json({ success: false, error: 'Not authorized to modify this provider\'s availability' });
     }
