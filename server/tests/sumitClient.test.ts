@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import crypto from 'crypto';
 import { SumitClient } from '../services/SumitClient';
 
@@ -128,24 +128,31 @@ describe('SumitClient — wiring flags', () => {
     expect(client.health().wired).toBe(true);
   });
 
-  it('createDocument throws (not implemented) only when fully wired', async () => {
+  it('createDocument fires the real send path when fully wired (no longer a PR-S4 throw)', async () => {
     process.env.SUMIT_ENABLED = 'true';
     process.env.SUMIT_API_KEY = 'sk_test';
     process.env.SUMIT_COMPANY_ID = 'co_test';
     process.env.SUMIT_WEBHOOK_SECRET = 'whsec_test';
+    // Mock fetch so this unit test NEVER reaches the real api.sumit.co.il.
+    const fetchMock = vi.fn(async () => new Response('{"DocumentNumber":"doc-1"}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
     const client = new SumitClient();
-    await expect(
-      client.createDocument({
-        supplierInvoiceId: 'i',
-        idempotencyKey: 'k',
-        customer: { name: 'n', businessNumber: 'b' },
-        amountBeforeVat: 1,
-        vatAmount: 0,
-        totalAmount: 1,
-        currency: 'ILS',
-        description: 'd',
-      })
-    ).rejects.toThrow(/PR-S4/);
+    const result = await client.createDocument({
+      supplierInvoiceId: 'i',
+      idempotencyKey: 'k',
+      customer: { name: 'n', businessNumber: 'b' },
+      amountBeforeVat: 1,
+      vatAmount: 0,
+      totalAmount: 1,
+      currency: 'ILS',
+      description: 'd',
+    });
+    // The "PR-S4 not implemented" throw is gone: it now performs a real
+    // (here mocked) call and returns a structured result, never throws.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.wired).toBe(true);
+    expect(result.idempotencyKey).toBe('k');
+    vi.restoreAllMocks();
   });
 
   it('SUMIT_ENABLED unset means wired:false even with all keys', () => {
