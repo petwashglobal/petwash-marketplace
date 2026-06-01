@@ -17,6 +17,7 @@ import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminSumitRoutes from "./routes/admin-sumit";
+import sumitWebhookRoutes from "./routes/sumit-webhook";
 import providerMyInvoicesRoutes from "./routes/provider-my-invoices";
 import accountantRoutes from "./routes/accountant";
 import { requireDpaAccepted } from "./middleware/dpa-guard";
@@ -529,6 +530,19 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // ✅ Public franchise inquiry — prospective franchisees submit this form
+    // BEFORE they have any account. The /api/franchise/* prefix is otherwise
+    // listed in INTERNAL_ROUTE_PREFIXES above, which blocks unauthenticated
+    // callers. This exact path is the only public inquiry endpoint inside
+    // the franchise prefix; it is also CSRF-exempt (server/index.ts
+    // AUTH_CSRF_EXEMPT) and rate-limited (apiLimiter on the public POST
+    // handler around line 10125 of this file). Without this bypass, the
+    // RBAC guard returns 401 "Authentication required" before Express can
+    // route the request to the public POST handler.
+    if (path === '/api/franchise/inquiry') {
+      return next();
+    }
+
     // ✅ K9000 IoT hardware bypass — kiosks authenticate via either:
     //   A) HMAC signed headers (X-K9000-ID + X-K9000-TS + X-K9000-SIGN) — production path
     //   B) body.machineSecret — DEV fallback
@@ -562,28 +576,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       // to the internal handler with no identity.
     }
 
-    // 🔧 DEV-ONLY bypass — never active in production (hard-guarded)
-    // Allows automated HTTP proofs without a real Firebase token.
-    if (process.env.NODE_ENV !== 'production') {
-      const testUid = req.headers['x-test-provider-uid'] as string | undefined;
-      if (testUid) {
-        logger.warn('[RBAC Guard] DEV BYPASS — x-test-provider-uid', { testUid, path });
-        (req as any).firebaseUser = { uid: testUid, email_verified: true };
-        return next();
-      }
-      // playwright-test bypass — aligns with customAuth.ts: only active when TEST_BYPASS_TOKEN is set.
-      // Using a static string was a security gap — anyone who knew it could bypass auth in staging.
-      const testBypassToken = process.env.TEST_BYPASS_TOKEN;
-      if (testBypassToken && req.headers['x-test-user-bypass'] === testBypassToken) {
-        const testUserId = (req.headers['x-test-user-id'] as string) || 'test-user-default';
-        const testEmail  = (req.headers['x-test-user-email'] as string) || `${testUserId}@test.petwash.local`;
-        logger.warn('[RBAC Guard] DEV BYPASS — TEST_BYPASS_TOKEN matched', { testUserId, path });
-        (req as any).firebaseUser = { uid: testUserId, email: testEmail, email_verified: true };
-        (req as any).userId = testUserId;
-        (req as any).user   = { uid: testUserId, email: testEmail };
-        return next();
-      }
-    }
+    // SECURITY: Header-based dev bypasses (x-test-provider-uid, TEST_BYPASS_TOKEN)
+    // removed. These were gated only on `NODE_ENV !== 'production'`, which is
+    // a single-point-of-failure — if NODE_ENV is ever unset on a Cloud Run
+    // revision (config typo, accidental override), the entire auth layer is
+    // bypassable via curl. Use a real synthetic Firebase test account for
+    // E2E tests instead. Issued auth tokens are revocable; static headers are not.
 
     // 🔑 Admin secret bypass — allows server-side and automation access to internal routes (timing-safe)
     if (timingSafeAdminSecretMatch(req)) {
@@ -668,26 +666,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // Private health check (requires X-Health-Key header for monitoring services)
-  app.get('/_health', (req, res) => {
-    const healthKey = process.env.HEALTH_KEY;
-    
-    // If HEALTH_KEY is configured, require it
-    if (healthKey && req.headers['x-health-key'] !== healthKey) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
-    
-    res.set('Cache-Control', 'no-store').json({
-      ok: true,
-      status: 'healthy',
-      service: '⁦Pet Wash™⁩ API',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      memory: process.memoryUsage(),
-      pid: process.pid,
-    });
-  });
+  // NOTE: /_health is owned by the early-mount handler in server/index.ts
+  // (registered before the startup guard). A second handler here was shadowed
+  // by Express first-match and never ran — its X-Health-Key auth gate never
+  // protected anything because the unauthenticated early handler answered
+  // first. Removed.
 
   // PRODUCTION FIX: Firebase config endpoint (NO rate limiting, NO auth required)
   // This endpoint must be accessible immediately on page load for Firebase to initialize
@@ -774,15 +757,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // PUBLIC HEALTH CHECK - No auth required
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      version: '2.0.0',
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
+  // NOTE: /api/health is owned by the rich handler in server/index.ts:853
+  // (registered before the startup guard, does real DB + startup-phase checks).
+  // This stub was shadowed by Express first-match and never ran. Removed.
 
   // PUBLIC WASH PACKAGES - No auth required (for marketing display)
   app.get('/api/credit-wallet/packages', (req, res) => {
@@ -3457,6 +3434,29 @@ self.addEventListener('notificationclick', (event) => {
     } catch (error) {
       logger.error('[TikTok OAuth] Callback error', error);
       res.redirect('/signin?oauthError=server_error');
+    }
+  });
+
+  // POST /api/admin/ops-tasks/test - manually trigger a Maya ops task for testing
+  //   Used by ops to verify Google Tasks API delegation is wired before the
+  //   automatic rules engine starts firing. Body: { title, notes? }.
+  //   Returns the wired/reason result from MayaOpsTasksService.
+  app.post('/api/admin/ops-tasks/test', requireAdmin, async (req, res) => {
+    try {
+      const { title, notes } = req.body || {};
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'title is required (string)' });
+      }
+      const { enqueueOpsTask } = await import('./services/MayaOpsTasksService');
+      const result = await enqueueOpsTask({
+        title: `[TEST] ${title}`,
+        notes: notes || `Manual test task created by admin via /api/admin/ops-tasks/test at ${new Date().toISOString()}.`,
+        dedupKey: `admin-test:${Date.now()}`,
+      });
+      res.json(result);
+    } catch (err: any) {
+      logger.error('[admin/ops-tasks/test] error', err);
+      res.status(500).json({ error: err?.message || 'unknown' });
     }
   });
 
@@ -9480,6 +9480,28 @@ self.addEventListener('notificationclick', (event) => {
 
   // =================== BULK OPERATIONS ===================
 
+  // Substitute {{handlebars-style}} placeholders in a template string with
+  // values from the recipient + customData payload. Used by the bulk email
+  // and bulk SMS endpoints below so the stored communication record reflects
+  // what the recipient would actually see, not the raw template syntax.
+  //
+  // Replaces tokens like {{firstName}}, {{first_name}}, {{ email }}.
+  // Unknown tokens are removed (replaced with empty string) to avoid leaking
+  // raw {{...}} into customer-visible content if the actual send code is
+  // ever uncommented.
+  const renderTemplateContent = (
+    content: string,
+    recipient: Record<string, unknown> = {},
+    customData: Record<string, unknown> = {}
+  ): string => {
+    if (!content || typeof content !== 'string') return content ?? '';
+    const data: Record<string, unknown> = { ...recipient, ...customData };
+    return content.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => {
+      const value = data[key];
+      return value === undefined || value === null ? '' : String(value);
+    });
+  };
+
   // Send bulk emails
   app.post('/api/crm/communications/bulk/send-email', requireAdmin, async (req: any, res) => {
     try {
@@ -9499,17 +9521,33 @@ self.addEventListener('notificationclick', (event) => {
 
       for (const recipient of recipients) {
         try {
+          // Render the template now so the stored audit record (and the
+          // commented-out send code below, when it gets uncommented) sees
+          // substituted content instead of raw {{firstName}} tokens.
+          const renderedSubject = renderTemplateContent(template.subject ?? '', recipient, customData);
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+
           // Create communication record
           const communication = await storage.createCommunication({
             leadId: recipient.leadId,
             customerId: recipient.customerId,
             userId: recipient.userId,
             communicationType: 'email',
-            subject: template.subject,
-            content: template.content, // TODO: Replace placeholders with recipient data
+            subject: renderedSubject,
+            content: renderedContent,
             sentBy: req.session?.adminId,
             status: 'sending',
             templateId: templateId,
+          });
+
+          // KNOWN GAP: the actual outbound send is still commented out below.
+          // The communication record is created and marked 'sent' but no email
+          // leaves the server. Until the emailService call is wired up, this
+          // endpoint is a no-op for delivery — log a warn so operators see it
+          // and don't trust the "sent" count blindly.
+          logger.warn('[CRM bulk-email] send is not wired — communication record stored but no email dispatched', {
+            recipient: recipient.email,
+            templateId,
           });
 
           // Send email (placeholder - integrate with actual email service)
@@ -9572,6 +9610,10 @@ self.addEventListener('notificationclick', (event) => {
 
       for (const recipient of recipients) {
         try {
+          // Render the template now so the stored audit record reflects
+          // the substituted content instead of raw {{firstName}} tokens.
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+
           // Create communication record
           const communication = await storage.createCommunication({
             leadId: recipient.leadId,
@@ -9579,10 +9621,18 @@ self.addEventListener('notificationclick', (event) => {
             userId: recipient.userId,
             communicationType: 'sms',
             subject: template.name,
-            content: template.content, // TODO: Replace placeholders with recipient data
+            content: renderedContent,
             sentBy: req.session?.adminId,
             status: 'sending',
             templateId: templateId,
+          });
+
+          // KNOWN GAP: the actual outbound send is still commented out below.
+          // Same situation as bulk-email above — record stored, no SMS sent.
+          // Logging a warn so operators see it.
+          logger.warn('[CRM bulk-sms] send is not wired — communication record stored but no SMS dispatched', {
+            recipient: recipient.phone,
+            templateId,
           });
 
           // Send SMS (placeholder - integrate with actual SMS service)
@@ -9771,6 +9821,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
   app.use('/api/admin/sumit', adminSumitRoutes);
+  // SUMIT webhook receiver — public route (HMAC-verified at the handler).
+  // Mounted at /api/sumit so the full path is POST /api/sumit/webhook.
+  // No-op until SUMIT_WEBHOOK_SECRET is provisioned (returns 401 without it).
+  app.use('/api/sumit', sumitWebhookRoutes);
   app.use('/api/provider', providerMyInvoicesRoutes);
   app.use('/api/accountant', accountantRoutes);
 
@@ -10131,6 +10185,46 @@ self.addEventListener('notificationclick', (event) => {
   // runs first (supports both Bearer token and x-admin-secret bypass).
   const franchiseFinanceRoutes = await import('./routes/franchise-finance');
   app.use('/api/franchise', apiLimiter, franchiseFinanceRoutes.default);
+
+  // PUBLIC franchise inquiry endpoint — registered BEFORE the protected
+  // franchiseRoutes mount below so Express matches this specific route first
+  // and bypasses validateFirebaseToken. Prospective franchisees submitting
+  // the inquiry form have no Firebase session by definition (they haven't
+  // signed up yet), so requiring auth here makes the form unusable. CSRF
+  // exemption for this path is provided separately via AUTH_CSRF_EXEMPT in
+  // server/index.ts (already merged via hotfix/public-forms-csrf-exempt).
+  // Handler mirrors server/routes/franchise.ts:26 but is mounted at the
+  // public layer so it actually receives the request.
+  app.post('/api/franchise/inquiry', apiLimiter, async (req, res) => {
+    try {
+      const { fullName, email, phone, country, city, message } = req.body ?? {};
+      if (!fullName || !email || !phone) {
+        return res.status(400).json({ error: 'Name, email, and phone are required' });
+      }
+      const inquiryData = {
+        fullName,
+        email,
+        phone,
+        country: country || '',
+        city: city || '',
+        message: message || '',
+        submittedAt: new Date().toISOString(),
+        status: 'new' as const,
+      };
+      try {
+        const { db: firestore } = await import('./lib/firebase-admin');
+        const inquiriesRef = firestore.collection('franchise_inquiries');
+        await inquiriesRef.add(inquiryData);
+      } catch (firestoreErr) {
+        logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
+      }
+      logger.info('[Franchise/inquiry] received', { fullName, email, country, city });
+      return res.json({ success: true, message: 'Inquiry submitted successfully' });
+    } catch (error) {
+      logger.error('[Franchise/inquiry] handler error', error);
+      return res.status(500).json({ error: 'Failed to process inquiry' });
+    }
+  });
 
   // Franchise routes (Firebase auth applied here; registered after finance routes)
   const franchiseRoutes = await import('./routes/franchise');
@@ -11006,7 +11100,7 @@ self.addEventListener('notificationclick', (event) => {
   // Marketplace Provider Search — online service domains only (pet_sitting, dog_walking, grooming, transport, daycare)
   // NOT for K9000. GET /api/providers/search
   const providerSearchRoutes = (await import('./routes/provider-search')).default;
-  app.use('/api/providers', apiLimiter, providerSearchRoutes);
+  app.use('/api/providers', optionalFirebaseToken, apiLimiter, providerSearchRoutes);
 
   // Provider Slot Management — providers create/list/cancel their availability_slots
   // NOT for K9000. Requires provider identity (Firebase UID → providers row).
@@ -13466,7 +13560,7 @@ self.addEventListener('notificationclick', (event) => {
         nextReviewDue: latestReview.nextReviewDue,
         daysUntilDue,
         lastReviewDate: latestReview.reviewDate,
-        adminEmail: 'legal@petwash.co.il', // TODO: Get from config
+        adminEmail: process.env.LEGAL_COMPLIANCE_EMAIL || process.env.REPORTS_EMAIL_TO || 'legal@petwash.co.il',
       });
 
       // Update reminder count and timestamp
@@ -14560,26 +14654,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // Simple Health Check for Load Balancers
-  app.get('/health', async (req, res) => {
-    try {
-      const memOK = process.memoryUsage().heapUsed < (150 * 1024 * 1024); // 150MB threshold
-      const status = memOK ? 'ok' : 'degraded';
-      
-      res.json({
-        status,
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: {
-          heapUsed: process.memoryUsage().heapUsed,
-          heapTotal: process.memoryUsage().heapTotal,
-          threshold: 150 * 1024 * 1024,
-        },
-      });
-    } catch (error: any) {
-      res.status(503).json({ status: 'error', error: error.message });
-    }
-  });
+  // NOTE: /health is owned by _earlyHealthHandler in server/index.ts:439.
+  // The memory-aware handler that used to live here was shadowed by Express
+  // first-match and never ran — no load balancer ever saw heap thresholds.
+  // Removed. If memory-aware health is desired, fold it into
+  // _earlyHealthHandler in index.ts.
 
   // Performance Metrics Tracking
   app.post('/api/performance/track', async (req, res) => {
@@ -15632,9 +15711,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
   // In dev mode, Vite's middleware (registered in server/index.ts) handles all routing
-  if (process.env.NODE_ENV === 'production' || 
-      process.env.REPLIT_DEPLOYMENT === '1' || 
-      process.env.REPLIT_DEPLOYMENT === 'true') {
+  if (process.env.NODE_ENV === 'production') {
 
     // Cache the Firebase-injected index.html in memory to avoid file I/O on every request.
     // Cache is valid for 5 minutes; invalidated automatically on restart.
@@ -15845,5 +15922,4 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
 }
-
 

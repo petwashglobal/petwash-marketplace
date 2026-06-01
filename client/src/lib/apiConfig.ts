@@ -31,15 +31,6 @@ const getApiBaseUrl = (): string => {
     if (isFirebaseHosting) {
       return ''; // Relative URLs → Firebase rewrites → Cloud Run
     }
-
-    // Replit preview or deployed Replit URL — same origin, relative URLs work
-    if (
-      hostname.endsWith('.replit.dev') ||
-      hostname.endsWith('.repl.co') ||
-      hostname.endsWith('.replit.app')
-    ) {
-      return '';
-    }
   }
 
   // Development / localhost — same origin

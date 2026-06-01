@@ -128,3 +128,182 @@ explicitly. Until then, no Google sync exists or is planned.
 
 No step above is currently in progress. PR-S1 is unblocked the moment
 the CEO sends the email.
+
+---
+
+## 7. 2026-05-30 milestone update — SUMIT account → PetWash Ltd tax-authority link
+
+**Status:** ✅ SUMIT user account is connected to PetWash Ltd. at the
+SUMIT level. Tax-authority allocation-number test still failing
+with "user not authorized for business ת.ז." error.
+
+### What changed today
+
+CEO (Nir Hadad) opened sumit.co.il accounting console and reached the
+**Tax Authority Connection** screen at
+`app.sumit.co.il/accounting/shaamstatus/?companyid=1455151432`.
+
+Screen confirms:
+
+| Field | Value |
+|---|---|
+| חיבור (Connection) | Israel Tax Authority (חשבוניות ישראל) |
+| Connection owner | ניר חדד |
+| Identity number | XXXXX4437 (Nir personal ת.ז.) |
+| Connecting user email | `nir.h@petwash.co.il` |
+| Connection status | **פעיל** (active) |
+| Expiry | 28/08/2026 (1-year term) |
+| Company entity | פט וואש בע"מ (PetWash Ltd, ע.מ. 517145033) |
+
+This means **SUMIT ↔ Tax Authority handshake is wired at the account
+level.** The system knows that "this SUMIT customer" wants to use
+"this Nir Hadad person" to act on behalf of "this PetWash Ltd entity"
+against Israel Invoices (Mas Shevach קצאה project).
+
+### Why the allocation test still fails
+
+Clicking **"בדיקת החיבור לטובת קבלת מספר הקצאה לחשבוניות"** (Test
+connection for allocation-number receipt) returns this error from
+the Tax Authority API (translated):
+
+> The user connected to the tax authority (033554437) is NOT
+> authorized to receive an allocation number on behalf of the
+> business ע.מ. 517145033. Please verify the authorization exists
+> on the Tax Authority website in accordance with tax authority
+> guidelines.
+
+**Root cause:** the SUMIT side is fine. The **Tax Authority side**
+still needs Nir Hadad personal (ת.ז. 033554437) to be registered as
+"מורשה-על" (Supreme Authorized Representative) for PetWash Ltd
+(ע.מ. 517145033) in the government's digital authorization system at:
+
+→ https://www.gov.il/he/service/authorize-certification-perform-digital-operations
+
+This is a **one-time regulatory setup**, not a code task. See the
+runbook in §9 below.
+
+### Why this is still a milestone
+
+Before today:
+- SUMIT account existed but had no link to PetWash company entity
+- Tax Authority connection slot was empty
+- Cannot even attempt allocation-number flow
+
+After today:
+- SUMIT recognizes PetWash Ltd. as the company entity
+- Tax Authority connection is active for one year
+- One known regulatory step remains before invoices can actually be
+  issued via the API
+
+This unblocks PR-S2 / PR-S3 scoping: we now know the connection
+shape (1 SUMIT account ↔ 1 IL-natural-person authoriser ↔ 1 IL
+business entity) and the auth scope (Israel Invoices project,
+specifically allocation-number receipt).
+
+---
+
+## 8. Remaining steps to first real invoice
+
+Updated sequence, post 2026-05-30 milestone:
+
+1. **CEO completes gov.il "מורשה-על" registration for PetWash Ltd**
+   (one-time, ~15 minutes, Sun-Thu 08:15-15:45, requires digital
+   certificate). See runbook
+   `docs/finance/runbook-sumit-tax-authority-error.md`.
+2. **CEO re-clicks "בדיקת החיבור"** in SUMIT — must return success.
+3. PR-S1 — Send remaining SUMIT support email questions (still drafted).
+4. PR-S2 — Schema additions (cheaper now that connection model is known).
+5. PR-S3 — SumitClient service.
+6. PR-S4 — Admin send + feature flag.
+7. PR-S5 — Webhook + reconciliation.
+8. Sandbox round-trip with one test invoice.
+9. Production pilot: one supplier, one week observation.
+10. Full rollout.
+
+---
+
+## 9. Connection scope reminder (legal)
+
+The Tax Authority authorization granted via gov.il scopes **what
+the connected user can do on behalf of the business**. The minimum
+scope needed for SUMIT to issue PetWash invoices is:
+
+- **חשבוניות ישראל** (Israel Invoices project) — allocation number
+  receipt for each invoice.
+
+Do NOT grant broader scope without explicit accountant review.
+Each additional scope (VAT digital filing, payroll Form 161, donation
+reporting) is a separate fiduciary delegation and should only be
+enabled when there's a specific operational need.
+
+---
+
+## 11. 2026-05-31 reality check — PR-S2 already shipped
+
+During a CTO sweep on 2026-05-31, the schema additions described in
+§3 PR-S2 were found to already exist in the repo. Either a previous
+CTO session shipped them or they were authored as part of the
+initial supplier-invoice screening work and never re-flagged here.
+
+### Evidence
+
+**Schema** — `shared/schema.ts:15585-15608`:
+```
+// SUMIT (sumit.co.il) linkage — populated by PR-S4 once the admin
+// "Send to SUMIT" button + ff.supplier_invoice_control.sumit_send.enabled
+sumitDocumentId:      varchar("sumit_document_id", { length: 64 }),
+sumitStatus:          varchar("sumit_status", { length: 20 }),
+sumitSentAt:          timestamp("sumit_sent_at", { withTimezone: true }),
+sumitConfirmedAt:     timestamp("sumit_confirmed_at", { withTimezone: true }),
+sumitLastError:       text("sumit_last_error"),
+sumitIdempotencyKey:  varchar("sumit_idempotency_key", { length: 80 }),
+```
+Plus 3 indexes: `idx_supplier_invoices_sumit_status`, `idx_supplier_invoices_sumit_document`, `idx_supplier_invoices_sumit_idem`.
+
+**Audit-log table** — `shared/schema.ts:15627`:
+```
+export const sumitOutboundEvents = pgTable("sumit_outbound_events", { ... });
+```
+With 4 indexes: by invoice, by created-desc, by idempotency, by document.
+
+**Migration file** — `migrations/0025_supplier_invoices_sumit_linkage.sql` exists.
+
+### Implication
+
+The PR-by-PR breakdown in §3 is now: PR-S2 ✅, PR-S1 ⏳ (you/CEO), PR-S3 + PR-S4 + PR-S5 still ahead.
+
+### What's actually blocking PR-S3
+
+The `SumitClient.ts` service (PR-S3) cannot be written responsibly
+until PR-S1 unblocks it: SUMIT support must confirm the API auth
+model, endpoint base URLs, sandbox credentials, webhook signature
+scheme, document-number assignment rules, and marketplace-vendor
+model. The 22-question email at `docs/SUMIT_SUPPORT_EMAIL.md` is
+drafted; the CEO has not yet sent it.
+
+Without those answers, writing `SumitClient.ts` means guessing the
+API shape. Per platform §0 (verify before guessing) and §3 (no
+autonomous sends), the CTO will NOT speculate on SUMIT's API.
+
+### Updated remaining-steps sequence (replaces §8)
+
+1. **CEO sends the SUMIT support email** (`docs/SUMIT_SUPPORT_EMAIL.md`).
+2. CEO completes gov.il "מורשה-על" registration Sunday morning.
+3. CEO re-tests SUMIT connection — expects success.
+4. SUMIT replies to support email with API specs (may take 1-5 business days).
+5. CTO writes PR-S3 (`SumitClient.ts`) using the confirmed API specs.
+6. CTO writes PR-S4 (admin "Send to SUMIT" button + feature flag, default OFF).
+7. End-to-end sandbox round-trip with one test invoice.
+8. CTO writes PR-S5 (webhook receiver + reconciliation).
+9. Flip `ff.supplier_invoice_control.sumit_send.enabled` to ON for one pilot supplier.
+10. Watch for one week, then roll out to all suppliers.
+
+---
+
+## 10. Last updated
+
+| Date | Change | By |
+|---|---|---|
+| 2026-05-23 | Doc created | CTO |
+| 2026-05-30 | §7-9 added — SUMIT↔TaxAuth account link established, one regulatory gap remaining | CTO |
+| 2026-05-31 | §11 added — PR-S2 found already shipped; remaining sequence updated; PR-S3 blocked on PR-S1 (CEO sends support email) | CTO |

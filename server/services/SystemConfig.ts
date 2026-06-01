@@ -102,9 +102,22 @@ const DEFAULTS: SystemConfigMap = {
   'ff.maya.booking_intake.enabled': false,
   'ff.maya.tasks.enabled': false,
   'ff.maya.escalations.enabled': false,
-  // Maya Voice (Stage 3A) — all default OFF
-  'ff.maya.voice.enabled': false,
-  'ff.maya.voice.inbound.enabled': false,
+  // Maya Voice (Stage 3A) — inbound activated per CEO request 2026-05-25
+  // (+16292059682 was hitting the 503 "busy" gate on every call).
+  //
+  // Activated ON by default:
+  //   ff.maya.voice.enabled          — master switch for the voice subsystem
+  //   ff.maya.voice.inbound.enabled  — accept Twilio /voice + /gather webhooks
+  //
+  // Left OFF by default (privacy / cost / not-yet-needed):
+  //   ff.maya.voice.outbound.enabled    — Maya-initiated callbacks
+  //   ff.maya.voice.extraction.enabled  — intent extraction → booking/task creation
+  //   ff.maya.voice.recording.enabled   — call audio recording (PII; flip only after DPA review)
+  //
+  // Operator can still disable in /admin/system-config at runtime — the in-memory
+  // store accepts patches and they take effect immediately for the current instance.
+  'ff.maya.voice.enabled': true,
+  'ff.maya.voice.inbound.enabled': true,
   'ff.maya.voice.outbound.enabled': false,
   'ff.maya.voice.extraction.enabled': false,
   'ff.maya.voice.recording.enabled': false,

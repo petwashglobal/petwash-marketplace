@@ -1,4 +1,34 @@
 /**
+ * ╔════════════════════════════════════════════════════════════════════╗
+ * ║  SIGNUP — PREMIUM RESPONSIVE REBUILD (operator brief 2026-05-26)  ║
+ * ╠════════════════════════════════════════════════════════════════════╣
+ * ║                                                                    ║
+ * ║  Operator brief on 2026-05-26 supersedes the previous 2026-05-25  ║
+ * ║  lock. New binding rules:                                          ║
+ * ║                                                                    ║
+ * ║   1. PetWash logo MUST be visually dominant — larger than the      ║
+ * ║      "The Future of Pet Lifestyle" headline.                       ║
+ * ║   2. Hero dog photo must SUPPORT the brand, not dominate.          ║
+ * ║      On phones it scales down (and may shrink further on very      ║
+ * ║      small screens) so it never pushes the CTA out of reach.       ║
+ * ║   3. CTA "Create Secure Account" / OTP send button must always     ║
+ * ║      be reachable. On phones a sticky bottom CTA is mandatory      ║
+ * ║      whenever the in-form CTA is below the fold.                   ║
+ * ║   4. Tap targets ≥44 px (Apple HIG) — already the case for         ║
+ * ║      every interactive element here, do not regress.               ║
+ * ║   5. Use 100dvh + env(safe-area-inset-*) so the page survives      ║
+ * ║      iOS Safari toolbar + home indicator without dead bands.       ║
+ * ║   6. Two-column on ≥1024 px (iPad landscape, desktop). Single      ║
+ * ║      column on ≤1023 px. Mobile = single column + sticky CTA.      ║
+ * ║   7. RTL parity — every layout primitive switches sides on `he`.   ║
+ * ║                                                                    ║
+ * ║  Previous lock history (kept for context):                         ║
+ * ║   - PR #458 (REVERTED in PR #459): hid dog on small mobile. The    ║
+ * ║     2026-05-26 brief explicitly permits scaling the dog DOWN       ║
+ * ║     (and hiding it on <480 px) so the CTA stays reachable.         ║
+ * ║                                                                    ║
+ * ╚════════════════════════════════════════════════════════════════════╝
+ *
  * SignUpLuxury — canonical /signup front door (black-luxury 2026, full
  * mockup). Locked to the owner's design brief: pure-black background, gold
  * accent, two-column on landscape iPad + desktop, stacked on portrait iPad,
@@ -29,7 +59,7 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getAuthStrategy, createGoogleProvider, createAppleProvider } from '@/lib/iosAuthHandler';
+import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
 import { type Language } from '@/lib/i18n';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -38,6 +68,7 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { signupFlags } from '@/lib/authSignupFlags';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
   FaApple, FaFacebookF, FaInstagram, FaFingerprint, FaLock, FaWallet,
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
@@ -117,13 +148,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [entryCode, setEntryCode] = useState('');
-  const [biometric, setBiometric] = useState(true);
-  const [savePassword, setSavePassword] = useState(true);
+  // Consent toggles default OFF (opt-in). Israeli Privacy Law 2025 + GDPR
+  // require explicit affirmative consent for processing biometric data;
+  // pre-checking a "I consent to Face ID" box is not valid consent. Same
+  // privacy-by-default principle applies to "save password on device" —
+  // visitors must actively choose to store credentials. Original bug
+  // report #17 flagged both as visibly pre-checked on the live signup.
+  const [biometric, setBiometric] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [walletConsent, setWalletConsent] = useState(true);
   const [walletIntent, setWalletIntent] = useState<'apple' | 'google' | null>(null);
   const [terms, setTerms] = useState(false);
-  const [robot, setRobot] = useState(false); // visual "I'm not a robot" — real reCAPTCHA v3 is invisible server-side
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<1 | 2>(1); // mobile progressive disclosure
@@ -151,25 +187,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     if (!requireTerms()) return;
     setBusy(true);
     try {
-      // SECURITY 2026-05-24 (investigation finding 1.5):
-      // Pre-fix the signup page advertised "reCAPTCHA v3" in the security row
-      // but never actually obtained a token before hitting /api/auth/sms/start.
-      // Bots rotating phone numbers could burn the 150 SMS/day global cap and
-      // lock out real customers for the rest of the day. Now we execute
-      // reCAPTCHA v3 with action 'phone_send' and attach the token; the
-      // backend can verify it (via existing verifyCaptchaToken helper).
-      // Empty token is non-blocking — server falls back to the per-phone
-      // cooldown that already exists.
-      let captchaToken = '';
-      try {
-        const { executeReCaptcha } = await import('@/components/ReCaptcha');
-        captchaToken = (await executeReCaptcha('phone_send')) || '';
-      } catch (capErr) {
-        logger.warn('[signup] reCAPTCHA execute failed (non-blocking)', capErr);
-      }
+      // Real bot protection via Cloudflare Turnstile (invisible).
+      // Returns null when VITE_TURNSTILE_SITE_KEY is unset (dev/staging
+      // without the secret) — the server treats Turnstile as best-effort
+      // bonus signal, never blocking, so a missing token is safe.
+      const turnstileToken = await executeTurnstileInvisible('signup_sms_start').catch(() => null);
       const r = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ phone, language, flow, captchaToken }),
+        body: JSON.stringify({ phone, language, flow, turnstileToken }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'SMS אינו זמין כעת — נסה אימייל או Google' : 'SMS is temporarily unavailable. Please use email or Google.')); return; }
@@ -206,11 +231,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
-  async function social(which: 'google' | 'apple') {
+  async function social(which: 'google' | 'apple' | 'facebook') {
     if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
     setBusy(true);
     try {
-      const provider = which === 'google' ? createGoogleProvider() : createAppleProvider();
+      const provider =
+        which === 'google' ? createGoogleProvider() :
+        which === 'apple'  ? createAppleProvider()  :
+                             createFacebookProvider();
       if (getAuthStrategy() === 'redirect') {
         snapshotPrefs();
         await signInWithRedirect(auth, provider);
@@ -226,9 +254,28 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     } catch (e: any) {
       if (e?.code === 'auth/popup-closed-by-user') return;
       logger.error('[signup] social', e);
-      fail(which === 'google'
-        ? (he ? 'התחברות Google לא הושלמה — נסה נייד או אימייל' : 'Google sign-in did not complete. Please try mobile or email.')
-        : (he ? 'התחברות Apple לא הושלמה — נסה נייד או אימייל' : 'Apple sign-in did not complete. Please try mobile or email.'));
+      const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
+      fail(he
+        ? `התחברות ${label} לא הושלמה — נסה נייד או אימייל`
+        : `${label} sign-in did not complete. Please try mobile or email.`);
+    } finally { setBusy(false); }
+  }
+
+  /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
+   *  authorize URL with provider secrets and we redirect the browser there. */
+  async function socialExternal(which: 'instagram' | 'tiktok') {
+    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
+    setBusy(true);
+    try {
+      snapshotPrefs();
+      const r = await fetch(getApiUrl(`/api/auth/social/${which}/authorize`), { credentials: 'include' });
+      const d = await r.json().catch(() => ({}));
+      if (d?.authUrl) { window.location.href = d.authUrl; return; }
+      const label = which === 'instagram' ? 'Instagram' : 'TikTok';
+      fail(he ? `${label} עדיין לא פעיל — נסה Google, נייד או אימייל` : `${label} sign-in is not active yet — please try Google, mobile or email.`);
+    } catch (e) {
+      logger.error('[signup] socialExternal', e);
+      fail(he ? 'שגיאת רשת' : 'Network error');
     } finally { setBusy(false); }
   }
 
@@ -358,7 +405,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     termsLink: he ? 'תנאי השימוש' : 'Terms of Service',
     andTo: he ? ' ול' : ' and ',
     privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
-    notRobot: he ? 'אני לא רובוט' : "I'm not a robot",
 
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
     bank: he ? 'אבטחה ברמת בנק' : 'Bank-level security',
@@ -371,6 +417,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     storeAppleLine: he ? 'הורד מ-' : 'Download on the',
     storeGoogle: 'Google Play',
     storeGoogleLine: 'GET IT ON',
+    comingSoon: he ? 'בקרוב' : 'Coming soon',
     back: he ? 'חזרה' : 'Back',
     next: he ? 'המשך' : 'Continue',
   };
@@ -486,16 +533,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 {!signupFlags.appleSignin && <span className="sl-soonPill">{t.soon}</span>}
               </button>
 
-              <button className="sl-soc sl-soc--fb sl-soc--soon" disabled>
+              <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
                 <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
                 <span className="sl-socLabel">{t.cwFb}</span>
-                <span className="sl-soonPill">{t.soon}</span>
               </button>
 
-              <button className="sl-soc sl-soc--ig sl-soc--soon" disabled>
+              <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
                 <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
                 <span className="sl-socLabel">{t.cwIg}</span>
-                <span className="sl-soonPill">{t.soon}</span>
               </button>
             </div>
           )}
@@ -634,16 +679,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </span>
               </label>
 
-              <label className={`sl-robot${robot ? ' is-on' : ''}`}>
-                <input type="checkbox" checked={robot} onChange={(e) => setRobot(e.target.checked)} />
-                <span className="sl-robotMark"><FaCheckCircle /></span>
-                <span className="sl-robotTxt">{t.notRobot}</span>
-                <span className="sl-robotBadge" aria-hidden>
-                  <span className="sl-robotLogo">reCAPTCHA</span>
-                  <span className="sl-robotFine">Privacy · Terms</span>
-                </span>
-              </label>
-
+              {/*
+                Removed the fake "I'm not a robot" CSS checkbox (was a plain
+                <input type="checkbox"> with a reCAPTCHA-style badge — pure
+                visual decoration, never invoked any captcha). The real
+                anti-abuse signal is `executeTurnstileInvisible(...)` called
+                inside sendCode() below; the OTP code itself is the
+                authentication factor; Twilio rate-limits + per-phone caps
+                provide additional defense. Honest UI > security theater.
+                See PR #452 (SDD §17) for the design rationale.
+              */}
               <button className="sl-cta" disabled={busy}
                 onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}>
                 <FaLock aria-hidden /> {ctaLabel}
@@ -671,14 +716,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           </div>
         </div>
         <div className="sl-dlRight">
-          <a className="sl-store" href="https://apps.apple.com/il/app/petwash/id1234567890" target="_blank" rel="noreferrer">
+          {/* App-store badges intentionally disabled until the native app is
+              actually published. The Apple URL still carried the placeholder
+              `id1234567890` (broken App Store page) and the Google Play bundle
+              id `co.il.petwash` did not match the registered Expo scaffold
+              `il.co.petwash.staff`. Both badges now render as disabled spans
+              with a "בקרוב / Coming soon" label so visitors get honest UX
+              instead of broken store links. When the app ships, swap the
+              spans back to <a> with the real URLs. */}
+          <span className="sl-store" aria-disabled="true" style={{ cursor: 'not-allowed', opacity: 0.6 }} title={t.comingSoon ?? 'בקרוב'}>
             <FaAppStoreIos aria-hidden />
             <span><small>{t.storeAppleLine}</small><strong>{t.storeApple}</strong></span>
-          </a>
-          <a className="sl-store" href="https://play.google.com/store/apps/details?id=co.il.petwash" target="_blank" rel="noreferrer">
+          </span>
+          <span className="sl-store" aria-disabled="true" style={{ cursor: 'not-allowed', opacity: 0.6 }} title={t.comingSoon ?? 'בקרוב'}>
             <FaGooglePlay aria-hidden />
             <span><small>{t.storeGoogleLine}</small><strong>{t.storeGoogle}</strong></span>
-          </a>
+          </span>
           <div className="sl-qr" aria-hidden>
             <QrSquare />
           </div>
@@ -823,6 +876,16 @@ function QrSquare() {
 
 function styles(he: boolean) {
   return `
+    /* ── Page-scoped overrides ────────────────────────────────────────────
+     * The global html/body bg in client/index.html:101-104 is white.
+     * That shows through as "white empty space" on iOS Safari overscroll
+     * and on short content. The signup page is a dark luxury surface, so
+     * we override body bg to black while this component is mounted and
+     * disable overscroll bounce so the dark canvas never breaks.
+     * The style tag unmounts with the page, restoring the global rule.
+     */
+    html, body { background:#000 !important; overscroll-behavior:none }
+
     .sl-shell{
       --gold:#d8ad55; --gold2:#f4d48a; --white:#fffaf0;
       --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
@@ -830,6 +893,12 @@ function styles(he: boolean) {
       position:relative; min-height:100dvh; background:#000;
       color:var(--white);
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      /* iOS notch + bottom home indicator. Top inset is added once at the
+       * shell so it applies before any internal scroll; bottom inset is
+       * handled per-component (sticky CTA below adds its own). */
+      padding-top:env(safe-area-inset-top);
+      padding-left:env(safe-area-inset-left);
+      padding-right:env(safe-area-inset-right);
     }
     @supports not (height:100dvh){ .sl-shell{ min-height:100vh } }
 
@@ -841,21 +910,24 @@ function styles(he: boolean) {
       gap:clamp(20px,3vw,32px);
     }
 
-    /* HERO LEFT */
-    .sl-hero{ display:flex; flex-direction:column; gap:22px }
-    .sl-heroHead{ display:flex; flex-direction:column; gap:14px; align-items:flex-start }
-    .sl-logo{ height:clamp(48px,11vw,96px); width:auto; display:block }
+    /* HERO LEFT — logo dominant, headline subordinate, dog supports */
+    .sl-hero{ display:flex; flex-direction:column; gap:18px }
+    .sl-heroHead{ display:flex; flex-direction:column; gap:10px; align-items:flex-start }
+    /* Logo is the dominant brand mark — larger than the headline below. */
+    .sl-logo{ height:clamp(96px,18vw,180px); width:auto; display:block }
     .sl-eyebrow{ color:var(--muted); font-size:11px; letter-spacing:.32em; font-weight:800; text-transform:uppercase }
-    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(34px,5.2vw,64px); line-height:1; letter-spacing:-.03em; margin:0; font-weight:600 }
+    /* Headline is intentionally smaller than the logo above. */
+    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(24px,3.6vw,42px); line-height:1.05; letter-spacing:-.02em; margin:0; font-weight:600 }
     .sl-gold{ background:linear-gradient(180deg, var(--gold2), var(--gold) 60%, #b48830); -webkit-background-clip:text; background-clip:text; color:transparent; display:inline-block; padding-bottom:.08em }
-    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(15px,1.5vw,18px); line-height:1.55; max-width:520px }
+    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(14px,1.4vw,17px); line-height:1.5; max-width:520px }
 
-    .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:4px 0 }
+    .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:2px 0 }
     .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(244,212,138,.4), transparent); flex:1 }
     .sl-divPaw svg{ width:14px; height:14px }
 
-    .sl-dogWrap{ display:flex; justify-content:center; padding:8px 0 }
-    .sl-dog{ width:min(78%, 380px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 30px 80px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+    /* Dog supports the brand — never larger than the logo, never dominant. */
+    .sl-dogWrap{ display:flex; justify-content:center; padding:4px 0 }
+    .sl-dog{ width:min(50%, 240px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
 
     .sl-card{
       border:1px solid var(--line);
@@ -919,14 +991,14 @@ function styles(he: boolean) {
       appearance:none; cursor:pointer;
       border:1px solid var(--line); background:rgba(0,0,0,.5);
       color:var(--white); font-weight:700; font-size:13px;
-      border-radius:999px; padding:8px 14px; min-height:38px;
+      border-radius:999px; padding:10px 16px; min-height:44px;
     }
     .sl-lang:hover{ border-color:rgba(244,212,138,.5) }
 
     .sl-back{
       align-self:flex-start; appearance:none; cursor:pointer;
       background:transparent; border:0; color:var(--gold2);
-      font-weight:800; font-size:14px; padding:8px 4px;
+      font-weight:800; font-size:14px; padding:10px 6px; min-height:44px;
     }
 
     /* Social tiles 2x2 */
@@ -1067,45 +1139,30 @@ function styles(he: boolean) {
     .sl-wbtn.is-on{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(244,212,138,.22) }
     .sl-wcardIcon{ width:32px; height:22px; flex:0 0 auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)) }
 
-    /* Terms + reCAPTCHA */
+    /* Terms — entire row is the tap target (label wraps the checkbox + text).
+     * Checkbox visible size is 24 px and min-height:44 px gives an easy tap. */
     .sl-terms{
-      display:flex; align-items:flex-start; gap:10px; cursor:pointer;
+      display:flex; align-items:flex-start; gap:12px; cursor:pointer;
       color:var(--muted); font-size:13px; line-height:1.5;
+      min-height:44px; padding:6px 0;
     }
-    .sl-terms input{ width:22px; height:22px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
+    .sl-terms input{ width:24px; height:24px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
     .sl-terms a{ color:var(--gold2); font-weight:700; text-decoration:underline }
-    .sl-robot{
-      display:grid; grid-template-columns:auto auto 1fr auto; align-items:center; gap:12px; cursor:pointer;
-      padding:14px 16px; border-radius:12px;
-      border:1px solid var(--line); background:rgba(255,255,255,.04);
-    }
-    .sl-robot.is-on{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.06) }
-    .sl-robot input{ width:28px; height:28px; accent-color:#22c55e; flex:0 0 auto; cursor:pointer; opacity:0; position:absolute }
-    .sl-robotMark{
-      width:28px; height:28px; border-radius:6px;
-      border:1.5px solid rgba(255,255,255,.3); background:rgba(0,0,0,.4);
-      display:inline-flex; align-items:center; justify-content:center;
-      color:#22c55e; font-size:20px;
-    }
-    .sl-robot.is-on .sl-robotMark{ border-color:#22c55e; background:rgba(34,197,94,.18) }
-    .sl-robot:not(.is-on) .sl-robotMark svg{ opacity:0 }
-    .sl-robotTxt{ font-weight:600; color:var(--white); font-size:14.5px }
-    .sl-robotBadge{ display:flex; flex-direction:column; align-items:flex-end; color:var(--muted); line-height:1.05 }
-    .sl-robotLogo{ font-weight:900; letter-spacing:.02em; font-size:11.5px; color:var(--white) }
-    .sl-robotFine{ font-size:9.5px; letter-spacing:.04em; margin-top:2px }
 
-    /* CTA — big white button (matches mockup), with gold-glow hover */
+    /* CTA — premium gold gradient (luxury house brand). Min-height 58px keeps
+     * it well above the 44 px tap-target floor on every device. */
     .sl-cta{
       appearance:none; cursor:pointer; width:100%; min-height:58px;
       border-radius:14px; border:0;
-      background:#fff; color:#0a0a0a;
+      background:linear-gradient(180deg, var(--gold2) 0%, var(--gold) 55%, #b48830 100%);
+      color:#0a0a0a;
       display:flex; align-items:center; justify-content:center; gap:10px;
-      font-weight:900; font-size:16px; letter-spacing:.01em;
-      box-shadow:0 18px 50px rgba(255,255,255,.16);
-      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+      font-weight:900; font-size:16px; letter-spacing:.02em;
+      box-shadow:0 18px 50px rgba(244,212,138,.28);
+      transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); background:linear-gradient(180deg,#fff,#f4d48a); box-shadow:0 22px 64px rgba(244,212,138,.4) }
+    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(244,212,138,.5) }
     .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
     .sl-cta svg{ font-size:18px }
     .sl-cta--ghost{
@@ -1169,11 +1226,15 @@ function styles(he: boolean) {
 
     /* ====== BREAKPOINTS ====== */
 
-    /* ≤ 767px (phones) — single column, progressive disclosure, sticky CTA */
+    /* ≤ 767px (phones) — single column, progressive disclosure, sticky CTA.
+     * Operator brief 2026-05-26: keep CTA reachable, never let the dog push
+     * the form down. Logo stays dominant; dog scales down accordingly. */
     @media(max-width:767px){
-      .sl-frame{ gap:18px; padding-bottom:120px }   /* leave room for sticky CTA */
-      .sl-hero{ gap:18px }
-      .sl-dog{ width:min(72%, 320px) }
+      .sl-frame{ gap:16px; padding-bottom:calc(120px + env(safe-area-inset-bottom)) }
+      .sl-hero{ gap:14px }
+      .sl-logo{ height:clamp(80px,22vw,140px) }
+      .sl-h1{ font-size:clamp(22px,6.6vw,32px) }
+      .sl-dog{ width:min(40%, 180px) }
       .sl-social4{ grid-template-columns:1fr 1fr }
       .sl-badges{ grid-template-columns:1fr 1fr }
       .sl-advCells{ grid-template-columns:1fr }
@@ -1181,23 +1242,30 @@ function styles(he: boolean) {
       .sl-tabs{ grid-template-columns:repeat(3, 1fr) }
       .sl-dl{ flex-direction:column; align-items:stretch; gap:14px }
       .sl-dlRight{ justify-content:center }
-      .sl-h1{ font-size:clamp(34px,9vw,46px) }
-      .sl-title{ font-size:clamp(26px,8vw,34px) }
+      .sl-title{ font-size:clamp(24px,7vw,30px) }
+    }
+
+    /* ≤ 420px (very small phones, iPhone SE) — hide the dog so the form
+     * fits without scroll for the primary action. Logo + brand stay. */
+    @media(max-width:420px){
+      .sl-dogWrap{ display:none }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
     @media(min-width:768px) and (max-width:1023px){
-      .sl-frame{ gap:28px }
-      .sl-hero{ gap:24px; align-items:stretch }
-      .sl-dog{ width:min(60%, 420px) }
-      .sl-h1{ font-size:clamp(48px,7vw,64px) }
-      .sl-title{ font-size:36px }
-      .sl-panel{ padding:30px }
+      .sl-frame{ gap:24px }
+      .sl-hero{ gap:18px; align-items:stretch }
+      .sl-logo{ height:clamp(120px,14vw,160px) }
+      .sl-h1{ font-size:clamp(28px,4.4vw,40px) }
+      .sl-dog{ width:min(38%, 260px) }
+      .sl-title{ font-size:32px }
+      .sl-panel{ padding:28px }
       .sl-advCells{ grid-template-columns:repeat(3, 1fr) }
       .sl-wallets{ grid-template-columns:1fr 1fr }
     }
 
-    /* ≥ 1024px (iPad landscape, desktop) — two columns, sticky left */
+    /* ≥ 1024px (iPad landscape, desktop) — two columns, sticky left.
+     * The hero is sticky so the brand stays visible while the form scrolls. */
     @media(min-width:1024px){
       .sl-frame{
         display:grid; grid-template-columns:1fr 1.05fr;
@@ -1205,8 +1273,10 @@ function styles(he: boolean) {
         align-items:start;
         padding-top:clamp(32px,4vw,56px);
       }
-      .sl-hero{ position:sticky; top:24px; gap:22px }
-      .sl-dog{ width:min(70%, 380px) }
+      .sl-hero{ position:sticky; top:24px; gap:18px }
+      .sl-logo{ height:clamp(140px,12vw,180px) }
+      .sl-h1{ font-size:clamp(30px,2.8vw,42px) }
+      .sl-dog{ width:min(48%, 240px) }
       .sl-panel{ padding:clamp(28px,2.6vw,38px) }
     }
 

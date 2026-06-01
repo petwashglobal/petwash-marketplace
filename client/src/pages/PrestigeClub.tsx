@@ -17,12 +17,12 @@ const dict: Record<Lang, Record<string, string>> = {
     nav_tiers: "דרגות",
     nav_moments: "Prestige Moments",
     nav_payments: "תשלום מאובטח",
-    join_free: "הצטרפות חינם",
+    join_free: "בקשת הצטרפות 18+",
     hero_kicker: "מועדון פרימיום למשפחות חיות מחמד",
-    hero_kicker2: "הצטרפות חינם",
+    hero_kicker2: "רשימת עניין מאושרת",
     hero_title: "PetWash Prestige Club",
-    hero_lead: "יותר מרחיצה. זה מועדון שמחבר בין שירותים לחיות מחמד, ארנק דיגיטלי, מתנות דיגיטליות והטבות ברמה של מותגי יוקרה.",
-    cta_open_app: "פתיחת חשבון חבר",
+    hero_lead: "יותר מרחיצה. Prestige הוא שער חברות למבוגרים 18+ בלבד: מגישים עניין, מאמתים מובייל ואימייל, ורק לאחר אישור מופעלים חשבון, Wallet והטבות.",
+    cta_open_app: "בקשת הצטרפות ל-Prestige",
     cta_gift: "שליחת מתנה דיגיטלית",
     cta_services: "לשירותי פלטפורמה",
     micro_secure: "אבטחה ברמת תעשייה",
@@ -51,14 +51,14 @@ const dict: Record<Lang, Record<string, string>> = {
     tiers_title: "The Prestige Collection",
     tiers_sub: "רמות שנראות כמו חברות תעופה וכרטיסים יוקרתיים. לחצו על כל דרגה כדי לראות פירוט מלא, הטבות ומה נפתח.",
     t_pearl_hint: "התחלה אלגנטית",
-    t_pearl_1: "הצטרפות חינם",
+    t_pearl_1: "בקשת עניין 18+",
     t_pearl_2: "ארנק ומעקב",
     t_pearl_3: "מתנות דיגיטליות",
     t_sig_hint: "סטנדרט גבוה",
     t_sig_1: "קדימות בהזמנות",
     t_sig_2: "הצעות ממוקדות",
     t_sig_3: "צבירה מהירה",
-    t_elite_hint: "Yellow Diamond",
+    t_elite_hint: "Champagne Diamond",
     t_elite_1: "בונוסים על טעינה",
     t_elite_2: "הטבות יום הולדת",
     t_elite_3: "הצעות בלעדיות",
@@ -71,7 +71,7 @@ const dict: Record<Lang, Record<string, string>> = {
     t_black_2: "הצעות נדירות",
     t_black_3: "גישה ראשונה (אופציונלי)",
     progress_title: "סטטוס והתקדמות",
-    progress_sub: "כמו בחברות תעופה: רואים איפה אתם נמצאים, ומה חסר לדרגה הבאה. המספרים כאן הם דוגמה להצגה בלבד.",
+    progress_sub: "כמו בחברות תעופה: רואים איפה אתם נמצאים, ומה חסר לדרגה הבאה. כל נתון אמיתי מגיע מחשבון מאומת בלבד.",
     progress_wallet_title: "הארנק שלכם",
     progress_wallet_desc: "יתרה, טעינות, מימושים, ומתנות שנכנסו לחשבון.",
     progress_balance: "יתרה",
@@ -85,7 +85,7 @@ const dict: Record<Lang, Record<string, string>> = {
     ass2: "התראות בזמן אמת",
     ass3: "אימות חשבון (אופציונלי)",
     moments_title: "PetWash Prestige Moments",
-    moments_sub: "כאן מכניסים תמונות אמיתיות ברמה גבוהה: חיות מחמד, ניקיון, עיצוב נקי, תחושה של מותג יוקרה. כרגע זה placeholder עיצובי.",
+    moments_sub: "כאן מוצגים רק נכסי מותג מאושרים: חיות מחמד, ניקיון, עיצוב נקי ותחושה של מותג יוקרה. אין תמונות דמו או הבטחות שלא אושרו.",
     mom1: "Pure white, calm light, premium care",
     mom2: "Black and gold, jewel accents, membership feel",
     pay_title: "תשלום מאובטח ומימוש",
@@ -103,9 +103,9 @@ const dict: Record<Lang, Record<string, string>> = {
     how3_d: "מזמינים שירותים או מממשים בעמדה בהתאם לתהליך שלכם.",
     how4_t: "4. צוברים",
     how4_d: "סטטוס ויתרונות נפתחים ככל שמתקדמים.",
-    legal_title: "הערות קצרות",
-    legal_p1: "התוכן בעמוד זה הוא הצעה עיצובית ומבנה שיווקי. בפועל יש להתאים את תנאי החברות, הדרגות וההטבות למדיניות העסקית שלכם ולדין המקומי.",
-    legal_p2: "כל מונח שמסומן כאופציונלי או Coming soon ניתן להסרה אם לא קיים אצלכם כרגע.",
+    legal_title: "אישור ושקיפות",
+    legal_p1: "בקשת הצטרפות אינה אישור חברות ואינה מנפיקה כרטיס Wallet. חברות, הטבות ויתרות מופעלות רק לאחר אימות ואישור לפי מדיניות Pet Wash Ltd.",
+    legal_p2: "פרטי ביטוח, כיסוי K9000, תנאים מסחריים ומידע פנימי מוצגים לציבור רק בנוסח שאושר לפרסום. פרמיות, עלויות, מסמכי חברה ומידע סודי אינם מוצגים באתר.",
     contact_title: "לינקים מהירים",
     metal_name: "ניר הדד",
     metal_sub: "חבר פעיל · Gold tier · מאז 2024",
@@ -123,12 +123,12 @@ const dict: Record<Lang, Record<string, string>> = {
     nav_tiers: "Tiers",
     nav_moments: "Prestige Moments",
     nav_payments: "Secure payment",
-    join_free: "Join for free",
+    join_free: "Apply 18+",
     hero_kicker: "A premium club for pet families",
-    hero_kicker2: "Free to join",
+    hero_kicker2: "Approved interest list",
     hero_title: "PetWash Prestige Club",
-    hero_lead: "More than a wash. A club that connects pet services, a digital wallet, digital gifts, and luxury-level perks.",
-    cta_open_app: "Open member account",
+    hero_lead: "More than a wash. Prestige is an adult-only 18+ membership gateway: apply for interest, verify mobile and email, then activate account, Wallet and benefits only after approval.",
+    cta_open_app: "Apply for Prestige",
     cta_gift: "Send a digital gift",
     cta_services: "Platform services",
     micro_secure: "Industry-grade security",
@@ -157,14 +157,14 @@ const dict: Record<Lang, Record<string, string>> = {
     tiers_title: "The Prestige Collection",
     tiers_sub: "Tiers that feel like airline memberships and luxury cards. Click each tier for full details, perks, and unlocks.",
     t_pearl_hint: "Elegant beginning",
-    t_pearl_1: "Free to join",
+    t_pearl_1: "18+ interest application",
     t_pearl_2: "Wallet & tracking",
     t_pearl_3: "Digital gifts",
     t_sig_hint: "High standard",
     t_sig_1: "Booking priority",
     t_sig_2: "Targeted offers",
     t_sig_3: "Faster accumulation",
-    t_elite_hint: "Yellow Diamond",
+    t_elite_hint: "Champagne Diamond",
     t_elite_1: "Top-up bonuses",
     t_elite_2: "Birthday perks",
     t_elite_3: "Exclusive offers",
@@ -177,7 +177,7 @@ const dict: Record<Lang, Record<string, string>> = {
     t_black_2: "Rare offers",
     t_black_3: "First access (optional)",
     progress_title: "Status & progress",
-    progress_sub: "Like airlines: see where you are and what's left for the next tier. Numbers shown are examples only.",
+    progress_sub: "Like airlines: see where you are and what's left for the next tier. Real status is shown only from a verified member account.",
     progress_wallet_title: "Your wallet",
     progress_wallet_desc: "Balance, top-ups, redemptions, and gifts received.",
     progress_balance: "Balance",
@@ -191,7 +191,7 @@ const dict: Record<Lang, Record<string, string>> = {
     ass2: "Real-time alerts",
     ass3: "Account verification (optional)",
     moments_title: "PetWash Prestige Moments",
-    moments_sub: "High-quality real images go here: pets, cleanliness, clean design, luxury brand feel. Currently a design placeholder.",
+    moments_sub: "Only approved brand assets belong here: pets, cleanliness, clean design, and a luxury brand feel. No demo imagery or unapproved promises.",
     mom1: "Pure white, calm light, premium care",
     mom2: "Black and gold, jewel accents, membership feel",
     pay_title: "Secure payment & redemption",
@@ -209,9 +209,9 @@ const dict: Record<Lang, Record<string, string>> = {
     how3_d: "Book services or redeem at stations according to your process.",
     how4_t: "4. Accumulate",
     how4_d: "Status and advantages unlock as you progress.",
-    legal_title: "Brief notes",
-    legal_p1: "Content on this page is a design proposal and marketing structure. In practice, membership terms, tiers, and perks should be adapted to your business policy and local law.",
-    legal_p2: "Any term marked as optional or Coming soon can be removed if not currently applicable.",
+    legal_title: "Approval & transparency",
+    legal_p1: "Submitting interest is not membership approval and does not issue a Wallet pass. Membership, benefits and balances activate only after Pet Wash Ltd verification and approval.",
+    legal_p2: "Insurance, K9000 coverage, commercial terms and internal company information appear publicly only in approved wording. Premiums, costs, company documents and confidential details are never shown on public pages.",
     contact_title: "Quick links",
     metal_name: "Nir Hadad",
     metal_sub: "Active member · Gold tier · Since 2024",
@@ -243,8 +243,8 @@ const TIERS: TierData[] = [
     plateClass: 'pc-platePearl',
     hint: 't_pearl_hint',
     items: ['t_pearl_1', 't_pearl_2', 't_pearl_3'],
-    desc: { he: 'דרגת כניסה אלגנטית. חברות חינם עם גישה בסיסית לארנק דיגיטלי, מתנות ומעקב.', en: 'Elegant entry tier. Free membership with basic access to digital wallet, gifts, and tracking.' },
-    bullets: { he: ['חברות חינם', 'גישה לארנק דיגיטלי', 'מתנות דיגיטליות', 'היסטוריית פעילות'], en: ['Free membership', 'Digital wallet access', 'Digital gifts', 'Activity history'] },
+    desc: { he: 'דרגת כניסה אלגנטית לאחר בקשת עניין, אימות ואישור. גישה בסיסית לארנק דיגיטלי, מתנות ומעקב נפתחת רק לחבר מאושר.', en: 'Elegant entry tier after interest, verification and approval. Basic wallet, gifts and tracking open only for an approved member.' },
+    bullets: { he: ['בקשת עניין 18+', 'גישה לארנק דיגיטלי לאחר אישור', 'מתנות דיגיטליות', 'היסטוריית פעילות'], en: ['18+ interest application', 'Digital wallet access after approval', 'Digital gifts', 'Activity history'] },
   },
   {
     id: 'signature',
@@ -289,7 +289,7 @@ const TIERS: TierData[] = [
 ];
 
 const TIER_CYCLE = [
-  { label: 'YELLOW DIAMOND', badge: 'Elite', color: '#E8C65A' },
+  { label: 'CHAMPAGNE DIAMOND', badge: 'Elite', color: '#B89A4D' },
   { label: 'EMERALD STONE', badge: 'Privilege', color: '#0F5E4A' },
   { label: 'SAPPHIRE CRYSTAL', badge: 'Signature', color: '#0E2F5A' },
   { label: 'PLATINUM', badge: 'Signature', color: '#C9C9C9' },
@@ -404,7 +404,7 @@ export default function PrestigeClub() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end', minWidth: 220 }}>
-              <Link href="/privilege">
+              <Link href="/prestige/waitlist">
                 <Button className="pc-btn pc-btnPrimary">{i('join_free')}</Button>
               </Link>
             </div>
@@ -427,7 +427,7 @@ export default function PrestigeClub() {
                   <p className="pc-lead">{i('hero_lead')}</p>
 
                   <div className="pc-heroActions">
-                    <Link href="/privilege">
+                    <Link href="/prestige/waitlist">
                       <Button className="pc-btn pc-btnPrimary">{i('cta_open_app')}</Button>
                     </Link>
                     <Link href="/egift">

@@ -118,6 +118,26 @@ export class AuthService {
       await this.ensureLoyaltyProfile(user.id);
       await this.ensureWalletAccount(user.id);
 
+      // SUMIT customer sync (Mission-5 skeleton). Non-blocking — enqueue
+      // failure cannot fail user creation. When sumit.mode='off' (default
+      // today) the worker no-ops; when 'api' lands, the same enqueue
+      // activates real customer sync. Per docs/finance/sumit-api-known-vs-
+      // assumed-2026-05-23.md §1.1, customer create uses
+      // POST /accounting/customers/create/.
+      try {
+        const { sumitSyncService } = await import('./SumitSyncService');
+        await sumitSyncService.syncCustomer({
+          userId: user.id,
+          email: user.email ?? undefined,
+          name: [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || (user.email ?? user.id),
+          source: 'user_create',
+        });
+      } catch (syncErr: any) {
+        logger.warn('[AuthService] SUMIT customer sync enqueue failed (non-blocking)', {
+          userId: user.id, err: syncErr?.message,
+        });
+      }
+
       return user;
     } catch (error: any) {
       if (error?.code === '23505') {

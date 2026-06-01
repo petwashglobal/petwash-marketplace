@@ -1818,7 +1818,7 @@ export class BackgroundJobProcessor {
           nextReviewDue: review.nextReviewDue,
           daysUntilDue,
           lastReviewDate: review.reviewDate,
-          adminEmail: 'legal@petwash.co.il', // TODO: Get from env or config
+          adminEmail: process.env.LEGAL_COMPLIANCE_EMAIL || process.env.REPORTS_EMAIL_TO || 'legal@petwash.co.il',
         });
 
         if (emailSent) {

@@ -9,26 +9,53 @@ import { GoogleSheetsService } from "../services/googleSheetsIntegration";
 
 const router = Router();
 
-// Middleware to verify CEO/authorized user
+// Middleware to verify CEO/authorized signer.
+//
+// Authorization sources (either grants access):
+//   1. Firebase Custom Claim `role: 'ceo'` or `signingAuthority: true` —
+//      the durable, revocable, account-portable mechanism. Preferred.
+//   2. Hard-coded authorizedEmails — legacy fallback retained until
+//      every authorized signer has the custom claim set. Once confirmed,
+//      remove this branch in a follow-up commit.
+//
+// To set the custom claim on a Firebase user (one-time, from a trusted env):
+//   await admin.auth().setCustomUserClaims(uid, { role: 'ceo' });
+// Users must sign out and back in for new claims to appear in the token.
 async function verifyCEOAccess(req: Request, res: Response, next: Function) {
   const user = req.user as any;
-  
+
   if (!user) {
     return res.status(401).json({ error: "Authentication required" });
   }
-  
-  // Check if user is Nir Hadad (CEO) or authorized executive
+
+  // Path 1 — Firebase Custom Claim (preferred).
+  // Fetch the live user record so revoked claims are honored immediately
+  // instead of waiting for the ID token to expire.
+  try {
+    const { adminAuth } = await import('../lib/firebase-admin');
+    const uid: string | undefined = user.uid || user.firebaseUser?.uid;
+    if (uid) {
+      const userRecord = await adminAuth.getUser(uid);
+      const claims = (userRecord.customClaims || {}) as Record<string, any>;
+      if (claims.role === 'ceo' || claims.signingAuthority === true) {
+        return next();
+      }
+    }
+  } catch (err) {
+    logger.warn('[Signatures] customClaims lookup failed, falling back to email allowlist', { err: (err as Error)?.message });
+  }
+
+  // Path 2 — legacy email allowlist (TODO: remove after custom claim is set).
   const authorizedEmails = [
     "nir@petwash.co.il",
     "nir.hadad@petwash.co.il",
-    // Add other authorized signers
   ];
-  
-  if (!authorizedEmails.includes(user.email?.toLowerCase())) {
-    return res.status(403).json({ error: "CEO/Executive access only" });
+  if (authorizedEmails.includes(user.email?.toLowerCase())) {
+    logger.warn('[Signatures] authorized via legacy email fallback — set Firebase Custom Claim role=ceo to remove this path', { email: user.email });
+    return next();
   }
-  
-  next();
+
+  return res.status(403).json({ error: "CEO/Executive access only" });
 }
 
 // Get user's digital signatures
