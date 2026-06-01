@@ -6516,67 +6516,34 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // T04: Persistent idempotency dedup for Nayax voucher webhook.
-  // In-memory Map with 24-hour TTL; prevents double-processing across rapid retries.
-  // For multi-instance deployments, upgrade to a Redis SET or PostgreSQL webhook_events table.
-  const _voucherWebhookSeen = new Map<string, number>();
-  const _VOUCHER_DEDUP_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-  function _voucherDedup(eventId: string): boolean {
-    const now = Date.now();
-    // Evict expired entries
-    for (const [k, ts] of _voucherWebhookSeen) {
-      if (now - ts > _VOUCHER_DEDUP_TTL_MS) _voucherWebhookSeen.delete(k);
-    }
-    if (_voucherWebhookSeen.has(eventId)) return true; // already processed
-    _voucherWebhookSeen.set(eventId, now);
-    return false;
-  }
-
-  // Nayax webhook for voucher purchases
-  app.post('/api/vouchers/webhooks/nayax', async (req, res) => {
-    const correlationId = crypto.randomUUID();
-    try {
-      const signature = req.headers['x-nayax-signature'] as string;
-      const secret = process.env.NAYAX_WEBHOOK_SECRET;
-
-      if (!secret) {
-        logger.error('NAYAX_WEBHOOK_SECRET not configured', { correlationId });
-        return res.status(500).json({ error: 'Webhook not configured' });
-      }
-
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(req.body))
-        .digest('hex');
-
-      if (signature !== expectedSignature) {
-        logger.error('Invalid Nayax webhook signature', { correlationId });
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
-
-      // T04: Idempotency — deduplicate by event_id from payload
-      const eventId: string | undefined = req.body?.event_id || req.body?.eventId;
-      if (eventId && _voucherDedup(eventId)) {
-        logger.info('Nayax voucher webhook duplicate ignored', { correlationId, eventId });
-        return res.json({ received: true, duplicate: true });
-      }
-
-      const { type, data } = req.body;
-
-      if (type === 'voucher.purchased') {
-        // TODO: Create voucher and send email
-        logger.info('Nayax voucher purchase webhook received', { correlationId, eventId, data });
-      } else if (type === 'voucher.refunded') {
-        // TODO: Mark voucher as cancelled
-        logger.info('Nayax voucher refund webhook received', { correlationId, eventId, data });
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      logger.error('Nayax webhook error', error, { correlationId });
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
-  });
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S7):
+  // The _voucherDedup helper that lived here was only consumed by the
+  // duplicate-and-broken /api/vouchers/webhooks/nayax handler. Both
+  // gone now — the canonical /api/webhooks/nayax route has its own
+  // dedup path via the persistent webhook_events table.
+  //
+  //   Removed the duplicate /api/vouchers/webhooks/nayax handler. Two bugs:
+  //
+  //   1. BROKEN HMAC — verified `JSON.stringify(req.body)` against the
+  //      x-nayax-signature header. req.body here is a parsed object
+  //      re-stringified by node, NOT the raw bytes Nayax signed. Key
+  //      order and whitespace differ, so the verification was guaranteed
+  //      to fail for legitimate webhooks (401 every real call) and could
+  //      theoretically be forged by an attacker who matched the exact
+  //      re-stringification format.
+  //
+  //   2. DEAD HANDLERS — `voucher.purchased` and `voucher.refunded`
+  //      branches were `// TODO` stubs. Even if HMAC passed, no voucher
+  //      was created, no email sent, no refund recorded. Silent no-op.
+  //
+  //   The canonical Nayax webhook at `/api/webhooks/nayax` (routes.ts
+  //   line 5216) uses `express.raw({ type: 'application/json' })` which
+  //   preserves the raw bytes for correct HMAC verification, AND its
+  //   actual handlers are wired. The duplicate served no purpose except
+  //   to confuse operators reading "401 invalid signature" in the logs.
+  //   A legacy-endpoint redirect already lives at line 5352 for
+  //   /api/nayax-webhook — that pattern, not this broken duplicate,
+  //   is the right way to handle aliases.
 
   // Admin authentication routes - SECURITY: Firebase Auth ONLY
   // REMOVED hardcoded credentials - all admin login must use Firebase Authentication
