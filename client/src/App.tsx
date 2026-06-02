@@ -116,7 +116,6 @@ const Franchise = lazy(() => import("@/pages/Franchise"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const OurService = lazy(() => import("@/pages/OurService"));
 const Gallery = lazy(() => import("@/pages/Gallery"));
-const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const AdminBackendPanel = lazy(() => import("@/pages/AdminBackendPanel"));
 const AdminGoogleForms = lazy(() => import("@/pages/AdminGoogleForms"));
 const FormsHub = lazy(() => import("@/pages/forms/FormsHub"));
