@@ -142,21 +142,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                     {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
                   </Button>
                 ) : (
-                  <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                    <Button 
+                  <div className="flex justify-center items-center">
+                    <Button
                       onClick={() => setLocation('/signup')}
                       className="gold-shimmer-btn text-white px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
-                      data-testid="button-signup-hero"
+                      data-testid="button-signin-or-signup-hero"
                     >
-                      {t('hero.getStarted', language)}
-                    </Button>
-                    <Button 
-                      variant="ghost"
-                      onClick={() => setLocation('/signin')}
-                      className="bg-transparent text-[#111] border-2 border-[#c6a664] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#c6a664] hover:text-white transition-all duration-500 w-full sm:w-auto animate-gold-border rounded-none"
-                      data-testid="button-login-hero"
-                    >
-                      {t('landing.login', language)}
+                      {t('landing.signinOrSignup', language)}
                     </Button>
                   </div>
                 )}
@@ -452,7 +444,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
             <div className="mt-12 text-center">
               <Button
-                onClick={() => handleAuthNavigate()}
+                onClick={() => user ? handleAuthNavigate() : setLocation('/signup')}
                 className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',

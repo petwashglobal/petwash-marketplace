@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.il.petwash.prestige",
+  "teamIdentifier": "REPLACE_AT_RUNTIME",
+  "organizationName": "Pet Wash Ltd",
+  "description": "PetWash Prestige Membership Pass",
+  "logoText": "PetWash",
+  "backgroundColor": "rgb(255,255,255)",
+  "foregroundColor": "rgb(0,0,0)",
+  "labelColor": "rgb(176,132,28)",
+  "sharingProhibited": false,
+  "storeCard": {
+    "primaryFields": [],
+    "secondaryFields": [],
+    "auxiliaryFields": [],
+    "backFields": []
+  }
+}

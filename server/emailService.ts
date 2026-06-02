@@ -12,6 +12,7 @@ import { createMailService, isSendGridConfigured } from './lib/sendgrid';
 import { emailSpendGuard } from './services/EmailSpendGuard';
 import { wrapEmailShell, buildLegalFooter, SENDERS, DESIGN, COMPANY_TAX_ID, LEGAL_NAME_HE, LEGAL_NAME_EN } from './email/brand-identity';
 import { generateBookingConfirmationPDF } from './email/pdf/booking-confirmation-pdf';
+import { PETWASH_LOGO_BASE64 } from './email/templates/logo-base64';
 
 const mailService = createMailService();
 
@@ -3089,7 +3090,7 @@ export class EmailService {
     <div style="max-width: 600px; margin: 0 auto; background: white;">
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px 30px; text-align: center;">
-            <img src="cid:petwash-logo" alt="⁦Pet Wash™⁩" style="height: 60px; margin-bottom: 15px;" />
+            <img src="${PETWASH_LOGO_BASE64}" alt="⁦Pet Wash™⁩" style="height: 60px; margin-bottom: 15px;" />
             <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">הזמנה לצוות ⁦Pet Wash™⁩</h1>
         </div>
         

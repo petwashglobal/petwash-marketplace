@@ -55,19 +55,18 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
     return;
   }
 
-  // Consent check — sender purchased this e-gift, so it is transactional.
-  // We still verify they haven't hard-bounced or unsubscribed.
-  const senderConsent = await EmailService.checkEmailConsent(config.senderEmail, 'transactional');
-  if (!senderConsent) {
-    logger.info('[EGiftEmail] Sender consent check failed, skipping sender confirmation', { to: config.senderEmail });
-    // Do not abort — still attempt recipient delivery below.
-  }
-
-  // Rate limiting guard
+  // Rate-limit guard — only abuse-prevention signal we still apply to the
+  // sender path. Per Israeli Spam Law §2(5)(a), transactional emails for a
+  // paid service do NOT require marketing consent, so the previous
+  // EmailService.checkEmailConsent() gate has been removed: it caused
+  // purchasers who had unsubscribed from marketing to receive zero
+  // acknowledgement of their gift-card purchase (no receipt, no tax invoice
+  // confirmation, nothing). A rate-limit hit is rare and a real abuse
+  // signal, so it remains, but it's logged as an error (was warn) so
+  // operators can see when a real customer is impacted.
   const senderRateOk = EmailService.checkRateLimit(config.senderEmail);
   if (!senderRateOk) {
-    logger.warn('[EGiftEmail] Rate limit exceeded for sender', { to: config.senderEmail });
-    // Non-fatal — proceed to recipient
+    logger.error('[EGiftEmail] Rate limit hit on sender receipt — purchaser will not receive confirmation', { to: config.senderEmail });
   }
 
   const tier = getTier(config.value);
@@ -303,8 +302,11 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
     .replace(`>${t.heading}<`, `>${recipientHeading}<`)
     .replace(`>${t.subheading}<`, `>${recipientSubheading}<`);
 
-  // Sender confirmation — only if consent passed and rate-limit ok
-  if (senderConsent && senderRateOk) {
+  // Sender confirmation — transactional receipt for a paid purchase.
+  // Always attempt the send unless rate-limited (the rate-limit is an
+  // abuse guard, not a marketing-consent gate). Send failures are logged
+  // but do not block recipient delivery below.
+  if (senderRateOk) {
     try {
       await mailService.send({
         to: config.senderEmail,
@@ -314,7 +316,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
       });
       logger.info('[EGiftEmail] Sender confirmation sent', { to: config.senderEmail });
     } catch (err) {
-      logger.warn('[EGiftEmail] Failed to send sender confirmation:', err);
+      logger.error('[EGiftEmail] Failed to send sender confirmation (transactional receipt):', err);
     }
   }
 

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/PhoneInput";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
-import { Building2, Globe, DollarSign, Users, TrendingUp, Award, Send, CheckCircle2, Loader2, Mail, Phone, User, MapPin, X } from "lucide-react";
+import { Building2, ClipboardCheck, GraduationCap, Handshake, PackageCheck, Send, CheckCircle2, Loader2, Mail, Phone, User, MapPin, X } from "lucide-react";
 
 export default function FranchisePartners() {
   const { language } = useLanguage();
@@ -65,93 +65,93 @@ export default function FranchisePartners() {
     <div className="min-h-screen luxury-bg-mesh">
       <div className="container max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-16 luxury-animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-stone-950 via-stone-800 to-amber-600 flex items-center justify-center mx-auto mb-4">
             <Building2 className="w-10 h-10 text-white" />
           </div>
           <h1 className="luxury-heading-xl mb-4">
-            {isHe ? 'שותפויות זכיינות ועירוניות' : 'Franchise & City Partners'}
+            {isHe ? 'בדיקת שותפי מיקום ומפעילים מורשים' : 'Location Partner & Licensed Operator Review'}
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
             {isHe 
-              ? 'הצטרפו לרשת הזכיינות הבינלאומית של ⁦Pet Wash™⁩. מודל עסקי מוכח, תמיכה מלאה, מותג פרימיום.'
-              : 'Join the ⁦Pet Wash™⁩ global franchise network. Proven business model, enterprise support, luxury brand.'}
+              ? 'Pet Wash Ltd בוחנת שותפי מיקום ומפעילים רק במסלול מבוקר: NDA, בדיקת אתר, חוזים, הדרכה, אספקה ותמיכה, ביקורת משפטית/חשבונאית ואישור Nir לפני כל התחייבות.'
+              : 'Pet Wash Ltd reviews location partners and operators through a controlled path only: NDA, site review, contracts, training, supply/support model, legal/accountant review, and Nir approval before any commitment.'}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-1">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
-              <Globe className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-stone-950 to-amber-600 flex items-center justify-center mb-4">
+              <ClipboardCheck className="w-7 h-7 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
-              {isHe ? 'התרחבות עולמית' : 'Global Expansion'}
+              {isHe ? 'בדיקת אתר לפני הכול' : 'Site Review First'}
             </h3>
             <p className="luxury-text-body">
-              {isHe ? 'פעילות במדינות רבות עם תוכניות צמיחה אגרסיביות' : 'Operating in multiple countries with aggressive growth plans'}
+              {isHe ? 'אין הבטחת טריטוריה, הכנסה או פעילות לפני בדיקת מיקום, תשתיות, ביטוח, תפעול וסיכון.' : 'No territory, income, or operating promise before location, infrastructure, insurance, operational, and risk review.'}
             </p>
           </div>
 
           <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
-              <DollarSign className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-stone-950 to-amber-600 flex items-center justify-center mb-4">
+              <Handshake className="w-7 h-7 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
-              {isHe ? 'פוטנציאל הכנסה' : 'Revenue Potential'}
+              {isHe ? 'חוזים ו-NDA' : 'Contracts + NDA'}
             </h3>
             <p className="luxury-text-body">
-              {isHe ? 'מקורות הכנסה מרובים ב-8 פלטפורמות עסקיות' : 'Multiple revenue streams across 8 business platforms'}
+              {isHe ? 'תנאים מסחריים, תמיכה, אספקה, הכשרה ותמלוגים נבחנים במסמכים חתומים בלבד.' : 'Commercial terms, support, supply, training, and fee logic are handled only through signed documents.'}
             </p>
           </div>
 
           <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
-              <Users className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-stone-950 to-amber-600 flex items-center justify-center mb-4">
+              <GraduationCap className="w-7 h-7 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
-              {isHe ? 'תמיכה ארגונית' : 'Enterprise Support'}
+              {isHe ? 'הדרכה ותפעול' : 'Training + Operations'}
             </h3>
             <p className="luxury-text-body">
-              {isHe ? 'הכשרה מלאה, טכנולוגיה, שיווק ותמיכה תפעולית' : 'Full training, technology, marketing, and operational support'}
+              {isHe ? 'מסלול ההפעלה חייב לכלול מדריך תפעול, הדרכה, אחריות שירות, SLA ותיעוד תמיכה.' : 'Every launch path must include an operations manual, training, service responsibility, SLA, and support evidence.'}
             </p>
           </div>
 
           <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
-              <TrendingUp className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-stone-950 to-amber-600 flex items-center justify-center mb-4">
+              <PackageCheck className="w-7 h-7 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
-              {isHe ? 'מודל מוכח' : 'Proven Model'}
+              {isHe ? 'אספקה ואיכות' : 'Supply + Quality'}
             </h3>
             <p className="luxury-text-body">
-              {isHe ? 'מערכות מוכחות, מותג מבוסס, ביקוש שוק גובר' : 'Tested systems, established brand, growing market demand'}
+              {isHe ? 'מוצרים, חלקים, K9000, ניקיון, ביטוח ותיעוד איכות צריכים להיות מאושרים לפני פעילות.' : 'Products, parts, K9000, cleaning, insurance, and quality records must be approved before activity.'}
             </p>
           </div>
 
           <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-5">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
-              <Award className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-stone-950 to-amber-600 flex items-center justify-center mb-4">
+              <Building2 className="w-7 h-7 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
-              {isHe ? 'מותג פרימיום' : 'Premium Brand'}
+              {isHe ? 'שמירה על המותג' : 'Brand Compliance'}
             </h3>
             <p className="luxury-text-body">
-              {isHe ? 'מיצוב יוקרתי עם תקני שירות 7 כוכבים' : 'Luxury positioning with 7-star service standards'}
+              {isHe ? 'כל שימוש בשם Pet Wash™, שילוט, מחיר, מבצע או פרסום מחייב כללים ואישור.' : 'Any use of the Pet Wash™ name, signage, pricing, offer, or advertising requires rules and approval.'}
             </p>
           </div>
 
-          <div className="luxury-glass-card shadow-lg p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 luxury-animate-fade-in luxury-delay-6">
+          <div className="luxury-glass-card shadow-lg p-6 bg-gradient-to-br from-stone-50 to-amber-50 dark:from-stone-900/20 dark:to-amber-900/20 luxury-animate-fade-in luxury-delay-6">
             <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
-              {isHe ? 'מוכנים להתחיל?' : 'Ready to Start?'}
+              {isHe ? 'רוצה שנבדוק?' : 'Request a Review'}
             </h3>
             <p className="luxury-text-body mb-4">
-              {isHe ? 'בקשו חבילת מידע על זכיינות' : 'Request franchise information package'}
+              {isHe ? 'שלח פנייה ראשונית. זו אינה הצעה מסחרית ואינה אישור פעילות.' : 'Send an initial request. This is not a commercial offer and not approval to operate.'}
             </p>
             <Button 
               className="w-full luxury-btn-primary" 
               data-testid="button-request-info"
               onClick={() => setShowForm(true)}
             >
-              {isHe ? 'בקש מידע' : 'Request Information'}
+              {isHe ? 'בקש בדיקה' : 'Request Review'}
             </Button>
           </div>
         </div>
@@ -170,14 +170,14 @@ export default function FranchisePartners() {
               </Button>
               
               <div className="text-center mb-6">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-3">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-stone-950 to-amber-600 flex items-center justify-center mx-auto mb-3">
                   <Send className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-black">
-                  {isHe ? 'בקשת מידע על זכיינות' : 'Franchise Information Request'}
+                  {isHe ? 'בקשת בדיקת שותף מיקום' : 'Location Partner Review Request'}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {isHe ? 'מלא את הפרטים ונחזור אליך בהקדם' : 'Fill in your details and we\'ll contact you soon'}
+                  {isHe ? 'מלא פרטים ראשוניים. המשך התהליך דורש NDA, מסמכים ואישורים.' : 'Share first details. The next step requires NDA, evidence, and approvals.'}
                 </p>
               </div>
 
@@ -229,13 +229,13 @@ export default function FranchisePartners() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-gray-700 dark:text-black flex items-center gap-2">
-                      <Globe className="w-4 h-4" />
+                      <Building2 className="w-4 h-4" />
                       {isHe ? 'מדינה' : 'Country'}
                     </Label>
                     <Input
                       value={formData.country}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      placeholder={isHe ? 'קנדה, ארה"ב...' : 'Canada, USA...'}
+                      placeholder={isHe ? 'ישראל' : 'Israel'}
                       className="mt-1"
                       data-testid="input-franchise-country"
                     />
@@ -248,7 +248,7 @@ export default function FranchisePartners() {
                     <Input
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder={isHe ? 'טורונטו' : 'Toronto'}
+                      placeholder={isHe ? 'תל אביב' : 'Tel Aviv'}
                       className="mt-1"
                       data-testid="input-franchise-city"
                     />
@@ -262,7 +262,7 @@ export default function FranchisePartners() {
                   <Textarea
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder={isHe ? 'ספר לנו על הניסיון שלך ותחומי העניין...' : 'Tell us about your experience and interests...'}
+                    placeholder={isHe ? 'ספר לנו על המיקום, ניסיון תפעולי, בעלות/שכירות, ולוח זמנים...' : 'Tell us about the site, operating experience, ownership/lease status, and timeline...'}
                     className="mt-1 min-h-[80px]"
                     data-testid="input-franchise-message"
                   />
@@ -271,7 +271,7 @@ export default function FranchisePartners() {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full py-5 text-base font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-lg"
+                  className="w-full py-5 text-base font-semibold rounded-xl bg-gradient-to-r from-stone-950 via-stone-800 to-amber-600 hover:from-black hover:via-stone-900 hover:to-amber-700 text-white border-0 shadow-lg"
                   data-testid="button-submit-franchise"
                 >
                   {isSubmitting ? (
@@ -301,7 +301,7 @@ export default function FranchisePartners() {
                 {isHe ? 'הבקשה נשלחה!' : 'Request Submitted!'}
               </h2>
               <p className="text-gray-500 dark:text-gray-400 mb-6">
-                {isHe ? 'תודה על ההתעניינות! נציג יצור איתך קשר תוך 1-2 ימי עסקים.' : 'Thank you for your interest! A representative will contact you within 1-2 business days.'}
+                {isHe ? 'תודה. נבדוק את הפנייה ונחזור עם השלב הבא אם היא מתאימה למסלול המבוקר.' : 'Thank you. We will review the request and respond with the next controlled step if it fits the program.'}
               </p>
               <Button 
                 onClick={() => { setShowForm(false); setSubmitted(false); }}

@@ -1,23 +1,28 @@
-# FRANCHISE MASTER AGREEMENT
-## Pet Wash™ International Franchise System
+# LOCATION PARTNER / LICENSED OPERATOR AGREEMENT REVIEW DRAFT
+## Pet Wash™ Israel Partner Control Draft
 
-**CONFIDENTIAL - MULTI-JURISDICTION FRANCHISE AGREEMENT**
+**DRAFT ONLY - NOT APPROVED FOR SIGNATURE OR CUSTOMER/PARTNER DELIVERY**
+
+This template is an internal drafting scaffold. It must not be sent, signed,
+published, or used as a legal contract until Pet Wash Ltd management, Israeli
+legal counsel, and the accountant approve the final role model, VAT/accounting
+treatment, insurance requirements, territory/site scope, supply/support
+responsibilities, and signed Hebrew/English versions.
 
 ---
 
 ## AGREEMENT DETAILS
 
-This Franchise Master Agreement ("Agreement") is entered into on **{{contract_date}}** ("Effective Date") between:
+This partner agreement draft ("Agreement Draft") is prepared on **{{contract_date}}** ("Draft Date") between:
 
-**FRANCHISOR:**  
-Pet Wash™ International  
+**PET WASH LTD / BRAND OWNER:**
 {{franchisor_legal_name}}  
 {{franchisor_address}}  
 {{franchisor_country}}  
 Company Registration: {{franchisor_registration_number}}  
 Tax ID: {{franchisor_tax_id}}
 
-**FRANCHISEE:**  
+**PROPOSED PARTNER / LICENSED OPERATOR:**
 Full Name/Entity: **{{franchisee_full_name}}**  
 Legal Entity: {{franchisee_legal_entity}}  
 Address: {{franchisee_address}}  
@@ -29,27 +34,28 @@ Company Registration: {{franchisee_registration_number}}
 
 ---
 
-## 1. GRANT OF FRANCHISE
+## 1. REVIEWED PARTNER MODEL
 
-### 1.1 Franchise Rights
-The Franchisor grants the Franchisee a **{{franchise_type}}** franchise to operate a Pet Wash™ location:
+### 1.1 No Automatic Rights Before Approval
+No franchise, territory, operating, supply, support, brand, machine, data, or
+revenue-share right exists until a final agreement is approved and signed.
+The reviewed model may be one of:
 
-**Franchise Types:**
-- **Single-Unit Franchise:** One location at specified address
-- **Multi-Unit Franchise:** {{number_of_units}} units within defined territory
-- **Master Franchise:** Exclusive development rights for {{master_franchise_territory}}
-- **Area Development:** {{area_development_units}} units over {{development_period}} years
+**Reviewed Partner Tracks:**
+- **Location Partner:** Approved site owner/landlord/revenue-share location.
+- **Licensed Operator:** Approved local operator for a specific site or asset.
+- **Franchise Candidate:** Only if separately approved by Israeli legal counsel,
+  accountant, and Pet Wash Ltd management.
+- **Manual Review:** Any multi-site, regional, cross-border, or unusual structure.
 
-### 1.2 Territory
-**Exclusive Territory:** {{exclusive_territory_description}}  
-**Territory Map:** Attached as Exhibit A  
-**Population:** Approximately {{territory_population}}  
-**Protected Radius:** {{protected_radius}}km from franchise location
+### 1.2 Site / Territory Scope
+**Approved Site Address:** {{approved_site_address}}
+**Site Scope:** {{site_scope_description}}
+**Territory or Radius:** {{territory_or_radius_if_approved_by_legal}}
 
-**Territory Exclusivity:**
-- Franchisor will NOT establish company-owned locations within exclusive territory
-- Franchisor MAY approve additional franchisees if franchisee fails to meet development schedule
-- Online sales and marketing are NOT territory-exclusive
+No exclusivity, protected radius, city rights, or development rights are granted
+unless the final signed agreement states it clearly after legal/accountant/Nir
+approval.
 
 ### 1.3 Franchise Term
 **Initial Term:** {{initial_term}} years (from opening date)  

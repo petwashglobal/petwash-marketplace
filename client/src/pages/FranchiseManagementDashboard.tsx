@@ -112,8 +112,8 @@ export default function FranchiseManagementDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Franchise Management"
-      subtitle="Global franchise network oversight and royalty tracking"
+      title="Partner & Site Controls"
+      subtitle="Approved partner, site, support, supply, and settlement controls"
     >
       <div className="min-h-screen luxury-bg-mesh p-8" data-testid="franchise-management-dashboard">
       {/* Header */}
@@ -126,7 +126,7 @@ export default function FranchiseManagementDashboard() {
             </Button>
             <Button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee">
               <Plus className="w-4 h-4" />
-              New Franchisee
+              New Partner Review
             </Button>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-500"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Franchisees</h3>
+              <h3 className="luxury-heading-sm">Partners</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 p-2.5 shadow-lg">
                 <Building2 className="w-full h-full text-white" />
               </div>
@@ -147,7 +147,7 @@ export default function FranchiseManagementDashboard() {
               {Array.isArray(allFranchisees) ? allFranchisees.length : 0}
             </div>
             <p className="luxury-text-small mt-1">
-              {activeFranchisees} active
+              {activeFranchisees} active / approved
             </p>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Monthly Revenue</h3>
+              <h3 className="luxury-heading-sm">Monthly Reported Sales</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 p-2.5 shadow-lg">
                 <TrendingUp className="w-full h-full text-white" />
               </div>
@@ -180,7 +180,7 @@ export default function FranchiseManagementDashboard() {
             <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-monthly-revenue">
               ₪{totalMonthlyRevenue.toLocaleString()}
             </div>
-            <p className="luxury-text-small mt-1">Combined network</p>
+            <p className="luxury-text-small mt-1">Requires finance review</p>
           </div>
         </div>
 
@@ -222,7 +222,7 @@ export default function FranchiseManagementDashboard() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search franchisees by name, ID, or email..."
+            placeholder="Search partners by name, ID, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 luxury-glass-minimal border-none"
@@ -240,21 +240,21 @@ export default function FranchiseManagementDashboard() {
         <TabsList className="luxury-glass-panel">
           <TabsTrigger value="franchisees" data-testid="tab-franchisees">
             <Building2 className="w-4 h-4 mr-2" />
-            Franchisees
+            Partners
           </TabsTrigger>
           <TabsTrigger value="royalty" data-testid="tab-royalty">
             <DollarSign className="w-4 h-4 mr-2" />
-            Royalty Payments
+            Partner Settlements
           </TabsTrigger>
         </TabsList>
 
-        {/* Franchisees Tab */}
+        {/* Partners Tab */}
         <TabsContent value="franchisees" data-testid="content-franchisees">
           {franchiseesError && (
             <Alert variant="destructive" data-testid="alert-franchisees-error">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Failed to load franchisees. Please try again.
+                Failed to load partners. Please try again.
               </AlertDescription>
             </Alert>
           )}
@@ -280,13 +280,13 @@ export default function FranchiseManagementDashboard() {
             ))}
           </div>
 
-          {/* Franchisees Grid */}
+          {/* Partners Grid */}
           <div className="luxury-grid-3">
             {franchiseesLoading ? (
-              <p className="text-muted-foreground col-span-full text-center py-8">Loading franchisees...</p>
+              <p className="text-muted-foreground col-span-full text-center py-8">Loading partners...</p>
             ) : filteredFranchisees.length === 0 ? (
               <p className="text-muted-foreground col-span-full text-center py-8" data-testid="text-no-franchisees">
-                No franchisees found
+                No partners found
               </p>
             ) : (
               filteredFranchisees.map((franchisee, idx) => (
@@ -322,13 +322,13 @@ export default function FranchiseManagementDashboard() {
                         <Badge variant="secondary">{franchisee.numberOfStations || 0}</Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Monthly Rev:</span>
+                        <span className="text-muted-foreground">Reported Sales:</span>
                         <span className="luxury-heading-sm luxury-text-gradient">
                           ₪{parseFloat(franchisee.monthlyRevenue || '0').toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Royalty:</span>
+                        <span className="text-muted-foreground">Settlement %:</span>
                         <span className="font-medium">{franchisee.royaltyPercent || '0'}%</span>
                       </div>
                       <div className="flex gap-2 pt-2">
@@ -347,13 +347,13 @@ export default function FranchiseManagementDashboard() {
           </div>
         </TabsContent>
 
-        {/* Royalty Payments Tab */}
+        {/* Partner Settlements Tab */}
         <TabsContent value="royalty" data-testid="content-royalty">
           {paymentsError && (
             <Alert variant="destructive" data-testid="alert-payments-error">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Failed to load royalty payments. Please try again.
+                Failed to load partner settlements. Please try again.
               </AlertDescription>
             </Alert>
           )}
@@ -371,10 +371,10 @@ export default function FranchiseManagementDashboard() {
           {/* Payments List */}
           <div className="space-y-4">
             {paymentsLoading ? (
-              <p className="text-muted-foreground text-center py-8">Loading royalty payments...</p>
+              <p className="text-muted-foreground text-center py-8">Loading partner settlements...</p>
             ) : !Array.isArray(royaltyPayments) || royaltyPayments.length === 0 ? (
               <p className="text-muted-foreground text-center py-8" data-testid="text-no-payments">
-                No royalty payments found
+                No partner settlements found
               </p>
             ) : (
               royaltyPayments.map((payment, idx) => (
@@ -391,7 +391,7 @@ export default function FranchiseManagementDashboard() {
                               {payment.currency || 'ILS'} {parseFloat(payment.royaltyAmount).toLocaleString()}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Franchisee ID: {payment.franchiseeId}
+                              Partner ID: {payment.franchiseeId}
                             </p>
                           </div>
                         </div>

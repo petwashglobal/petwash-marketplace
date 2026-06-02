@@ -114,6 +114,19 @@ export default function AdminLoginV2() {
     if (tag === 'ACCESS_DENIED') {
       return `This account (${err?.email || 'unknown'}) does not have admin privileges. Role: ${err?.role || 'none'}.`;
     }
+    // Investigation finding 5.2 — surface EMAIL_NOT_VERIFIED clearly and
+    // wire a follow-up "Resend verification email" path. The toast tells
+    // the operator exactly what to do; the Forgot-password helper below
+    // also doubles as a resend route since Firebase's password-reset
+    // email re-verifies the address on click.
+    if (tag === 'SESSION_CREATION_FAILED' && code === 'EMAIL_NOT_VERIFIED') {
+      return `Email not verified for this admin account. Open your inbox and click the Firebase verification link, then sign in again. (Tap "Forgot password?" below to resend the link.)`;
+    }
+    if (tag === 'SESSION_CREATION_FAILED' && code === 'STALE_TOKEN') {
+      // Finding 5.3 — explain the >24h iat gate so the operator knows
+      // to hard-refresh + re-auth instead of generic "try again".
+      return `Sign-in token is older than 24 hours and was rejected for an admin role. Hard-refresh this page (Cmd+Shift+R) and sign in again.`;
+    }
     if (tag === 'SESSION_CREATION_FAILED') {
       const codeHint = code ? ` (${code})` : '';
       const srv = err?.serverMsg ? ` — ${err.serverMsg}` : '';
@@ -257,11 +270,24 @@ export default function AdminLoginV2() {
         return;
       }
 
-      const optionsRes = await apiRequest("/webauthn/authenticate/options", {
+      // CRITICAL FIX 2026-05-24 (investigation finding 4.1):
+      //   Pre-fix called `/webauthn/authenticate/options` — there is no
+      //   such route on the server. The dead v1 router at server/routes/
+      //   webauthn.ts was DISABLED at routes.ts:11031. The canonical
+      //   endpoints are mounted inline at routes.ts:2903 / :2935 under
+      //   `/api/webauthn/login/...`. Every biometric tap from the admin
+      //   login was therefore 404-ing through the Firebase Hosting
+      //   rewrite, which the user described as "scan and maybe he kill
+      //   the entry to back end". Fixed.
+      const optionsRes = await apiRequest("/api/webauthn/login/options", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      const options = await optionsRes.json();
+      const optionsBody = await optionsRes.json();
+      // Server may wrap options under { options, challengeKey, discoverable }
+      // depending on whether email was provided. Unwrap so the rest of the
+      // code (which expects `.challenge`, `.allowCredentials`) keeps working.
+      const options = optionsBody.options || optionsBody;
 
       const credential = await navigator.credentials.get({
         publicKey: {
@@ -291,11 +317,15 @@ export default function AdminLoginV2() {
         },
       };
 
-      const verifyRes = await apiRequest("/webauthn/authenticate/verify", {
+      // CRITICAL FIX 2026-05-24 (investigation finding 4.1):
+      //   Pre-fix called `/webauthn/authenticate/verify` (404) AND sent
+      //   `{response, email}` — the canonical handler at routes.ts:2935
+      //   expects only `{response}` (and optional `discoverable: true`
+      //   when no email was used for the options call).
+      const verifyRes = await apiRequest("/api/webauthn/login/verify", {
         method: "POST",
         body: JSON.stringify({
           response: serializedCredential,
-          email,
         }),
       });
       const verifyResponse = await verifyRes.json();

@@ -2,7 +2,7 @@
  * PR-WALLET-HOME-CTA-A — homepage Prestige Wallet CTA gating pin.
  *
  * The pass is a membership artifact, so the homepage CTA must:
- *   • route logged-OUT visitors to signup (never hand them a pass)
+ *   • route logged-OUT visitors to the 18+ interest gate (never hand them a pass)
  *   • route logged-IN members into the existing /prestige-pass flow
  *   • NOT generate passes or call wallet/cert endpoints itself
  * and Landing.tsx must actually render it.
@@ -21,8 +21,8 @@ describe('PrestigeWalletCTA — membership-gated homepage CTA', () => {
     expect(cta).toMatch(/user\s*\?/);
   });
 
-  it('routes logged-out visitors to signup (Join Prestige)', () => {
-    expect(cta).toMatch(/href="\/signup"/);
+  it('routes logged-out visitors to the Prestige interest gate', () => {
+    expect(cta).toMatch(/href="\/prestige\/waitlist"/);
     expect(cta).toMatch(/cta-join-prestige/);
   });
 

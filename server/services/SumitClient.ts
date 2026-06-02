@@ -29,22 +29,36 @@ import { logger } from '../lib/logger';
  * mutate process.env per case and ops can flip SUMIT_ENABLED without a
  * process restart. Cost is negligible — these are property reads.
  *
- * Mission-5: SUMIT_SANDBOX = 'true' routes calls to SUMIT's sandbox
- * environment. When unset/false, calls go to production. Default is
- * SANDBOX-ON so a misconfigured deploy never accidentally hits prod
- * SUMIT — operator must explicitly opt-in to production by setting
- * SUMIT_SANDBOX='false' (the only allowed string for prod).
+ * SANDBOX MODEL (verified from SUMIT public docs 2026-05-25): SUMIT does
+ * NOT host a separate sandbox endpoint. There is one base URL —
+ * https://api.sumit.co.il/ — and sandbox vs production is selected
+ * entirely by which Company/APIKey credentials you send. A "testing
+ * organization" with test credit cards is provisioned on the SUMIT side;
+ * the API caller just uses those credentials.
+ *
+ * SUMIT_SANDBOX='true' (default) is therefore a CALLER-SIDE FLAG only:
+ *   - logs every outbound call as sandbox so we can audit which env we
+ *     thought we were talking to
+ *   - sends X-PetWash-Sandbox:true header so SUMIT side can correlate
+ *   - prevents an accidentally-set production credential from being
+ *     interpreted as production until the operator explicitly opts in
+ *     with SUMIT_SANDBOX='false'
+ *
+ * Previous versions of this file pointed sandbox at
+ * `https://sandbox-api.sumit.co.il/` which does NOT EXIST IN DNS —
+ * NXDOMAIN. Any caller in sandbox mode would have thrown ENOTFOUND.
+ * Fixed: same base URL for both modes; the credential pair determines
+ * which org / which cards are charged.
  */
 function readEnv() {
   const explicitSandbox = process.env.SUMIT_SANDBOX;
   // Sandbox defaults to TRUE. Only the explicit string 'false' opts
   // into production. Any other value (including unset) → sandbox.
   const sandbox = explicitSandbox !== 'false';
-  const defaultBase = sandbox
-    ? 'https://sandbox-api.sumit.co.il'
-    : 'https://api.sumit.co.il';
   return {
-    baseUrl: process.env.SUMIT_API_BASE_URL || defaultBase,
+    // SUMIT exposes ONE base URL. Override via SUMIT_API_BASE_URL is
+    // retained for tests / mocks only — there is no real alternate host.
+    baseUrl: process.env.SUMIT_API_BASE_URL || 'https://api.sumit.co.il',
     apiKey: process.env.SUMIT_API_KEY,
     companyId: process.env.SUMIT_COMPANY_ID,
     webhookSecret: process.env.SUMIT_WEBHOOK_SECRET,

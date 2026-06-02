@@ -30,7 +30,7 @@ const tierLabels: Record<string, Record<string, string>> = {
   CLASSIC: { en: 'Classic', he: 'קלאסי', ar: 'كلاسيك', ru: 'Классик', fr: 'Classique', es: 'Clásico' },
   PLUS: { en: 'Plus', he: 'פלוס', ar: 'بلس', ru: 'Плюс', fr: 'Plus', es: 'Plus' },
   PREMIUM: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
-  ELITE: { en: 'Maison', he: 'מזון', ar: 'ميزون', ru: 'Мезон', fr: 'Maison', es: 'Maison' },
+  ELITE: { en: 'Maison', he: 'יוקרה', ar: 'ميزون', ru: 'Мезон', fr: 'Maison', es: 'Maison' },
 };
 
 const bestValueText: Record<string, string> = {

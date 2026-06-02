@@ -17,6 +17,7 @@ import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminSumitRoutes from "./routes/admin-sumit";
+import sumitWebhookRoutes from "./routes/sumit-webhook";
 import providerMyInvoicesRoutes from "./routes/provider-my-invoices";
 import accountantRoutes from "./routes/accountant";
 import { requireDpaAccepted } from "./middleware/dpa-guard";
@@ -529,6 +530,19 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // ✅ Public franchise inquiry — prospective franchisees submit this form
+    // BEFORE they have any account. The /api/franchise/* prefix is otherwise
+    // listed in INTERNAL_ROUTE_PREFIXES above, which blocks unauthenticated
+    // callers. This exact path is the only public inquiry endpoint inside
+    // the franchise prefix; it is also CSRF-exempt (server/index.ts
+    // AUTH_CSRF_EXEMPT) and rate-limited (apiLimiter on the public POST
+    // handler around line 10125 of this file). Without this bypass, the
+    // RBAC guard returns 401 "Authentication required" before Express can
+    // route the request to the public POST handler.
+    if (path === '/api/franchise/inquiry') {
+      return next();
+    }
+
     // ✅ K9000 IoT hardware bypass — kiosks authenticate via either:
     //   A) HMAC signed headers (X-K9000-ID + X-K9000-TS + X-K9000-SIGN) — production path
     //   B) body.machineSecret — DEV fallback
@@ -562,28 +576,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       // to the internal handler with no identity.
     }
 
-    // 🔧 DEV-ONLY bypass — never active in production (hard-guarded)
-    // Allows automated HTTP proofs without a real Firebase token.
-    if (process.env.NODE_ENV !== 'production') {
-      const testUid = req.headers['x-test-provider-uid'] as string | undefined;
-      if (testUid) {
-        logger.warn('[RBAC Guard] DEV BYPASS — x-test-provider-uid', { testUid, path });
-        (req as any).firebaseUser = { uid: testUid, email_verified: true };
-        return next();
-      }
-      // playwright-test bypass — aligns with customAuth.ts: only active when TEST_BYPASS_TOKEN is set.
-      // Using a static string was a security gap — anyone who knew it could bypass auth in staging.
-      const testBypassToken = process.env.TEST_BYPASS_TOKEN;
-      if (testBypassToken && req.headers['x-test-user-bypass'] === testBypassToken) {
-        const testUserId = (req.headers['x-test-user-id'] as string) || 'test-user-default';
-        const testEmail  = (req.headers['x-test-user-email'] as string) || `${testUserId}@test.petwash.local`;
-        logger.warn('[RBAC Guard] DEV BYPASS — TEST_BYPASS_TOKEN matched', { testUserId, path });
-        (req as any).firebaseUser = { uid: testUserId, email: testEmail, email_verified: true };
-        (req as any).userId = testUserId;
-        (req as any).user   = { uid: testUserId, email: testEmail };
-        return next();
-      }
-    }
+    // SECURITY: Header-based dev bypasses (x-test-provider-uid, TEST_BYPASS_TOKEN)
+    // removed. These were gated only on `NODE_ENV !== 'production'`, which is
+    // a single-point-of-failure — if NODE_ENV is ever unset on a Cloud Run
+    // revision (config typo, accidental override), the entire auth layer is
+    // bypassable via curl. Use a real synthetic Firebase test account for
+    // E2E tests instead. Issued auth tokens are revocable; static headers are not.
 
     // 🔑 Admin secret bypass — allows server-side and automation access to internal routes (timing-safe)
     if (timingSafeAdminSecretMatch(req)) {
@@ -668,26 +666,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // Private health check (requires X-Health-Key header for monitoring services)
-  app.get('/_health', (req, res) => {
-    const healthKey = process.env.HEALTH_KEY;
-    
-    // If HEALTH_KEY is configured, require it
-    if (healthKey && req.headers['x-health-key'] !== healthKey) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
-    
-    res.set('Cache-Control', 'no-store').json({
-      ok: true,
-      status: 'healthy',
-      service: '⁦Pet Wash™⁩ API',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      memory: process.memoryUsage(),
-      pid: process.pid,
-    });
-  });
+  // NOTE: /_health is owned by the early-mount handler in server/index.ts
+  // (registered before the startup guard). A second handler here was shadowed
+  // by Express first-match and never ran — its X-Health-Key auth gate never
+  // protected anything because the unauthenticated early handler answered
+  // first. Removed.
 
   // PRODUCTION FIX: Firebase config endpoint (NO rate limiting, NO auth required)
   // This endpoint must be accessible immediately on page load for Firebase to initialize
@@ -774,15 +757,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // PUBLIC HEALTH CHECK - No auth required
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      version: '2.0.0',
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
+  // NOTE: /api/health is owned by the rich handler in server/index.ts:853
+  // (registered before the startup guard, does real DB + startup-phase checks).
+  // This stub was shadowed by Express first-match and never ran. Removed.
 
   // PUBLIC WASH PACKAGES - No auth required (for marketing display)
   app.get('/api/credit-wallet/packages', (req, res) => {
@@ -1416,8 +1393,14 @@ self.addEventListener('notificationclick', (event) => {
   // aborts the rest of route registration.
   try {
     const authSmsRoutes = (await import('./routes/auth-sms')).default;
-    app.use('/api/auth/sms', authLimiter, authSmsRoutes);
-    logger.info('[routes] Mounted /api/auth/sms (canonical SMS auth wrapper)');
+    // SECURITY 2026-05-24 (investigation finding 1.1):
+    // Pre-fix mount used only authLimiter (10 req/min/IP). Bots rotating
+    // phone numbers could comfortably burn the 150 SMS/day Twilio cap and
+    // lock out legitimate customer signups for the rest of the day.
+    // otpLimiter is purpose-built — 5 req per 5-min window per IP — and
+    // runs after authLimiter so both gates apply (defense in depth).
+    app.use('/api/auth/sms', authLimiter, otpLimiter, authSmsRoutes);
+    logger.info('[routes] Mounted /api/auth/sms (canonical SMS auth wrapper, hardened)');
   } catch (mountErr) {
     logger.error('[routes] Failed to mount /api/auth/sms — feature degraded, server continues', mountErr);
   }
@@ -2772,15 +2755,19 @@ self.addEventListener('notificationclick', (event) => {
 
   // ========================================
   // WebAuthn / Passkey Endpoints (v2)
-  // Rate limited: 5 requests per minute per IP
+  //
+  // SECURITY 2026-05-24 (investigation finding 4.3):
+  //   Pre-fix shadowed the imported `webauthnLimiter` (from
+  //   ./middleware/rateLimiter, 60/min keyed by IP+UID) with a 5/min
+  //   IP-WIDE limiter declared inline below. Effect: a single colleague
+  //   on the same NAT'd office IP triggering 3 failed scans locked out
+  //   every other admin for the rest of the minute. The lockout
+  //   surfaced as a generic biometric error with no operator-visible
+  //   reason.
+  //   Fix: delete the inline shadow. The canonical 60/min IP+UID
+  //   limiter from rateLimiter.ts is already imported at the top of
+  //   this file and now applies to every /api/webauthn/* route below.
   // ========================================
-  const webauthnLimiter = (await import('express-rate-limit')).default({
-    windowMs: 60 * 1000, // 1 minute
-    max: 5,
-    message: { error: 'Too many passkey requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
 
   // POST /api/webauthn/register/options - Generate passkey registration options (requires auth)
   app.post('/api/webauthn/register/options', webauthnLimiter, async (req, res) => {
@@ -2963,16 +2950,24 @@ self.addEventListener('notificationclick', (event) => {
         throw new Error('User ID not found');
       }
 
-      // Create Firebase custom token for client to exchange
+      // Create Firebase custom token for client to exchange.
+      //
+      // SECURITY 2026-05-24 (CRITICAL fix — investigation finding 4.2):
+      //   Pre-fix attempted `firebaseAdmin.auth().createSessionCookie(customToken, ...)`
+      //   — Firebase Admin REQUIRES an ID token at this call site, not a
+      //   custom token. Every passkey verify therefore threw
+      //   `auth/invalid-id-token` and the catch returned 400 to the
+      //   client. Result: Touch ID / Face ID admin sign-in was 100%
+      //   non-functional even when WebAuthn validation succeeded.
+      //
+      //   Fix: do NOT mint a session cookie server-side here. Return
+      //   the customToken to the client; the client uses the same
+      //   chain as the SMS flow:
+      //     signInWithCustomToken(auth, customToken)
+      //       → cred.user.getIdToken(true)
+      //         → POST /api/auth/session { idToken } (mints the cookie)
+      //   The chain is in client/src/pages/admin/AdminLoginV2.tsx.
       const customToken = await firebaseAdmin.auth().createCustomToken(uid);
-      
-      // Create session cookie directly (bypassing the need for client to exchange token)
-      const { setSessionCookie } = await import('./lib/sessionCookies');
-      
-      // For passkey auth, we create session cookie directly using custom token
-      // Note: createSessionCookie() expects an ID token, so we use the custom claims workaround
-      const sessionCookie = await firebaseAdmin.auth().createSessionCookie(customToken, { expiresIn: 432000000 });
-      setSessionCookie(res, sessionCookie);
 
       // Get city for location-based alerts
       const city = await getCityFromIP(ip);
@@ -3450,6 +3445,29 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // POST /api/admin/ops-tasks/test - manually trigger a Maya ops task for testing
+  //   Used by ops to verify Google Tasks API delegation is wired before the
+  //   automatic rules engine starts firing. Body: { title, notes? }.
+  //   Returns the wired/reason result from MayaOpsTasksService.
+  app.post('/api/admin/ops-tasks/test', requireAdmin, async (req, res) => {
+    try {
+      const { title, notes } = req.body || {};
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'title is required (string)' });
+      }
+      const { enqueueOpsTask } = await import('./services/MayaOpsTasksService');
+      const result = await enqueueOpsTask({
+        title: `[TEST] ${title}`,
+        notes: notes || `Manual test task created by admin via /api/admin/ops-tasks/test at ${new Date().toISOString()}.`,
+        dedupKey: `admin-test:${Date.now()}`,
+      });
+      res.json(result);
+    } catch (err: any) {
+      logger.error('[admin/ops-tasks/test] error', err);
+      res.status(500).json({ error: err?.message || 'unknown' });
+    }
+  });
+
   // GET /api/auth/firebase-admin-test - Test Firebase Admin SDK capabilities (admin-only: exposes project internals)
   app.get('/api/auth/firebase-admin-test', requireAdmin, async (req, res) => {
     try {
@@ -3479,15 +3497,62 @@ self.addEventListener('notificationclick', (event) => {
   // POST /api/system/provision-owner
   // One-time secure endpoint to set the owner's DB role and Firebase claims.
   // Requires x-admin-secret header (ADMIN_SECRET env var).
+  //
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S3):
+  //   Pre-fix: a single leaked ADMIN_SECRET = full admin takeover of ANY UID.
+  //   Attacker POSTs {ownerFirebaseUid:attackerUid, ownerEmail:any}, server
+  //   sets Firebase customClaims.role='admin' on the attacker's account.
+  //
+  //   Defense-in-depth layered now:
+  //     1. ADMIN_SECRET timing-safe match (existed) — keep
+  //     2. NEW: IP allowlist via PROVISION_OWNER_ALLOWED_IPS (comma-separated).
+  //        When set, only requests from those IPs are accepted. When unset,
+  //        a single LOOPBACK_ONLY default applies — operator runs this from
+  //        an SSH bastion or `gcloud beta compute ssh` tunnel, never from
+  //        the open internet.
+  //     3. NEW: ownerEmail MUST appear in SUPER_ADMIN_EMAILS — prevents the
+  //        attacker from elevating an unrelated UID even if they steal the
+  //        admin secret. The allowlist is the source of truth for who is
+  //        eligible to receive the admin claim.
+  //     4. NEW: explicit audit log on every call (success OR reject) so any
+  //        attempt shows up in Cloud Logging.
   app.post('/api/system/provision-owner', async (req: any, res) => {
+    const callerIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
     const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+
+    // Gate 1: admin secret
     if (!timingSafeAdminSecretMatch(req)) {
+      logger.warn('[provision-owner] DENIED — admin secret mismatch', { callerIp, ua: req.headers['user-agent']?.toString().substring(0, 80) });
       return res.status(403).json({ error: 'FORBIDDEN' });
     }
-    const { ownerFirebaseUid, ownerEmail } = req.body;
+
+    // Gate 2: IP allowlist
+    const allowedIps = (process.env.PROVISION_OWNER_ALLOWED_IPS || '127.0.0.1,::1,::ffff:127.0.0.1')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    if (!allowedIps.includes(callerIp)) {
+      logger.warn('[provision-owner] DENIED — IP not in PROVISION_OWNER_ALLOWED_IPS', { callerIp, allowedIps });
+      return res.status(403).json({ error: 'FORBIDDEN', reason: 'IP_NOT_ALLOWED' });
+    }
+
+    const { ownerFirebaseUid, ownerEmail } = req.body || {};
     if (!ownerFirebaseUid || !ownerEmail) {
       return res.status(400).json({ error: 'ownerFirebaseUid and ownerEmail are required' });
     }
+
+    // Gate 3: ownerEmail must be in SUPER_ADMIN_EMAILS
+    const superAdmins = (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!superAdmins.includes(String(ownerEmail).toLowerCase())) {
+      logger.warn('[provision-owner] DENIED — ownerEmail not in SUPER_ADMIN_EMAILS allowlist', {
+        callerIp, ownerEmail, ownerFirebaseUid,
+      });
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        reason: 'OWNER_EMAIL_NOT_IN_SUPER_ADMIN_ALLOWLIST',
+        hint: 'Add the email to the SUPER_ADMIN_EMAILS GCP secret first, then redeploy.',
+      });
+    }
+
     try {
       const { adminAuth } = await import('./lib/firebase-admin');
       await adminAuth.setCustomUserClaims(ownerFirebaseUid, {
@@ -3503,7 +3568,7 @@ self.addEventListener('notificationclick', (event) => {
           mfaEnrolled: false,
         });
       }
-      logger.info(`[provision-owner] Owner ${ownerEmail} (${ownerFirebaseUid}) provisioned as admin`);
+      logger.info('[provision-owner] PROVISIONED', { ownerEmail, ownerFirebaseUid, callerIp });
       res.json({ success: true, message: `Owner ${ownerEmail} provisioned as admin. Firebase claims updated. Please sign out and sign back in.` });
     } catch (err: any) {
       logger.error('[provision-owner] Error:', err);
@@ -6451,67 +6516,34 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // T04: Persistent idempotency dedup for Nayax voucher webhook.
-  // In-memory Map with 24-hour TTL; prevents double-processing across rapid retries.
-  // For multi-instance deployments, upgrade to a Redis SET or PostgreSQL webhook_events table.
-  const _voucherWebhookSeen = new Map<string, number>();
-  const _VOUCHER_DEDUP_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-  function _voucherDedup(eventId: string): boolean {
-    const now = Date.now();
-    // Evict expired entries
-    for (const [k, ts] of _voucherWebhookSeen) {
-      if (now - ts > _VOUCHER_DEDUP_TTL_MS) _voucherWebhookSeen.delete(k);
-    }
-    if (_voucherWebhookSeen.has(eventId)) return true; // already processed
-    _voucherWebhookSeen.set(eventId, now);
-    return false;
-  }
-
-  // Nayax webhook for voucher purchases
-  app.post('/api/vouchers/webhooks/nayax', async (req, res) => {
-    const correlationId = crypto.randomUUID();
-    try {
-      const signature = req.headers['x-nayax-signature'] as string;
-      const secret = process.env.NAYAX_WEBHOOK_SECRET;
-
-      if (!secret) {
-        logger.error('NAYAX_WEBHOOK_SECRET not configured', { correlationId });
-        return res.status(500).json({ error: 'Webhook not configured' });
-      }
-
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(req.body))
-        .digest('hex');
-
-      if (signature !== expectedSignature) {
-        logger.error('Invalid Nayax webhook signature', { correlationId });
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
-
-      // T04: Idempotency — deduplicate by event_id from payload
-      const eventId: string | undefined = req.body?.event_id || req.body?.eventId;
-      if (eventId && _voucherDedup(eventId)) {
-        logger.info('Nayax voucher webhook duplicate ignored', { correlationId, eventId });
-        return res.json({ received: true, duplicate: true });
-      }
-
-      const { type, data } = req.body;
-
-      if (type === 'voucher.purchased') {
-        // TODO: Create voucher and send email
-        logger.info('Nayax voucher purchase webhook received', { correlationId, eventId, data });
-      } else if (type === 'voucher.refunded') {
-        // TODO: Mark voucher as cancelled
-        logger.info('Nayax voucher refund webhook received', { correlationId, eventId, data });
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      logger.error('Nayax webhook error', error, { correlationId });
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
-  });
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S7):
+  // The _voucherDedup helper that lived here was only consumed by the
+  // duplicate-and-broken /api/vouchers/webhooks/nayax handler. Both
+  // gone now — the canonical /api/webhooks/nayax route has its own
+  // dedup path via the persistent webhook_events table.
+  //
+  //   Removed the duplicate /api/vouchers/webhooks/nayax handler. Two bugs:
+  //
+  //   1. BROKEN HMAC — verified `JSON.stringify(req.body)` against the
+  //      x-nayax-signature header. req.body here is a parsed object
+  //      re-stringified by node, NOT the raw bytes Nayax signed. Key
+  //      order and whitespace differ, so the verification was guaranteed
+  //      to fail for legitimate webhooks (401 every real call) and could
+  //      theoretically be forged by an attacker who matched the exact
+  //      re-stringification format.
+  //
+  //   2. DEAD HANDLERS — `voucher.purchased` and `voucher.refunded`
+  //      branches were `// TODO` stubs. Even if HMAC passed, no voucher
+  //      was created, no email sent, no refund recorded. Silent no-op.
+  //
+  //   The canonical Nayax webhook at `/api/webhooks/nayax` (routes.ts
+  //   line 5216) uses `express.raw({ type: 'application/json' })` which
+  //   preserves the raw bytes for correct HMAC verification, AND its
+  //   actual handlers are wired. The duplicate served no purpose except
+  //   to confuse operators reading "401 invalid signature" in the logs.
+  //   A legacy-endpoint redirect already lives at line 5352 for
+  //   /api/nayax-webhook — that pattern, not this broken duplicate,
+  //   is the right way to handle aliases.
 
   // Admin authentication routes - SECURITY: Firebase Auth ONLY
   // REMOVED hardcoded credentials - all admin login must use Firebase Authentication
@@ -9470,11 +9502,42 @@ self.addEventListener('notificationclick', (event) => {
 
   // =================== BULK OPERATIONS ===================
 
+  // Substitute {{handlebars-style}} placeholders in a template string with
+  // values from the recipient + customData payload. Used by the bulk email
+  // and bulk SMS endpoints below so the stored communication record reflects
+  // what the recipient would actually see, not the raw template syntax.
+  //
+  // Replaces tokens like {{firstName}}, {{first_name}}, {{ email }}.
+  // Unknown tokens are removed (replaced with empty string) to avoid leaking
+  // raw {{...}} into customer-visible content if the actual send code is
+  // ever uncommented.
+  const renderTemplateContent = (
+    content: string,
+    recipient: Record<string, unknown> = {},
+    customData: Record<string, unknown> = {}
+  ): string => {
+    if (!content || typeof content !== 'string') return content ?? '';
+    const data: Record<string, unknown> = { ...recipient, ...customData };
+    return content.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => {
+      const value = data[key];
+      return value === undefined || value === null ? '' : String(value);
+    });
+  };
+
   // Send bulk emails
+  //
+  // HONESTY FIX 2026-05-24: previously this route set status='sent' on every
+  // record even though the actual emailService.sendTemplatedEmail() call was
+  // commented out (lines below). Operators saw "sent" in the CRM log but
+  // zero emails actually went out — silent failure of an admin-trusted
+  // feature. The route now returns 501 Not Implemented with a clear message
+  // and writes status='not_sent_feature_disabled' to the audit log so the
+  // operator can see the truth in the CRM UI. Real send wiring (SendGrid
+  // template + placeholder rendering) is a separate PR.
   app.post('/api/crm/communications/bulk/send-email', requireAdmin, async (req: any, res) => {
     try {
-      const { templateId, recipients, customData } = req.body;
-      
+      const { templateId, recipients, customData: _customData } = req.body;
+
       if (!templateId || !recipients || !Array.isArray(recipients)) {
         return res.status(400).json({ message: "Template ID and recipients array required" });
       }
@@ -9484,22 +9547,39 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(404).json({ message: "Email template not found" });
       }
 
+      // Log the (would-be) recipients so the admin sees who was queued, but
+      // mark each record as not_sent_feature_disabled so the dashboard truth
+      // matches reality. No actual emails are dispatched.
       const results = [];
-      const emailService = new EmailService();
-
       for (const recipient of recipients) {
         try {
+          // Render the template now so the stored audit record (and the
+          // commented-out send code below, when it gets uncommented) sees
+          // substituted content instead of raw {{firstName}} tokens.
+          const renderedSubject = renderTemplateContent(template.subject ?? '', recipient, customData);
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+
           // Create communication record
           const communication = await storage.createCommunication({
             leadId: recipient.leadId,
             customerId: recipient.customerId,
             userId: recipient.userId,
             communicationType: 'email',
-            subject: template.subject,
-            content: template.content, // TODO: Replace placeholders with recipient data
+            subject: renderedSubject,
+            content: renderedContent,
             sentBy: req.session?.adminId,
-            status: 'sending',
+            status: 'not_sent_feature_disabled',
             templateId: templateId,
+          });
+
+          // KNOWN GAP: the actual outbound send is still commented out below.
+          // The communication record is created and marked 'sent' but no email
+          // leaves the server. Until the emailService call is wired up, this
+          // endpoint is a no-op for delivery — log a warn so operators see it
+          // and don't trust the "sent" count blindly.
+          logger.warn('[CRM bulk-email] send is not wired — communication record stored but no email dispatched', {
+            recipient: recipient.email,
+            templateId,
           });
 
           // Send email (placeholder - integrate with actual email service)
@@ -9517,38 +9597,48 @@ self.addEventListener('notificationclick', (event) => {
 
           results.push({
             recipient: recipient.email,
-            status: 'sent',
-            communicationId: communication.id
+            status: 'not_sent_feature_disabled',
+            communicationId: communication.id,
           });
-
         } catch (error) {
-          logger.error(`Failed to send email to ${recipient.email}:`, error);
+          logger.error(`Failed to log email recipient ${recipient.email}:`, error);
           results.push({
             recipient: recipient.email,
             status: 'failed',
-            error: error.message
+            error: error.message,
           });
         }
       }
 
-      res.json({
-        message: "Bulk email operation completed",
-        results,
-        totalSent: results.filter(r => r.status === 'sent').length,
-        totalFailed: results.filter(r => r.status === 'failed').length
+      logger.warn('[CRM] bulk/send-email called but feature is not wired', {
+        templateId,
+        recipientCount: recipients.length,
+        sentBy: req.session?.adminId,
       });
 
+      res.status(501).json({
+        message: 'Bulk email campaign sending is NOT yet wired. Recipients were logged to CRM with status="not_sent_feature_disabled". Nothing was actually emailed. Wire the SendGrid template render path before re-enabling.',
+        errorCode: 'CAMPAIGN_SEND_NOT_IMPLEMENTED',
+        loggedRecipients: results.length,
+        results,
+      });
     } catch (error) {
       logger.error('Bulk email send error:', error);
-      res.status(500).json({ message: "Failed to send bulk emails" });
+      res.status(500).json({ message: "Failed to log bulk email recipients" });
     }
   });
 
   // Send bulk SMS
+  //
+  // HONESTY FIX 2026-05-24: mirror of the bulk send-email fix above.
+  // Pre-fix: status set to 'sent' even though the actual smsService call
+  // was commented out — admins thought campaigns went out, nothing did.
+  // Post-fix: route returns 501 with explicit message, records logged
+  // as 'not_sent_feature_disabled'.
   app.post('/api/crm/communications/bulk/send-sms', requireAdmin, async (req: any, res) => {
     try {
-      const { templateId, recipients, customData } = req.body;
-      
+      const { templateId, recipients, customData: _customData } = req.body;
+
       if (!templateId || !recipients || !Array.isArray(recipients)) {
         return res.status(400).json({ message: "Template ID and recipients array required" });
       }
@@ -9559,9 +9649,12 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       const results = [];
-
       for (const recipient of recipients) {
         try {
+          // Render the template now so the stored audit record reflects
+          // the substituted content instead of raw {{firstName}} tokens.
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+
           // Create communication record
           const communication = await storage.createCommunication({
             leadId: recipient.leadId,
@@ -9569,10 +9662,18 @@ self.addEventListener('notificationclick', (event) => {
             userId: recipient.userId,
             communicationType: 'sms',
             subject: template.name,
-            content: template.content, // TODO: Replace placeholders with recipient data
+            content: renderedContent,
             sentBy: req.session?.adminId,
-            status: 'sending',
+            status: 'not_sent_feature_disabled',
             templateId: templateId,
+          });
+
+          // KNOWN GAP: the actual outbound send is still commented out below.
+          // Same situation as bulk-email above — record stored, no SMS sent.
+          // Logging a warn so operators see it.
+          logger.warn('[CRM bulk-sms] send is not wired — communication record stored but no SMS dispatched', {
+            recipient: recipient.phone,
+            templateId,
           });
 
           // Send SMS (placeholder - integrate with actual SMS service)
@@ -9590,25 +9691,30 @@ self.addEventListener('notificationclick', (event) => {
 
           results.push({
             recipient: recipient.phone,
-            status: 'sent',
-            communicationId: communication.id
+            status: 'not_sent_feature_disabled',
+            communicationId: communication.id,
           });
-
         } catch (error) {
-          logger.error(`Failed to send SMS to ${recipient.phone}:`, error);
+          logger.error(`Failed to log SMS recipient ${recipient.phone}:`, error);
           results.push({
             recipient: recipient.phone,
             status: 'failed',
-            error: error.message
+            error: error.message,
           });
         }
       }
 
-      res.json({
-        message: "Bulk SMS operation completed",
+      logger.warn('[CRM] bulk/send-sms called but feature is not wired', {
+        templateId,
+        recipientCount: recipients.length,
+        sentBy: req.session?.adminId,
+      });
+
+      res.status(501).json({
+        message: 'Bulk SMS campaign sending is NOT yet wired. Recipients were logged to CRM with status="not_sent_feature_disabled". Nothing was actually sent. Wire the SMS provider (Twilio Messaging Service) before re-enabling.',
+        errorCode: 'CAMPAIGN_SEND_NOT_IMPLEMENTED',
+        loggedRecipients: results.length,
         results,
-        totalSent: results.filter(r => r.status === 'sent').length,
-        totalFailed: results.filter(r => r.status === 'failed').length
       });
 
     } catch (error) {
@@ -9761,6 +9867,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
   app.use('/api/admin/sumit', adminSumitRoutes);
+  // SUMIT webhook receiver — public route (HMAC-verified at the handler).
+  // Mounted at /api/sumit so the full path is POST /api/sumit/webhook.
+  // No-op until SUMIT_WEBHOOK_SECRET is provisioned (returns 401 without it).
+  app.use('/api/sumit', sumitWebhookRoutes);
   app.use('/api/provider', providerMyInvoicesRoutes);
   app.use('/api/accountant', accountantRoutes);
 
@@ -10121,6 +10231,46 @@ self.addEventListener('notificationclick', (event) => {
   // runs first (supports both Bearer token and x-admin-secret bypass).
   const franchiseFinanceRoutes = await import('./routes/franchise-finance');
   app.use('/api/franchise', apiLimiter, franchiseFinanceRoutes.default);
+
+  // PUBLIC franchise inquiry endpoint — registered BEFORE the protected
+  // franchiseRoutes mount below so Express matches this specific route first
+  // and bypasses validateFirebaseToken. Prospective franchisees submitting
+  // the inquiry form have no Firebase session by definition (they haven't
+  // signed up yet), so requiring auth here makes the form unusable. CSRF
+  // exemption for this path is provided separately via AUTH_CSRF_EXEMPT in
+  // server/index.ts (already merged via hotfix/public-forms-csrf-exempt).
+  // Handler mirrors server/routes/franchise.ts:26 but is mounted at the
+  // public layer so it actually receives the request.
+  app.post('/api/franchise/inquiry', apiLimiter, async (req, res) => {
+    try {
+      const { fullName, email, phone, country, city, message } = req.body ?? {};
+      if (!fullName || !email || !phone) {
+        return res.status(400).json({ error: 'Name, email, and phone are required' });
+      }
+      const inquiryData = {
+        fullName,
+        email,
+        phone,
+        country: country || '',
+        city: city || '',
+        message: message || '',
+        submittedAt: new Date().toISOString(),
+        status: 'new' as const,
+      };
+      try {
+        const { db: firestore } = await import('./lib/firebase-admin');
+        const inquiriesRef = firestore.collection('franchise_inquiries');
+        await inquiriesRef.add(inquiryData);
+      } catch (firestoreErr) {
+        logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
+      }
+      logger.info('[Franchise/inquiry] received', { fullName, email, country, city });
+      return res.json({ success: true, message: 'Inquiry submitted successfully' });
+    } catch (error) {
+      logger.error('[Franchise/inquiry] handler error', error);
+      return res.status(500).json({ error: 'Failed to process inquiry' });
+    }
+  });
 
   // Franchise routes (Firebase auth applied here; registered after finance routes)
   const franchiseRoutes = await import('./routes/franchise');
@@ -10563,7 +10713,18 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/k9000', k9000IotRoutes);
 
   // K9000 Supplier & Inventory routes
-  app.use('/api/k9000', adminLimiter, k9000SupplierRoutes);
+  //
+  // SECURITY 2026-05-24 (CRITICAL fix from audit finding S4 K9000-zone):
+  //   Pre-fix this mount had ONLY adminLimiter (rate limit). No auth,
+  //   no admin gate. The inner PATCH routes (spare-parts, notification-
+  //   settings, etc) also lacked any auth, so any anonymous internet
+  //   request could mutate inventory rows and supplier alert settings.
+  //   The mass-assignment audit finding undersold the severity — the
+  //   real bug was the missing auth gate. Add validateFirebaseToken
+  //   + requireAdmin in front of every /api/k9000/* route (the inner
+  //   handlers continue to apply their own logic; this is the defense-
+  //   in-depth admin gate that should have been here from day one).
+  app.use('/api/k9000', validateFirebaseToken, requireAdmin, adminLimiter, k9000SupplierRoutes);
   
   // K9000 Backend Dashboard (Admin control panel for station management)
   app.use('/api/k9000', optionalFirebaseToken, adminLimiter, k9000DashboardRoutes);
@@ -10996,7 +11157,7 @@ self.addEventListener('notificationclick', (event) => {
   // Marketplace Provider Search — online service domains only (pet_sitting, dog_walking, grooming, transport, daycare)
   // NOT for K9000. GET /api/providers/search
   const providerSearchRoutes = (await import('./routes/provider-search')).default;
-  app.use('/api/providers', apiLimiter, providerSearchRoutes);
+  app.use('/api/providers', optionalFirebaseToken, apiLimiter, providerSearchRoutes);
 
   // Provider Slot Management — providers create/list/cancel their availability_slots
   // NOT for K9000. Requires provider identity (Firebase UID → providers row).
@@ -13456,7 +13617,7 @@ self.addEventListener('notificationclick', (event) => {
         nextReviewDue: latestReview.nextReviewDue,
         daysUntilDue,
         lastReviewDate: latestReview.reviewDate,
-        adminEmail: 'legal@petwash.co.il', // TODO: Get from config
+        adminEmail: process.env.LEGAL_COMPLIANCE_EMAIL || process.env.REPORTS_EMAIL_TO || 'legal@petwash.co.il',
       });
 
       // Update reminder count and timestamp
@@ -14550,26 +14711,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // Simple Health Check for Load Balancers
-  app.get('/health', async (req, res) => {
-    try {
-      const memOK = process.memoryUsage().heapUsed < (150 * 1024 * 1024); // 150MB threshold
-      const status = memOK ? 'ok' : 'degraded';
-      
-      res.json({
-        status,
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: {
-          heapUsed: process.memoryUsage().heapUsed,
-          heapTotal: process.memoryUsage().heapTotal,
-          threshold: 150 * 1024 * 1024,
-        },
-      });
-    } catch (error: any) {
-      res.status(503).json({ status: 'error', error: error.message });
-    }
-  });
+  // NOTE: /health is owned by _earlyHealthHandler in server/index.ts:439.
+  // The memory-aware handler that used to live here was shadowed by Express
+  // first-match and never ran — no load balancer ever saw heap thresholds.
+  // Removed. If memory-aware health is desired, fold it into
+  // _earlyHealthHandler in index.ts.
 
   // Performance Metrics Tracking
   app.post('/api/performance/track', async (req, res) => {
@@ -15622,9 +15768,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
   // In dev mode, Vite's middleware (registered in server/index.ts) handles all routing
-  if (process.env.NODE_ENV === 'production' || 
-      process.env.REPLIT_DEPLOYMENT === '1' || 
-      process.env.REPLIT_DEPLOYMENT === 'true') {
+  if (process.env.NODE_ENV === 'production') {
 
     // Cache the Firebase-injected index.html in memory to avoid file I/O on every request.
     // Cache is valid for 5 minutes; invalidated automatically on restart.
@@ -15835,5 +15979,4 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
 }
-
 

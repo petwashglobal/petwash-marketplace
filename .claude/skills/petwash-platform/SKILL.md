@@ -210,6 +210,38 @@ These are not preferences. They are blockers. Violating them blocks the PR.
 - **Every admin mutation must have an audit log.** Same rule as above for non-money admin actions (provider approve/reject/hold, ban, role grant, content moderation override).
 - **Every audit entry must include actor, action, target, before/after where relevant.** No anonymous mutations.
 
+### Pricing disclosure (Israeli Consumer Protection Law 1981 §17a)
+**Precedent:** Wolt class action 53918-06-23 (Olifant v Wolt Enterprises Israel, 2025) — Wolt settled for **3,750,000 ₪ in customer credits** + lawyer fees, plaintiff's lawyer Ohad Rozen of Kalai-Rosen now has a winning template against Israeli platforms that split fees. We will not be the next defendant.
+
+**Rule:** Every consumer-facing surface that shows a price MUST display the **total inclusive price** (כולל מע"מ, כולל משלוח, כולל דמי פלטפורמה, כולל כל תוספת) at the first moment the customer sees a number. Component breakdowns (VAT, delivery, platform fee, service fee) may appear in a secondary view (hover, expand, line-item tooltip) but must NEVER appear only at the final checkout step as a "surprise" addition.
+
+**What this applies to:**
+- eGift purchase (`/buy-gift-card`, `/egift`)
+- All booking flows (K9000, grooming, dog walking, pet sitting, PetTrek, plush lab)
+- Marketplace bookings (sitter, walker, trek) — commission split must be folded into the total displayed price
+- Wallet top-up — any processing fee folded in
+- Shop checkout (when launched)
+- Subscription / loyalty tier sign-up
+- K9000 station signage (physical) — printed prices must include VAT + any platform fee
+- Push / SMS / email price quotations
+
+**What it forbids:**
+- A product page showing "₪40" and the checkout showing "₪47" without VAT/delivery/fee disclosed on the product page
+- A separate "operating fee" / "service fee" / "platform fee" line that didn't appear earlier
+- Showing prices ex-VAT to consumers (B2C). Ex-VAT pricing is fine for B2B / franchise / supplier interfaces only.
+
+**What's acceptable:**
+- Total upfront: `₪147.89 ✓ כולל הכל` with collapsible breakdown showing `₪120 product + ₪20.40 VAT + ₪7.49 delivery`
+- Range estimates upfront if final total depends on user input (delivery distance, quantity), with the final total locked at confirm step — but no NEW components added between the estimate and final
+- Promotional discount applied at checkout (reduces total) — adding value is fine; subtracting promised value is not
+
+**CTO review on any pricing-UI PR:**
+- "Does the user see the total before they commit?" — must be YES
+- "Are all components disclosed upfront, even if collapsed?" — must be YES
+- "Could the user reasonably feel surprised by anything at checkout?" — must be NO
+
+**File-level reference for future audits:** `docs/legal/pricing-display-audit-2026-05-30.md` (when produced).
+
 ### Mobile-first
 - **iPhone Safari is mandatory** for any UX flow a customer or provider touches. Test on iPhone Safari before claiming UX work is complete.
 - **Use `100dvh`** (not `100vh`) for full-screen layouts — Safari toolbar handling.

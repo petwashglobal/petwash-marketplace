@@ -440,7 +440,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     <div className="w-10 h-10 flex items-center justify-center bg-white shadow-sm" style={{ borderRadius: '2px', color: gold }}>{item.icon}</div>
                     <span className="text-sm font-medium text-gray-700">{item.text}</span>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-300 ${isRTL ? 'rotate-90' : '-rotate-90'}`} />
+                  {/* Trailing chevron removed — was a static <ChevronDown> rotated
+                      90° to look like an "expand" arrow, but the row had no onClick
+                      handler and the container's cursor is `cursor-default`. Users
+                      reported clicking it expecting an accordion to open (original
+                      bug report #11). The benefit rows are intentionally
+                      informational only, so the misleading affordance is gone. */}
                 </motion.div>
               ))}
             </div>

@@ -20,14 +20,9 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
-// ─── DEV-ONLY auth bypass (never active in production) ───────────────────────
-// Allows curl/automated tests to authenticate by passing x-test-provider-uid header.
-// Rejected in production with 403 so it can never be exploited.
-function applyDevBypass(req: Request) {
-  if (process.env.NODE_ENV === 'production') return; // hard guard
-  const testUid = req.headers['x-test-provider-uid'] as string | undefined;
-  if (testUid) (req as any).userId = testUid;
-}
+// SECURITY: applyDevBypass() removed — was gated only on NODE_ENV which is
+// a single point of failure. Use a real synthetic Firebase test account for
+// E2E tests. The 4 call sites that used to invoke it have been removed.
 
 const PET_WHITELIST = ['dog', 'cat', 'rabbit', 'bird', 'hamster', 'fish'] as const;
 const LANGUAGE_WHITELIST = ['Hebrew', 'English', 'Arabic', 'Russian', 'French', 'Spanish', 'German', 'Italian', 'Portuguese', 'Chinese'];
@@ -66,7 +61,6 @@ function computeCompleteness(profile: {
 
 // ─── GET /api/provider-profile/me ────────────────────────────────────────────
 router.get('/me', async (req: Request, res: Response) => {
-  applyDevBypass(req);
   const uid = getUid(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -235,7 +229,6 @@ const patchSchema = z.object({
 
 // ─── PATCH /api/provider-profile/me ──────────────────────────────────────────
 router.patch('/me', async (req: Request, res: Response) => {
-  applyDevBypass(req);
   const uid = getUid(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -342,7 +335,6 @@ const servicesConfigSchema = z
 
 // ─── GET /api/provider-profile/services ──────────────────────────────────────
 router.get('/services', async (req: Request, res: Response) => {
-  applyDevBypass(req);
   const uid = getUid(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -362,7 +354,6 @@ router.get('/services', async (req: Request, res: Response) => {
 
 // ─── PATCH /api/provider-profile/services ────────────────────────────────────
 router.patch('/services', async (req: Request, res: Response) => {
-  applyDevBypass(req);
   const uid = getUid(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 

@@ -77,11 +77,11 @@ const platforms: Platform[] = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    description: 'Franchise management & white-label solutions',
+    description: 'Location partner controls & approved revenue-share review',
     icon: Building2,
     gradient: 'from-yellow-400 via-amber-500 to-orange-500',
-    tags: ['Franchise', 'Multi-Currency', 'Analytics'],
-    badge: 'Global',
+    tags: ['Partners', 'Controls', 'Analytics'],
+    badge: 'Review',
     badgeColor: 'bg-gradient-to-r from-yellow-500 to-amber-500',
   },
 ];
