@@ -114,8 +114,62 @@ import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { isValidAdminSecret } from '../lib/admin-secret';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
+import type { OperatingActionType } from '../../shared/petwash-operating-system';
 
 const router = Router();
+
+const LEGACY_PRESTIGE_MONEY_ROUTE_GATES: Array<{
+  pattern: RegExp;
+  actionType: OperatingActionType;
+  targetPrefix: string;
+}> = [
+  {
+    pattern: /^\/admin\/wallet\/refund(?:$|\/)|^\/admin\/wallet\/support\/issue-refund$|^\/admin\/wallet\/refund-requests\/[^/]+\/approve$|^\/admin\/wallet\/disputes\/[^/]+\/apply-resolution$/,
+    actionType: 'CUSTOMER_REFUND',
+    targetPrefix: 'legacy-prestige-refund',
+  },
+  {
+    pattern: /^\/admin\/wallet\/payout-entries\/mark-paid$|^\/admin\/wallet\/payout-batches(?:\/|$)|^\/admin\/wallet\/payout-release-approvals\/[^/]+\/approve$/,
+    actionType: 'PROVIDER_PAYOUT',
+    targetPrefix: 'legacy-prestige-payout',
+  },
+  {
+    pattern: /^\/admin\/wallet\/reconciliation-exceptions\/[^/]+\/match$|^\/admin\/wallet\/finance-close\/[^/]+\/close$|^\/admin\/wallet\/monthly-signoff$/,
+    actionType: 'BANK_MATCH_CLOSE',
+    targetPrefix: 'legacy-prestige-bank-close',
+  },
+  {
+    pattern: /^\/admin\/wallet\/manual-credit$|^\/admin\/wallet\/adjust$|^\/admin\/wallet\/support\/credit$|^\/admin\/wallet\/release$|^\/admin\/wallet\/support\/release-hold$|^\/admin\/wallet\/reverse-action$/,
+    actionType: 'MANUAL_FINANCIAL_ADJUSTMENT',
+    targetPrefix: 'legacy-prestige-manual-adjustment',
+  },
+];
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (process.env.NODE_ENV === 'production' && /(?:^|\/)(?:send-luxury-demo|send-demo-receipts)(?:$|\/)/.test(req.path)) {
+    return res.status(410).json({
+      error: 'Demo route disabled in production',
+      code: 'PETWASH_DEMO_ROUTE_DISABLED_IN_PRODUCTION',
+      route: `${req.method} /api/prestige-pass${req.path}`,
+    });
+  }
+
+  if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) return next();
+
+  const gate = LEGACY_PRESTIGE_MONEY_ROUTE_GATES.find((candidate) => candidate.pattern.test(req.path));
+  if (!gate) return next();
+
+  if (!assertOperatingControl(req, res, {
+    actionType: gate.actionType,
+    route: `${req.method} /api/prestige-pass${req.path}`,
+    targetId: `${gate.targetPrefix}:${req.path.replace(/[^a-zA-Z0-9:_-]+/g, ':')}`,
+  })) {
+    return;
+  }
+
+  return next();
+});
 
 // ─── Wallet error → HTTP status mapper ────────────────────────────────────────
 // Translates structured error codes from WalletLedger/WalletEngine into proper

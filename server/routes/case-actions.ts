@@ -25,6 +25,7 @@ import { sql, SQL } from 'drizzle-orm';
 import { logger }   from '../lib/logger';
 import { auth }     from '../lib/firebase-admin';
 import { applyGovernance } from '../lib/policy-engine';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 
 const router = Router();
 const ADMIN_SEC = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
@@ -41,6 +42,14 @@ interface CallerContext {
 const toNum  = (v: unknown): number  => Number(v ?? 0);
 const toStr  = (v: unknown): string  => v != null ? String(v) : '';
 const toDate = (v: unknown): string | null => v ? (v as Date).toISOString() : null;
+
+function assertDisputeClosureControl(req: Request, res: Response, route: string, disputeId: number | string): boolean {
+  return assertOperatingControl(req, res, {
+    actionType: 'BANK_MATCH_CLOSE',
+    route,
+    targetId: `dispute-closure:${disputeId}`,
+  });
+}
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 
@@ -447,6 +456,10 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
     const govResult = await applyGovernance('closure_requested', govCtx, 'approval_threshold');
 
     if (govResult.autoApproved) {
+      if (!assertDisputeClosureControl(req, res, 'POST /api/case-actions/closure-request:auto-approved', disputeId)) {
+        return;
+      }
+
       await db.execute(sql`
         UPDATE booking_disputes
         SET status           = 'closed',
@@ -531,6 +544,10 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
             second_approved_at = NOW()
         WHERE id = ${disputeId}
       `);
+    }
+
+    if (!assertDisputeClosureControl(req, res, 'POST /api/case-actions/closure-approve', disputeId)) {
+      return;
     }
 
     await db.execute(sql`
@@ -778,6 +795,16 @@ router.post('/bulk', requireAuth, async (req: Request, res: Response) => {
     }
     if (cases.length > 200) {
       return res.status(400).json({ error: 'max 200 cases per bulk action' });
+    }
+
+    if (action === 'close_cases') {
+      if (!assertOperatingControl(req, res, {
+        actionType: 'BANK_MATCH_CLOSE',
+        route: 'POST /api/case-actions/bulk:close_cases',
+        targetId: `bulk-dispute-closure:${cases.length}`,
+      })) {
+        return;
+      }
     }
 
     const results = { succeeded: 0, failed: 0, skipped: 0 };

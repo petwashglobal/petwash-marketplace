@@ -44,4 +44,74 @@ describe('operating-control route wiring', () => {
     expect(markPaidMutationIndex).toBeGreaterThan(-1);
     expect(markPaidGateIndex).toBeLessThan(markPaidMutationIndex);
   });
+
+  it('gates direct booking and walk wallet refunds before legacy wallet balance mutations', () => {
+    const bookings = source('server/routes/bookings.ts');
+    const walkMyPet = source('server/routes/walk-my-pet.ts');
+
+    expect(bookings).toContain("import { assertOperatingControl } from \"../lib/petwashOperatingControlGateway\"");
+    expect(bookings).toContain("actionType: 'CUSTOMER_REFUND'");
+    expect(bookings).toContain("route: 'POST /api/bookings/:bookingId/cancel'");
+    expect(bookings.indexOf("route: 'POST /api/bookings/:bookingId/cancel'")).toBeLessThan(
+      bookings.indexOf('INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)'),
+    );
+
+    expect(walkMyPet).toContain("import { assertOperatingControl } from '../lib/petwashOperatingControlGateway'");
+    expect(walkMyPet).toContain("route: 'POST /api/walk-my-pet/walker/reject/:walkId'");
+    expect(walkMyPet.indexOf("route: 'POST /api/walk-my-pet/walker/reject/:walkId'")).toBeLessThan(
+      walkMyPet.indexOf('INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)'),
+    );
+  });
+
+  it('gates dispute resolution money movement before wallet or provider-release mutations', () => {
+    const code = source('server/routes/disputes.ts');
+
+    expect(code).toContain("import { assertOperatingControl } from '../lib/petwashOperatingControlGateway'");
+    expect(code).toContain("route: 'PATCH /api/disputes/:id/resolve'");
+    expect(code).toContain("actionType: 'CUSTOMER_REFUND'");
+    expect(code).toContain("actionType: 'PROVIDER_PAYOUT'");
+
+    const gateIndex = code.indexOf("route: 'PATCH /api/disputes/:id/resolve'");
+    const walletMutationIndex = code.indexOf('INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)');
+    const escrowReleaseIndex = code.indexOf("SET status = 'released'");
+    expect(gateIndex).toBeGreaterThan(-1);
+    expect(gateIndex).toBeLessThan(walletMutationIndex);
+    expect(gateIndex).toBeLessThan(escrowReleaseIndex);
+  });
+
+  it('gates case closure routes before direct closed-status writes', () => {
+    const code = source('server/routes/case-actions.ts');
+
+    expect(code).toContain("import { assertOperatingControl } from '../lib/petwashOperatingControlGateway'");
+    expect(code).toContain("actionType: 'BANK_MATCH_CLOSE'");
+    expect(code).toContain("POST /api/case-actions/closure-request:auto-approved");
+    expect(code).toContain("POST /api/case-actions/closure-approve");
+    expect(code).toContain("POST /api/case-actions/bulk:close_cases");
+
+    const approveGateIndex = code.indexOf("POST /api/case-actions/closure-approve");
+    const approveCloseIndex = code.indexOf("SET status           = 'closed'", approveGateIndex);
+    expect(approveGateIndex).toBeGreaterThan(-1);
+    expect(approveCloseIndex).toBeGreaterThan(-1);
+    expect(approveGateIndex).toBeLessThan(approveCloseIndex);
+  });
+
+  it('places a front-door operating-control middleware on legacy prestige admin money routes', () => {
+    const code = source('server/routes/prestige-pass.ts');
+
+    expect(code).toContain("import { assertOperatingControl } from '../lib/petwashOperatingControlGateway'");
+    expect(code).toContain('LEGACY_PRESTIGE_MONEY_ROUTE_GATES');
+    expect(code).toContain("actionType: 'CUSTOMER_REFUND'");
+    expect(code).toContain("actionType: 'PROVIDER_PAYOUT'");
+    expect(code).toContain("actionType: 'BANK_MATCH_CLOSE'");
+    expect(code).toContain("actionType: 'MANUAL_FINANCIAL_ADJUSTMENT'");
+
+    const middlewareIndex = code.indexOf('LEGACY_PRESTIGE_MONEY_ROUTE_GATES');
+    const legacyPaidIndex = code.indexOf("SET status = 'paid', payout_batch_id");
+    const legacyRefundApprovalIndex = code.indexOf("SET status='approved', reviewed_by_uid");
+    expect(middlewareIndex).toBeGreaterThan(-1);
+    expect(legacyPaidIndex).toBeGreaterThan(-1);
+    expect(legacyRefundApprovalIndex).toBeGreaterThan(-1);
+    expect(middlewareIndex).toBeLessThan(legacyPaidIndex);
+    expect(middlewareIndex).toBeLessThan(legacyRefundApprovalIndex);
+  });
 });

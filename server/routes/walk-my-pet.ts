@@ -40,6 +40,7 @@ import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { dispatchNotifications, buildBookingCancelledSms } from '../services/PetWashNotificationEngine';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 
 const router = Router();
 
@@ -2164,6 +2165,39 @@ router.post('/walker/reject/:walkId', requireAuth, async (req, res) => {
     if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
 
     const { walkId } = req.params;
+
+    const [pendingWalk] = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.requestId, walkId),
+        eq(bookingRequests.providerId, walkerId),
+        sql`${bookingRequests.status} = 'pending'`
+      ))
+      .limit(1);
+
+    if (!pendingWalk) {
+      return res.status(404).json({ error: 'Walk request not found or cannot be rejected' });
+    }
+
+    const preRefundCents: number = pendingWalk.totalCents ?? 0;
+    if (pendingWalk.ownerId && preRefundCents > 0) {
+      if (!assertOperatingControl(req, res, {
+        actionType: 'CUSTOMER_REFUND',
+        route: 'POST /api/walk-my-pet/walker/reject/:walkId',
+        targetId: `walk-reject-refund:${walkId}`,
+        facts: {
+          originalOrderOrPaymentExists: true,
+          refundReasonSelected: true,
+          evidenceAttachedIfRequired: true,
+          approvalThresholdApplied: true,
+        },
+        money: {
+          amountCents: preRefundCents,
+        },
+      })) {
+        return;
+      }
+    }
 
     const [updated] = await db.update(bookingRequests)
       .set({

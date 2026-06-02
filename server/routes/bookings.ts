@@ -20,6 +20,7 @@ import { bookingPolicyEngine } from "../services/BookingPolicyEngine";
 import { dispatchNotifications, buildBookingCancelledSms } from "../services/PetWashNotificationEngine";
 import { calendarIntegrationService } from "../services/CalendarIntegrationService";
 import { logAuditEvent } from "../middleware/auditLog";
+import { assertOperatingControl } from "../lib/petwashOperatingControlGateway";
 
 const router = express.Router();
 
@@ -730,6 +731,24 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
 
     const netRefundILS = Math.max(0, cancellationResult.refundAmount);
     const netRefundCents = Math.round(netRefundILS * 100);
+
+    if (netRefundCents > 0 && booking.platform !== "sitter-suite") {
+      if (!assertOperatingControl(req, res, {
+        actionType: 'CUSTOMER_REFUND',
+        route: 'POST /api/bookings/:bookingId/cancel',
+        targetId: `booking-refund:${bookingId}`,
+        facts: {
+          originalOrderOrPaymentExists: true,
+          refundReasonSelected: true,
+          approvalThresholdApplied: true,
+        },
+        money: {
+          amountCents: netRefundCents,
+        },
+      })) {
+        return;
+      }
+    }
 
     // 5. Escrow refund FIRST — processor confirmation must precede status change.
     // RISK: writing "cancelled" before the processor confirms means the customer
