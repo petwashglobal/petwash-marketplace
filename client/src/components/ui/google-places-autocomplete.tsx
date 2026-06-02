@@ -187,7 +187,11 @@ export function GooglePlacesAutocomplete({
     const cached = queryCache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setPredictions(cached.predictions);
-      setShowDropdown(cached.predictions.length > 0);
+      // Always open dropdown when we have a cached response — empty array
+      // triggers the "no matches / enter manually" empty state instead of
+      // silently hiding the dropdown.
+      setShowDropdown(true);
+      updateDropdownPosition();
       return;
     }
 
@@ -253,12 +257,12 @@ export function GooglePlacesAutocomplete({
       setShowManualHint(false);
       setServiceErrorMessage(null);
       setPredictions(preds);
-      if (preds.length > 0) {
-        setShowDropdown(true);
-        updateDropdownPosition();
-      } else {
-        setShowDropdown(false);
-      }
+      // Keep the dropdown OPEN even when predictions are empty so the
+      // empty-state UI (with "Enter address manually" button) shows.
+      // Pre-fix the dropdown collapsed on empty results, which made
+      // the user think the field "disappeared" while typing.
+      setShowDropdown(true);
+      updateDropdownPosition();
 
       queryCache.set(cacheKey, { predictions: preds, ts: Date.now() });
       pruneCache();
@@ -418,15 +422,27 @@ export function GooglePlacesAutocomplete({
     if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, val);
   }, [selectedPlace, buildingNumber, apartment, emitUpdatedDetails]);
 
-  // Dropdown rendered via portal so it escapes any overflow:hidden parent container
-  const dropdownPortal = showDropdown && predictions.length > 0 && dropdownRect
+  // Dropdown rendered via portal so it escapes any overflow:hidden parent container.
+  // Three states are visible to the user — never a silent "dropdown vanished":
+  //   1. Has predictions → list them
+  //   2. Typed ≥3 chars but zero predictions → "No matches" empty state with
+  //      explicit "Enter address manually" button. Fixes the previous UX where
+  //      empty results hid the dropdown entirely and the user thought the
+  //      address field was broken ("appears for a second then disappears").
+  //   3. Loading → spinner is on the input itself, no dropdown card needed.
+  const inputLong = (value || '').trim().length >= 3;
+  const showEmptyState = showDropdown && predictions.length === 0 && inputLong && !isLoading;
+  const dropdownPortal = (
+    (showDropdown && predictions.length > 0 && dropdownRect) ||
+    (showEmptyState && dropdownRect)
+  )
     ? createPortal(
         <div
           style={{
             position: 'absolute',
-            top: dropdownRect.top + 4,
-            left: dropdownRect.left,
-            width: dropdownRect.width,
+            top: dropdownRect!.top + 4,
+            left: dropdownRect!.left,
+            width: dropdownRect!.width,
             zIndex: 999999,
           }}
         >
@@ -434,41 +450,73 @@ export function GooglePlacesAutocomplete({
             className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
             style={{ WebkitOverflowScrolling: 'touch', maxHeight: '260px', overflowY: 'auto' }}
           >
-            {predictions.map((pred, idx) => (
-              <button
-                key={pred.placeId}
-                type="button"
-                className={`w-full text-left px-4 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0 ${
-                  idx === highlightIndex ? 'bg-blue-50' : 'active:bg-blue-50'
-                }`}
-                onPointerDown={(e) => {
-                  // Fire on first contact — before document pointerdown can close dropdown.
-                  // Prevents virtual keyboard from dismissing before selection registers.
-                  e.preventDefault();
-                  selectingRef.current = true;
-                  selectPrediction(pred);
-                }}
-                onMouseEnter={() => setHighlightIndex(idx)}
-                style={{
-                  minHeight: '52px',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                  cursor: 'pointer',
-                }}
-              >
-                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className="font-medium text-gray-900 text-sm">
-                    {pred.mainText || pred.description}
-                  </div>
-                  {pred.secondaryText && (
-                    <div className="text-xs text-gray-500">
-                      {pred.secondaryText}
+            {predictions.length > 0 ? (
+              predictions.map((pred, idx) => (
+                <button
+                  key={pred.placeId}
+                  type="button"
+                  className={`w-full text-left px-4 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0 ${
+                    idx === highlightIndex ? 'bg-blue-50' : 'active:bg-blue-50'
+                  }`}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    selectingRef.current = true;
+                    selectPrediction(pred);
+                  }}
+                  onMouseEnter={() => setHighlightIndex(idx)}
+                  style={{
+                    minHeight: '52px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900 text-sm">
+                      {pred.mainText || pred.description}
                     </div>
-                  )}
+                    {pred.secondaryText && (
+                      <div className="text-xs text-gray-500">
+                        {pred.secondaryText}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-4 text-center">
+                <div className="text-sm text-gray-600 mb-3">
+                  לא נמצאו תוצאות עבור הכתובת. אפשר להזין ידנית.
+                  <span className="block text-xs text-gray-400 mt-1 [direction:ltr]">No matches — enter the address manually below.</span>
                 </div>
-              </button>
-            ))}
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    setShowDropdown(false);
+                    setShowManualHint(true);
+                    // Synthesize a placeholder PlaceDetails so the apartment / building / postal
+                    // helper fields appear and the parent form unblocks save. The user can edit
+                    // every field by hand from here.
+                    const manualPlace: PlaceDetails = {
+                      formattedAddress: value,
+                      street: value,
+                      city: '',
+                      country: 'Israel',
+                      countryCode: 'IL',
+                    };
+                    setSelectedPlace(manualPlace);
+                    onChange(value, manualPlace);
+                    onPlaceSelected?.(manualPlace);
+                  }}
+                >
+                  <MapPin className="h-4 w-4" />
+                  הזן כתובת ידנית · Enter manually
+                </button>
+              </div>
+            )}
           </div>
         </div>,
         document.body
