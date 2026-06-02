@@ -29,6 +29,54 @@
 /** Israeli VAT rate (מע"מ) — 18% effective 1 January 2025 (ITA circular) */
 export const ISRAEL_VAT_RATE = 0.18;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EFFECTIVE-DATED VAT SCHEDULE (PR-1) — resolve "the default rate as of date D"
+// ─────────────────────────────────────────────────────────────────────────────
+// ISRAEL_VAT_RATE above stays the canonical CURRENT rate (single source, pinned
+// by server/tests/vat-rate-single-source.test.ts). This schedule adds the
+// historical/effective-dated dimension so a transaction can resolve the rate
+// that applied on its own date — without reading a global at report time
+// (Rule 1). It mirrors the seed rows in migrations/0034_vat_rate_configs.sql.
+// Isomorphic (client + server); the DB table vat_rate_configs is the
+// ops-editable equivalent for server code that wants a live-editable default.
+
+export interface VatRateScheduleEntry {
+  /** ISO date 'YYYY-MM-DD' the rate becomes effective (UTC). */
+  readonly effectiveFrom: string;
+  /** Rate as a fraction, e.g. 0.18 = 18%. */
+  readonly rate: number;
+  readonly legalBasis: string;
+}
+
+/**
+ * Default VAT schedule for Israel. The CURRENT entry's rate is bound to
+ * ISRAEL_VAT_RATE so the single-source invariant holds — a real rate change is
+ * a new dated entry, never an edit to a past one. Earlier history (pre-2024) is
+ * not modeled: no PetWash transaction predates the company.
+ */
+export const VAT_RATE_SCHEDULE: readonly VatRateScheduleEntry[] = [
+  { effectiveFrom: '2024-01-01', rate: 0.17, legalBasis: 'Israeli VAT 17% (pre-2025 era)' },
+  { effectiveFrom: '2025-01-01', rate: ISRAEL_VAT_RATE, legalBasis: 'Israeli VAT 18% effective 1.1.2025 (ITA circular)' },
+];
+
+/**
+ * Resolve the VAT default that applied on a given date: the latest schedule
+ * entry whose effectiveFrom is on or before `asOf`. For dates before the first
+ * entry, returns the first entry (a safe floor). Pure + isomorphic — server
+ * code may instead read vat_rate_configs for an ops-editable value.
+ *
+ * @param asOf  The transaction/document date (defaults to now).
+ */
+export function resolveVatRateForDate(asOf: Date = new Date()): VatRateScheduleEntry {
+  let chosen: VatRateScheduleEntry = VAT_RATE_SCHEDULE[0];
+  for (const entry of VAT_RATE_SCHEDULE) {
+    if (new Date(`${entry.effectiveFrom}T00:00:00Z`).getTime() <= asOf.getTime()) {
+      chosen = entry;
+    }
+  }
+  return chosen;
+}
+
 /** Osek Patur annual turnover ceiling for 2026 — ₪122,833 */
 export const OSEK_PATUR_CEILING_ILS_2026 = 122_833;
 
