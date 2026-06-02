@@ -401,4 +401,13 @@ describe('PR-PREMIUM-CARDS-2 — H. accessibility', () => {
     );
     expect(src.includes('motion-reduce:transition-none')).toBe(true);
   });
+
+  it('H5. Poster artwork keeps natural image ratio and never uses cover-crop', () => {
+    const src = read(
+      'client/src/components/marketing/PremiumPlatformCard.tsx',
+    );
+    expect(src.includes('block h-auto w-full object-contain')).toBe(true);
+    expect(src.includes('object-cover')).toBe(false);
+    expect(src.includes('aspect-[4/5]')).toBe(false);
+  });
 });
