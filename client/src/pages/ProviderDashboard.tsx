@@ -164,6 +164,100 @@ function getBookingAction(status: string): { action: 'accept' | 'start' | 'compl
   }
 }
 
+function ProviderReadinessCommandPanel({
+  hasApplications,
+  hasProfiles,
+  hasApprovedProfile,
+}: {
+  hasApplications: boolean;
+  hasProfiles: boolean;
+  hasApprovedProfile: boolean;
+}) {
+  const checklist = [
+    {
+      title: 'זהות ותמונות פרופיל',
+      subtitle: 'שם עסק, תמונה מקצועית, תעודה/זיהוי ותיאור שירות ברור',
+      href: becomeProviderHref(),
+      ready: hasApplications || hasProfiles,
+      icon: User,
+    },
+    {
+      title: 'תעריפים, שירותים ואזורי עבודה',
+      subtitle: 'מחיר לכל פלטפורמה, זמינות, כתובת שירות וקרבה ללקוחות',
+      href: '/provider-dashboard',
+      ready: hasProfiles,
+      icon: Calendar,
+    },
+    {
+      title: 'מס, חוזה, ביטוח ובנק',
+      subtitle: 'עוסק/חברה, חוזה ספק, ביטוח רלוונטי ובנק מאומת לפני תשלום',
+      href: '/provider-dashboard',
+      ready: hasApprovedProfile,
+      icon: Shield,
+    },
+    {
+      title: 'פרופיל ציבורי וביקורות',
+      subtitle: 'דירוג, תמונות, ניסיון, מגבלות חיות והעדפות לקוח',
+      href: '/provider-dashboard',
+      ready: hasProfiles,
+      icon: Star,
+    },
+  ];
+
+  const readyCount = checklist.filter(item => item.ready).length;
+  const progress = Math.round((readyCount / checklist.length) * 100);
+
+  return (
+    <section className="mb-6 bg-white border border-gray-200/70 shadow-sm overflow-hidden" style={{ borderRadius: '3px' }}>
+      <div className="h-[2px]" style={{ background: 'linear-gradient(90deg,#111118,#b0841c,#111118)' }} />
+      <div className="p-5 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
+          <div>
+            <p className="text-[10px] tracking-[0.22em] uppercase font-bold mb-2" style={{ color: '#b0841c' }}>
+              Provider Readiness Command Center
+            </p>
+            <h2 className="text-2xl font-serif text-gray-950 tracking-tight">לפני שמקבלים עבודות, הכל חייב להיות מסודר</h2>
+            <p className="text-sm text-gray-500 mt-2 max-w-2xl">
+              אותו מוח תפעולי כמו הכסף: תמונה, תעריף, אזור שירות, מסמכים, ביטוח, בנק ואישור ידני. אין ספק פעיל בלי ראיות.
+            </p>
+          </div>
+          <div className="min-w-[180px]">
+            <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.12em] font-bold text-gray-500 mb-2">
+              <span>Readiness</span>
+              <span style={{ color: '#b0841c' }}>{progress}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#735511,#b0841c,#d7c18a)' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          {checklist.map(({ title, subtitle, href, ready, icon: Icon }) => (
+            <Link key={title} href={href} onClick={href === becomeProviderHref() ? setProviderSignupIntent : undefined}>
+              <div className="h-full border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-md transition-all p-4" style={{ borderRadius: '3px' }}>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="w-10 h-10 flex items-center justify-center bg-gray-950 text-white" style={{ borderRadius: '3px' }}>
+                    <Icon className="w-5 h-5" style={{ color: '#d7c18a' }} />
+                  </div>
+                  <span className={cn(
+                    'text-[10px] px-2 py-1 font-bold uppercase tracking-[0.12em] border',
+                    ready ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+                  )} style={{ borderRadius: '999px' }}>
+                    {ready ? 'READY' : 'MISSING'}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-gray-950 leading-tight">{title}</h3>
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">{subtitle}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ProviderDashboard() {
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
@@ -434,6 +528,12 @@ export default function ProviderDashboard() {
             </div>
           );
         })()}
+
+        <ProviderReadinessCommandPanel
+          hasApplications={(appStatusData?.applications?.length || 0) > 0}
+          hasProfiles={(appStatusData?.providerProfiles?.length || 0) > 0}
+          hasApprovedProfile={(appStatusData?.providerProfiles || []).some((profile: any) => profile.verificationStatus === 'approved')}
+        />
 
         {statsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
