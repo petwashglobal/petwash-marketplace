@@ -18,6 +18,7 @@ import { bookingDisputes, escrowHoldings } from '@shared/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 
 const router = Router();
 
@@ -214,6 +215,53 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
         });
         moneyMovementResult = `skipped_escrow_already_${escrow.status}`;
       } else {
+        if (resolutionType === 'split') {
+          if (typeof refundAmountCents !== 'number' || refundAmountCents <= 0) {
+            return res.status(400).json({ error: 'refundAmountCents required and must be positive for split resolution' });
+          }
+          if (refundAmountCents > escrow.grossAmountCents) {
+            return res.status(400).json({ error: 'refundAmountCents cannot exceed escrow gross amount' });
+          }
+        }
+
+        if (resolutionType === 'customer_favor' || resolutionType === 'split') {
+          const customerRefund =
+            resolutionType === 'customer_favor'
+              ? (typeof refundAmountCents === 'number' ? refundAmountCents : escrow.grossAmountCents)
+              : (typeof refundAmountCents === 'number' ? refundAmountCents : 0);
+
+          if (!assertOperatingControl(req, res, {
+            actionType: 'CUSTOMER_REFUND',
+            route: 'PATCH /api/disputes/:id/resolve',
+            targetId: `dispute-refund:${id}`,
+            facts: {
+              originalOrderOrPaymentExists: true,
+              refundReasonSelected: true,
+              evidenceAttachedIfRequired: Boolean(existing.description || adminNotes),
+              approvalThresholdApplied: true,
+              highRiskRefund: customerRefund >= 50_000,
+            },
+            money: {
+              amountCents: customerRefund,
+            },
+          })) {
+            return;
+          }
+        }
+
+        if (resolutionType === 'provider_favor' || resolutionType === 'split') {
+          if (!assertOperatingControl(req, res, {
+            actionType: 'PROVIDER_PAYOUT',
+            route: 'PATCH /api/disputes/:id/resolve',
+            targetId: `dispute-provider-release:${id}`,
+            money: {
+              amountCents: escrow.netProviderAmountCents,
+            },
+          })) {
+            return;
+          }
+        }
+
         const client = await pool.connect();
         try {
           await client.query('BEGIN');

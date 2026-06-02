@@ -153,4 +153,42 @@ describe('PetWash operating-control gateway', () => {
       'SUMIT_VAT_REVIEW_REQUIRED',
     ]));
   });
+
+  it('allows a legitimate provider payout when all operating-control facts are present', () => {
+    const result = evaluateOperatingControlGate(req({
+      operatingControl: {
+        facts: {
+          providerActive: true,
+          jobCompleted: true,
+          customerPaymentReceivedOrApproved: true,
+          providerInvoiceUploadedIfRequired: true,
+          bankVerified: true,
+          taxStatusChecked: true,
+          vatTreatmentChecked: true,
+          payoutApproved: true,
+          bankTransferReferenceCreated: true,
+        },
+        bankMatchStatus: 'pending_match',
+      },
+    }), {
+      actionType: 'PROVIDER_PAYOUT',
+      route: 'POST /api/treasury/batches/:id/mark-paid',
+      targetId: 'treasury-payout-batch:123',
+      money: {
+        amountCents: 12_500,
+        originalCustomerPriceCents: 20_000,
+        discountAmountCents: 2_000,
+        finalCustomerPaidCents: 18_000,
+        providerBasePayoutCents: 12_500,
+        discountFundedBy: 'PET_WASH',
+      },
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.decision.blockers).toEqual([]);
+    expect(result.decision.providerPayout).toMatchObject({
+      finalProviderPayoutCents: 12_500,
+      agreementRuleUsed: 'petwash_discount_does_not_reduce_provider_payout_by_default',
+    });
+  });
 });
