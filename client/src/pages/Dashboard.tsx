@@ -310,7 +310,10 @@ function tx(key: string, lang: string): string {
   return dashText[key]?.[lang] || dashText[key]?.en || key;
 }
 
-const goldText = { color: '#B8941F' };
+// Deep gold readable on white: #8A6A1B ≈ 5.2:1 contrast (WCAG AA pass),
+// vs the old #B8941F (2.9:1, failed AA / Israeli accessibility law).
+// Still unmistakably gold — same tone already used for the membership badge.
+const goldText = { color: '#8A6A1B' };
 const cardBorder = '1px solid rgba(212, 175, 55, 0.2)';
 const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(212, 175, 55, 0.08)';
 const divider = '1px solid rgba(212, 175, 55, 0.12)';
@@ -500,7 +503,7 @@ export default function Dashboard() {
                 </p>
                 <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('currentBalance', language)}</p>
                 <div className="mt-3 pt-2" style={{ borderTop: divider }}>
-                  <p className="text-[9px] tracking-[0.1em] uppercase" style={{ color: '#888888' }}>ILS</p>
+                  <p className="text-[9px] tracking-[0.1em] uppercase" style={{ color: '#595959' }}>ILS</p>
                 </div>
               </div>
             </LuxuryCard>
@@ -869,7 +872,7 @@ export default function Dashboard() {
                       </div>
                       <div className="px-2 py-2 text-center">
                         <p className="text-[10px] font-medium truncate" style={{ color: '#111111' }}>{pet.name}</p>
-                        <p className="text-[9px] truncate" style={{ color: '#888888' }}>{pet.species || pet.breed || ''}</p>
+                        <p className="text-[9px] truncate" style={{ color: '#595959' }}>{pet.species || pet.breed || ''}</p>
                       </div>
                     </div>
                   </Link>
