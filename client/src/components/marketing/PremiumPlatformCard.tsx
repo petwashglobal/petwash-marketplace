@@ -45,20 +45,17 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
       data-platform-id={card.id}
     >
       {/* Image surface (static asset; CSS gradient fallback if both
-          .webp variants are missing). Mobile + tablet + landscape
-          phones use object-contain so every pixel of editorial
-          artwork (incl. baked-in headline text) stays visible — the
-          poster framing the CEO directive of 2026-05-14 calls for.
-          Only ≥lg (1024px desktop) reverts to object-cover for the
-          immersive layout. White background fills the contain
-          letterbox space. */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
+          .webp variants are missing). The card assets are approved
+          poster artwork with baked-in Hebrew/English headlines. They
+          must keep their natural ratio on iPad/mobile/desktop so the
+          text, logo, icons, and product imagery never get cut off. */}
+      <div className="relative w-full overflow-hidden bg-white">
         <img
           src={assetSrc}
           alt={`${title} — ${headline}`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-contain lg:object-cover"
+          className="block h-auto w-full object-contain"
           onError={(e) => {
             // Graceful: hide broken image; gradient fallback
             // shows through.
