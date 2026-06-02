@@ -12,7 +12,6 @@ import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import diamondLogo from '@assets/IMG_3257_1771582024352.png';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -310,7 +309,10 @@ function tx(key: string, lang: string): string {
   return dashText[key]?.[lang] || dashText[key]?.en || key;
 }
 
-const goldText = { color: '#B8941F' };
+// Deep gold readable on white: #8A6A1B ≈ 5.2:1 contrast (WCAG AA pass),
+// vs the old #B8941F (2.9:1, failed AA / Israeli accessibility law).
+// Still unmistakably gold — same tone already used for the membership badge.
+const goldText = { color: '#8A6A1B' };
 const cardBorder = '1px solid rgba(212, 175, 55, 0.2)';
 const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(212, 175, 55, 0.08)';
 const divider = '1px solid rgba(212, 175, 55, 0.12)';
@@ -323,7 +325,7 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
       transition={{ duration: 0.5, delay }}
       className={`relative rounded-2xl overflow-hidden ${className}`}
       style={{
-        background: '#FFFFFF',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFCF4 100%)',
         border: cardBorder,
         boxShadow: cardShadow,
       }}
@@ -421,7 +423,7 @@ export default function Dashboard() {
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-white">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-            <img src={diamondLogo} alt="PetWash" className="w-28 h-auto mx-auto mb-4 opacity-60" />
+            <img src="/brand/petwash-logo-official.png" alt="PetWash" width={3072} height={1186} className="w-32 h-auto mx-auto mb-4 opacity-60" />
             <p className="text-xs tracking-[0.3em] uppercase" style={goldText}>{tx('loading', language)}</p>
           </motion.div>
         </div>
@@ -436,7 +438,16 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen relative" style={{ backgroundColor: '#FFFFFF' }}>
+      <div
+        className="min-h-screen relative"
+        style={{
+          // Warm ivory editorial base with a faint gold glow at the crown —
+          // 2026 luxury "warm neutral + metallic" direction (feels valuable,
+          // not stark). Replaces the clinical flat white.
+          background:
+            'radial-gradient(1100px 520px at 50% -8%, #FAF1DC 0%, #FBF6EC 34%, #F8F5EF 100%)',
+        }}
+      >
         <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-5 pb-10">
           {/* Top bar: notification bell */}
           <div className={`flex ${language === 'he' || language === 'ar' ? 'justify-start' : 'justify-end'} mb-2`}>
@@ -448,14 +459,15 @@ export default function Dashboard() {
             transition={{ duration: 0.6 }}
             className="flex flex-col items-center mb-5"
           >
-            <div className="relative w-28 sm:w-32 md:w-36 h-auto mb-1">
-              <img
-                src={diamondLogo}
-                alt="PetWash™"
-                className="w-full h-auto"
-                style={{ filter: 'brightness(1.05) contrast(1.08)' }}
-              />
-            </div>
+            {/* Sharp official wordmark (3072×1186 transparent PNG) — same asset
+                as the header, bigger here. Replaces the old blurry card-raster. */}
+            <img
+              src="/brand/petwash-logo-official.png"
+              alt="PetWash™"
+              width={3072}
+              height={1186}
+              className="w-44 sm:w-52 md:w-60 h-auto mx-auto mb-3"
+            />
             <p
               className="text-sm tracking-[0.2em] font-light"
               style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
@@ -489,39 +501,60 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
-            <LuxuryCard delay={0.2}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('balance', language)}
-                </p>
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{totalBalance}
-                </p>
-                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('currentBalance', language)}</p>
-                <div className="mt-3 pt-2" style={{ borderTop: divider }}>
-                  <p className="text-[9px] tracking-[0.1em] uppercase" style={{ color: '#888888' }}>ILS</p>
+          {/* ── Clubroom membership card — 2026 "ink + gold foil" centerpiece.
+                Drama via deep-ink + metallic gold (the LVMH luxury cue). Real
+                values only: balance, points, tier, member number. ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.18 }}
+            className="relative rounded-[22px] overflow-hidden mb-4"
+            style={{
+              background: 'linear-gradient(150deg, #211d18 0%, #100e0b 55%, #1a1611 100%)',
+              border: '1px solid rgba(201,168,76,0.38)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.28)',
+            }}
+          >
+            {/* gold-foil crown line */}
+            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #C9A84C 20%, #F1DA83 50%, #C9A84C 80%, transparent)' }} />
+            {/* faint gold corner glow */}
+            <div
+              className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(232,201,114,0.16), transparent 70%)' }}
+            />
+            <div className="relative px-6 py-6">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <p className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(241,218,131,0.65)' }}>
+                    {tx('privilege', language)}
+                  </p>
+                  <p className="mt-1.5 text-base tracking-[0.18em] uppercase" style={{ fontFamily: "'Playfair Display', serif", color: '#F4E7C2' }}>
+                    {tierLabel} · {tx('member', language)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ border: '1px solid rgba(201,168,76,0.42)' }}>
+                  <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#E8C972' }} />
+                  <span className="text-[10px] tracking-[0.12em]" style={{ color: '#E8C972', fontFamily: "'Playfair Display', serif" }}>
+                    {membershipNumber || tx('member', language)}
+                  </span>
                 </div>
               </div>
-            </LuxuryCard>
-
-            <LuxuryCard delay={0.25}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('points', language)}
-                </p>
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  {loyaltyPoints.toLocaleString()}
-                </p>
-                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('availablePoints', language)}</p>
-                <div className="mt-3 pt-2" style={{ borderTop: divider }}>
-                  <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>
-                    {tierLabel} {tx('member', language)}
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('balance', language)}</p>
+                  <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
+                    <span className="text-lg align-top" style={{ color: '#E8C972' }}>&#8362;</span>{totalBalance}
+                  </p>
+                </div>
+                <div className="text-end">
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('points', language)}</p>
+                  <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
+                    {loyaltyPoints.toLocaleString()}
                   </p>
                 </div>
               </div>
-            </LuxuryCard>
-          </div>
+            </div>
+          </motion.div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
             <LuxuryCard delay={0.3}>
@@ -562,11 +595,14 @@ export default function Dashboard() {
             </LuxuryCard>
 
             <LuxuryCard delay={0.45}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center flex flex-col items-center justify-center h-full">
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#CCCCCC' }}>
-                  —
+              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('washCredits', language)}
                 </p>
-                <p className="text-[9px] sm:text-[10px] tracking-[0.15em] uppercase" style={goldText}>{tx('comingSoon', language)}</p>
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
+                  {wallet?.washPackageCredits ?? 0}
+                </p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('packages', language)}</p>
               </div>
             </LuxuryCard>
           </div>
@@ -648,7 +684,7 @@ export default function Dashboard() {
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
                 style={{ background: '#111111', color: '#ffffff', border: '1px solid rgba(0,0,0,0.15)', cursor: 'pointer' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
                 {he ? 'Apple Wallet' : 'Apple Wallet'}
@@ -665,10 +701,14 @@ export default function Dashboard() {
                   });
                 }}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
-                style={{ background: '#1565C0', color: '#ffffff', border: 'none', cursor: 'pointer' }}
+                style={{ background: '#000000', color: '#ffffff', border: '1px solid rgba(255,255,255,0.14)', cursor: 'pointer' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/>
+                {/* Official full-colour Google "G" mark */}
+                <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+                  <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
+                  <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/>
+                  <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"/>
+                  <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/>
                 </svg>
                 {he ? 'Google Wallet' : 'Google Wallet'}
               </button>
@@ -869,7 +909,7 @@ export default function Dashboard() {
                       </div>
                       <div className="px-2 py-2 text-center">
                         <p className="text-[10px] font-medium truncate" style={{ color: '#111111' }}>{pet.name}</p>
-                        <p className="text-[9px] truncate" style={{ color: '#888888' }}>{pet.species || pet.breed || ''}</p>
+                        <p className="text-[9px] truncate" style={{ color: '#595959' }}>{pet.species || pet.breed || ''}</p>
                       </div>
                     </div>
                   </Link>
