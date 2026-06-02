@@ -90,6 +90,56 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
 
+    <script>
+      // PetWash stale-app-shell guard. Keep this inline in <head> so returning
+      // Safari users start cleanup before the production bundle is executed.
+      (function petwashInlineCachePurge() {
+        var version = '2026-06-01-inline-signup-cache-purge';
+        if (!('serviceWorker' in navigator) && !('caches' in window)) return;
+
+        Promise.resolve()
+          .then(function () {
+            var tasks = [];
+            if ('serviceWorker' in navigator) {
+              tasks.push(
+                navigator.serviceWorker.getRegistrations()
+                  .then(function (registrations) {
+                    return Promise.all(registrations.map(function (registration) {
+                      return registration.unregister().catch(function () { return false; });
+                    })).then(function () { return registrations.length > 0; });
+                  })
+                  .catch(function () { return false; })
+              );
+            }
+
+            if ('caches' in window) {
+              tasks.push(
+                window.caches.keys()
+                  .then(function (names) {
+                    return Promise.all(names.map(function (name) {
+                      return window.caches.delete(name).catch(function () { return false; });
+                    })).then(function () { return names.length > 0; });
+                  })
+                  .catch(function () { return false; })
+              );
+            }
+
+            return Promise.all(tasks);
+          })
+          .then(function (results) {
+            if (!results.some(Boolean)) return;
+            try {
+              if (sessionStorage.getItem(version) === '1') return;
+              sessionStorage.setItem(version, '1');
+            } catch (e) {
+              // Private browsing can block sessionStorage; one reload is OK.
+            }
+            window.location.reload();
+          })
+          .catch(function () {});
+      })();
+    </script>
+
     <style>
       :root {
         --safe-area-inset-top: env(safe-area-inset-top);
@@ -140,11 +190,11 @@
       .no-js-warning .contact { font-size: 14px; opacity: 0.9; }
       .no-js-list { text-align: left; max-width: 500px; margin: 10px auto; line-height: 1.8; }
     </style>
-    <script type="module" crossorigin src="/assets/index-gAvr17l0.js"></script>
+    <script type="module" crossorigin src="/assets/index-CZ4w66EW.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-i18n-BnqEsHlA.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-react-BqcpfMVt.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-BkY-0lV0.js">
     <link rel="stylesheet" crossorigin href="/assets/vendor-react-DpsRipQV.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-r9zOfcw5.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-Ds7cKLyL.css">
   </head>
   <body>
     <noscript>
