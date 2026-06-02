@@ -1,0 +1,15 @@
+# PetWash™ — https://petwash.co.il
+# Allow search/answer crawlers; keep internal + API surfaces out of the index.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /provider-os
+Disallow: /account
+Disallow: /dashboard
+Disallow: /backend-team
+Disallow: /audit-trail
+Disallow: /company-reports
+
+Sitemap: https://petwash.co.il/sitemap.xml
