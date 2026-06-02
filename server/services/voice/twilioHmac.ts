@@ -91,7 +91,6 @@ export function buildPublicUrl(req: Request, override?: string): string {
  * attacker still cannot forge X-Twilio-Signature without the secret token.
  */
 export function buildCandidatePublicUrls(req: Request, override?: string): string[] {
-  if (override) return [override];
   const path = req.originalUrl;
   const bases: string[] = [];
   const envBase =
@@ -102,6 +101,25 @@ export function buildCandidatePublicUrls(req: Request, override?: string): strin
   // Canonical PetWash public hosts Twilio actually dials.
   bases.push('https://petwash.co.il', 'https://www.petwash.co.il');
   const candidates = bases.map((b) => `${b}${path}`);
+
+  // An explicit override (TWILIO_VOICE_PUBLIC_URL) is ADDITIVE, never exclusive.
+  // Previously `if (override) return [override]` meant ONE fixed full URL was
+  // used for ALL three endpoints — so a value ending in `/voice` failed every
+  // `/gather` and `/status` signature (one env var, three request paths) and
+  // produced Twilio "application error" on real calls. Now we try the override
+  // verbatim AND its origin + the actual request path, on TOP of the canonical
+  // hosts. Safe: every candidate is still HMAC-checked against TWILIO_AUTH_TOKEN,
+  // so adding known-legitimate URLs cannot weaken verification.
+  if (override) {
+    const o = override.replace(/\/+$/, '');
+    candidates.push(o);
+    try {
+      candidates.push(`${new URL(o).origin}${path}`);
+    } catch {
+      /* override not a parseable absolute URL — verbatim candidate already added */
+    }
+  }
+
   // Fallback: the proxy-header reconstruction (direct *.run.app access / local dev).
   candidates.push(buildPublicUrl(req));
   return [...new Set(candidates)];
