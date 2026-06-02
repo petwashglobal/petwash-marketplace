@@ -131,6 +131,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const he = language === 'he';
   const isPhone = useIsPhone();
 
+  useEffect(() => {
+    const root = document.getElementById('root');
+    document.documentElement.setAttribute('data-pw-page', 'signup');
+    document.body.setAttribute('data-pw-page', 'signup');
+    root?.setAttribute('data-pw-page', 'signup');
+
+    return () => {
+      document.documentElement.removeAttribute('data-pw-page');
+      document.body.removeAttribute('data-pw-page');
+      root?.removeAttribute('data-pw-page');
+    };
+  }, []);
+
   const params = useMemo(
     () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
     [],
@@ -423,7 +436,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   };
 
   return (
-    <div className="sl-shell" dir={he ? 'rtl' : 'ltr'}>
+    <div id="petwash-signup-page" className="sl-shell" dir={he ? 'rtl' : 'ltr'}>
       <style>{styles(he)}</style>
 
       {/* Centered max-width frame so 27" iMacs don't stretch */}
@@ -884,13 +897,24 @@ function styles(he: boolean) {
      * disable overscroll bounce so the dark canvas never breaks.
      * The style tag unmounts with the page, restoring the global rule.
      */
-    html, body { background:#000 !important; overscroll-behavior:none }
+    html, body, #root {
+      background:#000 !important;
+      background-color:#000 !important;
+      overscroll-behavior:none;
+    }
+
+    body > #root > #petwash-signup-page.sl-shell,
+    #petwash-signup-page.sl-shell {
+      background:#000 !important;
+      background-color:#000 !important;
+    }
 
     .sl-shell{
       --gold:#d8ad55; --gold2:#f4d48a; --white:#fffaf0;
       --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
       --line2:rgba(244,212,138,.22); --ink:#0a0a0a;
-      position:relative; min-height:100dvh; background:#000;
+      position:relative; min-height:100dvh; background:#000 !important;
+      background-color:#000 !important;
       color:var(--white);
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       /* iOS notch + bottom home indicator. Top inset is added once at the
@@ -980,7 +1004,8 @@ function styles(he: boolean) {
     .sl-panel{
       display:flex; flex-direction:column; gap:14px;
       border:1px solid var(--line);
-      background:linear-gradient(180deg, rgba(20,20,20,.95), rgba(8,8,8,.95));
+      background:linear-gradient(180deg, rgba(20,20,20,.95), rgba(8,8,8,.95)) !important;
+      background-color:#090909 !important;
       border-radius:24px; padding:clamp(20px,3vw,32px);
     }
     .sl-panelHead{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap }

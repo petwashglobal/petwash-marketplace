@@ -4519,3 +4519,30 @@ main[role="main"],
 main {
   background-color: #ffffff !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SIGNUP EXCEPTION — Black Luxury Auth Canvas
+
+   The global white reset above is for the normal product/dashboard shell.
+   It must never bleach the standalone /signup auth page. SignUpLuxury sets
+   data-pw-page="signup" on html/body/#root while mounted, so this exception
+   stays scoped and disappears automatically on navigation.
+   ═══════════════════════════════════════════════════════════════ */
+html[data-pw-page="signup"],
+body[data-pw-page="signup"],
+#root[data-pw-page="signup"],
+body[data-pw-page="signup"] > #root {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
+body[data-pw-page="signup"] > #root > #petwash-signup-page.sl-shell,
+body[data-pw-page="signup"] #petwash-signup-page.sl-shell {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
+body[data-pw-page="signup"] #petwash-signup-page main.sl-panel {
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.95), rgba(8, 8, 8, 0.95)) !important;
+  background-color: #090909 !important;
+}
