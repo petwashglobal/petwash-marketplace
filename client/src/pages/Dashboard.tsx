@@ -325,7 +325,7 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
       transition={{ duration: 0.5, delay }}
       className={`relative rounded-2xl overflow-hidden ${className}`}
       style={{
-        background: '#FFFFFF',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFCF4 100%)',
         border: cardBorder,
         boxShadow: cardShadow,
       }}
@@ -438,7 +438,16 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen relative" style={{ backgroundColor: '#FFFFFF' }}>
+      <div
+        className="min-h-screen relative"
+        style={{
+          // Warm ivory editorial base with a faint gold glow at the crown —
+          // 2026 luxury "warm neutral + metallic" direction (feels valuable,
+          // not stark). Replaces the clinical flat white.
+          background:
+            'radial-gradient(1100px 520px at 50% -8%, #FAF1DC 0%, #FBF6EC 34%, #F8F5EF 100%)',
+        }}
+      >
         <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-5 pb-10">
           {/* Top bar: notification bell */}
           <div className={`flex ${language === 'he' || language === 'ar' ? 'justify-start' : 'justify-end'} mb-2`}>
@@ -492,39 +501,60 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
-            <LuxuryCard delay={0.2}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('balance', language)}
-                </p>
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{totalBalance}
-                </p>
-                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('currentBalance', language)}</p>
-                <div className="mt-3 pt-2" style={{ borderTop: divider }}>
-                  <p className="text-[9px] tracking-[0.1em] uppercase" style={{ color: '#595959' }}>ILS</p>
+          {/* ── Clubroom membership card — 2026 "ink + gold foil" centerpiece.
+                Drama via deep-ink + metallic gold (the LVMH luxury cue). Real
+                values only: balance, points, tier, member number. ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.18 }}
+            className="relative rounded-[22px] overflow-hidden mb-4"
+            style={{
+              background: 'linear-gradient(150deg, #211d18 0%, #100e0b 55%, #1a1611 100%)',
+              border: '1px solid rgba(201,168,76,0.38)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.28)',
+            }}
+          >
+            {/* gold-foil crown line */}
+            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #C9A84C 20%, #F1DA83 50%, #C9A84C 80%, transparent)' }} />
+            {/* faint gold corner glow */}
+            <div
+              className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(232,201,114,0.16), transparent 70%)' }}
+            />
+            <div className="relative px-6 py-6">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <p className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(241,218,131,0.65)' }}>
+                    {tx('privilege', language)}
+                  </p>
+                  <p className="mt-1.5 text-base tracking-[0.18em] uppercase" style={{ fontFamily: "'Playfair Display', serif", color: '#F4E7C2' }}>
+                    {tierLabel} · {tx('member', language)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ border: '1px solid rgba(201,168,76,0.42)' }}>
+                  <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#E8C972' }} />
+                  <span className="text-[10px] tracking-[0.12em]" style={{ color: '#E8C972', fontFamily: "'Playfair Display', serif" }}>
+                    {membershipNumber || tx('member', language)}
+                  </span>
                 </div>
               </div>
-            </LuxuryCard>
-
-            <LuxuryCard delay={0.25}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('points', language)}
-                </p>
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  {loyaltyPoints.toLocaleString()}
-                </p>
-                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('availablePoints', language)}</p>
-                <div className="mt-3 pt-2" style={{ borderTop: divider }}>
-                  <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>
-                    {tierLabel} {tx('member', language)}
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('balance', language)}</p>
+                  <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
+                    <span className="text-lg align-top" style={{ color: '#E8C972' }}>&#8362;</span>{totalBalance}
+                  </p>
+                </div>
+                <div className="text-end">
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('points', language)}</p>
+                  <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
+                    {loyaltyPoints.toLocaleString()}
                   </p>
                 </div>
               </div>
-            </LuxuryCard>
-          </div>
+            </div>
+          </motion.div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
             <LuxuryCard delay={0.3}>
@@ -565,11 +595,14 @@ export default function Dashboard() {
             </LuxuryCard>
 
             <LuxuryCard delay={0.45}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center flex flex-col items-center justify-center h-full">
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#CCCCCC' }}>
-                  —
+              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('washCredits', language)}
                 </p>
-                <p className="text-[9px] sm:text-[10px] tracking-[0.15em] uppercase" style={goldText}>{tx('comingSoon', language)}</p>
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
+                  {wallet?.washPackageCredits ?? 0}
+                </p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('packages', language)}</p>
               </div>
             </LuxuryCard>
           </div>
