@@ -39,6 +39,8 @@ export interface SystemConfigMap {
   'ff.maya.voice.inbound.enabled': boolean;
   'ff.maya.voice.outbound.enabled': boolean;
   'ff.maya.voice.extraction.enabled': boolean;
+  // Maya WhatsApp lead-bot — inbound webhook, honest answers + lead capture.
+  'ff.maya.whatsapp.enabled': boolean;
   'ff.maya.voice.recording.enabled': boolean;
   // AI booking intake (AI-B1) — Gemini parses natural-language booking
   // requests ("walk my dog tomorrow morning in Tel Aviv") into structured
@@ -120,6 +122,10 @@ const DEFAULTS: SystemConfigMap = {
   'ff.maya.voice.inbound.enabled': true,
   'ff.maya.voice.outbound.enabled': false,
   'ff.maya.voice.extraction.enabled': false,
+  // CEO directive: Maya WhatsApp lead-bot ON by default. (Real activation still
+  // requires connecting the number as a Twilio WhatsApp sender — no inbound
+  // traffic arrives until that Meta/Twilio step is done.)
+  'ff.maya.whatsapp.enabled': true,
   'ff.maya.voice.recording.enabled': false,
   // AI-B1 default OFF
   'ff.ai.booking_intake.enabled': false,

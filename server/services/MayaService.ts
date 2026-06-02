@@ -170,6 +170,21 @@ export async function findConversationByCallSid(callSid: string): Promise<MayaCo
   return row ?? null;
 }
 
+/** Most recent OPEN conversation for a phone on a channel (e.g. WhatsApp threading). */
+export async function findOpenConversationByPhone(phone: string, channel: string): Promise<MayaConversation | null> {
+  if (!phone) return null;
+  const [row] = await db.select().from(mayaConversations)
+    .where(and(
+      eq(mayaConversations.contactPhone, phone),
+      eq(mayaConversations.channel, channel),
+      eq(mayaConversations.status, 'open'),
+      isNull(mayaConversations.deletedAt),
+    ))
+    .orderBy(desc(mayaConversations.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function listConversations(opts: { status?: string; channel?: string; limit?: number } = {}): Promise<MayaConversation[]> {
   const limit = clampLimit(opts.limit);
   const conds = [isNull(mayaConversations.deletedAt)];

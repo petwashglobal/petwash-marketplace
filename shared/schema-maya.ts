@@ -58,7 +58,7 @@ export const mayaConversations = pgTable(
     index('idx_maya_conversations_call_sid')
       .on(table.externalCallSid)
       .where(sql`${table.externalCallSid} IS NOT NULL`),
-    check('maya_conversations_channel_chk', sql`${table.channel} IN ('web','admin','test','phone')`),
+    check('maya_conversations_channel_chk', sql`${table.channel} IN ('web','admin','test','phone','whatsapp')`),
     check('maya_conversations_locale_chk', sql`${table.locale} IN ('he','en')`),
     check('maya_conversations_status_chk', sql`${table.status} IN ('open','closed','archived')`),
   ],

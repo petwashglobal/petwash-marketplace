@@ -327,6 +327,7 @@ import aiBookingRouter from './routes/ai-booking';
 import adminPaymentDevicesRouter from './routes/admin-payment-devices';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import mayaVoiceTwilioRouter from './routes/maya-voice-twilio';
+import mayaWhatsappRouter from './routes/maya-whatsapp';
 
 const MAX_QUERY_LIMIT = 500;
 const safeLimit = (raw: unknown, defaultVal: number, max = MAX_QUERY_LIMIT): number => {
@@ -453,6 +454,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);
   // Maya Voice Twilio adapter (Stage 3B) — public, HMAC-verified.
   app.use('/api/maya/voice/twilio', mayaVoiceTwilioRouter);  // Maya Stage 1b
+  // Maya WhatsApp lead-bot — public, HMAC-verified, flag ff.maya.whatsapp.enabled.
+  app.use('/api/maya/whatsapp', mayaWhatsappRouter);
   // AI-B1 conversational booking intake — parse-only, never creates bookings.
   // Public (uses apiLimiter inherited at app level). Feature-flag gated.
   app.use('/api/ai/booking', aiBookingRouter);
