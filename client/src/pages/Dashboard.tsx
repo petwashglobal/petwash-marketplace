@@ -12,7 +12,6 @@ import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import diamondLogo from '@assets/IMG_3257_1771582024352.png';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -424,7 +423,7 @@ export default function Dashboard() {
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-white">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-            <img src={diamondLogo} alt="PetWash" className="w-28 h-auto mx-auto mb-4 opacity-60" />
+            <img src="/brand/petwash-logo-official.png" alt="PetWash" width={3072} height={1186} className="w-32 h-auto mx-auto mb-4 opacity-60" />
             <p className="text-xs tracking-[0.3em] uppercase" style={goldText}>{tx('loading', language)}</p>
           </motion.div>
         </div>
@@ -451,14 +450,15 @@ export default function Dashboard() {
             transition={{ duration: 0.6 }}
             className="flex flex-col items-center mb-5"
           >
-            <div className="relative w-28 sm:w-32 md:w-36 h-auto mb-1">
-              <img
-                src={diamondLogo}
-                alt="PetWash™"
-                className="w-full h-auto"
-                style={{ filter: 'brightness(1.05) contrast(1.08)' }}
-              />
-            </div>
+            {/* Sharp official wordmark (3072×1186 transparent PNG) — same asset
+                as the header, bigger here. Replaces the old blurry card-raster. */}
+            <img
+              src="/brand/petwash-logo-official.png"
+              alt="PetWash™"
+              width={3072}
+              height={1186}
+              className="w-44 sm:w-52 md:w-60 h-auto mx-auto mb-3"
+            />
             <p
               className="text-sm tracking-[0.2em] font-light"
               style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
