@@ -74,6 +74,7 @@ import {
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
   FaEnvelope, FaPhoneAlt, FaCheckCircle, FaInfoCircle, FaPaw, FaCreditCard,
+  FaChevronRight,
 } from 'react-icons/fa';
 
 interface Props {
@@ -344,6 +345,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     setStep(2);
   };
 
+  const jumpToSignupPanel = () => {
+    document.querySelector<HTMLElement>('.sl-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   // On the phone in step 2 the OTP-sent state takes over the screen.
   const showStep2Phone = isPhone && step === 2;
   const showFormOnPhone = !isPhone || step === 1;
@@ -463,6 +468,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           <div className="sl-dogWrap">
             <img src="/brand/hero-dog-lux.jpg" alt="" className="sl-dog" loading="eager" decoding="async" aria-hidden />
           </div>
+
+          <button type="button" className="sl-heroCta" onClick={jumpToSignupPanel}>
+            <span>{t.cta}</span>
+            <FaChevronRight aria-hidden />
+          </button>
 
           <section className="sl-card">
             <div className="sl-cardHead">
@@ -848,9 +858,9 @@ function WalletCardIcon({ variant }: { variant: 'apple' | 'google' }) {
       <rect x="0.5" y="0.5" width="31" height="21" rx="3" fill={variant === 'apple' ? 'url(#wgrad-a)' : 'url(#wgrad-g)'} stroke="rgba(255,255,255,.18)" />
       <defs>
         <linearGradient id="wgrad-a" x1="0" y1="0" x2="32" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#f4d48a" />
-          <stop offset=".5" stopColor="#d8ad55" />
-          <stop offset="1" stopColor="#9d6f23" />
+          <stop offset="0" stopColor="#d9bd72" />
+          <stop offset=".5" stopColor="#b0841c" />
+          <stop offset="1" stopColor="#745415" />
         </linearGradient>
         <linearGradient id="wgrad-g" x1="0" y1="0" x2="32" y2="22" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#4285F4" />
@@ -910,9 +920,9 @@ function styles(he: boolean) {
     }
 
     .sl-shell{
-      --gold:#d8ad55; --gold2:#f4d48a; --white:#fffaf0;
+      --gold:#b0841c; --gold2:#d9bd72; --gold3:#8f6a16; --white:#fffaf0;
       --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
-      --line2:rgba(244,212,138,.22); --ink:#0a0a0a;
+      --line2:rgba(176,132,28,.22); --ink:#0a0a0a;
       position:relative; min-height:100dvh; background:#000 !important;
       background-color:#000 !important;
       color:var(--white);
@@ -935,23 +945,35 @@ function styles(he: boolean) {
     }
 
     /* HERO LEFT — logo dominant, headline subordinate, dog supports */
-    .sl-hero{ display:flex; flex-direction:column; gap:18px }
-    .sl-heroHead{ display:flex; flex-direction:column; gap:10px; align-items:flex-start }
-    /* Logo is the dominant brand mark — larger than the headline below. */
-    .sl-logo{ height:clamp(96px,18vw,180px); width:auto; display:block }
+    .sl-hero{ display:flex; flex-direction:column; gap:18px; align-items:center; text-align:center }
+    .sl-heroHead{ display:flex; flex-direction:column; gap:12px; align-items:center; text-align:center; width:100% }
+    /* Logo is width-driven so it stays the dominant first-read brand mark. */
+    .sl-logo{ width:clamp(320px,38vw,520px); max-width:100%; height:auto; display:block; object-fit:contain }
     .sl-eyebrow{ color:var(--muted); font-size:11px; letter-spacing:.32em; font-weight:800; text-transform:uppercase }
     /* Headline is intentionally smaller than the logo above. */
-    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(24px,3.6vw,42px); line-height:1.05; letter-spacing:-.02em; margin:0; font-weight:600 }
-    .sl-gold{ background:linear-gradient(180deg, var(--gold2), var(--gold) 60%, #b48830); -webkit-background-clip:text; background-clip:text; color:transparent; display:inline-block; padding-bottom:.08em }
-    .sl-sub{ margin:0; color:var(--muted); font-size:clamp(14px,1.4vw,17px); line-height:1.5; max-width:520px }
+    .sl-h1{ font-family:"Playfair Display", Georgia, serif; font-size:clamp(28px,3.1vw,44px); line-height:1.06; letter-spacing:-.01em; margin:0; font-weight:600; text-align:center }
+    .sl-gold{ background:linear-gradient(180deg, #ead8a5 0%, var(--gold2) 18%, var(--gold) 62%, var(--gold3) 100%); -webkit-background-clip:text; background-clip:text; color:transparent; display:inline-block; padding-bottom:.08em }
+    .sl-sub{ margin:0 auto; color:var(--muted); font-size:clamp(14px,1.4vw,17px); line-height:1.5; max-width:520px; text-align:center }
 
     .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:2px 0 }
-    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(244,212,138,.4), transparent); flex:1 }
+    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(176,132,28,.45), transparent); flex:1 }
     .sl-divPaw svg{ width:14px; height:14px }
 
-    /* Dog supports the brand — never larger than the logo, never dominant. */
+    /* Dog can be large and emotional, but it supports the brand identity. */
     .sl-dogWrap{ display:flex; justify-content:center; padding:4px 0 }
-    .sl-dog{ width:min(50%, 240px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+    .sl-dog{ width:min(58%, 340px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+
+    .sl-heroCta{
+      display:none; appearance:none; cursor:pointer;
+      align-items:center; justify-content:center; gap:16px;
+      min-height:58px; width:min(100%, 640px); padding:0 22px;
+      border-radius:14px; border:1px solid rgba(217,189,114,.72);
+      background:linear-gradient(180deg, #ead8a5 0%, var(--gold2) 16%, var(--gold) 58%, var(--gold3) 100%);
+      color:#090909; font-weight:850; font-size:17px; letter-spacing:.01em;
+      box-shadow:0 20px 56px rgba(176,132,28,.35), inset 0 1px 0 rgba(255,255,255,.48);
+      -webkit-tap-highlight-color:transparent;
+    }
+    .sl-heroCta svg{ font-size:16px; flex:0 0 auto }
 
     .sl-card{
       border:1px solid var(--line);
@@ -988,7 +1010,7 @@ function styles(he: boolean) {
       background:linear-gradient(135deg, var(--gold2), var(--gold));
       color:#0a0a0a; font-weight:900; font-size:11px;
     }
-    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(244,212,138,.5) }
+    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(176,132,28,.5) }
     .sl-ratingTxt{ color:var(--white); font-weight:800; font-size:14px }
 
     .sl-secBadge{
@@ -1018,7 +1040,7 @@ function styles(he: boolean) {
       color:var(--white); font-weight:700; font-size:13px;
       border-radius:999px; padding:10px 16px; min-height:44px;
     }
-    .sl-lang:hover{ border-color:rgba(244,212,138,.5) }
+    .sl-lang:hover{ border-color:rgba(176,132,28,.5) }
 
     .sl-back{
       align-self:flex-start; appearance:none; cursor:pointer;
@@ -1037,7 +1059,7 @@ function styles(he: boolean) {
       transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(244,212,138,.45); box-shadow:0 0 0 3px rgba(244,212,138,.10) }
+    .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(176,132,28,.45); box-shadow:0 0 0 3px rgba(176,132,28,.10) }
     .sl-soc:disabled{ cursor:not-allowed }
     .sl-soc--soon{ opacity:.78 }
     .sl-socLabel{ flex:1; text-align:start }
@@ -1067,8 +1089,8 @@ function styles(he: boolean) {
       padding:0 8px; transition:background .15s ease, border-color .15s ease, color .15s ease;
     }
     .sl-tab svg{ font-size:16px }
-    .sl-tab[aria-selected="true"]{ background:rgba(244,212,138,.12); border-color:rgba(244,212,138,.4); color:var(--white) }
-    .sl-tab:hover{ border-color:rgba(244,212,138,.35) }
+    .sl-tab[aria-selected="true"]{ background:rgba(176,132,28,.12); border-color:rgba(176,132,28,.4); color:var(--white) }
+    .sl-tab:hover{ border-color:rgba(176,132,28,.35) }
     .sl-yIcon{ width:18px; height:18px; border-radius:4px; background:#5F01D1; display:inline-flex; align-items:center; justify-content:center }
     .sl-yText{ color:#fff; font-weight:900; font-size:10.5px; letter-spacing:-.5px }
 
@@ -1091,7 +1113,7 @@ function styles(he: boolean) {
     }
     .sl-input--icon{ ${he ? 'padding-right:42px; padding-left:16px' : 'padding-left:42px; padding-right:16px'} }
     .sl-input::placeholder{ color:rgba(255,250,240,.4); font-weight:400 }
-    .sl-input:focus{ border-color:rgba(244,212,138,.55); box-shadow:0 0 0 3px rgba(244,212,138,.18) }
+    .sl-input:focus{ border-color:rgba(176,132,28,.55); box-shadow:0 0 0 3px rgba(176,132,28,.18) }
     .sl-hint{ color:var(--muted); font-size:12.5px; line-height:1.4 }
 
     .sl-entryRow{ display:grid; grid-template-columns:1fr auto; gap:8px }
@@ -1129,11 +1151,11 @@ function styles(he: boolean) {
       cursor:pointer; min-height:64px;
       transition:border-color .15s ease, background .15s ease;
     }
-    .sl-consent.is-on{ border-color:rgba(244,212,138,.5); background:rgba(244,212,138,.06) }
-    .sl-consent:hover{ border-color:rgba(244,212,138,.35) }
+    .sl-consent.is-on{ border-color:rgba(176,132,28,.5); background:rgba(176,132,28,.06) }
+    .sl-consent:hover{ border-color:rgba(176,132,28,.35) }
     .sl-consentIcon{
       width:40px; height:40px; border-radius:10px;
-      background:rgba(244,212,138,.10); border:1px solid rgba(244,212,138,.22);
+      background:rgba(176,132,28,.10); border:1px solid rgba(176,132,28,.22);
       display:inline-flex; align-items:center; justify-content:center;
       color:var(--gold2); font-size:18px; flex:0 0 auto;
     }
@@ -1142,13 +1164,13 @@ function styles(he: boolean) {
     .sl-consentSub{ font-size:12px; color:var(--muted); line-height:1.4 }
     .sl-consentBox{
       position:relative; width:26px; height:26px; flex:0 0 auto;
-      border-radius:7px; border:1.5px solid rgba(244,212,138,.45);
+      border-radius:7px; border:1.5px solid rgba(176,132,28,.45);
       background:rgba(0,0,0,.55); display:inline-flex; align-items:center; justify-content:center;
     }
     .sl-consentBox input{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer }
     .sl-consentMark{ color:var(--gold2); font-size:18px; opacity:0; transition:opacity .15s ease }
     .sl-consent.is-on .sl-consentMark{ opacity:1 }
-    .sl-consent.is-on .sl-consentBox{ border-color:var(--gold2); background:rgba(244,212,138,.14) }
+    .sl-consent.is-on .sl-consentBox{ border-color:var(--gold2); background:rgba(176,132,28,.14) }
 
     /* Wallet buttons */
     .sl-wallets{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
@@ -1160,8 +1182,8 @@ function styles(he: boolean) {
       transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
     }
     .sl-wbtn:disabled{ opacity:.48; cursor:not-allowed }
-    .sl-wbtn:not(:disabled):hover{ transform:translateY(-1px); border-color:rgba(244,212,138,.4); box-shadow:0 0 0 3px rgba(244,212,138,.12) }
-    .sl-wbtn.is-on{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(244,212,138,.22) }
+    .sl-wbtn:not(:disabled):hover{ transform:translateY(-1px); border-color:rgba(176,132,28,.4); box-shadow:0 0 0 3px rgba(176,132,28,.12) }
+    .sl-wbtn.is-on{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(176,132,28,.22) }
     .sl-wcardIcon{ width:32px; height:22px; flex:0 0 auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)) }
 
     /* Terms — entire row is the tap target (label wraps the checkbox + text).
@@ -1179,22 +1201,22 @@ function styles(he: boolean) {
     .sl-cta{
       appearance:none; cursor:pointer; width:100%; min-height:58px;
       border-radius:14px; border:0;
-      background:linear-gradient(180deg, var(--gold2) 0%, var(--gold) 55%, #b48830 100%);
+      background:linear-gradient(180deg, #ead8a5 0%, var(--gold2) 16%, var(--gold) 58%, var(--gold3) 100%);
       color:#0a0a0a;
       display:flex; align-items:center; justify-content:center; gap:10px;
       font-weight:900; font-size:16px; letter-spacing:.02em;
-      box-shadow:0 18px 50px rgba(244,212,138,.28);
+      box-shadow:0 18px 50px rgba(176,132,28,.28);
       transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(244,212,138,.5) }
+    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(176,132,28,.5) }
     .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
     .sl-cta svg{ font-size:18px }
     .sl-cta--ghost{
       background:rgba(255,255,255,.06); color:var(--white);
-      border:1px solid rgba(244,212,138,.4); box-shadow:none;
+      border:1px solid rgba(176,132,28,.4); box-shadow:none;
     }
-    .sl-cta--ghost:hover:not(:disabled){ background:rgba(244,212,138,.12); border-color:var(--gold2) }
+    .sl-cta--ghost:hover:not(:disabled){ background:rgba(176,132,28,.12); border-color:var(--gold2) }
     .sl-btn{
       appearance:none; cursor:pointer; width:100%; min-height:48px;
       border-radius:12px; border:1px solid var(--line);
@@ -1232,7 +1254,7 @@ function styles(he: boolean) {
       color:#fff; text-decoration:none; min-height:54px;
       transition:border-color .15s ease, box-shadow .15s ease;
     }
-    .sl-store:hover{ border-color:rgba(244,212,138,.4); box-shadow:0 0 0 3px rgba(244,212,138,.1) }
+    .sl-store:hover{ border-color:rgba(176,132,28,.4); box-shadow:0 0 0 3px rgba(176,132,28,.1) }
     .sl-store svg{ font-size:26px; flex:0 0 auto }
     .sl-store span{ display:flex; flex-direction:column; line-height:1.05; align-items:flex-start }
     .sl-store small{ font-size:10px; opacity:.78; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
@@ -1255,11 +1277,14 @@ function styles(he: boolean) {
      * Operator brief 2026-05-26: keep CTA reachable, never let the dog push
      * the form down. Logo stays dominant; dog scales down accordingly. */
     @media(max-width:767px){
-      .sl-frame{ gap:16px; padding-bottom:calc(120px + env(safe-area-inset-bottom)) }
-      .sl-hero{ gap:14px }
-      .sl-logo{ height:clamp(80px,22vw,140px) }
-      .sl-h1{ font-size:clamp(22px,6.6vw,32px) }
-      .sl-dog{ width:min(40%, 180px) }
+      .sl-frame{ gap:18px; padding-top:clamp(34px,8vh,76px); padding-bottom:calc(120px + env(safe-area-inset-bottom)) }
+      .sl-hero{ gap:15px }
+      .sl-logo{ width:clamp(300px,82vw,430px) }
+      .sl-eyebrow{ font-size:10.5px; letter-spacing:.28em }
+      .sl-h1{ font-size:clamp(28px,7.1vw,34px); line-height:1.08 }
+      .sl-sub{ font-size:clamp(15px,4.2vw,18px); max-width:360px }
+      .sl-dog{ width:min(70vw, 330px) }
+      .sl-heroCta{ display:flex }
       .sl-social4{ grid-template-columns:1fr 1fr }
       .sl-badges{ grid-template-columns:1fr 1fr }
       .sl-advCells{ grid-template-columns:1fr }
@@ -1270,19 +1295,25 @@ function styles(he: boolean) {
       .sl-title{ font-size:clamp(24px,7vw,30px) }
     }
 
-    /* ≤ 420px (very small phones, iPhone SE) — hide the dog so the form
-     * fits without scroll for the primary action. Logo + brand stay. */
+    /* ≤ 420px (very small phones, iPhone SE) — keep the dog visible but
+     * compact. The logo still owns the hierarchy; the CTA remains reachable. */
     @media(max-width:420px){
-      .sl-dogWrap{ display:none }
+      .sl-frame{ padding-top:clamp(28px,7vh,58px) }
+      .sl-logo{ width:clamp(292px,84vw,380px) }
+      .sl-h1{ font-size:clamp(26px,7vw,31px) }
+      .sl-sub{ font-size:15px }
+      .sl-dog{ width:min(68vw, 292px) }
+      .sl-heroCta{ min-height:56px; font-size:16px }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
     @media(min-width:768px) and (max-width:1023px){
       .sl-frame{ gap:24px }
       .sl-hero{ gap:18px; align-items:stretch }
-      .sl-logo{ height:clamp(120px,14vw,160px) }
-      .sl-h1{ font-size:clamp(28px,4.4vw,40px) }
-      .sl-dog{ width:min(38%, 260px) }
+      .sl-logo{ width:clamp(360px,58vw,520px) }
+      .sl-h1{ font-size:clamp(32px,4.2vw,42px) }
+      .sl-dog{ width:min(56vw, 420px) }
+      .sl-heroCta{ display:flex; max-width:520px; align-self:center }
       .sl-title{ font-size:32px }
       .sl-panel{ padding:28px }
       .sl-advCells{ grid-template-columns:repeat(3, 1fr) }
@@ -1299,9 +1330,9 @@ function styles(he: boolean) {
         padding-top:clamp(32px,4vw,56px);
       }
       .sl-hero{ position:sticky; top:24px; gap:18px }
-      .sl-logo{ height:clamp(140px,12vw,180px) }
-      .sl-h1{ font-size:clamp(30px,2.8vw,42px) }
-      .sl-dog{ width:min(48%, 240px) }
+      .sl-logo{ width:clamp(360px,28vw,520px) }
+      .sl-h1{ font-size:clamp(32px,2.6vw,44px) }
+      .sl-dog{ width:min(56%, 360px) }
       .sl-panel{ padding:clamp(28px,2.6vw,38px) }
     }
 
