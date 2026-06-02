@@ -80,14 +80,24 @@ export function resolveVatRateForDate(asOf: Date = new Date()): VatRateScheduleE
 /** Osek Patur annual turnover ceiling for 2026 — ₪122,833 */
 export const OSEK_PATUR_CEILING_ILS_2026 = 122_833;
 
-// SHAAM Allocation Number thresholds — ITA Digital Invoice Law 2026
-// Required on all tax invoices and credit notes whose ex-VAT amount exceeds
-// the applicable threshold. Applies to both sides of a marketplace transaction.
+// SHAAM Allocation Number thresholds — ITA Digital Invoice Law (חשבוניות ישראל).
+// Required on all tax invoices and credit notes whose ex-VAT amount exceeds the
+// applicable threshold. Applies to both sides of a marketplace transaction.
+// Phased rollout (ex-VAT, strictly greater-than):
+//   Phase 0 — from 2025-01-01: ₪20,000
+//   Phase 1 — from 2026-01-01: ₪10,000
+//   Phase 2 — from 2026-06-01: ₪5,000
+// Pre-2025 (the 2024 ₪25,000 band) is intentionally not modeled: no PetWash
+// invoice predates 2025, matching the vat_rate_configs seed rationale.
 
+/** Date from which the ₪20,000 threshold applies (Phase 0 — 2025) */
+export const SHAAM_PHASE0_START = new Date('2025-01-01T00:00:00Z');
 /** Date from which the ₪10,000 threshold applies (Phase 1) */
 export const SHAAM_PHASE1_START = new Date('2026-01-01T00:00:00Z');
 /** Date from which the ₪5,000 threshold applies (Phase 2) */
 export const SHAAM_PHASE2_START = new Date('2026-06-01T00:00:00Z');
+/** Ex-VAT threshold in Phase 0 (2025) */
+export const SHAAM_THRESHOLD_PHASE0_ILS = 20_000;
 /** Ex-VAT threshold in Phase 1 */
 export const SHAAM_THRESHOLD_PHASE1_ILS = 10_000;
 /** Ex-VAT threshold in Phase 2 */
@@ -211,7 +221,30 @@ export function isShaamAllocationRequired(
   const abs = Math.abs(exVatAmountILS); // credit notes have negative amounts
   if (invoiceDate >= SHAAM_PHASE2_START) return abs > SHAAM_THRESHOLD_PHASE2_ILS;
   if (invoiceDate >= SHAAM_PHASE1_START) return abs > SHAAM_THRESHOLD_PHASE1_ILS;
+  if (invoiceDate >= SHAAM_PHASE0_START) return abs > SHAAM_THRESHOLD_PHASE0_ILS;
   return false;
+}
+
+/**
+ * Like isShaamAllocationRequired, but also returns the threshold that applied,
+ * so callers can persist supplier_invoices.allocation_threshold_used (Rule 2 —
+ * "store the threshold used"). thresholdILS is null for pre-2025 documents
+ * (no SHAAM requirement modeled before Phase 0).
+ *
+ * @param exVatAmountILS  The ex-VAT (before VAT) amount in ILS
+ * @param invoiceDate     The date the document is issued (defaults to now)
+ */
+export function resolveShaamAllocation(
+  exVatAmountILS: number,
+  invoiceDate: Date = new Date(),
+): { required: boolean; thresholdILS: number | null } {
+  const abs = Math.abs(exVatAmountILS); // credit notes have negative amounts
+  let thresholdILS: number | null;
+  if (invoiceDate >= SHAAM_PHASE2_START) thresholdILS = SHAAM_THRESHOLD_PHASE2_ILS;
+  else if (invoiceDate >= SHAAM_PHASE1_START) thresholdILS = SHAAM_THRESHOLD_PHASE1_ILS;
+  else if (invoiceDate >= SHAAM_PHASE0_START) thresholdILS = SHAAM_THRESHOLD_PHASE0_ILS;
+  else thresholdILS = null;
+  return { required: thresholdILS !== null && abs > thresholdILS, thresholdILS };
 }
 
 /**
