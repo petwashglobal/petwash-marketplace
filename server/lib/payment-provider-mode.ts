@@ -10,7 +10,7 @@
  *
  * Deprecated (no live wiring permitted):
  *   • Stripe             — never reintroduce
- *   • Tranzila           — flag-gated OFF; cleanup in a follow-up PR
+ *   • Tranzila           — fully removed (code + flags + routes deleted)
  *
  * Modes:
  *   live  — production default. Real provider clients are used by
@@ -26,10 +26,7 @@
  * Boundaries enforced by this module:
  *   1. No live SUMIT/UPay implementation lives here. Future PRs add it.
  *   2. No Stripe fallback. Stripe env vars trigger a deprecation warning.
- *   3. No Tranzila wiring change. Tranzila env vars trigger a
- *      deprecation warning; existing flag gating in payment-flags.ts
- *      remains the runtime control for Tranzila code paths.
- *   4. Mock mode short-circuits ALL secret requirements regardless of
+ *   3. Mock mode short-circuits ALL secret requirements regardless of
  *      NODE_ENV — required so CI smoke tests can boot a production
  *      container image with PAYMENT_PROVIDER_MODE=mock.
  */
@@ -109,8 +106,8 @@ export interface PaymentProviderValidationResult {
  *          must both be present.
  *   3. Outside production, missing secrets are not errors here — feature
  *      call sites still degrade as today.
- *   4. Always: any STRIPE_* / TRANZILA_* / TRANSILA_* env var present is
- *      reported as a deprecation warning (no live wiring change).
+ *   4. Always: any STRIPE_* env var present is reported as a deprecation
+ *      warning (no live wiring change).
  */
 export function validateProductionPaymentSecrets(
   env: NodeJS.ProcessEnv = process.env,
@@ -169,10 +166,6 @@ function collectDeprecationWarnings(
     if (/^STRIPE_/i.test(key)) {
       warnings.push(
         `Deprecated env var present: ${key}. Stripe is no longer used by PetWash. Remove from environment.`,
-      );
-    } else if (/^TRANZILA_/i.test(key) || /^TRANSILA_/i.test(key)) {
-      warnings.push(
-        `Deprecated env var present: ${key}. Tranzila is being retired in favour of SUMIT/UPay. Remove after migration.`,
       );
     }
   }

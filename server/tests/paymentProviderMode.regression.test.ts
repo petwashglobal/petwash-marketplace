@@ -20,8 +20,9 @@
  *        - SUMIT_ENABLED=true  → require SUMIT_API_KEY + SUMIT_WEBHOOK_SECRET
  *      and produces an error per missing secret. Outside production it does
  *      not error on missing secrets (degrades at call-time as today).
- *   D. STRIPE_* / TRANZILA_* / TRANSILA_* env vars produce deprecation
- *      warnings, never errors (this PR does NOT delete Tranzila code).
+ *   D. STRIPE_* env vars produce deprecation warnings, never errors. Tranzila
+ *      is FULLY REMOVED (code + flags + routes + env keys deleted); a stray
+ *      TRANZILA_* var is inert — no warning, no error.
  *   E. MockPaymentProvider returns ok:false from every method. No fake
  *      success state is reachable through it. verifyWebhook always false.
  *   F. The new module is wired into server/index.ts startup so the result
@@ -190,15 +191,17 @@ describe('PR-CI-PAYMENT-MODE — Stripe and Tranzila deprecation warnings', () =
     expect(r.deprecationWarnings.some((w) => /Stripe is no longer used/i.test(w))).toBe(true);
   });
 
-  it('14. TRANZILA_* env var present → deprecation warning, no error', () => {
+  it('14. TRANZILA_* env var present → NO warning (Tranzila fully removed, no tripwire kept)', () => {
+    // Full rip-out: Tranzila code/flags/routes are deleted and the deprecation
+    // collector no longer special-cases TRANZILA_*. A stray TRANZILA_ env var is
+    // simply inert — nothing reads it, so it produces neither error nor warning.
     const r = validateProductionPaymentSecrets({
       NODE_ENV: 'production',
       PAYMENT_PROVIDER_MODE: 'live',
       TRANZILA_API_KEY: 'something',
     });
     expect(r.errors).toEqual([]);
-    expect(r.deprecationWarnings.some((w) => /TRANZILA_API_KEY/.test(w))).toBe(true);
-    expect(r.deprecationWarnings.some((w) => /Tranzila is being retired/i.test(w))).toBe(true);
+    expect(r.deprecationWarnings.some((w) => /TRANZILA/i.test(w))).toBe(false);
   });
 
   it('15. mock mode also collects deprecation warnings (always reported)', () => {
@@ -206,7 +209,7 @@ describe('PR-CI-PAYMENT-MODE — Stripe and Tranzila deprecation warnings', () =
       NODE_ENV: 'test',
       PAYMENT_PROVIDER_MODE: 'mock',
       STRIPE_API_KEY: 'x',
-      TRANZILA_API_KEY: 'y',
+      STRIPE_PUBLISHABLE_KEY: 'y',
     });
     expect(r.errors).toEqual([]);
     expect(r.deprecationWarnings.length).toBeGreaterThanOrEqual(2);
@@ -286,11 +289,10 @@ describe('PR-CI-PAYMENT-MODE — .env.example documents the new env vars', () =>
     expect(envExample).toMatch(/^SUMIT_APP_NAME=/m);
   });
 
-  it('26. Tranzila block is marked DEPRECATED but the keys remain (no deletion this PR)', () => {
-    expect(envExample).toMatch(/Tranzila Payment Gateway[^\n]*DEPRECATED/);
-    // The TRANZILA_API_KEY= line must still exist (envExampleDocs.regression
-    // depends on it; cleanup is a follow-up PR).
-    expect(envExample).toMatch(/^TRANZILA_API_KEY=/m);
+  it('26. Tranzila is fully removed from .env.example (no TRANZILA_* keys remain)', () => {
+    // Full rip-out: the entire Tranzila block and every TRANZILA_* key are gone.
+    expect(envExample).not.toMatch(/TRANZILA_/);
+    expect(envExample).not.toMatch(/Tranzila Payment Gateway/);
   });
 });
 

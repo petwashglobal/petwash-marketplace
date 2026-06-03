@@ -64,9 +64,8 @@ export class MockPaymentProvider {
 
   /**
    * Webhook signature verification in mock mode is always FALSE.
-   * A mock provider never claims a webhook is authentic. This mirrors
-   * the safer Tranzila pattern in TranzilaService.verifyWebhookSignature
-   * and prevents a CI environment from being mistaken for a trust path.
+   * A mock provider never claims a webhook is authentic — this prevents
+   * a CI environment from being mistaken for a trust path.
    */
   async verifyWebhook(): Promise<false> {
     return false;

@@ -58,9 +58,9 @@ import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
 import nayaxPaymentsRoutes from "./routes/nayax-payments";
-// Tranzila webhook + admin routes DELETED 2026-05-24 (Option A kill).
-// The 3 imports + 3 mount-points below were removed. TranzilaService and
-// the marketplace card path stay (separate scope — needs SUMIT replacement).
+// Tranzila fully removed: webhook + admin routes deleted 2026-05-24, and the
+// remaining TranzilaService stub + marketplace card path removed in the
+// full rip-out. Online card capture returns on UPay/SUMIT. Nayax/K9000 unaffected.
 import thankYouRoutes from "./routes/send-thank-you";
 import platformCopyEmailRoutes from "./routes/platform-copy-email";
 import ceoWalletRoutes from "./routes/ceo-wallet";
@@ -10894,13 +10894,12 @@ self.addEventListener('notificationclick', (event) => {
   // Nayax Spark API (real payment processing with Nayax Spark/Lynx)
   app.use('/api/payments/nayax', apiLimiter, nayaxPaymentsRoutes);
 
-  // ── Tranzila webhook + admin mounts REMOVED 2026-05-24 (Option A kill) ────
-  // Per owner direction: PetWash uses Nayax + SUMIT going forward. Tranzila
-  // webhooks + admin + chargeback/payment-request services + schema deleted.
-  // TranzilaService.captureMarketplaceBooking() is still imported lazily by
-  // marketplace-bookings.ts as the marketplace card path — that survives
-  // pending SUMIT card-charging integration (separate multi-week PR).
-  // The 3 deleted webhook URLs return Express's default 404 now.
+  // ── Tranzila FULLY REMOVED ───────────────────────────────────────────────
+  // Per owner direction: PetWash uses Nayax + SUMIT/UPay going forward. The
+  // Tranzila webhooks/admin/chargeback services were deleted 2026-05-24; the
+  // remaining TranzilaService stub + marketplace `pay-with-tranzila` route were
+  // removed in the full rip-out. Online card capture returns on UPay/SUMIT
+  // (separate PR). Any old Tranzila webhook URL returns Express's default 404.
   
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
