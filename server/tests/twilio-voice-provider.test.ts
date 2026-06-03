@@ -107,6 +107,19 @@ describe('Twilio voice provider — /api/maya/voice/twilio', () => {
     expect(conversations.has('CA10')).toBe(true);
   });
 
+  it('answers a non-Israeli (+1 world) number in English', async () => {
+    flagStore.set('ff.maya.voice.enabled', true);
+    flagStore.set('ff.maya.voice.inbound.enabled', true);
+    const url = process.env.TWILIO_VOICE_PUBLIC_URL!;
+    const params = { CallSid: 'CA11', From: '+15551230000', To: '+16292059681' };
+    const sig = signTwilio(url, params);
+    const res = await request(makeApp()).post('/api/maya/voice/twilio/voice')
+      .type('form').set('X-Twilio-Signature', sig).send(params);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Maya from PetWash');   // English greeting
+    expect(res.text).toContain('language="en-US"');     // English speech recognition
+  });
+
   it('handles speech turn via /gather and persists message', async () => {
     flagStore.set('ff.maya.voice.enabled', true);
     flagStore.set('ff.maya.voice.inbound.enabled', true);
