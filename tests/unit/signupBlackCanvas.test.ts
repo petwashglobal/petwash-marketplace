@@ -27,20 +27,39 @@ describe('signup black luxury canvas', () => {
   });
 
   it('bumps the cache purge version when signup shell rendering changes', () => {
-    expect(main).toContain('2026-06-03-signup-mobile-compact-rebuild');
-    expect(html).toContain('2026-06-03-inline-signup-mobile-compact-rebuild');
+    expect(main).toContain('2026-06-03-signup-mobile-trust-rebuild');
+    expect(html).toContain('2026-06-03-inline-signup-mobile-trust-rebuild');
   });
 
   it('keeps the mobile hero hierarchy locked to logo first, headline second', () => {
     expect(signup).toContain('--gold:#b0841c');
-    expect(signup).toContain('.sl-logo{ width:clamp(292px,78vw,360px)');
-    expect(signup).toContain('.sl-h1{ font-size:clamp(22px,5.9vw,28px)');
+    expect(signup).toContain('petwash-logo-white-tight.png');
+    expect(signup).toContain('.sl-frame{ gap:10px; padding:max(6px, env(safe-area-inset-top))');
+    expect(signup).toContain('.sl-logo{ width:min(86vw, 382px)');
+    expect(signup).toContain('.sl-h1{ font-size:clamp(23px,6vw,28px)');
     expect(signup).toContain('.sl-card,.sl-trustCard,.sl-secBadge{ display:none }');
-    expect(signup).toContain('.sl-dog{ width:min(42vw, 168px)');
+    expect(signup).toContain('.sl-divPaw{ display:none }');
+    expect(signup).toContain('.sl-dog{ width:min(42vw, 162px)');
     expect(signup).toContain('.sl-entryRow{ grid-template-columns:1fr');
-    expect(signup).toContain('.sl-logo{ width:clamp(360px,58vw,520px)');
-    expect(signup).toContain('.sl-heroCta{ display:flex; min-height:50px');
+    expect(signup).toContain("const query = '(max-width: 767px), (max-height: 500px) and (orientation: landscape)'");
+    expect(signup).toContain('grid-template-columns:minmax(360px,.9fr) minmax(360px,1.1fr)');
+    expect(signup).toContain('.sl-logo{ width:min(48vw, 420px); min-width:360px');
+    expect(signup).toContain('@media(max-height:500px) and (orientation:landscape)');
+    expect(signup).toContain('grid-template-columns:minmax(240px,.74fr) minmax(320px,1.26fr)');
+    expect(signup).toContain('.sl-logo{ width:min(42vw, 280px); min-width:0; max-width:100% }');
+    expect(signup).toContain('.sl-heroCta{ display:flex; min-height:52px');
     expect(signup).not.toContain('<YahooIcon />');
     expect(signup).not.toMatch(/#d8ad55|#f4d48a|rgba\(244,212,138/);
+  });
+
+  it('keeps phone signup controls honest and dark on the black page', () => {
+    expect(signup).toContain('sl-terms--quick');
+    expect(signup).toContain('if (!requireTerms()) return;');
+    expect(signup).toContain('sl-entryStatus');
+    expect(signup).not.toContain('sl-entryBtn');
+    expect(signup).not.toContain('entryBtn');
+    expect(signup).toContain('background:rgba(0,0,0,.55) !important');
+    expect(signup).toContain('.PhoneInputInput{');
+    expect(signup).toContain('color:var(--white) !important');
   });
 });
