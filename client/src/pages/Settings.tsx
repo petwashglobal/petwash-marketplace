@@ -25,6 +25,9 @@ import {
   Loader2,
   Plus,
   KeyRound,
+  Bell,
+  Wallet,
+  Lock,
 } from "lucide-react";
 import { registerPasskey, getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
 import { useLocation } from "wouter";
@@ -187,7 +190,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     return (
       <div className="luxury-dark-card rounded-2xl p-8 mt-6 luxury-animate-scale-in">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#b0841c]" />
         </div>
       </div>
     );
@@ -198,7 +201,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
-            <KeyRound className="h-6 w-6 text-[#C9A96E]" />
+            <KeyRound className="h-6 w-6 text-[#b0841c]" />
           </div>
           <div>
             <h2 className="luxury-dark-heading-lg text-lg">
@@ -302,6 +305,61 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
         </div>
       )}
     </div>
+  );
+}
+
+function SettingsControlMap({ language }: { language: string }) {
+  const isHebrew = language === 'he';
+  const rows = [
+    {
+      icon: Shield,
+      title: isHebrew ? 'אבטחת כניסה' : 'Sign-in security',
+      text: isHebrew ? 'Passkey, PIN ומכשירים מוכרים מגנים על החשבון לפני Wallet ותשלומים.' : 'Passkey, PIN and trusted devices protect the account before Wallet and payments.',
+    },
+    {
+      icon: Wallet,
+      title: isHebrew ? 'Wallet והטבות' : 'Wallet & benefits',
+      text: isHebrew ? 'אישורי Wallet קובעים אם נשלח כרטיס, הטבות, יתרות ותזכורות.' : 'Wallet consent controls pass delivery, benefits, balances and reminders.',
+    },
+    {
+      icon: Bell,
+      title: isHebrew ? 'התראות ושיווק' : 'Notifications & marketing',
+      text: isHebrew ? 'SMS, אימייל ו-Push חייבים להיות ברורים, מתועדים וניתנים לביטול.' : 'SMS, email and push must be clear, logged and easy to opt out.',
+    },
+    {
+      icon: Lock,
+      title: isHebrew ? 'פרטיות ומחיקה' : 'Privacy & deletion',
+      text: isHebrew ? 'ייצוא, הקפאה ומחיקה חייבים לשמור תיעוד חוקי בלי למחוק ראיות כספיות.' : 'Export, freeze and delete preserve required records without losing financial evidence.',
+    },
+  ];
+
+  return (
+    <section className="mb-8 rounded-2xl p-5 md:p-6 bg-white border border-[#e7dfcc] shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
+        <div>
+          <p className="text-[10px] tracking-[0.24em] uppercase font-bold" style={{ color: '#b0841c' }}>
+            Settings Control Map
+          </p>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111118] tracking-[-0.03em] mt-1">
+            {isHebrew ? 'כל הגדרה יודעת מה היא משנה' : 'Every setting knows its downstream effect'}
+          </h2>
+        </div>
+        <p className="text-xs text-[#6A6460] max-w-md leading-relaxed">
+          {isHebrew
+            ? 'אין כפתורים עיוורים: אבטחה, Wallet, התראות ופרטיות קשורים לתיעוד ולבקרות.'
+            : 'No blind buttons: security, Wallet, notifications and privacy connect to evidence and controls.'}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {rows.map(({ icon: Icon, title, text }) => (
+          <div key={title} className="rounded-xl border border-[#ede7d8] bg-[#fffdf8] p-4">
+            <Icon className="h-5 w-5 mb-3" style={{ color: '#b0841c' }} />
+            <h3 className="text-sm font-bold text-[#111118]">{title}</h3>
+            <p className="text-xs text-[#6A6460] leading-relaxed mt-2">{text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -578,7 +636,7 @@ export default function Settings() {
   if (authLoading) {
     return (
       <div className="luxury-dark-mesh min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#b0841c]" />
       </div>
     );
   }
@@ -595,7 +653,7 @@ export default function Settings() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 luxury-animate-fade-in">
             <div className="flex items-center gap-6 mb-6">
-              <div className="relative p-1 rounded-full bg-gradient-to-br from-[#C9A96E] via-[#d4af37] to-[#C9A96E] luxury-animate-scale-in">
+              <div className="relative p-1 rounded-full bg-gradient-to-br from-[#735511] via-[#b0841c] to-[#d7c18a] luxury-animate-scale-in">
                 <div className="bg-[#F0EBE0] rounded-full p-1">
                   <PetAvatarDisplay 
                     size="lg" 
@@ -615,12 +673,14 @@ export default function Settings() {
             </div>
           </div>
 
+          <SettingsControlMap language={language} />
+
           <Tabs defaultValue="security" className="w-full luxury-animate-slide-up luxury-delay-2">
             <TabsList className="grid w-full grid-cols-2 mb-8 bg-white border border-[#E8E3D9] rounded-xl">
-              <TabsTrigger value="account" data-testid="tab-account" className="text-[#6A6460] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-white rounded-lg">
+              <TabsTrigger value="account" data-testid="tab-account" className="text-[#6A6460] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#735511] data-[state=active]:to-[#b0841c] data-[state=active]:text-white rounded-lg">
                 {t('settings.account', language)}
               </TabsTrigger>
-              <TabsTrigger value="security" data-testid="tab-security" className="text-[#6A6460] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-white rounded-lg">
+              <TabsTrigger value="security" data-testid="tab-security" className="text-[#6A6460] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#735511] data-[state=active]:to-[#b0841c] data-[state=active]:text-white rounded-lg">
                 <Shield className="h-4 w-4 mr-2" />
                 {t('settings.security', language)}
               </TabsTrigger>
@@ -630,7 +690,7 @@ export default function Settings() {
               <div className="luxury-dark-card rounded-2xl p-8 mb-6 luxury-animate-scale-in">
                 <h2 className="luxury-dark-heading-lg text-lg mb-6 flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
-                    <Shield className="h-5 w-5 text-[#C9A96E]" />
+                    <Shield className="h-5 w-5 text-[#b0841c]" />
                   </div>
                   {t('settings.accountDetails', language)}
                 </h2>
@@ -792,7 +852,7 @@ export default function Settings() {
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
                     <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
-                      <Fingerprint className="h-6 w-6 text-[#C9A96E]" />
+                      <Fingerprint className="h-6 w-6 text-[#b0841c]" />
                     </div>
                     <div>
                       <h2 className="luxury-dark-heading-lg text-lg">
@@ -823,12 +883,12 @@ export default function Settings() {
 
                 {loadingDevices ? (
                   <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[#b0841c]" />
                   </div>
                 ) : devices.length === 0 ? (
                   <div className="text-center py-16 luxury-dark-surface rounded-2xl luxury-animate-fade-in">
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                      <Fingerprint className="h-10 w-10 text-[#C9A96E]" />
+                      <Fingerprint className="h-10 w-10 text-[#b0841c]" />
                     </div>
                     <h3 className="luxury-dark-heading-sm mb-3">
                       {t('settings.noDevices', language)}
@@ -862,12 +922,12 @@ export default function Settings() {
                     {devices.map((device, index) => (
                       <div
                         key={device.credentialId}
-                        className={`luxury-dark-surface p-6 rounded-xl border border-[#E8E3D9] hover:border-[#D4AF37]/30 transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
+                          className={`luxury-dark-surface p-6 rounded-xl border border-[#E8E3D9] hover:border-[#b0841c]/30 transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
                         data-testid={`device-${device.credentialId}`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4 flex-1">
-                            <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.08)] text-[#C9A96E]">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(176,132,28,0.2)] to-[rgba(176,132,28,0.08)] text-[#b0841c]">
                               {getDeviceIcon(device.deviceType)}
                             </div>
                             
@@ -1132,7 +1192,7 @@ export default function Settings() {
                     value={deletionReason}
                     onChange={(e) => setDeletionReason(e.target.value)}
                     placeholder={language === 'he' ? 'ספר/י לנו למה...' : 'Tell us why...'}
-                    className="h-12 bg-white border-[#E8E3D9] focus:border-[#D4AF37] text-[#1A1A1A] placeholder:text-[#AAAAAA]"
+                      className="h-12 bg-white border-[#E8E3D9] focus:border-[#b0841c] text-[#1A1A1A] placeholder:text-[#AAAAAA]"
                     data-testid="input-deletion-reason"
                   />
                 </div>

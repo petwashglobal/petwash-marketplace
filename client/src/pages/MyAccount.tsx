@@ -291,6 +291,152 @@ function WalletActionButton({
   );
 }
 
+type AccountCommandItem = {
+  title: string;
+  description: string;
+  href: string;
+  status: 'ready' | 'action';
+  statusLabel: string;
+  Icon: typeof Wallet;
+};
+
+function hasValue(value?: string | null): boolean {
+  return Boolean(value && value.trim().length > 0);
+}
+
+function PrestigeAccountCommandCenter({
+  isHebrew,
+  profile,
+  wallet,
+  petCount,
+}: {
+  isHebrew: boolean;
+  profile: Partial<UserProfile>;
+  wallet?: WalletSummary;
+  petCount: number;
+}) {
+  const identityReady = hasValue(profile.displayName) && hasValue(profile.email) && hasValue(profile.phone);
+  const addressReady = hasValue(profile.address) && typeof profile.latitude === 'number' && typeof profile.longitude === 'number';
+  const walletReady = Boolean(wallet);
+  const petReady = petCount > 0;
+  const profileReadyCount = [identityReady, addressReady, walletReady, petReady].filter(Boolean).length;
+  const profileProgress = Math.round((profileReadyCount / 4) * 100);
+
+  const readyLabel = isHebrew ? 'מוכן' : 'Ready';
+  const actionLabel = isHebrew ? 'להשלים' : 'Action';
+
+  const items: AccountCommandItem[] = [
+    {
+      title: isHebrew ? 'אימות זהות ותקשורת' : 'Identity & Contact',
+      description: isHebrew
+        ? 'שם מלא, אימייל, מובייל ואישורי תקשורת כדי שלא נאבד משתמשים עם שם דומה.'
+        : 'Full name, email, mobile and consent checks so similar names never confuse the account.',
+      href: '/my-account',
+      status: identityReady ? 'ready' : 'action',
+      statusLabel: identityReady ? readyLabel : actionLabel,
+      Icon: User,
+    },
+    {
+      title: isHebrew ? 'כתובת ושידוך לפי קרבה' : 'Address & Proximity Matching',
+      description: isHebrew
+        ? 'כתובת שמורה עם מיקום מאומת כדי לחבר הזמנות לספקים קרובים בבניין, ברחוב ובאזור.'
+        : 'Saved verified address so bookings can match nearby providers by building, street and area.',
+      href: '/my-account',
+      status: addressReady ? 'ready' : 'action',
+      statusLabel: addressReady ? readyLabel : actionLabel,
+      Icon: MapPin,
+    },
+    {
+      title: isHebrew ? 'כרטיס Wallet וחברות Prestige' : 'Wallet Pass Download',
+      description: isHebrew
+        ? 'הורדת Apple Wallet / Google Wallet, QR אישי, סטטוס חברות וזיכויים נפרדים.'
+        : 'Apple Wallet / Google Wallet pass, unique QR, member status and separated balances.',
+      href: '/wallet-download',
+      status: walletReady ? 'ready' : 'action',
+      statusLabel: walletReady ? readyLabel : actionLabel,
+      Icon: Wallet,
+    },
+    {
+      title: isHebrew ? 'חיות, טיפולים ובריאות' : 'Pets, Care & Health',
+      description: isHebrew
+        ? 'פרופילי חיות, חיסונים, אלרגיות, וטרינר, ימי הולדת והעדפות שירות.'
+        : 'Pet profiles, vaccines, allergies, vet details, birthdays and care preferences.',
+      href: '/my-account',
+      status: petReady ? 'ready' : 'action',
+      statusLabel: petReady ? readyLabel : actionLabel,
+      Icon: Dog,
+    },
+    {
+      title: isHebrew ? 'תווי שי וקרדיטים' : 'Gift & Store Credit Journey',
+      description: isHebrew
+        ? 'קנייה, שליחה, הפעלה, יתרות, היסטוריית מימוש והפרדה בין קרדיט בתשלום למבצע.'
+        : 'Buy, send, activate, track balances, redemption history and paid/free credit separation.',
+      href: '/buy-gift-card',
+      status: 'action',
+      statusLabel: isHebrew ? 'פתוח' : 'Open',
+      Icon: Gift,
+    },
+    {
+      title: isHebrew ? 'ספקים ומוכנות עבודה' : 'Provider Readiness',
+      description: isHebrew
+        ? 'תמונות, תעריפים, אזורי שירות, מסמכים, ביטוח, בנק ואישור ידני לפני עבודות.'
+        : 'Photos, rates, service areas, documents, insurance, bank and manual approval before work.',
+      href: '/provider-dashboard',
+      status: 'action',
+      statusLabel: isHebrew ? 'בדיקה' : 'Review',
+      Icon: FileCheck,
+    },
+  ];
+
+  return (
+    <section className="pw-command-center" aria-label="Prestige Account Command Center">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-5">
+        <div>
+          <p className="pw-command-eyebrow">Prestige Account Command Center</p>
+          <h2 className="pw-command-title mt-2">
+            {isHebrew ? 'המרכז החכם של PetWash' : 'Your PetWash operating home'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-2 max-w-2xl leading-relaxed">
+            {isHebrew
+              ? 'כל כפתור מוביל לפעולה אמיתית: פרופיל, חיות, כתובות, Wallet, תווי שי, ספקים ותיעוד.'
+              : 'Every button has a real next step: profile, pets, addresses, Wallet, gifts, provider readiness and evidence.'}
+          </p>
+        </div>
+        <div className="min-w-[190px]">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500 mb-2">
+            <span>{isHebrew ? 'שלמות פרופיל' : 'Profile readiness'}</span>
+            <span style={{ color: '#b0841c' }}>{profileProgress}%</span>
+          </div>
+          <div className="pw-command-progress-track">
+            <div className="pw-command-progress-fill" style={{ width: `${profileProgress}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {items.map(({ title, description, href, status, statusLabel, Icon }) => (
+          <a key={title} href={href} className="pw-command-card block no-underline">
+            <div className="flex items-start gap-3">
+              <div className="pw-command-icon">
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h3 className="text-sm font-bold text-gray-950 leading-tight">{title}</h3>
+                  <span className={`pw-command-status ${status === 'ready' ? 'pw-command-status-ready' : 'pw-command-status-action'}`}>
+                    {statusLabel}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function MyAccount() {
   const { user } = useFirebaseAuth();
   const firebaseUser = user;
@@ -1185,6 +1331,13 @@ export default function MyAccount() {
               </a>
             ))}
           </div>
+
+          <PrestigeAccountCommandCenter
+            isHebrew={isHebrew}
+            profile={profile}
+            wallet={wallet}
+            petCount={petsData?.pets?.length || 0}
+          />
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="pw-tabs-list w-full grid grid-cols-7">

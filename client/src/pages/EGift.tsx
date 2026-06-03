@@ -590,7 +590,7 @@ function LuxuryGiftCard({
           borderRadius: '3px',
           background: '#FFFFFF',
           border: selected 
-            ? '2px solid #c9a96e'
+            ? '2px solid #b0841c'
             : '1px solid #E8E3D9',
           boxShadow: selected ? '0 0 20px rgba(201,169,110,0.25)' : '0 2px 12px rgba(0,0,0,0.08)',
         }}
@@ -598,7 +598,7 @@ function LuxuryGiftCard({
         {selected && (
           <div className="absolute top-3 end-3 z-10">
             <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #c9a96e, #d4af37)' }}>
+              style={{ background: 'linear-gradient(135deg, #735511, #b0841c, #d7c18a)' }}>
               <Check className="w-3.5 h-3.5 text-[#0f0d08]" strokeWidth={2.5} />
             </div>
           </div>
@@ -607,7 +607,7 @@ function LuxuryGiftCard({
         {isElite && (
           <div className="absolute top-3 start-3 z-10">
             <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 font-semibold text-[#0f0d08]"
-              style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #c9a96e, #d4af37)' }}>
+              style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #735511, #b0841c, #d7c18a)' }}>
               {tx('bestValue', lang)}
             </span>
           </div>
@@ -635,7 +635,7 @@ function LuxuryGiftCard({
 
         <div className="px-3 sm:px-4 py-2.5 sm:py-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium text-[#c9a96e]">
+            <span className="text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium text-[#b0841c]">
               {tierLabel}
             </span>
           </div>
@@ -654,11 +654,11 @@ function LuxuryGiftCard({
           <div className="border-t pt-2 mt-2" style={{ borderColor: '#E8E3D9' }}>
             <div className="space-y-1 text-[#7a6e55]">
               <div className="flex items-center gap-2">
-                <Check className="w-3 h-3 shrink-0 text-[#c9a96e]" strokeWidth={1.5} />
+                <Check className="w-3 h-3 shrink-0 text-[#b0841c]" strokeWidth={1.5} />
                 <span className="text-[9px] sm:text-[10px]">{tx('allServices', lang)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-3 h-3 shrink-0 text-[#c9a96e]" strokeWidth={1.5} />
+                <Check className="w-3 h-3 shrink-0 text-[#b0841c]" strokeWidth={1.5} />
                 <span className="text-[9px] sm:text-[10px]">{tx('valid12Months', lang)}</span>
               </div>
             </div>
@@ -666,6 +666,77 @@ function LuxuryGiftCard({
         </div>
       </div>
     </button>
+  );
+}
+
+function EgiftJourneyPanel({ lang }: { lang: string }) {
+  const isHebrew = lang === 'he';
+  const items = [
+    {
+      icon: Gift,
+      title: isHebrew ? 'בחירת סכום ועיצוב' : 'Choose value & design',
+      body: isHebrew
+        ? 'הלקוח בוחר סכום, אירוע, שירותים מתאימים והודעה אישית.'
+        : 'Customer chooses amount, occasion, eligible services and a personal message.',
+    },
+    {
+      icon: ShieldCheck,
+      title: isHebrew ? 'תשלום, קבלה ותיעוד' : 'Payment, receipt & audit',
+      body: isHebrew
+        ? 'תו שי בתשלום חייב להתחבר לתשלום וקבלה. אין יצירת יתרה בלי מקור.'
+        : 'Paid gift credit must link to payment and receipt. No balance appears without a source.',
+    },
+    {
+      icon: Globe,
+      title: isHebrew ? 'שליחה והפעלה' : 'Send & activate',
+      body: isHebrew
+        ? 'הנמען מקבל קישור הפעלה, יכול להתחבר או להירשם, ואז לראות את היתרה בארנק.'
+        : 'Recipient gets an activation link, signs in or registers, then sees the balance in Wallet.',
+    },
+    {
+      icon: Lock,
+      title: isHebrew ? 'הפרדת קרדיטים' : 'Credit separation',
+      body: isHebrew
+        ? 'קרדיט בתשלום, החזר, נאמנות ומבצע נשמרים בנפרד עם היסטוריית מימוש.'
+        : 'Paid, refund, loyalty and promotional credit stay separate with redemption history.',
+    },
+  ];
+
+  return (
+    <section className="mb-10 sm:mb-12 md:mb-14 max-w-5xl mx-auto" aria-label="Recipient journey">
+      <div
+        className="bg-stage-white p-5 sm:p-6 md:p-7"
+        style={{ border: '1px solid rgba(10,10,10,0.10)', borderRadius: '8px', boxShadow: '0 18px 48px rgba(0,0,0,0.06)' }}
+      >
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
+          <div>
+            <p className="text-[10px] md:text-[11px] tracking-[0.34em] uppercase font-semibold text-ink-900">
+              Recipient journey
+            </p>
+            <h2 className="text-2xl md:text-3xl font-extralight mt-2 text-ink-900 tracking-[-0.035em]">
+              {isHebrew ? 'כל מתנה יודעת מה לעשות אחר כך' : 'Every gift knows what happens next'}
+            </h2>
+          </div>
+          <p className="text-xs md:text-sm text-ink-400 max-w-md leading-relaxed">
+            {isHebrew
+              ? 'בנוי כדי למנוע בלבול, יתרות אבודות או ערבוב בין כסף אמיתי לקרדיט חינמי.'
+              : 'Designed to prevent confusion, lost balances, or mixing real paid value with free credit.'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {items.map(({ icon: Icon, title, body }) => (
+            <div key={title} className="bg-white p-4" style={{ border: '1px solid rgba(10,10,10,0.08)', borderRadius: '6px' }}>
+              <div className="w-10 h-10 flex items-center justify-center mb-3" style={{ borderRadius: '4px', background: '#0A0A0A' }}>
+                <Icon className="w-5 h-5" style={{ color: '#b0841c' }} />
+              </div>
+              <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
+              <p className="text-xs text-ink-400 leading-relaxed mt-2">{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1399,6 +1470,8 @@ export default function EGift() {
             ))}
           </div>
         </div>
+
+        <EgiftJourneyPanel lang={lang} />
 
         {/* ── Page title block — Phase B2 direction correction:
              - Removed the gold-hairline+gift-icon decoration (pure ornament).

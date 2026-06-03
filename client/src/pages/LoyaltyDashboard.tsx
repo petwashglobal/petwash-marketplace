@@ -19,6 +19,7 @@ import {
   Heart,
   Gem,
   RefreshCw,
+  Shield,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
@@ -71,10 +72,10 @@ const TIER_VISUAL_CONFIG: Record<string, { color: string; bgColor: string; icon:
     emoji: '💚'
   },
   royal: { 
-    color: 'from-purple-500 to-violet-600', 
-    bgColor: 'bg-purple-100 dark:bg-white',
+    color: 'from-stone-950 via-[#b0841c] to-stone-900',
+    bgColor: 'bg-[#fbf7ec] dark:bg-white',
     icon: Trophy,
-    badge: 'bg-gradient-to-r from-purple-600 to-violet-600',
+    badge: 'bg-gradient-to-r from-stone-950 via-[#b0841c] to-stone-900',
     emoji: '👑'
   }
 };
@@ -164,6 +165,53 @@ const MainLoyaltyWidget = ({
   );
 };
 
+function LoyaltyOperatingStrip({ isHebrew }: { isHebrew: boolean }) {
+  const items = [
+    {
+      icon: Crown,
+      title: isHebrew ? 'כרטיס Prestige Wallet' : 'Prestige Wallet Pass',
+      text: isHebrew ? 'QR אישי, סטטוס חבר, יתרות וקישורים לפעולה.' : 'Unique QR, member status, balances and action links.',
+    },
+    {
+      icon: Gift,
+      title: isHebrew ? 'הטבות וימי הולדת' : 'Benefits & Birthdays',
+      text: isHebrew ? 'הטבות נפרדות וברורות כדי לא לערבב מתנות, החזרים ומבצעים.' : 'Separate benefits so gifts, refunds and promotions never mix.',
+    },
+    {
+      icon: Shield,
+      title: isHebrew ? 'כל מימוש מתועד' : 'Every redemption tracked',
+      text: isHebrew ? 'היסטוריית מימוש, יתרה, מקור קרדיט ותוקף מוצגים למשתמש ולאדמין.' : 'Redemption history, balance, credit source and expiry visible to user and admin.',
+    },
+  ];
+
+  return (
+    <div className="luxury-glass-card luxury-shadow-lg mb-6 p-5 border border-[#b0841c]/20" style={{ background: 'linear-gradient(135deg,#ffffff 0%,#fbf7ec 100%)' }}>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <p className="text-[10px] tracking-[0.24em] uppercase font-bold" style={{ color: '#b0841c' }}>
+            Loyalty Operating System
+          </p>
+          <h2 className="text-2xl font-semibold text-gray-950 tracking-[-0.03em] mt-1">
+            {isHebrew ? 'נאמנות שהיא מוצר אמיתי, לא רק נקודות' : 'Loyalty as a real product, not just points'}
+          </h2>
+        </div>
+        <a href="/wallet-download" className="inline-flex items-center justify-center px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white bg-gray-950 no-underline" style={{ borderRadius: '6px' }}>
+          {isHebrew ? 'הורד Pass' : 'Download Pass'}
+        </a>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+        {items.map(({ icon: Icon, title, text }) => (
+          <div key={title} className="bg-white border border-gray-100 p-4" style={{ borderRadius: '8px' }}>
+            <Icon className="w-5 h-5 mb-3" style={{ color: '#b0841c' }} />
+            <h3 className="text-sm font-bold text-gray-950">{title}</h3>
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">{text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ⁦Pet Wash™⁩ Loyalty Dashboard
 export default function LoyaltyDashboard() {
   const { language } = useLanguage();
@@ -248,10 +296,12 @@ export default function LoyaltyDashboard() {
             </div>
           </div>
 
+          <LoyaltyOperatingStrip isHebrew={isHebrew} />
+
           {/* T012: Gemini AI Personalized Loyalty Message */}
           <div className="luxury-glass-card luxury-shadow-lg mb-6 luxury-animate-fade-in p-5 border border-amber-100/60 dark:border-amber-700/30" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #ffffff 60%, #fef3c7 100%)' }}>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg,#b0841c,#735511)' }}>
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -274,7 +324,7 @@ export default function LoyaltyDashboard() {
             )}
             <button onClick={fetchAiLoyaltyMessage} disabled={fetchingAiMsg}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all shadow-sm"
-              style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
+              style={{ background: 'linear-gradient(135deg,#b0841c,#735511)' }}>
               {fetchingAiMsg
                 ? <><RefreshCw className="h-3 w-3 animate-spin" /> {isHebrew ? 'יוצר מסר…' : 'Generating…'}</>
                 : <><Sparkles className="h-3 w-3" /> {aiLoyaltyMsg ? (isHebrew ? 'מסר חדש' : 'New Message') : (isHebrew ? 'קבל מסר AI' : 'Get AI Message')}</>
@@ -385,8 +435,8 @@ export default function LoyaltyDashboard() {
           {/* LUXURY Rewards Catalog with Glassmorphism */}
           <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-slide-up luxury-delay-10">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                <Gift className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[#b0841c]/20 to-stone-950/10">
+                <Gift className="w-6 h-6" style={{ color: '#b0841c' }} />
               </div>
               <h3 className="luxury-heading-md">
                 {isHebrew ? 'קטלוג הפרסים' : 'Rewards Catalog'}

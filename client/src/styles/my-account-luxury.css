@@ -6,13 +6,13 @@
 
 /* ── Gold Metallic Gradient Tokens ── */
 :root {
-  --gold-100: #fef9e7;
-  --gold-200: #f5d76e;
-  --gold-300: #e8c443;
-  --gold-400: #d4af37;
-  --gold-500: #c5973a;
-  --gold-600: #a97c20;
-  --gold-700: #8b6210;
+  --gold-100: #fbf7ec;
+  --gold-200: #e6d2a1;
+  --gold-300: #c9a96a;
+  --gold-400: #b0841c;
+  --gold-500: #9c7619;
+  --gold-600: #735511;
+  --gold-700: #5b430d;
   --gold-dark: #3d2b00;
 
   --platinum-light: #f4f4f6;
@@ -25,9 +25,9 @@
   --noir-600: #22222f;
   --noir-500: #2d2d3e;
 
-  --gold-gradient: linear-gradient(135deg, #c5973a 0%, #f5d76e 35%, #e8c443 55%, #d4af37 75%, #c5973a 100%);
-  --gold-gradient-v: linear-gradient(180deg, #f5d76e 0%, #d4af37 50%, #a97c20 100%);
-  --gold-gradient-subtle: linear-gradient(135deg, #fef9e7 0%, #f5d76e 40%, #fef9e7 100%);
+  --gold-gradient: linear-gradient(135deg, #6f5112 0%, #b0841c 35%, #d7c18a 52%, #b0841c 72%, #7c5d15 100%);
+  --gold-gradient-v: linear-gradient(180deg, #d7c18a 0%, #b0841c 48%, #735511 100%);
+  --gold-gradient-subtle: linear-gradient(135deg, #fbf7ec 0%, #e6d2a1 42%, #ffffff 100%);
   --platinum-gradient: linear-gradient(135deg, #f4f4f6 0%, #dcdde1 40%, #f4f4f6 100%);
   --noir-gradient: linear-gradient(135deg, #0a0a0f 0%, #1a1a24 50%, #111118 100%);
   --card-noir-gradient: linear-gradient(145deg, #1a1a24 0%, #111118 100%);
@@ -39,8 +39,8 @@
     transparent 70%
   );
 
-  --gold-glow: 0 0 40px rgba(212, 175, 55, 0.25), 0 0 80px rgba(212, 175, 55, 0.08);
-  --gold-shadow: 0 8px 32px rgba(212, 175, 55, 0.15), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --gold-glow: 0 0 40px rgba(176, 132, 28, 0.24), 0 0 80px rgba(176, 132, 28, 0.08);
+  --gold-shadow: 0 8px 32px rgba(176, 132, 28, 0.14), 0 2px 8px rgba(0, 0, 0, 0.2);
   --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
   --card-shadow-hover: 0 24px 72px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
 }
@@ -339,6 +339,97 @@
   letter-spacing: 0.05em;
   text-align: center;
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* ══════════════════════════════════
+   ACCOUNT OPERATING SYSTEM
+   Visible, premium, launch-useful command layer.
+   ══════════════════════════════════ */
+.pw-command-center {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(176, 132, 28, 0.10), transparent 28%),
+    linear-gradient(145deg, #ffffff 0%, #fbfbfb 52%, #f6f4ef 100%);
+  border: 1px solid rgba(17, 17, 24, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.08);
+  padding: 22px;
+}
+
+.pw-command-eyebrow {
+  color: var(--gold-400);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.pw-command-title {
+  color: #111118;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.pw-command-card {
+  min-height: 100%;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(17, 17, 24, 0.08);
+  border-radius: 20px;
+  padding: 16px;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.pw-command-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(176, 132, 28, 0.34);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.08);
+}
+
+.pw-command-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #111118, #1a1a24);
+  color: var(--gold-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pw-command-status {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.pw-command-status-ready {
+  background: #eefaf3;
+  color: #11623a;
+  border: 1px solid #ccefdc;
+}
+
+.pw-command-status-action {
+  background: #fbf7ec;
+  color: #765810;
+  border: 1px solid rgba(176, 132, 28, 0.28);
+}
+
+.pw-command-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(17, 17, 24, 0.08);
+  overflow: hidden;
+}
+
+.pw-command-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gold-gradient);
 }
 
 /* ══════════════════════════════════
