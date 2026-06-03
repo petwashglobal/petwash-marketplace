@@ -147,6 +147,75 @@ describe('Twilio voice provider — /api/maya/voice/twilio', () => {
     process.env.TWILIO_VOICE_PUBLIC_URL = 'https://example.com/api/maya/voice/twilio/voice';
   });
 
+  it('keeps Hebrew on a +972 turn that transcribes WITHOUT Hebrew characters (anchored to conversation, not transcript)', async () => {
+    flagStore.set('ff.maya.voice.enabled', true);
+    flagStore.set('ff.maya.voice.inbound.enabled', true);
+    // Seed a Hebrew (+972) call.
+    const voiceUrl = 'https://example.com/api/maya/voice/twilio/voice';
+    process.env.TWILIO_VOICE_PUBLIC_URL = voiceUrl;
+    const seed = { CallSid: 'CA50', From: '+972500000000', To: '+972300000000' };
+    await request(makeApp()).post('/api/maya/voice/twilio/voice')
+      .type('form').set('X-Twilio-Signature', signTwilio(voiceUrl, seed)).send(seed);
+
+    // Caller says a phone number / brand word — Twilio transcribes it with NO
+    // Hebrew letters. Pre-fix, per-utterance detection flipped Maya to English.
+    const gatherUrl = 'https://example.com/api/maya/voice/twilio/gather';
+    process.env.TWILIO_VOICE_PUBLIC_URL = gatherUrl;
+    const turn = { CallSid: 'CA50', SpeechResult: 'PetWash 0501234567' };
+    const res = await request(makeApp()).post('/api/maya/voice/twilio/gather')
+      .type('form').set('X-Twilio-Signature', signTwilio(gatherUrl, turn)).send(turn);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('language="he-IL"');     // stayed Hebrew
+    expect(res.text).not.toContain('language="en-US"');
+    expect(messages[0].locale).toBe('he');
+    process.env.TWILIO_VOICE_PUBLIC_URL = voiceUrl;
+  });
+
+  it('re-prompts a +1 (English) caller in English on silence, never Hebrew', async () => {
+    flagStore.set('ff.maya.voice.enabled', true);
+    flagStore.set('ff.maya.voice.inbound.enabled', true);
+    // Seed an English (+1) call.
+    const voiceUrl = 'https://example.com/api/maya/voice/twilio/voice';
+    process.env.TWILIO_VOICE_PUBLIC_URL = voiceUrl;
+    const seed = { CallSid: 'CA51', From: '+15551230000', To: '+16292059681' };
+    await request(makeApp()).post('/api/maya/voice/twilio/voice')
+      .type('form').set('X-Twilio-Signature', signTwilio(voiceUrl, seed)).send(seed);
+
+    // Silence: no SpeechResult field at all.
+    const gatherUrl = 'https://example.com/api/maya/voice/twilio/gather';
+    process.env.TWILIO_VOICE_PUBLIC_URL = gatherUrl;
+    const turn = { CallSid: 'CA51' };
+    const res = await request(makeApp()).post('/api/maya/voice/twilio/gather')
+      .type('form').set('X-Twilio-Signature', signTwilio(gatherUrl, turn)).send(turn);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('language="en-US"');
+    expect(res.text).not.toContain('לא שמעתי');          // not the Hebrew re-prompt
+    process.env.TWILIO_VOICE_PUBLIC_URL = voiceUrl;
+  });
+
+  it('replies in English to a +1 caller speech turn', async () => {
+    flagStore.set('ff.maya.voice.enabled', true);
+    flagStore.set('ff.maya.voice.inbound.enabled', true);
+    const voiceUrl = 'https://example.com/api/maya/voice/twilio/voice';
+    process.env.TWILIO_VOICE_PUBLIC_URL = voiceUrl;
+    const seed = { CallSid: 'CA52', From: '+15551230000', To: '+16292059681' };
+    await request(makeApp()).post('/api/maya/voice/twilio/voice')
+      .type('form').set('X-Twilio-Signature', signTwilio(voiceUrl, seed)).send(seed);
+
+    const gatherUrl = 'https://example.com/api/maya/voice/twilio/gather';
+    process.env.TWILIO_VOICE_PUBLIC_URL = gatherUrl;
+    const turn = { CallSid: 'CA52', SpeechResult: 'I want to book a wash' };
+    const res = await request(makeApp()).post('/api/maya/voice/twilio/gather')
+      .type('form').set('X-Twilio-Signature', signTwilio(gatherUrl, turn)).send(turn);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('language="en-US"');
+    expect(messages[0].locale).toBe('en');
+    process.env.TWILIO_VOICE_PUBLIC_URL = voiceUrl;
+  });
+
   it('handles call_ended status with completed', async () => {
     flagStore.set('ff.maya.voice.enabled', true);
     flagStore.set('ff.maya.voice.inbound.enabled', true);
