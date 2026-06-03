@@ -55,14 +55,10 @@ export type PaymentPlatform = 'sitter_suite' | 'walk_my_pet' | 'pet_trek' | 'k90
  *                Code: server/services/Nayax*.ts,
  *                      server/routes/nayax-*.ts.
  *
- *   'tranzila' — online card capture for marketplace bookings.
- *                Used by:
- *                  Sitter Suite, Walk My Pet, Trainer / driver / groomer
- *                  online booking flows.
- *                Gated by feature flags TRANZILA_*_ENABLED in env.
- *                Code: server/services/TranzilaService.ts,
- *                      server/services/TranzilaPaymentRequestService.ts,
- *                      server/routes/tranzila-*.ts.
+ *   (online card capture) — for marketplace bookings (Sitter Suite, Walk My
+ *                Pet, Trainer / driver / groomer online flows) and e-gift.
+ *                NOT WIRED YET. Tranzila previously held this slot as a
+ *                non-functional stub and was removed; UPay/SUMIT will take it.
  *
  * Existing routing in PaymentGatewayService dispatches by
  * `PaymentPlatform`. The discriminator below is a strictly typed
@@ -73,7 +69,7 @@ export type PaymentPlatform = 'sitter_suite' | 'walk_my_pet' | 'pet_trek' | 'k90
  * use it instead of inline string comparisons so adding a new
  * platform never silently routes to the wrong processor.
  */
-export type PaymentProvider = 'nayax' | 'tranzila';
+export type PaymentProvider = 'nayax';
 
 export function resolveProviderForPlatform(platform: PaymentPlatform): PaymentProvider {
   switch (platform) {
@@ -84,8 +80,12 @@ export function resolveProviderForPlatform(platform: PaymentPlatform): PaymentPr
     case 'walk_my_pet':
     case 'pet_trek':
     case 'e_gift':
-      // Online booking + e-gift purchase — Tranzila when enabled.
-      return 'tranzila';
+      // Online card capture is not wired yet. Tranzila (the former stub rail)
+      // was removed; UPay/SUMIT will take this slot. Fail loudly rather than
+      // silently route an online payment to a provider that cannot serve it.
+      throw new Error(
+        `No online payment provider wired for platform '${platform}' yet (pending UPay/SUMIT).`,
+      );
     default: {
       // Exhaustiveness check at compile time.
       const _exhaustive: never = platform;

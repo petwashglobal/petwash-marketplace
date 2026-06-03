@@ -3,8 +3,8 @@
  *
  * Both audit lanes (R1 + R2) flagged the same gap: env vars READ in
  * production code but ABSENT from .env.example. New deploys silently
- * disable features (TRANZILA_API_KEY, META_WHATSAPP_*) or auto-create
- * fresh sheets (GOOGLE_FORMS_SPREADSHEET_ID) without operator visibility.
+ * disable features (META_WHATSAPP_*) or auto-create fresh sheets
+ * (GOOGLE_FORMS_SPREADSHEET_ID) without operator visibility.
  *
  * This PR is docs-only — no behaviour change. The companion fail-close
  * for production (GOOGLE_FORMS_SPREADSHEET_ID required in prod) ships
@@ -20,10 +20,6 @@ import { resolve } from 'path';
 
 const ROOT = resolve(__dirname, '..', '..');
 const envExample = readFileSync(resolve(ROOT, '.env.example'), 'utf8');
-const tranzilaService = readFileSync(
-  resolve(ROOT, 'server/services/TranzilaPaymentRequestService.ts'),
-  'utf8',
-);
 const whatsappMeta = readFileSync(
   resolve(ROOT, 'server/services/WhatsAppMetaService.ts'),
   'utf8',
@@ -34,9 +30,10 @@ const whatsappWebhook = readFileSync(
 );
 
 describe('PR-ENV-DOCS .env.example coverage', () => {
-  it('1. TRANZILA_API_KEY is documented (read in TranzilaPaymentRequestService.ts:39)', () => {
-    expect(tranzilaService).toMatch(/process\.env\.TRANZILA_API_KEY/);
-    expect(envExample).toMatch(/^TRANZILA_API_KEY=/m);
+  it('1. Tranzila is fully removed — TRANZILA_* keys are NOT in .env.example', () => {
+    // Tranzila was ripped out (code + flags + routes + env keys). The former
+    // "TRANZILA_API_KEY is documented" pin is inverted: it must be absent now.
+    expect(envExample).not.toMatch(/TRANZILA_/);
   });
 
   it('2. META_WHATSAPP_ACCESS_TOKEN is documented (read in WhatsAppMetaService.ts)', () => {
@@ -84,7 +81,6 @@ describe('PR-ENV-DOCS .env.example coverage', () => {
     // documented vars. They must be empty (= NOTHING) or obviously
     // placeholder text. Reject anything resembling JWT / API key / hex token.
     for (const name of [
-      'TRANZILA_API_KEY',
       'META_WHATSAPP_ACCESS_TOKEN',
       'META_WHATSAPP_PHONE_NUMBER_ID',
       'META_WHATSAPP_BUSINESS_PHONE',

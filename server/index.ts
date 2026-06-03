@@ -266,42 +266,15 @@ const _startupSecurityViolations: string[] = [];
   }
 })();
 
-// ── Tranzila webhook bypass guard ─────────────────────────────────────────────
-// TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is allowed ONLY in isolated local dev.
-// If it is set in production or staging the server MUST refuse to start.
-// This prevents an operator from accidentally deploying with signature verification
-// disabled, turning the webhook endpoint into an unauthenticated write path.
-(function assertNoTranzilaBypassInProdOrStaging() {
-  const env = (process.env.NODE_ENV || '').toLowerCase();
-  const bypassSet = process.env.TRANZILA_WEBHOOK_BYPASS_SIGNATURE === 'true';
-  if (bypassSet && (env === 'production' || env === 'staging')) {
-    const msg =
-      '\n🚨 [startup] FATAL: TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is set in ' +
-      env.toUpperCase() + '.\n' +
-      '   This disables HMAC signature verification on all Tranzila webhooks.\n' +
-      '   Any caller can forge webhook events and manipulate payment state.\n' +
-      '   Remove TRANZILA_WEBHOOK_BYPASS_SIGNATURE from your ' + env + ' environment\n' +
-      '   and restart the server.\n';
-    console.error(msg);
-    // Recorded in _startupSecurityViolations: an active bypass of payment signature
-    // verification in production is an immediate security danger, not just a missing feature.
-    // /health/strict returns 503 for security violations, so CI smoke test blocks promotion.
-    _startupSecurityViolations.push(
-      'TRANZILA_WEBHOOK_BYPASS_SIGNATURE=true is forbidden in ' + env,
-    );
-  }
-})();
-
 import { validateProductionPaymentSecrets as _validatePaymentSecrets } from './lib/payment-provider-mode';
 
 // ── Payment provider mode + production secret validation ────────────────────
 // PR-CI-PAYMENT-MODE: refuse to operate live in production when an enabled
 // payment provider (Nayax, SUMIT/UPay) lacks its required secrets. Mock mode
 // (PAYMENT_PROVIDER_MODE=mock) short-circuits all secret requirements so CI
-// smoke and unit tests boot without real vendor credentials. Stripe and
-// Tranzila are deprecated; their env vars trigger a deprecation warning
-// here but do NOT crash the boot — Tranzila code paths are flag-gated OFF
-// in payment-flags.ts and Stripe is no longer wired. See
+// smoke and unit tests boot without real vendor credentials. Stripe is
+// deprecated; its env vars trigger a deprecation warning here but do NOT crash
+// the boot. (Tranzila was fully removed.) See
 // server/lib/payment-provider-mode.ts for the canonical contract.
 (function validatePaymentProviderSecrets() {
   const result = _validatePaymentSecrets(process.env);
