@@ -22,6 +22,7 @@ import express from 'express';
 import { logger } from '../lib/logger';
 import { getFeatureFlag } from '../services/SystemConfig';
 import { TwilioVoiceProvider } from '../services/voice/TwilioVoiceProvider';
+import * as Maya from '../services/MayaService';
 
 const router = Router();
 // Lazy-init: capture env vars (TWILIO_AUTH_TOKEN, TWILIO_VOICE_PUBLIC_URL) on
@@ -105,17 +106,25 @@ router.post('/gather', requireInbound, requireValidSignature, async (req: Reques
   if (!callSid) {
     return res.status(400).json({ ok: false, error: 'missing_call_sid' });
   }
+  // Language is anchored to the CONVERSATION locale — chosen from the dialed
+  // number when the call started (+972 → he, else → en) and stored on the row.
+  // We do NOT re-detect per utterance: scanning each transcript for Hebrew
+  // characters flipped Maya into English whenever a turn happened to transcribe
+  // without any Hebrew (digits, names, "PetWash"), and gave English callers a
+  // Hebrew re-prompt on silence.
+  const conv = await Maya.findConversationByCallSid(callSid);
+  const locale: 'he' | 'en' = conv?.locale === 'en' ? 'en' : 'he';
   if (!speech) {
-    // Empty result (silence) — re-prompt in Hebrew.
+    // Empty result (silence) — re-prompt in the caller's language.
     const reprompt = getProvider().createVoiceResponse({
-      text: 'לא שמעתי. אפשר לחזור?',
-      locale: 'he',
+      text:
+        locale === 'he'
+          ? 'לא שמעתי. אפשר לחזור?'
+          : "Sorry, I didn't catch that. Could you say that again?",
+      locale,
     });
     return res.type(reprompt.contentType).status(200).send(reprompt.body);
   }
-  // Detect language heuristically from the script of the first non-space char.
-  // Hebrew Unicode range: U+0590–U+05FF.
-  const locale: 'he' | 'en' = /[֐-׿]/.test(speech) ? 'he' : 'en';
   try {
     const response = await getProvider().handleTranscriptTurn({
       callSid, role: 'user', content: speech, locale,
