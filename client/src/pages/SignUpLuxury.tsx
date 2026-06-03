@@ -583,7 +583,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               )}
               {signupFlags.emailPassword && (
                 <button type="button" className="sl-tab" role="tab" aria-selected={method === 'other'} onClick={() => setMethod('other')}>
-                  <YahooIcon /> {t.tabOther}
+                  <FaEnvelope aria-hidden /> {t.tabOther}
                 </button>
               )}
             </div>
@@ -844,14 +844,6 @@ function GoogleIcon() {
   );
 }
 
-function YahooIcon() {
-  return (
-    <span className="sl-yIcon" aria-hidden>
-      <span className="sl-yText">Y!</span>
-    </span>
-  );
-}
-
 function WalletCardIcon({ variant }: { variant: 'apple' | 'google' }) {
   return (
     <svg className="sl-wcardIcon" viewBox="0 0 32 22" aria-hidden>
@@ -911,6 +903,10 @@ function styles(he: boolean) {
       background:#000 !important;
       background-color:#000 !important;
       overscroll-behavior:none;
+    }
+    body[data-pw-page="signup"] {
+      padding-top:0 !important;
+      padding-bottom:0 !important;
     }
 
     body > #root > #petwash-signup-page.sl-shell,
@@ -1091,8 +1087,6 @@ function styles(he: boolean) {
     .sl-tab svg{ font-size:16px }
     .sl-tab[aria-selected="true"]{ background:rgba(176,132,28,.12); border-color:rgba(176,132,28,.4); color:var(--white) }
     .sl-tab:hover{ border-color:rgba(176,132,28,.35) }
-    .sl-yIcon{ width:18px; height:18px; border-radius:4px; background:#5F01D1; display:inline-flex; align-items:center; justify-content:center }
-    .sl-yText{ color:#fff; font-weight:900; font-size:10.5px; letter-spacing:-.5px }
 
     /* Fields */
     .sl-field{ display:grid; gap:8px }
@@ -1277,33 +1271,55 @@ function styles(he: boolean) {
      * Operator brief 2026-05-26: keep CTA reachable, never let the dog push
      * the form down. Logo stays dominant; dog scales down accordingly. */
     @media(max-width:767px){
-      .sl-frame{ gap:18px; padding-top:clamp(34px,8vh,76px); padding-bottom:calc(120px + env(safe-area-inset-bottom)) }
-      .sl-hero{ gap:15px }
-      .sl-logo{ width:clamp(300px,82vw,430px) }
-      .sl-eyebrow{ font-size:10.5px; letter-spacing:.28em }
-      .sl-h1{ font-size:clamp(28px,7.1vw,34px); line-height:1.08 }
-      .sl-sub{ font-size:clamp(15px,4.2vw,18px); max-width:360px }
-      .sl-dog{ width:min(70vw, 330px) }
-      .sl-heroCta{ display:flex }
-      .sl-social4{ grid-template-columns:1fr 1fr }
-      .sl-badges{ grid-template-columns:1fr 1fr }
-      .sl-advCells{ grid-template-columns:1fr }
-      .sl-wallets{ grid-template-columns:1fr }
-      .sl-tabs{ grid-template-columns:repeat(3, 1fr) }
-      .sl-dl{ flex-direction:column; align-items:stretch; gap:14px }
-      .sl-dlRight{ justify-content:center }
-      .sl-title{ font-size:clamp(24px,7vw,30px) }
+      .sl-frame{ gap:12px; padding:clamp(10px,2.2vh,18px) 14px calc(102px + env(safe-area-inset-bottom)) }
+      .sl-hero{ gap:8px }
+      .sl-logo{ width:clamp(292px,78vw,360px) }
+      .sl-eyebrow{ font-size:9px; letter-spacing:.22em }
+      .sl-h1{ font-size:clamp(22px,5.9vw,28px); line-height:1.06; max-width:340px }
+      .sl-sub{ font-size:clamp(13px,3.5vw,15px); line-height:1.38; max-width:332px }
+      .sl-divPaw{ margin:0 }
+      .sl-dogWrap{ padding:0 }
+      .sl-dog{ width:min(42vw, 168px); border-radius:16px; box-shadow:0 14px 38px rgba(0,0,0,.42) }
+      .sl-card,.sl-trustCard,.sl-secBadge{ display:none }
+      .sl-heroCta{ display:flex; min-height:50px; width:100%; border-radius:14px; font-size:15px; letter-spacing:.04em }
+      .sl-panel{ padding:18px 14px; border-radius:22px; gap:12px; scroll-margin-top:8px }
+      .sl-panelHead{ gap:8px }
+      .sl-title{ font-size:clamp(22px,5.9vw,27px); line-height:1.05; letter-spacing:.02em }
+      .sl-helper{ font-size:13.5px; line-height:1.35 }
+      .sl-lang{ min-height:40px; padding:8px 12px; border-radius:999px }
+      .sl-social4{ grid-template-columns:1fr 1fr; gap:8px }
+      .sl-soc{ min-height:52px; border-radius:14px; padding:0 12px; gap:10px; font-size:13.5px; line-height:1.15 }
+      .sl-soc svg,.sl-fbIcon,.sl-igIcon{ flex:0 0 auto }
+      .sl-div{ margin:2px 0; font-size:12px }
+      .sl-tabs{ grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px }
+      .sl-tab{ min-height:48px; border-radius:14px; padding:8px 8px; font-size:13px; line-height:1.15 }
+      .sl-label{ font-size:13px }
+      .sl-input{ min-height:50px; border-radius:14px; font-size:16px }
+      .sl-inputWrap .sl-inputIcon{ left:14px }
+      .sl-field .intl-phone-wrapper{ min-height:50px; border-radius:14px !important; padding:8px 12px !important }
+      .sl-field .intl-phone-wrapper .PhoneInput{ gap:10px }
+      .sl-field .intl-phone-wrapper .PhoneInputCountry{ margin-right:8px }
+      .sl-field .intl-phone-wrapper .PhoneInputInput{ min-width:0; font-size:16px }
+      .sl-entryRow{ grid-template-columns:1fr; gap:8px }
+      .sl-entryBtn{ width:100%; min-height:50px; border-radius:14px }
+      .sl-badges{ grid-template-columns:1fr 1fr; gap:8px }
+      .sl-badge{ min-height:54px; padding:10px 8px }
+      .sl-advCells{ grid-template-columns:1fr; gap:8px }
+      .sl-consent{ padding:12px; border-radius:14px }
+      .sl-wallets{ grid-template-columns:1fr; gap:8px }
+      .sl-terms{ align-items:flex-start; font-size:12.5px; line-height:1.35 }
+      .sl-dl{ display:none }
     }
 
     /* ≤ 420px (very small phones, iPhone SE) — keep the dog visible but
      * compact. The logo still owns the hierarchy; the CTA remains reachable. */
     @media(max-width:420px){
-      .sl-frame{ padding-top:clamp(28px,7vh,58px) }
-      .sl-logo{ width:clamp(292px,84vw,380px) }
-      .sl-h1{ font-size:clamp(26px,7vw,31px) }
-      .sl-sub{ font-size:15px }
-      .sl-dog{ width:min(68vw, 292px) }
-      .sl-heroCta{ min-height:56px; font-size:16px }
+      .sl-frame{ padding-top:clamp(8px,1.8vh,14px) }
+      .sl-logo{ width:clamp(276px,76vw,330px) }
+      .sl-h1{ font-size:clamp(21px,5.7vw,26px) }
+      .sl-sub{ font-size:13px }
+      .sl-dog{ width:min(39vw, 154px) }
+      .sl-heroCta{ min-height:48px; font-size:14px }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
