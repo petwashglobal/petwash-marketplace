@@ -86,6 +86,7 @@ const wantsSignupV2 = (): boolean => {
   }
 };
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
 const CustomerFavourites = lazy(() => import("@/pages/CustomerFavourites"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
@@ -860,7 +861,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/dashboard">
           {() => (
             <RequireAuth>
-              <Dashboard />
+              {/* DashboardV2 (luxury) behind a flag; legacy Dashboard is the default. */}
+              {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
             </RequireAuth>
           )}
         </Route>
