@@ -98,10 +98,14 @@ export class TwilioVoiceProvider implements MayaVoiceProvider {
    */
   async handleInboundCall(event: InboundCallEvent): Promise<VoiceResponse> {
     const contactPhone = event.from && event.from !== 'anonymous' ? event.from : null;
+    // Language by the DIALED number (event.to): Israeli (+972) → Hebrew,
+    // anything else (e.g. the +1 US number for world callers) → English.
+    const dialed = (event.to || '').replace(/[^\d+]/g, '');
+    const locale: 'he' | 'en' = dialed.startsWith('+972') || dialed.startsWith('972') ? 'he' : 'en';
     const conv = await Maya.createConversation(
       {
         channel: 'phone',
-        locale: 'he',
+        locale,
         contactPhone,
         voiceProvider: 'twilio',
         externalCallSid: event.callSid,
@@ -109,10 +113,13 @@ export class TwilioVoiceProvider implements MayaVoiceProvider {
       },
       SYSTEM_ACTOR,
     );
-    logger.info({ callSid: event.callSid, conversationId: conv.id }, 'twilio voice: inbound call');
+    logger.info({ callSid: event.callSid, conversationId: conv.id, locale }, 'twilio voice: inbound call');
     return this.buildGatherTwiml({
-      text: 'שלום, מדברת מאיה מפט-וואש, איך אפשר לעזור?',
-      locale: 'he',
+      text:
+        locale === 'he'
+          ? 'שלום, מדברת מאיה מפט-וואש, איך אפשר לעזור?'
+          : 'Hi, this is Maya from PetWash. How can I help you today?',
+      locale,
     });
   }
 
