@@ -189,6 +189,18 @@ These are not preferences. They are blockers. Violating them blocks the PR.
 - **No force push.** Ever. Not to feature branches, definitely not to main.
 - **Always create new commits** rather than amending pushed commits.
 
+### Multi-agent coordination (anti-duplication) — MANDATORY
+This repo is worked by **multiple AI agents** (Claude sessions AND Codex). Two agents independently building the same thing is the failure mode the CEO cares about most. Before writing ANY code or new doc, you MUST:
+
+1. **Check for existing work first — no exceptions.**
+   - `git fetch origin && git ls-remote --heads origin` — scan for branches whose name matches your task (e.g. `*sumit*`, `*wallet*`, `*ledger*`, `*payment*`). Branches from BOTH `claude/*` and `codex/*` count.
+   - `gh pr list --state open` and `gh pr list --state merged --limit 30` — your task may already be in flight or already merged.
+   - **Grep the codebase for the capability** before assuming it doesn't exist. Example: a "money-event state machine", "wallet ledger", "reconciliation", or "SUMIT client" likely already exists (`EscrowStateMachine`, `WalletLedger`, `BillingLedger`, `SumitClient`, `*ReconciliationJob`). Search `server/services/` and `docs/finance/` before creating a new file.
+2. **Claim the work before coding.** Open a branch + a **draft PR** with a clear title FIRST, so other agents (and the CEO) can see the task is taken. The draft PR is the lock.
+3. **Don't create a third copy of a doc.** Before adding to `docs/`, list the existing docs in that area (`docs/finance/`, `docs/payments/`, `docs/legal/`). If a doc already covers the topic, EXTEND or reference it — do not write a parallel one. If you discover you created a duplicate, close it and point at the canonical doc.
+4. **Single-owner money domain.** Payments / wallet / ledger / SUMIT / Nayax is a **single-owner domain per change** — never fork the same finance surface across two simultaneous agent tasks. If unsure who owns it, ask the CEO before touching it.
+5. **If you find a duplicate mid-task, STOP and report it** rather than finishing a second copy.
+
 ### Dependencies & schema
 - **No new dependencies** unless the user explicitly approves the package by name.
 - **No schema migrations** unless separately approved. Adding a column counts. Renaming a column counts.
