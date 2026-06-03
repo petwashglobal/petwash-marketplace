@@ -170,8 +170,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // report #17 flagged both as visibly pre-checked on the live signup.
   const [biometric, setBiometric] = useState(false);
   const [savePassword, setSavePassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [walletConsent, setWalletConsent] = useState(true);
+  // Consent must be opt-IN (unchecked by default) — pre-ticked consent is
+  // invalid under GDPR Art.4(11)/Recital 32 (Planet49) and Israeli privacy law.
+  const [rememberMe, setRememberMe] = useState(false);
+  const [walletConsent, setWalletConsent] = useState(false);
   const [walletIntent, setWalletIntent] = useState<'apple' | 'google' | null>(null);
   const [terms, setTerms] = useState(false);
   const [sent, setSent] = useState(false);
@@ -370,10 +372,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     badges: he
       ? [{ t: 'טיפול חכם בכוח AI', I: FaCog }, { t: 'תגמולי VIP', I: FaGift }, { t: 'הזמנה חכמה', I: FaCalendarAlt }, { t: 'מעקב בריאות', I: FaHeartbeat }]
       : [{ t: 'AI Powered Pet Care', I: FaCog }, { t: 'VIP Rewards', I: FaGift }, { t: 'Smart Booking', I: FaCalendarAlt }, { t: 'Health Tracking', I: FaHeartbeat }],
-    trusted: he ? 'מהימן על-ידי הורי חיות מחמד בעולם' : 'TRUSTED BY PET PARENTS WORLDWIDE',
-    rating: he ? '4.9/5 דירוג ממוצע' : '4.9/5 Average Rating',
+    trusted: he ? 'נפתחים בקרוב בכפר סבא' : 'Opening soon in Kfar Saba',
+    rating: he ? 'טיפול אורגני פרימיום · מותג ישראלי' : 'Premium organic care · Israeli brand',
     secure: he ? 'מאובטח · פרטי · מוצפן' : 'SECURE · PRIVATE · ENCRYPTED',
-    secureSub: he ? 'הנתונים שלך 100% בטוחים אצלנו.' : 'Your data is 100% safe with us.',
+    secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
 
     create: he ? 'צור את החשבון שלך' : 'Create Your Account',
     helper: he ? 'הצטרף לעתיד של טיפול חכם בחיות מחמד' : 'Join the future of intelligent pet care',
@@ -489,17 +491,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </div>
           </section>
 
+          {/* Honest pre-launch card — removed fabricated +25K users, ★★★★★ and
+              "4.9/5" rating (no real ratings exist pre-launch; fake reviews are a
+              consumer-protection violation). */}
           <section className="sl-card sl-trustCard">
             <div className="sl-cardTitle">{t.trusted}</div>
-            <div className="sl-avatars" aria-hidden>
-              {['#F4D48A','#E8B04A','#C5A55A','#9D6F23','#6E4A1A','#3A260A'].map((bg, i) => (
-                <span key={i} className="sl-avatar" style={{ background: `linear-gradient(135deg, ${bg}, #000)` }}>
-                  {['NH','AL','MK','RS','TY','OS'][i]}
-                </span>
-              ))}
-              <span className="sl-avatarMore">+25K</span>
-            </div>
-            <div className="sl-stars" aria-hidden>★★★★★</div>
             <div className="sl-ratingTxt">{t.rating}</div>
           </section>
 
