@@ -206,6 +206,7 @@ const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
 const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
+const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const StationTimeline = lazy(() => import("@/pages/StationTimeline"));
 const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
@@ -2344,7 +2345,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <RouteErrorBoundary routeName="/my-account">
                 <Suspense fallback={<PageLoader />}>
-                  <MyAccount />
+                  {/* ProfileV2 (luxury account hub) behind a flag; legacy MyAccount is the default + deep-edit target. */}
+                  {import.meta.env.VITE_PROFILE_V2_ENABLED === 'true' ? <ProfileV2 /> : <MyAccount />}
                 </Suspense>
               </RouteErrorBoundary>
             </RequireAuth>
