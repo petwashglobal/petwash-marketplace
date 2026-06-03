@@ -113,12 +113,13 @@ function persistPrefs(prefs: SignupPrefs) {
   try { localStorage.setItem('petwash_signup_prefs', JSON.stringify(safePrefs)); } catch { /* quota / private mode */ }
 }
 
-// Phone breakpoint — below this we switch on progressive disclosure.
+// Compact interaction breakpoint — includes narrow phones and rotated phones.
 function useIsPhone(): boolean {
-  const [is, setIs] = useState<boolean>(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const query = '(max-width: 767px), (max-height: 500px) and (orientation: landscape)';
+  const [is, setIs] = useState<boolean>(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(max-width: 767px)');
+    const mq = window.matchMedia(query);
     const fn = (e: MediaQueryListEvent) => setIs(e.matches);
     mq.addEventListener('change', fn);
     return () => mq.removeEventListener('change', fn);
@@ -344,6 +345,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         : (he ? 'הזן אימייל וסיסמה' : 'Enter your email and password'));
       return;
     }
+    if (!requireTerms()) return;
     setStep(2);
   };
 
@@ -398,7 +400,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     pwd2: he ? 'אישור סיסמה (לחשבון חדש)' : 'Confirm password (new account)',
     entryTitle: he ? 'צור קוד כניסה מהיר' : 'Create Next-Time Entry Code',
     entryPh: he ? 'צור קוד 6 ספרות' : 'Create 6-digit code',
-    entryBtn: he ? 'שלח קוד' : 'Send Code',
+    entryOptional: he ? 'אופציונלי' : 'Optional',
+    entryReady: he ? 'יישמר לאחר ההרשמה' : 'Saved after signup',
     entryHelper: he ? 'השתמש בקוד זה בכניסה הבאה לאימות מהיר ובטוח.' : 'Use this code next time to login quickly and securely.',
 
     advTitle: he ? 'אבטחה מתקדמת 2026' : '2026 ADVANCED SECURITY',
@@ -452,7 +455,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         {/* ================= LEFT COLUMN (HERO) ================= */}
         <aside className="sl-hero">
           <header className="sl-heroHead">
-            <img src="/brand/petwash-logo-white.png" alt="PetWash" className="sl-logo" width={600} height={240} decoding="async" />
+            <img src="/brand/petwash-logo-white-tight.png" alt="PetWash" className="sl-logo" width={365} height={123} decoding="async" />
             <div className="sl-eyebrow">{t.eyebrow}</div>
           </header>
 
@@ -534,6 +537,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </button>
           )}
 
+          {step === 1 && !sent && (
+            <label className="sl-terms sl-terms--quick">
+              <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+              <span>
+                {t.iAgree}
+                <a href="/terms" target="_blank" rel="noreferrer">{t.termsLink}</a>
+                {t.andTo}
+                <a href="/privacy-policy" target="_blank" rel="noreferrer">{t.privLink}</a>
+              </span>
+            </label>
+          )}
+
           {/* === Social tiles 2x2 — only on step 1 (or always on tablet+) === */}
           {!showStep2Phone && (
             <div className="sl-social4">
@@ -548,7 +563,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 disabled={busy || !signupFlags.appleSignin}
                 onClick={() => signupFlags.appleSignin && social('apple')}
               >
-                <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
+                <FaApple aria-hidden /> <span className="sl-socLabel">{signupFlags.appleSignin ? t.cwApple : 'Apple'}</span>
                 {!signupFlags.appleSignin && <span className="sl-soonPill">{t.soon}</span>}
               </button>
 
@@ -688,7 +703,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </button>
               </div>
 
-              <label className="sl-terms">
+              <label className={`sl-terms${isPhone ? ' sl-terms--full' : ''}`}>
                 <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
                 <span>
                   {t.iAgree}
@@ -794,7 +809,9 @@ function EntryCodeField({ value, onChange, t }: { value: string; onChange: (v: s
             placeholder={t.entryPh}
           />
         </div>
-        <button type="button" className="sl-entryBtn" disabled={!/^\d{6}$/.test(value)}>{t.entryBtn}</button>
+        <span className={`sl-entryStatus${/^\d{6}$/.test(value) ? ' is-ready' : ''}`}>
+          {/^\d{6}$/.test(value) ? t.entryReady : t.entryOptional}
+        </span>
       </div>
       <div className="sl-hint">{t.entryHelper}</div>
     </div>
@@ -899,10 +916,13 @@ function styles(he: boolean) {
       background:#000 !important;
       background-color:#000 !important;
       overscroll-behavior:none;
+      margin:0 !important;
     }
     body[data-pw-page="signup"] {
       padding-top:0 !important;
       padding-bottom:0 !important;
+      min-height:100dvh;
+      overflow-x:hidden;
     }
 
     body > #root > #petwash-signup-page.sl-shell,
@@ -922,7 +942,7 @@ function styles(he: boolean) {
       /* iOS notch + bottom home indicator. Top inset is added once at the
        * shell so it applies before any internal scroll; bottom inset is
        * handled per-component (sticky CTA below adds its own). */
-      padding-top:env(safe-area-inset-top);
+      padding-top:0;
       padding-left:env(safe-area-inset-left);
       padding-right:env(safe-area-inset-right);
     }
@@ -1054,7 +1074,8 @@ function styles(he: boolean) {
     .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(176,132,28,.45); box-shadow:0 0 0 3px rgba(176,132,28,.10) }
     .sl-soc:disabled{ cursor:not-allowed }
     .sl-soc--soon{ opacity:.78 }
-    .sl-socLabel{ flex:1; text-align:start }
+    .sl-socLabel{ flex:1; min-width:0; text-align:start; overflow-wrap:normal }
+    .sl-soc--soon .sl-socLabel{ padding-inline-end:50px }
     .sl-gIcon{ width:24px; height:24px; flex:0 0 auto }
     .sl-fbIcon{ width:24px; height:24px; flex:0 0 auto; border-radius:6px; background:#1877F2; display:inline-flex; align-items:center; justify-content:center; color:#fff }
     .sl-fbIcon svg{ font-size:14px }
@@ -1105,18 +1126,41 @@ function styles(he: boolean) {
     .sl-input::placeholder{ color:rgba(255,250,240,.4); font-weight:400 }
     .sl-input:focus{ border-color:rgba(176,132,28,.55); box-shadow:0 0 0 3px rgba(176,132,28,.18) }
     .sl-hint{ color:var(--muted); font-size:12.5px; line-height:1.4 }
+    .sl-field .intl-phone-wrapper{
+      min-height:54px;
+      border-radius:12px !important;
+      padding:9px 14px !important;
+      background:rgba(0,0,0,.55) !important;
+      border-color:var(--line) !important;
+      color:var(--white) !important;
+    }
+    .sl-field .intl-phone-wrapper .PhoneInput{ gap:10px }
+    .sl-field .intl-phone-wrapper .PhoneInputCountry{ margin-right:8px }
+    .sl-field .intl-phone-wrapper .PhoneInputInput{
+      min-width:0;
+      font-size:16px;
+      background:transparent !important;
+      color:var(--white) !important;
+    }
+    .sl-field .intl-phone-wrapper .PhoneInputInput::placeholder{ color:rgba(255,250,240,.42) !important }
+    .sl-field .intl-phone-wrapper .PhoneInputCountrySelect{ color:var(--white) !important }
+    .sl-field .intl-phone-wrapper .PhoneInputCountrySelectArrow{ color:var(--gold2) !important; opacity:.9 }
 
     .sl-entryRow{ display:grid; grid-template-columns:1fr auto; gap:8px }
     .sl-entryInputWrap{ min-width:0 }
-    .sl-entryBtn{
-      appearance:none; cursor:pointer; min-height:54px; padding:0 18px;
-      border-radius:12px; border:1px solid var(--line); background:#fff; color:#0a0a0a;
-      font-weight:800; font-size:14px;
-      transition:transform .15s ease, box-shadow .15s ease;
+    .sl-entryStatus{
+      min-height:54px; padding:0 16px;
+      border-radius:12px; border:1px solid var(--line);
+      background:rgba(255,255,255,.06); color:var(--muted);
+      display:inline-flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:12px;
       white-space:nowrap;
     }
-    .sl-entryBtn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 6px 20px rgba(255,255,255,.18) }
-    .sl-entryBtn:disabled{ opacity:.45; cursor:not-allowed }
+    .sl-entryStatus.is-ready{
+      border-color:rgba(176,132,28,.5);
+      background:rgba(176,132,28,.12);
+      color:var(--gold2);
+    }
 
     /* Advanced security panel */
     .sl-adv{
@@ -1185,6 +1229,13 @@ function styles(he: boolean) {
     }
     .sl-terms input{ width:24px; height:24px; accent-color:var(--gold); flex:0 0 auto; margin-top:1px }
     .sl-terms a{ color:var(--gold2); font-weight:700; text-decoration:underline }
+    .sl-terms--quick{
+      margin:-2px 0 0;
+      padding:10px 12px;
+      border:1px solid rgba(176,132,28,.24);
+      border-radius:14px;
+      background:rgba(176,132,28,.06);
+    }
 
     /* CTA — premium gold gradient (luxury house brand). Min-height 58px keeps
      * it well above the 44 px tap-target floor on every device. */
@@ -1267,67 +1318,94 @@ function styles(he: boolean) {
      * Operator brief 2026-05-26: keep CTA reachable, never let the dog push
      * the form down. Logo stays dominant; dog scales down accordingly. */
     @media(max-width:767px){
-      .sl-frame{ gap:12px; padding:clamp(10px,2.2vh,18px) 14px calc(102px + env(safe-area-inset-bottom)) }
-      .sl-hero{ gap:8px }
-      .sl-logo{ width:clamp(292px,78vw,360px) }
-      .sl-eyebrow{ font-size:9px; letter-spacing:.22em }
-      .sl-h1{ font-size:clamp(22px,5.9vw,28px); line-height:1.06; max-width:340px }
-      .sl-sub{ font-size:clamp(13px,3.5vw,15px); line-height:1.38; max-width:332px }
-      .sl-divPaw{ margin:0 }
+      .sl-shell{ min-height:auto; padding-top:0 }
+      .sl-frame{ gap:10px; padding:max(6px, env(safe-area-inset-top)) 12px calc(92px + env(safe-area-inset-bottom)) }
+      .sl-hero{ gap:6px; padding-top:0 }
+      .sl-logo{ width:min(86vw, 382px) }
+      .sl-eyebrow{ font-size:9px; letter-spacing:.20em; margin-top:0 }
+      .sl-h1{ font-size:clamp(23px,6vw,28px); line-height:1.04; max-width:352px }
+      .sl-sub{ font-size:clamp(13px,3.4vw,15px); line-height:1.32; max-width:344px }
+      .sl-divPaw{ display:none }
       .sl-dogWrap{ padding:0 }
-      .sl-dog{ width:min(42vw, 168px); border-radius:16px; box-shadow:0 14px 38px rgba(0,0,0,.42) }
+      .sl-dog{ width:min(42vw, 162px); border-radius:16px; box-shadow:0 14px 38px rgba(0,0,0,.42); object-position:center top }
       .sl-card,.sl-trustCard,.sl-secBadge{ display:none }
-      .sl-heroCta{ display:flex; min-height:50px; width:100%; border-radius:14px; font-size:15px; letter-spacing:.04em }
-      .sl-panel{ padding:18px 14px; border-radius:22px; gap:12px; scroll-margin-top:8px }
+      .sl-heroCta{ display:flex; min-height:52px; width:100%; border-radius:14px; font-size:15px; letter-spacing:.04em }
+      .sl-panel{ padding:16px 14px; border-radius:22px; gap:11px; scroll-margin-top:8px }
       .sl-panelHead{ gap:8px }
-      .sl-title{ font-size:clamp(22px,5.9vw,27px); line-height:1.05; letter-spacing:.02em }
+      .sl-title{ font-size:clamp(23px,6vw,28px); line-height:1.05; letter-spacing:.02em }
       .sl-helper{ font-size:13.5px; line-height:1.35 }
       .sl-lang{ min-height:40px; padding:8px 12px; border-radius:999px }
       .sl-social4{ grid-template-columns:1fr 1fr; gap:8px }
-      .sl-soc{ min-height:52px; border-radius:14px; padding:0 12px; gap:10px; font-size:13.5px; line-height:1.15 }
+      .sl-soc{ min-height:50px; border-radius:14px; padding:0 12px; gap:10px; font-size:13px; line-height:1.15 }
+      .sl-soc--soon .sl-socLabel{ padding-inline-end:44px }
       .sl-soc svg,.sl-fbIcon,.sl-igIcon{ flex:0 0 auto }
       .sl-div{ margin:2px 0; font-size:12px }
       .sl-tabs{ grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px }
-      .sl-tab{ min-height:48px; border-radius:14px; padding:8px 8px; font-size:13px; line-height:1.15 }
+      .sl-tab{ min-height:46px; border-radius:14px; padding:8px 8px; font-size:13px; line-height:1.15 }
       .sl-label{ font-size:13px }
       .sl-input{ min-height:50px; border-radius:14px; font-size:16px }
       .sl-inputWrap .sl-inputIcon{ left:14px }
-      .sl-field .intl-phone-wrapper{ min-height:50px; border-radius:14px !important; padding:8px 12px !important }
+      .sl-field .intl-phone-wrapper{
+        min-height:50px;
+        border-radius:14px !important;
+        padding:8px 12px !important;
+        background:rgba(0,0,0,.55) !important;
+        border-color:var(--line) !important;
+        color:var(--white) !important;
+      }
       .sl-field .intl-phone-wrapper .PhoneInput{ gap:10px }
       .sl-field .intl-phone-wrapper .PhoneInputCountry{ margin-right:8px }
-      .sl-field .intl-phone-wrapper .PhoneInputInput{ min-width:0; font-size:16px }
+      .sl-field .intl-phone-wrapper .PhoneInputInput{
+        min-width:0;
+        font-size:16px;
+        background:transparent !important;
+        color:var(--white) !important;
+      }
+      .sl-field .intl-phone-wrapper .PhoneInputInput::placeholder{ color:rgba(255,250,240,.42) !important }
+      .sl-field .intl-phone-wrapper .PhoneInputCountrySelect{ color:var(--white) !important }
+      .sl-field .intl-phone-wrapper .PhoneInputCountrySelectArrow{ color:var(--gold2) !important; opacity:.9 }
       .sl-entryRow{ grid-template-columns:1fr; gap:8px }
-      .sl-entryBtn{ width:100%; min-height:50px; border-radius:14px }
+      .sl-entryStatus{ width:100%; min-height:38px; border-radius:14px }
       .sl-badges{ grid-template-columns:1fr 1fr; gap:8px }
       .sl-badge{ min-height:54px; padding:10px 8px }
       .sl-advCells{ grid-template-columns:1fr; gap:8px }
       .sl-consent{ padding:12px; border-radius:14px }
       .sl-wallets{ grid-template-columns:1fr; gap:8px }
       .sl-terms{ align-items:flex-start; font-size:12.5px; line-height:1.35 }
+      .sl-terms--full{ display:none }
       .sl-dl{ display:none }
     }
 
     /* ≤ 420px (very small phones, iPhone SE) — keep the dog visible but
      * compact. The logo still owns the hierarchy; the CTA remains reachable. */
     @media(max-width:420px){
-      .sl-frame{ padding-top:clamp(8px,1.8vh,14px) }
-      .sl-logo{ width:clamp(276px,76vw,330px) }
+      .sl-frame{ padding-top:max(4px, env(safe-area-inset-top)) }
+      .sl-logo{ width:min(84vw, 352px) }
       .sl-h1{ font-size:clamp(21px,5.7vw,26px) }
       .sl-sub{ font-size:13px }
-      .sl-dog{ width:min(39vw, 154px) }
+      .sl-dog{ width:min(38vw, 142px) }
       .sl-heroCta{ min-height:48px; font-size:14px }
     }
 
-    /* 768-1023 (tablet portrait, iPad mini portrait) — single column, single step */
+    /* 768-1023 (tablet portrait, iPad mini portrait) — two columns so iPad
+     * does not bury the signup form under an oversized hero. */
     @media(min-width:768px) and (max-width:1023px){
-      .sl-frame{ gap:24px }
-      .sl-hero{ gap:18px; align-items:stretch }
-      .sl-logo{ width:clamp(360px,58vw,520px) }
-      .sl-h1{ font-size:clamp(32px,4.2vw,42px) }
-      .sl-dog{ width:min(56vw, 420px) }
-      .sl-heroCta{ display:flex; max-width:520px; align-self:center }
-      .sl-title{ font-size:32px }
-      .sl-panel{ padding:28px }
+      .sl-frame{
+        display:grid;
+        grid-template-columns:minmax(360px,.9fr) minmax(360px,1.1fr);
+        gap:14px;
+        align-items:start;
+        padding:14px 14px 40px;
+      }
+      .sl-hero{ position:sticky; top:14px; gap:12px }
+      .sl-logo{ width:min(48vw, 420px); min-width:360px; max-width:100% }
+      .sl-eyebrow{ font-size:10px; letter-spacing:.24em }
+      .sl-h1{ font-size:clamp(26px,3.4vw,34px); line-height:1.08 }
+      .sl-sub{ font-size:clamp(14px,2vw,17px); line-height:1.35 }
+      .sl-dog{ width:min(32vw, 260px) }
+      .sl-heroCta{ display:none }
+      .sl-title{ font-size:clamp(27px,3.7vw,34px); line-height:1.05 }
+      .sl-panel{ padding:22px; border-radius:26px }
       .sl-advCells{ grid-template-columns:repeat(3, 1fr) }
       .sl-wallets{ grid-template-columns:1fr 1fr }
     }
@@ -1339,13 +1417,70 @@ function styles(he: boolean) {
         display:grid; grid-template-columns:1fr 1.05fr;
         gap:clamp(32px,4vw,56px);
         align-items:start;
-        padding-top:clamp(32px,4vw,56px);
+        padding-top:clamp(20px,2.6vw,40px);
       }
-      .sl-hero{ position:sticky; top:24px; gap:18px }
+      .sl-hero{ position:sticky; top:18px; gap:18px }
       .sl-logo{ width:clamp(360px,28vw,520px) }
       .sl-h1{ font-size:clamp(32px,2.6vw,44px) }
       .sl-dog{ width:min(56%, 360px) }
       .sl-panel{ padding:clamp(28px,2.6vw,38px) }
+    }
+
+    /* Rotated phones and compact webviews — use every pixel. This overrides
+     * tablet/desktop breakpoints when height is the limiting dimension. */
+    @media(max-height:500px) and (orientation:landscape){
+      .sl-shell{ min-height:auto; padding-top:0 }
+      .sl-frame{
+        display:grid;
+        grid-template-columns:minmax(240px,.74fr) minmax(320px,1.26fr);
+        gap:10px;
+        align-items:start;
+        padding:max(6px, env(safe-area-inset-top)) 10px calc(72px + env(safe-area-inset-bottom));
+      }
+      .sl-hero{
+        position:static;
+        top:auto;
+        gap:5px;
+        padding-top:0;
+        min-width:0;
+      }
+      .sl-logo{ width:min(42vw, 280px); min-width:0; max-width:100% }
+      .sl-eyebrow{ font-size:8px; letter-spacing:.18em; margin-top:0 }
+      .sl-h1{ font-size:clamp(18px,3.1vw,24px); line-height:1.02; max-width:300px }
+      .sl-sub{ font-size:11px; line-height:1.25; max-width:300px }
+      .sl-divPaw{ display:none }
+      .sl-dogWrap{ padding:0 }
+      .sl-dog{ width:min(19vw, 96px); border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.42) }
+      .sl-card,.sl-trustCard,.sl-secBadge,.sl-dl{ display:none }
+      .sl-heroCta{ display:none }
+      .sl-panel{
+        padding:12px;
+        border-radius:18px;
+        gap:9px;
+        min-width:0;
+      }
+      .sl-panelHead{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:10px }
+      .sl-title{ font-size:clamp(20px,3.2vw,25px); line-height:1.02 }
+      .sl-helper{ font-size:12px; line-height:1.25 }
+      .sl-lang{ min-height:34px; padding:6px 10px; font-size:12px }
+      .sl-social4{ grid-template-columns:1fr 1fr; gap:7px }
+      .sl-soc{ min-height:42px; border-radius:12px; padding:0 10px; gap:8px; font-size:12px; line-height:1.05 }
+      .sl-soc svg,.sl-fbIcon,.sl-igIcon{ width:21px; height:21px; flex:0 0 auto }
+      .sl-soonPill{ top:5px; right:7px; font-size:8px; padding:1px 6px }
+      .sl-div{ display:none }
+      .sl-tabs{ gap:7px }
+      .sl-tab{ min-height:40px; border-radius:12px; font-size:12px; padding:6px }
+      .sl-field{ gap:6px }
+      .sl-label{ font-size:12px }
+      .sl-input{ min-height:42px; border-radius:12px; font-size:15px }
+      .sl-field .intl-phone-wrapper{ min-height:42px; border-radius:12px !important; padding:6px 10px !important }
+      .sl-entryRow{ grid-template-columns:1fr; gap:7px }
+      .sl-entryStatus{ min-height:34px; border-radius:12px; width:100% }
+      .sl-terms{ min-height:38px; padding:7px 9px; font-size:11px; line-height:1.25 }
+      .sl-terms input{ width:21px; height:21px }
+      .sl-terms--full{ display:none }
+      .sl-cta--ghost{ min-height:42px; border-radius:12px; font-size:12px }
+      .sl-stickyWrap{ display:none }
     }
 
     /* Hover affordances (mouse-only) */
@@ -1354,7 +1489,7 @@ function styles(he: boolean) {
     }
 
     @media(prefers-reduced-motion:reduce){
-      .sl-soc, .sl-cta, .sl-wbtn, .sl-entryBtn, .sl-store, .sl-tab, .sl-consent{ transition:none }
+      .sl-soc, .sl-cta, .sl-wbtn, .sl-store, .sl-tab, .sl-consent{ transition:none }
     }
   `;
 }
