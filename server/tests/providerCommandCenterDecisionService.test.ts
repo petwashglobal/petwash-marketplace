@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyProviderCommandDecision,
   preflightProviderCommandDecision,
+  type ProviderApplicationDecisionMutationInput,
   type ProviderAuditWriteInput,
   type ProviderCommandDecisionInput,
 } from "../services/providerCommandCenterDecisionService";
@@ -131,5 +133,88 @@ describe("Provider Command Center decision service", () => {
       source: "SLACK",
       message: "Slack provider decisions are not enabled",
     });
+  });
+
+  it("applies a management approval as a command-center stage only, without activating provider or queueing SUMIT", async () => {
+    const auditEvents: ProviderAuditWriteInput[] = [];
+    const mutations: ProviderApplicationDecisionMutationInput[] = [];
+
+    const result = await applyProviderCommandDecision(
+      decisionInput(auditEvents, {
+        decisionApplier: async (mutation) => {
+          mutations.push(mutation);
+          return {
+            appliedStage: mutation.newState,
+            providerStatus: "pending",
+          };
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.providerMutationApplied).toBe(true);
+    expect(result.appliedStage).toBe("APPROVED_FOR_SUMIT_SANDBOX");
+    expect(result.providerStatus).toBe("pending");
+    expect(result.sumitSandboxQueued).toBe(false);
+    expect(mutations).toHaveLength(1);
+    expect(mutations[0]).toMatchObject({
+      applicationId: 42,
+      providerId: "provider_123",
+      previousState: "HUMAN_APPROVAL_REQUIRED",
+      newState: "APPROVED_FOR_SUMIT_SANDBOX",
+      action: "APPROVE",
+      reasonCode: "APPROVED_ALL_CHECKS_PASSED",
+    });
+    expect(auditEvents[0]).toMatchObject({ eventType: "HUMAN_APPROVED" });
+  });
+
+  it("does not mutate when support attempts to apply a provider decision", async () => {
+    const auditEvents: ProviderAuditWriteInput[] = [];
+    const mutations: ProviderApplicationDecisionMutationInput[] = [];
+
+    const result = await applyProviderCommandDecision(
+      decisionInput(auditEvents, {
+        actorUid: "support_uid",
+        actorEmail: "support@petwash.co.il",
+        decisionApplier: async (mutation) => {
+          mutations.push(mutation);
+          return {
+            appliedStage: mutation.newState,
+            providerStatus: "pending",
+          };
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(403);
+    expect(result.providerMutationApplied).toBe(false);
+    expect(mutations).toHaveLength(0);
+    expect(auditEvents[0]).toMatchObject({
+      eventType: "PROVIDER_COMMAND_DECISION_REJECTED_PERMISSION",
+    });
+  });
+
+  it("does not mutate stale provider command-center states", async () => {
+    const auditEvents: ProviderAuditWriteInput[] = [];
+    const mutations: ProviderApplicationDecisionMutationInput[] = [];
+
+    const result = await applyProviderCommandDecision(
+      decisionInput(auditEvents, {
+        currentState: "MISSING_DOCUMENTS",
+        decisionApplier: async (mutation) => {
+          mutations.push(mutation);
+          return {
+            appliedStage: mutation.newState,
+            providerStatus: "pending",
+          };
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(409);
+    expect(result.providerMutationApplied).toBe(false);
+    expect(mutations).toHaveLength(0);
   });
 });

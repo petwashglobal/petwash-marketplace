@@ -18,6 +18,29 @@ export interface ProviderAuditWriteInput {
 
 export type ProviderAuditWriter = (input: ProviderAuditWriteInput) => Promise<void>;
 
+export interface ProviderApplicationDecisionMutationInput {
+  applicationId: number;
+  providerId: string;
+  previousState: ProviderCommandCenterStatus;
+  newState: ProviderCommandCenterStatus;
+  action: ProviderDecisionAction;
+  reasonCode: ProviderDecisionReasonCode;
+  note?: string | null;
+  actorUid: string;
+  actorEmail: string;
+  requestIp?: string | null;
+  userAgent?: string | null;
+}
+
+export interface ProviderApplicationDecisionMutationResult {
+  appliedStage: ProviderCommandCenterStatus;
+  providerStatus: "pending" | "rejected";
+}
+
+export type ProviderApplicationDecisionApplier = (
+  input: ProviderApplicationDecisionMutationInput,
+) => Promise<ProviderApplicationDecisionMutationResult>;
+
 export interface ProviderCommandDecisionInput {
   applicationId: number;
   providerId: string;
@@ -30,6 +53,9 @@ export interface ProviderCommandDecisionInput {
   actorType?: ProviderCommandActorType;
   source: "COMMAND_CENTER" | "SLACK";
   auditWriter?: ProviderAuditWriter;
+  decisionApplier?: ProviderApplicationDecisionApplier;
+  requestIp?: string | null;
+  userAgent?: string | null;
 }
 
 export interface ProviderCommandDecisionResult {
@@ -43,6 +69,12 @@ export interface ProviderCommandDecisionResult {
   eventType: string;
   message: string;
   sumitSandboxQueued: false;
+}
+
+export interface ProviderCommandDecisionApplyResult extends ProviderCommandDecisionResult {
+  providerMutationApplied: boolean;
+  providerStatus?: "pending" | "rejected";
+  appliedStage?: ProviderCommandCenterStatus;
 }
 
 const APPROVAL_READY_STATE: ProviderCommandCenterStatus = "HUMAN_APPROVAL_REQUIRED";
@@ -155,6 +187,38 @@ export async function preflightProviderCommandDecision(
   });
 }
 
+export async function applyProviderCommandDecision(
+  input: ProviderCommandDecisionInput,
+): Promise<ProviderCommandDecisionApplyResult> {
+  const preflight = await preflightProviderCommandDecision(input);
+  if (!preflight.ok) {
+    return preflight;
+  }
+
+  const decisionApplier = input.decisionApplier ?? applyProviderApplicationDecisionDefault;
+  const mutation = await decisionApplier({
+    applicationId: input.applicationId,
+    providerId: input.providerId,
+    previousState: input.currentState,
+    newState: preflight.newState,
+    action: input.action,
+    reasonCode: input.reasonCode!,
+    note: input.note,
+    actorUid: input.actorUid,
+    actorEmail: input.actorEmail,
+    requestIp: input.requestIp ?? null,
+    userAgent: input.userAgent ?? null,
+  });
+
+  return {
+    ...preflight,
+    message: "Provider command decision applied",
+    providerMutationApplied: true,
+    providerStatus: mutation.providerStatus,
+    appliedStage: mutation.appliedStage,
+  };
+}
+
 function nextStateForDecision(
   action: ProviderDecisionAction,
   reasonCode: ProviderDecisionReasonCode,
@@ -216,6 +280,82 @@ async function auditDecision(
 async function writeProviderAuditDefault(input: ProviderAuditWriteInput): Promise<void> {
   const { writeProviderAudit } = await import("./providerAudit");
   await writeProviderAudit(input);
+}
+
+async function applyProviderApplicationDecisionDefault(
+  input: ProviderApplicationDecisionMutationInput,
+): Promise<ProviderApplicationDecisionMutationResult> {
+  const crypto = await import("crypto");
+  const { desc, eq } = await import("drizzle-orm");
+  const { db } = await import("../db");
+  const { providerApplicants, providerStageTransitions } = await import("@shared/schema-enterprise");
+
+  const now = new Date();
+  const providerStatus: "pending" | "rejected" = input.action === "REJECT" ? "rejected" : "pending";
+  const safeNote = input.note?.trim() ? input.note.trim() : null;
+
+  const updateValues: Record<string, unknown> = {
+    stage: input.newState,
+    lastUpdatedAt: now,
+    stageChangedAt: now,
+    reviewerNotes: safeNote,
+  };
+
+  if (input.action === "REJECT") {
+    updateValues.status = "rejected";
+    updateValues.rejectionReason = safeNote ?? input.reasonCode;
+    updateValues.rejectedAt = now;
+  }
+
+  await db.update(providerApplicants)
+    .set(updateValues)
+    .where(eq(providerApplicants.id, input.applicationId));
+
+  const [lastTransition] = await db.select()
+    .from(providerStageTransitions)
+    .where(eq(providerStageTransitions.applicantId, input.applicationId))
+    .orderBy(desc(providerStageTransitions.createdAt))
+    .limit(1);
+
+  const previousHash = lastTransition?.transitionHash ?? null;
+  const transitionData = JSON.stringify({
+    applicantId: input.applicationId,
+    fromStage: input.previousState,
+    toStage: input.newState,
+    actorUid: input.actorUid,
+    reasonCode: input.reasonCode,
+    timestamp: now.toISOString(),
+    previousHash,
+  });
+  const transitionHash = crypto.createHash("sha256").update(transitionData).digest("hex");
+
+  await db.insert(providerStageTransitions).values({
+    applicantId: input.applicationId,
+    fromStage: input.previousState,
+    toStage: input.newState,
+    transitionReason: `Command Center ${input.action}: ${input.reasonCode}`,
+    triggeredByUid: input.actorUid,
+    triggeredBySystem: false,
+    metadata: {
+      source: "PROVIDER_COMMAND_CENTER",
+      providerId: input.providerId,
+      action: input.action,
+      reasonCode: input.reasonCode,
+      note: safeNote,
+      actorEmail: input.actorEmail.toLowerCase(),
+      sumitSandboxQueued: false,
+      providerStatus,
+    },
+    ipAddress: input.requestIp ?? null,
+    userAgent: input.userAgent ?? null,
+    previousHash,
+    transitionHash,
+  });
+
+  return {
+    appliedStage: input.newState,
+    providerStatus,
+  };
 }
 
 function result(

@@ -1,4 +1,4 @@
-import { Router, type Request } from "express";
+import { Router, type Request, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -6,7 +6,9 @@ import {
   type ProviderCommandCenterStatus,
 } from "../../shared/providerCommandCenter";
 import {
+  applyProviderCommandDecision,
   preflightProviderCommandDecision,
+  type ProviderApplicationDecisionApplier,
   type ProviderAuditWriter,
 } from "../services/providerCommandCenterDecisionService";
 
@@ -96,6 +98,7 @@ export interface ProviderCommandCenterRouterDeps {
   loadApplication?: (applicationId: number) => Promise<ProviderCommandCenterApplication | null>;
   resolveActor?: (req: Request) => ProviderCommandCenterActor | null;
   auditWriter?: ProviderAuditWriter;
+  decisionApplier?: ProviderApplicationDecisionApplier;
 }
 
 export function createProviderCommandCenterRouter(deps: ProviderCommandCenterRouterDeps = {}) {
@@ -104,6 +107,14 @@ export function createProviderCommandCenterRouter(deps: ProviderCommandCenterRou
   const resolveActor = deps.resolveActor ?? resolveFirebaseActor;
 
   router.post("/admin/applications/:applicationId/decision-preflight", async (req, res) => {
+    return handleProviderDecision(req, res, { apply: false });
+  });
+
+  router.post("/admin/applications/:applicationId/decision", async (req, res) => {
+    return handleProviderDecision(req, res, { apply: true });
+  });
+
+  async function handleProviderDecision(req: Request, res: Response, options: { apply: boolean }) {
     const applicationId = Number.parseInt(req.params.applicationId, 10);
     if (!Number.isInteger(applicationId) || applicationId <= 0) {
       return res.status(400).json({ error: "INVALID_APPLICATION_ID" });
@@ -132,7 +143,7 @@ export function createProviderCommandCenterRouter(deps: ProviderCommandCenterRou
       return res.status(409).json({ error: "PROVIDER_APPLICATION_MISMATCH" });
     }
 
-    const result = await preflightProviderCommandDecision({
+    const decisionInput = {
       applicationId,
       providerId: application.providerId,
       currentState: body.currentState ?? application.currentState,
@@ -144,13 +155,20 @@ export function createProviderCommandCenterRouter(deps: ProviderCommandCenterRou
       actorType: actor.actorType ?? "HUMAN_ADMIN",
       source: body.source,
       auditWriter: deps.auditWriter,
-    });
+      decisionApplier: deps.decisionApplier,
+      requestIp: req.ip ?? req.headers["x-forwarded-for"]?.toString() ?? null,
+      userAgent: req.headers["user-agent"]?.toString() ?? null,
+    };
+
+    const result = options.apply
+      ? await applyProviderCommandDecision(decisionInput)
+      : await preflightProviderCommandDecision(decisionInput);
 
     return res.status(result.statusCode).json({
       ok: result.ok,
       decision: result,
     });
-  });
+  }
 
   return router;
 }

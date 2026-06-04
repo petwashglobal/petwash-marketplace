@@ -6,15 +6,20 @@ import {
   type ProviderCommandCenterActor,
   type ProviderCommandCenterApplication,
 } from "../routes/provider-command-center";
-import type { ProviderAuditWriteInput } from "../services/providerCommandCenterDecisionService";
+import type {
+  ProviderApplicationDecisionMutationInput,
+  ProviderAuditWriteInput,
+} from "../services/providerCommandCenterDecisionService";
 
 function makeApp(options: {
   actor?: ProviderCommandCenterActor | null;
   application?: ProviderCommandCenterApplication | null;
   auditEvents?: ProviderAuditWriteInput[];
+  mutations?: ProviderApplicationDecisionMutationInput[];
 }) {
   const app = express();
   const auditEvents = options.auditEvents ?? [];
+  const mutations = options.mutations ?? [];
 
   app.use(express.json());
   app.use(
@@ -24,6 +29,13 @@ function makeApp(options: {
       loadApplication: async () => options.application ?? null,
       auditWriter: async (event) => {
         auditEvents.push(event);
+      },
+      decisionApplier: async (mutation) => {
+        mutations.push(mutation);
+        return {
+          appliedStage: mutation.newState,
+          providerStatus: mutation.action === "REJECT" ? "rejected" : "pending",
+        };
       },
     }),
   );
@@ -46,10 +58,12 @@ const approvalApplication: ProviderCommandCenterApplication = {
 describe("Provider Command Center route", () => {
   it("preflights a management approval and writes the audit payload", async () => {
     const auditEvents: ProviderAuditWriteInput[] = [];
+    const mutations: ProviderApplicationDecisionMutationInput[] = [];
     const app = makeApp({
       actor: managementActor,
       application: approvalApplication,
       auditEvents,
+      mutations,
     });
 
     const response = await request(app)
@@ -76,6 +90,45 @@ describe("Provider Command Center route", () => {
       action: "APPROVE",
       note: "Ready for SUMIT sandbox setup.",
     });
+    expect(mutations).toHaveLength(0);
+  });
+
+  it("applies a management decision through the route without activating providers or queueing SUMIT", async () => {
+    const auditEvents: ProviderAuditWriteInput[] = [];
+    const mutations: ProviderApplicationDecisionMutationInput[] = [];
+    const app = makeApp({
+      actor: managementActor,
+      application: approvalApplication,
+      auditEvents,
+      mutations,
+    });
+
+    const response = await request(app)
+      .post("/api/provider-command-center/admin/applications/42/decision")
+      .set("User-Agent", "vitest-command-center")
+      .send({
+        action: "APPROVE",
+        reasonCode: "APPROVED_ALL_CHECKS_PASSED",
+        note: "Human management approval.",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.decision).toMatchObject({
+      ok: true,
+      previousState: "HUMAN_APPROVAL_REQUIRED",
+      newState: "APPROVED_FOR_SUMIT_SANDBOX",
+      providerMutationApplied: true,
+      providerStatus: "pending",
+      sumitSandboxQueued: false,
+    });
+    expect(mutations).toHaveLength(1);
+    expect(mutations[0]).toMatchObject({
+      action: "APPROVE",
+      newState: "APPROVED_FOR_SUMIT_SANDBOX",
+      reasonCode: "APPROVED_ALL_CHECKS_PASSED",
+      userAgent: "vitest-command-center",
+    });
+    expect(auditEvents[0]).toMatchObject({ eventType: "HUMAN_APPROVED" });
   });
 
   it("returns 401 before loading application context when no actor is present", async () => {
@@ -97,6 +150,7 @@ describe("Provider Command Center route", () => {
 
   it("rejects support approval while still writing a denied audit event", async () => {
     const auditEvents: ProviderAuditWriteInput[] = [];
+    const mutations: ProviderApplicationDecisionMutationInput[] = [];
     const app = makeApp({
       actor: {
         uid: "support_uid",
@@ -105,10 +159,11 @@ describe("Provider Command Center route", () => {
       },
       application: approvalApplication,
       auditEvents,
+      mutations,
     });
 
     const response = await request(app)
-      .post("/api/provider-command-center/admin/applications/42/decision-preflight")
+      .post("/api/provider-command-center/admin/applications/42/decision")
       .send({
         action: "APPROVE",
         reasonCode: "APPROVED_ALL_CHECKS_PASSED",
@@ -124,6 +179,7 @@ describe("Provider Command Center route", () => {
       eventType: "PROVIDER_COMMAND_DECISION_REJECTED_PERMISSION",
       actorUserId: "support_uid",
     });
+    expect(mutations).toHaveLength(0);
   });
 
   it("fails closed on mismatched provider/application identifiers", async () => {
