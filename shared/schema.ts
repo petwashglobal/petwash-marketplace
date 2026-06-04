@@ -12442,6 +12442,26 @@ export type RetentionPolicy = typeof retentionPolicies.$inferSelect;
 export const insertRetentionPolicySchema = createInsertSchema(retentionPolicies).omit({ createdAt: true, updatedAt: true });
 export type InsertRetentionPolicy = z.infer<typeof insertRetentionPolicySchema>;
 
+// App sessions — pseudonymous session tracking for funnel/engagement analytics
+// (Data & Intelligence gap #2). subject_id is a pseudonymous token, never PII;
+// the bridge to a person lives only in the identity vault. Purely additive.
+export const appSessions = pgTable("app_sessions", {
+  id: serial("id").primaryKey(),
+  subjectId: text("subject_id"),
+  surface: text("surface").notNull(),
+  deviceId: text("device_id"),
+  startedAt: timestamp("started_at").notNull(),
+  endedAt: timestamp("ended_at"),
+  durationS: integer("duration_s"),
+  screensViewed: integer("screens_viewed"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_app_sessions_subject").on(table.subjectId, table.startedAt),
+]);
+export type AppSession = typeof appSessions.$inferSelect;
+export const insertAppSessionSchema = createInsertSchema(appSessions).omit({ id: true, createdAt: true });
+export type InsertAppSession = z.infer<typeof insertAppSessionSchema>;
+
 export const onboardingCases = pgTable("onboarding_cases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
