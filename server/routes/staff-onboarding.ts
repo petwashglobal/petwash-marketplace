@@ -31,6 +31,33 @@ import { logger } from '../lib/logger';
 import { staffOnboardingService } from '../services/StaffOnboardingService';
 import { receiptFraudDetection } from '../services/ReceiptFraudDetection';
 
+function getAuthenticatedUserId(req: any): string | null {
+  const userId = req.user?.uid || req.user?.id || req.userId || req.firebaseUser?.uid;
+  return userId ? String(userId) : null;
+}
+
+function requireOwnEmployeeId(req: any, res: any, employeeId: string): boolean {
+  const userId = getAuthenticatedUserId(req);
+
+  if (!userId) {
+    res.status(401).json({
+      success: false,
+      error: 'Authentication required',
+    });
+    return false;
+  }
+
+  if (employeeId !== userId) {
+    res.status(403).json({
+      success: false,
+      error: 'Unauthorized - you can only submit staff records for your own employee account',
+    });
+    return false;
+  }
+
+  return true;
+}
+
 export function registerStaffOnboardingRoutes(app: Express) {
   
   // =================== STAFF APPLICATIONS ===================
@@ -438,6 +465,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.post('/api/staff/expenses', requireAuth, async (req, res) => {
     try {
       const data = insertStaffExpenseSchema.parse(req.body);
+      if (!requireOwnEmployeeId(req, res, data.employeeId)) return;
       
       logger.info('[API] Processing expense submission', {
         employeeId: data.employeeId,
@@ -614,6 +642,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.post('/api/staff/logbook', requireAuth, async (req, res) => {
     try {
       const data = insertStaffLogbookSchema.parse(req.body);
+      if (!requireOwnEmployeeId(req, res, data.employeeId)) return;
       
       // Verify GPS if locations provided
       let gpsVerified = false;
