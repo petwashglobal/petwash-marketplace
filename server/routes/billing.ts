@@ -33,7 +33,7 @@ const PaymentCapturedSchema = z.object({
   currency:         z.literal("ILS"),
   customerId:       z.string().min(1),
   providerId:       z.string().min(1),
-  processor:        z.enum(["stripe", "nayax", "manual"]),
+  processor:        z.enum(["nayax", "manual"]),
   processorRef:     z.string().min(1),
   paymentMethod:    z.enum(["card", "bank_transfer", "cash", "wallet"]),
   customerTaxId:    z.string().optional(),

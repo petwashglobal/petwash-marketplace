@@ -51,7 +51,7 @@ export interface PaymentEvent {
   currency:         "ILS";
   customerId:       string;
   providerId:       string;
-  processor:        "stripe" | "nayax" | "manual";
+  processor:        "nayax" | "manual";
   processorRef:     string;
   paymentMethod:    "card" | "bank_transfer" | "cash" | "wallet";
 
