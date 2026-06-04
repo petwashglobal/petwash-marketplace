@@ -27,8 +27,8 @@ describe('signup black luxury canvas', () => {
   });
 
   it('bumps the cache purge version when signup shell rendering changes', () => {
-    expect(main).toContain('2026-06-03-signup-mobile-trust-rebuild');
-    expect(html).toContain('2026-06-03-inline-signup-mobile-trust-rebuild');
+    expect(main).toContain('2026-06-04-signup-clean-auth-surface');
+    expect(html).toContain('2026-06-04-inline-signup-clean-auth-surface');
   });
 
   it('keeps the mobile hero hierarchy locked to logo first, headline second', () => {
@@ -40,24 +40,41 @@ describe('signup black luxury canvas', () => {
     expect(signup).toContain('.sl-card,.sl-trustCard,.sl-secBadge{ display:none }');
     expect(signup).toContain('.sl-divPaw{ display:none }');
     expect(signup).toContain('.sl-dog{ width:min(42vw, 162px)');
-    expect(signup).toContain('.sl-entryRow{ grid-template-columns:1fr');
-    expect(signup).toContain("const query = '(max-width: 767px), (max-height: 500px) and (orientation: landscape)'");
+    expect(signup).toContain('@media(max-width:380px)');
+    expect(signup).toContain('.sl-dogWrap{ display:none }');
     expect(signup).toContain('grid-template-columns:minmax(360px,.9fr) minmax(360px,1.1fr)');
     expect(signup).toContain('.sl-logo{ width:min(48vw, 420px); min-width:360px');
     expect(signup).toContain('@media(max-height:500px) and (orientation:landscape)');
     expect(signup).toContain('grid-template-columns:minmax(240px,.74fr) minmax(320px,1.26fr)');
     expect(signup).toContain('.sl-logo{ width:min(42vw, 280px); min-width:0; max-width:100% }');
-    expect(signup).toContain('.sl-heroCta{ display:flex; min-height:52px');
+    expect(signup).not.toContain('.sl-heroCta');
     expect(signup).not.toContain('<YahooIcon />');
     expect(signup).not.toMatch(/#d8ad55|#f4d48a|rgba\(244,212,138/);
   });
 
-  it('keeps phone signup controls honest and dark on the black page', () => {
+  it('keeps phone signup controls honest, dark, and narrow before account verification', () => {
     expect(signup).toContain('sl-terms--quick');
     expect(signup).toContain('if (!requireTerms()) return;');
-    expect(signup).toContain('sl-entryStatus');
+    expect(signup).toContain('sl-inlineError');
+    expect(signup).toContain('role="alert"');
+    expect(signup).toContain('const readyForSubmit = terms && !busy');
+    expect(signup).toContain('disabled={!readyForSubmit}');
+    expect(signup).toContain('sl-submitHint');
     expect(signup).not.toContain('sl-entryBtn');
     expect(signup).not.toContain('entryBtn');
+    expect(signup).not.toContain('EntryCodeField');
+    expect(signup).not.toContain('sl-entryStatus');
+    expect(signup).not.toContain('sl-adv');
+    expect(signup).not.toContain('sl-consent');
+    expect(signup).not.toContain('sl-wallets');
+    expect(signup).not.toContain('sl-wbtn');
+    expect(signup).not.toContain('sl-soonPill');
+    expect(signup).not.toContain('Mobile Wallet Consent');
+    expect(signup).not.toContain('Face ID / Biometric Consent');
+    expect(signup).not.toContain('Save Password to My Device');
+    expect(signup).not.toContain('Remember Me for 30 Days');
+    expect(signup).not.toContain('Add to Apple Wallet');
+    expect(signup).not.toContain('Next-Time Entry');
     expect(signup).toContain('background:rgba(0,0,0,.55) !important');
     expect(signup).toContain('.PhoneInputInput{');
     expect(signup).toContain('color:var(--white) !important');

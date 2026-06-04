@@ -12,7 +12,7 @@ import "./lib/i18next-init";
 // current app intentionally does not register a service worker; this boot
 // guard clears orphan registrations and their caches, then reloads once so
 // the browser re-fetches the current Firebase Hosting bundle.
-const PETWASH_CACHE_PURGE_VERSION = '2026-06-03-signup-mobile-trust-rebuild';
+const PETWASH_CACHE_PURGE_VERSION = '2026-06-04-signup-clean-auth-surface';
 
 if (typeof window !== 'undefined') {
   void (async () => {

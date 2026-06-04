@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateProviderPayoutAfterDiscount,
+  evaluateLedgerSeparation,
   evaluateOperatingAction,
+  evaluatePassSeparation,
+  evaluatePaymentRailControl,
+  evaluateRoleSeparation,
+  getLaunchFeatureFlagDefaults,
   type OperatingDecision,
   type OperatingInput,
 } from '../../shared/petwash-operating-system';
 
-function codes(decision: OperatingDecision): string[] {
+function codes(decision: Pick<OperatingDecision, 'blockers'>): string[] {
   return decision.blockers.map((blocker) => blocker.code);
 }
 
@@ -418,5 +423,197 @@ describe('PetWash operating system control logic', () => {
     expect(result.blockers).toEqual([]);
     expect(result.riskLevel).toBe('LOW');
     expect(result.audit.hashChainRequired).toBe(true);
+  });
+
+  it('ignores client-claimed roles and blocks admin access without backend admin role', () => {
+    const result = evaluateRoleSeparation({
+      requestedSurface: 'ADMIN_CONTROL_PLANE',
+      serverRoles: ['customer'],
+      roleSources: ['database', 'local_storage'],
+      clientClaimedRole: 'super_admin',
+      adminMfaVerified: true,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.ignoredClientRole).toBe(true);
+    expect(result.effectiveRoles).toEqual(['customer']);
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'CLIENT_ROLE_IGNORED',
+      'ADMIN_ROLE_REQUIRED',
+    ]));
+  });
+
+  it('allows provider dashboard only for approved providers with valid compliance', () => {
+    const result = evaluateRoleSeparation({
+      requestedSurface: 'PROVIDER_DASHBOARD',
+      serverRoles: ['provider_approved'],
+      providerStatus: 'approved',
+      providerComplianceValid: true,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.blockers).toEqual([]);
+  });
+
+  it('blocks provider dashboard for pending or expired provider compliance states', () => {
+    const result = evaluateRoleSeparation({
+      requestedSurface: 'PROVIDER_DASHBOARD',
+      serverRoles: ['provider_pending_review'],
+      providerStatus: 'pending_admin_review',
+      providerComplianceValid: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'PROVIDER_APPROVAL_REQUIRED',
+      'PROVIDER_COMPLIANCE_VALID_REQUIRED',
+    ]));
+  });
+
+  it('keeps customer wallet passes separate from provider identity passes', () => {
+    const result = evaluatePassSeparation({
+      passKind: 'PROVIDER_PARTNER_PASS',
+      operation: 'CUSTOMER_REDEMPTION',
+      qrScope: 'customer_wallet_redemption',
+      ledgerKind: 'CUSTOMER_WALLET_LIABILITY',
+      sharesSerialWithOtherPassType: true,
+      exposesProviderEarnings: true,
+      exposesProviderTaxOrKyc: true,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'PASS_SERIAL_SCOPE_MUST_BE_UNIQUE',
+      'PROVIDER_PASS_QR_SCOPE_REQUIRED',
+      'PROVIDER_PASS_CANNOT_USE_CUSTOMER_WALLET',
+      'PROVIDER_PASS_EARNINGS_PRIVATE',
+      'PROVIDER_PASS_TAX_KYC_PRIVATE',
+    ]));
+  });
+
+  it('allows a clean customer member pass redemption scope', () => {
+    const result = evaluatePassSeparation({
+      passKind: 'CUSTOMER_MEMBER_PASS',
+      operation: 'CUSTOMER_REDEMPTION',
+      qrScope: 'customer_wallet_redemption',
+      ledgerKind: 'CUSTOMER_WALLET_LIABILITY',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.blockers).toEqual([]);
+  });
+
+  it('blocks ledgers that are mutable, untagged, not idempotent, or mix customer credit with provider payable', () => {
+    const result = evaluateLedgerSeparation({
+      ledgerKind: 'PROVIDER_PAYABLE',
+      moneyEventState: 'captured',
+      appendOnly: false,
+      attemptsToMixCustomerCreditWithProviderPayable: true,
+      creditType: 'PAID_GIFT_CARD',
+      paidOrFree: 'paid',
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'LEDGER_APPEND_ONLY_REQUIRED',
+      'LEDGER_SOURCE_EVENT_REQUIRED',
+      'LEDGER_IDEMPOTENCY_REQUIRED',
+      'BUSINESS_LINE_REQUIRED',
+      'TRANSACTION_VAT_RATE_REQUIRED',
+      'CUSTOMER_WALLET_PROVIDER_PAYABLE_MIX_BLOCKED',
+      'PROVIDER_PAYABLE_CREDIT_TYPE_BLOCKED',
+      'PROVIDER_PAYABLE_JOB_LINK_REQUIRED',
+    ]));
+  });
+
+  it('allows append-only customer wallet liability entries when source, idempotency, VAT, and business line are present', () => {
+    const result = evaluateLedgerSeparation({
+      ledgerKind: 'CUSTOMER_WALLET_LIABILITY',
+      businessLine: 'STATION',
+      moneyEventState: 'wallet_load',
+      appendOnly: true,
+      sourceEventId: 'upay_123',
+      idempotencyKey: 'UPAY:upay_123:wallet_load',
+      vatRateStoredOnTransaction: true,
+      creditType: 'STORE_CREDIT',
+      paidOrFree: 'paid',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.blockers).toEqual([]);
+  });
+
+  it('blocks UPay/Nayax capture rails from issuing official documents outside SUMIT', () => {
+    const result = evaluatePaymentRailControl({
+      captureRail: 'UPAY',
+      businessLine: 'STATION',
+      moneyEventState: 'captured',
+      documentIssuer: 'UPAY',
+      upayInvoicingDisabled: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(codes(result)).toEqual(expect.arrayContaining([
+      'RAIL_EXTERNAL_TRANSACTION_ID_REQUIRED',
+      'RAIL_IDEMPOTENCY_REQUIRED',
+      'UPAY_INVOICING_MUST_BE_DISABLED',
+      'SUMIT_ONLY_LEGAL_DOCUMENT_REQUIRED',
+      'SUMIT_DOCUMENT_LINK_REQUIRED',
+    ]));
+  });
+
+  it('requires SUMIT credit-note handling before refunds are closed', () => {
+    const result = evaluatePaymentRailControl({
+      captureRail: 'NAYAX',
+      businessLine: 'STATION',
+      moneyEventState: 'refund',
+      documentIssuer: 'SUMIT',
+      sumitDocumentLinked: true,
+      externalTransactionId: 'nayax_123',
+      idempotencyKey: 'NAYAX:nayax_123:refund',
+      nayaxInvoicingDisabled: true,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(codes(result)).toContain('SUMIT_CREDIT_NOTE_REQUIRED');
+  });
+
+  it('blocks split settlement and Invoice Israel cases until reconciliation and allocation checks are complete', () => {
+    const split = evaluatePaymentRailControl({
+      captureRail: 'SUMIT',
+      businessLine: 'PLATFORM',
+      moneyEventState: 'split_settlement',
+      documentIssuer: 'SUMIT',
+      externalTransactionId: 'sumit_123',
+      idempotencyKey: 'SUMIT:sumit_123:split_settlement',
+      splitSettlementReconciles: false,
+    });
+
+    const allocation = evaluatePaymentRailControl({
+      captureRail: 'SUMIT',
+      businessLine: 'SUPPLIER_PAYABLE',
+      moneyEventState: 'pending',
+      documentIssuer: 'SUMIT',
+      externalTransactionId: 'supplier_invoice_123',
+      idempotencyKey: 'SUPPLIER:supplier_invoice_123:pending',
+      allocationNumberRequired: true,
+      allocationNumberVerified: false,
+    });
+
+    expect(codes(split)).toContain('SPLIT_SETTLEMENT_RECONCILIATION_REQUIRED');
+    expect(codes(allocation)).toContain('INVOICE_ISRAEL_ALLOCATION_VERIFICATION_REQUIRED');
+  });
+
+  it('ships launch feature flags with risky platform, payout, auto-approval, shop, and franchise lines off by default', () => {
+    const flags = new Map(getLaunchFeatureFlagDefaults().map((flag) => [flag.key, flag.live]));
+
+    expect(flags.get('line_a_member_signup.live')).toBe(true);
+    expect(flags.get('line_c_platform_waitlist.live')).toBe(true);
+    expect(flags.get('admin_mfa')).toBe(true);
+    expect(flags.get('line_b_shop_online.live')).toBe(false);
+    expect(flags.get('line_c_platform_booking.live')).toBe(false);
+    expect(flags.get('line_c_platform_payout.live')).toBe(false);
+    expect(flags.get('line_c_provider_auto_approve.live')).toBe(false);
+    expect(flags.get('line_e_franchise.live')).toBe(false);
   });
 });
