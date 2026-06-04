@@ -36,6 +36,26 @@ function assertSafeUploadPath(filePath: string): void {
   }
 }
 
+/**
+ * Returns true iff `filePath` resolves to a path strictly inside UPLOAD_DIR.
+ *
+ * This is an explicit boolean guard used at the top of every function that
+ * touches the filesystem with a caller-supplied path.  It lets CodeQL's
+ * taint-analysis see that the tainted value is neutralised before any FS
+ * sink is reached (the throw-based assertSafeUploadPath is opaque to static
+ * analysis because it never returns a "safe" value — it either returns void
+ * or throws, so the analyser keeps the taint live past the call site).
+ *
+ * Semantics: the root directory itself is excluded (resolved === UPLOAD_DIR)
+ * so callers always operate on a *file* inside the directory, never on the
+ * directory node itself.
+ */
+function isSafeUploadPath(filePath: string): boolean {
+  const resolved = path.resolve(filePath);
+  const prefix = UPLOAD_DIR + path.sep;
+  return resolved.startsWith(prefix);
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
@@ -54,8 +74,11 @@ const upload = multer({
 });
 
 function sha256File(filePath: string): string {
+  // CodeQL path-injection fix: explicit early-return guard before any FS call.
+  // isSafeUploadPath resolves and prefix-checks the path so the analyser can
+  // see the taint is dead before fs.readFileSync is reached.
+  if (!isSafeUploadPath(filePath)) return '';
   try {
-    assertSafeUploadPath(filePath);
     const buf = fs.readFileSync(filePath);
     return crypto.createHash('sha256').update(buf).digest('hex');
   } catch {
@@ -64,8 +87,10 @@ function sha256File(filePath: string): string {
 }
 
 async function compressIfNeeded(filePath: string): Promise<void> {
+  // CodeQL path-injection fix: same pattern — early return kills taint before
+  // sharp(), fs.statSync(), and fs.renameSync() are reached.
+  if (!isSafeUploadPath(filePath)) return;
   try {
-    assertSafeUploadPath(filePath);
     const sharp = (await import('sharp')).default;
     const info = await sharp(filePath).metadata();
     const width = info.width ?? 0;
