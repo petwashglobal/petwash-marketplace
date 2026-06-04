@@ -10,7 +10,6 @@
  *  - Gemini / Vertex AI (generativelanguage.googleapis.com)
  *  - SendGrid click-tracking (click.petwash.co.il)
  *  - Twilio JS (media.twiliocdn.com)
- *  - Stripe.js (js.stripe.com)
  *  - Sentry telemetry (*.sentry.io)
  *  - Replit DevTools (*.replit.dev, *.repl.co)
  *
@@ -50,8 +49,6 @@ const CSP_DIRECTIVES = [
     "https://www.google.com/recaptcha/",
     "https://www.gstatic.com/recaptcha/",
     "https://www.recaptcha.net",
-    // Stripe
-    "https://js.stripe.com",
     // Twilio
     "https://media.twiliocdn.com",
     // Sentry
@@ -131,8 +128,6 @@ const CSP_DIRECTIVES = [
     "https://*.ingest.sentry.io",
     // Twilio
     "https://media.twiliocdn.com",
-    // Stripe
-    "https://api.stripe.com",
     // HubSpot analytics, forms, conversations
     "https://*.hubspot.com",
     "https://*.hubapi.com",
@@ -144,14 +139,12 @@ const CSP_DIRECTIVES = [
     isDev ? "wss://localhost:*" : "",
   ].filter(Boolean).join(" "),
 
-  // Frames — only Google reCAPTCHA + Stripe payment UI
+  // Frames — only Google reCAPTCHA
   [
     "frame-src",
     "'self'",
     "https://www.google.com/recaptcha/",
     "https://recaptcha.google.com/",
-    "https://js.stripe.com",
-    "https://hooks.stripe.com",
     replitHosts,
   ].filter(Boolean).join(" "),
 
