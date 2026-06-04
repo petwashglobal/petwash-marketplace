@@ -13,6 +13,7 @@
 
 import { COUNTRY_TO_LANGUAGE, type LanguageCode } from '../../shared/languages';
 import { isPublicIP } from '../utils/ipValidation';
+import { safeIPFetch } from '../lib/safeOutboundUrl';
 
 export interface GeolocationData {
   // Country Information
@@ -142,7 +143,7 @@ export class GeolocationService {
     if (!isPublicIP(ip)) {
       throw new Error(`ip-api.com: invalid or non-public IP address`);
     }
-    const response = await fetch(`https://ip-api.com/json/${ip}`);
+    const response = await safeIPFetch('https://ip-api.com/json', ip);
     
     if (!response.ok) {
       throw new Error(`ip-api.com returned ${response.status}`);
@@ -179,7 +180,7 @@ export class GeolocationService {
     if (!isPublicIP(ip)) {
       throw new Error(`ipapi.co: invalid or non-public IP address`);
     }
-    const response = await fetch(`https://ipapi.co/${ip}/json/`);
+    const response = await safeIPFetch('https://ipapi.co', ip, '/json/');
     
     if (!response.ok) {
       throw new Error(`ipapi.co returned ${response.status}`);
@@ -216,7 +217,7 @@ export class GeolocationService {
     if (!isPublicIP(ip)) {
       throw new Error(`ipinfo.io: invalid or non-public IP address`);
     }
-    const response = await fetch(`https://ipinfo.io/${ip}/json`);
+    const response = await safeIPFetch('https://ipinfo.io', ip, '/json');
     
     if (!response.ok) {
       throw new Error(`ipinfo.io returned ${response.status}`);

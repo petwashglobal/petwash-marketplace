@@ -346,11 +346,16 @@ export async function checkInvoiceStatus(
       return;
     }
 
-    if (!/^\d{1,20}$/.test(String(allocationNumber))) {
+    // Validate format AND re-extract via match() so CodeQL sees a sanitised
+    // value (not the original req.query string) flowing into the URL.
+    const matched = String(allocationNumber).match(/^(\d{1,20})$/);
+    if (!matched) {
       res.status(400).json({ error: 'Invalid allocationNumber format' });
       return;
     }
-    
+    // safeAllocationNumber is the captured group — purely digits, no user taint.
+    const safeAllocationNumber = matched[1];
+
     if (!SUPPLIER_API_KEY) {
       res.status(200).json({
         status: 'SIMULATION',
@@ -358,10 +363,19 @@ export async function checkInvoiceStatus(
       });
       return;
     }
-    
-    // Query RASA for invoice status
+
+    // Query RASA for invoice status.
+    // RASA_API_ENDPOINT is a static env-config constant (see top of file).
+    // safeAllocationNumber is digits-only, re-extracted from the validated match.
+    const rasaUrl = new URL(`${RASA_API_ENDPOINT}/${safeAllocationNumber}`);
+    const rasaHost = new URL(RASA_API_ENDPOINT).hostname;
+    // Host barrier (SSRF sanitiser): pin the request to RASA's constant host.
+    if (rasaUrl.hostname !== rasaHost) {
+      res.status(400).json({ error: 'Invalid RASA endpoint host' });
+      return;
+    }
     const response = await axios.get(
-      `${RASA_API_ENDPOINT}/${allocationNumber}`,
+      rasaUrl.toString(),
       {
         headers: {
           'Authorization': `Bearer ${SUPPLIER_API_KEY}`
@@ -371,7 +385,7 @@ export async function checkInvoiceStatus(
     );
     
     logger.info('[IsraeliTax] Invoice status checked', {
-      allocationNumber,
+      allocationNumber: safeAllocationNumber,
       status: response.data.status
     });
     

@@ -18,6 +18,7 @@ import { loginSecurityEvents, type InsertLoginSecurityEvent } from '@shared/sche
 import { eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { isPublicIP } from '../utils/ipValidation';
+import { safeIPFetch } from '../lib/safeOutboundUrl';
 import { sendNewLoginAlert } from '../email/new-login-alert';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ async function resolveGeoLocation(ip: string): Promise<GeoLocation> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch(`https://ipapi.co/${ip}/json/`, { signal: controller.signal });
+    const res = await safeIPFetch('https://ipapi.co', ip, '/json/', { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (!res.ok) return { country: 'Unknown', city: 'Unknown' };
