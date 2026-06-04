@@ -30,6 +30,7 @@ export type OperatingApprover =
   | 'ACCOUNTANT'
   | 'LEGAL'
   | 'FINANCE'
+  | 'COMPLIANCE'
   | 'PROVIDER_MANAGER'
   | 'SUPPORT'
   | 'ENGINEERING';
@@ -47,6 +48,184 @@ export type CreditType =
   | 'BIRTHDAY_CREDIT'
   | 'LOYALTY_CREDIT'
   | 'GOODWILL_CREDIT';
+
+export type PetWashBusinessLine =
+  | 'STATION'
+  | 'SHOP'
+  | 'PLATFORM'
+  | 'SUPPLIER_PAYABLE'
+  | 'FRANCHISE';
+
+export type PetWashRole =
+  | 'customer'
+  | 'provider_applicant'
+  | 'provider_pending_review'
+  | 'provider_approved'
+  | 'provider_suspended'
+  | 'provider_rejected'
+  | 'supplier_applicant'
+  | 'supplier_approved'
+  | 'merchant_partner'
+  | 'academy_partner'
+  | 'staff'
+  | 'admin'
+  | 'super_admin'
+  | 'finance_admin'
+  | 'compliance_admin'
+  | 'support_admin';
+
+export type PetWashSurface =
+  | 'CUSTOMER_APP'
+  | 'PROVIDER_APPLY'
+  | 'PROVIDER_DASHBOARD'
+  | 'PARTNER_PORTAL'
+  | 'ADMIN_CONTROL_PLANE';
+
+export type RoleSource =
+  | 'database'
+  | 'server_claims'
+  | 'client_body'
+  | 'query'
+  | 'local_storage';
+
+export type ProviderComplianceStatus =
+  | 'draft'
+  | 'submitted'
+  | 'pending_kyc'
+  | 'pending_documents'
+  | 'pending_tax_declaration'
+  | 'pending_insurance_review'
+  | 'pending_admin_review'
+  | 'approved'
+  | 'compliance_expiring'
+  | 'compliance_expired'
+  | 'suspended'
+  | 'rejected'
+  | 'terminated';
+
+export type PetWashPassKind = 'CUSTOMER_MEMBER_PASS' | 'PROVIDER_PARTNER_PASS';
+export type PetWashPassOperation =
+  | 'CUSTOMER_REDEMPTION'
+  | 'PROVIDER_CHECK_IN'
+  | 'DISPLAY_CUSTOMER_WALLET'
+  | 'DISPLAY_PROVIDER_EARNINGS'
+  | 'DISPLAY_PROVIDER_TAX_OR_KYC'
+  | 'REISSUE'
+  | 'REVOKE';
+export type PetWashPassQrScope =
+  | 'customer_wallet_redemption'
+  | 'provider_identity_attendance'
+  | 'unknown';
+
+export type LedgerEntryKind =
+  | 'CUSTOMER_WALLET_LIABILITY'
+  | 'PROVIDER_PAYABLE'
+  | 'SUPPLIER_PAYABLE'
+  | 'REVENUE'
+  | 'OWNER_LOAN'
+  | 'TAX_DOCUMENT';
+
+export type MoneyEventState =
+  | 'authorized'
+  | 'pending'
+  | 'captured'
+  | 'settled'
+  | 'wallet_load'
+  | 'wallet_redeem'
+  | 'credit_grant'
+  | 'split_payment'
+  | 'split_settlement'
+  | 'refund'
+  | 'partial_refund'
+  | 'cancellation_penalty'
+  | 'no_show'
+  | 'declined'
+  | 'timeout'
+  | 'failed'
+  | 'chargeback_dispute';
+
+export type PaymentCaptureRail = 'NAYAX' | 'UPAY' | 'SUMIT';
+export type LegalDocumentIssuer = 'SUMIT' | 'UPAY' | 'NAYAX' | 'NONE';
+
+export type PetWashFeatureFlagKey =
+  | 'role_separation_v2'
+  | 'auth_no_client_role_trust'
+  | 'provider_onboarding_v2'
+  | 'provider_state_machine'
+  | 'provider_digital_signature'
+  | 'provider_renewal_6mo'
+  | 'provider_pass'
+  | 'customer_pass_v2'
+  | 'admin_mfa'
+  | 'partner_portal'
+  | 'line_a_station.live'
+  | 'line_a_member_signup.live'
+  | 'line_b_shop_vending.live'
+  | 'line_b_shop_online.live'
+  | 'line_c_platform_waitlist.live'
+  | 'line_c_platform_booking.live'
+  | 'line_c_platform_payout.live'
+  | 'line_c_provider_auto_approve.live'
+  | 'line_d_supplier_invoice_ingest.live'
+  | 'line_d_supplier_invoice_auto_approve.live'
+  | 'line_d_supplier_auto_pay.live'
+  | 'line_e_franchise.live';
+
+export type ProviderCareRole =
+  | 'mobile_wash_operator'
+  | 'station_operator'
+  | 'groomer'
+  | 'station_host'
+  | 'technician'
+  | 'trainer'
+  | 'pet_sitter'
+  | 'dog_walker';
+
+export type ProviderDeclarationKind =
+  | 'truthfulness'
+  | 'legal_right_to_work'
+  | 'tax_status'
+  | 'insurance_status'
+  | 'animal_welfare'
+  | 'privacy_notice'
+  | 'code_of_conduct';
+
+export type ElectronicSignatureTier = 'none' | 'basic' | 'secure' | 'certified';
+
+export type AgentLane = 'CODEX' | 'CLAUDE' | 'XCODE' | 'HUMAN' | 'CI';
+export type AgentWorkKind =
+  | 'NEW_SCREEN'
+  | 'ARCHITECTURE_DECISION'
+  | 'API_CLIENT'
+  | 'AUTH'
+  | 'PAYMENTS'
+  | 'KYC'
+  | 'UNKNOWN_BUG'
+  | 'TESTS'
+  | 'LEGAL_TEXT'
+  | 'WATCHDOG'
+  | 'PRODUCTION_RELEASE';
+
+export type WatchdogName =
+  | 'Sentinel'
+  | 'Ledger-Keeper'
+  | 'Compliance-Hound'
+  | 'Welfare-Guard'
+  | 'Evidence-Vault'
+  | 'Privacy-Warden';
+
+export type WatchdogAction =
+  | 'none'
+  | 'step_up_auth'
+  | 'lock_account'
+  | 'hold_money'
+  | 'block_job_assignment'
+  | 'pause_provider'
+  | 'legal_hold'
+  | 'throttle_data_access'
+  | 'notify_dpo'
+  | 'notify_finance'
+  | 'notify_provider_manager';
 
 export interface OperatingActor {
   id: string;
@@ -193,6 +372,131 @@ export interface OperatingDecision {
   providerPayout?: ProviderPayoutDecision;
 }
 
+export interface ArchitectureDecision {
+  allowed: boolean;
+  version: string;
+  riskLevel: OperatingRiskLevel;
+  blockers: OperatingBlocker[];
+}
+
+export interface RoleSeparationInput {
+  requestedSurface: PetWashSurface;
+  serverRoles: PetWashRole[];
+  roleSources?: RoleSource[];
+  clientClaimedRole?: PetWashRole;
+  providerStatus?: ProviderComplianceStatus;
+  providerComplianceValid?: boolean;
+  adminMfaVerified?: boolean;
+}
+
+export interface RoleSeparationDecision extends ArchitectureDecision {
+  effectiveRoles: PetWashRole[];
+  ignoredClientRole: boolean;
+}
+
+export interface PassSeparationInput {
+  passKind: PetWashPassKind;
+  operation: PetWashPassOperation;
+  qrScope: PetWashPassQrScope;
+  ledgerKind?: LedgerEntryKind;
+  sharesSerialWithOtherPassType?: boolean;
+  exposesProviderEarnings?: boolean;
+  exposesProviderTaxOrKyc?: boolean;
+}
+
+export interface LedgerSeparationInput {
+  ledgerKind: LedgerEntryKind;
+  businessLine?: PetWashBusinessLine;
+  moneyEventState: MoneyEventState;
+  appendOnly: boolean;
+  sourceEventId?: string;
+  idempotencyKey?: string;
+  vatRateStoredOnTransaction?: boolean;
+  attemptsToMixCustomerCreditWithProviderPayable?: boolean;
+  creditType?: CreditType;
+  paidOrFree?: 'paid' | 'free';
+  providerJobOrBookingId?: string;
+}
+
+export interface PaymentRailControlInput {
+  captureRail: PaymentCaptureRail;
+  businessLine: PetWashBusinessLine;
+  moneyEventState: MoneyEventState;
+  documentIssuer: LegalDocumentIssuer;
+  sumitDocumentLinked?: boolean;
+  externalTransactionId?: string;
+  idempotencyKey?: string;
+  upayInvoicingDisabled?: boolean;
+  nayaxInvoicingDisabled?: boolean;
+  refundCreditNoteIssuedBySumit?: boolean;
+  splitSettlementReconciles?: boolean;
+  allocationNumberRequired?: boolean;
+  allocationNumberVerified?: boolean;
+}
+
+export interface LaunchFeatureFlagState {
+  key: PetWashFeatureFlagKey;
+  live: boolean;
+  reason: string;
+}
+
+export interface ProviderCareOnboardingInput {
+  providerRole?: ProviderCareRole;
+  serviceAreaDeclared?: boolean;
+  passkeyOrAppleAuthCreated?: boolean;
+  phoneVerified?: boolean;
+  emailVerified?: boolean;
+  declarationsAccepted?: Partial<Record<ProviderDeclarationKind, boolean>>;
+  sensitiveDeclarationEnabled?: boolean;
+  counselApprovedSensitiveDeclarations?: boolean;
+  identityVaultUsed?: boolean;
+  rawIdExposedOutsideVault?: boolean;
+  documentsEncryptedBeforeUpload?: boolean;
+  documentExpiryTracked?: boolean;
+  lapsedInsuranceOrLicense?: boolean;
+  verificationStatus?: ProviderComplianceStatus;
+  contractSignatureTier?: ElectronicSignatureTier;
+  contractVersionPinned?: boolean;
+  contractEvidenceHashStored?: boolean;
+  trainingCompleted?: boolean;
+  welfareTrainingCompleted?: boolean;
+  equipmentOrStationPaired?: boolean;
+  complianceGateGreen?: boolean;
+}
+
+export interface AgentChangeDoctrineInput {
+  workKind: AgentWorkKind;
+  implementingLane: AgentLane;
+  checkedByLane?: AgentLane;
+  shipsVia?: AgentLane;
+  rootCauseIdentified?: boolean;
+  duplicateSystemCheckDone?: boolean;
+  staleCodeRemovalReviewed?: boolean;
+  temporaryHackIntroduced?: boolean;
+  temporaryHackExpiryTask?: boolean;
+  featureFlagPresent?: boolean;
+  rollbackDocumented?: boolean;
+  automatedTestsPass?: boolean;
+  securityReviewDone?: boolean;
+  privacyReviewDone?: boolean;
+  accessibilityReviewDone?: boolean;
+  humanReviewDone?: boolean;
+  xcodeBuildOrCiGatePassed?: boolean;
+  secretsOrPiiInLogs?: boolean;
+  largeUnrevertibleChange?: boolean;
+}
+
+export interface WatchdogSignalInput {
+  watchdog: WatchdogName;
+  signalStatus: 'clean' | 'warning' | 'hit';
+  actionTaken: WatchdogAction;
+  auditEventWritten?: boolean;
+  humanQueueCreated?: boolean;
+  affectedProviderId?: string;
+  affectedMoneyMovementId?: string;
+  affectedPrivacySubjectId?: string;
+}
+
 const MONEY_ACTIONS: OperatingActionType[] = [
   'PROVIDER_PAYOUT',
   'SUPPLIER_PAYMENT',
@@ -215,6 +519,798 @@ function blocker(
   nextAction: string,
 ): OperatingBlocker {
   return { code, severity, approver, message, nextAction };
+}
+
+function architectureDecision(blockers: OperatingBlocker[]): ArchitectureDecision {
+  return {
+    allowed: blockers.length === 0,
+    version: PETWASH_OPERATING_SYSTEM_VERSION,
+    riskLevel: riskFromBlockers(blockers),
+    blockers,
+  };
+}
+
+function hasAnyRole(roles: PetWashRole[], allowed: PetWashRole[]): boolean {
+  return roles.some((role) => allowed.includes(role));
+}
+
+export function evaluateRoleSeparation(input: RoleSeparationInput): RoleSeparationDecision {
+  const blockers: OperatingBlocker[] = [];
+  const roleSources = input.roleSources ?? ['database'];
+  const trustedRoles = input.serverRoles.filter(Boolean);
+  const ignoredClientRole = Boolean(input.clientClaimedRole || roleSources.some((source) => (
+    source === 'client_body' || source === 'query' || source === 'local_storage'
+  )));
+
+  if (trustedRoles.length === 0) {
+    blockers.push(blocker(
+      'TRUSTED_SERVER_ROLE_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'A role must come from server claims or the database, never from client state.',
+      'Load backend-derived roles before routing or authorizing the user.',
+    ));
+  }
+
+  if (ignoredClientRole) {
+    blockers.push(blocker(
+      'CLIENT_ROLE_IGNORED',
+      'HIGH',
+      'ENGINEERING',
+      'Client-supplied role was ignored and must not influence routing or permissions.',
+      'Use database roles/custom claims only and remove client role trust from the caller.',
+    ));
+  }
+
+  if (input.requestedSurface === 'ADMIN_CONTROL_PLANE') {
+    if (!hasAnyRole(trustedRoles, ['admin', 'super_admin', 'finance_admin', 'compliance_admin', 'support_admin'])) {
+      blockers.push(blocker(
+        'ADMIN_ROLE_REQUIRED',
+        'BLOCKED',
+        'NIR',
+        'Admin control plane requires an admin/staff role granted by the backend.',
+        'Route non-admin users away from /admin and request proper RBAC approval.',
+      ));
+    }
+    if (!input.adminMfaVerified) {
+      blockers.push(blocker(
+        'ADMIN_MFA_REQUIRED',
+        'BLOCKED',
+        'ENGINEERING',
+        'Admin control plane requires MFA.',
+        'Complete MFA before opening the admin surface.',
+      ));
+    }
+  }
+
+  if (input.requestedSurface === 'PROVIDER_DASHBOARD') {
+    if (!trustedRoles.includes('provider_approved') || input.providerStatus !== 'approved') {
+      blockers.push(blocker(
+        'PROVIDER_APPROVAL_REQUIRED',
+        'BLOCKED',
+        'PROVIDER_MANAGER',
+        'Provider dashboard is only for approved providers.',
+        'Keep applicant on onboarding/status page until admin approval is complete.',
+      ));
+    }
+    if (!input.providerComplianceValid) {
+      blockers.push(blocker(
+        'PROVIDER_COMPLIANCE_VALID_REQUIRED',
+        'BLOCKED',
+        'LEGAL',
+        'Approved provider still needs valid compliance before receiving jobs.',
+        'Renew declarations/documents or suspend job access until compliance is valid.',
+      ));
+    }
+  }
+
+  if (input.requestedSurface === 'PARTNER_PORTAL' && !hasAnyRole(trustedRoles, [
+    'supplier_applicant',
+    'supplier_approved',
+    'merchant_partner',
+    'academy_partner',
+    'admin',
+    'super_admin',
+  ])) {
+    blockers.push(blocker(
+      'PARTNER_ROLE_REQUIRED',
+      'BLOCKED',
+      'FINANCE',
+      'Partner portal requires supplier/merchant/academy role granted by the backend.',
+      'Create or approve a partner profile before opening the portal.',
+    ));
+  }
+
+  return {
+    ...architectureDecision(blockers),
+    effectiveRoles: trustedRoles,
+    ignoredClientRole,
+  };
+}
+
+export function evaluatePassSeparation(input: PassSeparationInput): ArchitectureDecision {
+  const blockers: OperatingBlocker[] = [];
+
+  if (input.sharesSerialWithOtherPassType) {
+    blockers.push(blocker(
+      'PASS_SERIAL_SCOPE_MUST_BE_UNIQUE',
+      'BLOCKED',
+      'ENGINEERING',
+      'Customer and provider passes must not share serials or QR semantics.',
+      'Issue separate serials/tokens per pass type.',
+    ));
+  }
+
+  if (input.passKind === 'CUSTOMER_MEMBER_PASS') {
+    if (input.qrScope !== 'customer_wallet_redemption') {
+      blockers.push(blocker(
+        'CUSTOMER_PASS_QR_SCOPE_REQUIRED',
+        'BLOCKED',
+        'ENGINEERING',
+        'Customer member pass QR must be scoped to customer identity/redemption only.',
+        'Regenerate the pass with customer_wallet_redemption scope.',
+      ));
+    }
+    if (input.operation === 'PROVIDER_CHECK_IN') {
+      blockers.push(blocker(
+        'CUSTOMER_PASS_CANNOT_CHECK_IN_PROVIDER',
+        'BLOCKED',
+        'PROVIDER_MANAGER',
+        'Customer pass cannot be used for provider attendance or job check-in.',
+        'Use the separate Provider Partner Pass.',
+      ));
+    }
+  }
+
+  if (input.passKind === 'PROVIDER_PARTNER_PASS') {
+    if (input.qrScope !== 'provider_identity_attendance') {
+      blockers.push(blocker(
+        'PROVIDER_PASS_QR_SCOPE_REQUIRED',
+        'BLOCKED',
+        'ENGINEERING',
+        'Provider pass QR must be scoped to provider identity/attendance only.',
+        'Regenerate the pass with provider_identity_attendance scope.',
+      ));
+    }
+    if (input.operation === 'CUSTOMER_REDEMPTION' || input.operation === 'DISPLAY_CUSTOMER_WALLET' || input.ledgerKind === 'CUSTOMER_WALLET_LIABILITY') {
+      blockers.push(blocker(
+        'PROVIDER_PASS_CANNOT_USE_CUSTOMER_WALLET',
+        'BLOCKED',
+        'FINANCE',
+        'Provider pass must not redeem customer wallet credit or expose customer stored value.',
+        'Use the customer member pass for wallet redemption and provider pass for attendance only.',
+      ));
+    }
+    if (input.operation === 'DISPLAY_PROVIDER_EARNINGS' || input.exposesProviderEarnings) {
+      blockers.push(blocker(
+        'PROVIDER_PASS_EARNINGS_PRIVATE',
+        'BLOCKED',
+        'FINANCE',
+        'Provider pass must not expose earnings or payout data.',
+        'Show earnings only inside the authenticated provider dashboard.',
+      ));
+    }
+    if (input.operation === 'DISPLAY_PROVIDER_TAX_OR_KYC' || input.exposesProviderTaxOrKyc) {
+      blockers.push(blocker(
+        'PROVIDER_PASS_TAX_KYC_PRIVATE',
+        'BLOCKED',
+        'LEGAL',
+        'Provider pass must not expose tax, KYC, insurance, ID, or private compliance records.',
+        'Keep sensitive compliance data in the admin/provider portal only.',
+      ));
+    }
+  }
+
+  return architectureDecision(blockers);
+}
+
+export function evaluateLedgerSeparation(input: LedgerSeparationInput): ArchitectureDecision {
+  const blockers: OperatingBlocker[] = [];
+
+  if (!input.appendOnly) {
+    blockers.push(blocker(
+      'LEDGER_APPEND_ONLY_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Money ledgers must be append-only so evidence cannot silently disappear.',
+      'Record a compensating entry instead of mutating or deleting ledger history.',
+    ));
+  }
+  if (!input.sourceEventId) {
+    blockers.push(blocker(
+      'LEDGER_SOURCE_EVENT_REQUIRED',
+      'BLOCKED',
+      'FINANCE',
+      'Ledger entry requires a source event from booking, station, rail, refund, or admin control.',
+      'Link the source event before recording ledger movement.',
+    ));
+  }
+  if (!input.idempotencyKey) {
+    blockers.push(blocker(
+      'LEDGER_IDEMPOTENCY_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Ledger entry requires idempotency to prevent duplicate money events.',
+      'Create a stable idempotency key from source system and event id.',
+    ));
+  }
+  if (!input.businessLine) {
+    blockers.push(blocker(
+      'BUSINESS_LINE_REQUIRED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'Every money event must carry a business line.',
+      'Tag the event as station, shop, platform, supplier payable, or franchise.',
+    ));
+  }
+  if (!input.vatRateStoredOnTransaction) {
+    blockers.push(blocker(
+      'TRANSACTION_VAT_RATE_REQUIRED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'VAT rate must be stored on the transaction, not read only from a future global value.',
+      'Persist the VAT rate used at transaction time.',
+    ));
+  }
+  if (input.attemptsToMixCustomerCreditWithProviderPayable) {
+    blockers.push(blocker(
+      'CUSTOMER_WALLET_PROVIDER_PAYABLE_MIX_BLOCKED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'Customer stored value is a customer liability and cannot be mixed with provider payables.',
+      'Use separate wallet and provider-payable ledgers.',
+    ));
+  }
+  if (input.ledgerKind === 'PROVIDER_PAYABLE' && input.creditType) {
+    blockers.push(blocker(
+      'PROVIDER_PAYABLE_CREDIT_TYPE_BLOCKED',
+      'BLOCKED',
+      'FINANCE',
+      'Provider payable cannot be represented as a customer credit type.',
+      'Create a provider payable entry linked to the completed job/booking.',
+    ));
+  }
+  if (input.ledgerKind === 'PROVIDER_PAYABLE' && !input.providerJobOrBookingId) {
+    blockers.push(blocker(
+      'PROVIDER_PAYABLE_JOB_LINK_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider payable must link to a completed job or booking.',
+      'Link the payable to the completed service record.',
+    ));
+  }
+  if (input.paidOrFree === 'paid' && input.creditType && isFreeCredit(input.creditType)) {
+    blockers.push(blocker(
+      'PAID_FREE_LEDGER_MIX_BLOCKED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'Paid customer credit and free promotional credit must stay separated.',
+      'Use distinct credit types and ledger entries.',
+    ));
+  }
+
+  return architectureDecision(blockers);
+}
+
+function moneyStateNeedsSumitDocument(state: MoneyEventState): boolean {
+  return state === 'captured' ||
+    state === 'settled' ||
+    state === 'wallet_redeem' ||
+    state === 'refund' ||
+    state === 'partial_refund' ||
+    state === 'cancellation_penalty';
+}
+
+export function evaluatePaymentRailControl(input: PaymentRailControlInput): ArchitectureDecision {
+  const blockers: OperatingBlocker[] = [];
+
+  if (!input.externalTransactionId) {
+    blockers.push(blocker(
+      'RAIL_EXTERNAL_TRANSACTION_ID_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Rail event needs the provider transaction id for traceability.',
+      'Persist Nayax/UPay/SUMIT transaction id before ledger posting.',
+    ));
+  }
+  if (!input.idempotencyKey) {
+    blockers.push(blocker(
+      'RAIL_IDEMPOTENCY_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Rail ingestion requires idempotency to avoid double charging or double invoicing.',
+      'Create an idempotency key from rail, transaction id, and event state.',
+    ));
+  }
+  if (input.captureRail === 'UPAY' && input.upayInvoicingDisabled !== true) {
+    blockers.push(blocker(
+      'UPAY_INVOICING_MUST_BE_DISABLED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'UPay may capture payment, but PetWash documents must be issued only by SUMIT.',
+      'Disable UPay invoicing for this flow or do not activate the rail.',
+    ));
+  }
+  if (input.captureRail === 'NAYAX' && input.nayaxInvoicingDisabled !== true) {
+    blockers.push(blocker(
+      'NAYAX_INVOICING_MUST_BE_DISABLED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'Nayax may capture station payments, but PetWash documents must be issued only by SUMIT.',
+      'Disable Nayax invoicing/document generation for this flow.',
+    ));
+  }
+  if (moneyStateNeedsSumitDocument(input.moneyEventState)) {
+    if (input.documentIssuer !== 'SUMIT') {
+      blockers.push(blocker(
+        'SUMIT_ONLY_LEGAL_DOCUMENT_REQUIRED',
+        'BLOCKED',
+        'ACCOUNTANT',
+        'One sale must create one legal document, and SUMIT is the system of record.',
+        'Route official invoice/receipt/credit-note creation through SUMIT only.',
+      ));
+    }
+    if (!input.sumitDocumentLinked) {
+      blockers.push(blocker(
+        'SUMIT_DOCUMENT_LINK_REQUIRED',
+        'BLOCKED',
+        'ACCOUNTANT',
+        'Captured/settled/refund event must link to the SUMIT document.',
+        'Create or link the SUMIT document before closing the event.',
+      ));
+    }
+  }
+  if ((input.moneyEventState === 'refund' || input.moneyEventState === 'partial_refund') && !input.refundCreditNoteIssuedBySumit) {
+    blockers.push(blocker(
+      'SUMIT_CREDIT_NOTE_REQUIRED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'Refunds and partial refunds require SUMIT credit-note handling.',
+      'Create/link the SUMIT credit note before the refund is closed.',
+    ));
+  }
+  if (input.moneyEventState === 'split_settlement' && !input.splitSettlementReconciles) {
+    blockers.push(blocker(
+      'SPLIT_SETTLEMENT_RECONCILIATION_REQUIRED',
+      'BLOCKED',
+      'FINANCE',
+      'Split settlement must reconcile to the cent before statements or payouts.',
+      'Reconcile PetWash/provider/franchise allocations against the source event.',
+    ));
+  }
+  if (input.allocationNumberRequired && !input.allocationNumberVerified) {
+    blockers.push(blocker(
+      'INVOICE_ISRAEL_ALLOCATION_VERIFICATION_REQUIRED',
+      'BLOCKED',
+      'ACCOUNTANT',
+      'Invoice Israel allocation number is required and not verified.',
+      'Verify allocation number before payment/posting.',
+    ));
+  }
+
+  return architectureDecision(blockers);
+}
+
+export function getLaunchFeatureFlagDefaults(): LaunchFeatureFlagState[] {
+  return [
+    { key: 'role_separation_v2', live: false, reason: 'Ship behind flag; enable after route guard tests pass.' },
+    { key: 'auth_no_client_role_trust', live: false, reason: 'Enable after backend-derived role checks are wired.' },
+    { key: 'provider_onboarding_v2', live: false, reason: 'Requires provider application persistence and review queue.' },
+    { key: 'provider_state_machine', live: false, reason: 'Requires persisted state machine and admin transition audit.' },
+    { key: 'provider_digital_signature', live: false, reason: 'Requires evidence storage and legal-approved declaration versions.' },
+    { key: 'provider_renewal_6mo', live: false, reason: 'Requires scheduler, reminders, and compliance-expired blocking.' },
+    { key: 'provider_pass', live: false, reason: 'Requires separate provider pass semantics and no wallet/payable mixing.' },
+    { key: 'customer_pass_v2', live: false, reason: 'Requires customer pass tokens, revocation, and wallet terms.' },
+    { key: 'admin_mfa', live: true, reason: 'Admin control surfaces require MFA.' },
+    { key: 'partner_portal', live: false, reason: 'Supplier/merchant portal is future-ready, not active until onboarding exists.' },
+    { key: 'line_a_station.live', live: true, reason: 'Station line may go live only through approved K9000/SUMIT controls.' },
+    { key: 'line_a_member_signup.live', live: true, reason: 'Member signup is launch scope.' },
+    { key: 'line_b_shop_vending.live', live: false, reason: 'Retail/vending is not active until inventory/accounting controls are ready.' },
+    { key: 'line_b_shop_online.live', live: false, reason: 'Online shop is not active until stock, refund, VAT, and SUMIT rules are ready.' },
+    { key: 'line_c_platform_waitlist.live', live: true, reason: 'Provider waitlist can collect applications with manual review only.' },
+    { key: 'line_c_platform_booking.live', live: false, reason: 'Platform booking is blocked until provider KYC, terms, payout, and control gates are ready.' },
+    { key: 'line_c_platform_payout.live', live: false, reason: 'Provider payouts are blocked until payable ledger and approval gates are live.' },
+    { key: 'line_c_provider_auto_approve.live', live: false, reason: 'Sensitive services must never auto-approve providers.' },
+    { key: 'line_d_supplier_invoice_ingest.live', live: true, reason: 'Supplier invoice ingest is allowed as controlled pre-accounting intake.' },
+    { key: 'line_d_supplier_invoice_auto_approve.live', live: false, reason: 'Supplier invoice auto-approval is blocked.' },
+    { key: 'line_d_supplier_auto_pay.live', live: false, reason: 'Supplier auto-pay is blocked; human control required.' },
+    { key: 'line_e_franchise.live', live: false, reason: 'Franchise/location partner flow requires separate legal/accounting workflow.' },
+  ];
+}
+
+const REQUIRED_PROVIDER_DECLARATIONS: ProviderDeclarationKind[] = [
+  'truthfulness',
+  'legal_right_to_work',
+  'tax_status',
+  'insurance_status',
+  'animal_welfare',
+  'privacy_notice',
+  'code_of_conduct',
+];
+
+function signatureTierRank(tier: ElectronicSignatureTier | undefined): number {
+  if (tier === 'certified') return 3;
+  if (tier === 'secure') return 2;
+  if (tier === 'basic') return 1;
+  return 0;
+}
+
+function isSensitiveWorkKind(kind: AgentWorkKind): boolean {
+  return kind === 'AUTH' ||
+    kind === 'PAYMENTS' ||
+    kind === 'KYC' ||
+    kind === 'WATCHDOG' ||
+    kind === 'PRODUCTION_RELEASE';
+}
+
+export function evaluateProviderCareOnboarding(input: ProviderCareOnboardingInput): ArchitectureDecision {
+  const blockers: OperatingBlocker[] = [];
+
+  if (!input.providerRole) {
+    blockers.push(blocker(
+      'PROVIDER_ROLE_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider cannot onboard without a declared operating role.',
+      'Select provider role before collecting role-specific declarations and documents.',
+    ));
+  }
+  if (!input.serviceAreaDeclared) {
+    blockers.push(blocker(
+      'PROVIDER_SERVICE_AREA_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider service area is missing.',
+      'Collect service area before routing, scheduling, or job eligibility.',
+    ));
+  }
+  if (!input.passkeyOrAppleAuthCreated) {
+    blockers.push(blocker(
+      'PROVIDER_PASSKEY_OR_APPLE_AUTH_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Provider app identity must be phishing-resistant.',
+      'Create passkey or Sign in with Apple identity before provider onboarding continues.',
+    ));
+  }
+  if (!input.phoneVerified || !input.emailVerified) {
+    blockers.push(blocker(
+      'PROVIDER_PHONE_EMAIL_VERIFICATION_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider phone and email must both be verified.',
+      'Complete OTP/email verification before document intake.',
+    ));
+  }
+
+  for (const declaration of REQUIRED_PROVIDER_DECLARATIONS) {
+    if (input.declarationsAccepted?.[declaration] !== true) {
+      blockers.push(blocker(
+        `PROVIDER_DECLARATION_${declaration.toUpperCase()}_REQUIRED`,
+        'BLOCKED',
+        declaration === 'privacy_notice' ? 'LEGAL' : 'PROVIDER_MANAGER',
+        `Provider declaration is missing: ${declaration}.`,
+        'Collect the discrete, timestamped declaration before activation.',
+      ));
+    }
+  }
+
+  if (input.sensitiveDeclarationEnabled && !input.counselApprovedSensitiveDeclarations) {
+    blockers.push(blocker(
+      'SENSITIVE_DECLARATION_COUNSEL_APPROVAL_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'Sensitive declarations need explicit legal approval before collection.',
+      'Disable the sensitive question or attach approved declaration wording.',
+    ));
+  }
+  if (!input.identityVaultUsed) {
+    blockers.push(blocker(
+      'IDENTITY_VAULT_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'Raw identity data must live only in the isolated Identity Vault.',
+      'Route ID/KYC uploads into the vault and expose only verification decisions to the app.',
+    ));
+  }
+  if (input.rawIdExposedOutsideVault) {
+    blockers.push(blocker(
+      'RAW_ID_OUTSIDE_VAULT_BLOCKED',
+      'BLOCKED',
+      'LEGAL',
+      'Raw ID data was exposed outside the Identity Vault boundary.',
+      'Stop the flow, remove the exposure, and keep only masked/tokenized references outside the vault.',
+    ));
+  }
+  if (!input.documentsEncryptedBeforeUpload) {
+    blockers.push(blocker(
+      'PROVIDER_DOCUMENT_ENCRYPTION_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Provider documents must be encrypted before upload/storage.',
+      'Encrypt document blobs before upload and store only encrypted references.',
+    ));
+  }
+  if (!input.documentExpiryTracked) {
+    blockers.push(blocker(
+      'PROVIDER_DOCUMENT_EXPIRY_TRACKING_REQUIRED',
+      'BLOCKED',
+      'COMPLIANCE',
+      'Provider document expiry dates must be tracked.',
+      'Record expiry metadata and create renewal reminders/holds.',
+    ));
+  }
+  if (input.lapsedInsuranceOrLicense) {
+    blockers.push(blocker(
+      'LAPSED_INSURANCE_OR_LICENSE_JOB_HOLD',
+      'BLOCKED',
+      'LEGAL',
+      'Lapsed insurance or license blocks new job assignment.',
+      'Hold provider from new jobs until the renewed document is verified.',
+    ));
+  }
+  if (input.verificationStatus !== 'approved') {
+    blockers.push(blocker(
+      'PROVIDER_VERIFICATION_APPROVAL_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider verification is not approved.',
+      'Finish KYC/document review before provider activation.',
+    ));
+  }
+  if (signatureTierRank(input.contractSignatureTier) < signatureTierRank('secure')) {
+    blockers.push(blocker(
+      'PROVIDER_SECURE_SIGNATURE_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'Provider contract requires at least secure electronic signature evidence.',
+      'Use a secure or certified signature flow for the provider agreement.',
+    ));
+  }
+  if (!input.contractVersionPinned || !input.contractEvidenceHashStored) {
+    blockers.push(blocker(
+      'PROVIDER_CONTRACT_EVIDENCE_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'Provider contract version and evidence hash must be sealed.',
+      'Pin the agreement version and store signature metadata/hash in the evidence vault.',
+    ));
+  }
+  if (!input.trainingCompleted || !input.welfareTrainingCompleted) {
+    blockers.push(blocker(
+      'PROVIDER_TRAINING_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider training and animal-welfare training must be completed.',
+      'Complete required training modules and comprehension checks before first job.',
+    ));
+  }
+  if (!input.equipmentOrStationPaired) {
+    blockers.push(blocker(
+      'PROVIDER_EQUIPMENT_OR_STATION_PAIRING_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Provider is not paired with required equipment/station context.',
+      'Pair provider to approved station, vehicle, equipment, or service context.',
+    ));
+  }
+  if (!input.complianceGateGreen) {
+    blockers.push(blocker(
+      'PROVIDER_FIRST_JOB_COMPLIANCE_GATE_REQUIRED',
+      'BLOCKED',
+      'COMPLIANCE',
+      'First-job gate is not green.',
+      'Confirm documents, declarations, contract, training, insurance, and role readiness before job access.',
+    ));
+  }
+
+  return architectureDecision(blockers);
+}
+
+export function evaluateAgentChangeDoctrine(input: AgentChangeDoctrineInput): ArchitectureDecision {
+  const blockers: OperatingBlocker[] = [];
+  const sensitive = isSensitiveWorkKind(input.workKind);
+
+  if (input.secretsOrPiiInLogs) {
+    blockers.push(blocker(
+      'SECRETS_OR_PII_IN_LOGS_BLOCKED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Secrets or personal data must never be printed or committed.',
+      'Remove the exposure, rotate affected secrets if needed, and keep logs masked.',
+    ));
+  }
+  if (input.largeUnrevertibleChange) {
+    blockers.push(blocker(
+      'CHANGE_MUST_BE_SMALL_REVIEWABLE_REVERTIBLE',
+      'BLOCKED',
+      'ENGINEERING',
+      'Large unrevertible changes are not allowed for PetWash launch work.',
+      'Split into small PRs with a tested rollback path.',
+    ));
+  }
+  if (!input.duplicateSystemCheckDone || !input.staleCodeRemovalReviewed) {
+    blockers.push(blocker(
+      'DUPLICATE_AND_STALE_CODE_CHECK_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Every agent must check for duplicate systems, stale code, and old unsafe shortcuts before adding more code.',
+      'Run the module/bypass scan and remove or gate old paths safely.',
+    ));
+  }
+  if (input.temporaryHackIntroduced && !input.temporaryHackExpiryTask) {
+    blockers.push(blocker(
+      'TEMP_HACK_EXPIRY_TASK_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Temporary hacks require an expiry note and removal task.',
+      'Add tracked removal work or replace the hack with a proper implementation.',
+    ));
+  }
+  if (input.workKind === 'UNKNOWN_BUG' && !input.rootCauseIdentified) {
+    blockers.push(blocker(
+      'ROOT_CAUSE_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Unknown bugs require root cause before shipping a fix.',
+      'Trace the failure and prove the cause before changing production behavior.',
+    ));
+  }
+  if (sensitive && (!input.featureFlagPresent || !input.rollbackDocumented)) {
+    blockers.push(blocker(
+      'FEATURE_FLAG_AND_ROLLBACK_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Sensitive work must ship behind a tested feature flag with rollback notes.',
+      'Add a feature flag and document rollback before merge.',
+    ));
+  }
+  if (!input.automatedTestsPass) {
+    blockers.push(blocker(
+      'AUTOMATED_TESTS_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Automated tests must pass before the change can move forward.',
+      'Run focused tests and add missing coverage for the changed behavior.',
+    ));
+  }
+  if (sensitive && !input.securityReviewDone) {
+    blockers.push(blocker(
+      'SECURITY_REVIEW_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Auth, payment, KYC, watchdog, and production-release work requires security review.',
+      'Complete security review before merge.',
+    ));
+  }
+  if ((input.workKind === 'KYC' || input.workKind === 'LEGAL_TEXT') && !input.privacyReviewDone) {
+    blockers.push(blocker(
+      'PRIVACY_REVIEW_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'KYC, declarations, consents, and legal text require privacy review.',
+      'Complete privacy/legal review before collecting or displaying sensitive data.',
+    ));
+  }
+  if (input.workKind === 'NEW_SCREEN' && !input.accessibilityReviewDone) {
+    blockers.push(blocker(
+      'ACCESSIBILITY_REVIEW_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'New screens require accessibility review before release.',
+      'Check VoiceOver, contrast, touch targets, Dynamic Type, RTL, and reduced motion.',
+    ));
+  }
+  if (!input.humanReviewDone) {
+    blockers.push(blocker(
+      'HUMAN_REVIEW_REQUIRED',
+      'BLOCKED',
+      'NIR',
+      'AI-generated or agent-generated work cannot reach main unreviewed.',
+      'Request human review before merge/release.',
+    ));
+  }
+  if ((input.workKind === 'NEW_SCREEN' || input.workKind === 'PRODUCTION_RELEASE') && input.shipsVia !== 'XCODE' && !input.xcodeBuildOrCiGatePassed) {
+    blockers.push(blocker(
+      'XCODE_OR_CI_SHIPPING_GATE_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'App/UI release work must pass Xcode or CI shipping gate.',
+      'Build/test through Xcode or CI before release.',
+    ));
+  }
+  if (input.workKind === 'ARCHITECTURE_DECISION' && input.implementingLane !== 'CLAUDE' && input.checkedByLane !== 'HUMAN') {
+    blockers.push(blocker(
+      'ARCHITECTURE_DECISION_REVIEW_REQUIRED',
+      'BLOCKED',
+      'NIR',
+      'Architecture decisions need judgment and human sign-off.',
+      'Create an ADR/design note and route it for review before implementation.',
+    ));
+  }
+
+  return architectureDecision(blockers);
+}
+
+export function evaluateWatchdogSignal(input: WatchdogSignalInput): ArchitectureDecision {
+  const blockers: OperatingBlocker[] = [];
+
+  if (input.signalStatus === 'clean') return architectureDecision(blockers);
+
+  if (!input.auditEventWritten) {
+    blockers.push(blocker(
+      'WATCHDOG_AUDIT_EVENT_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Watchdog warning/hit must write an audit event.',
+      'Record the watchdog signal, action, affected entity, and timestamp.',
+    ));
+  }
+  if (input.signalStatus === 'hit' && !input.humanQueueCreated) {
+    blockers.push(blocker(
+      'WATCHDOG_HUMAN_QUEUE_REQUIRED',
+      'BLOCKED',
+      'NIR',
+      'Critical watchdog hits require a human review queue item.',
+      'Create an admin queue item with required approver and next safe action.',
+    ));
+  }
+  if (input.watchdog === 'Sentinel' && input.signalStatus === 'hit' && input.actionTaken !== 'step_up_auth' && input.actionTaken !== 'lock_account') {
+    blockers.push(blocker(
+      'SENTINEL_STEP_UP_OR_LOCK_REQUIRED',
+      'BLOCKED',
+      'ENGINEERING',
+      'Auth anomaly requires step-up authentication or account lock.',
+      'Step up authentication or lock the account until reviewed.',
+    ));
+  }
+  if (input.watchdog === 'Ledger-Keeper' && input.signalStatus === 'hit' && input.actionTaken !== 'hold_money') {
+    blockers.push(blocker(
+      'LEDGER_KEEPER_MONEY_HOLD_REQUIRED',
+      'BLOCKED',
+      'FINANCE',
+      'Financial irregularity requires holding money movement.',
+      'Hold payout/refund/payment and notify finance.',
+    ));
+  }
+  if (input.watchdog === 'Compliance-Hound' && input.signalStatus === 'hit' && input.actionTaken !== 'block_job_assignment') {
+    blockers.push(blocker(
+      'COMPLIANCE_HOUND_JOB_BLOCK_REQUIRED',
+      'BLOCKED',
+      'COMPLIANCE',
+      'Compliance lapse requires blocking job assignment.',
+      'Hold provider from jobs until documents/compliance are restored.',
+    ));
+  }
+  if (input.watchdog === 'Welfare-Guard' && input.signalStatus === 'hit' && input.actionTaken !== 'pause_provider') {
+    blockers.push(blocker(
+      'WELFARE_GUARD_PROVIDER_PAUSE_REQUIRED',
+      'BLOCKED',
+      'PROVIDER_MANAGER',
+      'Animal welfare hit requires provider pause and escalation.',
+      'Pause provider access and escalate the complaint/incident.',
+    ));
+  }
+  if (input.watchdog === 'Evidence-Vault' && input.signalStatus === 'hit' && input.actionTaken !== 'legal_hold') {
+    blockers.push(blocker(
+      'EVIDENCE_VAULT_LEGAL_HOLD_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'Evidence tamper signal requires legal hold.',
+      'Preserve evidence, block deletion, and alert legal.',
+    ));
+  }
+  if (input.watchdog === 'Privacy-Warden' && input.signalStatus === 'hit' && input.actionTaken !== 'throttle_data_access' && input.actionTaken !== 'notify_dpo') {
+    blockers.push(blocker(
+      'PRIVACY_WARDEN_THROTTLE_OR_DPO_REQUIRED',
+      'BLOCKED',
+      'LEGAL',
+      'Personal-data access anomaly requires throttling or DPO notification.',
+      'Throttle/export-block the actor and notify privacy owner/DPO.',
+    ));
+  }
+
+  return architectureDecision(blockers);
 }
 
 function requireFact(

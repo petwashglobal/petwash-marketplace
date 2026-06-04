@@ -159,7 +159,7 @@ async function inspect(page) {
     const safeTerms = document.querySelector('.sl-terms--quick');
     const panel = rectFor('.sl-panel');
     const logo = rectFor('.sl-logo');
-    const heroCta = rectFor('.sl-heroCta');
+    const primaryCta = rectFor('.sl-panel .sl-cta');
     const isLandscape = window.innerWidth > window.innerHeight;
     const isTabletWidth = window.innerWidth >= 768;
     const logoTopLimit = isLandscape ? 45 : isTabletWidth ? 24 : 18;
@@ -183,7 +183,10 @@ async function inspect(page) {
       oldSendCodeRemoved: !document.querySelector('.sl-entryBtn'),
       quickTermsVisible: Boolean(safeTerms && getComputedStyle(safeTerms).display !== 'none'),
       accountPanelReachable: Boolean(panel && panel.top < window.innerHeight * 0.78),
-      primaryCtaReachable: Boolean(heroCta && heroCta.top < window.innerHeight * 0.72),
+      primaryCtaExists: Boolean(primaryCta),
+      primaryCtaStartsInViewport: Boolean(primaryCta && primaryCta.top < window.innerHeight),
+      noHeroCta: !document.querySelector('.sl-heroCta'),
+      noPreAccountWalletControls: !document.querySelector('.sl-wallets,.sl-wbtn,.sl-consent,.sl-adv,.sl-entryStatus'),
     };
 
     return {
@@ -193,7 +196,7 @@ async function inspect(page) {
       logo,
       headline: rectFor('.sl-h1'),
       dog: rectFor('.sl-dog'),
-      heroCta,
+      primaryCta,
       panel,
       phoneWrapperBg: phoneWrapper ? getComputedStyle(phoneWrapper).backgroundColor : null,
       overflowing,
