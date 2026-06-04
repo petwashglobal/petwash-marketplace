@@ -12462,6 +12462,42 @@ export type AppSession = typeof appSessions.$inferSelect;
 export const insertAppSessionSchema = createInsertSchema(appSessions).omit({ id: true, createdAt: true });
 export type InsertAppSession = z.infer<typeof insertAppSessionSchema>;
 
+// Analytics aggregates (Data & Intelligence gaps 3 & 4). No PII — rolled-up
+// counts only. Populated by a separate reviewed job; purely additive tables.
+export const screenDwellSummary = pgTable("screen_dwell_summary", {
+  id: serial("id").primaryKey(),
+  day: date("day").notNull(),
+  screen: text("screen").notNull(),
+  views: integer("views").notNull().default(0),
+  reach: integer("reach").notNull().default(0),
+  avgDwellMs: integer("avg_dwell_ms"),
+  tapCount: integer("tap_count").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("screen_dwell_summary_unique").on(table.day, table.screen),
+  index("idx_screen_dwell_day").on(table.day, table.screen),
+]);
+export type ScreenDwellSummary = typeof screenDwellSummary.$inferSelect;
+export const insertScreenDwellSummarySchema = createInsertSchema(screenDwellSummary).omit({ id: true, createdAt: true });
+export type InsertScreenDwellSummary = z.infer<typeof insertScreenDwellSummarySchema>;
+
+export const stationHourlyLoad = pgTable("station_hourly_load", {
+  id: serial("id").primaryKey(),
+  stationId: text("station_id").notNull(),
+  hourBucket: timestamp("hour_bucket").notNull(),
+  activeSessionCount: integer("active_session_count").notNull().default(0),
+  utilizationPct: numeric("utilization_pct", { precision: 5, scale: 2 }),
+  avgQueueLength: numeric("avg_queue_length", { precision: 6, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("station_hourly_load_unique").on(table.stationId, table.hourBucket),
+  index("idx_station_hourly_station").on(table.stationId, table.hourBucket),
+]);
+export type StationHourlyLoad = typeof stationHourlyLoad.$inferSelect;
+export const insertStationHourlyLoadSchema = createInsertSchema(stationHourlyLoad).omit({ id: true, createdAt: true });
+export type InsertStationHourlyLoad = z.infer<typeof insertStationHourlyLoadSchema>;
+
 export const onboardingCases = pgTable("onboarding_cases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
