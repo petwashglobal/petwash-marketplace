@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: PetWash Care — Provider App API
+  version: 0.1.0
+  description: >
+    Backend for the native iOS provider app. The whole surface is gated by
+    PROVIDER_APP_API_ENABLED (off in production). Sensitive endpoints
+    (passkey verify, documents, signature) return 501 until security review +
+    Israeli counsel sign-off. This is the contract the iOS client is generated
+    from and the backend (Codex) implements.
+servers:
+  - url: https://api.petwash.co.il
+paths:
+  /api/provider-app/auth/passkey/challenge:
+    post:
+      summary: Issue a single-use passkey sign-in challenge
+      responses:
+        "200":
+          description: Challenge issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge: { type: string, description: base64, format: byte }
+        "503": { description: Provider-app API disabled }
+  /api/provider-app/auth/passkey/verify:
+    post:
+      summary: Verify a WebAuthn assertion and issue a session (NOT IMPLEMENTED)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clientDataJSON, authenticatorData, signature, credentialId]
+              properties:
+                clientDataJSON: { type: string, format: byte }
+                authenticatorData: { type: string, format: byte }
+                signature: { type: string, format: byte }
+                credentialId: { type: string, format: byte }
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "501": { description: Pending server-side WebAuthn validation + security review }
+  /api/provider-app/onboarding/jurisdictions:
+    get:
+      summary: List supported jurisdictions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Jurisdiction" }
+  /api/provider-app/onboarding/declarations:
+    get:
+      summary: Declarations for a jurisdiction (wording PENDING_COUNSEL until approved)
+      parameters:
+        - name: jurisdiction
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Declaration" }
+  /api/provider-app/documents:
+    post:
+      summary: Upload an encrypted KYC document (NOT IMPLEMENTED — needs Identity Vault)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, mimeType, ciphertext, wrappedKey]
+              properties:
+                filename: { type: string }
+                mimeType: { type: string }
+                ciphertext: { type: string, format: byte }
+                wrappedKey: { type: string, format: byte }
+      responses:
+        "501": { description: Pending Identity Vault + security review }
+  /api/provider-app/signature:
+    post:
+      summary: Submit signed agreement (NOT IMPLEMENTED — needs Evidence-Vault)
+      responses:
+        "501": { description: Pending Evidence-Vault + counsel-approved contract }
+  /api/provider-app/onboarding/activation:
+    get:
+      summary: Provider activation status
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivationStatus" }
+components:
+  schemas:
+    Session:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        providerID: { type: string }
+    Jurisdiction:
+      type: object
+      properties: { id: { type: string }, name: { type: string } }
+    Declaration:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        body: { type: string }
+        required: { type: boolean }
+    ActivationStatus:
+      type: object
+      properties:
+        state: { type: string, enum: [notStarted, inReview, activated, rejected] }
+        message: { type: string, nullable: true }

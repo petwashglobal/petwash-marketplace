@@ -298,6 +298,7 @@ import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
+import { providerAppRouter } from "./routes/provider-app";
 // PR-CI-SMOKE-HOTFIX: top-level ESM-correct imports. These were previously
 // inline `require(...)` calls that throw ReferenceError in this ESM module
 // (broke /health and would have broken startup config diagnostic + uncaught
@@ -939,6 +940,8 @@ app.get('/api/google/places-health', async (req, res) => {
 // window where registerRoutes() is still executing.
 // registerRoutes() skips re-mounting this router to prevent duplicate handling.
 app.use(publicAuthRouter);
+// Provider-app API (native iOS). Inert unless PROVIDER_APP_API_ENABLED === "true".
+app.use(providerAppRouter);
 
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
