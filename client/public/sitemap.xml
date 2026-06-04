@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://petwash.co.il/</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://petwash.co.il/" />
+    <xhtml:link rel="alternate" hreflang="he" href="https://petwash.co.il/he" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://petwash.co.il/" />
+  </url>
+  <url><loc>https://petwash.co.il/he</loc><lastmod>2026-06-01</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://petwash.co.il/stations/kfar-saba</loc><lastmod>2026-06-01</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://petwash.co.il/signup</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://petwash.co.il/pass</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://petwash.co.il/provider-onboarding</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://petwash.co.il/locations</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://petwash.co.il/terms</loc><lastmod>2026-06-01</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://petwash.co.il/privacy</loc><lastmod>2026-06-01</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>
