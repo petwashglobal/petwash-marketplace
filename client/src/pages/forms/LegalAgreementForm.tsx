@@ -120,7 +120,7 @@ Processing is conducted under consent (Art. 6(1)(a) GDPR) and contractual necess
 AES-256 encryption at rest, TLS 1.3 in transit, access controls, audit logging, and annual penetration testing.
 
 5. SUB-PROCESSORS
-Approved sub-processors: Google Cloud Platform (Firebase, Cloud Run), SendGrid, Stripe, Twilio.
+Approved sub-processors: Google Cloud Platform (Firebase, Cloud Run), SendGrid, Twilio, uPay, Sumit, Nayax.
 
 6. DATA RETENTION
 Personal data is retained for 7 years to comply with Israeli tax law, then securely deleted.
