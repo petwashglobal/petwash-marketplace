@@ -1,6 +1,7 @@
 /**
  * Provider Listings Page
- * Browse and filter providers for Sitter Suite, Walk My Pet, and PetTrek
+ * Browse and filter legally active providers for Sitter Suite and Walk My Pet.
+ * PetTrek remains frozen until operational licensing is cleared.
  */
 
 import { useState } from 'react';
@@ -14,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { fetchProviderBrowseResults } from '@/api/providerSearchApi';
 import {
   Search,
   Star,
@@ -26,7 +28,6 @@ import {
   Loader2,
   Dog,
   Home,
-  Car,
 } from 'lucide-react';
 
 interface Provider {
@@ -56,7 +57,7 @@ export default function ProviderListings() {
   const [, setLocation] = useLocation();
   const isHebrew = language === 'he';
   
-  const [serviceType, setServiceType] = useState<'walker' | 'sitter' | 'driver'>('walker');
+  const [serviceType, setServiceType] = useState<'walker' | 'sitter'>('walker');
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
   const [minRating, setMinRating] = useState(0);
@@ -66,21 +67,16 @@ export default function ProviderListings() {
   const platformMap: Record<typeof serviceType, string> = {
     walker: 'walk_my_pet',
     sitter: 'sitter_suite',
-    driver: 'pettrek',
   };
   
-  // Build query URL with all params for queryKey[0]
-  const providerQueryUrl = (() => {
-    const params = new URLSearchParams();
-    params.set('platform', platformMap[serviceType]);
-    if (cityFilter !== 'all') params.set('city', cityFilter);
-    if (minRating > 0) params.set('minRating', minRating.toString());
-    params.set('sortBy', sortBy);
-    return `/api/marketplace-bookings/search/providers?${params.toString()}`;
-  })();
-  
   const { data: providersData, isLoading } = useQuery({
-    queryKey: [providerQueryUrl],
+    queryKey: ['/api/providers/search', 'provider-listings', serviceType, cityFilter, minRating, sortBy],
+    queryFn: () => fetchProviderBrowseResults({
+      serviceType: serviceType === 'walker' ? 'dog_walking' : 'pet_sitting',
+      location: cityFilter !== 'all' ? cityFilter : undefined,
+      minRating,
+      sortBy,
+    }),
   });
   
   const providers: Provider[] = (providersData?.providers || []).map((p: any) => {
@@ -151,7 +147,6 @@ export default function ProviderListings() {
   const serviceTypeIcons = {
     walker: Dog,
     sitter: Home,
-    driver: Car,
   };
   
   const ServiceIcon = serviceTypeIcons[serviceType];
@@ -168,7 +163,7 @@ export default function ProviderListings() {
         {/* Service Type Tabs */}
         <div className="luxury-animate-slide-up luxury-delay-1">
           <Tabs value={serviceType} onValueChange={(value) => setServiceType(value as any)} className="mb-6">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 luxury-glass-card luxury-shadow-md p-1">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 luxury-glass-card luxury-shadow-md p-1">
               <TabsTrigger value="walker" data-testid="tab-walkers" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
                 <Dog className="h-4 w-4 mr-2" />
                 {t.walker}
@@ -176,10 +171,6 @@ export default function ProviderListings() {
               <TabsTrigger value="sitter" data-testid="tab-sitters" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
                 <Home className="h-4 w-4 mr-2" />
                 {t.sitter}
-              </TabsTrigger>
-              <TabsTrigger value="driver" data-testid="tab-drivers" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
-                <Car className="h-4 w-4 mr-2" />
-                {t.driver}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -253,7 +244,7 @@ export default function ProviderListings() {
               <div
                 key={provider.id}
                 className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 cursor-pointer luxury-animate-fade-in luxury-delay-${Math.min(idx + 3, 10)}`}
-                onClick={() => setLocation(`/providers/${provider.id}`)}
+                onClick={() => setLocation(`/marketplace/${platformMap[serviceType]}/${provider.id}`)}
                 data-testid={`provider-card-${provider.id}`}
               >
                 <div className="flex items-start gap-4 mb-4">

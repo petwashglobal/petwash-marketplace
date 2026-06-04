@@ -75,7 +75,7 @@ export default function WalkerDetail() {
       navigate('/signin');
       return;
     }
-    navigate(`/messages?to=walker-${id}`);
+    navigate(`/personal-inbox?to=walker-${id}`);
   };
 
   if (isLoading) {

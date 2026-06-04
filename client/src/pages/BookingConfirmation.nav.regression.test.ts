@@ -10,8 +10,9 @@
  *
  * Out of scope (NOT exercised, NOT in this PR):
  *   - the `/api/bookings/my-bookings` API query key (a backend endpoint, valid)
- *   - provider-detail "Message" buttons (/messages?to=...) — deferred to a
- *     dedicated PR after the route matrix is built
+ *
+ * Provider-detail message buttons are pinned separately in
+ * PlatformNavigation.nav.regression.test.ts.
  */
 
 import fs from 'node:fs';

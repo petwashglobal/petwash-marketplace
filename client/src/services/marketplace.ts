@@ -61,8 +61,6 @@ export function useProviderDetails(
  * @returns Mutation for creating bookings with cache invalidation
  */
 export function useCreateBooking() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (bookingData: {
       platformId: string;
@@ -74,12 +72,10 @@ export function useCreateBooking() {
       petIds?: string[];
       notes?: string;
     }) => {
-      const response = await apiRequest('POST', '/api/bookings', bookingData);
-      return response.json();
-    },
-    onSuccess: () => {
-      // Invalidate bookings cache
-      queryClient.invalidateQueries({ queryKey: ['/api/bookings'] });
+      void bookingData;
+      throw new Error(
+        'Legacy /api/bookings creation is disabled. Use the canonical booking-request or marketplace checkout flow.',
+      );
     },
   });
 }
@@ -108,8 +104,6 @@ export function useCustomerBookings(
  * @returns Mutation for cancelling bookings
  */
 export function useCancelBooking() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async ({
       bookingId,
@@ -118,12 +112,11 @@ export function useCancelBooking() {
       bookingId: string;
       reason: string;
     }) => {
-      const response = await apiRequest('POST', `/api/bookings/${bookingId}/cancel`, { reason });
-      return response.json();
-    },
-    onSuccess: () => {
-      // Invalidate bookings cache
-      queryClient.invalidateQueries({ queryKey: ['/api/bookings'] });
+      void bookingId;
+      void reason;
+      throw new Error(
+        'Legacy /api/bookings cancellation is disabled. Use the canonical booking-request cancellation flow.',
+      );
     },
   });
 }

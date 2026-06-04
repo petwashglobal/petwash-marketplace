@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { useLocation } from 'wouter';
+import { fetchProviderBrowseResults } from '@/api/providerSearchApi';
 
 const SERVICES_FILTER = [
   { key: 'all', label: 'All Services', he: 'כל השירותים' },
@@ -52,15 +53,33 @@ export default function Groomers({ language: langProp }: GroomersProps) {
   const [showFilters, setShowFilters] = useState(false);
 
   const { data, isLoading, isError } = useQuery<{ providers: GroomerResult[]; total: number }>({
-    queryKey: ['groomers'],
+    queryKey: ['/api/providers/search', 'groomers'],
     queryFn: async () => {
-      const res = await fetch('/api/marketplace/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: 'groomers', limit: 50, offset: 0 }),
+      const result = await fetchProviderBrowseResults({
+        serviceType: 'grooming',
+        pageSize: 50,
       });
-      if (!res.ok) throw new Error(`Groomer search failed: ${res.status}`);
-      return res.json();
+
+      return {
+        total: result.pagination.total,
+        providers: result.providers.map((provider) => {
+          const [firstName = '', ...lastNameParts] = provider.displayName.split(' ');
+          return {
+            id: provider.id,
+            firstName,
+            lastName: lastNameParts.join(' '),
+            profilePictureUrl: provider.profilePhotoUrl || undefined,
+            rating: provider.rating ?? undefined,
+            totalBookings: provider.reviewCount,
+            isActive: true,
+            isVerified: true,
+            priceDisplay: provider.pricing.perHour ? `₪${provider.pricing.perHour}` : undefined,
+            city: provider.location,
+            serviceArea: provider.location,
+            serviceTypes: provider.supportedServices,
+          };
+        }),
+      };
     },
   });
 

@@ -86,7 +86,7 @@ export default function DriverDetail() {
       navigate('/signin');
       return;
     }
-    navigate(`/messages?to=driver-${id}`);
+    navigate(`/personal-inbox?to=driver-${id}`);
   };
 
   if (isLoading) {

@@ -85,7 +85,7 @@ export default function GroomerDetail() {
       navigate('/signin');
       return;
     }
-    navigate(`/messages?to=groomer-${id}`);
+    navigate(`/personal-inbox?to=groomer-${id}`);
   };
 
   if (isLoading) {
