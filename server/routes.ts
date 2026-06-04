@@ -147,6 +147,7 @@ import contractorOnboardingRoutes from "./routes/contractor-onboarding";
 import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import providerTrainingRoutes from "./routes/provider-training";
+import providerCommandCenterRoutes from "./routes/provider-command-center";
 import policeCheckRoutes from "./routes/police-check";
 import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami, seedIntent } from "./routes/post-login";
 import accessRequestsRoutes from "./routes/access-requests";
@@ -10366,6 +10367,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // Provider Training - ⁦Pet Wash™⁩ professional training, quizzes, certificates
   app.use('/api/provider-training', validateFirebaseToken, apiLimiter, providerTrainingRoutes);
+
+  // Provider Command Center - Flow 01 decision preflight only.
+  // No live Slack, no live SUMIT, no provider activation in this slice.
+  app.use('/api/provider-command-center', validateFirebaseToken, apiLimiter, requireAdminMfa, requireRole('admin', 'management'), requireStaffApproved, requireMfaEnrolled, providerCommandCenterRoutes);
   
   // Police Check Badge System - Israeli תעודת יושר verification
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
@@ -15981,4 +15986,3 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
 }
-
