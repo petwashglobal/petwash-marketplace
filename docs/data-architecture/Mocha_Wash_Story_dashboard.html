@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mocha's Wash Story · PetWash™ Prestige</title>
+<style>
+  :root{ --ink:#111; --paper:#f4f3ef; --stone:#8a867b; --line:#e2ded3; --accent:#1d9e75; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;
+        display:flex; justify-content:center; padding:28px 16px 48px; -webkit-font-smoothing:antialiased; }
+  .wrap{ width:100%; max-width:420px; }
+  .kicker{ font-size:10px; letter-spacing:4px; text-transform:uppercase; color:var(--stone); }
+  .serif{ font-family:Georgia,"Times New Roman",serif; }
+  .card{ background:#fff; border:0.5px solid var(--line); border-radius:18px; overflow:hidden; }
+  .head{ padding:22px 20px 18px; }
+  .avatar{ width:50px; height:50px; border-radius:50%; background:var(--ink); color:#fff;
+           display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .row{ display:flex; align-items:center; gap:13px; margin-top:14px; }
+  .title{ font-size:27px; line-height:1.05; }
+  .sub{ font-size:12px; color:var(--stone); margin-top:3px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); }
+  .cellb{ background:#fff; padding:16px 18px; }
+  .lab{ font-size:11px; color:var(--stone); }
+  .num{ font-size:26px; margin-top:3px; }
+  .small{ font-size:15px; margin-top:5px; }
+  .note{ margin:16px; background:var(--ink); color:var(--paper); border-radius:14px; padding:18px; }
+  .note .lab{ color:#cfcabd; letter-spacing:2px; text-transform:uppercase; }
+  .note .body{ font-size:17px; line-height:1.45; margin-top:9px; }
+  .priv{ margin:0 16px 18px; background:#fff; border:0.5px solid var(--line); border-radius:14px; padding:16px 18px; }
+  .priv .top{ display:flex; align-items:center; gap:9px; font-size:13px; }
+  .priv p{ font-size:12px; color:#6b675e; line-height:1.55; margin-top:9px; }
+  .btns{ display:flex; gap:9px; margin-top:14px; }
+  .btn{ flex:1; text-align:center; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+        padding:11px; border-radius:7px; border:1px solid var(--ink); color:var(--ink); cursor:pointer; background:#fff; }
+  .btn.alt{ border-color:var(--line); }
+  .foot{ text-align:center; font-size:11px; color:var(--stone); margin-top:20px; letter-spacing:.4px; }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); display:inline-block; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div class="kicker">PetWash™ Prestige &nbsp;·&nbsp; <span class="dot"></span> member</div>
+        <div class="row">
+          <div class="avatar serif">M</div>
+          <div>
+            <div class="title serif">Mocha's wash story</div>
+            <div class="sub">Golden Retriever · double coat · member since Mar 2026</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="cellb"><div class="lab">Total washes</div><div class="num">38</div></div>
+        <div class="cellb"><div class="lab">This year</div><div class="num">14</div></div>
+        <div class="cellb"><div class="lab">Favourite station</div><div class="small">Dizengoff · Bay 2</div></div>
+        <div class="cellb"><div class="lab">Last wash</div><div class="small">6 days ago · 2:04</div></div>
+      </div>
+
+      <div class="note">
+        <div class="lab">Care note for Mocha</div>
+        <div class="body serif">Double coat. Warm water and a longer dry keep shedding down — Bay 2's high-flow dryer suits her best.</div>
+      </div>
+
+      <div class="priv">
+        <div class="top">🔒&nbsp; What we know · why we keep it</div>
+        <p>Wash dates, station, water settings and coat type — used only to write Mocha's story and improve your washes. Never sold. Yours to export or delete anytime.</p>
+        <div class="btns">
+          <div class="btn">Export</div>
+          <div class="btn alt">Manage data</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">A concept mockup · PetWash™ Prestige member dashboard · data returned, not extracted</div>
+  </div>
+</body>
+</html>
