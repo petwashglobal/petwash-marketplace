@@ -117,6 +117,8 @@ export default function Marketplace() {
       name: 'PetTrek',
       icon: <Car className="w-5 h-5" />,
       color: 'text-purple-600',
+      disabled: true,
+      badge: 'Coming Soon',
     },
     {
       id: 'groomers' as MarketplacePlatformId,
@@ -163,11 +165,17 @@ export default function Marketplace() {
                 <TabsTrigger
                   key={platform.id}
                   value={platform.id}
+                  disabled={platform.disabled}
                   className="flex items-center gap-2"
                   data-testid={`tab-${platform.id}`}
                 >
                   <span className={platform.color}>{platform.icon}</span>
                   <span className="hidden sm:inline">{platform.name}</span>
+                  {platform.badge ? (
+                    <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                      {platform.badge}
+                    </span>
+                  ) : null}
                 </TabsTrigger>
               ))}
             </TabsList>

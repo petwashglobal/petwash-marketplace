@@ -14,7 +14,7 @@ import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner"
 import LocationPermissionBanner from "@/components/LocationPermissionBanner";
 import { CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
 import { format } from "date-fns";
-import { getApiUrl } from "@/lib/apiConfig";
+import { fetchProviderBrowseResults } from "@/api/providerSearchApi";
 
 interface Provider {
   id: string;
@@ -271,32 +271,22 @@ export default function BrowseSitters() {
     setActiveFilters(count);
   };
 
-  // Build query string for API
-  const buildQueryString = () => {
-    const params = new URLSearchParams();
-    params.set('platform', 'sitter_suite');
-    if (searchParams?.location) params.set('city', searchParams.location);
-    if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
-    if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
-    if (searchParams?.street) params.set('street', searchParams.street);
-    if (searchParams?.streetNumber) params.set('streetNumber', searchParams.streetNumber);
-    params.set('sortBy', sortBy);
-    if (maxPrice < 500) params.set('maxPrice', String(maxPrice));
-    if (minRating > 0) params.set('minRating', String(minRating));
-    if (searchParams?.startDate) params.set('startDate', format(searchParams.startDate, 'yyyy-MM-dd'));
-    if (searchParams?.endDate) params.set('endDate', format(searchParams.endDate, 'yyyy-MM-dd'));
-    if (searchParams?.petType) params.set('petTypes', searchParams.petType);
-    return params.toString();
-  };
-
   const { data, isLoading, refetch } = useQuery<SearchResponse>({
-    queryKey: ["/api/marketplace-bookings/search/providers", searchParams?.location, searchParams?.lat, searchParams?.lng, searchParams?.service, sortBy, maxPrice, minRating],
+    queryKey: ["/api/providers/search", 'sitter_suite', searchParams?.location, searchParams?.lat, searchParams?.lng, searchParams?.service, sortBy, maxPrice, minRating],
     queryFn: async () => {
       try {
-        const queryString = buildQueryString();
-        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${queryString}`));
-        if (!response.ok) return { success: false, providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
-        return response.json();
+        return await fetchProviderBrowseResults({
+          serviceType: 'pet_sitting',
+          location: searchParams?.location,
+          lat: searchParams?.lat,
+          lng: searchParams?.lng,
+          sortBy,
+          maxPrice: maxPrice < 500 ? maxPrice : undefined,
+          minRating: minRating > 0 ? minRating : undefined,
+          startDate: searchParams?.startDate ? format(searchParams.startDate, 'yyyy-MM-dd') : undefined,
+          endDate: searchParams?.endDate ? format(searchParams.endDate, 'yyyy-MM-dd') : undefined,
+          petType: searchParams?.petType,
+        });
       } catch {
         return { success: false, providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
       }

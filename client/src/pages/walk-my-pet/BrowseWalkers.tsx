@@ -14,8 +14,8 @@ import { useLanguage } from "@/lib/languageStore";
 import { ProviderSearch, ProviderCard, type SearchParams } from "@/components/marketplace/ProviderSearch";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import LocationPermissionBanner from "@/components/LocationPermissionBanner";
-import { getApiUrl } from "@/lib/apiConfig";
 import { PetWalkWeatherAdvisor, CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
+import { fetchProviderBrowseResults } from "@/api/providerSearchApi";
 
 interface Walker {
   id: number;
@@ -191,29 +191,20 @@ export default function BrowseWalkers() {
     setActiveFilters(count);
   };
 
-  const buildQueryString = () => {
-    const params = new URLSearchParams();
-    params.set('platform', 'walk_my_pet');
-    if (searchParams?.location) params.set('city', searchParams.location);
-    if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
-    if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
-    if (searchParams?.street) params.set('street', searchParams.street);
-    if (searchParams?.streetNumber) params.set('streetNumber', searchParams.streetNumber);
-    params.set('sortBy', sortBy);
-    if (maxPrice < 300) params.set('maxPrice', String(maxPrice));
-    if (minRating > 0) params.set('minRating', String(minRating));
-    if (searchParams?.petType) params.set('petTypes', searchParams.petType);
-    return params.toString();
-  };
-
   const { data, isLoading } = useQuery<{ providers: any[]; pagination: any }>({
-    queryKey: ['/api/marketplace-bookings/search/providers', 'walk_my_pet', searchParams?.location, searchParams?.lat, searchParams?.lng, sortBy, maxPrice, minRating],
+    queryKey: ['/api/providers/search', 'walk_my_pet', searchParams?.location, searchParams?.lat, searchParams?.lng, sortBy, maxPrice, minRating],
     queryFn: async () => {
       try {
-        const queryString = buildQueryString();
-        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${queryString}`));
-        if (!response.ok) return { providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
-        return response.json();
+        return await fetchProviderBrowseResults({
+          serviceType: 'dog_walking',
+          location: searchParams?.location,
+          lat: searchParams?.lat,
+          lng: searchParams?.lng,
+          sortBy,
+          maxPrice: maxPrice < 300 ? maxPrice : undefined,
+          minRating: minRating > 0 ? minRating : undefined,
+          petType: searchParams?.petType,
+        });
       } catch {
         return { providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
       }

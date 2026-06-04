@@ -21,7 +21,7 @@ import {
 export default function ProviderCompliance() {
   const { toast } = useToast();
   const [providerId, setProviderId] = useState('WALKER-001');
-  const [providerType, setProviderType] = useState<'walker' | 'sitter' | 'driver'>('walker');
+  const [providerType, setProviderType] = useState<'walker' | 'sitter'>('walker');
 
   // Fetch compliance status
   const { data: compliance, isLoading } = useQuery({
@@ -160,7 +160,6 @@ export default function ProviderCompliance() {
               >
                 <option value="walker">Dog Walker</option>
                 <option value="sitter">Pet Sitter</option>
-                <option value="driver">PetTrek Driver</option>
               </select>
             </div>
           </div>

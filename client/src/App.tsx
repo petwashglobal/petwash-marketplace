@@ -1022,6 +1022,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RequireAuth>
           )}
         </Route>
+        <Route path="/booking/new/pet_taxi/:providerId">
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
+        </Route>
         <Route path="/booking/new/:serviceType/:providerId">
           {() => (
             <RequireAuth>
@@ -1265,7 +1268,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* UNIFIED MARKETPLACE - Booking Flow (All Platforms) — requires auth to book */}
+        <Route path="/marketplace/book/pet_trek/:id">
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
+        </Route>
+
+        {/* UNIFIED MARKETPLACE - Booking Flow (All legally active platforms) — requires auth to book */}
         <Route path="/marketplace/book/:platform/:id">
           {() => (
             <RequireAuth>
