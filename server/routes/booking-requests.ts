@@ -48,7 +48,7 @@ import { EmailService } from '../emailService';
 import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
 import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
-import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
+import { applyTransition, type BookingActor, type BookingStatus } from '@shared/lib/bookingStateMachine';
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
 import { acquireSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
@@ -1201,17 +1201,31 @@ router.post('/:requestId/meet-greet', async (req, res) => {
     }
     
     const statusHistory = (booking.statusHistory as any[]) || [];
+    const actor: BookingActor = booking.ownerId === userId ? 'owner' : 'provider';
     
     if (action === 'schedule') {
       if (!date) {
         return res.status(400).json({ error: 'Meet & Greet date is required' });
       }
-      
-      statusHistory.push({
-        status: 'meet_greet_scheduled',
-        timestamp: new Date().toISOString(),
+
+      const transition = applyTransition({
+        from: booking.status,
+        to: 'meet_greet_scheduled',
+        actor,
+        actorId: userId ?? null,
         note: `Meet & Greet scheduled for ${date}`,
       });
+      if (!transition.result.ok) {
+        logger.warn('[BookingRequests] Meet & Greet schedule rejected by state machine', {
+          requestId, from: booking.status, actor, code: transition.result.code,
+        });
+        return res.status(transition.result.statusCode).json({
+          error: transition.result.error,
+          code: transition.result.code,
+        });
+      }
+
+      statusHistory.push(transition.historyEntry);
       
       await db.update(bookingRequests)
         .set({
@@ -1235,12 +1249,25 @@ router.post('/:requestId/meet-greet', async (req, res) => {
       if (booking.providerId !== userId) {
         return res.status(403).json({ error: 'Only provider can complete Meet & Greet' });
       }
-      
-      statusHistory.push({
-        status: 'meet_greet_completed',
-        timestamp: new Date().toISOString(),
+
+      const transition = applyTransition({
+        from: booking.status,
+        to: 'meet_greet_completed',
+        actor: 'provider',
+        actorId: userId ?? null,
         note: notes || 'Meet & Greet completed successfully',
       });
+      if (!transition.result.ok) {
+        logger.warn('[BookingRequests] Meet & Greet complete rejected by state machine', {
+          requestId, from: booking.status, code: transition.result.code,
+        });
+        return res.status(transition.result.statusCode).json({
+          error: transition.result.error,
+          code: transition.result.code,
+        });
+      }
+
+      statusHistory.push(transition.historyEntry);
       
       await db.update(bookingRequests)
         .set({
