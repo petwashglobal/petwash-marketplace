@@ -33,7 +33,10 @@ export default function ProviderRegistrationForm() {
   const set = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const next = () => {
-    if (step === 1 && (!form.firstName || !form.lastName || !form.email || !form.phone || !form.platform)) {
+    if (
+      step === 1 &&
+      (!form.firstName || !form.lastName || !form.email || !form.phone || !form.platform || !form.experienceYears || !form.idNumber)
+    ) {
       toast({ variant: 'destructive', title: 'Please fill all required fields' }); return;
     }
     if (step === 2 && !form.selfieUrl) {
