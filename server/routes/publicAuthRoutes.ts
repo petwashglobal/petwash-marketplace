@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { getCurrentUser } from "../simpleAuth";
+import { apiLimiter } from '../middleware/rateLimiter';
 import { logger } from "../lib/logger";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { verifyTurnstileToken } from "../lib/verifyTurnstile";
@@ -109,7 +110,7 @@ function sendSafeJSON(res: express.Response, data: any, use200 = true) {
  * - Logged out users: {ok:true, authenticated:false, user:null}
  * - Logged in users: {ok:true, authenticated:true, user:{...}}
  */
-publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
+publicAuthRouter.get("/api/simple-auth/me", apiLimiter, async (req, res) => {
   try {
     const user = await getCurrentUser(req);
 
@@ -684,7 +685,7 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
  * Record user consent (Terms, Privacy, etc.) with full audit trail
  * POST /api/consents
  */
-publicAuthRouter.post("/api/consents", async (req, res) => {
+publicAuthRouter.post("/api/consents", apiLimiter, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -743,7 +744,7 @@ publicAuthRouter.post("/api/consents", async (req, res) => {
  * Get consent status for a user
  * GET /api/consents/status?userId=xxx
  */
-publicAuthRouter.get("/api/consents/status", async (req, res) => {
+publicAuthRouter.get("/api/consents/status", apiLimiter, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -1179,7 +1180,7 @@ publicAuthRouter.post('/api/auth/client-event', clientEventRateLimiter, async (r
 // ── GET /api/admin/auth-events ────────────────────────────────────────────────
 // Returns recent auth_events rows for admin visibility. Requires a valid
 // Firebase ID token belonging to SUPER_ADMIN_EMAILS.
-publicAuthRouter.get('/api/admin/auth-events', async (req, res) => {
+publicAuthRouter.get('/api/admin/auth-events', apiLimiter, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
