@@ -2617,6 +2617,8 @@ export const legalComplianceReviews = pgTable("legal_compliance_reviews", {
 export const userInteractionLogs = pgTable("user_interaction_logs", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id"), // NULL for anonymous/pre-auth interactions
+  pseudonymousUserId: varchar("pseudonymous_user_id"), // gap 7: hashed pre-auth id (no PII)
+  consentLevel: varchar("consent_level"), // gap 7: none|analytics|marketing — gates downstream use
   sessionId: varchar("session_id").notNull(), // Track across sessions
   interactionType: varchar("interaction_type").notNull(), // click, input, submit, keystroke, scroll, focus, blur
   elementType: varchar("element_type"), // button, input, link, select, textarea, etc.
