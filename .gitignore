@@ -38,6 +38,11 @@ load-test-results.json
 *.key
 *.pem
 petwash-wallet.key
+# Service-account / credential JSON keys — never commit (caused secret-scanning leak #8)
+*service-account*.json
+*serviceaccount*.json
+*-credentials.json
+attached_assets/*.json
 *.pkpass
 *.pkpasses
 # Secrets files — never commit
