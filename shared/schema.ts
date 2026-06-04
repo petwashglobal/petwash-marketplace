@@ -12425,6 +12425,23 @@ export type ConsentSnapshot = typeof consentSnapshots.$inferSelect;
 export const insertConsentSnapshotSchema = createInsertSchema(consentSnapshots).omit({ id: true, createdAt: true });
 export type InsertConsentSnapshot = z.infer<typeof insertConsentSnapshotSchema>;
 
+// Retention policies — per data-class retention window + anonymisation method.
+// Declarative source for the scheduled purge job (Data & Intelligence architecture,
+// docs/data-architecture). Values are INDICATIVE — confirm with counsel before any
+// purge acts on them. Purely additive; no purge runs from defining this table.
+export const retentionPolicies = pgTable("retention_policies", {
+  dataClass: text("data_class").primaryKey(),
+  retentionDays: integer("retention_days").notNull(),
+  anonymisationMethod: text("anonymisation_method").notNull().default("delete"),
+  legalBasis: text("legal_basis"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export type RetentionPolicy = typeof retentionPolicies.$inferSelect;
+export const insertRetentionPolicySchema = createInsertSchema(retentionPolicies).omit({ createdAt: true, updatedAt: true });
+export type InsertRetentionPolicy = z.infer<typeof insertRetentionPolicySchema>;
+
 export const onboardingCases = pgTable("onboarding_cases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
