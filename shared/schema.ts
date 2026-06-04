@@ -12498,6 +12498,46 @@ export type StationHourlyLoad = typeof stationHourlyLoad.$inferSelect;
 export const insertStationHourlyLoadSchema = createInsertSchema(stationHourlyLoad).omit({ id: true, createdAt: true });
 export type InsertStationHourlyLoad = z.infer<typeof insertStationHourlyLoadSchema>;
 
+// Provider health composite (Data & Intelligence gap 5). Decoupled provider_id;
+// additive rolled-up score a dashboard reads.
+export const providerHealthScorecard = pgTable("provider_health_scorecard", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+  overallScore: integer("overall_score").notNull(),
+  availabilityPct: integer("availability_pct"),
+  reliability: numeric("reliability", { precision: 4, scale: 3 }),
+  ratingNorm: numeric("rating_norm", { precision: 4, scale: 3 }),
+  responsiveness: numeric("responsiveness", { precision: 4, scale: 3 }),
+  complianceIncidents: integer("compliance_incidents").notNull().default(0),
+  healthState: text("health_state").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_provider_health_provider").on(table.providerId, table.computedAt),
+]);
+export type ProviderHealthScorecard = typeof providerHealthScorecard.$inferSelect;
+export const insertProviderHealthScorecardSchema = createInsertSchema(providerHealthScorecard).omit({ id: true, createdAt: true });
+export type InsertProviderHealthScorecard = z.infer<typeof insertProviderHealthScorecardSchema>;
+
+// GDPR Art.16 rectification audit (Data & Intelligence gap 6). DATA-MINIMIZED:
+// records which field changed + who/when/status, NOT the old/new values.
+export const dataRectificationRequests = pgTable("data_rectification_requests", {
+  id: serial("id").primaryKey(),
+  subjectRef: text("subject_ref").notNull(),
+  fieldName: text("field_name").notNull(),
+  status: text("status").notNull().default("received"),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  reviewedBy: text("reviewed_by"),
+  appliedAt: timestamp("applied_at"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_data_rectification_subject").on(table.subjectRef, table.requestedAt),
+]);
+export type DataRectificationRequest = typeof dataRectificationRequests.$inferSelect;
+export const insertDataRectificationRequestSchema = createInsertSchema(dataRectificationRequests).omit({ id: true, createdAt: true });
+export type InsertDataRectificationRequest = z.infer<typeof insertDataRectificationRequestSchema>;
+
 export const onboardingCases = pgTable("onboarding_cases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
