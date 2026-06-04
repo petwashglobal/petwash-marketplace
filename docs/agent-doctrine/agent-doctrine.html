@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PetWash Care — Agent Operating Doctrine</title>
+<style>
+  :root{
+    --ink:#111111; --accent:#2E3A45; --grey:#6B6B6B;
+    --hair:#D9D9D9; --tint:#F4F5F6; --stage:#FFFFFF;
+    --xcode:#1F6FEB; --codex:#7A5AF8; --claude:#C2410C;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    color:var(--ink); background:var(--stage);
+    line-height:1.5; font-size:16px;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:0 22px;}
+  .full{width:100%;}
+
+  /* ---------- COVER ---------- */
+  .cover{
+    background:var(--ink); color:#fff;
+    padding:64px 0 56px;
+  }
+  .cover .wrap{max-width:880px;}
+  .kicker{font-size:13px; letter-spacing:.28em; text-transform:uppercase; color:#9AA4AD;}
+  .title{font-size:48px; line-height:1.04; font-weight:800; margin:14px 0 8px; letter-spacing:-.01em;}
+  .title .glow{color:#9DB2C4;}
+  .sub{font-size:19px; color:#C9D1D9; max-width:620px;}
+  .cover-rule{height:3px; width:64px; background:#fff; margin:26px 0 22px; opacity:.85;}
+  .cover-meta{display:flex; flex-wrap:wrap; gap:8px 28px; font-size:13.5px; color:#9AA4AD;}
+  .cover-meta b{color:#E6EAEE; font-weight:600;}
+
+  /* ---------- SECTION ---------- */
+  section{padding:40px 0; border-bottom:1px solid var(--hair);}
+  section:last-of-type{border-bottom:0;}
+  .num{font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:var(--accent); font-weight:700;}
+  h2{font-size:27px; font-weight:800; letter-spacing:-.01em; margin:6px 0 10px;}
+  .lead{font-size:17.5px; color:var(--grey); max-width:640px; margin-bottom:6px;}
+  p{margin:10px 0;}
+  .small{font-size:13.5px; color:var(--grey);}
+
+  /* doctrine banner */
+  .doctrine{background:var(--tint); border-left:5px solid var(--accent);
+    padding:22px 24px; border-radius:2px; margin-top:8px;}
+  .doctrine .big{font-size:21px; font-weight:700; line-height:1.35;}
+  .doctrine .big em{font-style:normal; color:var(--accent);}
+
+  /* ---------- FLEET CARDS ---------- */
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:8px;}
+  .card{border:1px solid var(--hair); border-radius:8px; padding:18px 16px; background:#fff;
+    page-break-inside:avoid;}
+  .card .role{font-size:11px; letter-spacing:.18em; text-transform:uppercase; font-weight:700;}
+  .card h3{font-size:19px; font-weight:800; margin:8px 0 2px;}
+  .card .tag{font-size:13px; color:var(--grey); margin-bottom:10px;}
+  .card ul{list-style:none; font-size:13.5px;}
+  .card li{padding:4px 0 4px 16px; position:relative; border-top:1px solid var(--tint);}
+  .card li:first-child{border-top:0;}
+  .card li::before{content:"—"; position:absolute; left:0; color:var(--accent);}
+  .card.xc{border-top:4px solid var(--xcode);} .card.xc .role{color:var(--xcode);}
+  .card.cx{border-top:4px solid var(--codex);} .card.cx .role{color:var(--codex);}
+  .card.cl{border-top:4px solid var(--claude);} .card.cl .role{color:var(--claude);}
+  .verdict{margin-top:12px; font-size:13px; font-weight:700;}
+  .card.xc .verdict{color:var(--xcode);} .card.cx .verdict{color:var(--codex);} .card.cl .verdict{color:var(--claude);}
+
+  /* ---------- MATRIX ---------- */
+  table{width:100%; border-collapse:collapse; margin-top:10px; font-size:13.5px;}
+  th{background:var(--accent); color:#fff; text-align:left; padding:9px 11px; font-size:12px;
+    letter-spacing:.04em; text-transform:uppercase;}
+  td{padding:9px 11px; border-bottom:1px solid var(--hair); vertical-align:top;}
+  tr:nth-child(even) td{background:var(--tint);}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; color:#fff;}
+  .p-xc{background:var(--xcode);} .p-cx{background:var(--codex);} .p-cl{background:var(--claude);}
+  .p-hu{background:var(--ink);} .p-co{background:#15803D;}
+
+  /* ---------- AI LOGIC two-col ---------- */
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;}
+  .panel{border:1px solid var(--hair); border-radius:8px; padding:18px; page-break-inside:avoid;}
+  .panel h4{font-size:16px; font-weight:800; margin-bottom:6px;}
+  .panel .badge{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--accent);}
+  .panel ul{margin:8px 0 0 18px; font-size:13.5px;}
+  .panel li{margin:5px 0;}
+
+  /* ---------- WATCHDOG GRID ---------- */
+  .dogs{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:8px;}
+  .dog{border:1px solid var(--hair); border-radius:8px; padding:13px; page-break-inside:avoid;}
+  .dog .nm{font-weight:800; font-size:14.5px;}
+  .dog .wf{font-size:12.5px; color:var(--grey); margin:3px 0 6px;}
+  .dog .ac{font-size:12px; font-weight:700; color:var(--accent);}
+  .ops{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px;}
+  .op{background:var(--tint); border-radius:8px; padding:14px 16px; page-break-inside:avoid;}
+  .op b{display:block; font-size:14.5px; margin-bottom:3px;}
+  .op span{font-size:13px; color:var(--grey);}
+
+  /* ---------- RULES ---------- */
+  .rules{counter-reset:r; margin-top:6px;}
+  .rule{display:flex; gap:14px; padding:11px 0; border-bottom:1px solid var(--tint); page-break-inside:avoid;}
+  .rule::before{counter-increment:r; content:counter(r,decimal-leading-zero);
+    font-weight:800; color:var(--accent); font-size:15px; min-width:30px;}
+  .rule b{font-weight:700;}
+  .rule span{color:var(--grey);}
+
+  /* ---------- LOOP ---------- */
+  .loop{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:stretch;}
+  .step{flex:1 1 120px; background:var(--ink); color:#fff; border-radius:8px; padding:13px 12px; min-width:110px;}
+  .step .s{font-size:11px; color:#9AA4AD; letter-spacing:.16em;}
+  .step .t{font-size:15px; font-weight:800; margin-top:3px;}
+  .step .d{font-size:11.5px; color:#C9D1D9; margin-top:4px;}
+
+  footer{background:var(--tint); padding:24px 0; color:var(--grey); font-size:12.5px;}
+
+  /* ---------- RESPONSIVE (mobile) ---------- */
+  @media (max-width:680px){
+    .title{font-size:34px;}
+    .cards,.two,.dogs,.ops{grid-template-columns:1fr;}
+    section{padding:30px 0;}
+    table{font-size:12.5px;} th,td{padding:7px 8px;}
+    .doctrine .big{font-size:18px;}
+  }
+
+  /* ---------- PRINT (PDF full-bleed) ---------- */
+  @page{size:A4; margin:0;}
+  @media print{
+    body{font-size:13px;}
+    .wrap{max-width:none; padding:0 40px;}
+    .cover{padding:54px 0 44px;}
+    .title{font-size:42px;}
+    section{padding:30px 0; page-break-inside:avoid;}
+    .cards,.dogs{grid-template-columns:repeat(3,1fr);}
+    .two,.ops{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover full">
+  <div class="wrap">
+    <div class="kicker">PetWash™️ Care · Internal Engineering Doctrine</div>
+    <div class="title">The Matrix:<br>how the <span class="glow">agent fleet</span> builds PetWash™️ Care</div>
+    <div class="sub">One brain, many hands. A doctrine for splitting every piece of work across Claude, Codex, and Xcode — so the machine moves fast and never ships something nobody reviewed.</div>
+    <div class="cover-rule"></div>
+    <div class="cover-meta">
+      <span><b>Edition</b> &nbsp;June 2026</span>
+      <span><b>Posture</b> &nbsp;Generate · Judge · Ship</span>
+      <span><b>Targets</b> &nbsp;iOS · Octopus Core · AI services</span>
+      <span><b>Rule</b> &nbsp;Reversible · Reviewed · Monitored</span>
+    </div>
+  </div>
+</div>
+
+<!-- 1 DOCTRINE -->
+<section><div class="wrap">
+  <div class="num">01 · The doctrine</div>
+  <h2>Three lanes. Nobody crosses unreviewed.</h2>
+  <p class="lead">Speed comes from the right hands doing the right work — not from any one agent doing everything.</p>
+  <div class="doctrine">
+    <div class="big"><em>Codex generates. Claude judges. Xcode ships. A human signs off at every gate.</em></div>
+    <p class="small" style="margin-top:8px">Each lane is best at one thing and weak at the others. Codex is fast hands with no judgment. Claude is judgment with no shipping authority. Xcode is the only thing that actually builds, signs, and reaches a real iPhone. Keep them in their lanes and the whole organism stays fast and safe.</p>
+  </div>
+</div></section>
+
+<!-- 2 FLEET -->
+<section><div class="wrap">
+  <div class="num">02 · The fleet roster</div>
+  <h2>Who is good at what</h2>
+  <p class="lead">Assign by strength, not by convenience. The wrong agent in the wrong lane is how production breaks.</p>
+  <div class="cards">
+    <div class="card xc">
+      <div class="role">System of record</div>
+      <h3>Xcode 26</h3>
+      <div class="tag">The only thing that ships.</div>
+      <ul>
+        <li>Build, sign, provisioning</li>
+        <li>SwiftUI previews & Interface</li>
+        <li>Instruments — profiling & leaks</li>
+        <li>TestFlight & App Store submit</li>
+        <li>CI gate before <code>main</code></li>
+      </ul>
+      <div class="verdict">Humans drive it. Nothing reaches a phone without it.</div>
+    </div>
+    <div class="card cx">
+      <div class="role">Volume hands</div>
+      <h3>Codex agent</h3>
+      <div class="tag">Fast generation, zero judgment.</div>
+      <ul>
+        <li>Scaffold SwiftUI views</li>
+        <li>Boilerplate & repetitive refactors</li>
+        <li>Unit / UI test stubs</li>
+        <li>Typed API client from OpenAPI</li>
+        <li>First drafts, never final</li>
+      </ul>
+      <div class="verdict">Output is a proposal. It is reviewed before it counts.</div>
+    </div>
+    <div class="card cl">
+      <div class="role">Judgment & orchestration</div>
+      <h3>Claude agents</h3>
+      <div class="tag">Decides, reviews, coordinates.</div>
+      <ul>
+        <li>Architecture & ADRs</li>
+        <li>Work-splitting / anti-duplication</li>
+        <li>Security · privacy · a11y review</li>
+        <li>Root-cause debugging</li>
+        <li>Legal, docs, watchdog design</li>
+      </ul>
+      <div class="verdict">Routes the work and guards the gates — but never merges blind.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 3 MATRIX -->
+<section><div class="wrap">
+  <div class="num">03 · The smart-split matrix</div>
+  <h2>Every task, routed</h2>
+  <p class="lead">Read it left to right: who leads, who must check it, where it lands. No work skips the middle column.</p>
+  <table>
+    <thead><tr><th>Work</th><th>Leads</th><th>Checked by</th><th>Ships via</th></tr></thead>
+    <tbody>
+      <tr><td>New screen / SwiftUI view</td><td><span class="pill p-cx">Codex</span></td><td><span class="pill p-cl">Claude</span> a11y · brand · RTL</td><td><span class="pill p-xc">Xcode</span></td></tr>
+      <tr><td>Architecture decision (ADR)</td><td><span class="pill p-cl">Claude</span></td><td><span class="pill p-hu">Human</span> CTO sign-off</td><td>/docs repo</td></tr>
+      <tr><td>API client from OpenAPI</td><td><span class="pill p-cx">Codex</span></td><td><span class="pill p-cl">Claude</span> types · errors</td><td><span class="pill p-xc">Xcode</span></td></tr>
+      <tr><td>Auth · payments · KYC code</td><td><span class="pill p-cl">Claude</span></td><td><span class="pill p-hu">Human</span> security review</td><td><span class="pill p-xc">Xcode</span></td></tr>
+      <tr><td>Bug, cause unknown</td><td><span class="pill p-cl">Claude</span> root cause</td><td><span class="pill p-cx">Codex</span> drafts fix</td><td><span class="pill p-xc">Xcode</span></td></tr>
+      <tr><td>Tests (unit / UI)</td><td><span class="pill p-cx">Codex</span></td><td><span class="pill p-cl">Claude</span> critical-flow coverage</td><td><span class="pill p-co">CI</span></td></tr>
+      <tr><td>Legal / compliance text</td><td><span class="pill p-cl">Claude</span></td><td><span class="pill p-hu">Counsel</span> licensed IL</td><td>—</td></tr>
+      <tr><td>Watchdog / monitoring logic</td><td><span class="pill p-cl">Claude</span></td><td><span class="pill p-hu">Human</span></td><td><span class="pill p-co">Core</span></td></tr>
+    </tbody>
+  </table>
+  <p class="small" style="margin-top:10px"><b>Anti-duplication law:</b> one identity service, one ledger, one design system. Before any agent writes, it checks the module map. Two agents must never build the same thing twice.</p>
+</div></section>
+
+<!-- 4 AI LOGIC -->
+<section><div class="wrap">
+  <div class="num">04 · AI logic & tools</div>
+  <h2>Where the intelligence runs</h2>
+  <p class="lead">Private data stays on the device. Heavy thinking runs on the Core — and never sees a raw ID.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="badge">On device — private</div>
+      <h4>Apple Intelligence / Foundation Models</h4>
+      <ul>
+        <li>Document glare & blur guidance</li>
+        <li>Liveness / face-match hints</li>
+        <li>On-device drafting & summaries</li>
+        <li><b>No PII leaves the phone</b> for routine tasks</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="badge">Octopus Core — hosted</div>
+      <h4>The routing & forecasting brain</h4>
+      <ul>
+        <li>Scheduling, routing, demand forecast</li>
+        <li>Provider quality scoring</li>
+        <li>Works on <b>tokens, never raw ID numbers</b></li>
+        <li>Heavy compute, audited, region-pinned</li>
+      </ul>
+    </div>
+  </div>
+  <div class="doctrine" style="margin-top:14px">
+    <div class="big" style="font-size:18px"><em>Tool rule:</em> agents may read freely — search, files, build logs. Every <em>write</em> passes a review gate. AI assists and proposes; humans and Xcode decide and ship.</div>
+  </div>
+</div></section>
+
+<!-- 5 SUPPORT / STABILITY / MONITORING -->
+<section><div class="wrap">
+  <div class="num">05 · Support · stability · monitoring</div>
+  <h2>The organs that keep it alive</h2>
+  <p class="lead">Always-on watchdogs protect the company and the providers. Every risky change is reversible by design.</p>
+  <div class="dogs">
+    <div class="dog"><div class="nm">Sentinel</div><div class="wf">Auth anomalies, impossible-travel logins</div><div class="ac">→ step-up, lock, alert</div></div>
+    <div class="dog"><div class="nm">Ledger-Keeper</div><div class="wf">Financial irregularities, fraud patterns</div><div class="ac">→ hold + flag finance</div></div>
+    <div class="dog"><div class="nm">Compliance-Hound</div><div class="wf">Expiring docs, lapsed insurance/licence</div><div class="ac">→ block job, notify</div></div>
+    <div class="dog"><div class="nm">Welfare-Guard</div><div class="wf">Skipped welfare checks, complaint clusters</div><div class="ac">→ pause, escalate</div></div>
+    <div class="dog"><div class="nm">Evidence-Vault</div><div class="wf">Tamper attempts on the audit log</div><div class="ac">→ immutable capture, legal hold</div></div>
+    <div class="dog"><div class="nm">Privacy-Warden</div><div class="wf">Unusual personal-data access, export spikes</div><div class="ac">→ throttle, alert DPO</div></div>
+  </div>
+  <div class="ops">
+    <div class="op"><b>Feature flags + rollback</b><span>Every risky change ships behind a flag with a documented, tested rollback. Reversible by default.</span></div>
+    <div class="op"><b>Staged rollout</b><span>Internal → TestFlight → phased %. Auto-halt on an error-rate spike, before users feel it.</span></div>
+    <div class="op"><b>One event spine</b><span>Every arm reports home — telemetry, audit, money — visible from a single control panel.</span></div>
+    <div class="op"><b>On-call runbook</b><span>Alerts wired to a human. The rollback command is known and rehearsed, not improvised.</span></div>
+  </div>
+</div></section>
+
+<!-- 6 RULES -->
+<section><div class="wrap">
+  <div class="num">06 · The golden rules</div>
+  <h2>Non-negotiable for every agent</h2>
+  <div class="rules">
+    <div class="rule"><b>Root cause, never a band-aid.</b>&nbsp;<span>No fix that hides a defect.</span></div>
+    <div class="rule"><b>Remove stale code; never duplicate a system.</b>&nbsp;<span>One identity service, one ledger, one design system.</span></div>
+    <div class="rule"><b>Temp hacks carry an expiry note + removal task.</b>&nbsp;<span>Tracked, not forgotten.</span></div>
+    <div class="rule"><b>Risky change → feature flag + documented rollback.</b>&nbsp;<span>Always reversible.</span></div>
+    <div class="rule"><b>Small, reviewable, revertible PRs.</b>&nbsp;<span>No giant merges.</span></div>
+    <div class="rule"><b>No AI-generated code reaches <code>main</code> unreviewed.</b>&nbsp;<span>A human reviews; Xcode compiles; then it ships.</span></div>
+  </div>
+</div></section>
+
+<!-- 7 LOOP -->
+<section><div class="wrap">
+  <div class="num">07 · The loop</div>
+  <h2>How a change moves, end to end</h2>
+  <div class="loop">
+    <div class="step"><div class="s">01</div><div class="t">Audit</div><div class="d">Claude maps the current state</div></div>
+    <div class="step"><div class="s">02</div><div class="t">Propose</div><div class="d">ADR / design note for anything architectural</div></div>
+    <div class="step"><div class="s">03</div><div class="t">Implement</div><div class="d">Codex drafts in a flagged, modular PR</div></div>
+    <div class="step"><div class="s">04</div><div class="t">Review</div><div class="d">Claude + human pass the gates</div></div>
+    <div class="step"><div class="s">05</div><div class="t">Release</div><div class="d">Xcode → TestFlight → phased rollout</div></div>
+    <div class="step"><div class="s">06</div><div class="t">Observe</div><div class="d">Watchdogs watch; then clean the flag</div></div>
+  </div>
+  <p class="small" style="margin-top:14px">Audit → Propose → Implement. Production-safe. Reversible. Nothing here overrides licensed Israeli counsel on legal items, or a human reviewer on code.</p>
+</div></section>
+
+<footer><div class="wrap">Confidential · PetWash™️ Ltd · June 2026 · Generate · Judge · Ship — a human signs off at every gate.</div></footer>
+
+</body>
+</html>
