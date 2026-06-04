@@ -9,7 +9,7 @@ import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
 import { isPublicIP } from '../utils/ipValidation';
-import { safeIPUrl } from '../lib/safeOutboundUrl';
+import { safeIPFetch } from '../lib/safeOutboundUrl';
 
 const FROM = process.env.ALERT_EMAIL_FROM || 'noreply@petwash.co.il';
 const TO = process.env.ALERT_EMAIL_TO || 'nir.h@petwash.co.il';
@@ -189,7 +189,7 @@ export async function getCityFromIP(ip: string): Promise<string> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-    const response = await fetch(safeIPUrl('https://ipapi.co', ip, '/json/'), {
+    const response = await safeIPFetch('https://ipapi.co', ip, '/json/', {
       signal: controller.signal,
     });
 

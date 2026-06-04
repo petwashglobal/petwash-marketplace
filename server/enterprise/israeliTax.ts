@@ -367,8 +367,15 @@ export async function checkInvoiceStatus(
     // Query RASA for invoice status.
     // RASA_API_ENDPOINT is a static env-config constant (see top of file).
     // safeAllocationNumber is digits-only, re-extracted from the validated match.
+    const rasaUrl = new URL(`${RASA_API_ENDPOINT}/${safeAllocationNumber}`);
+    const rasaHost = new URL(RASA_API_ENDPOINT).hostname;
+    // Host barrier (SSRF sanitiser): pin the request to RASA's constant host.
+    if (rasaUrl.hostname !== rasaHost) {
+      res.status(400).json({ error: 'Invalid RASA endpoint host' });
+      return;
+    }
     const response = await axios.get(
-      `${RASA_API_ENDPOINT}/${safeAllocationNumber}`,
+      rasaUrl.toString(),
       {
         headers: {
           'Authorization': `Bearer ${SUPPLIER_API_KEY}`

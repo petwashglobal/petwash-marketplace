@@ -4,8 +4,8 @@
  * Unit tests for the safeIPUrl SSRF guard helper.
  * Ensures private/reserved IPs are blocked and legitimate public IPs pass.
  */
-import { describe, it, expect } from 'vitest';
-import { safeIPUrl } from '../../server/lib/safeOutboundUrl';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { safeIPUrl, safeIPFetch } from '../../server/lib/safeOutboundUrl';
 
 const BASE = 'https://ipapi.co';
 
@@ -96,5 +96,40 @@ describe('safeIPUrl — SSRF guard', () => {
   it('blocks an IP with a path traversal attempt', () => {
     // e.g. "8.8.8.8/../../../etc/passwd" — isPublicIP rejects non-dotted-quad
     expect(() => safeIPUrl(BASE, '8.8.8.8/../../../etc/passwd', '/json/')).toThrow('non-public IP');
+  });
+});
+
+describe('safeIPFetch — SSRF-safe fetch (host pinned, guard + sink in one fn)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({}) }) as any));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('fetches the pinned host for a legitimate public IP', async () => {
+    await safeIPFetch(BASE, '8.8.8.8', '/json/');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const target = (fetch as any).mock.calls[0][0];
+    expect(String(target)).toBe('https://ipapi.co/8.8.8.8/json/');
+  });
+
+  it('forwards the init (e.g. AbortSignal) to fetch', async () => {
+    const controller = new AbortController();
+    await safeIPFetch(BASE, '1.1.1.1', '/json/', { signal: controller.signal });
+    expect((fetch as any).mock.calls[0][1]).toEqual({ signal: controller.signal });
+  });
+
+  it('rejects a private IP before any fetch happens', async () => {
+    await expect(safeIPFetch(BASE, '10.0.0.1', '/json/')).rejects.toThrow('non-public IP');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects the cloud-metadata IP before any fetch happens', async () => {
+    await expect(safeIPFetch(BASE, '169.254.169.254', '/json/')).rejects.toThrow('non-public IP');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-HTTPS base before any fetch happens', async () => {
+    await expect(safeIPFetch('http://ipapi.co', '8.8.8.8', '/json/')).rejects.toThrow('Only HTTPS');
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

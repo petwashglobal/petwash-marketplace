@@ -52,3 +52,33 @@ export function safeIPUrl(baseUrl: string, ip: string, suffix = ''): string {
 
   return assembled;
 }
+
+/**
+ * safeIPFetch — SSRF-safe outbound GET that embeds a user-supplied IP.
+ *
+ * The validation guard and the fetch() sink live in ONE function, and the
+ * request target host is pinned to baseUrl's constant host immediately before
+ * the request. That hostname-equality barrier is a request-forgery sanitiser
+ * static analysis recognises. Use this at call sites instead of
+ * `fetch(safeIPUrl(...))`, which leaks taint across the function boundary and
+ * leaves CodeQL unable to see the guard.
+ *
+ * @throws if the IP is non-public, the base is non-HTTPS, or the assembled
+ *         URL's host is not baseUrl's host.
+ */
+export async function safeIPFetch(
+  baseUrl: string,
+  ip: string,
+  suffix = '',
+  init?: RequestInit,
+): Promise<Response> {
+  // safeIPUrl rejects non-public IPs and non-HTTPS bases and returns a string.
+  const built = safeIPUrl(baseUrl, ip, suffix);
+  const expectedHost = new URL(baseUrl).hostname;
+  const parsed = new URL(built);
+  // Host barrier — the request can only ever reach baseUrl's constant host.
+  if (parsed.hostname !== expectedHost) {
+    throw new Error('[safeIPFetch] Refusing request to unexpected host');
+  }
+  return fetch(parsed, init);
+}
