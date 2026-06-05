@@ -11,6 +11,12 @@ const config: CapacitorConfig = {
     contentInset: "always",
   },
   plugins: {
+    // Route native HTTP through the OS layer so the bundled app's /api calls reach the real
+    // backend without browser CORS limits (apiConfig.ts points native builds at the production
+    // API). Auth uses a Firebase Bearer header, so there is no cookie/SameSite concern.
+    CapacitorHttp: {
+      enabled: true,
+    },
     SplashScreen: {
       launchShowDuration: 800,
       backgroundColor: "#ffffff",
