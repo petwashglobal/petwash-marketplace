@@ -1943,24 +1943,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPasswordFailureCount(prev => prev + 1);
       
       let errorMessage = t('signin.failed', language);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        const noAccountMsg: Record<string, string> = {
-          en: 'No account found with this email. Redirecting to sign up...',
-          he: 'לא נמצא חשבון עם כתובת דואר אלקטרוני זו. מעביר להרשמה...',
-          ar: 'لم يتم العثور على حساب بهذا البريد الإلكتروني. جاري التحويل للتسجيل...',
-          es: 'No se encontró una cuenta con este correo. Redirigiendo al registro...',
-          fr: 'Aucun compte trouvé avec cet email. Redirection vers l\'inscription...',
-          ru: 'Аккаунт с этим email не найден. Перенаправление на регистрацию...',
-        };
-        toast({
-          title: t('signin.error', language),
-          description: noAccountMsg[language] || noAccountMsg.en,
-        });
-        setTimeout(() => {
-          navigate(`/signup?email=${encodeURIComponent(formData.email)}`);
-        }, 1500);
-        return;
-      } else if (error.code === 'auth/wrong-password') {
+      if (
+        error.code === 'auth/user-not-found'
+        || error.code === 'auth/wrong-password'
+        || error.code === 'auth/invalid-credential'
+        || error.code === 'auth/invalid-login-credentials'
+      ) {
         errorMessage = t('signin.invalidCredentials', language);
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = t('signin.tooManyAttempts', language);

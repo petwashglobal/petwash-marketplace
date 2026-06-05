@@ -130,8 +130,8 @@ export function humanizeAuthError(code?: string, language: 'en' | 'he' = 'en'): 
       he: 'אימייל או סיסמה שגויים.'
     },
     'auth/user-not-found': {
-      en: 'No account found with this email.',
-      he: 'לא נמצא חשבון עם אימייל זה.'
+      en: 'Email or password is incorrect.',
+      he: 'אימייל או סיסמה שגויים.'
     },
     'auth/user-disabled': {
       en: 'This account has been disabled.',
