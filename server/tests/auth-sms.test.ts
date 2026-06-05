@@ -5,6 +5,8 @@ import request from 'supertest';
 // Mock the OTP engine and logger BEFORE importing the router (vi.mock is hoisted).
 vi.mock('../services/TwilioSMSService', () => ({
   twilioSMSService: {
+    isReady: vi.fn(),
+    isEmergencyDisabled: vi.fn(),
     sendVerificationCode: vi.fn(),
     verifyCode: vi.fn(),
   },
@@ -24,7 +26,18 @@ function makeApp() {
 }
 
 describe('canonical SMS auth wrapper (/api/auth/sms)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (twilioSMSService.isReady as any).mockReturnValue(true);
+    (twilioSMSService.isEmergencyDisabled as any).mockReturnValue(false);
+  });
+
+  it('status: exposes SMS provider health for client fallback', async () => {
+    (twilioSMSService.isReady as any).mockReturnValue(false);
+    const res = await request(makeApp()).get('/api/auth/sms/status');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true, smsProviderHealthy: false });
+  });
 
   it('start: 400 when phone missing', async () => {
     const res = await request(makeApp()).post('/api/auth/sms/start').send({});
@@ -32,12 +45,38 @@ describe('canonical SMS auth wrapper (/api/auth/sms)', () => {
     expect(res.body.ok).toBe(false);
   });
 
-  it('start: 503 (crash-safe) when Twilio/config unavailable', async () => {
-    (twilioSMSService.sendVerificationCode as any).mockResolvedValue({ success: false, message: 'SMS unavailable' });
+  it('start: returns structured error metadata when Twilio/config unavailable', async () => {
+    (twilioSMSService.sendVerificationCode as any).mockResolvedValue({
+      success: false,
+      message: 'SMS unavailable',
+      code: 'SMS_PROVIDER_CONFIG_ERROR',
+      providerCode: '20404',
+      retryable: false,
+      status: 503,
+    });
     const res = await request(makeApp()).post('/api/auth/sms/start').send({ phone: '+972500000000' });
     expect(res.status).toBe(503);
     expect(res.body.ok).toBe(false);
-    expect(res.body.error).toBe('sms_unavailable');
+    expect(res.body.error).toBe('SMS_PROVIDER_CONFIG_ERROR');
+    expect(res.body.code).toBe('SMS_PROVIDER_CONFIG_ERROR');
+    expect(res.body.providerCode).toBe('20404');
+    expect(res.body.retryable).toBe(false);
+    expect(res.body.smsProviderHealthy).toBe(false);
+  });
+
+  it('start: maps geo-disabled provider errors to 422 with safe providerCode', async () => {
+    (twilioSMSService.sendVerificationCode as any).mockResolvedValue({
+      success: false,
+      message: 'SMS unavailable',
+      code: 'SMS_PROVIDER_GEO_BLOCKED',
+      providerCode: '60605',
+      retryable: false,
+      status: 422,
+    });
+    const res = await request(makeApp()).post('/api/auth/sms/start').send({ phone: '+61419773360' });
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('SMS_PROVIDER_GEO_BLOCKED');
+    expect(res.body.providerCode).toBe('60605');
   });
 
   it('start: 200 sends code and echoes the flow', async () => {
