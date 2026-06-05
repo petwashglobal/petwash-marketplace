@@ -120,6 +120,7 @@ const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Verify = lazy(() => import("@/pages/Verify"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
+const AccountDeletionResource = lazy(() => import("@/pages/AccountDeletionResource"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Accessibility = lazy(() => import("@/pages/Accessibility"));
 const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
@@ -2414,6 +2415,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
         <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route path="/account-deletion" component={AccountDeletionResource} />
         <Route path="/terms" component={Terms} />
         <Route path="/platform-legal">
           {() => (
