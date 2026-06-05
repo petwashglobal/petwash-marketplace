@@ -9863,7 +9863,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/kyc', requireDpaAccepted, uploadLimiter, kycRoutes);
   
   // KYC 2026 - Enterprise-Grade Identity Verification
-  app.use('/api/kyc/v2', requireDpaAccepted, kyc2026Routes);
+  // Requires verified Firebase identity before any biometric verification,
+  // status lookup, admin permission check, MFA, or erasure route runs.
+  const { validateFirebaseToken: validateKycV2FirebaseToken } = await import('./middleware/firebase-auth');
+  app.use('/api/kyc/v2', validateKycV2FirebaseToken, requireDpaAccepted, kyc2026Routes);
 
   // Supplier-invoice screening (First Safe PR). Each route checks
   // ff.supplier_invoice_control.enabled and returns 404 when the flag is OFF,
