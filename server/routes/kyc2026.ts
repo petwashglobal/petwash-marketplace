@@ -17,7 +17,9 @@ import {
   kycSubmitLimiter,
   kycSubmitIPLimiter,
   kycAdminReviewLimiter,
+  kycMFALimiter,
   requireKYCPermission,
+  requireKYCMFA,
 } from '../services/KYC2026';
 
 const router = Router();
@@ -230,6 +232,7 @@ router.get(
   '/admin/health',
   kycAdminReviewLimiter,
   requireKYCPermission('kyc:stats:view'),
+  requireKYCMFA(),
   async (_req: Request, res: Response) => {
     const health = await kycOrchestrator.getSystemHealth();
     const incidents = KYCIncidentResponse.getIncidentReport();
@@ -256,6 +259,7 @@ router.get(
   '/admin/audit',
   kycAdminReviewLimiter,
   requireKYCPermission('kyc:audit:view'),
+  requireKYCMFA(),
   async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const userId = req.query.userId as string;
@@ -296,6 +300,7 @@ router.get(
   '/admin/anomalies',
   kycAdminReviewLimiter,
   requireKYCPermission('kyc:anomaly:view'),
+  requireKYCMFA(),
   async (req: Request, res: Response) => {
     const since = req.query.since ? new Date(req.query.since as string) : undefined;
     const anomalyEntries = kycAuditTrail.getAnomalyEntries(since);
@@ -316,6 +321,7 @@ router.get(
   '/admin/incidents',
   kycAdminReviewLimiter,
   requireKYCPermission('kyc:stats:view'),
+  requireKYCMFA(),
   async (_req: Request, res: Response) => {
     const report = KYCIncidentResponse.getIncidentReport();
     res.json(report);
@@ -329,6 +335,7 @@ router.get(
 router.post(
   '/admin/roles/assign',
   requireKYCPermission('kyc:config:edit'),
+  requireKYCMFA(),
   async (req: Request, res: Response) => {
     const { targetUserId, role } = req.body;
     if (!targetUserId || !role) {
@@ -359,30 +366,35 @@ router.post(
 
 /**
  * POST /api/kyc/v2/admin/mfa/verify
- * Verify MFA for KYC admin session
+ * Issue an IP-bound KYC admin MFA session after KYC permission gating.
  */
-router.post('/admin/mfa/verify', async (req: Request, res: Response) => {
-  const userId = (req as any).user?.uid || (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+router.post(
+  '/admin/mfa/verify',
+  kycMFALimiter,
+  requireKYCPermission('kyc:audit:view'),
+  async (req: Request, res: Response) => {
+    const userId = (req as any).user?.uid || (req as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
 
-  const { method } = req.body;
-  const validMethods = ['totp', 'sms', 'email', 'webauthn'];
-  if (!method || !validMethods.includes(method)) {
-    return res.status(400).json({ error: 'Valid MFA method required (totp, sms, email, webauthn)' });
-  }
+    const { method } = req.body;
+    const validMethods = ['totp', 'sms', 'email', 'webauthn'];
+    if (!method || !validMethods.includes(method)) {
+      return res.status(400).json({ error: 'Valid MFA method required (totp, sms, email, webauthn)' });
+    }
 
-  const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
-  const sessionToken = KYCAccessControl.registerMFASession(userId, ipAddress, method);
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const sessionToken = KYCAccessControl.registerMFASession(userId, ipAddress, method);
 
-  res.json({
-    success: true,
-    mfaSessionToken: sessionToken,
-    expiresIn: '4 hours',
-    message: 'MFA verified. Include the token in X-KYC-MFA-Token header for admin operations.',
-  });
-});
+    res.json({
+      success: true,
+      mfaSessionToken: sessionToken,
+      expiresIn: '4 hours',
+      message: 'KYC MFA session issued. Include the token in X-KYC-MFA-Token header for admin operations.',
+    });
+  },
+);
 
 /**
  * GET /api/kyc/v2/architecture
