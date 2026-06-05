@@ -26,6 +26,7 @@ import {
 import { eq, and, gte, lt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { callerCanAdminMarketplaceRankings } from '../lib/marketplace-ranking-admin';
 
 const router = Router();
 
@@ -233,9 +234,13 @@ async function requireAdmin(req: any, res: any): Promise<string | null> {
   }
   try {
     const decoded = await auth.verifyIdToken(token, true);
+    if (!callerCanAdminMarketplaceRankings(decoded as any)) {
+      res.status(403).json({ error: 'Admin access required' });
+      return null;
+    }
+
     // SECURITY (T08): Use timing-safe comparison — old `!==` leaks secret length via timing
     const { isValidAdminSecret } = await import('../lib/admin-secret');
-    const clientSecret = req.headers['x-admin-secret'];
     const adminSecretPresent = !!(process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET);
     if (adminSecretPresent && !isValidAdminSecret(req, 'ADMIN_SECRET') && !isValidAdminSecret(req, 'PETWASH_ADMIN_SECRET')) {
       res.status(403).json({ error: 'Admin access required' });
