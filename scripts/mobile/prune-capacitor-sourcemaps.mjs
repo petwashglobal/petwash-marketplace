@@ -5,6 +5,8 @@ const roots = [
   "dist/public",
   "ios/App/App/public",
   "android/app/src/main/assets/public",
+  "ios-customer/App/App/public",
+  "android-customer/app/src/main/assets/public",
 ];
 
 async function pruneMaps(root) {

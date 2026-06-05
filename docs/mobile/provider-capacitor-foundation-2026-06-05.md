@@ -53,8 +53,8 @@ From the repo root:
 ```sh
 npm install
 npm run cap:provider:sync
-npx cap open ios
-npx cap open android
+npm run cap:provider:open:ios
+npm run cap:provider:open:android
 ```
 
 For non-GUI verification:
