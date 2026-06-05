@@ -7,18 +7,58 @@ description: Mandatory pre-flight checklist every Claude agent must run BEFORE w
 
 This skill is the discipline gate. Before you change a single line of code in **petwashglobal/petwash-marketplace**, you must run the pre-flight checklist below and report your answers. No silent changes. No "I'll just quickly...". No combined-purpose PRs.
 
-The Guardian operates at three checkpoints:
+The Guardian operates at four checkpoints:
 
 ```
-   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-   │  GATE 1      │     │  GATE 2      │     │  GATE 3      │
-   │  Pre-code    │ ──> │  Pre-commit  │ ──> │  Pre-push    │
-   └──────────────┘     └──────────────┘     └──────────────┘
-   "Should I       "Have I stayed       "Am I authorized
-    even start?"    in scope?"           to publish?"
+   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+   │  GATE 0      │     │  GATE 1      │     │  GATE 2      │     │  GATE 3      │
+   │ Anti-dupe    │ ──> │  Pre-code    │ ──> │  Pre-commit  │ ──> │  Pre-push    │
+   └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+   "Has someone     "Should I        "Have I stayed       "Am I authorized
+    already         even start?"      in scope?"           to publish?"
+    built this?"
 ```
 
 You may not skip a gate. You may not collapse two gates into one. Each gate produces a written report and stops for confirmation when the answer to any required check is "no" or "unsure."
+
+---
+
+## GATE 0 — Anti-duplication (run BEFORE you plan, BEFORE Gate 1)
+
+**This repo is worked by multiple agents at once — this Claude session, other Claude sessions, and Codex. The single most expensive failure mode is two agents independently building the same thing.** It has happened repeatedly: in one morning, SMS fallback, social-auth fixes, a provider-form guard, a booking state-machine guard, and a staff-ownership guard were each requested *after they had already been built and merged*. One near-miss tried to revert six merged PRs.
+
+So before you reason about the task at all, prove it isn't already done. Run this verbatim and read the output:
+
+```bash
+git fetch origin --quiet
+# 1. Open + recently-merged PRs that might be your task (edit the grep terms):
+gh pr list --state open  --limit 50
+gh pr list --state merged --limit 60 | grep -iE "<your-feature-keywords>"
+# 2. Remote branches (claude/* AND codex/*) already on the topic:
+git ls-remote --heads origin | grep -iE "<your-feature-keywords>"
+# 3. Does main ALREADY contain the capability? Grep the merged tree, not your branch:
+git grep -nE "<symbol-or-string-you-would-add>" origin/main -- '<likely/path/*>'
+```
+
+Then answer:
+
+```
+GATE 0 — Anti-duplication report
+
+Task in one line:        <what you were asked to build>
+Searched PRs:            open <n>, merged <n>  — match: NONE | PR #<n> "<title>"
+Searched branches:       NONE | origin/<branch> (claude|codex)
+Grepped origin/main:     ABSENT | ALREADY PRESENT at <file:line>
+Verdict:                 NEW WORK — proceed to Gate 1
+                         | ALREADY DONE — STOP, report to user, do NOT build
+                         | PARTIAL — only the delta <X> is new; narrow scope to that
+```
+
+Hard rules:
+- **If it already exists on `origin/main` or in a merged PR — STOP.** Do not rebuild it. Report the PR/file to the user and ask what they actually want that *isn't* already there.
+- **Never build on a merged/deleted branch.** Check `gh pr list --head <branch> --state all`; if its PR is MERGED, that branch is dead — cut a fresh branch off `origin/main`.
+- **Claim the work before coding:** open a draft PR with a clear title FIRST. The draft PR is the lock other agents see.
+- If Gate 0's verdict is anything but "NEW WORK," you may not proceed to Gate 1.
 
 ---
 
