@@ -60,6 +60,10 @@ if (isDevelopment && (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET
 
 const ACCESS_TOKEN_EXPIRY = "15m"; // Short-lived access tokens
 const REFRESH_TOKEN_EXPIRY = "7d"; // Long-lived refresh tokens
+const INVALID_LOGIN_RESPONSE = {
+  error: "Invalid email or password",
+  action: "Check your email and password, or use 'Forgot Password' to reset access",
+};
 
 interface LoginRequest {
   email: string;
@@ -207,17 +211,11 @@ router.post("/login/standard", async (req, res) => {
         if (errorCode === "EMAIL_NOT_FOUND" || errorCode === "INVALID_EMAIL") {
           const error = new Error(errorCode);
           await logAuthFailure("/auth/login/standard", error, { email, reason: "user_not_found" });
-          return res.status(401).json({
-            error: "No account found with this email address",
-            action: "Please check your email or sign up for a new account",
-          });
+          return res.status(401).json(INVALID_LOGIN_RESPONSE);
         } else if (errorCode === "INVALID_PASSWORD" || errorCode === "INVALID_LOGIN_CREDENTIALS") {
           const error = new Error(errorCode);
           await logAuthFailure("/auth/login/standard", error, { email, reason: "wrong_password" });
-          return res.status(401).json({
-            error: "Incorrect password",
-            action: "Please check your password or use 'Forgot Password' to reset",
-          });
+          return res.status(401).json(INVALID_LOGIN_RESPONSE);
         } else if (errorCode === "TOO_MANY_ATTEMPTS_TRY_LATER") {
           const error = new Error(errorCode);
           await logAuthFailure("/auth/login/standard", error, { email, reason: "rate_limited" });
@@ -282,16 +280,10 @@ router.post("/login/standard", async (req, res) => {
       // Specific error handling based on Firebase error codes
       if (authError.code === "auth/user-not-found") {
         await logAuthFailure("/auth/login/standard", authError, { email, reason: "user_not_found" });
-        return res.status(401).json({
-          error: "No account found with this email address",
-          action: "Please check your email or sign up for a new account",
-        });
+        return res.status(401).json(INVALID_LOGIN_RESPONSE);
       } else if (authError.code === "auth/wrong-password" || authError.code === "auth/invalid-credential") {
         await logAuthFailure("/auth/login/standard", authError, { email, reason: "wrong_password" });
-        return res.status(401).json({
-          error: "Incorrect password",
-          action: "Please check your password or use 'Forgot Password' to reset",
-        });
+        return res.status(401).json(INVALID_LOGIN_RESPONSE);
       } else if (authError.code === "auth/too-many-requests") {
         await logAuthFailure("/auth/login/standard", authError, { email, reason: "rate_limited" });
         return res.status(429).json({
