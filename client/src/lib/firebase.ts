@@ -98,6 +98,11 @@ const firebaseConfig = getFirebaseConfig();
 // Initialize Firebase app as singleton (prevent duplicate initialization)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
+// Ticket 02 social-auth hardening: keep the fix default-on, with an explicit
+// rollback flag and an explicit opt-in before Firebase Performance starts.
+const SOCIAL_AUTH_FIXES_ENABLED = import.meta.env.VITE_FEATURE_SOCIAL_AUTH_FIXES !== 'false';
+const FIREBASE_PERFORMANCE_ENABLED = import.meta.env.VITE_FIREBASE_PERFORMANCE_ENABLED === 'true';
+
 // App Check: uses VITE_RECAPTCHA_SITE_KEY (reCAPTCHA v3 site key)
 // FAIL-CLOSED: In production, if the key is missing the app logs a critical error.
 // App Check tokens are sent with every Firebase request once initialized.
@@ -197,6 +202,11 @@ const initHeavyFirebaseFeatures = async () => {
   // Skip Firebase Performance Monitoring in development to prevent API permission errors
   if (import.meta.env.DEV) {
     logger.debug('⏭️ Firebase Performance Monitoring skipped in development mode');
+    return;
+  }
+
+  if (SOCIAL_AUTH_FIXES_ENABLED && !FIREBASE_PERFORMANCE_ENABLED) {
+    logger.debug('[Firebase] Performance Monitoring skipped; set VITE_FIREBASE_PERFORMANCE_ENABLED=true after Firebase Performance is verified.');
     return;
   }
   
