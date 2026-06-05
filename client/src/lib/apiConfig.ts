@@ -10,10 +10,20 @@
  * No VITE_PRODUCTION_API_URL needed — Firebase handles the routing.
  */
 
+import { Capacitor } from '@capacitor/core';
+
 const getApiBaseUrl = (): string => {
   // Priority 1: Explicit VITE_API_URL override (rarely needed)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
+  }
+
+  // Native (Capacitor) shell: the bundled web app is served from capacitor://localhost,
+  // so a relative /api/** would hit the app shell where no backend exists. Point native
+  // builds at the real API. CapacitorHttp (see capacitor.config.ts) makes these native
+  // HTTP requests, so browser CORS does not apply; auth is a Firebase Bearer header, not a cookie.
+  if (Capacitor?.isNativePlatform?.()) {
+    return import.meta.env.VITE_NATIVE_API_URL || 'https://petwash.co.il';
   }
 
   if (typeof window !== 'undefined') {
