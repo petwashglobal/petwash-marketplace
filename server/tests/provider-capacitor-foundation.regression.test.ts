@@ -18,13 +18,15 @@ describe("provider Capacitor foundation", () => {
     const pkg = JSON.parse(read("package.json"));
 
     expect(pkg.scripts["cap:provider:sync"]).toBe(
-      "npm run build && npx cap sync && npm run cap:provider:clean-sourcemaps",
+      "node scripts/mobile/run-capacitor-app.mjs provider sync",
     );
-    expect(pkg.scripts["cap:provider:clean-sourcemaps"]).toBe(
-      "node scripts/mobile/prune-capacitor-sourcemaps.mjs",
+    expect(pkg.scripts["cap:clean-sourcemaps"]).toBe("node scripts/mobile/prune-capacitor-sourcemaps.mjs");
+    expect(pkg.scripts["cap:provider:open:ios"]).toBe(
+      "node scripts/mobile/run-capacitor-app.mjs provider open:ios",
     );
-    expect(pkg.scripts["cap:provider:open:ios"]).toBe("npx cap open ios");
-    expect(pkg.scripts["cap:provider:open:android"]).toBe("npx cap open android");
+    expect(pkg.scripts["cap:provider:open:android"]).toBe(
+      "node scripts/mobile/run-capacitor-app.mjs provider open:android",
+    );
 
     for (const dependency of [
       "@capacitor/core",
