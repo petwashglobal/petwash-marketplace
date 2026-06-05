@@ -24,7 +24,7 @@ export function getAuthErrorMessage(error: FirebaseError, language: 'he' | 'en' 
     // User-initiated cancellations
     'auth/popup-closed-by-user': {
       code: 'auth/popup-closed-by-user',
-      userMessage: language === 'he' 
+      userMessage: language === 'he'
         ? 'חלון ההתחברות נסגר. נסה שוב.' 
         : 'The sign-in window was closed. Please try again.',
       shouldRetry: true,
@@ -60,20 +60,20 @@ export function getAuthErrorMessage(error: FirebaseError, language: 'he' | 'en' 
       requiresUserAction: false,
     },
 
-    // Account errors
+    // Invalid credential errors should not reveal whether the account exists.
     'auth/user-not-found': {
       code: 'auth/user-not-found',
       userMessage: language === 'he'
-        ? 'לא נמצא משתמש עם כתובת דוא״ל זו.'
-        : 'No account found with this email address.',
-      shouldRetry: false,
+        ? 'פרטי התחברות לא תקינים.'
+        : 'Invalid sign-in credentials.',
+      shouldRetry: true,
       requiresUserAction: true,
     },
     'auth/wrong-password': {
       code: 'auth/wrong-password',
       userMessage: language === 'he'
-        ? 'סיסמה שגויה. נסה שוב.'
-        : 'Incorrect password. Please try again.',
+        ? 'פרטי התחברות לא תקינים.'
+        : 'Invalid sign-in credentials.',
       shouldRetry: true,
       requiresUserAction: true,
     },
