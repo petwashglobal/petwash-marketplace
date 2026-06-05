@@ -20,6 +20,21 @@ const ROOT = path.resolve(__dirname, '..');
 const bookingRequestsSrc = fs.readFileSync(path.join(ROOT, 'routes/booking-requests.ts'), 'utf8');
 const webhookSrc = fs.readFileSync(path.join(ROOT, 'routes/nayax-webhooks.ts'), 'utf8');
 
+function sliceBookingRequestPaymentWebhook(src: string): string {
+  const start = src.indexOf("'/nayax/booking-request-payment'");
+  if (start < 0) throw new Error('booking-request-payment webhook route not found');
+
+  const nextRoute = src.indexOf('router.', start + 1);
+  return nextRoute > start ? src.slice(start, nextRoute) : src.slice(start);
+}
+
+const bookingRequestPaymentWebhook = sliceBookingRequestPaymentWebhook(webhookSrc);
+const calendarCreateCall = /calendarIntegrationService\.createBookingEvent\s*\(/;
+
+function calendarCreateCallIndex(src: string): number {
+  return src.search(calendarCreateCall);
+}
+
 describe('PR-BOOKING-CALENDAR-A — calendar created only after payment truth', () => {
   it('booking-requests accept handler no longer creates a calendar event', () => {
     expect(bookingRequestsSrc).not.toMatch(/createBookingEvent/);
@@ -30,22 +45,26 @@ describe('PR-BOOKING-CALENDAR-A — calendar created only after payment truth', 
   });
 
   it('payment webhook creates the calendar event on confirmation', () => {
-    expect(webhookSrc).toMatch(/createBookingEvent/);
+    expect(bookingRequestPaymentWebhook).toMatch(calendarCreateCall);
   });
 
-  it('calendar creation happens AFTER the booking is set to confirmed', () => {
-    const confirmedIdx = webhookSrc.indexOf("status: 'confirmed'");
-    const calendarIdx = webhookSrc.indexOf('createBookingEvent');
-    expect(confirmedIdx).toBeGreaterThan(-1);
+  it('booking-request-payment calendar creation happens after the confirmed DB write', () => {
+    const confirmedWriteIdx = bookingRequestPaymentWebhook.indexOf("status: 'confirmed'");
+    const paymentTxIdx = bookingRequestPaymentWebhook.indexOf('paymentTransactionId: payload.transactionId');
+    const calendarIdx = calendarCreateCallIndex(bookingRequestPaymentWebhook);
+    expect(confirmedWriteIdx).toBeGreaterThan(-1);
+    expect(paymentTxIdx).toBeGreaterThan(confirmedWriteIdx);
     expect(calendarIdx).toBeGreaterThan(-1);
-    expect(calendarIdx).toBeGreaterThan(confirmedIdx);
+    expect(calendarIdx).toBeGreaterThan(paymentTxIdx);
   });
 
   it('calendar creation is non-blocking (wrapped in setImmediate)', () => {
     // The createBookingEvent call must sit inside a setImmediate block so a
     // slow/failed calendar call never delays or rolls back payment confirmation.
-    const afterConfirm = webhookSrc.slice(webhookSrc.indexOf("status: 'confirmed'"));
-    const calendarSegment = afterConfirm.slice(0, afterConfirm.indexOf('createBookingEvent'));
+    const afterConfirm = bookingRequestPaymentWebhook.slice(
+      bookingRequestPaymentWebhook.indexOf("status: 'confirmed'"),
+    );
+    const calendarSegment = afterConfirm.slice(0, calendarCreateCallIndex(afterConfirm));
     expect(calendarSegment).toMatch(/setImmediate\(/);
   });
 });
