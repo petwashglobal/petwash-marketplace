@@ -34,6 +34,9 @@ import { CURRENT_BIOMETRIC_CONSENT_VERSION } from '../lib/consentConstants';
 
 const router = Router();
 
+const GENERIC_BIOMETRIC_SIGN_IN_UNAVAILABLE =
+  'Biometric sign-in is unavailable for this account. Use another sign-in method or register a passkey after signing in.';
+
 // Configuration following NIST SP 800-63B standards
 const MOBILE_CONFIG = {
   rpName: 'Pet Wash Premium',
@@ -284,7 +287,7 @@ router.post('/authenticate/options', verifyAppCheckToken, async (req: Request, r
     const usersSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
     
     if (usersSnapshot.empty) {
-      return res.status(404).json({ error: 'No account found with this email' });
+      return res.status(404).json({ error: GENERIC_BIOMETRIC_SIGN_IN_UNAVAILABLE });
     }
     
     const userDoc = usersSnapshot.docs[0];
@@ -299,7 +302,7 @@ router.post('/authenticate/options', verifyAppCheckToken, async (req: Request, r
       .get();
     
     if (credsSnapshot.empty) {
-      return res.status(404).json({ error: 'No biometric credentials found' });
+      return res.status(404).json({ error: GENERIC_BIOMETRIC_SIGN_IN_UNAVAILABLE });
     }
     
     const allowCredentials = credsSnapshot.docs.map((doc) => {
