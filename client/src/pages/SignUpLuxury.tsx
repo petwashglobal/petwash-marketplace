@@ -135,8 +135,27 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
 
   const fail = (msg: string) => setInlineError(msg);
+
+  useEffect(() => {
+    if (!signupFlags.smsFallbackAndRealErrors || !signupFlags.emailPassword) return;
+
+    let cancelled = false;
+    fetch(getApiUrl('/api/auth/sms/status'), { credentials: 'include' })
+      .then((res) => res.json())
+      .then((status) => {
+        if (cancelled || status?.smsProviderHealthy !== false) return;
+        setSmsProviderHealthy(false);
+        setMethod((current) => current === 'mobile' ? 'email' : current);
+      })
+      .catch((err) => {
+        logger.warn('[signup] sms status unavailable', { error: err?.message });
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   const requireTerms = () => {
     if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return false; }
@@ -165,7 +184,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         body: JSON.stringify({ phone, language, flow, turnstileToken }),
       });
       const d = await r.json();
-      if (!d.ok) { fail(d.message || (he ? 'SMS אינו זמין כעת — נסה אימייל או Google' : 'SMS is temporarily unavailable. Please use email or Google.')); return; }
+      if (!d.ok) {
+        if (signupFlags.smsFallbackAndRealErrors) {
+          setSmsProviderHealthy(false);
+          if (signupFlags.emailPassword) setMethod('email');
+        }
+        fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
+        return;
+      }
       setSent(true);
       toast({ title: he ? 'קוד נשלח 📲' : 'Code sent 📲' });
     } catch (e) { logger.error('[signup] sendCode', e); fail(he ? 'שגיאת רשת' : 'Network error'); }
@@ -468,6 +494,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           {/* === Auth method inputs === */}
           {method === 'mobile' && !sent && (
             <>
+              {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
+                <p className="sl-inlineError" role="status">
+                  {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'}
+                </p>
+              )}
               <div className="sl-field">
                 <label className="sl-label">{t.phoneLabel}</label>
                 <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />

@@ -96,6 +96,63 @@ const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
          // Re-enable '61' only after Twilio alphanumeric sender for AU is registered.
 ]);
 
+export type SmsSendFailureCode =
+  | 'SMS_PROVIDER_CONFIG_ERROR'
+  | 'SMS_PROVIDER_GEO_BLOCKED'
+  | 'SMS_PROVIDER_SENDER_ERROR'
+  | 'SMS_PROVIDER_RATE_LIMITED'
+  | 'SMS_PROVIDER_ERROR'
+  | 'SMS_PROVIDER_DISABLED'
+  | 'SMS_RATE_LIMITED'
+  | 'SMS_OTP_STORE_ERROR';
+
+export interface SmsSendFailureMeta {
+  code: SmsSendFailureCode;
+  providerCode?: string;
+  retryable: boolean;
+  status: number;
+}
+
+export interface SmsVerificationSendResult extends Partial<SmsSendFailureMeta> {
+  success: boolean;
+  message: string;
+  expiresIn?: number;
+  messageId?: string;
+}
+
+function providerCode(error: any): string | undefined {
+  return error?.code === undefined || error?.code === null ? undefined : String(error.code);
+}
+
+export function classifyTwilioSmsError(error: any): SmsSendFailureMeta {
+  const code = providerCode(error);
+  const numericCode = Number(code);
+  const httpStatus = Number(error?.status);
+
+  if (numericCode === 20003 || numericCode === 20404) {
+    return { code: 'SMS_PROVIDER_CONFIG_ERROR', providerCode: code, retryable: false, status: 503 };
+  }
+  if (numericCode === 60605 || numericCode === 21408) {
+    return { code: 'SMS_PROVIDER_GEO_BLOCKED', providerCode: code, retryable: false, status: 422 };
+  }
+  if (numericCode >= 63000 && numericCode < 64000) {
+    return { code: 'SMS_PROVIDER_SENDER_ERROR', providerCode: code, retryable: false, status: 503 };
+  }
+  if (numericCode === 60202 || httpStatus === 429) {
+    return { code: 'SMS_PROVIDER_RATE_LIMITED', providerCode: code, retryable: true, status: 429 };
+  }
+  if (numericCode === 60200) {
+    return { code: 'SMS_PROVIDER_ERROR', providerCode: code, retryable: false, status: 422 };
+  }
+
+  return {
+    code: 'SMS_PROVIDER_ERROR',
+    providerCode: code,
+    retryable: !httpStatus || httpStatus >= 500,
+    status: httpStatus >= 400 && httpStatus < 600 ? httpStatus : 503,
+  };
+}
+
 class TwilioSMSService {
   private client: twilio.Twilio | null = null;
   private fromPhone: string | null = null;
@@ -270,24 +327,22 @@ class TwilioSMSService {
     return msgs[language] || msgs.en;
   }
 
-  async sendVerificationCode(phone: string, language: string = 'he', callerIp?: string): Promise<{
-    success: boolean;
-    message: string;
-    expiresIn?: number;
-    messageId?: string;
-  }> {
+  async sendVerificationCode(phone: string, language: string = 'he', callerIp?: string): Promise<SmsVerificationSendResult> {
     if (await smsAbuseDetector.isKillSwitchActive()) {
       logger.warn('[TwilioSMS] 🚨 Kill switch active — all SMS blocked', { phone: phone.slice(-4) });
-      return { success: false, message: this.t('smsUnavailable', language) };
+      return { success: false, message: this.t('smsUnavailable', language), code: 'SMS_PROVIDER_DISABLED', retryable: false, status: 503 };
     }
     if (!checkGlobalDailyCap()) {
       logger.error('[TwilioSMS] 🚨 Global daily cap reached — blocking verification SMS');
-      return { success: false, message: this.t('smsUnavailable', language) };
+      return { success: false, message: this.t('smsUnavailable', language), code: 'SMS_PROVIDER_DISABLED', retryable: true, status: 503 };
     }
     if (!this.isReady()) {
       return {
         success: false,
-        message: this.t('smsUnavailable', language)
+        message: this.t('smsUnavailable', language),
+        code: 'SMS_PROVIDER_CONFIG_ERROR',
+        retryable: false,
+        status: 503,
       };
     }
 
@@ -314,7 +369,7 @@ class TwilioSMSService {
           phone: formattedPhone.slice(0, 6) + '****',
           waitSec,
         });
-        return { success: false, message: cooldownMsgs[language] || cooldownMsgs.en };
+        return { success: false, message: cooldownMsgs[language] || cooldownMsgs.en, code: 'SMS_RATE_LIMITED', retryable: true, status: 429 };
       }
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -347,7 +402,7 @@ class TwilioSMSService {
         return false;
       });
       if (!stored) {
-        return { success: false, message: this.t('sendFailed', language) };
+        return { success: false, message: this.t('sendFailed', language), code: 'SMS_OTP_STORE_ERROR', retryable: true, status: 503 };
       }
     } else {
       // Redis not configured — single-instance in-memory fallback.
@@ -416,20 +471,22 @@ class TwilioSMSService {
         messageId,
       };
     } catch (error: any) {
+      const failure = classifyTwilioSmsError(error);
       const errorDetails = {
         message: error.message || 'Unknown error',
-        code: error.code,
-        status: error.status,
+        code: failure.code,
+        providerCode: failure.providerCode,
+        status: failure.status,
+        retryable: failure.retryable,
         moreInfo: error.moreInfo,
-        details: error.details,
         phone: formattedPhone.slice(0, 6) + '****'
       };
       logger.error('[TwilioSMS] Failed to send verification code', errorDetails);
-      console.error('[TwilioSMS] Full error:', JSON.stringify(error, null, 2));
 
       return {
         success: false,
-        message: this.t('sendFailed', language)
+        message: this.t('sendFailed', language),
+        ...failure,
       };
     }
   }

@@ -43,4 +43,6 @@ export const signupFlags = {
   keychainPrompt: off('VITE_AUTH_SIGNUP_KEYCHAIN_PROMPT_ENABLED'),
   /** ff.auth.signup.legacy_panel_hidden.enabled */
   legacyPanelHidden: off('VITE_AUTH_SIGNUP_LEGACY_PANEL_HIDDEN_ENABLED'),
+  /** FEATURE_SMS_FALLBACK_AND_REAL_ERRORS */
+  smsFallbackAndRealErrors: on('VITE_FEATURE_SMS_FALLBACK_AND_REAL_ERRORS'),
 } as const;

@@ -52,6 +52,22 @@ export function redirectForFlow(flow: AuthFlow): string {
 
 const router = Router();
 
+function statusForSmsFailure(result: { status?: number; code?: string }): number {
+  if (result.status && result.status >= 400 && result.status < 600) return result.status;
+  if (result.code === 'SMS_RATE_LIMITED' || result.code === 'SMS_PROVIDER_RATE_LIMITED') return 429;
+  if (result.code === 'SMS_PROVIDER_GEO_BLOCKED') return 422;
+  return 503;
+}
+
+// GET /api/auth/sms/status — cheap config signal for clients to default away from SMS.
+router.get('/status', (_req: Request, res: Response) => {
+  const smsProviderHealthy = twilioSMSService.isReady() && !twilioSMSService.isEmergencyDisabled();
+  return res.status(200).json({
+    ok: true,
+    smsProviderHealthy,
+  });
+});
+
 // POST /api/auth/sms/start — send a one-time login code to the phone.
 router.post('/start', async (req: Request, res: Response) => {
   const body = req.body ?? {};
@@ -84,14 +100,32 @@ router.post('/start', async (req: Request, res: Response) => {
   try {
     const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
     if (!result.success) {
-      // Covers missing Twilio config, resend cooldown, and global/per-phone caps.
+      const safeCode = result.code || 'SMS_PROVIDER_ERROR';
+      const status = statusForSmsFailure(result);
       void logAuditEvent({
         actionType: 'SIGNUP_FAILED',
         ip: callerIp, userAgent: req.headers['user-agent'],
-        metadata: { step: 'otp_send', method: 'mobile', flow, phone: maskPhone(phone), reason: result.message || 'sms_unavailable' },
+        metadata: {
+          step: 'otp_send',
+          method: 'mobile',
+          flow,
+          phone: maskPhone(phone),
+          reason: safeCode,
+          providerCode: result.providerCode,
+          retryable: result.retryable,
+        },
         severity: 'warning',
       });
-      return res.status(503).json({ ok: false, error: 'sms_unavailable', message: result.message, flow });
+      return res.status(status).json({
+        ok: false,
+        error: safeCode,
+        code: safeCode,
+        providerCode: result.providerCode,
+        retryable: !!result.retryable,
+        message: result.message,
+        smsProviderHealthy: false,
+        flow,
+      });
     }
     void logAuditEvent({
       actionType: 'SIGNUP_OTP_SENT',

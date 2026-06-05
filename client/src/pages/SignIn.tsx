@@ -1374,7 +1374,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     try {
       const formattedPhone = normalizedPhone;
 
-      logger.info('[PhoneAuth] Sending code to:', formattedPhone);
+      logger.info('[PhoneAuth] Sending code', { phone: formattedPhone.slice(-4) });
 
       // ── Best-effort captcha (non-blocking) ───────────────────────────────────
       // Security for phone OTP is: rate limiting + phone lockout + daily SMS cap + the OTP itself.
