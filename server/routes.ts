@@ -11298,7 +11298,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/franchise-mgmt', validateFirebaseToken, adminLimiter, franchiseMgmtRoutes);
   
   // Customer & Social Features — social-circle.ts handles /api/social (registered above)
-  app.use('/api/messages', optionalFirebaseToken, apiLimiter, messagesRoutes);
+  app.use('/api/messages', validateFirebaseToken, apiLimiter, messagesRoutes);
   app.use('/api/concierge', apiLimiter, conciergeRoutes);
   
   // Global Services
