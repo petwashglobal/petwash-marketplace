@@ -8,6 +8,10 @@ import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
 import { createHash } from 'crypto';
 import { z } from 'zod';
+import {
+  revokeAppleSignInForAccountDeletion,
+  summarizeAppleSignInRevocation,
+} from '../services/appleSignInRevocation';
 
 const router = Router();
 
@@ -109,6 +113,9 @@ router.post('/request', requireAuth, async (req: any, res) => {
     const consentTimestamp = new Date();
     const hardDeleteDate = new Date();
     hardDeleteDate.setDate(hardDeleteDate.getDate() + 90);
+    const appleSignInRevocation = summarizeAppleSignInRevocation(
+      await revokeAppleSignInForAccountDeletion(userId)
+    );
 
     const requestData = {
       requestId,
@@ -155,6 +162,7 @@ router.post('/request', requireAuth, async (req: any, res) => {
         consentTimestamp: consentTimestamp.toISOString(),
         userEmail: user.email,
         hardDeleteScheduledAt: hardDeleteDate.toISOString(),
+        appleSignInRevocation,
       },
       dataCategory: 'account',
       performedBy: `user:${userId}`,
@@ -167,6 +175,7 @@ router.post('/request', requireAuth, async (req: any, res) => {
       email: user.email,
       hardDeleteScheduledAt: hardDeleteDate.toISOString(),
       contentHash: contentHash.substring(0, 16) + '...',
+      appleSignInRevocation,
     });
 
     res.json({
@@ -177,6 +186,7 @@ router.post('/request', requireAuth, async (req: any, res) => {
       requestId,
       status: 'pending',
       hardDeleteScheduledAt: hardDeleteDate.toISOString(),
+      appleSignInRevocation,
     });
   } catch (error: any) {
     if (error.name === 'ZodError') {

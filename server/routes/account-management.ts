@@ -5,6 +5,10 @@ import { eq } from 'drizzle-orm';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import {
+  revokeAppleSignInForAccountDeletion,
+  summarizeAppleSignInRevocation,
+} from '../services/appleSignInRevocation';
 
 const router = Router();
 
@@ -80,6 +84,10 @@ router.post('/delete-request', async (req, res) => {
 
     // Store deletion request in Firestore for audit trail
     const firestore = admin.firestore();
+    const appleSignInRevocation = summarizeAppleSignInRevocation(
+      await revokeAppleSignInForAccountDeletion(uid)
+    );
+
     await firestore.collection('account_deletion_requests').doc(uid).set({
       userId: uid,
       email: decodedToken.email,
@@ -92,6 +100,7 @@ router.post('/delete-request', async (req, res) => {
       userAgent: req.headers['user-agent'],
       canCancel: true,
       cancelDeadline: admin.firestore.Timestamp.fromDate(scheduledDeletionDate),
+      appleSignInRevocation,
     });
 
     // Mark user account as pending deletion in Firestore
@@ -111,6 +120,7 @@ router.post('/delete-request', async (req, res) => {
         scheduledDeletionDate: scheduledDeletionDate.toISOString(),
         forfeitedCredits,
         reason: reason || 'No reason provided',
+        appleSignInRevocation,
       },
       ipAddress: req.ip,
     });
@@ -118,8 +128,21 @@ router.post('/delete-request', async (req, res) => {
     logger.info('[AccountManagement] Deletion request created:', { 
       uid, 
       scheduledDeletionDate: scheduledDeletionDate.toISOString(),
-      forfeitedCredits 
+      forfeitedCredits,
+      appleSignInRevocation,
     });
+
+    const warnings = [
+      'All e-gift card balances will be permanently forfeited (non-transferable)',
+      'All loyalty points will be permanently deleted',
+      'All wash package credits will be forfeited',
+      'All booking history will be anonymized',
+      'This action cannot be undone after the grace period',
+    ];
+
+    if (appleSignInRevocation.manualRevocationRequired) {
+      warnings.push('Sign in with Apple access may require manual revocation from Apple ID settings.');
+    }
 
     res.json({
       success: true,
@@ -128,13 +151,8 @@ router.post('/delete-request', async (req, res) => {
       gracePeriodDays,
       canCancelUntil: scheduledDeletionDate.toISOString(),
       forfeitedCredits,
-      warnings: [
-        'All e-gift card balances will be permanently forfeited (non-transferable)',
-        'All loyalty points will be permanently deleted',
-        'All wash package credits will be forfeited',
-        'All booking history will be anonymized',
-        'This action cannot be undone after the grace period',
-      ],
+      appleSignInRevocation,
+      warnings,
     });
   } catch (error: any) {
     logger.error('[AccountManagement] Deletion request error:', error);
@@ -171,6 +189,10 @@ router.delete('/delete', async (req, res) => {
       updatedAt: new Date(),
     } as any).where(eq(users.id, uid));
 
+    const appleSignInRevocation = summarizeAppleSignInRevocation(
+      await revokeAppleSignInForAccountDeletion(uid)
+    );
+
     // Immediately disable the Firebase account so the user cannot log back in
     try {
       await admin.auth().updateUser(uid, { disabled: true });
@@ -178,8 +200,12 @@ router.delete('/delete', async (req, res) => {
       logger.warn('[AccountManagement] Could not disable Firebase account during consent-decline delete', { uid, fbErr });
     }
 
-    logger.info('[AccountManagement] Consent-decline account deletion initiated', { uid });
-    res.json({ ok: true, message: 'Account deletion initiated. Your data will be removed within 30 days.' });
+    logger.info('[AccountManagement] Consent-decline account deletion initiated', { uid, appleSignInRevocation });
+    res.json({
+      ok: true,
+      message: 'Account deletion initiated. Your data will be removed within 30 days.',
+      appleSignInRevocation,
+    });
   } catch (error: any) {
     logger.error('[AccountManagement] Consent-decline delete error:', error);
     res.status(500).json({ error: 'Failed to process account deletion' });
