@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 /**
  * Production API Configuration - Industry Best Practice 2025
  *
@@ -10,20 +12,20 @@
  * No VITE_PRODUCTION_API_URL needed — Firebase handles the routing.
  */
 
-import { Capacitor } from '@capacitor/core';
+const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, '');
 
 const getApiBaseUrl = (): string => {
   // Priority 1: Explicit VITE_API_URL override (rarely needed)
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    return normalizeBaseUrl(import.meta.env.VITE_API_URL);
   }
 
   // Native (Capacitor) shell: the bundled web app is served from capacitor://localhost,
   // so a relative /api/** would hit the app shell where no backend exists. Point native
   // builds at the real API. CapacitorHttp (see capacitor.config.ts) makes these native
   // HTTP requests, so browser CORS does not apply; auth is a Firebase Bearer header, not a cookie.
-  if (Capacitor?.isNativePlatform?.()) {
-    return import.meta.env.VITE_NATIVE_API_URL || 'https://petwash.co.il';
+  if (Capacitor.isNativePlatform()) {
+    return normalizeBaseUrl(import.meta.env.VITE_NATIVE_API_URL || 'https://petwash.co.il');
   }
 
   if (typeof window !== 'undefined') {
@@ -72,6 +74,7 @@ if (import.meta.env.DEV) {
   console.log('[API Config]', {
     baseUrl: API_BASE_URL || '(relative — Firebase rewrite active)',
     isProduction: import.meta.env.PROD,
+    isNative: Capacitor.isNativePlatform(),
     hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
   });
 }
