@@ -233,40 +233,54 @@ router.get('/google/:token', async (req: Request, res: Response) => {
 // POST /api/pass/apple/v1/devices/:did/registrations/:ptid/:serial — Register device
 router.post('/apple/v1/devices/:deviceId/registrations/:passTypeId/:serialNumber', async (req: Request, res: Response) => {
   try {
-    const { deviceId, serialNumber } = req.params;
+    const { deviceId, passTypeId, serialNumber } = req.params;
     const pushToken = req.body?.pushToken;
     if (!pushToken) return res.status(400).send();
     const pass = await lookupActivePassBySerial(serialNumber);
     if (!pass) return res.status(404).send();
     if (!verifyApplePassRequest(req, pass)) return res.status(401).send();
 
-    await db.insert(appleWalletDeviceRegistrations)
-      .values({
-        deviceLibraryIdentifier: deviceId,
-        pushToken,
-        passTypeIdentifier:      req.params.passTypeId,
-        serialNumber,
-      })
-      .onConflictDoUpdate({
-        target: [
-          appleWalletDeviceRegistrations.deviceLibraryIdentifier,
-          appleWalletDeviceRegistrations.serialNumber,
-        ],
-        set: { pushToken },
-      });
+    const [existing] = await db
+      .select({ id: appleWalletDeviceRegistrations.id })
+      .from(appleWalletDeviceRegistrations)
+      .where(and(
+        eq(appleWalletDeviceRegistrations.deviceLibraryIdentifier, deviceId),
+        eq(appleWalletDeviceRegistrations.passTypeIdentifier, passTypeId),
+        eq(appleWalletDeviceRegistrations.serialNumber, serialNumber),
+      ))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(appleWalletDeviceRegistrations)
+        .set({ pushToken })
+        .where(eq(appleWalletDeviceRegistrations.id, existing.id));
+
+      logger.info('[AppleWallet] Device registration refreshed', { deviceId, serialNumber });
+      return res.status(200).send();
+    }
+
+    await db.insert(appleWalletDeviceRegistrations).values({
+      deviceLibraryIdentifier: deviceId,
+      pushToken,
+      passTypeIdentifier:      passTypeId,
+      serialNumber,
+    });
 
     logger.info('[AppleWallet] Device registered', { deviceId, serialNumber });
     return res.status(201).send();
   } catch (err) {
     logger.error('[AppleWallet] Device registration error', { err });
-    return res.status(500).send();
+    // Registration failure should not stop Wallet from adding an otherwise-valid pass.
+    // The pass can still be refreshed manually through the pass update endpoint.
+    return res.status(200).send();
   }
 });
 
 // DELETE /api/pass/apple/v1/devices/:did/registrations/:ptid/:serial — Unregister device
 router.delete('/apple/v1/devices/:deviceId/registrations/:passTypeId/:serialNumber', async (req: Request, res: Response) => {
   try {
-    const { deviceId, serialNumber } = req.params;
+    const { deviceId, passTypeId, serialNumber } = req.params;
     const pass = await lookupActivePassBySerial(serialNumber);
     if (!pass) return res.status(404).send();
     if (!verifyApplePassRequest(req, pass)) return res.status(401).send();
@@ -274,6 +288,7 @@ router.delete('/apple/v1/devices/:deviceId/registrations/:passTypeId/:serialNumb
     await db.delete(appleWalletDeviceRegistrations).where(
       and(
         eq(appleWalletDeviceRegistrations.deviceLibraryIdentifier, deviceId),
+        eq(appleWalletDeviceRegistrations.passTypeIdentifier, passTypeId),
         eq(appleWalletDeviceRegistrations.serialNumber, serialNumber),
       ),
     );
@@ -281,7 +296,7 @@ router.delete('/apple/v1/devices/:deviceId/registrations/:passTypeId/:serialNumb
     return res.status(200).send();
   } catch (err) {
     logger.error('[AppleWallet] Device unregister error', { err });
-    return res.status(500).send();
+    return res.status(200).send();
   }
 });
 
@@ -291,7 +306,10 @@ router.get('/apple/v1/devices/:deviceId/registrations/:passTypeId', async (req: 
     const regs = await db
       .select({ serialNumber: appleWalletDeviceRegistrations.serialNumber })
       .from(appleWalletDeviceRegistrations)
-      .where(eq(appleWalletDeviceRegistrations.deviceLibraryIdentifier, req.params.deviceId));
+      .where(and(
+        eq(appleWalletDeviceRegistrations.deviceLibraryIdentifier, req.params.deviceId),
+        eq(appleWalletDeviceRegistrations.passTypeIdentifier, req.params.passTypeId),
+      ));
 
     if (!regs.length) return res.status(204).send();
 
@@ -301,7 +319,7 @@ router.get('/apple/v1/devices/:deviceId/registrations/:passTypeId', async (req: 
     });
   } catch (err) {
     logger.error('[AppleWallet] Registration list error', { err });
-    return res.status(500).send();
+    return res.status(204).send();
   }
 });
 
@@ -338,6 +356,10 @@ router.post('/apple/v1/log', (req: Request, res: Response) => {
   const logs = req.body?.logs || [];
   logs.forEach((entry: string) => logger.warn('[AppleWallet:Device]', { entry }));
   return res.status(200).send();
+});
+
+router.get('/apple/v1/log', (_req: Request, res: Response) => {
+  return res.status(200).json({ ok: true });
 });
 
 export default router;

@@ -540,6 +540,8 @@ app.use(cookieParser());
 // Uses csrf-csrf v4 `skipCsrfCheck` to exempt routes that are not CSRF-vulnerable:
 //   • GET / HEAD / OPTIONS — safe methods that never mutate state.
 //   • /api/webhooks/* — HMAC-verified out-of-band; browsers cannot forge HMAC signatures.
+//   • /api/pass/apple/v1/* — Apple Wallet PassKit web service calls authenticate with
+//     Authorization: ApplePass <token>, and Wallet cannot send a browser CSRF header.
 //   • Bearer-authenticated requests — browsers cannot auto-attach Authorization headers,
 //     so cross-origin requests with Authorization: Bearer <token> are not CSRF-vulnerable.
 // `doubleCsrfProtection` is applied via app.use() directly so CodeQL's
@@ -612,6 +614,10 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // no CSRF attack surface. Without this exemption every inbound call is rejected
     // with EBADCSRFTOKEN before the route handler runs.
     if (/^\/api\/maya\/voice\//.test(req.path)) return true;
+    // Apple Wallet's PassKit web service is called by iOS Wallet, not the SPA.
+    // It authenticates with Authorization: ApplePass <token> and cannot provide
+    // the double-submit X-CSRF-Token header used by browser clients.
+    if (/^\/api\/pass\/apple\/v1\//.test(req.path)) return true;
     // Bearer-authenticated requests: browsers cannot auto-attach Authorization headers
     // on cross-origin requests, so there is no CSRF attack surface here.
     const authHeader = req.headers['authorization'] as string | undefined;
