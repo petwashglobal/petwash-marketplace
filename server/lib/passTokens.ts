@@ -9,7 +9,7 @@
  *
  *   wallet-barcode (365 days) — durable token embedded in static Wallet passes.
  *                               Server must still validate active pass state before debit.
- *                               Secret: PRESTIGE_QR_SECRET
+ *                               Secret: PRESTIGE_QR_SECRET, falling back to PASS_LINK_SECRET
  *
  *   qr-redeem      (45 seconds) — live in-app/kiosk authorization token.
  *                                 Validated by K9000 kiosk at scan time.
@@ -24,6 +24,7 @@ import { logger } from './logger';
 
 const PASS_LINK_SECRET = process.env.PASS_LINK_SECRET || process.env.PRESTIGE_QR_SECRET || '';
 const PRESTIGE_QR_SECRET = process.env.PRESTIGE_QR_SECRET || '';
+const WALLET_BARCODE_SECRET = PRESTIGE_QR_SECRET || PASS_LINK_SECRET;
 const APPLE_PASS_AUTH_SECRET = process.env.APPLE_PASS_AUTH_SECRET || PASS_LINK_SECRET || PRESTIGE_QR_SECRET;
 
 export interface PassTokenPayload {
@@ -104,11 +105,11 @@ export function buildWalletBarcodeToken(
     nonce:        crypto.randomUUID(),
     issuedAt:     now,
     expiresAt:    now + 60 * 60 * 24 * 365,
-  }, PRESTIGE_QR_SECRET);
+  }, WALLET_BARCODE_SECRET);
 }
 
 export function verifyWalletBarcodeToken(token: string): PassTokenPayload {
-  const payload = verify(token, PRESTIGE_QR_SECRET);
+  const payload = verify(token, WALLET_BARCODE_SECRET);
   if (payload.purpose !== 'wallet-barcode') throw new Error('INVALID_PURPOSE');
   return payload;
 }
