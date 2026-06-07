@@ -99,6 +99,24 @@ function buildVisual(pass: typeof petwashPassAccounts.$inferSelect) {
   };
 }
 
+function walletGenerationError(err: unknown): { code: string; message: string } {
+  const rawMessage = err instanceof Error ? err.message : String(err || 'Unknown pass generation error');
+  const message = rawMessage
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, '[redacted-pem]')
+    .replace(/[A-Za-z0-9+/=]{80,}/g, '[redacted-token]')
+    .slice(0, 240);
+  const lower = message.toLowerCase();
+
+  let code = 'PASS_GENERATION_FAILED';
+  if (lower.includes('not configured') || lower.includes('secret')) code = 'WALLET_CONFIGURATION_ERROR';
+  if (lower.includes('certificate') || lower.includes('cert') || lower.includes('pem') || lower.includes('private key')) {
+    code = 'WALLET_CERTIFICATE_ERROR';
+  }
+  if (lower.includes('model') || lower.includes('pass.json') || lower.includes('manifest')) code = 'WALLET_MODEL_ERROR';
+
+  return { code, message };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/pass/:signedToken — Universal distribution link
 // Detects user-agent: iOS → Apple Wallet, Android → Google Wallet, desktop → chooser
@@ -346,7 +364,12 @@ router.get('/apple/v1/passes/:passTypeId/:serialNumber', async (req: Request, re
     res.setHeader('Last-Modified', new Date().toUTCString());
     return res.send(pkpassBuffer);
   } catch (err) {
-    logger.error('[AppleWallet] Pass update serve error', { err });
+    const walletError = walletGenerationError(err);
+    logger.error('[AppleWallet] Pass update serve error', { err, walletError });
+    res.setHeader('X-PetWash-Wallet-Error-Code', walletError.code);
+    if (req.query.debug === 'codex') {
+      return res.status(500).json({ ok: false, error: walletError.code, message: walletError.message });
+    }
     return res.status(500).send();
   }
 });
