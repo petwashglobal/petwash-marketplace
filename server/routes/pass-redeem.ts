@@ -5,12 +5,13 @@
  * This is a separate system from the legacy WalletEngine / wallet_accounts system.
  *
  * Security layers (all mandatory per spec):
- *  1. Signed qr-redeem token verification (HMAC-SHA256, 45-second TTL)
+ *  1. Signed token verification (HMAC-SHA256): live QR or Wallet barcode
  *  2. Machine ID + Bay ID binding (if encoded in token)
- *  3. Nonce atomic burn via PostgreSQL ON CONFLICT (replay = 409)
- *  4. DB-level atomic debit via transaction (SELECT ... FOR UPDATE)
- *  5. Immutable ledger write to petwash_pass_transactions
- *  6. Google Wallet object push-update after debit
+ *  3. Token-version check against the active pass record for revocation
+ *  4. Nonce atomic burn for live qr-redeem tokens (replay = 409)
+ *  5. DB-level atomic debit via transaction (SELECT ... FOR UPDATE)
+ *  6. Immutable ledger write to petwash_pass_transactions
+ *  7. Google Wallet object push-update after debit
  *
  * Endpoints (mounted at /api/pass by routes.ts):
  *   POST /api/pass/redeem          — K9000 kiosk QR scan redemption
@@ -31,7 +32,11 @@ import {
 } from '@shared/schema';
 import { eq, sql, desc } from 'drizzle-orm';
 import { logger }       from '../lib/logger';
-import { verifyQrRedeemToken } from '../lib/passTokens';
+import {
+  verifyQrRedeemToken,
+  verifyWalletBarcodeToken,
+  type PassTokenPayload,
+} from '../lib/passTokens';
 import { pushUpdate }   from '../services/GoogleWalletService';
 
 const router = Router();
@@ -74,6 +79,18 @@ const topupSchema = z.object({
   metadata:    z.record(z.unknown()).optional(),
 });
 
+function verifyScannedPassToken(scannedToken: string): PassTokenPayload {
+  try {
+    return verifyQrRedeemToken(scannedToken);
+  } catch (qrErr: any) {
+    try {
+      return verifyWalletBarcodeToken(scannedToken);
+    } catch {
+      throw qrErr;
+    }
+  }
+}
+
 // ─── Core atomic helpers ──────────────────────────────────────────────────────
 
 /**
@@ -108,12 +125,13 @@ async function atomicLedgerEntry(opts: {
   amountIls:   number;
   sourceType:  string;
   sourceRef?:  string;
+  tokenVersion?: number;
   metadata?:   Record<string, unknown>;
 }): Promise<{ txId: string; balanceBefore: number; balanceAfter: number }> {
   return await db.transaction(async (tx) => {
     // 1. Lock the pass row (FOR UPDATE = advisory lock in Postgres)
     const [pass] = await tx.execute(sql`
-      SELECT id, user_id, available_credit_ils, status, valid_until
+      SELECT id, user_id, available_credit_ils, status, valid_until, qr_token_version
       FROM petwash_pass_accounts
       WHERE pass_id = ${opts.passId}
       FOR UPDATE
@@ -123,6 +141,9 @@ async function atomicLedgerEntry(opts: {
     if (pass.status !== 'ACTIVE') throw Object.assign(new Error('PASS_NOT_ACTIVE'), { status: 403 });
     if (pass.valid_until && new Date(pass.valid_until) < new Date()) {
       throw Object.assign(new Error('PASS_EXPIRED'), { status: 403 });
+    }
+    if (opts.tokenVersion !== undefined && Number(pass.qr_token_version) !== opts.tokenVersion) {
+      throw Object.assign(new Error('TOKEN_REVOKED'), { status: 403 });
     }
 
     const balanceBefore = parseFloat(pass.available_credit_ils);
@@ -166,7 +187,7 @@ async function atomicLedgerEntry(opts: {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/pass/redeem — K9000 kiosk QR scan redemption
 //
-// Called by: K9000 kiosk after scanning the wallet barcode (qr-redeem token)
+// Called by: K9000 kiosk after scanning a live QR token or Wallet barcode token.
 // Authentication: Token self-authenticates via HMAC — no session required.
 //                 Kiosks should additionally set K9000_MACHINE_SECRET in headers.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -186,9 +207,9 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
     }
 
     // ── 1. Verify token (signature + expiry + purpose) ────────────────────────
-    let payload: ReturnType<typeof verifyQrRedeemToken>;
+    let payload: PassTokenPayload;
     try {
-      payload = verifyQrRedeemToken(scannedToken);
+      payload = verifyScannedPassToken(scannedToken);
     } catch (err: any) {
       const msg = err?.message || 'INVALID_TOKEN';
       if (msg === 'TOKEN_EXPIRED')   return res.status(401).json({ ok: false, error: 'TOKEN_EXPIRED — scan again' });
@@ -208,11 +229,13 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
       return res.status(403).json({ ok: false, error: 'TOKEN_BAY_MISMATCH' });
     }
 
-    // ── 4. Burn nonce (replay protection) ────────────────────────────────────
-    const nonceConsumed = await burnNonce(payload.nonce, payload.passId, payload.expiresAt);
-    if (!nonceConsumed) {
-      logger.warn('[PassRedeem] REPLAY ATTACK — nonce already used', { nonce: payload.nonce, passId: payload.passId });
-      return res.status(409).json({ ok: false, error: 'TOKEN_ALREADY_USED — replay rejected' });
+    // ── 4. Burn nonce for live QR tokens (replay protection) ──────────────────
+    if (payload.purpose === 'qr-redeem') {
+      const nonceConsumed = await burnNonce(payload.nonce, payload.passId, payload.expiresAt);
+      if (!nonceConsumed) {
+        logger.warn('[PassRedeem] REPLAY ATTACK — nonce already used', { nonce: payload.nonce, passId: payload.passId });
+        return res.status(409).json({ ok: false, error: 'TOKEN_ALREADY_USED — replay rejected' });
+      }
     }
 
     // ── 5–7. Atomic debit + ledger ────────────────────────────────────────────
@@ -222,6 +245,7 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
       amountIls,
       sourceType: 'K9000',
       sourceRef:  kioskId,
+      tokenVersion: payload.tokenVersion,
       metadata: {
         kioskId,
         bayId:          bayId   ?? null,
@@ -229,6 +253,7 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
         tokenBayId:     payload.bayId     ?? null,
         nonce:          payload.nonce,
         tokenVersion:   payload.tokenVersion,
+        tokenPurpose:   payload.purpose,
       },
     });
 

@@ -7,9 +7,13 @@
  *                               Routes: /api/pass/:token, /api/pass/apple/:token, /api/pass/google/:token
  *                               Secret: PASS_LINK_SECRET
  *
- *   qr-redeem    (45 seconds) — lives inside the wallet barcode only.
- *                               Validated by K9000 kiosk at scan time.
+ *   wallet-barcode (365 days) — durable token embedded in static Wallet passes.
+ *                               Server must still validate active pass state before debit.
  *                               Secret: PRESTIGE_QR_SECRET
+ *
+ *   qr-redeem      (45 seconds) — live in-app/kiosk authorization token.
+ *                                 Validated by K9000 kiosk at scan time.
+ *                                 Secret: PRESTIGE_QR_SECRET
  *
  * Token format: base64url(JSON payload) + "." + HMAC-SHA256 signature
  * Timing-safe comparison on verify. Token version bumped to invalidate outstanding tokens on revoke.
@@ -26,7 +30,7 @@ export interface PassTokenPayload {
   passId: string;
   userId: string;
   tokenVersion: number;
-  purpose: 'wallet-link' | 'qr-redeem';
+  purpose: 'wallet-link' | 'wallet-barcode' | 'qr-redeem';
   nonce: string;
   issuedAt: number;
   expiresAt: number;
@@ -81,6 +85,31 @@ export function buildPassLinkToken(
 export function verifyPassLinkToken(token: string): PassTokenPayload {
   const payload = verify(token, PASS_LINK_SECRET);
   if (payload.purpose !== 'wallet-link') throw new Error('INVALID_PURPOSE');
+  return payload;
+}
+
+// ─── Wallet Barcode Token (365d, for static Wallet pass barcode) ─────────────
+
+export function buildWalletBarcodeToken(
+  passId: string,
+  userId: string,
+  qrTokenVersion: number,
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  return sign({
+    passId,
+    userId,
+    tokenVersion: qrTokenVersion,
+    purpose:      'wallet-barcode',
+    nonce:        crypto.randomUUID(),
+    issuedAt:     now,
+    expiresAt:    now + 60 * 60 * 24 * 365,
+  }, PRESTIGE_QR_SECRET);
+}
+
+export function verifyWalletBarcodeToken(token: string): PassTokenPayload {
+  const payload = verify(token, PRESTIGE_QR_SECRET);
+  if (payload.purpose !== 'wallet-barcode') throw new Error('INVALID_PURPOSE');
   return payload;
 }
 

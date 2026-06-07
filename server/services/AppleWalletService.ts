@@ -19,7 +19,7 @@
 
 import path from 'path';
 import { PKPass } from 'passkit-generator';
-import { buildApplePassAuthToken, buildQrRedeemToken } from '../lib/passTokens';
+import { buildApplePassAuthToken, buildWalletBarcodeToken } from '../lib/passTokens';
 import { logger } from '../lib/logger';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
@@ -103,7 +103,7 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
     throw new Error('APPLE_WALLET_NOT_CONFIGURED: set APPLE_TEAM_IDENTIFIER, APPLE_WWDR_PEM, APPLE_SIGNER_CERT_PEM, APPLE_SIGNER_KEY_PEM');
   }
 
-  const qrToken = buildQrRedeemToken(visual.passId, visual.userId, visual.qrTokenVersion);
+  const barcodeToken = buildWalletBarcodeToken(visual.passId, visual.userId, visual.qrTokenVersion);
   const authToken = buildApplePassAuthToken(visual.passId, visual.userId, visual.qrTokenVersion);
   const locations = configuredPassLocations();
   const appStoreIds = configuredAppStoreIds();
@@ -228,14 +228,15 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
     value: 'This pass is non-transferable and remains subject to Pet Wash Ltd terms, verification rules, and membership conditions.',
   } as any);
 
-  // Barcode — 45-second signed QR redeem token (never the raw passId or userId)
+  // Barcode — durable signed Wallet token. Dynamic 45-second qr-redeem tokens
+  // stay in the live app/kiosk flow; a static .pkpass cannot carry one safely.
   pass.setBarcodes({
-    message:         qrToken,
+    message:         barcodeToken,
     format:          'PKBarcodeFormatQR',
     messageEncoding: 'iso-8859-1',
     altText:         visual.passId,
   } as any, {
-    message:         qrToken,
+    message:         barcodeToken,
     format:          'PKBarcodeFormatPDF417',
     messageEncoding: 'iso-8859-1',
     altText:         visual.passId,
@@ -250,7 +251,7 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
  * Safe to return as JSON from an API endpoint when certs are not yet configured.
  */
 export function buildPassJson(visual: PassVisual): Record<string, unknown> {
-  const qrToken = `QR_REDEEM_TOKEN_${visual.passId}_PREVIEW`;
+  const barcodeToken = `WALLET_BARCODE_TOKEN_${visual.passId}_PREVIEW`;
   const locations = configuredPassLocations();
   const appStoreIds = configuredAppStoreIds();
   return {
@@ -296,12 +297,12 @@ export function buildPassJson(visual: PassVisual): Record<string, unknown> {
       ],
     },
     barcodes: [{
-      message:         qrToken,
+      message:         barcodeToken,
       format:          'PKBarcodeFormatQR',
       messageEncoding: 'iso-8859-1',
       altText:         visual.passId,
     }, {
-      message:         qrToken,
+      message:         barcodeToken,
       format:          'PKBarcodeFormatPDF417',
       messageEncoding: 'iso-8859-1',
       altText:         visual.passId,
