@@ -1,0 +1,32 @@
+[
+  {
+    "name": "keep-latest-tag",
+    "action": { "type": "Keep" },
+    "condition": {
+      "tagState": "TAGGED",
+      "tagPrefixes": ["latest"]
+    }
+  },
+  {
+    "name": "keep-30-most-recent",
+    "action": { "type": "Keep" },
+    "mostRecentVersions": {
+      "keepCount": 30
+    }
+  },
+  {
+    "name": "delete-untagged-after-7d",
+    "action": { "type": "Delete" },
+    "condition": {
+      "tagState": "UNTAGGED",
+      "olderThan": "7d"
+    }
+  },
+  {
+    "name": "delete-old-versions-after-60d",
+    "action": { "type": "Delete" },
+    "condition": {
+      "olderThan": "60d"
+    }
+  }
+]
