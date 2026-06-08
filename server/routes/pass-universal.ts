@@ -125,16 +125,11 @@ function buildVisual(pass: WalletPassRecord) {
 }
 
 function walletGenerationError(err: unknown): { code: string; message: string } {
-  const cause = err && typeof err === 'object' && 'cause' in err ? (err as { cause?: unknown }).cause : undefined;
-  const causeMessage = cause instanceof Error ? cause.message : (cause ? String(cause) : '');
-  const rawMessage = [
-    err instanceof Error ? err.message : String(err || 'Unknown pass generation error'),
-    causeMessage ? `Cause: ${causeMessage}` : '',
-  ].filter(Boolean).join('\n');
+  const rawMessage = err instanceof Error ? err.message : String(err || 'Unknown pass generation error');
   const message = rawMessage
     .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, '[redacted-pem]')
     .replace(/[A-Za-z0-9+/=]{80,}/g, '[redacted-token]')
-    .slice(0, 640);
+    .slice(0, 240);
   const lower = message.toLowerCase();
 
   let code = 'PASS_GENERATION_FAILED';
@@ -143,9 +138,6 @@ function walletGenerationError(err: unknown): { code: string; message: string } 
     code = 'WALLET_CERTIFICATE_ERROR';
   }
   if (lower.includes('model') || lower.includes('pass.json') || lower.includes('manifest')) code = 'WALLET_MODEL_ERROR';
-  if (lower.includes('relation') || lower.includes('column') || lower.includes('database') || lower.includes('query')) {
-    code = 'WALLET_DATABASE_ERROR';
-  }
 
   return { code, message };
 }

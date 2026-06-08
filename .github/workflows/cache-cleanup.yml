@@ -2,11 +2,23 @@ name: Cache Cleanup
 
 # Stops GitHub Actions cache from filling to the 10GB cap and forcing manual cleanup.
 #
-# Retention rule:
-#   - KEEP all caches whose ref is refs/heads/main AND created within last 14 days.
-#   - KEEP all caches whose ref matches refs/pull/<n>/merge for any OPEN PR.
-#   - DELETE everything else (closed-PR caches, deleted-branch caches, stale main caches > 14 days).
+# WHY THIS EXISTS (plain English):
+#   Some jobs (CodeQL security scan, npm install, Docker build) write a BIG fresh cache
+#   on every push to main. The old rule kept ALL of them for 14 days, so with a high
+#   deploy rate we ended up hoarding 8+ copies of the same 500MB CodeQL database (~4GB
+#   of pure duplicates). When the 10GB cap is hit, GitHub evicts the *useful* npm cache
+#   to make room -> builds get slow. This rule kills the duplicates instead.
 #
+# Retention rule:
+#   - KEEP caches for any OPEN PR (ref refs/pull/<n>/merge) so PR builds stay fast.
+#   - For main: group caches into "families" (same logical cache rebuilt each commit)
+#     and KEEP only the newest KEEP_PER_FAMILY of each family. Older duplicates are
+#     deleted EVEN IF recent. Docker layer caches (buildkit) keep more copies because
+#     each is a distinct layer, not a duplicate.
+#   - Also delete any main cache older than MAX_AGE_DAYS regardless.
+#   - DELETE everything else (closed-PR caches, deleted-branch caches).
+#
+# Tunable from the Actions tab (workflow_dispatch inputs) without editing this file.
 # Only deletes caches (not artifacts). Uses repo-scoped GITHUB_TOKEN, no new secrets.
 
 on:
@@ -23,6 +35,16 @@ on:
         options:
           - "true"
           - "false"
+      keep_per_family:
+        description: "How many newest copies of each cache family to keep on main"
+        required: false
+        default: "2"
+        type: string
+      keep_buildkit:
+        description: "How many newest Docker (buildkit) layer caches to keep on main"
+        required: false
+        default: "24"
+        type: string
 
 permissions:
   # actions: write is required to delete caches via DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}
@@ -44,16 +66,33 @@ jobs:
         uses: actions/github-script@v7
         env:
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          KEEP_PER_FAMILY: ${{ github.event.inputs.keep_per_family || '2' }}
+          KEEP_BUILDKIT: ${{ github.event.inputs.keep_buildkit || '24' }}
         with:
           script: |
             const dryRun = (process.env.DRY_RUN || 'false').toLowerCase() === 'true';
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
             const RETENTION_DAYS = 14;
+            const KEEP_PER_FAMILY = Math.max(1, parseInt(process.env.KEEP_PER_FAMILY || '2', 10) || 2);
+            const KEEP_BUILDKIT   = Math.max(1, parseInt(process.env.KEEP_BUILDKIT   || '24', 10) || 24);
             const now = Date.now();
             const maxAgeMs = RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
-            core.info(`Cache cleanup starting. dryRun=${dryRun} retentionDays=${RETENTION_DAYS}`);
+            // Collapse a cache key to its "family": the same logical cache rebuilt each
+            // commit. We strip the volatile tail (commit SHA, run id, content hashes) so
+            // that e.g. all CodeQL-javascript base databases map to ONE family.
+            //   - Docker buildkit blobs are content-addressed (each is a distinct layer),
+            //     so they all share one family and get the larger KEEP_BUILDKIT budget.
+            function familyOf(key) {
+              if (/^buildkit-blob-/i.test(key)) return 'buildkit-blob';
+              return (key || '')
+                .replace(/-sha256:[0-9a-f]+/gi, '-<h>')   // explicit sha256 digests
+                .replace(/-[0-9a-f]{16,}/gi, '-<h>')       // long content hashes / db hashes
+                .replace(/-\d{6,}(-\d+)?$/g, '');          // trailing run id (+ optional -N)
+            }
+
+            core.info(`Cache cleanup starting. dryRun=${dryRun} keepPerFamily=${KEEP_PER_FAMILY} keepBuildkit=${KEEP_BUILDKIT} maxAgeDays=${RETENTION_DAYS}`);
 
             // 1) Collect open PR numbers -> set of refs to keep: refs/pull/<n>/merge
             const openPrRefs = new Set();
@@ -86,6 +125,22 @@ jobs:
             const deletions = [];
             const keeps = [];
 
+            // Pre-compute, per main family, the newest-N cache ids to keep.
+            // (Open-PR caches and non-main caches are decided directly in the loop.)
+            const mainByFamily = new Map();
+            for (const c of caches) {
+              if ((c.ref || '') !== 'refs/heads/main') continue;
+              const fam = familyOf(c.key || '');
+              if (!mainByFamily.has(fam)) mainByFamily.set(fam, []);
+              mainByFamily.get(fam).push(c);
+            }
+            const keepIds = new Set();
+            for (const [fam, list] of mainByFamily) {
+              const budget = fam === 'buildkit-blob' ? KEEP_BUILDKIT : KEEP_PER_FAMILY;
+              list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              for (const c of list.slice(0, budget)) keepIds.add(c.id);
+            }
+
             for (const c of caches) {
               const ref = c.ref || '';
               const createdAt = c.created_at ? new Date(c.created_at).getTime() : 0;
@@ -96,11 +151,14 @@ jobs:
               let reason = '';
 
               if (ref === 'refs/heads/main') {
-                if (ageMs <= maxAgeMs) {
-                  keep = true;
-                  reason = `main cache within ${RETENTION_DAYS}d`;
-                } else {
+                const fam = familyOf(c.key || '');
+                if (ageMs > maxAgeMs) {
                   reason = `main cache older than ${RETENTION_DAYS}d`;
+                } else if (keepIds.has(c.id)) {
+                  keep = true;
+                  reason = `newest of family "${fam}"`;
+                } else {
+                  reason = `older duplicate of family "${fam}" (beyond newest ${fam === 'buildkit-blob' ? KEEP_BUILDKIT : KEEP_PER_FAMILY})`;
                 }
               } else if (openPrRefs.has(ref)) {
                 keep = true;
@@ -140,6 +198,8 @@ jobs:
             const summary = core.summary
               .addHeading('Cache Cleanup Summary')
               .addRaw(`Mode: ${dryRun ? 'dry-run' : 'live'}`).addBreak()
+              .addRaw(`Policy: keep newest ${KEEP_PER_FAMILY}/family (${KEEP_BUILDKIT} for buildkit), max age ${RETENTION_DAYS}d`).addBreak()
+              .addRaw(`Main families scanned: ${mainByFamily.size}`).addBreak()
               .addRaw(`Open PR refs preserved: ${openPrRefs.size}`).addBreak()
               .addRaw(`Total caches scanned: ${caches.length}`).addBreak()
               .addRaw(`Kept: ${kept}`).addBreak()
