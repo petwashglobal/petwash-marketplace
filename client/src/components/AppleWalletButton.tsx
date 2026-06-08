@@ -19,16 +19,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/lib/apiConfig';
 
-/**
- * iOS Safari hands a .pkpass to Apple Wallet only on a page navigation to a
- * vnd.apple.pkpass resource — never via an anchor `download`. Detect iOS so the
- * pass-handoff code can navigate instead of force-downloading.
- */
-function isIOSDevice(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
-}
-
 interface AppleWalletButtonProps {
   tier: 'new' | 'silver' | 'gold' | 'platinum' | 'diamond';
   points: number;
@@ -105,33 +95,22 @@ export default function AppleWalletButton({
         throw new Error(error.message || 'Failed to generate pass');
       }
 
-      // Hand the .pkpass to the OS. On iOS Safari the "Add to Apple Wallet" sheet
-      // only appears when the browser NAVIGATES to a vnd.apple.pkpass resource —
-      // the anchor `download` trick saves a dead file to Files and never reaches
-      // Wallet. So navigate to the blob URL on iOS; keep the named download on
-      // desktop where a real file is the expected outcome.
+      // Download the .pkpass file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-
-      if (isIOSDevice()) {
-        window.location.href = url;
-        // Revoke after navigation has had a chance to consume the URL.
-        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-      } else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `PetWash_VIP_${tier.toUpperCase()}.pkpass`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PetWash_VIP_${tier.toUpperCase()}.pkpass`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
       toast({
         title: isHebrew ? '✅ הצלחה!' : '✅ Success!',
         description: isHebrew
-          ? 'כרטיס ה-VIP שלך מוכן! הקש "הוסף ל-Wallet". אם נפתח בתוך אפליקציה, בחר "פתח ב-Safari".'
-          : 'Your VIP card is ready! Tap "Add to Wallet". If it opens inside an app, choose "Open in Safari".',
+          ? 'כרטיס ה-VIP שלך הורד! הקש עליו כדי להוסיף ל-Wallet.'
+          : 'Your VIP card has been downloaded! Tap it to add to Wallet.',
       });
 
     } catch (error) {
@@ -270,28 +249,21 @@ export function AppleWalletBadge({
         throw new Error(error.message);
       }
 
-      // See note in AppleWalletButton: iOS needs a navigation, not a download.
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-
-      if (isIOSDevice()) {
-        window.location.href = url;
-        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-      } else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `PetWash_VIP_${tier.toUpperCase()}.pkpass`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PetWash_VIP_${tier.toUpperCase()}.pkpass`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
       toast({
         title: isHebrew ? '✅ הצלחה!' : '✅ Success!',
         description: isHebrew
-          ? 'כרטיס ה-VIP מוכן. אם נפתח בתוך אפליקציה, בחר "פתח ב-Safari".'
-          : 'VIP card ready. If it opens inside an app, choose "Open in Safari".',
+          ? 'כרטיס ה-VIP הורד בהצלחה'
+          : 'VIP card downloaded successfully',
       });
 
     } catch (error) {
