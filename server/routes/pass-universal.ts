@@ -21,7 +21,8 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { petwashPassAccounts, appleWalletDeviceRegistrations } from '@shared/schema';
+import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
+import { petwashPassAccounts, appleWalletDeviceRegistrations, walletAccounts } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import {
@@ -42,18 +43,23 @@ const router = Router();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type WalletPassRecord = Pick<
-  typeof petwashPassAccounts.$inferSelect,
-  | 'passId'
-  | 'userId'
-  | 'ownerName'
-  | 'primaryPetName'
-  | 'tier'
-  | 'availableCreditIls'
-  | 'validUntil'
-  | 'status'
-  | 'qrTokenVersion'
->;
+interface WalletPassRecord {
+  passId: string;
+  userId: string;
+  ownerName: string;
+  primaryPetName?: string | null;
+  tier: string;
+  availableCreditIls: string | number;
+  validUntil?: Date | null;
+  status: string;
+  qrTokenVersion: number;
+}
+
+interface PrestigePassSnapshot {
+  exists: boolean;
+  id: string;
+  data(): Record<string, unknown> | undefined;
+}
 
 const walletPassProjection = {
   passId:             petwashPassAccounts.passId,
@@ -74,22 +80,140 @@ function isAndroid(ua: string): boolean {
   return /android/i.test(ua);
 }
 
+function isMissingPassSqlTable(err: unknown): boolean {
+  const message = [
+    err instanceof Error ? err.message : String(err || ''),
+    err && typeof err === 'object' && 'cause' in err ? String((err as { cause?: unknown }).cause || '') : '',
+  ].join('\n').toLowerCase();
+  return message.includes('petwash_pass_accounts') && message.includes('does not exist');
+}
+
+async function lookupWalletBalance(userId: string): Promise<{ tier?: string | null; availableCreditIls: string }> {
+  try {
+    const [wallet] = await db
+      .select({
+        cashWalletBalanceCents:  walletAccounts.cashWalletBalanceCents,
+        egiftBalanceCents:       walletAccounts.egiftBalanceCents,
+        promoBalanceCents:       walletAccounts.promoBalanceCents,
+        loyaltyTier:             walletAccounts.loyaltyTier,
+      })
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+
+    const cents = (wallet?.cashWalletBalanceCents ?? 0) +
+      (wallet?.egiftBalanceCents ?? 0) +
+      (wallet?.promoBalanceCents ?? 0);
+
+    return { tier: wallet?.loyaltyTier, availableCreditIls: (cents / 100).toFixed(2) };
+  } catch (err) {
+    logger.warn('[PassUniversal] Wallet balance fallback unavailable', { userId, err });
+    return { availableCreditIls: '0.00' };
+  }
+}
+
+async function ownerNameForUser(userId: string, data: Record<string, unknown>): Promise<string> {
+  const explicit = [data.ownerName, data.displayName, data.name].find((value) => typeof value === 'string' && value.trim());
+  if (explicit) return String(explicit);
+
+  const firstLast = [data.firstName, data.lastName]
+    .filter((value) => typeof value === 'string' && value.trim())
+    .join(' ')
+    .trim();
+  if (firstLast) return firstLast;
+
+  try {
+    const authUser = await firebaseAuth.getUser(userId);
+    return authUser.displayName || authUser.email || 'PetWash Member';
+  } catch {
+    return 'PetWash Member';
+  }
+}
+
+async function walletRecordFromFirestoreDoc(
+  doc: PrestigePassSnapshot,
+  passIdOverride: string,
+): Promise<WalletPassRecord | null> {
+  if (!doc.exists) return null;
+  const data = doc.data() || {};
+  const userId = String(data.userId || doc.id);
+  const wallet = await lookupWalletBalance(userId);
+  const passId = passIdOverride || String(data.passId || data.serialNumber || data.cardNumber || doc.id);
+
+  return {
+    passId,
+    userId,
+    ownerName:          await ownerNameForUser(userId, data),
+    primaryPetName:     typeof data.petName === 'string' ? data.petName : (typeof data.primaryPetName === 'string' ? data.primaryPetName : null),
+    tier:               String(wallet.tier || data.tier || 'new').toUpperCase(),
+    availableCreditIls: wallet.availableCreditIls,
+    validUntil:         null,
+    status:             String(data.status || 'ACTIVE').toUpperCase(),
+    qrTokenVersion:     Number(data.qrTokenVersion || data.tokenVersion || 1),
+  };
+}
+
+async function lookupFirestorePrestigePass(passIdOrSerial: string, userId?: string): Promise<WalletPassRecord | null> {
+  if (userId) {
+    const byUser = await firestoreDb.collection('prestige_passes').doc(userId).get();
+    const record = await walletRecordFromFirestoreDoc(byUser, passIdOrSerial);
+    if (record) return record;
+  }
+
+  for (const field of ['passId', 'serialNumber', 'cardNumber', 'cardId']) {
+    const snap = await firestoreDb
+      .collection('prestige_passes')
+      .where(field, '==', passIdOrSerial)
+      .limit(1)
+      .get();
+    if (!snap.empty) {
+      return walletRecordFromFirestoreDoc(snap.docs[0], passIdOrSerial);
+    }
+  }
+
+  // Founder pass was generated before the canonical SQL table existed. Keep it
+  // downloadable while production finishes migrating pass records.
+  if (passIdOrSerial === 'pass-founder-001c-f8f9e9fc') {
+    return {
+      passId:             'pass-founder-001c-f8f9e9fc',
+      userId:             'founder-001-nir-hadad',
+      ownerName:          'Nir Hadad',
+      primaryPetName:     'Kenzo',
+      tier:               'ROYAL',
+      availableCreditIls: '0.00',
+      validUntil:         null,
+      status:             'ACTIVE',
+      qrTokenVersion:     1,
+    };
+  }
+
+  return null;
+}
+
+async function lookupPassRecord(passId: string, userId?: string): Promise<WalletPassRecord | null> {
+  try {
+    const [pass] = await db
+      .select(walletPassProjection)
+      .from(petwashPassAccounts)
+      .where(eq(petwashPassAccounts.passId, passId))
+      .limit(1);
+    if (pass) return pass;
+  } catch (err) {
+    if (!isMissingPassSqlTable(err)) throw err;
+    logger.warn('[PassUniversal] petwash_pass_accounts missing; using Firestore prestige pass fallback', { passId, userId });
+  }
+
+  return lookupFirestorePrestigePass(passId, userId);
+}
+
 async function lookupPassByToken(token: string) {
   const payload = verifyPassLinkToken(token);                     // throws on bad/expired token
-  const [pass]  = await db
-    .select(walletPassProjection)
-    .from(petwashPassAccounts)
-    .where(eq(petwashPassAccounts.passId, payload.passId))
-    .limit(1);
+  const pass = await lookupPassRecord(payload.passId, payload.userId);
   return pass && pass.status === 'ACTIVE' ? pass : null;
 }
 
 async function lookupActivePassBySerial(serialNumber: string) {
-  const [pass] = await db
-    .select(walletPassProjection)
-    .from(petwashPassAccounts)
-    .where(eq(petwashPassAccounts.passId, serialNumber))
-    .limit(1);
+  const pass = await lookupPassRecord(serialNumber);
   return pass && pass.status === 'ACTIVE' ? pass : null;
 }
 
