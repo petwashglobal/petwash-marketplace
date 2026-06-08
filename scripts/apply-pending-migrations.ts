@@ -31,7 +31,12 @@
  *      e. If the file fails with "undefined reference" (PG codes
  *         42P01 / 42703) AND --lenient is on, log as ORPHANED and
  *         continue to the next file. WITHOUT --lenient, fail closed.
- *      f. Any OTHER error → exit non-zero so the deploy blocks.
+ *      f. If the file fails with duplicate-data (PG code 23505) AND
+ *         --lenient is on, log as DATA_CONFLICT and continue without
+ *         recording it as applied. This is for old unique-index
+ *         backfills blocked by existing dirty production rows; the
+ *         index still needs a data-repair migration later.
+ *      g. Any OTHER error → exit non-zero so the deploy blocks.
  *
  * Modes:
  *   STRICT (default, local dev):
@@ -39,18 +44,19 @@
  *     real ordering / dependency bugs during development.
  *   LENIENT (CI deploy step, opt-in via --lenient or
  *           PETWASH_MIGRATE_LENIENT=1):
- *     Treats UNDEFINED_REFERENCE_CODES (42P01, 42703) as soft skips
- *     and continues to the next file. Required because prod schema
- *     drifted from migration files — some tables (e.g.
+ *     Treats UNDEFINED_REFERENCE_CODES (42P01, 42703) and
+ *     DATA_CONFLICT_CODES (23505) as soft skips and continues to the
+ *     next file. Required because prod schema drifted from migration
+ *     files — some tables (e.g.
  *     station_settlements, super_app_payouts) exist in
  *     shared/schema.ts but were created via out-of-band
  *     `drizzle-kit push` rather than a migration file. Their ALTER
  *     migrations (0015 etc.) cannot run until either the table is
  *     created via a new migration, or the file is moved to the
  *     manual-migrations allowlist.
- *     End-of-run summary lists every ORPHANED file with the PG error
- *     code so an operator can resolve via the three fix-forward
- *     options printed at the end.
+ *     End-of-run summary lists every ORPHANED and DATA_CONFLICT file
+ *     with the PG error code so an operator can resolve via the
+ *     fix-forward options printed at the end.
  *
  * Bootstrap semantics:
  *   On the very first run against an existing database, the tracking
@@ -106,6 +112,14 @@ const ALREADY_EXISTS_CODES = new Set([
 const UNDEFINED_REFERENCE_CODES = new Set([
   '42P01', // undefined_table
   '42703', // undefined_column
+]);
+
+// PG error codes that indicate a migration would be valid after a
+// production data repair, but current rows violate the new integrity
+// rule. In --lenient mode we log and continue WITHOUT recording the
+// migration as applied, because the constraint/index was not created.
+const DATA_CONFLICT_CODES = new Set([
+  '23505', // unique_violation, e.g. CREATE UNIQUE INDEX found duplicates
 ]);
 
 // Statements that CANNOT run inside a transaction block. Postgres
@@ -252,6 +266,7 @@ async function main() {
     let bootstrappedCount = 0;
     let manualSkipCount = 0;
     const orphanedFiles: Array<{ file: string; code: string; message: string }> = [];
+    const dataConflictFiles: Array<{ file: string; code: string; message: string }> = [];
 
     for (const file of files) {
       if (applied.has(file)) continue;
@@ -362,6 +377,19 @@ async function main() {
           continue;
         }
 
+        if (lenient && code && DATA_CONFLICT_CODES.has(code)) {
+          // Data conflict case: the migration is structurally valid, but
+          // existing production rows violate a new constraint/index. Keep
+          // moving so newer unrelated migrations can apply, but do NOT
+          // mark this migration as applied; the failed integrity backfill
+          // must be repaired and retried later.
+          console.error(
+            `[migrate] 🟨 DATA_CONFLICT ${file} (code=${code}) — existing prod data violates this migration. Skipping (lenient, not recorded). msg: ${msg}`,
+          );
+          dataConflictFiles.push({ file, code, message: msg });
+          continue;
+        }
+
         // Real error (or strict mode) — fail closed so deploy blocks.
         console.error(
           `[migrate] ❌ ${file} failed (code=${code ?? 'none'}): ${msg}`,
@@ -371,7 +399,7 @@ async function main() {
     }
 
     console.log(
-      `[migrate] summary: ${appliedCount} newly applied, ${bootstrappedCount} bootstrapped as already-existing, ${manualSkipCount} skipped via manual allowlist, ${orphanedFiles.length} ORPHANED (lenient skip).`,
+      `[migrate] summary: ${appliedCount} newly applied, ${bootstrappedCount} bootstrapped as already-existing, ${manualSkipCount} skipped via manual allowlist, ${orphanedFiles.length} ORPHANED (lenient skip), ${dataConflictFiles.length} DATA_CONFLICT (lenient skip).`,
     );
 
     if (orphanedFiles.length > 0) {
@@ -385,6 +413,19 @@ async function main() {
         '  (b) Confirm the table is genuinely out-of-band-managed and add the file to migrations/.manual-migrations.txt, OR\n' +
         '  (c) Delete the migration file if it is dead code from a removed feature.\n' +
         '[migrate] These DID NOT block this deploy (lenient mode) but will keep firing on every run until resolved.',
+      );
+    }
+
+    if (dataConflictFiles.length > 0) {
+      console.error('[migrate] DATA_CONFLICT migrations — these need production data repair before their constraints can apply:');
+      for (const d of dataConflictFiles) {
+        console.error(`  • ${d.file}  [${d.code}]  ${d.message.split('\n')[0]}`);
+      }
+      console.error(
+        '[migrate] Fix-forward options for each DATA_CONFLICT entry:\n' +
+        '  (a) Add a targeted cleanup/dedupe migration before retrying the constraint, OR\n' +
+        '  (b) Update the constraint to match the intended business key, then rerun migrations.\n' +
+        '[migrate] These DID NOT block this deploy (lenient mode) but are NOT marked applied.',
       );
     }
   } finally {
