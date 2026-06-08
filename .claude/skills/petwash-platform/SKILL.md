@@ -25,7 +25,7 @@ Every surface PetWash™ ships must satisfy all five. If a proposal satisfies fo
 2. **Pet safety and comfort.** The wash experience must feel calm, controlled, clean, pet-safe, simple, and trusted.
 3. **Premium lifestyle.** The public brand must feel like modern luxury infrastructure: Apple, Tesla, Hermès, LV-level restraint. White space, black typography, clean hierarchy, no cheap startup energy, no cartoon clutter, no exaggerated claims.
 4. **Urban infrastructure value.** PetWash™ helps cities, councils, commercial centers, residential towers, and public spaces offer a cleaner organized pet-care solution.
-5. **Environmental and ecological value.** Controlled pet washing instead of random home or street washing. Reduced dog hair entering private plumbing and shared building systems. Less uncontrolled runoff into municipal systems. Use of pet-safe / organic / eco-conscious products. Reduced use of random household soaps and shampoos. Cleaner shared apartment living. More efficient water use compared with messy home washing. Cleaner public spaces. Better hygiene infrastructure for dense urban living.
+5. **Environmental and ecological value.** Controlled pet washing instead of random home or street washing. Reduced dog hair entering private plumbing and shared building systems. Less uncontrolled runoff into municipal systems. Use of pet-safe / pet-formulated / eco-conscious products. Reduced use of random household soaps and shampoos. Cleaner shared apartment living. More efficient water use compared with messy home washing. Cleaner public spaces. Better hygiene infrastructure for dense urban living.
 
 ### 0.2 Brand attribute hierarchy
 
@@ -47,7 +47,7 @@ When multiple attributes compete for emphasis on a surface, use this order top-d
 - "Designed for modern apartment living"
 - "Pet-safe products"
 - "Eco-conscious operation"
-- "Australian certified organic products"
+- "Australian-made, pet-formulated products"
 - "Cleaner, smarter self-service pet care"
 - "A more organized way to care for dogs in dense cities"
 - "Premium infrastructure for cleaner communities"
@@ -86,7 +86,7 @@ PetWash™ is **not** "a machine." It is an end-to-end deployment system:
 - QR / digital journey
 - Support model
 - Consumables
-- Organic / pet-safe products
+- Pet-safe, pet-formulated products
 - Shampoo / conditioner / tea tree oil supply
 - Spare parts
 - Maintenance pathway
