@@ -90,12 +90,12 @@ export default function SuppliersPartners() {
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
             <Leaf className="w-12 h-12 text-green-600 mb-4" />
             <h3 className="luxury-heading-sm mb-2">
-              {isHe ? 'מוצרים אורגניים' : 'Organic Products'}
+              {isHe ? 'מוצרים טבעיים' : 'Natural Products'}
             </h3>
             <p className="luxury-text-body">
               {isHe
-                ? 'שמפו, מרכך ומוצרי טיפוח אורגניים פרימיום לחיות מחמד.'
-                : 'Premium organic shampoos, conditioners, and pet care products'}
+                ? 'שמפו, מרכך ומוצרי טיפוח טבעיים פרימיום לחיות מחמד.'
+                : 'Premium natural shampoos, conditioners, and pet care products'}
             </p>
           </div>
 

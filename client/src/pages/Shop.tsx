@@ -10,7 +10,7 @@
  *
  * Product directions from owner (verbatim → categorised):
  *   - Personalized keychains (engraved with pet name, breed icon)
- *   - Healthy treats (organic, vet-approved, Israeli-sourced)
+ *   - Healthy treats (organic, Israeli-sourced)
  *   - + more (organic shampoo/conditioner, branded apparel, station
  *     consumables, wash-credit gift cards)
  */
@@ -52,11 +52,11 @@ const CATEGORIES: LifeCategory[] = [
     iconBg: 'linear-gradient(135deg,#f97316,#dc2626)',
     icon: Heart,
     title: 'Treats — clean ingredients',
-    subtitle: 'Vet-approved, Israeli-sourced, no junk fillers.',
+    subtitle: 'Israeli-sourced, no junk fillers.',
     examples: [
       'Cold-pressed liver bites',
       'Tea-tree-free training treats',
-      'Hypoallergenic single-protein chews',
+      'Single-protein chews',
       'Senior-formula soft treats',
     ],
     status: 'in_development',
@@ -66,9 +66,9 @@ const CATEGORIES: LifeCategory[] = [
     iconBg: 'linear-gradient(135deg,#10b981,#059669)',
     icon: Sparkles,
     title: 'Wash + care',
-    subtitle: 'Australian-certified organic shampoo and conditioner.',
+    subtitle: 'Australian-made shampoo and conditioner.',
     examples: [
-      'Organic gentle shampoo — sensitive skin',
+      'Gentle shampoo — sensitive skin',
       'Tea-tree-oil conditioner — coat repair',
       'Detangle finishing spray',
       'Paw + pad balm',
@@ -110,7 +110,7 @@ const CATEGORIES: LifeCategory[] = [
     title: 'Station consumables',
     subtitle: 'For franchisees and operators — bulk pricing, no retail markup.',
     examples: [
-      'Bulk organic shampoo refills',
+      'Bulk shampoo refills',
       'Replacement tea-tree oil cartridges',
       'Station microfibre roll stock',
       'Spare brushes + hoses',

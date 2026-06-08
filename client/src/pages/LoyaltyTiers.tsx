@@ -214,7 +214,7 @@ export default function LoyaltyTiers() {
                         <div className="flex items-center gap-2">
                           <Check className="w-4 h-4 text-[#C9A96E]/50 flex-shrink-0" />
                           <span className="text-[#8A8078] text-xs">
-                            {isHebrew ? 'שמפו אורגני 100% - שמן עץ התה האוסטרלי' : '100% Organic Australian Tea Tree Oil Shampoo'}
+                            {isHebrew ? 'שמפו טבעי - שמן עץ התה האוסטרלי' : 'Natural Australian Tea Tree Oil Shampoo'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

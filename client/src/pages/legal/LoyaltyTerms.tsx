@@ -13,7 +13,7 @@ export default function LoyaltyTerms() {
 
   const earningMethods = [
     { icon: Gift, title: "Service Bookings", desc: "1 point per ₪1 spent on any service" },
-    { icon: Sparkles, title: "Organic Products", desc: "Bonus points for eco-friendly choices" },
+    { icon: Sparkles, title: "Natural Products", desc: "Bonus points for eco-friendly choices" },
     { icon: Users, title: "Referrals", desc: "500 points per successful referral" },
     { icon: Calendar, title: "Birthday Rewards", desc: "Automatic tier-based bonus points" },
     { icon: TrendingUp, title: "Promotions", desc: "Special challenges and campaigns" },
@@ -132,7 +132,7 @@ export default function LoyaltyTerms() {
             </h4>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="luxury-text-body">K9000 Organic Wash</span>
+                <span className="luxury-text-body">K9000 Natural Wash</span>
                 <span className="luxury-heading-lg luxury-text-gradient">+150</span>
               </div>
               <div className="flex justify-between items-center">

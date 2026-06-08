@@ -28,12 +28,12 @@ const languages: { code: Language; label: string; flag: string }[] = [
 ];
 
 const suggestions: Record<Language, string[]> = {
-  he: ['איפה התחנה הקרובה?', 'מה המחירים?', 'איך עובדת תכנית הנאמנות?', 'ספר לי על K9000', 'שמפו אורגני?'],
-  en: ['Where is nearest station?', 'What are the prices?', 'How does loyalty program work?', 'Tell me about K9000', 'Is the shampoo organic?'],
-  ar: ['أين أقرب محطة؟', 'ما هي الأسعار؟', 'كيف يعمل برنامج الولاء؟', 'أخبرني عن K9000', 'هل الشامبو عضوي؟'],
-  ru: ['Где ближайшая станция?', 'Какие цены?', 'Как работает программа лояльности?', 'Расскажи о K9000', 'Шампунь органический?'],
-  fr: ['Où est la station la plus proche?', 'Quels sont les prix?', 'Comment fonctionne le programme de fidélité?', 'Parlez-moi du K9000', 'Le shampooing est-il bio?'],
-  es: ['¿Dónde está la estación más cercana?', '¿Cuáles son los precios?', '¿Cómo funciona el programa de lealtad?', 'Cuéntame sobre K9000', '¿El champú es orgánico?'],
+  he: ['איפה התחנה הקרובה?', 'מה המחירים?', 'איך עובדת תכנית הנאמנות?', 'ספר לי על K9000', 'שמפו טבעי?'],
+  en: ['Where is nearest station?', 'What are the prices?', 'How does loyalty program work?', 'Tell me about K9000', 'Is the shampoo natural?'],
+  ar: ['أين أقرب محطة؟', 'ما هي الأسعار؟', 'كيف يعمل برنامج الولاء؟', 'أخبرني عن K9000', 'هل الشامبو طبيعي؟'],
+  ru: ['Где ближайшая станция?', 'Какие цены?', 'Как работает программа лояльности?', 'Расскажи о K9000', 'Шампунь натуральный?'],
+  fr: ['Où est la station la plus proche?', 'Quels sont les prix?', 'Comment fonctionne le programme de fidélité?', 'Parlez-moi du K9000', 'Le shampooing est-il naturel?'],
+  es: ['¿Dónde está la estación más cercana?', '¿Cuáles son los precios?', '¿Cómo funciona el programa de lealtad?', 'Cuéntame sobre K9000', '¿El champú es natural?'],
 };
 
 const uiLabels: Record<Language, { title: string; subtitle: string; placeholder: string; back: string; thinking: string; welcome: string }> = {

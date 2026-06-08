@@ -118,7 +118,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">2. Service Description</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        ⁦Pet Wash™⁩ provides premium organic pet washing services, including:
+                        ⁦Pet Wash™⁩ provides premium pet washing services, including:
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
@@ -127,7 +127,7 @@ export default function Terms() {
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
-                          <span>100% organic, biodegradable, eco-friendly washing products</span>
+                          <span>Pet-formulated washing products, each with a published safety data sheet</span>
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
@@ -316,7 +316,7 @@ export default function Terms() {
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
-                          <span>All washing products are 100% organic, biodegradable, and safe for pets</span>
+                          <span>All washing products are pet-formulated and intended for safe use on pets</span>
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
@@ -739,7 +739,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">2. תיאור השירות</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        ⁦Pet Wash™⁩ מספקת שירותי רחצת חיות מחמד אורגנית פרמיום, כולל:
+                        ⁦Pet Wash™⁩ מספקת שירותי רחצת חיות מחמד פרמיום, כולל:
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
@@ -748,7 +748,7 @@ export default function Terms() {
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
-                          <span>מוצרים אורגניים 100% מתכלים וידידותיים לסביבה</span>
+                          <span>מוצרים ייעודיים לחיות מחמד, לכל אחד גיליון בטיחות מפורסם</span>
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
@@ -927,7 +927,7 @@ export default function Terms() {
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
-                          <span>כל מוצרי הרחיצה הם 100% אורגניים, מתכלים ובטוחים לחיות</span>
+                          <span>כל מוצרי הרחיצה הם מוצרים ייעודיים לחיות מחמד, המיועדים לשימוש בטוח</span>
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>

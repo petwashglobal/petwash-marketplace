@@ -127,7 +127,7 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 ### 2. השירותים
 PetWash Ltd מספקת:
 - עמדות שטיפה חכמות K9000 Twin
-- שירותי שטיפה אורגניים פרימיום
+- שירותי שטיפה פרימיום
 - תכנית נאמנות 5 דרגות
 - שירותי ⁦The Sitter Suite™⁩ (שמרטפות)
 - שירותי ⁦Walk My Pet™⁩ (הליכה עם כלבים)
@@ -172,7 +172,7 @@ Use of the ⁦PetWash™⁩ website and services constitutes acceptance of these
 ### 2. Services
 PetWash Ltd provides:
 - K9000 Twin smart wash stations
-- Premium organic washing services
+- Premium washing services
 - 7-tier luxury loyalty program (Bronze→Royal)
 - ⁦The Sitter Suite™⁩ (pet sitting services)
 - ⁦Walk My Pet™⁩ (dog walking services)
@@ -223,7 +223,7 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 - PetWash Ltd לא אחראית לתגובות אלרגיות או רגישויות
 
 ### 3. שירותי שטיפה
-- כל המוצרים אורגניים ומאושרים לשימוש בחיות מחמד
+- כל המוצרים ייעודיים לחיות מחמד ומיועדים לשימוש בחיות מחמד
 - השירותים מבוססים על טכנולוגיית K9000 המובילה בתעשייה
 - תחזוקה שוטפת מבוצעת לפי תקני הבטיחות הגבוהים ביותר
 
@@ -269,7 +269,7 @@ Use of ⁦PetWash™⁩ services is at the user's sole risk.
 - PetWash Ltd is not responsible for allergic reactions or sensitivities
 
 ### 3. Washing Services
-- All products are organic and approved for pet use
+- All products are pet-formulated and intended for pet use
 - Services based on industry-leading K9000 technology
 - Regular maintenance performed to highest safety standards
 

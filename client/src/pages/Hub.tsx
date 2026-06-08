@@ -174,12 +174,12 @@ const hubText: Record<string, Record<string, string>> = {
     es: 'Estaciones de lavado',
   },
   washStationsDesc: {
-    en: 'Self-service K9000 organic wash',
-    he: 'שטיפה אורגנית בשירות עצמי ⁦K9000™⁩',
-    ar: 'غسيل عضوي ⁦K9000™⁩ بالخدمة الذاتية',
-    ru: 'Органическая мойка K9000 самообслуживания',
-    fr: 'Lavage bio K9000 en libre-service',
-    es: 'Lavado orgánico K9000 autoservicio',
+    en: 'Self-service K9000 natural wash',
+    he: 'שטיפה טבעית בשירות עצמי ⁦K9000™⁩',
+    ar: 'غسيل طبيعي ⁦K9000™⁩ بالخدمة الذاتية',
+    ru: 'Натуральная мойка K9000 самообслуживания',
+    fr: 'Lavage naturel K9000 en libre-service',
+    es: 'Lavado natural K9000 autoservicio',
   },
   sitterSuite: {
     en: 'Sitter Suite',

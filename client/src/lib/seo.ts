@@ -16,9 +16,9 @@ export interface SEOConfig {
 
 // Default SEO configuration
 export const defaultSEO: SEOConfig = {
-  title: '⁦Pet Wash™⁩ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום',
-  description: 'Israel\'s leading premium organic pet washing service. 7-tier luxury loyalty program (Bronze→Royal, up to 50% discount), AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד אורגני פרימיום מוביל בישראל עם תוכנית נאמנות 7 רמות יוקרה.',
-  keywords: 'pet wash, dog wash, cat wash, organic pet care, Israel pet services, שטיפת כלבים, שטיפת חיות מחמד, שטיפה אורגנית, כלבים ישראל',
+  title: '⁦Pet Wash™⁩ - Premium Natural Pet Care | שטיפת חיות מחמד טבעית פרימיום',
+  description: 'Israel\'s leading premium natural pet washing service. 7-tier luxury loyalty program (Bronze→Royal, up to 50% discount), AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד טבעי פרימיום מוביל בישראל עם תוכנית נאמנות 7 רמות יוקרה.',
+  keywords: 'pet wash, dog wash, cat wash, natural pet care, Israel pet services, שטיפת כלבים, שטיפת חיות מחמד, שטיפה טבעית, כלבים ישראל',
   ogImage: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
   ogType: 'website',
   locale: 'he_IL',
@@ -27,21 +27,21 @@ export const defaultSEO: SEOConfig = {
 // Page-specific SEO configurations
 export const pageSEO: Record<string, SEOConfig> = {
   home: {
-    title: '⁦Pet Wash™⁩ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית',
-    description: 'Israel\'s #1 premium organic pet washing service with K9000 smart stations. Book online, earn loyalty rewards, get weather-based recommendations. שירות שטיפת חיות מחמד אורגני מוביל בישראל עם תחנות חכמות K9000.',
-    keywords: 'pet wash Israel, organic dog wash, K9000, smart pet care, שטיפת כלבים אורגנית, תחנות שטיפה חכמות',
+    title: '⁦Pet Wash™⁩ - Premium Natural Pet Care | שטיפת חיות מחמד טבעית',
+    description: 'Israel\'s #1 premium natural pet washing service with K9000 smart stations. Book online, earn loyalty rewards, get weather-based recommendations. שירות שטיפת חיות מחמד טבעי מוביל בישראל עם תחנות חכמות K9000.',
+    keywords: 'pet wash Israel, natural dog wash, K9000, smart pet care, שטיפת כלבים טבעית, תחנות שטיפה חכמות',
     ogType: 'website',
   },
   pricing: {
     title: 'Pricing & Packages - ⁦Pet Wash™⁩ | מחירים וחבילות',
-    description: 'Transparent pricing for premium organic pet washing. 7-tier luxury loyalty program (Bronze to Royal) with up to 50% discounts. Gift cards available. מחירים שקופים לשטיפת חיות מחמד אורגנית עם הנחות עד 50%.',
+    description: 'Transparent pricing for premium natural pet washing. 7-tier luxury loyalty program (Bronze to Royal) with up to 50% discounts. Gift cards available. מחירים שקופים לשטיפת חיות מחמד טבעית עם הנחות עד 50%.',
     keywords: 'pet wash prices, dog wash cost, loyalty discounts, מחיר שטיפת כלבים, הנחות נאמנות',
     ogType: 'website',
   },
   about: {
     title: 'About Us - ⁦Pet Wash™⁩ | אודות',
-    description: 'Learn about Israel\'s leading premium organic pet care platform. Our mission: banking-grade security, organic products, AI-powered service. למד על פלטפורמת טיפול בחיות מחמד אורגנית מובילה בישראל.',
-    keywords: 'about pet wash, organic pet care, Israel pet company, אודות שטיפת חיות מחמד',
+    description: 'Learn about Israel\'s leading premium natural pet care platform. Our mission: banking-grade security, natural products, AI-powered service. למד על פלטפורמת טיפול בחיות מחמד טבעית מובילה בישראל.',
+    keywords: 'about pet wash, natural pet care, Israel pet company, אודות שטיפת חיות מחמד',
     ogType: 'website',
   },
   contact: {
@@ -77,7 +77,7 @@ export const pageSEO: Record<string, SEOConfig> = {
   },
   k9000: {
     title: '⁦K9000™⁩ IoT Pet Wash Stations - ⁦Pet Wash™⁩ | תחנות שטיפה חכמות',
-    description: 'Smart IoT pet washing stations with organic products. Self-service 24/7, AI-powered monitoring, contactless payment, real-time status. תחנות שטיפה חכמות עם מוצרים אורגניים, זמינות 24/7.',
+    description: 'Smart IoT pet washing stations with natural products. Self-service 24/7, AI-powered monitoring, contactless payment, real-time status. תחנות שטיפה חכמות עם מוצרים טבעיים, זמינות 24/7.',
     keywords: 'K9000, IoT pet wash, smart pet station, self-service dog wash, תחנות שטיפה חכמות, כביסת כלבים עצמית',
     ogType: 'product',
   },
@@ -181,7 +181,7 @@ export function useSEO(config?: Partial<SEOConfig>) {
       setMeta('og:image', seoConfig.ogImage, true);
       setMeta('og:image:width', '1200', true);
       setMeta('og:image:height', '630', true);
-      setMeta('og:image:alt', '⁦Pet Wash™⁩ - Premium Organic Pet Care', true);
+      setMeta('og:image:alt', '⁦Pet Wash™⁩ - Premium Natural Pet Care', true);
     }
     
     // Twitter Card meta tags
@@ -224,7 +224,7 @@ export function generateLocalBusinessSchema() {
     '@id': 'https://petwash.co.il/#organization',
     name: '⁦Pet Wash™⁩',
     alternateName: 'Pet Wash™ Israel',
-    description: 'Premium organic pet washing service in Israel with K9000 smart stations',
+    description: 'Premium natural pet washing service in Israel with K9000 smart stations',
     url: 'https://petwash.co.il',
     logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
     image: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
@@ -283,7 +283,7 @@ export function generateServiceSchema() {
           itemOffered: {
             '@type': 'Service',
             name: 'Single Pet Wash',
-            description: 'Premium organic pet washing service',
+            description: 'Premium natural pet washing service',
           },
         },
         {
@@ -334,10 +334,10 @@ export function generateFAQSchema() {
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'What makes ⁦Pet Wash™⁩ organic pet care different?',
+        name: 'What makes ⁦Pet Wash™⁩ natural pet care different?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: '⁦Pet Wash™⁩ uses 100% organic, biodegradable products free from harsh chemicals. Our commitment to premium organic pet care ensures your pet\'s coat stays healthy, shiny, and chemical-free. All products are vet-approved and hypoallergenic for sensitive skin.',
+          text: '⁦Pet Wash™⁩ uses pet-formulated wash and conditioning products featuring Australian Tea Tree Oil, each with a published safety data sheet. The products are manufactured under Australian Government APVMA-approved Good Manufacturing Practice and are designed to be gentle on sensitive skin.',
         },
       },
       {
@@ -345,7 +345,7 @@ export function generateFAQSchema() {
         name: 'How do the K9000 smart washing stations work?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: '⁦K9000™⁩ IoT pet wash stations are self-service 24/7 kiosks equipped with organic products, climate control, and AI-powered monitoring. Simply book via our app, choose your service level, make contactless payment, and enjoy real-time status updates. Stations automatically dispense organic shampoo and warm water at pet-safe temperatures.',
+          text: '⁦K9000™⁩ IoT pet wash stations are self-service 24/7 kiosks equipped with natural products, climate control, and AI-powered monitoring. Simply book via our app, choose your service level, make contactless payment, and enjoy real-time status updates. Stations automatically dispense natural shampoo and warm water at pet-safe temperatures.',
         },
       },
       {
@@ -412,7 +412,7 @@ export function generateWebsiteSchema() {
     '@id': 'https://petwash.co.il/#website',
     url: 'https://petwash.co.il',
     name: '⁦Pet Wash™⁩',
-    description: 'Israel\'s leading premium organic pet washing service with AI-powered booking and smart K9000 stations.',
+    description: 'Israel\'s leading premium natural pet washing service with AI-powered booking and smart K9000 stations.',
     inLanguage: ['he', 'en', 'ar', 'ru', 'fr', 'es'],
     potentialAction: {
       '@type': 'SearchAction',

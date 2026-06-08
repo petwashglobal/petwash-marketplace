@@ -179,10 +179,10 @@ export default function GroomerDetail() {
           'https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?w=400',
         ]}
         bio={groomer.bio || (isHebrew 
-          ? `שלום, אני ${groomer.fullName}! אני מטפח חיות מחמד מקצועי עם תשוקה לגרום לחיות מחמד להיראות ולהרגיש הכי טוב שלהן. אני משתמש רק במוצרים אורגניים ועדינים על העור. כל טיפוח מותאם אישית לצרכים הייחודיים של כל חיית מחמד.`
-          : `Hi, I'm ${groomer.fullName}! I'm a professional pet groomer with a passion for making pets look and feel their best. I use only organic, skin-gentle products. Every grooming session is tailored to each pet's unique needs.`
+          ? `שלום, אני ${groomer.fullName}! אני מטפח חיות מחמד מקצועי עם תשוקה לגרום לחיות מחמד להיראות ולהרגיש הכי טוב שלהן. אני משתמש רק במוצרים טבעיים ועדינים על העור. כל טיפוח מותאם אישית לצרכים הייחודיים של כל חיית מחמד.`
+          : `Hi, I'm ${groomer.fullName}! I'm a professional pet groomer with a passion for making pets look and feel their best. I use only natural, skin-gentle products. Every grooming session is tailored to each pet's unique needs.`
         )}
-        bioHe={`שלום, אני ${groomer.fullName}! אני מטפח חיות מחמד מקצועי עם תשוקה לגרום לחיות מחמד להיראות ולהרגיש הכי טוב שלהן. אני משתמש רק במוצרים אורגניים ועדינים על העור.`}
+        bioHe={`שלום, אני ${groomer.fullName}! אני מטפח חיות מחמד מקצועי עם תשוקה לגרום לחיות מחמד להיראות ולהרגיש הכי טוב שלהן. אני משתמש רק במוצרים טבעיים ועדינים על העור.`}
         languages={['Hebrew', 'English']}
         acceptedPets={acceptedPets}
         acceptedPetsHe={acceptedPetsList.join(' · ') || 'כלבים'}
@@ -192,8 +192,8 @@ export default function GroomerDetail() {
             id: 'bath-blowdry',
             label: 'Bath & Blow Dry',
             labelHe: 'רחצה וייבוש',
-            description: 'Full bath with premium organic shampoo & conditioning',
-            descriptionHe: 'רחצה מלאה עם שמפו אורגני פרימיום ומרכך',
+            description: 'Full bath with premium natural shampoo & conditioning',
+            descriptionHe: 'רחצה מלאה עם שמפו טבעי פרימיום ומרכך',
             priceFrom: priceMin,
             priceUnit: 'per session',
             priceUnitHe: 'לטיפול',
@@ -293,7 +293,7 @@ export default function GroomerDetail() {
           },
         ]}
         highlights={[
-          'Premium organic, skin-gentle products',
+          'Premium natural, skin-gentle products',
           'Calm, stress-free grooming environment',
           'Breed-specific styling expertise',
           groomer.certifications?.length ? `${groomer.certifications.length}+ professional certifications` : 'Professionally certified',
@@ -301,7 +301,7 @@ export default function GroomerDetail() {
           'Flexible appointment scheduling',
         ]}
         highlightsHe={[
-          'מוצרים אורגניים פרימיום, עדינים לעור',
+          'מוצרים טבעיים פרימיום, עדינים לעור',
           'סביבת טיפוח רגועה וללא לחץ',
           'מומחיות בעיצוב ייחודי לגזע',
           groomer.certifications?.length ? `${groomer.certifications.length}+ הסמכות מקצועיות` : 'מוסמך מקצועית',

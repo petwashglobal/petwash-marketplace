@@ -136,7 +136,7 @@ export default function ReferralPage() {
   const shareWhatsApp = () => {
     if (!referralData?.referralLink) return;
     const text = encodeURIComponent(
-      `🐾 היי! קבל ₪25 קרדיט ב-⁦Pet Wash™⁩ עם הקישור שלי:\n${referralData.referralLink}\n\nשטיפת חיות מחמד אורגנית פרימיום 🧼✨`
+      `🐾 היי! קבל ₪25 קרדיט ב-⁦Pet Wash™⁩ עם הקישור שלי:\n${referralData.referralLink}\n\nשטיפת חיות מחמד טבעית פרימיום 🧼✨`
     );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
@@ -145,7 +145,7 @@ export default function ReferralPage() {
     if (!referralData?.referralLink) return;
     const subject = encodeURIComponent("קבל ₪25 קרדיט ב-⁦Pet Wash™⁩!");
     const body = encodeURIComponent(
-      `היי,\n\nרציתי להמליץ לך על ⁦Pet Wash™⁩ - שירות שטיפת חיות מחמד אורגני פרימיום!\n\nעם הקישור האישי שלי תקבל ₪25 קרדיט להזמנה הראשונה:\n${referralData.referralLink}\n\nלהתראות,`
+      `היי,\n\nרציתי להמליץ לך על ⁦Pet Wash™⁩ - שירות שטיפת חיות מחמד טבעי פרימיום!\n\nעם הקישור האישי שלי תקבל ₪25 קרדיט להזמנה הראשונה:\n${referralData.referralLink}\n\nלהתראות,`
     );
     window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
   };

@@ -51,12 +51,12 @@ const stText: Record<string, Record<string, string>> = {
     es: 'Estaciones de lavado premium',
   },
   heroDesc: {
-    en: 'Self-service ⁦K9000™⁩ organic wash locations. Professional-grade equipment, organic products, convenient locations.',
-    he: 'מיקומי שטיפה אורגנית ⁦K9000™⁩ בשירות עצמי. ציוד מקצועי, מוצרים אורגניים, מיקומים נוחים.',
-    ar: 'مواقع الغسيل العضوي ⁦K9000™⁩ بالخدمة الذاتية. معدات احترافية، منتجات عضوية، مواقع مريحة.',
-    ru: 'Органическая мойка ⁦K9000™⁩ самообслуживания. Профессиональное оборудование, органические продукты, удобные расположения.',
-    fr: 'Stations de lavage bio ⁦K9000™⁩ en libre-service. Équipement professionnel, produits bio, emplacements pratiques.',
-    es: 'Estaciones de lavado orgánico ⁦K9000™⁩ autoservicio. Equipo profesional, productos orgánicos, ubicaciones convenientes.',
+    en: 'Self-service ⁦K9000™⁩ natural wash locations. Professional-grade equipment, natural products, convenient locations.',
+    he: 'מיקומי שטיפה טבעית ⁦K9000™⁩ בשירות עצמי. ציוד מקצועי, מוצרים טבעיים, מיקומים נוחים.',
+    ar: 'مواقع الغسيل الطبيعي ⁦K9000™⁩ بالخدمة الذاتية. معدات احترافية، منتجات طبيعية، مواقع مريحة.',
+    ru: 'Натуральная мойка ⁦K9000™⁩ самообслуживания. Профессиональное оборудование, натуральные продукты, удобные расположения.',
+    fr: 'Stations de lavage naturel ⁦K9000™⁩ en libre-service. Équipement professionnel, produits naturels, emplacements pratiques.',
+    es: 'Estaciones de lavado natural ⁦K9000™⁩ autoservicio. Equipo profesional, productos naturales, ubicaciones convenientes.',
   },
   searchPlaceholder: {
     en: 'Search by location or station name...',

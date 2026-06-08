@@ -36,7 +36,7 @@ const packageOptions: PackageOption[] = [
     image: pinkCardFront,
     features: [
       { en: 'Single premium wash', he: 'רחיצה פרימיום בודדת' },
-      { en: '100% organic shampoo', he: 'שמפו אורגני 100%' },
+      { en: 'natural shampoo', he: 'שמפו טבעי' },
       { en: 'Valid 6 months', he: 'בתוקף 6 חודשים' },
     ]
   },
@@ -284,7 +284,7 @@ export default function Packages() {
                 </Button>
 
                 <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">
-                  {isHe ? 'תשלום מאובטח · שמפו אורגני 100%' : 'Secure checkout · 100% organic pet care'}
+                  {isHe ? 'תשלום מאובטח · שמפו טבעי' : 'Secure checkout · natural pet care'}
                 </p>
               </div>
             </div>
@@ -310,7 +310,7 @@ export default function Packages() {
                       ₪{price}
                     </p>
                     <p className="text-[10px] tracking-[0.15em] uppercase text-[#aaa]">
-                      {selectedPackage.washes} {isHe ? 'רחיצות' : 'washes'} · Premium Organic
+                      {selectedPackage.washes} {isHe ? 'רחיצות' : 'washes'} · Premium Natural
                     </p>
                   </div>
                 </div>
@@ -342,7 +342,7 @@ export default function Packages() {
             {isHe ? 'חבילות רחיצה פרמיום' : 'Premium Wash Packages'}
           </h1>
           <p className="text-sm sm:text-[15px] text-[#888] max-w-md mx-auto leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {isHe ? 'חסכו עם חבילות רחיצה. שמפו אורגני 100% עם שמן עץ התה האוסטרלי.' : 'Save more with multi-wash packages. 100% organic shampoo with Australian tea tree oil.'}
+            {isHe ? 'חסכו עם חבילות רחיצה. שמפו טבעי עם שמן עץ התה האוסטרלי.' : 'Save more with multi-wash packages. Natural shampoo with Australian tea tree oil.'}
           </p>
         </div>
 
@@ -483,7 +483,7 @@ export default function Packages() {
                   <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
                 </div>
                 <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
-                  {isHe ? 'אורגני 100%' : '100% Organic'}
+                  {isHe ? 'טבעי' : 'Natural'}
                 </p>
               </div>
               <div className="text-center">
