@@ -47,6 +47,11 @@ export function Footer({ language }: FooterProps) {
                 </Link>
               </div>
               <div>
+                <Link href="/trust" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
+                  {language === 'he' ? 'אמון ותאימות' : 'Trust & Compliance'}
+                </Link>
+              </div>
+              <div>
                 <Link href="/privacy" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
                   {t('footer.privacy', language)}
                 </Link>
