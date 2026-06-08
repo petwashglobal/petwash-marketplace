@@ -42,6 +42,31 @@ const router = Router();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+type WalletPassRecord = Pick<
+  typeof petwashPassAccounts.$inferSelect,
+  | 'passId'
+  | 'userId'
+  | 'ownerName'
+  | 'primaryPetName'
+  | 'tier'
+  | 'availableCreditIls'
+  | 'validUntil'
+  | 'status'
+  | 'qrTokenVersion'
+>;
+
+const walletPassProjection = {
+  passId:             petwashPassAccounts.passId,
+  userId:             petwashPassAccounts.userId,
+  ownerName:          petwashPassAccounts.ownerName,
+  primaryPetName:     petwashPassAccounts.primaryPetName,
+  tier:               petwashPassAccounts.tier,
+  availableCreditIls: petwashPassAccounts.availableCreditIls,
+  validUntil:         petwashPassAccounts.validUntil,
+  status:             petwashPassAccounts.status,
+  qrTokenVersion:     petwashPassAccounts.qrTokenVersion,
+};
+
 function isIOS(ua: string): boolean {
   return /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && /safari/i.test(ua) && !/android/i.test(ua));
 }
@@ -52,7 +77,7 @@ function isAndroid(ua: string): boolean {
 async function lookupPassByToken(token: string) {
   const payload = verifyPassLinkToken(token);                     // throws on bad/expired token
   const [pass]  = await db
-    .select()
+    .select(walletPassProjection)
     .from(petwashPassAccounts)
     .where(eq(petwashPassAccounts.passId, payload.passId))
     .limit(1);
@@ -61,7 +86,7 @@ async function lookupPassByToken(token: string) {
 
 async function lookupActivePassBySerial(serialNumber: string) {
   const [pass] = await db
-    .select()
+    .select(walletPassProjection)
     .from(petwashPassAccounts)
     .where(eq(petwashPassAccounts.passId, serialNumber))
     .limit(1);
@@ -73,7 +98,7 @@ function applePassAuthToken(req: Request): string {
   return header.startsWith('ApplePass ') ? header.slice('ApplePass '.length).trim() : '';
 }
 
-function verifyApplePassRequest(req: Request, pass: typeof petwashPassAccounts.$inferSelect): boolean {
+function verifyApplePassRequest(req: Request, pass: WalletPassRecord): boolean {
   try {
     return verifyApplePassAuthToken(
       applePassAuthToken(req),
@@ -86,7 +111,7 @@ function verifyApplePassRequest(req: Request, pass: typeof petwashPassAccounts.$
   }
 }
 
-function buildVisual(pass: typeof petwashPassAccounts.$inferSelect) {
+function buildVisual(pass: WalletPassRecord) {
   return {
     passId:             pass.passId,
     userId:             pass.userId,
@@ -351,12 +376,6 @@ router.get('/apple/v1/passes/:passTypeId/:serialNumber', async (req: Request, re
 
     if (!pass) return res.status(404).send();
     if (!verifyApplePassRequest(req, pass)) return res.status(401).send();
-
-    // Honour If-Modified-Since (Apple skips download if pass hasn't changed)
-    const ifModSince = req.headers['if-modified-since'];
-    if (ifModSince && pass.updatedAt && new Date(ifModSince) >= new Date(pass.updatedAt)) {
-      return res.status(304).send();
-    }
 
     const pkpassBuffer = await generateAppleWalletPass(buildVisual(pass));
 
