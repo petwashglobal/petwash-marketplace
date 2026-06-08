@@ -452,7 +452,7 @@ POST /api/payments/nayax/initiate-wash
 1. **Route 404 Errors**: All routes return 200, no 404s
 2. **Duplicate Social Icons**: Only 6 floating buttons (not 12)
 3. **Old Social Handles**: Only @petwashltd (no @petwash.israel)
-4. **Email Consistency**: Only Support@PetWash.co.il (no hello@ or info@)
+4. **Email Consistency**: Only Support@PetWash.co.il; no retired public-contact aliases or info mailbox
 5. **Cache Busting**: HTML files not cached, fresh content served
 
 ### Regression Test Commands
@@ -470,7 +470,7 @@ curl -s https://petwash.co.il/ | grep -o "petwash.israel" | wc -l  # Should be 0
 
 # Verify email addresses
 curl -s https://petwash.co.il/ | grep -o "Support@PetWash.co.il" | wc -l  # Should be >0
-curl -s https://petwash.co.il/ | grep -o "hello@petwash" | wc -l  # Should be 0
+npm run scan:retired-email  # Should pass
 ```
 
 ---

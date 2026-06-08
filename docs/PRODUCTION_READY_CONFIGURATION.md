@@ -283,7 +283,8 @@ try {
 ### Week 1: Email Setup
 **Day 1-2**:
 - [ ] Sign up for Google Workspace
-- [ ] Create email addresses (`support@`, `no-reply@`, `dmarc@`)
+- [ ] Create email addresses (`support@petwash.co.il`, `no-reply@petwash.co.il`, `dmarc@petwash.co.il`)
+- [ ] Keep retired public-contact aliases as forward-only to `support@petwash.co.il`; do not publish them
 - [ ] Add SPF record to DNS
 - [ ] Generate and add DKIM record
 - [ ] Add DMARC record (monitoring mode)
