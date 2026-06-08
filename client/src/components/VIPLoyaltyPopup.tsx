@@ -19,10 +19,10 @@ const platforms: Platform[] = [
   {
     id: 'wash',
     name: 'Pet ⁦Wash Hub™⁩',
-    description: 'Premium organic self-service wash stations',
+    description: 'Premium natural self-service wash stations',
     icon: Dog,
     gradient: 'from-purple-500 to-purple-600',
-    tags: ['24/7 IoT', 'Organic', 'Loyalty'],
+    tags: ['24/7 IoT', 'Natural', 'Loyalty'],
   },
   {
     id: 'walk',

@@ -130,8 +130,8 @@ export default function About({ language }: AboutProps) {
               </div>
               <p className="luxury-text-body">
                 {currentLanguage === 'en' 
-                  ? '100% organic biodegradable products, water-efficient systems, and eco-certified formulas featuring Australian Tea Tree Oil for natural antibacterial care'
-                  : 'מוצרים אורגניים מתכלים 100%, מערכות חיסכון במים וחומרים בעלי אישור אקולוגי עם שמן עץ התה האוסטרלי לטיפול אנטי-בקטריאלי טבעי'
+                  ? 'pet-formulated products, water-efficient systems, and formulas featuring Australian Tea Tree Oil, manufactured under APVMA-approved Good Manufacturing Practice'
+                  : 'מוצרים ייעודיים לחיות מחמד, מערכות חיסכון במים ותכשירים עם שמן עץ התה האוסטרלי, המיוצרים בתקן ייצור מאושר (APVMA GMP)'
                 }
               </p>
             </div>
@@ -220,7 +220,7 @@ export default function About({ language }: AboutProps) {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
               { icon: CheckCircle2, titleEn: 'Installation', titleHe: 'התקנה', descEn: 'Complete setup and logistics', descHe: 'התקנה ולוגיסטיקה מלאה' },
-              { icon: CheckCircle2, titleEn: 'Supply', titleHe: 'אספקה', descEn: '100% organic products', descHe: 'מוצרים אורגניים 100%' },
+              { icon: CheckCircle2, titleEn: 'Supply', titleHe: 'אספקה', descEn: 'pet-formulated products', descHe: 'מוצרים ייעודיים לחיות מחמד' },
               { icon: CheckCircle2, titleEn: 'Smart System', titleHe: 'מערכת חכמה', descEn: 'Real-time analytics', descHe: 'ניתוח בזמן אמת' },
               { icon: CheckCircle2, titleEn: 'Marketing', titleHe: 'שיווק', descEn: 'Professional materials', descHe: 'חומרים מקצועיים' },
               { icon: CheckCircle2, titleEn: 'Training', titleHe: 'הדרכה', descEn: 'Full operational support', descHe: 'תמיכה תפעולית מלאה' },

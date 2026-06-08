@@ -108,7 +108,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                   {language === 'he' ? 'צפו בסרטון שלנו' : language === 'ar' ? 'شاهد الفيديو الخاص بنا' : language === 'ru' ? 'Посмотрите наше видео' : language === 'fr' ? 'Regardez notre vidéo' : language === 'es' ? 'Mira nuestro video' : 'Watch Our Video'}
                 </h2>
                 <p className="luxury-text-body">
-                  {language === 'he' ? 'גלה את חווית הכביסה האורגנית הפרימיום שלנו לחיות מחמד' : language === 'ar' ? 'اكتشف تجربة الغسيل العضوية الفاخرة لحيواناتك الأليفة' : language === 'ru' ? 'Откройте для себя наш премиум органический опыт мытья домашних животных' : language === 'fr' ? 'Découvrez notre expérience de lavage bio premium pour animaux' : language === 'es' ? 'Descubre nuestra experiencia premium de lavado orgánico para mascotas' : 'Discover our premium organic pet wash experience'}
+                  {language === 'he' ? 'גלה את חווית הכביסה הטבעית הפרימיום שלנו לחיות מחמד' : language === 'ar' ? 'اكتشف تجربة الغسيل الطبيعية الفاخرة لحيواناتك الأليفة' : language === 'ru' ? 'Откройте для себя наш премиум натуральный опыт мытья домашних животных' : language === 'fr' ? 'Découvrez notre expérience de lavage naturel premium pour animaux' : language === 'es' ? 'Descubre nuestra experiencia premium de lavado natural para mascotas' : 'Discover our premium natural pet wash experience'}
                 </p>
               </div>
               
@@ -117,7 +117,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                   <iframe
                     className="absolute inset-0 w-full h-full"
                     src="https://www.youtube.com/embed/Om-iwY_vt5M?si=vGYJEwYMFyYRSoow"
-                    title="⁦Pet Wash™⁩ - Premium Organic Pet Care Experience"
+                    title="⁦Pet Wash™⁩ - Premium Natural Pet Care Experience"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                     data-testid="youtube-video"

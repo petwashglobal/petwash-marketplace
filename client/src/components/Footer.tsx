@@ -161,7 +161,7 @@ export function Footer({ language }: FooterProps) {
                 </span>
               </div>
 
-              {/* Organic Products */}
+              {/* Natural Products */}
               <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-lime-50 to-green-50 rounded-full border border-lime-200/50 group hover:border-lime-300 transition-all duration-300">
                 <Leaf className="w-4 h-4 text-lime-600 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-medium text-lime-800 tracking-wide">

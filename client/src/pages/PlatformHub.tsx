@@ -782,7 +782,7 @@ export default function PlatformHub() {
               PET WASH™
             </h3>
             <p className="text-[10px] font-light tracking-[4px] uppercase text-[#9CA3AF]" style={{ fontFamily: sans }}>
-              Premium Organic Pet Care Ecosystem
+              Premium Natural Pet Care Ecosystem
             </p>
             <div className="flex justify-center mt-8 mb-8">
               <div className="w-12 h-[1px]" style={{

@@ -334,7 +334,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       ? [{ t: 'טיפול חכם בכוח AI', I: FaCog }, { t: 'תגמולי VIP', I: FaGift }, { t: 'הזמנה חכמה', I: FaCalendarAlt }, { t: 'מעקב בריאות', I: FaHeartbeat }]
       : [{ t: 'AI Powered Pet Care', I: FaCog }, { t: 'VIP Rewards', I: FaGift }, { t: 'Smart Booking', I: FaCalendarAlt }, { t: 'Health Tracking', I: FaHeartbeat }],
     trusted: he ? 'נפתחים בקרוב בכפר סבא' : 'Opening soon in Kfar Saba',
-    rating: he ? 'טיפול אורגני פרימיום · מותג ישראלי' : 'Premium organic care · Israeli brand',
+    rating: he ? 'טיפול טבעי פרימיום · מותג ישראלי' : 'Premium natural care · Israeli brand',
     secure: he ? 'מאובטח · פרטי · מוצפן' : 'SECURE · PRIVATE · ENCRYPTED',
     secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
 

@@ -52,7 +52,7 @@ const COPY = {
       { icon: Building2, title: 'Premium dual-bay station', body: 'Engineered, certified, and installed by PetWash. Includes warranty, spare parts pipeline, and live operational monitoring.' },
       { icon: Wrench, title: 'Software + payments layer', body: 'Customer app, booking, loyalty, e-gift, Nayax-based card terminal, and the K9000 station controller — all maintained centrally by PetWash.' },
       { icon: Shield, title: 'Brand + support', body: 'Brand kit, signage, training, station deployment runbook, and a real support desk. You operate locally; PetWash maintains the system.' },
-      { icon: Sparkles, title: 'Consumables supply', body: 'Australian-certified organic shampoo, conditioner, and tea-tree oil supplied through the PetWash supplier channel. No sourcing required.' },
+      { icon: Sparkles, title: 'Consumables supply', body: 'Australian-made shampoo, conditioner, and tea-tree oil supplied through the PetWash supplier channel. No sourcing required.' },
     ],
     fiveTruthsTitle: 'Five truths that drive PetWash',
     fiveTruths: [
@@ -60,7 +60,7 @@ const COPY = {
       { title: 'Pet safety and comfort', body: 'A calm, controlled, clean, pet-safe experience. Soft water, gentle products, trained operators.' },
       { title: 'Premium lifestyle', body: 'Modern, restrained, design-led. Every customer surface must feel calm, premium, clear, and trustworthy.' },
       { title: 'Urban infrastructure value', body: 'Helps cities, councils, commercial centers, and residential towers offer a cleaner organized pet-care service.' },
-      { title: 'Environmental + ecological value', body: 'Controlled washing instead of random home or street washing. Less dog hair in shared plumbing. Pet-safe organic products. Cleaner shared apartment living.' },
+      { title: 'Environmental + ecological value', body: 'Controlled washing instead of random home or street washing. Less dog hair in shared plumbing. Pet-safe, pet-formulated products. Cleaner shared apartment living.' },
     ],
     processTitle: 'How a deployment happens',
     process: [
@@ -111,7 +111,7 @@ const COPY = {
       { icon: Building2, title: 'תחנת רחצה דו-תאית פרימיום', body: 'מהונדסת, מאושרת ומותקנת על-ידי PetWash. כולל אחריות, צינור חלפים, וניטור תפעולי חי.' },
       { icon: Wrench, title: 'תוכנה + תשלומים', body: 'אפליקציית לקוח, הזמנות, נאמנות, גיפט, מסוף Nayax, ובקר תחנת K9000 — תחזוקה מרוכזת ב-PetWash.' },
       { icon: Shield, title: 'מותג + תמיכה', body: 'ערכת מותג, שילוט, הדרכה, רוֹנְבּוּקוֹת פריסה, ודלפק תמיכה אמיתי. אתה מפעיל מקומית; PetWash מתחזק את המערכת.' },
-      { icon: Sparkles, title: 'אספקת מתכלים', body: 'שמפו אורגני בהסמכה אוסטרלית, מרכך, ושמן עץ התה דרך ערוץ הספקים של PetWash. אין צורך בגיוס ספקים.' },
+      { icon: Sparkles, title: 'אספקת מתכלים', body: 'שמפו מתוצרת אוסטרליה, מרכך, ושמן עץ התה דרך ערוץ הספקים של PetWash. אין צורך בגיוס ספקים.' },
     ],
     fiveTruthsTitle: 'חמש האמיתות שמניעות את PetWash',
     fiveTruths: [
@@ -119,7 +119,7 @@ const COPY = {
       { title: 'בטיחות ונוחות החיה', body: 'חוויה רגועה, נקייה, מבוקרת ובטוחה. מים רכים, מוצרים עדינים, מפעילים מיומנים.' },
       { title: 'אורח חיים פרימיום', body: 'מודרני, מאופק ומובל-עיצוב. כל ממשק לקוח חייב להרגיש רגוע, יוקרתי, ברור ואמין.' },
       { title: 'ערך תשתית עירונית', body: 'מסייע לערים, רשויות, מרכזים מסחריים ומגדלי מגורים להציע שירות מסודר ונקי לבעלי חיות מחמד.' },
-      { title: 'ערך סביבתי ואקולוגי', body: 'רחצה מבוקרת במקום רחצת רחוב או בית מאולתרת. פחות שיער כלבים באינסטלציה משותפת. מוצרים אורגניים. סביבה משותפת נקייה יותר.' },
+      { title: 'ערך סביבתי ואקולוגי', body: 'רחצה מבוקרת במקום רחצת רחוב או בית מאולתרת. פחות שיער כלבים באינסטלציה משותפת. מוצרים ייעודיים לחיות מחמד. סביבה משותפת נקייה יותר.' },
     ],
     processTitle: 'איך פריסה מתבצעת',
     process: [

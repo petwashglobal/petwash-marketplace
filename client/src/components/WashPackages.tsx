@@ -30,7 +30,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '1',
     name: 'Single Wash',
     nameHe: 'רחיצה בודדת',
-    description: 'One premium organic wash',
+    description: 'One premium natural wash',
     price: '55',
     washCount: 1,
     isActive: true,
@@ -41,7 +41,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '2',
     name: '3-Wash Package',
     nameHe: 'חבילת 3 רחיצות',
-    description: 'Three premium organic washes',
+    description: 'Three premium natural washes',
     price: '150',
     washCount: 3,
     isActive: true,
@@ -52,7 +52,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '3',
     name: '5-Wash Package',
     nameHe: 'חבילת 5 רחיצות',
-    description: 'Five premium organic washes',
+    description: 'Five premium natural washes',
     price: '220',
     washCount: 5,
     isActive: true,
@@ -63,7 +63,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '4',
     name: '10-Wash Package',
     nameHe: 'חבילת 10 רחיצות',
-    description: 'Ten premium organic washes - Family Pack',
+    description: 'Ten premium natural washes - Family Pack',
     price: '440',
     washCount: 10,
     isActive: true,
@@ -116,7 +116,7 @@ const perWashText: Record<string, string> = {
 };
 
 const organicText: Record<string, string> = {
-  en: '100% Australian Tea Tree Oil · Organic', he: 'שמן עץ התה האוסטרלי 100% אורגני', ar: 'زيت شجرة الشاي العضوي 100%', ru: '100% органическое масло чайного дерева', fr: '100% huile bio arbre à thé', es: '100% aceite orgánico árbol de té',
+  en: 'Australian Tea Tree Oil', he: 'שמן עץ התה האוסטרלי', ar: 'زيت شجرة الشاي الأسترالي', ru: 'Австралийское масло чайного дерева', fr: 'Huile d\'arbre à thé australien', es: 'Aceite de árbol de té australiano',
 };
 
 export function WashPackages({ language }: WashPackagesProps) {
@@ -298,7 +298,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       <div className="flex items-center gap-2">
                         <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
                         <span className="text-[10px] sm:text-[11px]">
-                          {language === 'he' ? 'שמפו אורגני פרימיום' : 'Premium organic shampoo'}
+                          {language === 'he' ? 'שמפו טבעי פרימיום' : 'Premium natural shampoo'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">

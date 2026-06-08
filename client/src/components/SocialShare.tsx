@@ -18,8 +18,8 @@ interface SocialShareProps {
 
 export function SocialShare({ 
   url = window.location.href, 
-  title = '⁦Pet Wash™⁩ - Premium Organic Pet Care',
-  description = 'Israel\'s leading premium organic pet washing service',
+  title = '⁦Pet Wash™⁩ - Premium Natural Pet Care',
+  description = 'Israel\'s leading premium natural pet washing service',
   showLabels = false 
 }: SocialShareProps) {
   const { toast } = useToast();

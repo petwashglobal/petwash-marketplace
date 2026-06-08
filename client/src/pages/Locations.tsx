@@ -97,7 +97,7 @@ export default function Locations() {
             Find a Station Near You
           </h1>
           <p className="luxury-subtitle-lg max-w-2xl mx-auto">
-            Premium organic pet washing stations across Israel
+            Premium natural pet washing stations across Israel
           </p>
         </div>
 

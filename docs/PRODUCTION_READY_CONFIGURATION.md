@@ -283,7 +283,7 @@ try {
 ### Week 1: Email Setup
 **Day 1-2**:
 - [ ] Sign up for Google Workspace
-- [ ] Create email addresses (`hello@`, `no-reply@`, `dmarc@`)
+- [ ] Create email addresses (`support@`, `no-reply@`, `dmarc@`)
 - [ ] Add SPF record to DNS
 - [ ] Generate and add DKIM record
 - [ ] Add DMARC record (monitoring mode)

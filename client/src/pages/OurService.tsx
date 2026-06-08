@@ -337,7 +337,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   <div className="luxury-product-icon-metallic">
                     <FlaskIcon />
                   </div>
-                  <h3 className="luxury-product-title">100% Organic Shampoo</h3>
+                  <h3 className="luxury-product-title">Natural Shampoo</h3>
                   <p className="luxury-product-desc">
                     {t('ourService.shampooDesc', language)}
                   </p>
@@ -348,7 +348,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   <div className="luxury-product-icon-metallic">
                     <SprayIcon />
                   </div>
-                  <h3 className="luxury-product-title">Organic Conditioner</h3>
+                  <h3 className="luxury-product-title">Natural Conditioner</h3>
                   <p className="luxury-product-desc">
                     {t('ourService.conditionerDesc', language)}
                   </p>

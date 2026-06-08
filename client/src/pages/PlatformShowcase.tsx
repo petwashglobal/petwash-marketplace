@@ -16,7 +16,7 @@ export default function PlatformShowcase() {
       icon: <Crown className="h-8 w-8" />,
       color: "from-purple-500 to-pink-500",
       items: [
-        "Pet ⁦Wash Hub™⁩ - Premium organic washing stations",
+        "Pet ⁦Wash Hub™⁩ - Premium natural washing stations",
         "⁦Walk My Pet™⁩ - Real-time GPS dog walking marketplace (15% commission)",
         "⁦The Sitter Suite™⁩ - AI-powered pet sitting with urgency triage",
         "⁦PetTrek™⁩ - On-demand pet transport with dynamic fare estimation",
@@ -393,7 +393,7 @@ export default function PlatformShowcase() {
                   🌿 Environmental Sustainability
                 </h3>
                 <p className="text-slate-600 dark:text-black leading-relaxed">
-                  Organic products, eco-friendly operations, and carbon-neutral goals by 2030
+                  Natural products, eco-friendly operations, and carbon-neutral goals by 2030
                 </p>
                 <Badge className="mt-4 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-100">
                   Carbon Neutral 2030

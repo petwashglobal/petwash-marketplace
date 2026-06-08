@@ -357,7 +357,7 @@ const HQManagementPortal = lazy(() => import("@/pages/HQManagementPortal"));
 // Mobile Management Dashboard - Executive Suite 2026
 const MobileManagementDashboard = lazy(() => import("@/pages/MobileManagementDashboard"));
 
-// K9000 Wash Stations - Self-Service Organic Pet Washing
+// K9000 Wash Stations - Self-Service Natural Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BayStatus = lazy(() => import("@/pages/k9000/BayStatus"));
 
