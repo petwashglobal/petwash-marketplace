@@ -199,6 +199,9 @@ router.get('/:token', async (req: Request, res: Response) => {
   ${googleConfigured
     ? `<a class="btn google" href="${googleUrl}">${isHe ? 'הוסף ל‑Google Wallet' : 'Add to Google Wallet'}</a>`
     : `<div class="btn disabled">${isHe ? 'Google Wallet — בקרוב' : 'Google Wallet — Coming Soon'}</div>`}
+  <p style="font-size:12px;color:#aaa;margin:20px 0 0;line-height:1.5">${isHe
+    ? 'ב‑iPhone: אם הכפתור לא מוסיף ל‑Wallet, פתחו קישור זה ב‑Safari (לא בתוך אפליקציה).'
+    : 'On iPhone: if the button does not add to Wallet, open this link in Safari (not inside an app).'}</p>
   <div class="id">${pass.passId}</div>
 </div>
 </body>

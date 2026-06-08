@@ -513,6 +513,12 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
         ${isHe ? 'גישה מיידית · QR מתחלף כל 45 שניות · ₪0 ביד' : 'Instant access · QR auto-rotates every 45 sec · ₪0 out of pocket'}
       </div>
 
+      <div style="font-size:11px;color:#999999;text-align:center;margin-top:10px;line-height:1.5;">
+        ${isHe
+          ? '📱 ב-iPhone: אם הכפתור נפתח בתוך אפליקציה (Gmail/WhatsApp) ולא מתווסף ל-Wallet, הקש "פתח ב-Safari" ואז הוסף.'
+          : '📱 On iPhone: if the button opens inside an app (Gmail/WhatsApp) and won\'t add to Wallet, tap "Open in Safari", then add.'}
+      </div>
+
     </td>
   </tr>
 
