@@ -27,6 +27,7 @@ import { logger } from '../../lib/logger';
 import { FinanceSettlementService } from '../../services/FinanceSettlementService';
 import { ImmutableStampService } from '../../services/ImmutableStampService';
 import { assertOperatingControl } from '../../lib/petwashOperatingControlGateway';
+import { requireUnifiedPayoutVerification } from '../../lib/unifiedPayoutVerification';
 
 const router = Router();
 
@@ -375,6 +376,18 @@ router.patch('/:id/pay', async (req, res) => {
       paymentReference,
       recordedBy: req.user?.id,
     });
+
+    if (!await requireUnifiedPayoutVerification(req, res, {
+      actorUserId: req.user?.uid || req.user?.id,
+      actorEmail: req.user?.email,
+      operation: 'settlement_mark_paid',
+      targetId: `settlement:${settlementId}`,
+      payload: {
+        paymentReference,
+      },
+    })) {
+      return;
+    }
 
     const updatedSettlement = await FinanceSettlementService.markSettlementPaid(
       settlementId,

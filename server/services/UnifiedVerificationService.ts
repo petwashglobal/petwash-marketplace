@@ -77,14 +77,6 @@ export class UnifiedVerificationError extends Error {
   }
 }
 
-const unavailableAction = async (): Promise<Record<string, unknown>> => {
-  throw new UnifiedVerificationError(
-    "PURPOSE_NOT_MIGRATED",
-    "This verification purpose is registered but not migrated to the unified runtime.",
-    409,
-  );
-};
-
 export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, PurposeDefinition> = {
   diagnostic_noop: {
     purpose: "diagnostic_noop",
@@ -203,12 +195,20 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   payout: {
     purpose: "payout",
-    migrated: false,
+    migrated: true,
     sensitive: true,
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        action: "payout",
+        operation: (challenge.payload as any)?.operation,
+        targetId: (challenge.payload as any)?.targetId,
+        amountCents: (challenge.payload as any)?.amountCents,
+        userId: challenge.userId || undefined,
+      },
+    }),
   },
 };
 
@@ -431,6 +431,7 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
       || challenge.purpose === "close_account"
       || challenge.purpose === "enable_2fa"
       || challenge.purpose === "disable_2fa"
+      || challenge.purpose === "payout"
     )
     && challenge.channel === "email"
   ) {
@@ -515,6 +516,9 @@ export class UnifiedVerificationService {
       || definition.purpose === "egift_redeem"
       || definition.purpose === "change_email"
       || definition.purpose === "close_account"
+      || definition.purpose === "enable_2fa"
+      || definition.purpose === "disable_2fa"
+      || definition.purpose === "payout"
     ) {
       const [recent] = await db
         .select({ challengeId: verificationChallenges.challengeId })

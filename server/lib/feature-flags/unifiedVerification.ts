@@ -8,6 +8,7 @@ export const UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME = "UNIFIED_VERIFICATION
 export const UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME = "UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED" as const;
 export const UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME = "UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED" as const;
 export const UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME = "UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED" as const;
+export const UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME = "UNIFIED_VERIFICATION_PAYOUT_ENABLED" as const;
 
 export function isUnifiedVerificationEnabled(
   env: NodeJS.ProcessEnv = process.env,
@@ -64,6 +65,13 @@ export function isUnifiedVerificationDisable2faEnabled(
     && (env.UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED || "").toLowerCase().trim() === "true";
 }
 
+export function isUnifiedVerificationPayoutEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isUnifiedVerificationEnabled(env)
+    && (env.UNIFIED_VERIFICATION_PAYOUT_ENABLED || "").toLowerCase().trim() === "true";
+}
+
 export function isUnifiedVerificationPurposeEnabled(
   purpose: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -75,6 +83,7 @@ export function isUnifiedVerificationPurposeEnabled(
   if (purpose === "close_account") return isUnifiedVerificationCloseAccountEnabled(env);
   if (purpose === "enable_2fa") return isUnifiedVerificationEnable2faEnabled(env);
   if (purpose === "disable_2fa") return isUnifiedVerificationDisable2faEnabled(env);
+  if (purpose === "payout") return isUnifiedVerificationPayoutEnabled(env);
   if (purpose === "diagnostic_noop") return isUnifiedVerificationEnabled(env);
   return false;
 }

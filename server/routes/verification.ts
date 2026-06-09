@@ -8,6 +8,7 @@ import {
   UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME,
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
+  UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   isUnifiedVerificationChangeEmailEnabled,
   isUnifiedVerificationCloseAccountEnabled,
@@ -16,6 +17,7 @@ import {
   isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationLoginEnabled,
+  isUnifiedVerificationPayoutEnabled,
   isUnifiedVerificationSignupEnabled,
   requireUnifiedVerificationEnabled,
 } from "../lib/feature-flags/unifiedVerification";
@@ -130,6 +132,10 @@ router.get("/status", (_req, res) => {
       disable2fa: {
         flag: UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME,
         enabled: isUnifiedVerificationDisable2faEnabled(),
+      },
+      payout: {
+        flag: UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME,
+        enabled: isUnifiedVerificationPayoutEnabled(),
       },
     },
     purposes,
