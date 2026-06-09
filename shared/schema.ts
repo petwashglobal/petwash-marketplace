@@ -232,6 +232,40 @@ export const insertVerificationTokenSchema = createInsertSchema(verificationToke
 export type VerificationToken = typeof verificationTokens.$inferSelect;
 export type InsertVerificationToken = typeof verificationTokens.$inferInsert;
 
+// Unified Verification Challenges (purpose-bound OTP/action verification)
+export const verificationChallenges = pgTable("verification_challenges", {
+  id: serial("id").primaryKey(),
+  challengeId: varchar("challenge_id", { length: 100 }).notNull().unique(), // UUID or trace-safe public id
+  userId: varchar("user_id"), // nullable for pre-auth signup/login challenges
+  channel: varchar("channel", { length: 20 }).notNull(), // sms | email | whatsapp | push
+  destination: varchar("destination", { length: 320 }).notNull(), // E.164 phone, email, or channel address
+  purpose: varchar("purpose", { length: 80 }).notNull(), // login | signup | change_email | payout | close_account
+  payload: jsonb("payload").default(sql`'{}'::jsonb`).notNull(), // bound action payload, never raw code
+  codeHash: varchar("code_hash", { length: 128 }).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  maxAttempts: integer("max_attempts").default(5).notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending | verified | consumed | expired | locked | cancelled
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  consumedAt: timestamp("consumed_at"),
+  lockedAt: timestamp("locked_at"),
+  ip: varchar("ip", { length: 45 }),
+  userAgent: text("user_agent"),
+  deviceId: varchar("device_id", { length: 100 }),
+  traceId: varchar("trace_id", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_verification_challenges_user_purpose_status").on(table.userId, table.purpose, table.status),
+  index("idx_verification_challenges_destination_purpose_status").on(table.destination, table.purpose, table.status),
+  index("idx_verification_challenges_expires").on(table.expiresAt),
+  index("idx_verification_challenges_trace").on(table.traceId),
+]);
+
+export const insertVerificationChallengeSchema = createInsertSchema(verificationChallenges).omit({ id: true, createdAt: true, updatedAt: true });
+export type VerificationChallenge = typeof verificationChallenges.$inferSelect;
+export type InsertVerificationChallenge = typeof verificationChallenges.$inferInsert;
+
 // Domain Events (Event Store for Event-Driven Architecture)
 export const domainEvents = pgTable("domain_events", {
   id: serial("id").primaryKey(),
