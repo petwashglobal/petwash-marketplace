@@ -15,6 +15,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Loader2, Gift, CheckCircle2, Sparkles, ArrowRight, Wallet } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -32,6 +33,15 @@ interface GiftInfo {
   recipientEmail: string | null;
 }
 
+interface VerificationStatus {
+  enabled: boolean;
+  flowFlags?: {
+    egiftRedeem?: {
+      enabled: boolean;
+    };
+  };
+}
+
 export default function GiftActivate() {
   const { voucherId } = useParams<{ voucherId: string }>();
   const [, navigate] = useLocation();
@@ -42,6 +52,9 @@ export default function GiftActivate() {
 
   const [activated, setActivated] = useState(false);
   const [creditedAmount, setCreditedAmount] = useState(0);
+  const [verificationChallengeId, setVerificationChallengeId] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const { data: gift, isLoading, isError } = useQuery<GiftInfo>({
     queryKey: ['/api/gift-cards', voucherId, 'info'],
@@ -54,22 +67,88 @@ export default function GiftActivate() {
     retry: false,
   });
 
+  const { data: verificationStatus } = useQuery<VerificationStatus>({
+    queryKey: ['/api/verification/status'],
+    queryFn: async () => {
+      const res = await fetch('/api/verification/status');
+      if (!res.ok) throw new Error('Verification status unavailable');
+      return res.json();
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const egiftVerificationEnabled = !!verificationStatus?.enabled
+    && !!verificationStatus.flowFlags?.egiftRedeem?.enabled;
+
   const activateMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not signed in');
       const token = await user.getIdToken();
+
+      if (egiftVerificationEnabled && !verificationChallengeId) {
+        const phoneNumber = user.phoneNumber;
+        if (!phoneNumber) {
+          throw new Error(
+            isHe
+              ? 'כדי להפעיל מתנה נדרש מספר טלפון מאומת בחשבון.'
+              : 'A verified phone number is required to activate this gift.',
+          );
+        }
+
+        const verificationRes = await fetch('/api/verification/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            purpose: 'egift_redeem',
+            channel: 'sms',
+            destination: phoneNumber,
+            payload: { voucherId },
+            traceId: `gift-${voucherId}`,
+          }),
+        });
+        const verificationBody = await verificationRes.json();
+        if (!verificationRes.ok) {
+          throw new Error(verificationBody.error || 'Verification failed');
+        }
+        return {
+          challengeSent: true,
+          challengeId: verificationBody.challenge.challengeId as string,
+        };
+      }
+
+      if (egiftVerificationEnabled && verificationCode.trim().length < 4) {
+        throw new Error(isHe ? 'יש להזין קוד אימות.' : 'Enter the verification code.');
+      }
+
       const res = await fetch(`/api/gift-cards/${voucherId}/activate-wallet`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify(egiftVerificationEnabled ? {
+          verificationChallengeId,
+          verificationCode: verificationCode.trim(),
+        } : {}),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Activation failed');
       return body as { success: boolean; amountIls: number; amountCents: number };
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
+      if (data.challengeSent) {
+        setVerificationChallengeId(data.challengeId);
+        setVerificationSent(true);
+        toast({
+          title: isHe ? 'קוד נשלח' : 'Code sent',
+          description: isHe ? 'הזן את הקוד שקיבלת במסרון.' : 'Enter the SMS code to activate the gift.',
+        });
+        return;
+      }
       setCreditedAmount(data.amountIls);
       setActivated(true);
       queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
@@ -254,9 +333,21 @@ export default function GiftActivate() {
             </div>
           ) : (
             <div>
+              {egiftVerificationEnabled && verificationSent && (
+                <div className="mb-3">
+                  <Input
+                    value={verificationCode}
+                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder={isHe ? 'קוד אימות' : 'Verification code'}
+                    className="h-12 text-center font-mono text-lg rounded-xl"
+                  />
+                </div>
+              )}
               <Button
                 onClick={() => activateMutation.mutate()}
-                disabled={activateMutation.isPending}
+                disabled={activateMutation.isPending || (egiftVerificationEnabled && verificationSent && verificationCode.trim().length < 4)}
                 className="w-full h-14 font-bold text-lg rounded-xl mb-3 text-white"
                 style={{ background: GOLD }}
               >
@@ -265,7 +356,9 @@ export default function GiftActivate() {
                 ) : (
                   <>
                     <Wallet className={`w-5 h-5 ${isHe ? 'ml-2' : 'mr-2'}`} />
-                    {isHe ? 'הפעל לארנק שלי' : 'Add to My Wallet'}
+                    {egiftVerificationEnabled && !verificationSent
+                      ? (isHe ? 'שלח קוד אימות' : 'Send Verification Code')
+                      : (isHe ? 'הפעל לארנק שלי' : 'Add to My Wallet')}
                   </>
                 )}
               </Button>

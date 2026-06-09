@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
+  isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationSignupEnabled,
+  UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   UNIFIED_VERIFICATION_FLAG_NAME,
@@ -21,6 +23,7 @@ describe("unified verification runtime guard", () => {
     expect(UNIFIED_VERIFICATION_FLAG_NAME).toBe("UNIFIED_VERIFICATION_ENABLED");
     expect(UNIFIED_VERIFICATION_LOGIN_FLAG_NAME).toBe("UNIFIED_VERIFICATION_LOGIN_ENABLED");
     expect(UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME).toBe("UNIFIED_VERIFICATION_SIGNUP_ENABLED");
+    expect(UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME).toBe("UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -33,6 +36,11 @@ describe("unified verification runtime guard", () => {
     expect(isUnifiedVerificationSignupEnabled({
       UNIFIED_VERIFICATION_ENABLED: "true",
       UNIFIED_VERIFICATION_SIGNUP_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationEgiftRedeemEnabled({ UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationEgiftRedeemEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED: "true",
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
@@ -60,6 +68,8 @@ describe("unified verification runtime guard", () => {
     expect(service).toContain("verifyLatestChallengeForDestination");
     expect(service).toContain("resendChallenge");
     expect(service).toContain("smsEvidence");
+    expect(service).toContain('purpose: "egift_redeem"');
+    expect(service).toContain("unified_egift_redeem_otp");
   });
 
   it("bridges the existing sms auth route through unified login only behind the login flag", () => {
@@ -85,5 +95,21 @@ describe("unified verification runtime guard", () => {
     expect(route).toContain("registrationOTPService.sendOTP");
     expect(route).toContain("registrationOTPService.resendOTP");
     expect(route).toContain("registrationOTPService.verifyOTP");
+  });
+
+  it("bridges e-gift wallet activation through unified verification behind the e-gift flag", () => {
+    const serverRoute = source("server/routes/gift-cards.ts");
+    const clientPage = source("client/src/pages/GiftActivate.tsx");
+    const statusRoute = source("server/routes/verification.ts");
+
+    expect(statusRoute).toContain("UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME");
+    expect(statusRoute).toContain("egiftRedeem");
+    expect(serverRoute).toContain("isUnifiedVerificationEgiftRedeemEnabled");
+    expect(serverRoute).toContain("unifiedVerificationService.verifyChallenge");
+    expect(serverRoute).toContain("EGIFT_REDEEM_VERIFICATION_REQUIRED");
+    expect(serverRoute).toContain("EGIFT_REDEEM_VERIFICATION_MISMATCH");
+    expect(clientPage).toContain("purpose: 'egift_redeem'");
+    expect(clientPage).toContain("verificationChallengeId");
+    expect(clientPage).toContain("verificationCode");
   });
 });
