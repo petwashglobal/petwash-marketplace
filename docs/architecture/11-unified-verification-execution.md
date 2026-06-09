@@ -30,10 +30,11 @@ payments (Sections 01–10). Code audit 2026-06-09 found the real state:
 | `PR-VERIF-3` | runtime | Migrate **login** flow to the service behind `UNIFIED_VERIFICATION_LOGIN_ENABLED`; old path stays when flag is off. QA iPhone Safari | medium | **DONE** — PR #634 merged and deployed |
 | `PR-VERIF-4` | runtime | Migrate **signup phone OTP** send/resend/verify to the service behind `UNIFIED_VERIFICATION_SIGNUP_ENABLED`; old path stays when flag is off | medium | **DONE** — PR #636 merged and deployed |
 | `PR-VERIF-5` | runtime | Migrate **e-gift wallet activation** to the service behind `UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED`; activation still works exactly as before while flag is off | medium | **DONE** — PR #637 merged and deployed |
-| `PR-VERIF-6` | runtime | Migrate **change-email** to the service behind `UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED`; legacy route still sends and verifies its hashed Firestore OTP while flag is off | medium | CEO — in progress on `codex/unified-verification-change-email` |
-| `PR-VERIF-7` | runtime | Migrate **close-account** to the service behind `UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED`; deletion is scheduled only after the email challenge is consumed while the flag is on | medium | CEO — in progress on `codex/unified-verification-close-account` |
-| `PR-VERIF-8` | runtime | Migrate enable/disable 2FA after the account-page toggle is reconciled with the real MFA enrollment/removal routes | medium | CEO per PR |
-| `PR-VERIF-9` | cleanup | Delete the 4 legacy OTP impls once every flow is cut over and stable | medium | CEO |
+| `PR-VERIF-6` | runtime | Migrate **change-email** to the service behind `UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED`; legacy route still sends and verifies its hashed Firestore OTP while flag is off | medium | **DONE** — PR #639 merged and deployed |
+| `PR-VERIF-7` | runtime | Migrate **close-account** to the service behind `UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED`; deletion is scheduled only after the email challenge is consumed while the flag is on | medium | **DONE** — PR #640 merged and deployed |
+| `PR-VERIF-8` | runtime | Reconcile the account-page 2FA panel with the real `/api/mfa` enrollment/removal routes and bridge enable/disable lifecycle verification behind `UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED` / `UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED`; old runtime behavior stays while flags are off | medium | CEO — in progress on `codex/unified-verification-2fa-reconcile` |
+| `PR-VERIF-9` | runtime | Migrate **payout** step-up verification once the exact payout mutation route is identified | high | CEO per PR |
+| `PR-VERIF-10` | cleanup | Delete the 4 legacy OTP impls once every flow is cut over and stable | medium | CEO |
 
 ## Hard constraints
 

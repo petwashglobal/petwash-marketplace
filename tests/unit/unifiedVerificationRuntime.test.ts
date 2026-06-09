@@ -4,12 +4,16 @@ import { describe, expect, it } from "vitest";
 import {
   isUnifiedVerificationChangeEmailEnabled,
   isUnifiedVerificationCloseAccountEnabled,
+  isUnifiedVerificationDisable2faEnabled,
+  isUnifiedVerificationEnable2faEnabled,
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationSignupEnabled,
   UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME,
   UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME,
+  UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME,
+  UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME,
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
@@ -30,6 +34,8 @@ describe("unified verification runtime guard", () => {
     expect(UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME).toBe("UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED");
     expect(UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME).toBe("UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED");
     expect(UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME).toBe("UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED");
+    expect(UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME).toBe("UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED");
+    expect(UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME).toBe("UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -57,6 +63,16 @@ describe("unified verification runtime guard", () => {
     expect(isUnifiedVerificationCloseAccountEnabled({
       UNIFIED_VERIFICATION_ENABLED: "true",
       UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationEnable2faEnabled({ UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationEnable2faEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationDisable2faEnabled({ UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationDisable2faEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED: "true",
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
@@ -163,5 +179,33 @@ describe("unified verification runtime guard", () => {
     expect(accountRoute).toContain("unifiedVerificationService.verifyChallenge");
     expect(accountPage).toContain("deleteVerificationChallengeId");
     expect(accountPage).toContain("data.requiresVerification");
+  });
+
+  it("bridges 2FA lifecycle verification behind enable/disable 2FA flags", () => {
+    const mfaRoute = source("server/routes/mfa.ts");
+    const accountPage = source("client/src/pages/MyAccount.tsx");
+    const statusRoute = source("server/routes/verification.ts");
+    const service = source("server/services/UnifiedVerificationService.ts");
+
+    expect(statusRoute).toContain("UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME");
+    expect(statusRoute).toContain("UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME");
+    expect(statusRoute).toContain("enable2fa");
+    expect(statusRoute).toContain("disable2fa");
+    expect(service).toContain('purpose: "enable_2fa"');
+    expect(service).toContain('purpose: "disable_2fa"');
+    expect(service).toContain('action: "enable_2fa"');
+    expect(service).toContain('action: "disable_2fa"');
+    expect(service).toContain('challenge.purpose === "enable_2fa"');
+    expect(service).toContain('challenge.purpose === "disable_2fa"');
+    expect(mfaRoute).toContain("isUnifiedVerificationEnable2faEnabled");
+    expect(mfaRoute).toContain("isUnifiedVerificationDisable2faEnabled");
+    expect(mfaRoute).toContain("purpose: 'enable_2fa'");
+    expect(mfaRoute).toContain("purpose: 'disable_2fa'");
+    expect(mfaRoute).toContain("unifiedVerificationService.verifyChallenge");
+    expect(accountPage).toContain("queryKey: ['/api/mfa/status']");
+    expect(accountPage).toContain("/api/mfa/enroll/totp");
+    expect(accountPage).toContain("/api/mfa/verify-enrollment");
+    expect(accountPage).toContain("mfaEnableVerificationChallengeId");
+    expect(accountPage).toContain("mfaDisableVerificationChallengeId");
   });
 });
