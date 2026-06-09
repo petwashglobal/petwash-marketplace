@@ -3,8 +3,10 @@ import { z } from "zod";
 import {
   UNIFIED_VERIFICATION_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
+  UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationLoginEnabled,
+  isUnifiedVerificationSignupEnabled,
   requireUnifiedVerificationEnabled,
 } from "../lib/feature-flags/unifiedVerification";
 import {
@@ -94,6 +96,10 @@ router.get("/status", (_req, res) => {
       login: {
         flag: UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
         enabled: isUnifiedVerificationLoginEnabled(),
+      },
+      signup: {
+        flag: UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
+        enabled: isUnifiedVerificationSignupEnabled(),
       },
     },
     purposes,

@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
+  isUnifiedVerificationSignupEnabled,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
+  UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   UNIFIED_VERIFICATION_FLAG_NAME,
 } from "../../server/lib/feature-flags/unifiedVerification";
 
@@ -18,6 +20,7 @@ describe("unified verification runtime guard", () => {
   it("is default-off and only opens on the explicit flag", () => {
     expect(UNIFIED_VERIFICATION_FLAG_NAME).toBe("UNIFIED_VERIFICATION_ENABLED");
     expect(UNIFIED_VERIFICATION_LOGIN_FLAG_NAME).toBe("UNIFIED_VERIFICATION_LOGIN_ENABLED");
+    expect(UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME).toBe("UNIFIED_VERIFICATION_SIGNUP_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -25,6 +28,11 @@ describe("unified verification runtime guard", () => {
     expect(isUnifiedVerificationLoginEnabled({
       UNIFIED_VERIFICATION_ENABLED: "true",
       UNIFIED_VERIFICATION_LOGIN_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationSignupEnabled({ UNIFIED_VERIFICATION_SIGNUP_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationSignupEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_SIGNUP_ENABLED: "true",
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
@@ -50,6 +58,7 @@ describe("unified verification runtime guard", () => {
     expect(service).toContain('status: "consumed"');
     expect(service).toContain("PURPOSE_NOT_MIGRATED");
     expect(service).toContain("verifyLatestChallengeForDestination");
+    expect(service).toContain("resendChallenge");
     expect(service).toContain("smsEvidence");
   });
 
@@ -63,5 +72,18 @@ describe("unified verification runtime guard", () => {
     expect(route).toContain("runtime: 'unified_verification'");
     expect(route).toContain("twilioSMSService.sendVerificationCode");
     expect(route).toContain("twilioSMSService.verifyCode");
+  });
+
+  it("bridges phone signup OTP send, resend, and verify behind the signup flag", () => {
+    const route = source("server/routes/publicAuthRoutes.ts");
+
+    expect(route).toContain("isUnifiedVerificationSignupEnabled");
+    expect(route).toContain("unifiedVerificationService.startChallenge");
+    expect(route).toContain("purpose: 'signup'");
+    expect(route).toContain("unifiedVerificationService.resendChallenge");
+    expect(route).toContain("unifiedVerificationService.verifyChallenge");
+    expect(route).toContain("registrationOTPService.sendOTP");
+    expect(route).toContain("registrationOTPService.resendOTP");
+    expect(route).toContain("registrationOTPService.verifyOTP");
   });
 });
