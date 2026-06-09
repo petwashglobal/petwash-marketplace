@@ -3,6 +3,15 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { totpService } from '../services/TOTPService';
 import { twoFactorAuth } from '../services/TwoFactorAuthService';
 import { logger } from '../lib/logger';
+import {
+  isUnifiedVerificationDisable2faEnabled,
+  isUnifiedVerificationEnable2faEnabled,
+} from '../lib/feature-flags/unifiedVerification';
+import {
+  UnifiedVerificationError,
+  unifiedVerificationService,
+  type VerificationActor,
+} from '../services/UnifiedVerificationService';
 
 const mfaRouter = Router();
 
@@ -11,6 +20,22 @@ const MFA_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const MFA_RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 const mfaRateLimitMap = new Map<string, { attempts: number; windowStart: number }>();
+
+function verificationActorFromRequest(req: Request, uid: string): VerificationActor {
+  return {
+    userId: uid,
+    ip: req.ip || (req.headers['x-forwarded-for'] as string | undefined),
+    userAgent: req.headers['user-agent'],
+  };
+}
+
+function handleUnifiedVerificationError(res: Response, error: unknown): boolean {
+  if (error instanceof UnifiedVerificationError) {
+    res.status(error.statusCode).json({ error: error.message, code: error.reasonCode });
+    return true;
+  }
+  return false;
+}
 
 setInterval(() => {
   const now = Date.now();
@@ -80,6 +105,42 @@ mfaRouter.post('/enroll/totp', validateFirebaseToken, async (req: Request, res: 
     const uid = req.firebaseUser!.uid;
     const email = req.firebaseUser!.email || '';
 
+    if (isUnifiedVerificationEnable2faEnabled()) {
+      const { verificationChallengeId, verificationCode } = req.body ?? {};
+
+      if (!verificationChallengeId || !verificationCode) {
+        if (!email) {
+          return res.status(400).json({ error: 'Verified email required before MFA enrollment' });
+        }
+
+        const challenge = await unifiedVerificationService.startChallenge({
+          purpose: 'enable_2fa',
+          channel: 'email',
+          destination: email,
+          payload: { method: 'totp' },
+          actor: verificationActorFromRequest(req, uid),
+        });
+
+        return res.status(202).json({
+          requiresVerification: true,
+          runtime: 'unified_verification',
+          verificationChallengeId: challenge.challenge.challengeId,
+          expiresAt: challenge.challenge.expiresAt,
+          message: 'Verification code sent to your email',
+        });
+      }
+
+      const verificationResult = await unifiedVerificationService.verifyChallenge({
+        challengeId: verificationChallengeId,
+        code: verificationCode,
+        actor: verificationActorFromRequest(req, uid),
+      });
+      const metadata = (verificationResult.action as any)?.metadata || {};
+      if (metadata.action !== 'enable_2fa') {
+        return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+      }
+    }
+
     const result = await totpService.enrollUser({
       userId: uid,
       userEmail: email,
@@ -97,6 +158,7 @@ mfaRouter.post('/enroll/totp', validateFirebaseToken, async (req: Request, res: 
       message: 'Scan the QR code with your authenticator app, then verify with a code.',
     });
   } catch (error) {
+    if (handleUnifiedVerificationError(res, error)) return;
     logger.error('[MFA-API] TOTP enroll error:', error);
     res.status(500).json({ error: 'Enrollment failed' });
   }
@@ -239,6 +301,43 @@ mfaRouter.delete('/enrollment/:id', validateFirebaseToken, async (req: Request, 
       return res.status(400).json({ error: 'Invalid enrollment ID' });
     }
 
+    if (isUnifiedVerificationDisable2faEnabled()) {
+      const email = req.firebaseUser!.email || '';
+      const { verificationChallengeId, verificationCode } = req.body ?? {};
+
+      if (!verificationChallengeId || !verificationCode) {
+        if (!email) {
+          return res.status(400).json({ error: 'Verified email required before MFA removal' });
+        }
+
+        const challenge = await unifiedVerificationService.startChallenge({
+          purpose: 'disable_2fa',
+          channel: 'email',
+          destination: email,
+          payload: { enrollmentId },
+          actor: verificationActorFromRequest(req, uid),
+        });
+
+        return res.status(202).json({
+          requiresVerification: true,
+          runtime: 'unified_verification',
+          verificationChallengeId: challenge.challenge.challengeId,
+          expiresAt: challenge.challenge.expiresAt,
+          message: 'Verification code sent to your email',
+        });
+      }
+
+      const verificationResult = await unifiedVerificationService.verifyChallenge({
+        challengeId: verificationChallengeId,
+        code: verificationCode,
+        actor: verificationActorFromRequest(req, uid),
+      });
+      const metadata = (verificationResult.action as any)?.metadata || {};
+      if (metadata.action !== 'disable_2fa' || Number(metadata.enrollmentId) !== enrollmentId) {
+        return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+      }
+    }
+
     const { adminAuth } = await import('../lib/firebase-admin');
     const userRecord = await adminAuth.getUser(uid);
     const claims = (userRecord.customClaims || {}) as Record<string, any>;
@@ -264,6 +363,7 @@ mfaRouter.delete('/enrollment/:id', validateFirebaseToken, async (req: Request, 
 
     res.json({ removed: true });
   } catch (error) {
+    if (handleUnifiedVerificationError(res, error)) return;
     logger.error('[MFA-API] Remove enrollment error:', error);
     res.status(500).json({ error: 'Removal failed' });
   }

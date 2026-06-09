@@ -158,21 +158,33 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   enable_2fa: {
     purpose: "enable_2fa",
-    migrated: false,
+    migrated: true,
     sensitive: true,
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        action: "enable_2fa",
+        method: (challenge.payload as any)?.method || "totp",
+        userId: challenge.userId || undefined,
+      },
+    }),
   },
   disable_2fa: {
     purpose: "disable_2fa",
-    migrated: false,
+    migrated: true,
     sensitive: true,
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        action: "disable_2fa",
+        enrollmentId: (challenge.payload as any)?.enrollmentId,
+        userId: challenge.userId || undefined,
+      },
+    }),
   },
   close_account: {
     purpose: "close_account",
@@ -413,7 +425,15 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
   providerMessageId?: string;
   reasonCode?: string;
 }> {
-  if ((challenge.purpose === "change_email" || challenge.purpose === "close_account") && challenge.channel === "email") {
+  if (
+    (
+      challenge.purpose === "change_email"
+      || challenge.purpose === "close_account"
+      || challenge.purpose === "enable_2fa"
+      || challenge.purpose === "disable_2fa"
+    )
+    && challenge.channel === "email"
+  ) {
     const sent = await sendVerificationEmailCode({
       to: challenge.destination,
       code,

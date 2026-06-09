@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import sanitizeHtml from 'sanitize-html';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { QRCodeSVG } from 'qrcode.react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -129,6 +130,29 @@ interface LoginSecurityEvent {
   isNewLocation: boolean;
   isHighRiskIp: boolean;
   createdAt: string;
+}
+
+interface MfaEnrollment {
+  id: number;
+  method: string;
+  isActive: boolean;
+  verified: boolean;
+  enrolledAt: string;
+  lastUsedAt: string | null;
+}
+
+interface MfaStatus {
+  enrolled: boolean;
+  enrollments: MfaEnrollment[];
+}
+
+interface TotpEnrollmentResponse {
+  enrollmentId?: number;
+  secret?: string;
+  qrUri?: string;
+  requiresVerification?: boolean;
+  verificationChallengeId?: string;
+  message?: string;
 }
 
 interface UserProfile {
@@ -476,6 +500,14 @@ export default function MyAccount() {
   const phoneVerification = usePhoneVerification();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [mfaSetupQrUri, setMfaSetupQrUri] = useState('');
+  const [mfaSetupSecret, setMfaSetupSecret] = useState('');
+  const [mfaSetupCode, setMfaSetupCode] = useState('');
+  const [mfaEnableVerificationChallengeId, setMfaEnableVerificationChallengeId] = useState('');
+  const [mfaEnableVerificationCode, setMfaEnableVerificationCode] = useState('');
+  const [mfaDisableVerificationChallengeId, setMfaDisableVerificationChallengeId] = useState('');
+  const [mfaDisableVerificationCode, setMfaDisableVerificationCode] = useState('');
+  const [mfaPendingDisableEnrollmentId, setMfaPendingDisableEnrollmentId] = useState<number | null>(null);
 
   // Pet profile state
   const [showPetForm, setShowPetForm] = useState(false);
@@ -497,6 +529,102 @@ export default function MyAccount() {
   const { data: profileData, isLoading: profileLoading } = useQuery<UserProfile>({
     queryKey: ['/api/user/profile'],
     enabled: !!user,
+  });
+
+  const { data: mfaStatus, isLoading: mfaStatusLoading } = useQuery<MfaStatus>({
+    queryKey: ['/api/mfa/status'],
+    enabled: !!user,
+  });
+
+  const beginTotpEnrollmentMutation = useMutation({
+    mutationFn: async (payload?: { verificationChallengeId?: string; verificationCode?: string }) => {
+      const res = await apiRequest('POST', '/api/mfa/enroll/totp', payload || {});
+      return await res.json() as TotpEnrollmentResponse;
+    },
+    onSuccess: (data) => {
+      if (data.requiresVerification && data.verificationChallengeId) {
+        setMfaEnableVerificationChallengeId(data.verificationChallengeId);
+        toast({
+          title: isHebrew ? 'קוד אימות נשלח לאימייל' : 'Verification code sent',
+          description: isHebrew ? 'הזן את הקוד כדי להמשיך בהגדרת 2FA.' : 'Enter the code to continue setting up 2FA.',
+        });
+        return;
+      }
+
+      setMfaSetupQrUri(data.qrUri || '');
+      setMfaSetupSecret(data.secret || '');
+      setMfaSetupCode('');
+      setMfaEnableVerificationChallengeId('');
+      setMfaEnableVerificationCode('');
+      queryClient.invalidateQueries({ queryKey: ['/api/mfa/status'] });
+      toast({ title: isHebrew ? 'סרוק את הקוד באפליקציית אימות' : 'Scan the code in your authenticator app' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: isHebrew ? 'הגדרת 2FA נכשלה' : '2FA setup failed',
+        description: error?.body?.error || error?.userMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const verifyTotpEnrollmentMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await apiRequest('POST', '/api/mfa/verify-enrollment', { code });
+      return await res.json();
+    },
+    onSuccess: () => {
+      setMfaSetupQrUri('');
+      setMfaSetupSecret('');
+      setMfaSetupCode('');
+      queryClient.invalidateQueries({ queryKey: ['/api/mfa/status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      toast({ title: isHebrew ? '2FA הופעל בהצלחה' : '2FA enabled successfully' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: isHebrew ? 'קוד אימות לא תקין' : 'Invalid verification code',
+        description: error?.body?.error || error?.userMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const removeMfaEnrollmentMutation = useMutation({
+    mutationFn: async (payload: { enrollmentId: number; verificationChallengeId?: string; verificationCode?: string }) => {
+      const res = await apiRequest(`/api/mfa/enrollment/${payload.enrollmentId}`, {
+        method: 'DELETE',
+        body: {
+          verificationChallengeId: payload.verificationChallengeId,
+          verificationCode: payload.verificationCode,
+        },
+      });
+      return await res.json() as { removed?: boolean; requiresVerification?: boolean; verificationChallengeId?: string };
+    },
+    onSuccess: (data, variables) => {
+      if (data.requiresVerification && data.verificationChallengeId) {
+        setMfaPendingDisableEnrollmentId(variables.enrollmentId);
+        setMfaDisableVerificationChallengeId(data.verificationChallengeId);
+        toast({
+          title: isHebrew ? 'קוד אימות נשלח לאימייל' : 'Verification code sent',
+          description: isHebrew ? 'הזן את הקוד כדי להסיר את שיטת האימות.' : 'Enter the code to remove this MFA method.',
+        });
+        return;
+      }
+
+      setMfaPendingDisableEnrollmentId(null);
+      setMfaDisableVerificationChallengeId('');
+      setMfaDisableVerificationCode('');
+      queryClient.invalidateQueries({ queryKey: ['/api/mfa/status'] });
+      toast({ title: isHebrew ? 'שיטת האימות הוסרה' : 'MFA method removed' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: isHebrew ? 'לא ניתן להסיר 2FA' : 'Could not remove MFA',
+        description: error?.body?.message || error?.body?.error || error?.userMessage,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Seasonal promo code
@@ -2621,39 +2749,182 @@ export default function MyAccount() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'אימות דו-שלבי (2FA)' : 'Two-Step Verification (2FA)'}</h3>
-                    <p className="text-xs text-gray-400">{isHebrew ? 'דרוש קוד SMS נוסף לכל הזמנה ותשלום' : 'Require an extra SMS code for every booking & payment'}</p>
+                    <p className="text-xs text-gray-400">{isHebrew ? 'נהל שיטות אימות אמיתיות לחשבון שלך' : 'Manage real verification methods for your account'}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white">
                   <div>
                     <p className="text-sm font-semibold text-gray-800">
-                      {isHebrew ? 'הפעל אימות דו-שלבי' : 'Enable Two-Step Verification'}
+                      {mfaStatus?.enrolled
+                        ? (isHebrew ? 'אימות דו-שלבי פעיל' : 'Two-step verification active')
+                        : (isHebrew ? 'אימות דו-שלבי לא פעיל' : 'Two-step verification is off')}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {profile.twoFactorEnabled
-                        ? (isHebrew ? '✅ פעיל — נדרש קוד SMS לפני כל תשלום' : '✅ Active — SMS code required before every payment')
-                        : (isHebrew ? 'מכובה — הפעל להגנה נוספת' : 'Off — enable for extra protection')}
+                      {mfaStatusLoading
+                        ? (isHebrew ? 'בודק סטטוס...' : 'Checking status...')
+                        : mfaStatus?.enrolled
+                          ? (isHebrew ? 'לפחות שיטת אימות אחת מאומתת ופעילה.' : 'At least one verified MFA method is active.')
+                          : (isHebrew ? 'הוסף אפליקציית אימות כדי להגן על פעולות רגישות.' : 'Add an authenticator app to protect sensitive actions.')}
                     </p>
                   </div>
-                  <Switch
-                    checked={profile.twoFactorEnabled ?? false}
-                    onCheckedChange={(checked) => {
-                      updateProfileMutation.mutate({ twoFactorEnabled: checked });
-                    }}
-                    className="data-[state=checked]:bg-gray-900"
-                  />
+                  <Badge className={mfaStatus?.enrolled ? 'bg-green-100 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-100'}>
+                    {mfaStatus?.enrolled ? (isHebrew ? 'פעיל' : 'Active') : (isHebrew ? 'כבוי' : 'Off')}
+                  </Badge>
                 </div>
 
-                {profile.twoFactorEnabled && (
-                  <div className="mt-3 flex items-start gap-2 text-xs text-blue-700 bg-blue-50 rounded-xl px-4 py-3">
-                    <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span>
-                      {isHebrew
-                        ? `קוד יישלח אל ${phoneStatus?.phone || profile?.phone || 'הטלפון שלך'} לפני כל הזמנה ותשלום.`
-                        : `A code will be sent to ${phoneStatus?.phone || profile?.phone || 'your phone'} before every booking and payment.`}
-                    </span>
+                {mfaStatus?.enrollments?.some(enrollment => enrollment.isActive) && (
+                  <div className="mt-3 space-y-2">
+                    {mfaStatus.enrollments.filter(enrollment => enrollment.isActive).map((enrollment) => (
+                      <div key={enrollment.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800">
+                            {enrollment.method === 'totp'
+                              ? (isHebrew ? 'אפליקציית אימות' : 'Authenticator app')
+                              : enrollment.method.toUpperCase()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {enrollment.verified
+                              ? (isHebrew ? 'מאומת ופעיל' : 'Verified and active')
+                              : (isHebrew ? 'ממתין לאימות' : 'Waiting for verification')}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={removeMfaEnrollmentMutation.isPending}
+                          onClick={() => removeMfaEnrollmentMutation.mutate({
+                            enrollmentId: enrollment.id,
+                            verificationChallengeId: mfaPendingDisableEnrollmentId === enrollment.id ? mfaDisableVerificationChallengeId : undefined,
+                            verificationCode: mfaPendingDisableEnrollmentId === enrollment.id ? mfaDisableVerificationCode : undefined,
+                          })}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          {removeMfaEnrollmentMutation.isPending && mfaPendingDisableEnrollmentId === enrollment.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />}
+                          <span className="sr-only">{isHebrew ? 'הסר' : 'Remove'}</span>
+                        </Button>
+                      </div>
+                    ))}
                   </div>
+                )}
+
+                {mfaDisableVerificationChallengeId && (
+                  <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                    <Label htmlFor="mfa-disable-code" className="text-xs font-semibold text-amber-900">
+                      {isHebrew ? 'קוד אימות להסרת 2FA' : 'Verification code to remove 2FA'}
+                    </Label>
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        id="mfa-disable-code"
+                        value={mfaDisableVerificationCode}
+                        onChange={e => setMfaDisableVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="font-mono tracking-[0.3em]"
+                      />
+                      <Button
+                        type="button"
+                        disabled={!mfaPendingDisableEnrollmentId || mfaDisableVerificationCode.length !== 6 || removeMfaEnrollmentMutation.isPending}
+                        onClick={() => mfaPendingDisableEnrollmentId && removeMfaEnrollmentMutation.mutate({
+                          enrollmentId: mfaPendingDisableEnrollmentId,
+                          verificationChallengeId: mfaDisableVerificationChallengeId,
+                          verificationCode: mfaDisableVerificationCode,
+                        })}
+                      >
+                        {removeMfaEnrollmentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {mfaEnableVerificationChallengeId && !mfaSetupQrUri && (
+                  <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <Label htmlFor="mfa-enable-email-code" className="text-xs font-semibold text-blue-900">
+                      {isHebrew ? 'קוד אימייל להפעלת 2FA' : 'Email code to enable 2FA'}
+                    </Label>
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        id="mfa-enable-email-code"
+                        value={mfaEnableVerificationCode}
+                        onChange={e => setMfaEnableVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="font-mono tracking-[0.3em]"
+                      />
+                      <Button
+                        type="button"
+                        disabled={mfaEnableVerificationCode.length !== 6 || beginTotpEnrollmentMutation.isPending}
+                        onClick={() => beginTotpEnrollmentMutation.mutate({
+                          verificationChallengeId: mfaEnableVerificationChallengeId,
+                          verificationCode: mfaEnableVerificationCode,
+                        })}
+                      >
+                        {beginTotpEnrollmentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {mfaSetupQrUri && (
+                  <div className="mt-3 rounded-xl border border-gray-100 bg-white p-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="self-start rounded-xl border border-gray-100 bg-white p-2">
+                        <QRCodeSVG value={mfaSetupQrUri} size={132} level="M" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {isHebrew ? 'סרוק והזן קוד בן 6 ספרות' : 'Scan and enter the 6-digit code'}
+                        </p>
+                        {mfaSetupSecret && (
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard.writeText(mfaSetupSecret).then(() => toast({ title: isHebrew ? 'הסוד הועתק' : 'Secret copied' }))}
+                            className="mt-2 flex max-w-full items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-left text-xs text-gray-500 hover:bg-gray-100"
+                          >
+                            <Copy className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate font-mono">{mfaSetupSecret}</span>
+                          </button>
+                        )}
+                        <div className="mt-3 flex gap-2">
+                          <Input
+                            value={mfaSetupCode}
+                            onChange={e => setMfaSetupCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="000000"
+                            inputMode="numeric"
+                            maxLength={6}
+                            className="font-mono tracking-[0.3em]"
+                          />
+                          <Button
+                            type="button"
+                            disabled={mfaSetupCode.length !== 6 || verifyTotpEnrollmentMutation.isPending}
+                            onClick={() => verifyTotpEnrollmentMutation.mutate(mfaSetupCode)}
+                          >
+                            {verifyTotpEnrollmentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!mfaSetupQrUri && !mfaEnableVerificationChallengeId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={beginTotpEnrollmentMutation.isPending || mfaStatusLoading}
+                    onClick={() => beginTotpEnrollmentMutation.mutate({})}
+                    className="mt-3 w-full justify-center gap-2"
+                  >
+                    {beginTotpEnrollmentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                    {mfaStatus?.enrolled
+                      ? (isHebrew ? 'הוסף שיטת אימות נוספת' : 'Add another authenticator method')
+                      : (isHebrew ? 'הפעל עם אפליקציית אימות' : 'Enable with authenticator app')}
+                  </Button>
                 )}
               </div>
 
