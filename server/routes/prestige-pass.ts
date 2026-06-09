@@ -116,6 +116,7 @@ import { isValidAdminSecret } from '../lib/admin-secret';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { OperatingActionType } from '../../shared/petwash-operating-system';
+import { requireUnifiedPayoutVerification } from '../lib/unifiedPayoutVerification';
 
 const router = Router();
 
@@ -10910,6 +10911,20 @@ router.post('/admin/wallet/payout-batches/:batchId/release-request', async (req:
     const amountCents = Number(batch.net_total_cents ?? 0);
     const autoApprove = amountCents <= PAYOUT_AUTO_RELEASE_LIMIT_CENTS;
 
+    if (!await requireUnifiedPayoutVerification(req, res, {
+      actorUserId: adminUid,
+      actorEmail: session.user.email,
+      operation: 'payout_release_request',
+      targetId: `payout_batch:${batchId}`,
+      amountCents,
+      payload: {
+        autoApprove,
+        reason,
+      },
+    })) {
+      return;
+    }
+
     if (autoApprove) {
       // Auto-release: mark batch exported
       await db.execute(sql`UPDATE payout_batches SET status = 'exported' WHERE batch_id = ${batchId}`);
@@ -10988,6 +11003,19 @@ router.post('/admin/wallet/payout-release-approvals/:id/approve', async (req: Re
     if (!approval) return res.status(404).json({ error: 'Approval not found' });
     if (approval.status !== 'pending') return res.status(409).json({ error: 'Approval is not pending' });
     if (approval.requested_by_uid === adminUid) return res.status(403).json({ error: 'Requester cannot self-approve' });
+
+    if (!await requireUnifiedPayoutVerification(req, res, {
+      actorUserId: adminUid,
+      actorEmail: session.user.email,
+      operation: 'payout_release_approve',
+      targetId: `payout_release_approval:${id}`,
+      amountCents: Number(approval.amount_cents ?? 0),
+      payload: {
+        batchId: approval.batch_id,
+      },
+    })) {
+      return;
+    }
 
     await db.execute(sql`
       UPDATE payout_release_approvals

@@ -9,6 +9,7 @@ import {
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationEgiftRedeemEnabled,
+  isUnifiedVerificationPayoutEnabled,
   isUnifiedVerificationSignupEnabled,
   UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME,
   UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME,
@@ -16,6 +17,7 @@ import {
   UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME,
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
+  UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   UNIFIED_VERIFICATION_FLAG_NAME,
 } from "../../server/lib/feature-flags/unifiedVerification";
@@ -36,6 +38,7 @@ describe("unified verification runtime guard", () => {
     expect(UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME).toBe("UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED");
     expect(UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME).toBe("UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED");
     expect(UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME).toBe("UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED");
+    expect(UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME).toBe("UNIFIED_VERIFICATION_PAYOUT_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -73,6 +76,11 @@ describe("unified verification runtime guard", () => {
     expect(isUnifiedVerificationDisable2faEnabled({
       UNIFIED_VERIFICATION_ENABLED: "true",
       UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationPayoutEnabled({ UNIFIED_VERIFICATION_PAYOUT_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationPayoutEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_PAYOUT_ENABLED: "true",
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
@@ -207,5 +215,31 @@ describe("unified verification runtime guard", () => {
     expect(accountPage).toContain("/api/mfa/verify-enrollment");
     expect(accountPage).toContain("mfaEnableVerificationChallengeId");
     expect(accountPage).toContain("mfaDisableVerificationChallengeId");
+  });
+
+  it("bridges payout release/payment mutations behind the payout flag", () => {
+    const featureFlags = source("server/lib/feature-flags/unifiedVerification.ts");
+    const statusRoute = source("server/routes/verification.ts");
+    const service = source("server/services/UnifiedVerificationService.ts");
+    const emailDelivery = source("server/services/VerificationEmailDelivery.ts");
+    const helper = source("server/lib/unifiedPayoutVerification.ts");
+    const prestigeRoute = source("server/routes/prestige-pass.ts");
+    const settlementsRoute = source("server/routes/finance/settlements.ts");
+
+    expect(featureFlags).toContain("UNIFIED_VERIFICATION_PAYOUT_ENABLED");
+    expect(statusRoute).toContain("UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME");
+    expect(statusRoute).toContain("payout");
+    expect(service).toContain('purpose: "payout"');
+    expect(service).toContain('action: "payout"');
+    expect(service).toContain('challenge.purpose === "payout"');
+    expect(emailDelivery).toContain('"payout"');
+    expect(helper).toContain("isUnifiedVerificationPayoutEnabled");
+    expect(helper).toContain("unifiedVerificationService.startChallenge");
+    expect(helper).toContain("unifiedVerificationService.verifyChallenge");
+    expect(helper).toContain("metadata.operation !== input.operation");
+    expect(prestigeRoute).toContain("requireUnifiedPayoutVerification");
+    expect(prestigeRoute).toContain("payout_release_request");
+    expect(prestigeRoute).toContain("payout_release_approve");
+    expect(settlementsRoute).toContain("settlement_mark_paid");
   });
 });
