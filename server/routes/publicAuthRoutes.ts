@@ -8,6 +8,8 @@ import { logger } from "../lib/logger";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { verifyTurnstileToken } from "../lib/verifyTurnstile";
 import { twilioSMSService } from "../services/TwilioSMSService";
+import { isUnifiedVerificationSignupEnabled } from "../lib/feature-flags/unifiedVerification";
+import { UnifiedVerificationError, unifiedVerificationService } from "../services/UnifiedVerificationService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
@@ -879,6 +881,24 @@ const otpVerifySchema = z.object({
   code: z.string().length(6),
 });
 
+function verificationActorForPublicAuth(req: express.Request) {
+  return {
+    userId: (req as any).user?.uid || (req as any).firebaseUser?.uid,
+    ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+    userAgent: req.headers['user-agent'],
+    traceId: (req as any).traceId,
+  };
+}
+
+function unifiedSignupErrorStatus(error: UnifiedVerificationError): number {
+  if (error.reasonCode === 'INVALID_CODE') return 400;
+  if (error.reasonCode === 'CHALLENGE_LOCKED') return 429;
+  if (error.reasonCode === 'CHALLENGE_EXPIRED') return 410;
+  if (error.reasonCode === 'CHALLENGE_COOLDOWN') return 429;
+  if (error.reasonCode === 'SMS_PROVIDER_ERROR') return 503;
+  return error.statusCode;
+}
+
 // Attach the same per-IP send limiter the legacy /send-code path uses
 // (3 SMS sends per IP per 10 min, IPv6-mapped IPv4 normalised). Without
 // this, the newer /otp/send endpoint was reachable directly with no
@@ -908,13 +928,26 @@ publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, async (r
       }
     }
 
-    const result = await registrationOTPService.sendOTP(phone, userTypeIntent, {
-      ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-      userAgent: req.headers['user-agent'],
-      traceId: (req as any).traceId,
-      language,
-      channel,
-    });
+    const result = isUnifiedVerificationSignupEnabled()
+      ? await unifiedVerificationService.startChallenge({
+          purpose: 'signup',
+          channel,
+          destination: phone,
+          payload: { userTypeIntent, language },
+          actor: verificationActorForPublicAuth(req),
+        }).then((unifiedResult) => ({
+          success: true,
+          otpId: unifiedResult.challenge.challengeId,
+          expiresIn: 300,
+          channel: unifiedResult.challenge.channel as 'sms' | 'whatsapp',
+        }))
+      : await registrationOTPService.sendOTP(phone, userTypeIntent, {
+          ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+          userAgent: req.headers['user-agent'],
+          traceId: (req as any).traceId,
+          language,
+          channel,
+        });
 
     if (!result.success) {
       const errorMessages: Record<string, { en: string; he: string; status: number }> = {
@@ -941,6 +974,13 @@ publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, async (r
         : (channel === 'whatsapp' ? 'Verification code sent via WhatsApp' : 'Verification code sent via SMS'),
     });
   } catch (err) {
+    if (err instanceof UnifiedVerificationError) {
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+      return res.status(unifiedSignupErrorStatus(err)).json({
+        error: err.reasonCode,
+        message: language === 'he' ? 'שליחת קוד האימות נכשלה' : err.message,
+      });
+    }
     logger.error('[PublicAuth] Phone send-code error:', err);
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to send verification code' });
   }
@@ -961,12 +1001,23 @@ publicAuthRouter.post('/api/auth/phone/otp/resend', phoneSendRateLimiter, async 
     const { otpId, channel } = parsed.data;
     const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
 
-    const result = await registrationOTPService.resendOTP(otpId, channel, {
-      ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-      userAgent: req.headers['user-agent'],
-      traceId: (req as any).traceId,
-      language,
-    });
+    const result = isUnifiedVerificationSignupEnabled()
+      ? await unifiedVerificationService.resendChallenge({
+          challengeId: otpId,
+          channel,
+          actor: verificationActorForPublicAuth(req),
+        }).then((unifiedResult) => ({
+          success: true,
+          otpId: unifiedResult.challenge.challengeId,
+          expiresIn: Math.max(0, Math.ceil((new Date(unifiedResult.challenge.expiresAt).getTime() - Date.now()) / 1000)),
+          channel: unifiedResult.challenge.channel as 'sms' | 'whatsapp',
+        }))
+      : await registrationOTPService.resendOTP(otpId, channel, {
+          ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+          userAgent: req.headers['user-agent'],
+          traceId: (req as any).traceId,
+          language,
+        });
 
     if (!result.success) {
       const statusCode = result.error === 'OTP_EXPIRED' ? 410 : 429;
@@ -989,6 +1040,15 @@ publicAuthRouter.post('/api/auth/phone/otp/resend', phoneSendRateLimiter, async 
         : (channel === 'whatsapp' ? 'New code sent via WhatsApp' : 'New code sent via SMS'),
     });
   } catch (err) {
+    if (err instanceof UnifiedVerificationError) {
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+      return res.status(unifiedSignupErrorStatus(err)).json({
+        error: err.reasonCode,
+        message: err.reasonCode === 'CHALLENGE_EXPIRED'
+          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
+          : (language === 'he' ? 'אנא המתינו לפני שליחת קוד חדש' : err.message),
+      });
+    }
     logger.error('[PublicAuth] Phone resend-code error:', err);
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to resend verification code' });
   }
@@ -1007,11 +1067,21 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
     const { otpId, code } = parsed.data;
     const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
 
-    const result = await registrationOTPService.verifyOTP(otpId, code, {
-      ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-      userAgent: req.headers['user-agent'],
-      traceId: (req as any).traceId,
-    });
+    const result = isUnifiedVerificationSignupEnabled()
+      ? await unifiedVerificationService.verifyChallenge({
+          challengeId: otpId,
+          code,
+          actor: verificationActorForPublicAuth(req),
+        }).then((unifiedResult) => ({
+          success: true,
+          otpId,
+          metadata: (unifiedResult.action.metadata as any) || undefined,
+        }))
+      : await registrationOTPService.verifyOTP(otpId, code, {
+          ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+          userAgent: req.headers['user-agent'],
+          traceId: (req as any).traceId,
+        });
 
     if (!result.success) {
       const statusCode = result.error === 'MAX_ATTEMPTS_EXCEEDED' ? 429 : 400;
@@ -1115,6 +1185,17 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
       message: language === 'he' ? 'הטלפון אומת בהצלחה' : 'Phone verified successfully',
     });
   } catch (err) {
+    if (err instanceof UnifiedVerificationError) {
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+      return res.status(unifiedSignupErrorStatus(err)).json({
+        error: err.reasonCode,
+        message: err.reasonCode === 'INVALID_CODE'
+          ? (language === 'he' ? 'קוד שגוי, נסו שוב' : 'Invalid code, please try again')
+          : err.reasonCode === 'CHALLENGE_EXPIRED'
+          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
+          : (language === 'he' ? 'חריגה ממספר הניסיונות' : err.message),
+      });
+    }
     logger.error('[PublicAuth] Phone verify-code error:', err);
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Verification failed' });
   }

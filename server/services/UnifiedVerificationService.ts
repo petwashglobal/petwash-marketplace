@@ -49,6 +49,12 @@ export interface VerifyLatestChallengeInput {
   actor: VerificationActor;
 }
 
+export interface ResendChallengeInput {
+  challengeId: string;
+  channel?: VerificationChannel;
+  actor: VerificationActor;
+}
+
 export interface PurposeDefinition {
   purpose: VerificationPurpose;
   migrated: boolean;
@@ -105,12 +111,18 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   signup: {
     purpose: "signup",
-    migrated: false,
+    migrated: true,
     sensitive: false,
     requiresSession: false,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        phoneE164: challenge.destination,
+        userTypeIntent: userTypeIntentForChallenge(challenge),
+        userId: challenge.userId || undefined,
+      },
+    }),
   },
   egift_redeem: {
     purpose: "egift_redeem",
@@ -258,6 +270,19 @@ function smsBodyForChallenge(code: string, language: unknown): string {
   return `PetWash verification code:\n\n${code}\n\nExpires in 5 minutes.\nDo not share this code.${hint}`;
 }
 
+function userTypeIntentForChallenge(challenge: Pick<VerificationChallenge, "purpose" | "payload">): "PUBLIC" | "PROVIDER" | "STAFF_REQUEST" {
+  const intent = (challenge.payload as any)?.userTypeIntent;
+  if (challenge.purpose === "signup" && (intent === "PUBLIC" || intent === "PROVIDER" || intent === "STAFF_REQUEST")) {
+    return intent;
+  }
+  return "PUBLIC";
+}
+
+function templateIdForChallenge(challenge: Pick<VerificationChallenge, "purpose" | "channel">): string {
+  const prefix = challenge.purpose === "signup" ? "unified_signup_otp" : "unified_login_otp";
+  return challenge.channel === "whatsapp" ? `${prefix}_whatsapp_v1` : `${prefix}_v1`;
+}
+
 function assertActorCanVerify(
   definition: PurposeDefinition,
   challenge: VerificationChallenge,
@@ -287,7 +312,7 @@ function publicChallenge(challenge: VerificationChallenge) {
 
 async function recordOtpEvent(
   challenge: Pick<VerificationChallenge, "challengeId" | "channel" | "destination" | "purpose" | "userId" | "codeHash" | "expiresAt" | "ip" | "userAgent" | "deviceId" | "traceId">,
-  eventType: "OTP_SENT" | "OTP_VERIFIED" | "OTP_FAILED" | "OTP_EXPIRED",
+  eventType: "OTP_SENT" | "OTP_RESENT" | "OTP_VERIFIED" | "OTP_FAILED" | "OTP_EXPIRED",
   result?: string,
   attemptsCount = 0,
   providerMessageId?: string | null,
@@ -302,7 +327,7 @@ async function recordOtpEvent(
       eventType,
       phoneE164: challenge.destination,
       userId: challenge.userId,
-      userTypeIntent: challenge.purpose === "signup" ? "PUBLIC" : "PUBLIC",
+      userTypeIntent: userTypeIntentForChallenge(challenge as VerificationChallenge),
       otpHash: challenge.codeHash,
       expiresAt: challenge.expiresAt,
       attemptsCount,
@@ -338,7 +363,7 @@ async function recordSmsEvidence(
     await db.insert(smsEvidence).values({
       userId: challenge.userId,
       messageType: "OTP",
-      templateId: challenge.channel === "whatsapp" ? "unified_login_otp_whatsapp_v1" : "unified_login_otp_v1",
+      templateId: templateIdForChallenge(challenge as VerificationChallenge),
       templateVersion: "1.0",
       toPhone: challenge.destination,
       renderedText,
@@ -364,7 +389,7 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
   providerMessageId?: string;
   reasonCode?: string;
 }> {
-  if (challenge.purpose !== "login") {
+  if (challenge.purpose !== "login" && challenge.purpose !== "signup") {
     return { queued: false, reasonCode: "DELIVERY_NOT_MIGRATED" };
   }
   if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") {
@@ -420,7 +445,7 @@ export class UnifiedVerificationService {
     const destination = normalizeDestination(input.channel, input.destination);
     const codeHash = hashVerificationCode(challengeId, code);
 
-    if (definition.purpose === "login") {
+    if (definition.purpose === "login" || definition.purpose === "signup") {
       const [recent] = await db
         .select({ challengeId: verificationChallenges.challengeId })
         .from(verificationChallenges)
@@ -597,6 +622,74 @@ export class UnifiedVerificationService {
       code: input.code,
       actor: input.actor,
     });
+  }
+
+  async resendChallenge(input: ResendChallengeInput) {
+    const [challenge] = await db
+      .select()
+      .from(verificationChallenges)
+      .where(eq(verificationChallenges.challengeId, input.challengeId))
+      .limit(1);
+
+    if (!challenge) {
+      throw new UnifiedVerificationError("CHALLENGE_NOT_FOUND", "Verification challenge not found.", 404);
+    }
+
+    const definition = getPurposeDefinition(challenge.purpose);
+    assertStartAllowed(definition, input.actor);
+    assertActorCanVerify(definition, challenge, input.actor);
+
+    if (challenge.status !== "pending") {
+      throw new UnifiedVerificationError("CHALLENGE_NOT_PENDING", "Verification challenge is no longer pending.", 409);
+    }
+
+    const now = new Date();
+    if (challenge.expiresAt.getTime() <= now.getTime()) {
+      await db.update(verificationChallenges).set({
+        status: "expired",
+        updatedAt: now,
+      }).where(eq(verificationChallenges.challengeId, challenge.challengeId));
+      throw new UnifiedVerificationError("CHALLENGE_EXPIRED", "Verification challenge expired.", 410);
+    }
+
+    if (challenge.updatedAt.getTime() > now.getTime() - 60_000) {
+      throw new UnifiedVerificationError(
+        "CHALLENGE_COOLDOWN",
+        "Please wait before requesting a new verification code.",
+        429,
+      );
+    }
+
+    const code = generateVerificationCode();
+    const nextChannel = input.channel && (input.channel === "sms" || input.channel === "whatsapp")
+      ? input.channel
+      : challenge.channel;
+    const [updated] = await db.update(verificationChallenges).set({
+      channel: nextChannel,
+      codeHash: hashVerificationCode(challenge.challengeId, code),
+      attempts: 0,
+      updatedAt: now,
+    }).where(eq(verificationChallenges.challengeId, challenge.challengeId)).returning();
+
+    const delivery = await deliverChallengeCode(updated, code);
+    await recordOtpEvent(
+      updated,
+      "OTP_RESENT",
+      "pending",
+      0,
+      delivery.providerMessageId || null,
+      delivery.provider,
+    );
+
+    return {
+      ok: true,
+      challenge: publicChallenge(updated),
+      delivery,
+      testCode:
+        process.env.NODE_ENV !== "production" && process.env.UNIFIED_VERIFICATION_RETURN_CODE_FOR_TESTS === "true"
+          ? code
+          : undefined,
+    };
   }
 }
 
