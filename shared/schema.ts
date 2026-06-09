@@ -294,6 +294,33 @@ export const insertIdentityAccountSchema = createInsertSchema(identityAccounts).
 export type IdentityAccount = typeof identityAccounts.$inferSelect;
 export type InsertIdentityAccount = typeof identityAccounts.$inferInsert;
 
+// User Passkeys — canonical WebAuthn/passkey storage, replacing the split
+// (Firestore `authenticators` collection vs a non-existent JSONB column) the SDD
+// flagged. SDD: docs/design/2026-05-25-smart-identity-routing.md. ADDITIVE
+// foundation — behind ff.identity.unified.enabled (default OFF); not read yet.
+export const userPasskeys = pgTable("user_passkeys", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // canonical PetWash users.id
+  credentialId: varchar("credential_id", { length: 400 }).notNull(), // base64url credential id
+  publicKey: text("public_key").notNull(), // base64url COSE public key
+  counter: integer("counter").default(0).notNull(), // WebAuthn signature counter
+  deviceType: varchar("device_type", { length: 20 }), // singleDevice | multiDevice
+  backedUp: boolean("backed_up").default(false).notNull(),
+  transports: jsonb("transports").default(sql`'[]'::jsonb`).notNull(), // ["internal","hybrid",...]
+  aaguid: varchar("aaguid", { length: 64 }), // authenticator model id
+  label: varchar("label", { length: 120 }), // user-friendly name, e.g. "iPhone Face ID"
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_user_passkeys_credential").on(table.credentialId),
+  index("idx_user_passkeys_user").on(table.userId),
+]);
+
+export const insertUserPasskeySchema = createInsertSchema(userPasskeys).omit({ id: true, createdAt: true, updatedAt: true });
+export type UserPasskey = typeof userPasskeys.$inferSelect;
+export type InsertUserPasskey = typeof userPasskeys.$inferInsert;
+
 // Domain Events (Event Store for Event-Driven Architecture)
 export const domainEvents = pgTable("domain_events", {
   id: serial("id").primaryKey(),
