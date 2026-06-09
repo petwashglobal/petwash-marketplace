@@ -73,6 +73,7 @@ const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
+const SmartSignIn = lazy(() => import("@/pages/SmartSignIn"));
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const SignupV2 = lazy(() => import("@/pages/SignupV2"));
 /** Rebuilt signup (Track B) — OFF by default. Enable per-visit with ?signup_v2=1
@@ -705,13 +706,19 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           }}
         </Route>
         <Route path="/signin">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
+            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
+            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/sign-in">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
+            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
+            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/login">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
+            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
+            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
@@ -735,7 +742,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin-advanced">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
+            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
+            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
           {() =>
