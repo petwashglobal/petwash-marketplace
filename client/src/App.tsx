@@ -413,6 +413,7 @@ const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 const Hub = lazy(() => import("@/pages/Hub"));
 const Stations = lazy(() => import("@/pages/Stations"));
 const Shop = lazy(() => import("@/pages/Shop"));
+const ShopStore = lazy(() => import("@/pages/ShopStore"));
 const BookingUnified = lazy(() => import("@/pages/BookingUnified"));
 const BookingConfirmation = lazy(() => import("@/pages/BookingConfirmation"));
 const MultiPetBookingWizard = lazy(() => import("@/pages/booking/MultiPetBookingWizard"));
@@ -1003,7 +1004,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Stations />}
         </Route>
         <Route path="/shop">
-          {() => <Shop />}
+          {() => import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
+            ? <ShopStore language={language} onLanguageChange={handleLanguageChange} />
+            : <Shop />}
         </Route>
         <Route path="/booking">
           {() => (
