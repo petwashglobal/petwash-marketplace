@@ -266,6 +266,89 @@ export const insertVerificationChallengeSchema = createInsertSchema(verification
 export type VerificationChallenge = typeof verificationChallenges.$inferSelect;
 export type InsertVerificationChallenge = typeof verificationChallenges.$inferInsert;
 
+// Identity Accounts — links external auth identities (Google/Apple/phone/passkey)
+// to ONE canonical PetWash user, so the same human is a single user_id across
+// providers (Google-you and Apple-you stop being two accounts).
+// SDD: docs/design/2026-05-25-smart-identity-routing.md. ADDITIVE foundation —
+// behind ff.identity.unified.enabled (default OFF); no existing flow reads it yet.
+export const identityAccounts = pgTable("identity_accounts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // canonical PetWash users.id this identity belongs to
+  provider: varchar("provider", { length: 30 }).notNull(), // google | apple | facebook | password | phone | passkey
+  providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(), // provider sub / Firebase uid
+  email: varchar("email", { length: 320 }), // email from this provider (nullable — Apple private relay)
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  isPrimary: boolean("is_primary").default(false).notNull(), // primary login method for the user
+  linkedAt: timestamp("linked_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_identity_accounts_provider_account").on(table.provider, table.providerAccountId),
+  index("idx_identity_accounts_user").on(table.userId),
+  index("idx_identity_accounts_email").on(table.email),
+]);
+
+export const insertIdentityAccountSchema = createInsertSchema(identityAccounts).omit({ id: true, createdAt: true, updatedAt: true });
+export type IdentityAccount = typeof identityAccounts.$inferSelect;
+export type InsertIdentityAccount = typeof identityAccounts.$inferInsert;
+
+// User Passkeys — canonical WebAuthn/passkey storage, replacing the split
+// (Firestore `authenticators` collection vs a non-existent JSONB column) the SDD
+// flagged. SDD: docs/design/2026-05-25-smart-identity-routing.md. ADDITIVE
+// foundation — behind ff.identity.unified.enabled (default OFF); not read yet.
+export const userPasskeys = pgTable("user_passkeys", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // canonical PetWash users.id
+  credentialId: varchar("credential_id", { length: 400 }).notNull(), // base64url credential id
+  publicKey: text("public_key").notNull(), // base64url COSE public key
+  counter: integer("counter").default(0).notNull(), // WebAuthn signature counter
+  deviceType: varchar("device_type", { length: 20 }), // singleDevice | multiDevice
+  backedUp: boolean("backed_up").default(false).notNull(),
+  transports: jsonb("transports").default(sql`'[]'::jsonb`).notNull(), // ["internal","hybrid",...]
+  aaguid: varchar("aaguid", { length: 64 }), // authenticator model id
+  label: varchar("label", { length: 120 }), // user-friendly name, e.g. "iPhone Face ID"
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_user_passkeys_credential").on(table.credentialId),
+  index("idx_user_passkeys_user").on(table.userId),
+]);
+
+export const insertUserPasskeySchema = createInsertSchema(userPasskeys).omit({ id: true, createdAt: true, updatedAt: true });
+export type UserPasskey = typeof userPasskeys.$inferSelect;
+export type InsertUserPasskey = typeof userPasskeys.$inferInsert;
+
+// Admin Invitations — invite-only admin/staff onboarding. NO public path can create
+// an admin: a super-admin issues an invite (token_hash, role, expiry); the invitee
+// accepts at /accept-invite?token=… and the server cross-checks their Firebase email
+// against email_norm. SDD: docs/design/2026-05-25-smart-identity-routing.md §5.5.
+// ADDITIVE foundation — behind ff.identity.unified.enabled (default OFF); not read yet.
+export const adminInvitations = pgTable("admin_invitations", {
+  id: serial("id").primaryKey(),
+  emailNorm: varchar("email_norm", { length: 320 }).notNull(), // normalized invitee email
+  tokenHash: varchar("token_hash", { length: 128 }).notNull(), // hashed invite token — never store raw
+  role: varchar("role", { length: 30 }).notNull(), // admin | staff
+  invitedBy: varchar("invited_by").notNull(), // users.id of the inviter (super-admin/admin)
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending | accepted | revoked | expired
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  acceptedByUserId: varchar("accepted_by_user_id"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_admin_invitations_token").on(table.tokenHash),
+  index("idx_admin_invitations_email").on(table.emailNorm),
+  index("idx_admin_invitations_status").on(table.status),
+]);
+
+export const insertAdminInvitationSchema = createInsertSchema(adminInvitations).omit({ id: true, createdAt: true, updatedAt: true });
+export type AdminInvitation = typeof adminInvitations.$inferSelect;
+export type InsertAdminInvitation = typeof adminInvitations.$inferInsert;
+
 // Domain Events (Event Store for Event-Driven Architecture)
 export const domainEvents = pgTable("domain_events", {
   id: serial("id").primaryKey(),
