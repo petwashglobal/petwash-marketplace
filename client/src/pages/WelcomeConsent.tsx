@@ -10,17 +10,14 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { type Language, t } from '@/lib/i18n';
-import { GmailOAuthButton, type GmailConnectionData } from '@/components/GmailOAuthButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Sparkles, 
-  Shield, 
-  Mail, 
-  CheckCircle2, 
+import {
+  Sparkles,
+  Mail,
   Building2,
   Users,
   Globe,
@@ -29,10 +26,8 @@ import {
   Star,
   ArrowRight,
   ArrowLeft,
-  Info,
-  Zap
+  Info
 } from 'lucide-react';
-import { FaGoogle } from 'react-icons/fa';
 
 interface WelcomeConsentProps {
   language: Language;
@@ -46,22 +41,13 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
     privacyPolicy: false,
     corporateGuidelines: false,
     emailCommunication: true,
-    gmailIntegration: false,
   });
   const [showCorporateGuidelines, setShowCorporateGuidelines] = useState(false);
-  const [isGmailConnected, setIsGmailConnected] = useState(false);
-  const [gmailData, setGmailData] = useState<GmailConnectionData | null>(null);
 
-  const allRequiredConsentsGiven = 
-    consents.termsOfService && 
-    consents.privacyPolicy && 
+  const allRequiredConsentsGiven =
+    consents.termsOfService &&
+    consents.privacyPolicy &&
     consents.corporateGuidelines;
-
-  const handleGmailSuccess = (_accessToken: string, _user: any, data?: GmailConnectionData) => {
-    setIsGmailConnected(true);
-    setConsents(prev => ({ ...prev, gmailIntegration: true }));
-    if (data) setGmailData(data);
-  };
 
   const handleContinue = async () => {
     const consentPayload = {
@@ -136,93 +122,8 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column: Gmail Integration */}
-          <div className="luxury-glass-card luxury-shadow-xl p-8 relative overflow-hidden">
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-lg blur-2xl opacity-10" />
-            <div className="relative mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg">
-                  <FaGoogle className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="luxury-heading-md">
-                    {t('welcomeConsent.buttons.connectGmail', language)}
-                  </h2>
-                  <p className="text-gray-600 mt-1">
-                    {t('welcomeConsent.gmail.secureIntegration', language)}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="relative space-y-6">
-              <GmailOAuthButton
-                language={language}
-                onSuccess={handleGmailSuccess}
-              />
-
-              {isGmailConnected && gmailData?.isReturningCustomer && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border-2 border-amber-200/60 dark:border-amber-700/40 animate-in fade-in duration-500">
-                  <div className="flex items-start gap-3">
-                    <Zap className="w-6 h-6 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="font-semibold text-amber-900 dark:text-amber-100">
-                        {gmailData.displayName
-                          ? `${t('gmail.welcomeBack', language)} ${gmailData.displayName}!`
-                          : t('gmail.welcomeBack', language)}
-                      </h4>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                        {t('gmail.returningCustomerFound', language)}
-                      </p>
-                      {gmailData.lastBookingSubject && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
-                          {t('gmail.lastBookingFound', language)}: {gmailData.lastBookingSubject}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {isGmailConnected && !gmailData?.isReturningCustomer && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 border-2 border-green-200/60 dark:border-green-700/40 animate-in fade-in duration-500">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    <div>
-                      <h4 className="font-semibold text-green-900 dark:text-green-100">
-                        {t('welcomeConsent.gmail.connected', language)}
-                      </h4>
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        {t('welcomeConsent.gmail.personalizedUpdates', language)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-600" />
-                  {t('welcomeConsent.integration.benefits', language)}
-                </h4>
-                <ul className="space-y-2 text-sm">
-                  {[
-                    t('welcomeConsent.integration.notifications', language),
-                    t('welcomeConsent.integration.status', language),
-                    t('welcomeConsent.integration.invoices', language),
-                    t('welcomeConsent.integration.alerts', language),
-                  ].map((benefit, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <span>{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Consent & Guidelines */}
+        <div className="max-w-2xl mx-auto">
+          {/* Consent & Guidelines */}
           <div className="luxury-glass-card luxury-shadow-xl p-8">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
