@@ -3,10 +3,12 @@ import { z } from "zod";
 import {
   UNIFIED_VERIFICATION_FLAG_NAME,
   UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME,
+  UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME,
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   isUnifiedVerificationChangeEmailEnabled,
+  isUnifiedVerificationCloseAccountEnabled,
   isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationLoginEnabled,
@@ -112,6 +114,10 @@ router.get("/status", (_req, res) => {
       changeEmail: {
         flag: UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME,
         enabled: isUnifiedVerificationChangeEmailEnabled(),
+      },
+      closeAccount: {
+        flag: UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME,
+        enabled: isUnifiedVerificationCloseAccountEnabled(),
       },
     },
     purposes,

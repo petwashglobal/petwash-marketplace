@@ -176,12 +176,18 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   close_account: {
     purpose: "close_account",
-    migrated: false,
+    migrated: true,
     sensitive: true,
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        action: "close_account",
+        userId: challenge.userId || undefined,
+        email: challenge.destination,
+      },
+    }),
   },
   payout: {
     purpose: "payout",
@@ -407,11 +413,11 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
   providerMessageId?: string;
   reasonCode?: string;
 }> {
-  if (challenge.purpose === "change_email" && challenge.channel === "email") {
+  if ((challenge.purpose === "change_email" || challenge.purpose === "close_account") && challenge.channel === "email") {
     const sent = await sendVerificationEmailCode({
       to: challenge.destination,
       code,
-      purpose: "change_email",
+      purpose: challenge.purpose,
     });
     if (!sent) {
       await db.update(verificationChallenges).set({
@@ -488,6 +494,7 @@ export class UnifiedVerificationService {
       || definition.purpose === "signup"
       || definition.purpose === "egift_redeem"
       || definition.purpose === "change_email"
+      || definition.purpose === "close_account"
     ) {
       const [recent] = await db
         .select({ challengeId: verificationChallenges.challengeId })

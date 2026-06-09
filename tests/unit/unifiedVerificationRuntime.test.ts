@@ -3,11 +3,13 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   isUnifiedVerificationChangeEmailEnabled,
+  isUnifiedVerificationCloseAccountEnabled,
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationSignupEnabled,
   UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME,
+  UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME,
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
@@ -27,6 +29,7 @@ describe("unified verification runtime guard", () => {
     expect(UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME).toBe("UNIFIED_VERIFICATION_SIGNUP_ENABLED");
     expect(UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME).toBe("UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED");
     expect(UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME).toBe("UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED");
+    expect(UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME).toBe("UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -49,6 +52,11 @@ describe("unified verification runtime guard", () => {
     expect(isUnifiedVerificationChangeEmailEnabled({
       UNIFIED_VERIFICATION_ENABLED: "true",
       UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationCloseAccountEnabled({ UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationCloseAccountEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_CLOSE_ACCOUNT_ENABLED: "true",
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
@@ -138,5 +146,22 @@ describe("unified verification runtime guard", () => {
     expect(profileRoute).toContain("unifiedVerificationService.verifyChallenge");
     expect(accountPage).toContain("emailVerificationChallengeId");
     expect(accountPage).toContain("verificationChallengeId: emailVerificationChallengeId || undefined");
+  });
+
+  it("bridges close-account through unified verification behind the close-account flag", () => {
+    const accountRoute = source("server/routes/account-management.ts");
+    const accountPage = source("client/src/pages/MyAccount.tsx");
+    const statusRoute = source("server/routes/verification.ts");
+    const service = source("server/services/UnifiedVerificationService.ts");
+
+    expect(statusRoute).toContain("UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME");
+    expect(statusRoute).toContain("closeAccount");
+    expect(service).toContain('purpose: "close_account"');
+    expect(service).toContain('action: "close_account"');
+    expect(accountRoute).toContain("isUnifiedVerificationCloseAccountEnabled");
+    expect(accountRoute).toContain("purpose: 'close_account'");
+    expect(accountRoute).toContain("unifiedVerificationService.verifyChallenge");
+    expect(accountPage).toContain("deleteVerificationChallengeId");
+    expect(accountPage).toContain("data.requiresVerification");
   });
 });
