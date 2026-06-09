@@ -394,9 +394,6 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                       7 stamps
                     </span>
                   </div>
-                  <Button className="w-full text-sm font-bold text-black" style={{ borderRadius: '2px', background: 'white' }}>
-                    {t('privilege.submitApplication', language)}
-                  </Button>
                 </div>
               </motion.div>
 
