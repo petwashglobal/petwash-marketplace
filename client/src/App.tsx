@@ -75,17 +75,6 @@ const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const SmartSignIn = lazy(() => import("@/pages/SmartSignIn"));
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
-const SignupV2 = lazy(() => import("@/pages/SignupV2"));
-/** Rebuilt signup (Track B) — OFF by default. Enable per-visit with ?signup_v2=1
- *  or build-wide with VITE_SIGNUP_V2=1. Legacy /signup stays the default. */
-const wantsSignupV2 = (): boolean => {
-  try {
-    if (new URLSearchParams(window.location.search).get('signup_v2') === '1') return true;
-    return (import.meta as any)?.env?.VITE_SIGNUP_V2 === '1';
-  } catch {
-    return false;
-  }
-};
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
@@ -747,10 +736,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
-          {() =>
-            wantsSignupV2()
-              ? <SignupV2 language={language} />
-              : <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         {/* /signup is the single canonical door — every alias hard-redirects to it,
             preserving the query string (?flow=provider|prestige|guest|booking). */}
