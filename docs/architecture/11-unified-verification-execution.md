@@ -24,7 +24,7 @@ payments (Sections 01–10). Code audit 2026-06-09 found the real state:
 | PR | Class | Scope | Risk | Approval |
 |---|---|---|---|---|
 | `PR-VERIF-0` | spec | This document | none | — |
-| `PR-VERIF-1` | schema-migration | Add `verification_challenges` table (Challenge model: id, userId, channel, destination, **purpose**, payload, codeHash, attempts, status, expiresAt). Additive only; no flow reads it yet | low | **CEO (schema, hard rule #6)** |
+| `PR-VERIF-1` | schema-migration | Add `verification_challenges` table (Challenge model: id, userId, channel, destination, **purpose**, payload, codeHash, attempts, status, expiresAt). Additive only; no flow reads it yet | low | **CEO (schema, hard rule #6)** — in progress on `codex/unified-verification-challenges` |
 | `PR-VERIF-2` | runtime | `UnifiedVerificationService` + **purpose registry** + `POST /verification/start` & `/verify` where **verify executes the bound action**. Behind flag `unified_verification` (default OFF). No existing flow touched | medium | **CEO (auth domain)** |
 | `PR-VERIF-3` | runtime | Migrate **login** flow to the service behind its flag; old path stays. QA iPhone Safari | medium | CEO |
 | `PR-VERIF-4..8` | runtime | Migrate one flow per PR: signup → e-gift → change-email → enable/disable 2FA → close-account. Each independently flagged + reversible | medium | CEO per PR |
