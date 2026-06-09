@@ -126,12 +126,18 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   egift_redeem: {
     purpose: "egift_redeem",
-    migrated: false,
+    migrated: true,
     sensitive: false,
-    requiresSession: false,
+    requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        voucherId: (challenge.payload as any)?.voucherId,
+        action: "egift_redeem",
+        userId: challenge.userId || undefined,
+      },
+    }),
   },
   change_email: {
     purpose: "change_email",
@@ -279,7 +285,11 @@ function userTypeIntentForChallenge(challenge: Pick<VerificationChallenge, "purp
 }
 
 function templateIdForChallenge(challenge: Pick<VerificationChallenge, "purpose" | "channel">): string {
-  const prefix = challenge.purpose === "signup" ? "unified_signup_otp" : "unified_login_otp";
+  const prefix = challenge.purpose === "signup"
+    ? "unified_signup_otp"
+    : challenge.purpose === "egift_redeem"
+      ? "unified_egift_redeem_otp"
+      : "unified_login_otp";
   return challenge.channel === "whatsapp" ? `${prefix}_whatsapp_v1` : `${prefix}_v1`;
 }
 
@@ -389,7 +399,7 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
   providerMessageId?: string;
   reasonCode?: string;
 }> {
-  if (challenge.purpose !== "login" && challenge.purpose !== "signup") {
+  if (challenge.purpose !== "login" && challenge.purpose !== "signup" && challenge.purpose !== "egift_redeem") {
     return { queued: false, reasonCode: "DELIVERY_NOT_MIGRATED" };
   }
   if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") {
@@ -445,7 +455,7 @@ export class UnifiedVerificationService {
     const destination = normalizeDestination(input.channel, input.destination);
     const codeHash = hashVerificationCode(challengeId, code);
 
-    if (definition.purpose === "login" || definition.purpose === "signup") {
+    if (definition.purpose === "login" || definition.purpose === "signup" || definition.purpose === "egift_redeem") {
       const [recent] = await db
         .select({ challengeId: verificationChallenges.challengeId })
         .from(verificationChallenges)

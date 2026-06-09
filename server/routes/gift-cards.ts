@@ -23,6 +23,11 @@ import {
   generateWalletPassToken,
   verifyWalletPassToken,
 } from '../lib/walletPassToken';
+import { isUnifiedVerificationEgiftRedeemEnabled } from '../lib/feature-flags/unifiedVerification';
+import {
+  UnifiedVerificationError,
+  unifiedVerificationService,
+} from '../services/UnifiedVerificationService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
@@ -326,6 +331,21 @@ async function sendPurchaseConfirmationToBuyer(
 function isEgiftPurchaseEnabled(): boolean {
   const v = (process.env.PETWASH_EGIFT_PURCHASE_ENABLED || '').trim().toLowerCase();
   return v === 'true' || v === '1' || v === 'yes' || v === 'on';
+}
+
+function requestIp(req: any): string | undefined {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  if (typeof forwarded === 'string') return forwarded.split(',')[0]?.trim();
+  return req.ip;
+}
+
+function handleEgiftVerificationError(res: any, error: unknown): boolean {
+  if (!(error instanceof UnifiedVerificationError)) return false;
+  res.status(error.statusCode).json({
+    error: error.message,
+    reasonCode: error.reasonCode,
+  });
+  return true;
 }
 
 router.post('/purchase', paymentLimiter, async (req, res) => {
@@ -1023,6 +1043,40 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
 
     const { voucherId } = req.params;
 
+    if (isUnifiedVerificationEgiftRedeemEnabled()) {
+      const verificationChallengeId = typeof req.body?.verificationChallengeId === 'string'
+        ? req.body.verificationChallengeId.trim()
+        : '';
+      const verificationCode = typeof req.body?.verificationCode === 'string'
+        ? req.body.verificationCode.trim()
+        : '';
+
+      if (!verificationChallengeId || !verificationCode) {
+        return res.status(428).json({
+          error: 'Verification code required before activating this gift card.',
+          reasonCode: 'EGIFT_REDEEM_VERIFICATION_REQUIRED',
+        });
+      }
+
+      const verificationResult = await unifiedVerificationService.verifyChallenge({
+        challengeId: verificationChallengeId,
+        code: verificationCode,
+        actor: {
+          userId,
+          ip: requestIp(req),
+          userAgent: req.headers['user-agent'],
+          traceId: correlationId,
+        },
+      });
+      const metadata = (verificationResult.action as any)?.metadata || {};
+      if (verificationResult.challenge.purpose !== 'egift_redeem' || metadata.voucherId !== voucherId) {
+        return res.status(403).json({
+          error: 'Verification challenge does not match this gift card.',
+          reasonCode: 'EGIFT_REDEEM_VERIFICATION_MISMATCH',
+        });
+      }
+    }
+
     // Atomically mark as REDEEMED — returns the updated row or nothing.
     // PR-W11: accept both 'ISSUED' (canonical default) AND 'ACTIVE'
     // (legacy state written by older Nayax payment-approval handlers).
@@ -1086,6 +1140,7 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
       message:    `₪${amountIls.toFixed(2)} credited to your wallet`,
     });
   } catch (err: any) {
+    if (handleEgiftVerificationError(res, err)) return;
     logger.error('[E-Gift] activate-wallet error', { error: err.message, correlationId });
     res.status(500).json({ error: 'Failed to activate gift card' });
   }

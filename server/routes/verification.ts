@@ -2,8 +2,10 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import {
   UNIFIED_VERIFICATION_FLAG_NAME,
+  UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
+  isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationSignupEnabled,
@@ -100,6 +102,10 @@ router.get("/status", (_req, res) => {
       signup: {
         flag: UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
         enabled: isUnifiedVerificationSignupEnabled(),
+      },
+      egiftRedeem: {
+        flag: UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
+        enabled: isUnifiedVerificationEgiftRedeemEnabled(),
       },
     },
     purposes,
