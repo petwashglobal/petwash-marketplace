@@ -228,6 +228,7 @@ import pricingRoutes from "./routes/pricing";
 import providerOnboardingRoutes from "./routes/provider-onboarding";
 import onboardingVerificationRoutes from "./routes/onboarding-verification";
 import completeRegistrationRoutes from "./routes/complete-registration";
+import verificationRoutes from "./routes/verification";
 import smsStatusRoutes from "./routes/sms-status";
 import providerApplicationsRoutes from "./routes/provider-applications";
 import providerIntakeRoutes from "./routes/provider-intake";
@@ -10851,6 +10852,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // 🔐 Mobile App Authentication - Email/Password with JWT tokens, refresh token rotation, biometric unlock
   app.use('/api/auth', apiLimiter, authRoutes);
+
+  // 🔐 Unified purpose-bound verification runtime (default-off until each flow migrates)
+  app.use('/api/verification', optionalFirebaseToken, apiLimiter, verificationRoutes);
 
   // 🔐 MFA Management - TOTP, SMS, Email enrollment + admin MFA enforcement
   app.use('/api/mfa', apiLimiter, mfaRoutes);
