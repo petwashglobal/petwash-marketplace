@@ -26,8 +26,8 @@ payments (Sections 01–10). Code audit 2026-06-09 found the real state:
 |---|---|---|---|---|
 | `PR-VERIF-0` | spec | This document | none | — |
 | `PR-VERIF-1` | schema-migration | Add `verification_challenges` table (Challenge model: id, userId, channel, destination, **purpose**, payload, codeHash, attempts, status, expiresAt). Additive only; no flow reads it yet | low | **DONE** — PR #630 merged; migration `0042_verification_challenges.sql` applied in production manual run `27178487346` |
-| `PR-VERIF-2` | runtime | `UnifiedVerificationService` + **purpose registry** + `POST /verification/start` & `/verify` where **verify executes the bound action**. Behind `UNIFIED_VERIFICATION_ENABLED` (default OFF). No existing flow touched | medium | **CEO (auth domain)** — in progress on `codex/unified-verification-runtime` |
-| `PR-VERIF-3` | runtime | Migrate **login** flow to the service behind its flag; old path stays. QA iPhone Safari | medium | CEO |
+| `PR-VERIF-2` | runtime | `UnifiedVerificationService` + **purpose registry** + `POST /verification/start` & `/verify` where **verify executes the bound action**. Behind `UNIFIED_VERIFICATION_ENABLED` (default OFF). No existing flow touched | medium | **DONE** — PR #631 merged and deployed |
+| `PR-VERIF-3` | runtime | Migrate **login** flow to the service behind `UNIFIED_VERIFICATION_LOGIN_ENABLED`; old path stays when flag is off. QA iPhone Safari | medium | CEO — in progress on `codex/unified-verification-login` |
 | `PR-VERIF-4..8` | runtime | Migrate one flow per PR: signup → e-gift → change-email → enable/disable 2FA → close-account. Each independently flagged + reversible | medium | CEO per PR |
 | `PR-VERIF-9` | cleanup | Delete the 4 legacy OTP impls once every flow is cut over and stable | medium | CEO |
 

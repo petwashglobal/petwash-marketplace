@@ -2,7 +2,9 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import {
   UNIFIED_VERIFICATION_FLAG_NAME,
+  UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   isUnifiedVerificationEnabled,
+  isUnifiedVerificationLoginEnabled,
   requireUnifiedVerificationEnabled,
 } from "../lib/feature-flags/unifiedVerification";
 import {
@@ -88,6 +90,12 @@ router.get("/status", (_req, res) => {
     ok: true,
     enabled: isUnifiedVerificationEnabled(),
     flag: UNIFIED_VERIFICATION_FLAG_NAME,
+    flowFlags: {
+      login: {
+        flag: UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
+        enabled: isUnifiedVerificationLoginEnabled(),
+      },
+    },
     purposes,
   });
 });

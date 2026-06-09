@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
+  UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_FLAG_NAME,
 } from "../../server/lib/feature-flags/unifiedVerification";
 
@@ -15,9 +17,15 @@ function source(path: string): string {
 describe("unified verification runtime guard", () => {
   it("is default-off and only opens on the explicit flag", () => {
     expect(UNIFIED_VERIFICATION_FLAG_NAME).toBe("UNIFIED_VERIFICATION_ENABLED");
+    expect(UNIFIED_VERIFICATION_LOGIN_FLAG_NAME).toBe("UNIFIED_VERIFICATION_LOGIN_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationLoginEnabled({ UNIFIED_VERIFICATION_LOGIN_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationLoginEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_LOGIN_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
   });
 
   it("mounts the API without replacing existing OTP/auth flows", () => {
@@ -33,6 +41,7 @@ describe("unified verification runtime guard", () => {
     const service = source("server/services/UnifiedVerificationService.ts");
 
     expect(service).toContain("unifiedVerificationPurposeRegistry");
+    expect(service).toContain("issueSmsVerificationToken");
     expect(service).toContain('"change_email"');
     expect(service).toContain("requiresSession: true");
     expect(service).toContain("ACTOR_MISMATCH");
@@ -40,6 +49,19 @@ describe("unified verification runtime guard", () => {
     expect(service).toContain("hashVerificationCode");
     expect(service).toContain('status: "consumed"');
     expect(service).toContain("PURPOSE_NOT_MIGRATED");
-    expect(service).toContain("DELIVERY_NOT_MIGRATED");
+    expect(service).toContain("verifyLatestChallengeForDestination");
+    expect(service).toContain("smsEvidence");
+  });
+
+  it("bridges the existing sms auth route through unified login only behind the login flag", () => {
+    const route = source("server/routes/auth-sms.ts");
+
+    expect(route).toContain("isUnifiedVerificationLoginEnabled");
+    expect(route).toContain("unifiedVerificationService.startChallenge");
+    expect(route).toContain("purpose: 'login'");
+    expect(route).toContain("verifyLatestChallengeForDestination");
+    expect(route).toContain("runtime: 'unified_verification'");
+    expect(route).toContain("twilioSMSService.sendVerificationCode");
+    expect(route).toContain("twilioSMSService.verifyCode");
   });
 });
