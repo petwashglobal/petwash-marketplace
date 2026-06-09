@@ -266,6 +266,34 @@ export const insertVerificationChallengeSchema = createInsertSchema(verification
 export type VerificationChallenge = typeof verificationChallenges.$inferSelect;
 export type InsertVerificationChallenge = typeof verificationChallenges.$inferInsert;
 
+// Identity Accounts — links external auth identities (Google/Apple/phone/passkey)
+// to ONE canonical PetWash user, so the same human is a single user_id across
+// providers (Google-you and Apple-you stop being two accounts).
+// SDD: docs/design/2026-05-25-smart-identity-routing.md. ADDITIVE foundation —
+// behind ff.identity.unified.enabled (default OFF); no existing flow reads it yet.
+export const identityAccounts = pgTable("identity_accounts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // canonical PetWash users.id this identity belongs to
+  provider: varchar("provider", { length: 30 }).notNull(), // google | apple | facebook | password | phone | passkey
+  providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(), // provider sub / Firebase uid
+  email: varchar("email", { length: 320 }), // email from this provider (nullable — Apple private relay)
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  isPrimary: boolean("is_primary").default(false).notNull(), // primary login method for the user
+  linkedAt: timestamp("linked_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_identity_accounts_provider_account").on(table.provider, table.providerAccountId),
+  index("idx_identity_accounts_user").on(table.userId),
+  index("idx_identity_accounts_email").on(table.email),
+]);
+
+export const insertIdentityAccountSchema = createInsertSchema(identityAccounts).omit({ id: true, createdAt: true, updatedAt: true });
+export type IdentityAccount = typeof identityAccounts.$inferSelect;
+export type InsertIdentityAccount = typeof identityAccounts.$inferInsert;
+
 // Domain Events (Event Store for Event-Driven Architecture)
 export const domainEvents = pgTable("domain_events", {
   id: serial("id").primaryKey(),
