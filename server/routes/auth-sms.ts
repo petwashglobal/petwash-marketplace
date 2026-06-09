@@ -21,6 +21,8 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { twilioSMSService } from '../services/TwilioSMSService';
+import { isUnifiedVerificationLoginEnabled } from '../lib/feature-flags/unifiedVerification';
+import { UnifiedVerificationError, unifiedVerificationService } from '../services/UnifiedVerificationService';
 import { logger } from '../lib/logger';
 import { logAuditEvent } from '../middleware/auditLog';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
@@ -57,6 +59,25 @@ function statusForSmsFailure(result: { status?: number; code?: string }): number
   if (result.code === 'SMS_RATE_LIMITED' || result.code === 'SMS_PROVIDER_RATE_LIMITED') return 429;
   if (result.code === 'SMS_PROVIDER_GEO_BLOCKED') return 422;
   return 503;
+}
+
+function requestActor(req: Request, body: { deviceId?: unknown; traceId?: unknown }) {
+  return {
+    userId: (req as any).user?.uid || (req as any).user?.id || (req as any).firebaseUser?.uid,
+    ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined,
+    userAgent: req.headers['user-agent'],
+    deviceId: typeof body.deviceId === 'string' ? body.deviceId : undefined,
+    traceId: typeof body.traceId === 'string' ? body.traceId : undefined,
+  };
+}
+
+function statusForUnifiedFailure(error: UnifiedVerificationError): number {
+  if (error.reasonCode === 'INVALID_CODE') return 401;
+  if (error.reasonCode === 'CHALLENGE_LOCKED') return 423;
+  if (error.reasonCode === 'CHALLENGE_EXPIRED') return 410;
+  if (error.reasonCode === 'CHALLENGE_COOLDOWN') return 429;
+  if (error.reasonCode === 'SMS_PROVIDER_ERROR') return 503;
+  return error.statusCode;
 }
 
 // GET /api/auth/sms/status — cheap config signal for clients to default away from SMS.
@@ -98,6 +119,28 @@ router.post('/start', async (req: Request, res: Response) => {
   }
 
   try {
+    if (isUnifiedVerificationLoginEnabled()) {
+      const result = await unifiedVerificationService.startChallenge({
+        purpose: 'login',
+        channel: 'sms',
+        destination: phone,
+        payload: { flow, language },
+        actor: requestActor(req, body),
+      });
+      void logAuditEvent({
+        actionType: 'SIGNUP_OTP_SENT',
+        ip: callerIp, userAgent: req.headers['user-agent'],
+        metadata: { method: 'mobile', flow, phone: maskPhone(phone), captchaSignal, runtime: 'unified_verification' },
+      });
+      return res.status(200).json({
+        ok: true,
+        message: 'Verification code sent successfully',
+        expiresIn: 300,
+        flow,
+        challengeId: result.challenge.challengeId,
+      });
+    }
+
     const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
     if (!result.success) {
       const safeCode = result.code || 'SMS_PROVIDER_ERROR';
@@ -134,6 +177,22 @@ router.post('/start', async (req: Request, res: Response) => {
     });
     return res.status(200).json({ ok: true, message: result.message, expiresIn: result.expiresIn, flow });
   } catch (err) {
+    if (err instanceof UnifiedVerificationError) {
+      void logAuditEvent({
+        actionType: 'SIGNUP_FAILED',
+        ip: callerIp, userAgent: req.headers['user-agent'],
+        metadata: { step: 'otp_send', method: 'mobile', flow, phone: maskPhone(phone), reason: err.reasonCode, runtime: 'unified_verification' },
+        severity: 'warning',
+      });
+      return res.status(statusForUnifiedFailure(err)).json({
+        ok: false,
+        error: err.reasonCode,
+        code: err.reasonCode,
+        message: err.message,
+        smsProviderHealthy: false,
+        flow,
+      });
+    }
     logger.error('[auth-sms] start failed', { error: err instanceof Error ? err.message : String(err) });
     return res.status(503).json({ ok: false, error: 'sms_unavailable' });
   }
@@ -154,6 +213,32 @@ router.post('/verify', async (req: Request, res: Response) => {
   }
 
   try {
+    if (isUnifiedVerificationLoginEnabled()) {
+      const result = await unifiedVerificationService.verifyLatestChallengeForDestination({
+        purpose: 'login',
+        destination: phone,
+        code,
+        actor: requestActor(req, body),
+      });
+      const verificationToken = typeof result.action.verificationToken === 'string'
+        ? result.action.verificationToken
+        : undefined;
+      if (!verificationToken) {
+        throw new Error('Unified verification completed without verificationToken');
+      }
+      void logAuditEvent({
+        actionType: 'SIGNUP_AUTH_VERIFIED',
+        ip: req.ip, userAgent: req.headers['user-agent'],
+        metadata: { method: 'mobile', flow, phone: maskPhone(phone), runtime: 'unified_verification' },
+      });
+      return res.status(200).json({
+        ok: true,
+        verificationToken,
+        flow,
+        redirect: redirectForFlow(flow),
+      });
+    }
+
     const result = await twilioSMSService.verifyCode(phone, code, language);
     if (!result.success) {
       void logAuditEvent({
@@ -181,6 +266,20 @@ router.post('/verify', async (req: Request, res: Response) => {
       redirect: redirectForFlow(flow),
     });
   } catch (err) {
+    if (err instanceof UnifiedVerificationError) {
+      void logAuditEvent({
+        actionType: 'SIGNUP_FAILED',
+        ip: req.ip, userAgent: req.headers['user-agent'],
+        metadata: { step: 'otp_verify', method: 'mobile', flow, phone: maskPhone(phone), reason: err.reasonCode, runtime: 'unified_verification' },
+        severity: 'warning',
+      });
+      return res.status(statusForUnifiedFailure(err)).json({
+        ok: false,
+        error: 'verification_failed',
+        reasonCode: err.reasonCode,
+        message: err.message,
+      });
+    }
     logger.error('[auth-sms] verify failed', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ ok: false, error: 'verification_error' });
   }

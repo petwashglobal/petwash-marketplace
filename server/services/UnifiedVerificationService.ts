@@ -1,8 +1,11 @@
 import crypto from "crypto";
-import { and, eq } from "drizzle-orm";
+import jwt from "jsonwebtoken";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
 import { logger } from "../lib/logger";
-import { otpEvents, verificationChallenges, type VerificationChallenge } from "@shared/schema";
+import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
+import { twilioSMSService } from "./TwilioSMSService";
+import { otpEvents, smsEvidence, verificationChallenges, type VerificationChallenge } from "@shared/schema";
 
 export type VerificationChannel = "sms" | "email" | "whatsapp" | "push";
 
@@ -35,6 +38,13 @@ export interface StartVerificationInput {
 
 export interface VerifyChallengeInput {
   challengeId: string;
+  code: string;
+  actor: VerificationActor;
+}
+
+export interface VerifyLatestChallengeInput {
+  purpose: VerificationPurpose;
+  destination: string;
   code: string;
   actor: VerificationActor;
 }
@@ -83,12 +93,15 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   login: {
     purpose: "login",
-    migrated: false,
+    migrated: true,
     sensitive: false,
     requiresSession: false,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      verificationToken: issueSmsVerificationToken(challenge.destination),
+      phone: challenge.destination,
+    }),
   },
   signup: {
     purpose: "signup",
@@ -195,6 +208,14 @@ function assertStartAllowed(definition: PurposeDefinition, actor: VerificationAc
     );
   }
 
+  if (!isUnifiedVerificationPurposeEnabled(definition.purpose)) {
+    throw new UnifiedVerificationError(
+      "PURPOSE_FLAG_DISABLED",
+      "This verification purpose is disabled.",
+      503,
+    );
+  }
+
   if (definition.purpose === "diagnostic_noop" && process.env.UNIFIED_VERIFICATION_DIAGNOSTIC_ENABLED !== "true") {
     throw new UnifiedVerificationError(
       "DIAGNOSTIC_DISABLED",
@@ -202,6 +223,39 @@ function assertStartAllowed(definition: PurposeDefinition, actor: VerificationAc
       403,
     );
   }
+}
+
+function normalizeDestination(channel: VerificationChannel, destination: string): string {
+  if (channel !== "sms" && channel !== "whatsapp") return destination.trim();
+  const trimmed = destination.trim();
+  if (trimmed.startsWith("+")) return trimmed;
+  return "+" + trimmed.replace(/[^\d]/g, "");
+}
+
+function issueSmsVerificationToken(phoneE164: string): string {
+  const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
+  if (!secret) {
+    throw new UnifiedVerificationError(
+      "SMS_VERIFICATION_SECRET_MISSING",
+      "SMS verification secret is not configured.",
+      503,
+    );
+  }
+
+  return jwt.sign(
+    { phone: phoneE164, type: "sms-verified", nonce: crypto.randomBytes(8).toString("hex") },
+    secret,
+    { expiresIn: "5m" },
+  );
+}
+
+function smsBodyForChallenge(code: string, language: unknown): string {
+  const lang = typeof language === "string" ? language : "he";
+  const hint = `\n@petwash.co.il #${code}`;
+  if (lang === "he") {
+    return `PetWash קוד אימות:\n\n${code}\n\nתקף ל-5 דקות.\nאל תשתפו קוד זה.${hint}`;
+  }
+  return `PetWash verification code:\n\n${code}\n\nExpires in 5 minutes.\nDo not share this code.${hint}`;
 }
 
 function assertActorCanVerify(
@@ -236,6 +290,8 @@ async function recordOtpEvent(
   eventType: "OTP_SENT" | "OTP_VERIFIED" | "OTP_FAILED" | "OTP_EXPIRED",
   result?: string,
   attemptsCount = 0,
+  providerMessageId?: string | null,
+  provider?: string,
 ): Promise<void> {
   if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") return;
   if (!challenge.destination.startsWith("+")) return;
@@ -251,7 +307,8 @@ async function recordOtpEvent(
       expiresAt: challenge.expiresAt,
       attemptsCount,
       result,
-      provider: "unified",
+      provider: provider || "unified",
+      providerMessageId,
       ip: challenge.ip,
       userAgent: challenge.userAgent,
       deviceId: challenge.deviceId,
@@ -266,6 +323,91 @@ async function recordOtpEvent(
   }
 }
 
+async function recordSmsEvidence(
+  challenge: Pick<VerificationChallenge, "channel" | "destination" | "userId" | "ip" | "userAgent" | "traceId">,
+  renderedText: string,
+  status: "sent" | "failed",
+  providerMessageId?: string | null,
+  failureReason?: string | null,
+): Promise<void> {
+  if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") return;
+  if (!challenge.destination.startsWith("+")) return;
+
+  const provider = challenge.channel === "whatsapp" ? "twilio_whatsapp" : "twilio";
+  try {
+    await db.insert(smsEvidence).values({
+      userId: challenge.userId,
+      messageType: "OTP",
+      templateId: challenge.channel === "whatsapp" ? "unified_login_otp_whatsapp_v1" : "unified_login_otp_v1",
+      templateVersion: "1.0",
+      toPhone: challenge.destination,
+      renderedText,
+      contentHash: crypto.createHash("sha256").update(renderedText).digest("hex"),
+      provider,
+      providerMessageId,
+      status,
+      failureReason,
+      ip: challenge.ip,
+      userAgent: challenge.userAgent,
+      traceId: challenge.traceId,
+    });
+  } catch (error) {
+    logger.warn("[UnifiedVerification] SMS evidence insert failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function deliverChallengeCode(challenge: VerificationChallenge, code: string): Promise<{
+  queued: boolean;
+  provider?: string;
+  providerMessageId?: string;
+  reasonCode?: string;
+}> {
+  if (challenge.purpose !== "login") {
+    return { queued: false, reasonCode: "DELIVERY_NOT_MIGRATED" };
+  }
+  if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") {
+    return { queued: false, reasonCode: "CHANNEL_NOT_MIGRATED" };
+  }
+
+  const renderedText = smsBodyForChallenge(code, (challenge.payload as any)?.language);
+  const sendResult = challenge.channel === "whatsapp"
+    ? await twilioSMSService.sendWhatsApp(challenge.destination, renderedText)
+    : await twilioSMSService.sendSMS(challenge.destination, renderedText, {
+        userId: challenge.userId || undefined,
+        ip: challenge.ip || undefined,
+        ua: challenge.userAgent || undefined,
+      });
+
+  const provider = challenge.channel === "whatsapp" ? "twilio_whatsapp" : "twilio";
+  await recordSmsEvidence(
+    challenge,
+    renderedText,
+    sendResult.success ? "sent" : "failed",
+    sendResult.messageId || null,
+    sendResult.success ? null : (sendResult.error || "Unknown"),
+  );
+
+  if (!sendResult.success) {
+    await db.update(verificationChallenges).set({
+      status: "cancelled",
+      updatedAt: new Date(),
+    }).where(eq(verificationChallenges.challengeId, challenge.challengeId));
+    throw new UnifiedVerificationError(
+      "SMS_PROVIDER_ERROR",
+      sendResult.error || "Failed to send verification code.",
+      503,
+    );
+  }
+
+  return {
+    queued: true,
+    provider,
+    providerMessageId: sendResult.messageId,
+  };
+}
+
 export class UnifiedVerificationService {
   async startChallenge(input: StartVerificationInput) {
     const definition = getPurposeDefinition(input.purpose);
@@ -275,13 +417,36 @@ export class UnifiedVerificationService {
     const challengeId = crypto.randomUUID();
     const code = generateVerificationCode();
     const expiresAt = new Date(now.getTime() + definition.ttlSeconds * 1000);
+    const destination = normalizeDestination(input.channel, input.destination);
     const codeHash = hashVerificationCode(challengeId, code);
+
+    if (definition.purpose === "login") {
+      const [recent] = await db
+        .select({ challengeId: verificationChallenges.challengeId })
+        .from(verificationChallenges)
+        .where(and(
+          eq(verificationChallenges.purpose, definition.purpose),
+          eq(verificationChallenges.destination, destination),
+          eq(verificationChallenges.status, "pending"),
+          gte(verificationChallenges.createdAt, new Date(now.getTime() - 60_000)),
+        ))
+        .orderBy(desc(verificationChallenges.createdAt))
+        .limit(1);
+
+      if (recent) {
+        throw new UnifiedVerificationError(
+          "CHALLENGE_COOLDOWN",
+          "Please wait before requesting a new verification code.",
+          429,
+        );
+      }
+    }
 
     const [challenge] = await db.insert(verificationChallenges).values({
       challengeId,
       userId: input.actor.userId,
       channel: input.channel,
-      destination: input.destination,
+      destination,
       purpose: input.purpose,
       payload: input.payload ?? {},
       codeHash,
@@ -294,15 +459,31 @@ export class UnifiedVerificationService {
       traceId: input.actor.traceId,
     }).returning();
 
-    await recordOtpEvent(challenge, "OTP_SENT", "pending");
+    let delivery: {
+      queued: boolean;
+      provider?: string;
+      providerMessageId?: string;
+      reasonCode?: string;
+    };
+    try {
+      delivery = await deliverChallengeCode(challenge, code);
+    } catch (error) {
+      await recordOtpEvent(challenge, "OTP_FAILED", "delivery_failed", 0);
+      throw error;
+    }
+    await recordOtpEvent(
+      challenge,
+      "OTP_SENT",
+      "pending",
+      0,
+      delivery.providerMessageId || null,
+      delivery.provider,
+    );
 
     return {
       ok: true,
       challenge: publicChallenge(challenge),
-      delivery: {
-        queued: false,
-        reasonCode: "DELIVERY_NOT_MIGRATED",
-      },
+      delivery,
       testCode:
         process.env.NODE_ENV !== "production" && process.env.UNIFIED_VERIFICATION_RETURN_CODE_FOR_TESTS === "true"
           ? code
@@ -393,6 +574,29 @@ export class UnifiedVerificationService {
       challenge: publicChallenge(consumed ?? verified),
       action: actionResult,
     };
+  }
+
+  async verifyLatestChallengeForDestination(input: VerifyLatestChallengeInput) {
+    const [challenge] = await db
+      .select()
+      .from(verificationChallenges)
+      .where(and(
+        eq(verificationChallenges.purpose, input.purpose),
+        eq(verificationChallenges.destination, normalizeDestination("sms", input.destination)),
+        eq(verificationChallenges.status, "pending"),
+      ))
+      .orderBy(desc(verificationChallenges.createdAt))
+      .limit(1);
+
+    if (!challenge) {
+      throw new UnifiedVerificationError("CHALLENGE_NOT_FOUND", "Verification challenge not found.", 404);
+    }
+
+    return this.verifyChallenge({
+      challengeId: challenge.challengeId,
+      code: input.code,
+      actor: input.actor,
+    });
   }
 }
 
