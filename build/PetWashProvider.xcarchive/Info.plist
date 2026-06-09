@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationProperties</key>
+	<dict>
+		<key>ApplicationPath</key>
+		<string>Applications/App.app</string>
+		<key>Architectures</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>CFBundleIdentifier</key>
+		<string>il.co.petwash.provider</string>
+		<key>CFBundleShortVersionString</key>
+		<string>1.0</string>
+		<key>CFBundleVersion</key>
+		<string>1</string>
+		<key>SigningIdentity</key>
+		<string>Apple Development: Nir Hadad (4APJL63764)</string>
+		<key>Team</key>
+		<string>U22NC3Q5Z4</string>
+	</dict>
+	<key>ArchiveVersion</key>
+	<integer>2</integer>
+	<key>CreationDate</key>
+	<date>2026-06-09T01:58:45Z</date>
+	<key>Name</key>
+	<string>App</string>
+	<key>SchemeName</key>
+	<string>App</string>
+</dict>
+</plist>

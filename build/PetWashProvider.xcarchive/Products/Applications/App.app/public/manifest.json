@@ -1,0 +1,215 @@
+{
+  "name": "Pet Wash™",
+  "short_name": "Pet Wash",
+  "description": "Premium Organic Pet Care - Book & Manage Pet Washing Services",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2c5282",
+  "scope": "/",
+  "lang": "en",
+  "dir": "auto",
+  "icons": [
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["lifestyle", "business", "utilities"],
+  "shortcuts": [
+    {
+      "name": "My Wallet",
+      "short_name": "Wallet",
+      "description": "View credits, wash packages, and redeem at stations",
+      "url": "/my-wallet",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Redeem at Station",
+      "short_name": "Redeem",
+      "description": "Scan QR code to redeem at K9000 station",
+      "url": "/wallet/redeem",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Loyalty Card",
+      "short_name": "Loyalty",
+      "description": "View loyalty points, tier status, and rewards",
+      "url": "/loyalty",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Book Service",
+      "short_name": "Book",
+      "description": "Book pet care services",
+      "url": "/booking",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your bookings and account",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Provider Hub",
+      "short_name": "Provider",
+      "description": "Provider dashboard for staff and sitters",
+      "url": "/provider-dashboard",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "AI Chat",
+      "short_name": "Kenzo",
+      "description": "Chat with Kenzo AI assistant",
+      "url": "/ai-chat",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Find Sitter",
+      "short_name": "Sitters",
+      "description": "Browse pet sitters nearby",
+      "url": "/sitter-suite/browse",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "image",
+          "accept": ["image/*"]
+        },
+        {
+          "name": "document",
+          "accept": ["application/pdf", ".doc", ".docx"]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "/open-document",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/msword": [".doc"],
+        "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+petwash",
+      "url": "/handler?target=%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "widgets": [
+    {
+      "name": "Quick Book",
+      "description": "Quick booking widget",
+      "tag": "quick-book",
+      "type": "application/json",
+      "data": "/widgets/quick-book.json",
+      "screenshots": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "192x192",
+          "label": "Quick Book Widget"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "screenshots": [
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Pet Wash™ Desktop Dashboard"
+    },
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Pet Wash™ Mobile Experience"
+    }
+  ],
+  "iarc_rating_id": ""
+}

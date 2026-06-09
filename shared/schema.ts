@@ -1310,8 +1310,6 @@ export type EVoucherRedemption = typeof eVoucherRedemptions.$inferSelect;
 export type InsertEVoucherRedemption = typeof eVoucherRedemptions.$inferInsert;
 export type WashHistory = typeof washHistory.$inferSelect;
 export type InsertWashHistory = typeof washHistory.$inferInsert;
-export type Coupon = typeof coupons.$inferSelect;
-export type InsertCoupon = typeof coupons.$inferInsert;
 
 // Nayax types
 export type PendingTransaction = typeof pendingTransactions.$inferSelect;

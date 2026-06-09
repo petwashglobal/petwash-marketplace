@@ -1,0 +1,39 @@
+{
+	"appId": "il.co.petwash.provider",
+	"appName": "PetWash Provider",
+	"webDir": "dist/public",
+	"server": {
+		"androidScheme": "https"
+	},
+	"ios": {
+		"contentInset": "always"
+	},
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		},
+		"SplashScreen": {
+			"launchShowDuration": 800,
+			"backgroundColor": "#ffffff",
+			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "LIGHT",
+			"backgroundColor": "#ffffff"
+		},
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		}
+	},
+	"packageClassList": [
+		"AppPlugin",
+		"CAPCameraPlugin",
+		"PushNotificationsPlugin",
+		"SplashScreenPlugin",
+		"StatusBarPlugin"
+	]
+}
