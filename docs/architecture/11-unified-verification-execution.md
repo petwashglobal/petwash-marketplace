@@ -1,6 +1,7 @@
 # Section 11 — Unified Verification Service: Execution PR Breakdown
 
-**Status:** Spec only. No runtime change introduced by the PR that ships this document.
+**Status:** Execution in progress. Schema PR #630 is merged and the additive
+runtime is being introduced behind a default-off flag.
 **Implements (design):** `docs/TRUST_PLATFORM_BLUEPRINT.md` (the "DESIGN ONLY" verification blueprint).
 **Governed by:** `docs/architecture/00-master-roadmap.md §0.2` hard rules.
 **Domain:** auth/identity — **single-owner per change**. Coordinate with whichever agent
@@ -24,8 +25,8 @@ payments (Sections 01–10). Code audit 2026-06-09 found the real state:
 | PR | Class | Scope | Risk | Approval |
 |---|---|---|---|---|
 | `PR-VERIF-0` | spec | This document | none | — |
-| `PR-VERIF-1` | schema-migration | Add `verification_challenges` table (Challenge model: id, userId, channel, destination, **purpose**, payload, codeHash, attempts, status, expiresAt). Additive only; no flow reads it yet | low | **CEO (schema, hard rule #6)** — in progress on `codex/unified-verification-challenges` |
-| `PR-VERIF-2` | runtime | `UnifiedVerificationService` + **purpose registry** + `POST /verification/start` & `/verify` where **verify executes the bound action**. Behind flag `unified_verification` (default OFF). No existing flow touched | medium | **CEO (auth domain)** |
+| `PR-VERIF-1` | schema-migration | Add `verification_challenges` table (Challenge model: id, userId, channel, destination, **purpose**, payload, codeHash, attempts, status, expiresAt). Additive only; no flow reads it yet | low | **DONE** — PR #630 merged; migration `0042_verification_challenges.sql` applied in production manual run `27178487346` |
+| `PR-VERIF-2` | runtime | `UnifiedVerificationService` + **purpose registry** + `POST /verification/start` & `/verify` where **verify executes the bound action**. Behind `UNIFIED_VERIFICATION_ENABLED` (default OFF). No existing flow touched | medium | **CEO (auth domain)** — in progress on `codex/unified-verification-runtime` |
 | `PR-VERIF-3` | runtime | Migrate **login** flow to the service behind its flag; old path stays. QA iPhone Safari | medium | CEO |
 | `PR-VERIF-4..8` | runtime | Migrate one flow per PR: signup → e-gift → change-email → enable/disable 2FA → close-account. Each independently flagged + reversible | medium | CEO per PR |
 | `PR-VERIF-9` | cleanup | Delete the 4 legacy OTP impls once every flow is cut over and stable | medium | CEO |
