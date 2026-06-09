@@ -321,6 +321,34 @@ export const insertUserPasskeySchema = createInsertSchema(userPasskeys).omit({ i
 export type UserPasskey = typeof userPasskeys.$inferSelect;
 export type InsertUserPasskey = typeof userPasskeys.$inferInsert;
 
+// Admin Invitations — invite-only admin/staff onboarding. NO public path can create
+// an admin: a super-admin issues an invite (token_hash, role, expiry); the invitee
+// accepts at /accept-invite?token=… and the server cross-checks their Firebase email
+// against email_norm. SDD: docs/design/2026-05-25-smart-identity-routing.md §5.5.
+// ADDITIVE foundation — behind ff.identity.unified.enabled (default OFF); not read yet.
+export const adminInvitations = pgTable("admin_invitations", {
+  id: serial("id").primaryKey(),
+  emailNorm: varchar("email_norm", { length: 320 }).notNull(), // normalized invitee email
+  tokenHash: varchar("token_hash", { length: 128 }).notNull(), // hashed invite token — never store raw
+  role: varchar("role", { length: 30 }).notNull(), // admin | staff
+  invitedBy: varchar("invited_by").notNull(), // users.id of the inviter (super-admin/admin)
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending | accepted | revoked | expired
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  acceptedByUserId: varchar("accepted_by_user_id"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_admin_invitations_token").on(table.tokenHash),
+  index("idx_admin_invitations_email").on(table.emailNorm),
+  index("idx_admin_invitations_status").on(table.status),
+]);
+
+export const insertAdminInvitationSchema = createInsertSchema(adminInvitations).omit({ id: true, createdAt: true, updatedAt: true });
+export type AdminInvitation = typeof adminInvitations.$inferSelect;
+export type InsertAdminInvitation = typeof adminInvitations.$inferInsert;
+
 // Domain Events (Event Store for Event-Driven Architecture)
 export const domainEvents = pgTable("domain_events", {
   id: serial("id").primaryKey(),
