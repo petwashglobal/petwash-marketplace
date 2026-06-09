@@ -9,6 +9,12 @@ import {
   revokeAppleSignInForAccountDeletion,
   summarizeAppleSignInRevocation,
 } from '../services/appleSignInRevocation';
+import { isUnifiedVerificationCloseAccountEnabled } from '../lib/feature-flags/unifiedVerification';
+import {
+  UnifiedVerificationError,
+  unifiedVerificationService,
+  type VerificationActor,
+} from '../services/UnifiedVerificationService';
 
 const router = Router();
 
@@ -33,7 +39,17 @@ const deleteAccountSchema = z.object({
   acknowledgeCreditsLoss: z.literal(true),
   acknowledgeDataLoss: z.literal(true),
   acknowledgeEgiftForfeiture: z.literal(true),
+  verificationCode: z.string().length(6).optional(),
+  verificationChallengeId: z.string().min(10).max(100).optional(),
 });
+
+function verificationActorFromRequest(req: any, uid: string): VerificationActor {
+  return {
+    userId: uid,
+    ip: req.ip || req.headers['x-forwarded-for'],
+    userAgent: req.headers['user-agent'],
+  };
+}
 
 router.post('/delete-request', async (req, res) => {
   try {
@@ -61,6 +77,58 @@ router.post('/delete-request', async (req, res) => {
     }
 
     const { reason } = parseResult.data;
+    const firestore = admin.firestore();
+
+    if (isUnifiedVerificationCloseAccountEnabled()) {
+      const { verificationCode, verificationChallengeId } = parseResult.data;
+      const email = decodedToken.email || (await admin.auth().getUser(uid)).email || '';
+
+      if (!verificationCode || !verificationChallengeId) {
+        if (!email) {
+          return res.status(400).json({ error: 'Verified email required before account deletion' });
+        }
+
+        const challenge = await unifiedVerificationService.startChallenge({
+          purpose: 'close_account',
+          channel: 'email',
+          destination: email,
+          payload: {
+            reason: reason || 'No reason provided',
+          },
+          actor: verificationActorFromRequest(req, uid),
+        });
+
+        await firestore.collection('audit_trail').add({
+          userId: uid,
+          action: 'ACCOUNT_DELETION_VERIFICATION_SENT',
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          details: {
+            runtime: 'unified_verification',
+            challengeId: challenge.challenge.challengeId,
+          },
+          ipAddress: req.ip,
+        });
+
+        return res.status(202).json({
+          success: false,
+          requiresVerification: true,
+          runtime: 'unified_verification',
+          verificationChallengeId: challenge.challenge.challengeId,
+          expiresAt: challenge.challenge.expiresAt,
+          message: 'Verification code sent to your email',
+        });
+      }
+
+      const verificationResult = await unifiedVerificationService.verifyChallenge({
+        challengeId: verificationChallengeId,
+        code: verificationCode,
+        actor: verificationActorFromRequest(req, uid),
+      });
+      const metadata = (verificationResult.action as any)?.metadata || {};
+      if (metadata.action !== 'close_account') {
+        return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+      }
+    }
 
     // Fetch user's current wallet to show what they're forfeiting
     const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, uid)).limit(1);
@@ -83,7 +151,6 @@ router.post('/delete-request', async (req, res) => {
     scheduledDeletionDate.setDate(scheduledDeletionDate.getDate() + gracePeriodDays);
 
     // Store deletion request in Firestore for audit trail
-    const firestore = admin.firestore();
     const appleSignInRevocation = summarizeAppleSignInRevocation(
       await revokeAppleSignInForAccountDeletion(uid)
     );
@@ -101,6 +168,8 @@ router.post('/delete-request', async (req, res) => {
       canCancel: true,
       cancelDeadline: admin.firestore.Timestamp.fromDate(scheduledDeletionDate),
       appleSignInRevocation,
+      verificationRuntime: isUnifiedVerificationCloseAccountEnabled() ? 'unified_verification' : 'legacy_confirmation',
+      verificationChallengeId: parseResult.data.verificationChallengeId || null,
     });
 
     // Mark user account as pending deletion in Firestore
@@ -121,6 +190,8 @@ router.post('/delete-request', async (req, res) => {
         forfeitedCredits,
         reason: reason || 'No reason provided',
         appleSignInRevocation,
+        verificationRuntime: isUnifiedVerificationCloseAccountEnabled() ? 'unified_verification' : 'legacy_confirmation',
+        verificationChallengeId: parseResult.data.verificationChallengeId || null,
       },
       ipAddress: req.ip,
     });
@@ -155,6 +226,9 @@ router.post('/delete-request', async (req, res) => {
       warnings,
     });
   } catch (error: any) {
+    if (error instanceof UnifiedVerificationError) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.reasonCode });
+    }
     logger.error('[AccountManagement] Deletion request error:', error);
     res.status(500).json({ error: 'Failed to process deletion request' });
   }

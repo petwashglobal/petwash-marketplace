@@ -464,6 +464,9 @@ export default function MyAccount() {
     data: false,
     egift: false,
   });
+  const [deleteAccountStep, setDeleteAccountStep] = useState<'request' | 'verify'>('request');
+  const [deleteVerificationCode, setDeleteVerificationCode] = useState('');
+  const [deleteVerificationChallengeId, setDeleteVerificationChallengeId] = useState('');
   const [freezeReason, setFreezeReason] = useState<string>('');
   const [freezeDuration, setFreezeDuration] = useState<number | undefined>(undefined);
   
@@ -920,12 +923,35 @@ export default function MyAccount() {
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: async (data: { confirmPhrase: string; acknowledgeCreditsLoss: boolean; acknowledgeDataLoss: boolean; acknowledgeEgiftForfeiture: boolean }) => {
+    mutationFn: async (data: {
+      confirmPhrase: string;
+      acknowledgeCreditsLoss: boolean;
+      acknowledgeDataLoss: boolean;
+      acknowledgeEgiftForfeiture: boolean;
+      verificationCode?: string;
+      verificationChallengeId?: string;
+    }) => {
       const res = await apiRequest('POST', '/api/account/delete-request', data);
       return res.json();
     },
     onSuccess: (data) => {
+      if (data.requiresVerification) {
+        setDeleteVerificationChallengeId(data.verificationChallengeId || '');
+        setDeleteVerificationCode('');
+        setDeleteAccountStep('verify');
+        toast({
+          title: isHebrew ? 'קוד אימות נשלח' : 'Verification Code Sent',
+          description: isHebrew ? 'בדוק את האימייל שלך כדי לאשר מחיקת חשבון.' : 'Check your email to confirm account deletion.',
+        });
+        return;
+      }
+
       setShowDeleteDialog(false);
+      setDeleteConfirmPhrase('');
+      setDeleteAcknowledgements({ credits: false, data: false, egift: false });
+      setDeleteAccountStep('request');
+      setDeleteVerificationCode('');
+      setDeleteVerificationChallengeId('');
       toast({
         title: isHebrew ? 'בקשת מחיקה נשלחה' : 'Deletion Requested',
         description: isHebrew 
@@ -2956,7 +2982,16 @@ export default function MyAccount() {
             </Dialog>
 
             {/* Delete Account Dialog */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+              setShowDeleteDialog(open);
+              if (!open) {
+                setDeleteConfirmPhrase('');
+                setDeleteAcknowledgements({ credits: false, data: false, egift: false });
+                setDeleteAccountStep('request');
+                setDeleteVerificationCode('');
+                setDeleteVerificationChallengeId('');
+              }
+            }}>
               <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-lg">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-3 text-xl text-red-600">
@@ -2971,6 +3006,31 @@ export default function MyAccount() {
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
+                  {deleteAccountStep === 'verify' ? (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                        <p className="text-sm text-amber-900">
+                          {isHebrew
+                            ? 'הזן את קוד האימות שנשלח לאימייל שלך כדי להשלים את בקשת המחיקה.'
+                            : 'Enter the verification code sent to your email to complete the deletion request.'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600 mb-2 block">
+                          {isHebrew ? 'קוד אימות (6 ספרות)' : 'Verification Code (6 digits)'}
+                        </Label>
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          value={deleteVerificationCode}
+                          onChange={(e) => setDeleteVerificationCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="000000"
+                          className="bg-white border-gray-200 text-gray-900 text-center text-2xl font-mono tracking-widest"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   <div className="p-4 rounded-xl bg-red-50 border border-red-200">
                     <p className="text-red-700 text-sm font-medium mb-2">
                       {isHebrew ? 'מה יימחק לצמיתות:' : 'What will be permanently deleted:'}
@@ -3055,6 +3115,8 @@ export default function MyAccount() {
                       className="bg-white border-gray-200 text-gray-900 font-mono"
                     />
                   </div>
+                    </>
+                  )}
                 </div>
 
                 <DialogFooter className="flex gap-2">
@@ -3064,6 +3126,9 @@ export default function MyAccount() {
                       setShowDeleteDialog(false);
                       setDeleteConfirmPhrase('');
                       setDeleteAcknowledgements({ credits: false, data: false, egift: false });
+                      setDeleteAccountStep('request');
+                      setDeleteVerificationCode('');
+                      setDeleteVerificationChallengeId('');
                     }}
                     className="border-gray-200 text-gray-600 hover:bg-white"
                   >
@@ -3075,18 +3140,25 @@ export default function MyAccount() {
                       acknowledgeCreditsLoss: deleteAcknowledgements.credits,
                       acknowledgeDataLoss: deleteAcknowledgements.data,
                       acknowledgeEgiftForfeiture: deleteAcknowledgements.egift,
+                      verificationCode: deleteAccountStep === 'verify' ? deleteVerificationCode : undefined,
+                      verificationChallengeId: deleteAccountStep === 'verify' ? deleteVerificationChallengeId : undefined,
                     })}
                     disabled={
-                      deleteConfirmPhrase !== 'DELETE MY ACCOUNT' ||
-                      !deleteAcknowledgements.credits ||
-                      !deleteAcknowledgements.data ||
-                      !deleteAcknowledgements.egift ||
+                      (deleteAccountStep === 'request' && (
+                        deleteConfirmPhrase !== 'DELETE MY ACCOUNT' ||
+                        !deleteAcknowledgements.credits ||
+                        !deleteAcknowledgements.data ||
+                        !deleteAcknowledgements.egift
+                      )) ||
+                      (deleteAccountStep === 'verify' && deleteVerificationCode.length !== 6) ||
                       deleteAccountMutation.isPending
                     }
                     className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     {deleteAccountMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    {isHebrew ? 'מחק את החשבון שלי' : 'Delete My Account'}
+                    {deleteAccountStep === 'verify'
+                      ? (isHebrew ? 'אשר מחיקה' : 'Confirm Deletion')
+                      : (isHebrew ? 'מחק את החשבון שלי' : 'Delete My Account')}
                   </Button>
                 </DialogFooter>
               </DialogContent>
