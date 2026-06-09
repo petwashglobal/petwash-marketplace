@@ -208,6 +208,43 @@ export async function postLoginDecider(req: Request, res: Response) {
     }
 
     let user = await storage.getUser(userId);
+
+    // Unified identity resolution — SDD: docs/design/2026-05-25-smart-identity-routing.md.
+    // FLAG-GATED, default OFF (env IDENTITY_UNIFIED_ENABLED !== 'true' → block skipped,
+    // live login byte-for-byte unchanged). When enabled, resolve a Firebase login to its
+    // canonical PetWash user via identity_accounts/loginOrLink — this is what fixes the
+    // founder-001 slug-vs-uid orphan (Firebase uid !== the seeded 'founder-001-nir-hadad'
+    // row id) and merges Google/Apple logins into one account. Non-blocking on error.
+    if (!user && process.env.IDENTITY_UNIFIED_ENABLED === 'true') {
+      try {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        const fbAdminModule = await import('../lib/firebase-admin');
+        const fbAuth = fbAdminModule.auth;
+        if (fbAuth) {
+          const fbUser = await fbAuth.getUser(userId);
+          const providerId = fbUser.providerData?.[0]?.providerId || 'password';
+          const resolved = await loginOrLink({
+            provider: providerId,
+            providerAccountId: fbUser.uid,
+            email: fbUser.email ?? null,
+            emailVerified: fbUser.emailVerified,
+            displayName: fbUser.displayName ?? null,
+          });
+          if (resolved.userId && resolved.userId !== userId) {
+            const linkedUser = await storage.getUser(resolved.userId);
+            if (linkedUser) {
+              user = linkedUser as any;
+              logger.info('[PostLogin] identity resolved to canonical user', {
+                from: userId, to: resolved.userId, action: resolved.action,
+              });
+            }
+          }
+        }
+      } catch (idErr) {
+        logger.warn('[PostLogin] unified identity resolution failed (non-blocking)', { userId, error: String(idErr) });
+      }
+    }
+
     if (!user) {
       // Race condition: session cookie set before background ensureUserInPostgres completed.
       // Attempt synchronous recovery for social/phone users before giving up.
