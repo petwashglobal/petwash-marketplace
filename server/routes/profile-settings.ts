@@ -9,6 +9,13 @@ import crypto from 'crypto';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import multer from 'multer';
 import { authService } from '../services/AuthService';
+import { isUnifiedVerificationChangeEmailEnabled } from '../lib/feature-flags/unifiedVerification';
+import {
+  UnifiedVerificationError,
+  unifiedVerificationService,
+  type VerificationActor,
+} from '../services/UnifiedVerificationService';
+import { sendVerificationEmailCode } from '../services/VerificationEmailDelivery';
 
 const router = Router();
 const photoUpload = multer({
@@ -40,7 +47,16 @@ const emailChangeRequestSchema = z.object({
 
 const emailChangeConfirmSchema = z.object({
   verificationCode: z.string().length(6),
+  verificationChallengeId: z.string().min(10).max(100).optional(),
 });
+
+function verificationActorFromRequest(req: any, uid: string): VerificationActor {
+  return {
+    userId: uid,
+    ip: req.ip || req.headers['x-forwarded-for'],
+    userAgent: req.headers['user-agent'],
+  };
+}
 
 
 router.get('/settings/profile', async (req, res) => {
@@ -278,10 +294,43 @@ router.post('/settings/email/request-change', async (req, res) => {
       }
     }
 
+    const firestore = admin.firestore();
+
+    if (isUnifiedVerificationChangeEmailEnabled()) {
+      const challenge = await unifiedVerificationService.startChallenge({
+        purpose: 'change_email',
+        channel: 'email',
+        destination: newEmail,
+        payload: {
+          oldEmail: firebaseUser.email || '',
+        },
+        actor: verificationActorFromRequest(req, uid),
+      });
+
+      await firestore.collection('email_change_audit').add({
+        userId: uid,
+        oldEmail: firebaseUser.email,
+        newEmail,
+        status: 'requested',
+        runtime: 'unified_verification',
+        challengeId: challenge.challenge.challengeId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      });
+
+      logger.info('[ProfileSettings] Unified email change requested', { userId: uid, newEmail });
+      return res.json({
+        success: true,
+        message: 'Verification code sent to new email',
+        runtime: 'unified_verification',
+        verificationChallengeId: challenge.challenge.challengeId,
+        expiresAt: challenge.challenge.expiresAt,
+      });
+    }
+
     const verificationCode = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    const firestore = admin.firestore();
 
     // Persist ONLY the HMAC of the code — never the plaintext code at rest.
     await firestore.collection('pending_email_changes').doc(uid).set({
@@ -293,6 +342,16 @@ router.post('/settings/email/request-change', async (req, res) => {
       ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
       userAgent: req.headers['user-agent'] || 'unknown',
     });
+
+    const sent = await sendVerificationEmailCode({
+      to: newEmail,
+      code: verificationCode,
+      purpose: 'change_email',
+    });
+    if (!sent) {
+      await firestore.collection('pending_email_changes').doc(uid).delete();
+      return res.status(503).json({ error: 'Failed to send verification email' });
+    }
 
     await firestore.collection('email_change_audit').add({
       userId: uid,
@@ -315,6 +374,9 @@ router.post('/settings/email/request-change', async (req, res) => {
       expiresAt: expiresAt.toISOString(),
     });
   } catch (error: any) {
+    if (error instanceof UnifiedVerificationError) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.reasonCode });
+    }
     logger.error('[ProfileSettings] Email change request error:', error);
     res.status(500).json({ error: 'Failed to initiate email change' });
   }
@@ -337,8 +399,61 @@ router.post('/settings/email/confirm-change', async (req, res) => {
     }
 
     const { verificationCode } = parseResult.data;
-    
     const firestore = admin.firestore();
+
+    if (isUnifiedVerificationChangeEmailEnabled()) {
+      const { verificationChallengeId } = parseResult.data;
+      if (!verificationChallengeId) {
+        return res.status(400).json({
+          error: 'Verification challenge is required',
+          code: 'VERIFICATION_CHALLENGE_REQUIRED',
+        });
+      }
+
+      const verificationResult = await unifiedVerificationService.verifyChallenge({
+        challengeId: verificationChallengeId,
+        code: verificationCode,
+        actor: verificationActorFromRequest(req, uid),
+      });
+
+      const metadata = (verificationResult.action as any)?.metadata || {};
+      const newEmail = typeof metadata.newEmail === 'string' ? metadata.newEmail : '';
+      if (!newEmail) {
+        return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+      }
+
+      let firebaseUser;
+      try {
+        firebaseUser = await admin.auth().getUser(uid);
+      } catch (e) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      await admin.auth().updateUser(uid, { email: newEmail });
+
+      await db.update(users).set({ email: newEmail }).where(eq(users.id, uid));
+
+      await firestore.collection('email_change_audit').add({
+        userId: uid,
+        oldEmail: metadata.oldEmail || firebaseUser.email,
+        newEmail,
+        status: 'completed',
+        runtime: 'unified_verification',
+        challengeId: verificationChallengeId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+      });
+
+      logger.info('[ProfileSettings] Unified email changed', { userId: uid, oldEmail: metadata.oldEmail || firebaseUser.email, newEmail });
+
+      return res.json({
+        success: true,
+        message: 'Email updated successfully',
+        runtime: 'unified_verification',
+        newEmail,
+      });
+    }
+
     const pendingDoc = await firestore.collection('pending_email_changes').doc(uid).get();
 
     if (!pendingDoc.exists) {
@@ -380,6 +495,9 @@ router.post('/settings/email/confirm-change', async (req, res) => {
       newEmail: pending.newEmail,
     });
   } catch (error: any) {
+    if (error instanceof UnifiedVerificationError) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.reasonCode });
+    }
     logger.error('[ProfileSettings] Email change confirm error:', error);
     res.status(500).json({ error: 'Failed to update email' });
   }

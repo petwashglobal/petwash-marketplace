@@ -5,6 +5,7 @@ import { db } from "../db";
 import { logger } from "../lib/logger";
 import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
 import { twilioSMSService } from "./TwilioSMSService";
+import { sendVerificationEmailCode } from "./VerificationEmailDelivery";
 import { otpEvents, smsEvidence, verificationChallenges, type VerificationChallenge } from "@shared/schema";
 
 export type VerificationChannel = "sms" | "email" | "whatsapp" | "push";
@@ -141,12 +142,19 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
   },
   change_email: {
     purpose: "change_email",
-    migrated: false,
+    migrated: true,
     sensitive: true,
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: unavailableAction,
+    execute: async (challenge) => ({
+      metadata: {
+        newEmail: challenge.destination,
+        oldEmail: (challenge.payload as any)?.oldEmail,
+        action: "change_email",
+        userId: challenge.userId || undefined,
+      },
+    }),
   },
   enable_2fa: {
     purpose: "enable_2fa",
@@ -399,6 +407,26 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
   providerMessageId?: string;
   reasonCode?: string;
 }> {
+  if (challenge.purpose === "change_email" && challenge.channel === "email") {
+    const sent = await sendVerificationEmailCode({
+      to: challenge.destination,
+      code,
+      purpose: "change_email",
+    });
+    if (!sent) {
+      await db.update(verificationChallenges).set({
+        status: "cancelled",
+        updatedAt: new Date(),
+      }).where(eq(verificationChallenges.challengeId, challenge.challengeId));
+      throw new UnifiedVerificationError(
+        "EMAIL_PROVIDER_ERROR",
+        "Failed to send verification email.",
+        503,
+      );
+    }
+    return { queued: true, provider: "email" };
+  }
+
   if (challenge.purpose !== "login" && challenge.purpose !== "signup" && challenge.purpose !== "egift_redeem") {
     return { queued: false, reasonCode: "DELIVERY_NOT_MIGRATED" };
   }
@@ -455,7 +483,12 @@ export class UnifiedVerificationService {
     const destination = normalizeDestination(input.channel, input.destination);
     const codeHash = hashVerificationCode(challengeId, code);
 
-    if (definition.purpose === "login" || definition.purpose === "signup" || definition.purpose === "egift_redeem") {
+    if (
+      definition.purpose === "login"
+      || definition.purpose === "signup"
+      || definition.purpose === "egift_redeem"
+      || definition.purpose === "change_email"
+    ) {
       const [recent] = await db
         .select({ challengeId: verificationChallenges.challengeId })
         .from(verificationChallenges)
