@@ -31,14 +31,15 @@ import {
   getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { getAuthStrategy, createGoogleProvider } from '@/lib/iosAuthHandler';
+import { getAuthStrategy, createGoogleProvider, createAppleProvider } from '@/lib/iosAuthHandler';
+import { signInWithPasskey, registerPasskey, isPasskeySupported, getBiometricMethodName } from '@/auth/passkey';
 import { getApiUrl } from '@/lib/apiConfig';
 import { Layout } from '@/components/Layout';
 import { type Language } from '@/lib/i18n';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { logger } from '@/lib/logger';
-import { Phone, Lock, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+import { Phone, Lock, ArrowRight, Loader2, ArrowLeft, ScanFace } from 'lucide-react';
 
 interface SmartSignInProps {
   language: Language;
@@ -51,7 +52,8 @@ type Step =
   | 'password'      // returning email user → enter password
   | 'newAccount'    // brand-new email user → set password + required details
   | 'phoneCode'     // phone user → enter the SMS code
-  | 'newDetails';   // brand-new phone/social user → required details (name + DOB + terms)
+  | 'newDetails'    // brand-new phone/social user → required details (name + DOB + terms)
+  | 'offerPasskey'; // after a NEW account → offer to save Face ID / passkey for next time
 
 const SUPPORT_INTENT_DEFAULT = '/dashboard';
 
@@ -159,6 +161,52 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
     }
   }
 
+  // ── Apple: same direct one-tap branch as Google (name/email come from Apple). ──
+  async function continueApple() {
+    setErr(null); setBusy(true);
+    try {
+      const provider = createAppleProvider();
+      if (getAuthStrategy() === 'redirect') { await signInWithRedirect(auth, provider); return; }
+      const result = await signInWithPopup(auth, provider);
+      const isNew = !!getAdditionalUserInfo(result)?.isNewUser;
+      await createSessionAndRoute(isNew);
+    } catch (e: any) {
+      if (e?.code === 'auth/popup-closed-by-user') { setBusy(false); return; }
+      logger.error('[SmartSignIn] apple error', e);
+      fail(tr('Apple sign-in did not complete. Try email or phone.', 'התחברות Apple לא הושלמה. נסה אימייל או נייד.'));
+    }
+  }
+
+  // ── Face ID / passkey: RETURNING users only (a passkey binds to an existing account). ──
+  async function continueFaceID() {
+    setErr(null); setBusy(true);
+    try {
+      const r = await signInWithPasskey();
+      if (!r.success) { return fail(r.error || tr('Face ID sign-in failed. Try another method.', 'התחברות Face ID נכשלה. נסה שיטה אחרת.')); }
+      await createSessionAndRoute(false); // a passkey already belongs to an existing account
+    } catch (e) {
+      logger.error('[SmartSignIn] passkey error', e);
+      fail(tr('Face ID sign-in failed. Try another method.', 'התחברות Face ID נכשלה. נסה שיטה אחרת.'));
+    }
+  }
+
+  // After a NEW account is created → offer to save Face ID / passkey for one-glance returns.
+  function goAfterNew() {
+    if (isPasskeySupported()) { setStep('offerPasskey'); setBusy(false); }
+    else navigate(SUPPORT_INTENT_DEFAULT);
+  }
+
+  async function savePasskey() {
+    setBusy(true);
+    try {
+      const idToken = await auth.currentUser!.getIdToken();
+      await registerPasskey(idToken, getBiometricMethodName());
+    } catch (e) {
+      logger.warn('[SmartSignIn] passkey register failed (non-blocking)', { e });
+    }
+    navigate(SUPPORT_INTENT_DEFAULT);
+  }
+
   // ── Phone OTP: same proven endpoint chain as the existing screen. ──
   async function sendPhoneCode() {
     setErr(null);
@@ -211,7 +259,7 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
     setBusy(true);
     try {
       await persistNewProfile();
-      navigate(SUPPORT_INTENT_DEFAULT);
+      goAfterNew();
     } catch (e) {
       logger.error('[SmartSignIn] save profile error', e);
       fail(tr('Could not save your details. Please try again.', 'שמירת הפרטים נכשלה. נסה שוב.'));
@@ -263,6 +311,18 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {tr('Continue with Google', 'המשך עם Google')}
               </button>
+
+              <button onClick={continueApple} disabled={busy}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-gray-50">
+                {tr('Continue with Apple', 'המשך עם Apple')}
+              </button>
+
+              {isPasskeySupported() && (
+                <button onClick={continueFaceID} disabled={busy}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-gray-50">
+                  <ScanFace className="w-4 h-4" /> {tr(`Sign in with ${getBiometricMethodName()}`, `התחבר עם ${getBiometricMethodName()}`)}
+                </button>
+              )}
 
               <button onClick={() => { setErr(null); setPhoneEntry(true); }}
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-gray-50">
@@ -339,6 +399,23 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
               </button>
               {busy && <Loader2 className="w-4 h-4 animate-spin" />}
               <span className="hidden">{code}</span>
+            </div>
+          )}
+
+          {/* STEP: offer to save Face ID / passkey after a NEW account (the "save to device" you asked for) */}
+          {step === 'offerPasskey' && (
+            <div className="space-y-4 text-center">
+              <ScanFace className="w-10 h-10 mx-auto text-black" strokeWidth={1.5} />
+              <p className="luxury-text-body">
+                {tr(`Save ${getBiometricMethodName()} for one-tap sign-in next time?`, `לשמור ${getBiometricMethodName()} לכניסה מהירה בפעם הבאה?`)}
+              </p>
+              <button onClick={savePasskey} disabled={busy}
+                className="w-full rounded-xl px-4 py-3 bg-black text-white text-sm font-medium">
+                {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : tr(`Set up ${getBiometricMethodName()}`, `הגדר ${getBiometricMethodName()}`)}
+              </button>
+              <button onClick={() => navigate(SUPPORT_INTENT_DEFAULT)} className="text-xs text-gray-500 underline">
+                {tr('Maybe later', 'אולי מאוחר יותר')}
+              </button>
             </div>
           )}
         </div>
