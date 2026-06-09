@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  isUnifiedVerificationChangeEmailEnabled,
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationEnabled,
   isUnifiedVerificationEgiftRedeemEnabled,
   isUnifiedVerificationSignupEnabled,
+  UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME,
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
@@ -24,6 +26,7 @@ describe("unified verification runtime guard", () => {
     expect(UNIFIED_VERIFICATION_LOGIN_FLAG_NAME).toBe("UNIFIED_VERIFICATION_LOGIN_ENABLED");
     expect(UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME).toBe("UNIFIED_VERIFICATION_SIGNUP_ENABLED");
     expect(UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME).toBe("UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED");
+    expect(UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME).toBe("UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED");
     expect(isUnifiedVerificationEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isUnifiedVerificationEnabled({ UNIFIED_VERIFICATION_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -41,6 +44,11 @@ describe("unified verification runtime guard", () => {
     expect(isUnifiedVerificationEgiftRedeemEnabled({
       UNIFIED_VERIFICATION_ENABLED: "true",
       UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED: "true",
+    } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isUnifiedVerificationChangeEmailEnabled({ UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(isUnifiedVerificationChangeEmailEnabled({
+      UNIFIED_VERIFICATION_ENABLED: "true",
+      UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED: "true",
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
@@ -111,5 +119,24 @@ describe("unified verification runtime guard", () => {
     expect(clientPage).toContain("purpose: 'egift_redeem'");
     expect(clientPage).toContain("verificationChallengeId");
     expect(clientPage).toContain("verificationCode");
+  });
+
+  it("bridges change-email through unified verification behind the change-email flag", () => {
+    const profileRoute = source("server/routes/profile-settings.ts");
+    const accountPage = source("client/src/pages/MyAccount.tsx");
+    const statusRoute = source("server/routes/verification.ts");
+    const service = source("server/services/UnifiedVerificationService.ts");
+
+    expect(statusRoute).toContain("UNIFIED_VERIFICATION_CHANGE_EMAIL_FLAG_NAME");
+    expect(statusRoute).toContain("changeEmail");
+    expect(service).toContain('purpose: "change_email"');
+    expect(service).toContain("sendVerificationEmailCode");
+    expect(service).toContain('migrated: true');
+    expect(profileRoute).toContain("isUnifiedVerificationChangeEmailEnabled");
+    expect(profileRoute).toContain("purpose: 'change_email'");
+    expect(profileRoute).toContain("channel: 'email'");
+    expect(profileRoute).toContain("unifiedVerificationService.verifyChallenge");
+    expect(accountPage).toContain("emailVerificationChallengeId");
+    expect(accountPage).toContain("verificationChallengeId: emailVerificationChallengeId || undefined");
   });
 });

@@ -29,8 +29,9 @@ payments (Sections 01–10). Code audit 2026-06-09 found the real state:
 | `PR-VERIF-2` | runtime | `UnifiedVerificationService` + **purpose registry** + `POST /verification/start` & `/verify` where **verify executes the bound action**. Behind `UNIFIED_VERIFICATION_ENABLED` (default OFF). No existing flow touched | medium | **DONE** — PR #631 merged and deployed |
 | `PR-VERIF-3` | runtime | Migrate **login** flow to the service behind `UNIFIED_VERIFICATION_LOGIN_ENABLED`; old path stays when flag is off. QA iPhone Safari | medium | **DONE** — PR #634 merged and deployed |
 | `PR-VERIF-4` | runtime | Migrate **signup phone OTP** send/resend/verify to the service behind `UNIFIED_VERIFICATION_SIGNUP_ENABLED`; old path stays when flag is off | medium | **DONE** — PR #636 merged and deployed |
-| `PR-VERIF-5` | runtime | Migrate **e-gift wallet activation** to the service behind `UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED`; activation still works exactly as before while flag is off | medium | CEO — in progress on `codex/unified-verification-egift` |
-| `PR-VERIF-6..8` | runtime | Migrate one flow per PR: change-email → enable/disable 2FA → close-account. Each independently flagged + reversible | medium | CEO per PR |
+| `PR-VERIF-5` | runtime | Migrate **e-gift wallet activation** to the service behind `UNIFIED_VERIFICATION_EGIFT_REDEEM_ENABLED`; activation still works exactly as before while flag is off | medium | **DONE** — PR #637 merged and deployed |
+| `PR-VERIF-6` | runtime | Migrate **change-email** to the service behind `UNIFIED_VERIFICATION_CHANGE_EMAIL_ENABLED`; legacy route still sends and verifies its hashed Firestore OTP while flag is off | medium | CEO — in progress on `codex/unified-verification-change-email` |
+| `PR-VERIF-7..8` | runtime | Migrate one flow per PR: enable/disable 2FA → close-account. Each independently flagged + reversible | medium | CEO per PR |
 | `PR-VERIF-9` | cleanup | Delete the 4 legacy OTP impls once every flow is cut over and stable | medium | CEO |
 
 ## Hard constraints

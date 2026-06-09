@@ -456,6 +456,7 @@ export default function MyAccount() {
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [emailVerificationCode, setEmailVerificationCode] = useState('');
+  const [emailVerificationChallengeId, setEmailVerificationChallengeId] = useState('');
   const [emailChangeStep, setEmailChangeStep] = useState<'request' | 'verify'>('request');
   const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
   const [deleteAcknowledgements, setDeleteAcknowledgements] = useState({
@@ -979,7 +980,8 @@ export default function MyAccount() {
       const res = await apiRequest('POST', '/api/user/settings/email/request-change', data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setEmailVerificationChallengeId(data.verificationChallengeId || '');
       setEmailChangeStep('verify');
       toast({
         title: isHebrew ? 'קוד אימות נשלח' : 'Verification Code Sent',
@@ -1005,13 +1007,17 @@ export default function MyAccount() {
 
   const confirmEmailChangeMutation = useMutation({
     mutationFn: async (data: { verificationCode: string }) => {
-      const res = await apiRequest('POST', '/api/user/settings/email/confirm-change', data);
+      const res = await apiRequest('POST', '/api/user/settings/email/confirm-change', {
+        ...data,
+        verificationChallengeId: emailVerificationChallengeId || undefined,
+      });
       return res.json();
     },
     onSuccess: (data) => {
       setShowEmailChangeDialog(false);
       setNewEmail('');
       setEmailVerificationCode('');
+      setEmailVerificationChallengeId('');
       setEmailChangeStep('request');
       queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings/profile'] });
@@ -3092,6 +3098,7 @@ export default function MyAccount() {
               if (!open) {
                 setNewEmail('');
                 setEmailVerificationCode('');
+                setEmailVerificationChallengeId('');
                 setEmailChangeStep('request');
               }
             }}>
@@ -3185,6 +3192,7 @@ export default function MyAccount() {
                       setShowEmailChangeDialog(false);
                       setNewEmail('');
                       setEmailVerificationCode('');
+                      setEmailVerificationChallengeId('');
                       setEmailChangeStep('request');
                     }}
                     className="border-gray-200 text-gray-600 hover:bg-white"
