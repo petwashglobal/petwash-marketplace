@@ -12,6 +12,7 @@ import { db } from '../db';
 import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { IsraeliInvoiceGenerator } from './IsraeliInvoiceGenerator';
+import { getDeliveryOptions } from './shop/DeliveryRouter';
 import { emailService } from '../email';
 import { TwilioSMSService } from './TwilioSMSService';
 import { v4 as uuidv4 } from 'uuid';
@@ -254,7 +255,7 @@ export class ShopService {
       };
   }
 
-  async addToCart(uid: string, productId: number, quantity: number, variantId?: number) {
+  async addToCart(uid: string, productId: number, quantity: number, variantId?: number, personalization?: Record<string, unknown> | null) {
         const product = await this.getProduct(productId);
         if (!product) throw new Error('Product not found');
         if (product.stockQuantity !== null && product.stockQuantity < quantity) {
@@ -262,9 +263,10 @@ export class ShopService {
         }
 
       const cart = await this.getOrCreateCart(uid);
+      const personalizationJson = personalization ? JSON.stringify(personalization) : null;
 
-      // Check if already in cart
-      const existing = await db.execute(sql`
+      // Personalised (engraved) lines are unique per custom text — never merge quantities.
+      const existing = personalizationJson ? { rows: [] as any[] } : await db.execute(sql`
             SELECT * FROM shop_cart_items
                   WHERE cart_id = ${cart.id} AND product_id = ${productId}
                           AND (variant_id = ${variantId ?? null} OR (variant_id IS NULL AND ${variantId ?? null} IS NULL))
@@ -278,8 +280,8 @@ export class ShopService {
                                     `);
       } else {
               await db.execute(sql`
-                      INSERT INTO shop_cart_items (cart_id, product_id, variant_id, quantity, created_at, updated_at)
-                              VALUES (${cart.id}, ${productId}, ${variantId ?? null}, ${quantity}, NOW(), NOW())
+                      INSERT INTO shop_cart_items (cart_id, product_id, variant_id, quantity, personalization, created_at, updated_at)
+                              VALUES (${cart.id}, ${productId}, ${variantId ?? null}, ${quantity}, ${personalizationJson}, NOW(), NOW())
                                     `);
       }
 
@@ -366,7 +368,7 @@ export class ShopService {
 
   // ─── Delivery ─────────────────────────────────────────────────────────────
 
-  estimateDelivery(params: { city: string; zipCode: string; totalGrams: number }) {
+  estimateDelivery(params: { city: string; zipCode: string; totalGrams: number; subtotalCents?: number; wantsFast?: boolean }) {
         const cityNorm = (params.city || '').trim().toLowerCase();
         const hasExpress = EXPRESS_CITIES.has(cityNorm) || EXPRESS_CITIES.has(params.city.trim());
 
@@ -377,7 +379,19 @@ export class ShopService {
                 return r.toISOString().split('T')[0];
         };
 
+      // Carrier-aware options (Israel Post default / Wolt opt-in) via DeliveryRouter.
+      const options = getDeliveryOptions({
+              city: params.city,
+              postcode: params.zipCode || null,
+              totalGrams: params.totalGrams,
+              subtotalCents: params.subtotalCents ?? 0,
+              wantsFast: params.wantsFast,
+      });
+
       return {
+              // Carrier options are the source of truth going forward.
+              options,
+              // Legacy shape kept for backward compatibility with existing callers.
               standard: {
                         cents: DELIVERY_RATES.STANDARD_CENTS,
                         estimatedDate: addDays(today, DELIVERY_RATES.STANDARD_DAYS),

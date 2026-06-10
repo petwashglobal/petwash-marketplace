@@ -87,6 +87,12 @@ const AddToCartSchema = z.object({
     productId: z.number().int().positive(),
     quantity: z.number().int().min(1).max(99),
     variantId: z.number().int().positive().optional(),
+    // Engraving / personalisation (e.g. pet name + phone on a collar or ID tag).
+    personalization: z.object({
+        engravingText: z.string().trim().max(40).optional(),
+        engravingPhone: z.string().trim().max(30).optional(),
+        notes: z.string().trim().max(140).optional(),
+    }).strict().optional(),
 });
 
 const UpdateCartItemSchema = z.object({
@@ -170,7 +176,9 @@ router.get('/delivery/estimate', async (req: Request, res: Response) => {
           const city = (req.query.city as string) || '';
           const zipCode = (req.query.zipCode as string) || '';
           const totalGrams = parseInt((req.query.totalGrams as string) || '0');
-          const estimate = shopService.estimateDelivery({ city, zipCode, totalGrams });
+          const subtotalCents = parseInt((req.query.subtotalCents as string) || '0');
+          const wantsFast = req.query.wantsFast === 'true';
+          const estimate = shopService.estimateDelivery({ city, zipCode, totalGrams, subtotalCents, wantsFast });
           res.json(estimate);
     } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -202,7 +210,7 @@ router.post('/cart/items', apiLimiter, requireAuth, async (req: Request, res: Re
     try {
           const uid = (req as any).user.uid;
           const body = AddToCartSchema.parse(req.body);
-          const cart = await shopService.addToCart(uid, body.productId, body.quantity, body.variantId);
+          const cart = await shopService.addToCart(uid, body.productId, body.quantity, body.variantId, body.personalization ?? null);
           res.status(201).json(cart);
     } catch (err: any) {
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: err.errors });
