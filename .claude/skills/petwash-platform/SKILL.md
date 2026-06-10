@@ -394,7 +394,7 @@ PetWash is a premium brand. Every UI surface must look it.
 
 > Update this section after every merge. Date stamp the update.
 
-**Last updated: 2026-05-23**
+**Last updated: 2026-06-10**
 
 ### Merged (in roadmap order)
 - **PR-A** (#76) — Auth P0 fixes
@@ -407,8 +407,12 @@ PetWash is a premium brand. Every UI surface must look it.
 - **PR-MOBILE-SCAFFOLD** (#372) — Expo submission scaffold for App Store + Play Store (bundle id `il.co.petwash.staff`, NSFaceIDUsageDescription, Apple Privacy Manifest, EAS build/submit profiles, asset specs). App.tsx auth/biometric runtime untouched. Companion: `docs/finance/sumit-readiness-check-2026-05-23.md` documenting the 5 sequenced PRs needed before a real sumit.co.il send.
 - **PR-S5c + PR-OCR-1** (#375) — Israel-tax compliance pair. PR-S5c: 3-way Osek classification (`patur` / `murshe` / `chevra` / `unknown`) on suppliers (migration 0027 + 4 new columns + CHECK constraint), new `osek_vat_mismatch` screening rule (HARD FAIL when a patur supplier invoices VAT > 0 — protects against un-deductible VAT loss), `osek_classification_unknown` warning so finance must classify before approval, full VAT attribution matrix doc covering K9000 100%-revenue model vs marketplace 15%-commission model with worked numeric examples. PR-OCR-1: SHAAM allocation number (מספר הקצאה) regex extraction from receipt OCR text (Hebrew + English label variants, 9–12 digit capture, 18 vitest cases). No wallet/escrow/agent-model touch.
 
+- **Trust & compliance batch** (#623–#628, 2026-06-08) — organic-claim truth-up across site + skill (pet-formulated APVMA-GMP wording, never "certified organic"), retired contact-email fixes, lenient migrations past data conflicts, public Trust & Certifications page (`/trust`), blueprint-vs-roadmap reconciliation doc.
+- **Unified verification + identity track** (#629–#645, 2026-06-08/09) — Section-11 execution breakdown (#629); unified verification challenge schema (#630) + runtime guard (#631); bridges: login SMS (#634), signup OTP (#636), e-gift activation (#637), change-email (#639), close-account (#640), 2FA reconcile (#641), payout actions (#642); `identity_accounts` foundation table, additive flag-off (#635); `loginOrLink` linking service, flag-off not wired (#638); identifier-first SmartSignIn, flag-off (#643); dead-auth cleanup — 5 unused OAuth consent dialogs (#632), misleading Gmail inbox-scanner removed (#633), fake button + Replit-era auth pages deleted (#645).
+- **Shop track — physical goods** (#646–#656, 2026-06-09/10) — 7 shop tables, additive (#646); flag-gated luxury storefront wired to `/api/shop/*` (#647); example bilingual catalog seed — PLACEHOLDER data, must be replaced before launch (#649); Wolt-vs-Israel-Post delivery router + engraving personalisation (#650, #651); Israeli delivery calendar — holidays/weekends/legal (#652); bespoke engraving panel + international mobile (#654); lawful checkout — total-before-pay disclosure (§17a), delivery-address capture, `/shop/orders` page (#656). Note: #655 was an empty work-claim PR merged by mistake — zero file changes, harmless. **Shop is deployed DARK:** `VITE_SHOP_LIVE_ENABLED` (frontend, build-time) and `SHOP_ENABLED` (backend env) are both OFF in production; flipping them is the launch switch and requires a real catalog + launch checklist first.
+
 ### Open PRs
-- None.
+- **#657** — feat(shop): returns & cancellation disclosure — goods + engraving exemption (CLO policy doc `docs/legal/shop-returns-cancellation-policy-2026-06-10.md` + checkout/engraving-panel disclosure UI). Awaiting CEO merge.
 
 ### Parked branches (local commits, awaiting approval to push)
 - `claude/pr-20-coworker-scaffold` (commit `971c98b78`) — AI Coworker Agents scaffold. Read-only, no Gemini calls, no UI, returns `wired:false` for all 6 families. Awaiting "Approve PR-20 push".
