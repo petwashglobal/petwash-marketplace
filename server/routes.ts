@@ -11256,6 +11256,10 @@ self.addEventListener('notificationclick', (event) => {
   const seoRoutes = await import('./routes/seo');
   app.use(seoRoutes.default);
 
+  // Public station directory (read-only, marketing-safe fields only)
+  const publicStationsRoutes = await import('./routes/public-stations');
+  app.use('/api/public', publicStationsRoutes.default);
+
   // ========================================================================
   // 🔌 NEWLY CONNECTED ROUTES - All Missing Infrastructure Wired Up!
   // ========================================================================
