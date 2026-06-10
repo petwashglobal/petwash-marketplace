@@ -1,8 +1,8 @@
 import { Layout } from '@/components/Layout';
 import { useEffect, useState, type ReactNode } from 'react';
 import { type Language } from '@/lib/i18n';
-import {
 import { useSEO, pageSEO } from '@/lib/seo';
+import {
   ShieldCheck,
   Cpu,
   BadgeCheck,

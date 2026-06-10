@@ -17,8 +17,8 @@
 
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import {
 import { useSEO, pageSEO } from '@/lib/seo';
+import {
   Tag, Heart, Sparkles, ShoppingBag, Mail, ArrowRight, Gift,
   Award, CheckCircle2,
 } from 'lucide-react';
