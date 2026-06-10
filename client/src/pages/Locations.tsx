@@ -10,8 +10,10 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Phone, Clock, Waves } from "lucide-react";
+import { MapPin, Navigation, Clock, Waves, Loader2, Accessibility, Car } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
+import { getApiUrl } from '@/lib/apiConfig';
+import { logger } from '@/lib/logger';
 
 export interface PublicStation {
   stationCode: string;
@@ -34,14 +36,13 @@ export interface PublicStation {
 
 export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls: string }> = {
   active: { en: 'Open', he: 'פעילה', cls: 'text-emerald-600' },
-  coming_soon: { en: 'Opening soon', he: 'נפתחת בקרוב', cls: 'text-amber-600' },
   maintenance: { en: 'In maintenance', he: 'בתחזוקה', cls: 'text-gray-500' },
   offline: { en: 'Temporarily unavailable', he: 'לא זמינה זמנית', cls: 'text-gray-400' },
 };
 
 export default function Locations() {
   useSEO(pageSEO.locations);
-  const [, setRouterLocation] = useLocation();
+  const [, navigate] = useLocation();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [stations, setStations] = useState<PublicStation[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);

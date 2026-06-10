@@ -154,19 +154,7 @@ export default function StationPage({ slug }: StationPageProps) {
           <p className={`text-sm font-medium mt-2 ${status.cls}`}>{status.he} · {status.en}</p>
         </div>
 
-        {station.operationalStatus === 'coming_soon' && (
-          // Pre-launch page: indexable early so local rankings are warm by
-          // opening day. States "opening soon" plainly — no invented dates.
-          <div className="relative rounded-2xl p-[1.5px] mb-8 bg-gradient-to-br from-amber-300 via-yellow-100 to-amber-400">
-            <div className="rounded-2xl bg-white p-5 text-center">
-              <p className="text-sm font-medium tracking-wide">
-                ✨ נפתחת בקרוב · Opening soon
-              </p>
-            </div>
-          </div>
-        )}
-
-        {station.operationalStatus !== 'active' && station.operationalStatus !== 'coming_soon' && (
+        {station.operationalStatus !== 'active' && (
           <div className="luxury-glass-card p-5 mb-8">
             <p className="luxury-text-body text-sm">
               {station.operationalStatus === 'maintenance'
