@@ -68,15 +68,22 @@ router.get('/sitemap.xml', async (req, res) => {
     { url: '/k9000', changefreq: 'weekly', priority: '0.8' },
     { url: '/groomers', changefreq: 'weekly', priority: '0.7' },
     { url: '/booking', changefreq: 'weekly', priority: '0.8' },
-    { url: '/signin', changefreq: 'monthly', priority: '0.5' },
-    { url: '/signup', changefreq: 'monthly', priority: '0.5' },
+    { url: '/prestige-pass', changefreq: 'weekly', priority: '0.8' },
+    { url: '/academy', changefreq: 'weekly', priority: '0.7' },
+    { url: '/buy-gift-card', changefreq: 'weekly', priority: '0.7' },
+    { url: '/trust', changefreq: 'monthly', priority: '0.7' },
+    { url: '/shop', changefreq: 'weekly', priority: '0.6' },
+    { url: '/careers', changefreq: 'monthly', priority: '0.5' },
     { url: '/privacy', changefreq: 'monthly', priority: '0.4' },
     { url: '/terms', changefreq: 'monthly', priority: '0.4' },
     { url: '/accessibility', changefreq: 'monthly', priority: '0.4' },
+    { url: '/accessibility-statement', changefreq: 'monthly', priority: '0.3' },
   ];
 
-  // Pull active stations from DB so each station gets its own indexable URL
-  const stations = await fetchActiveStationSlugs();
+  // Station URLs are EXCLUDED until the /stations/:slug route exists in
+  // App.tsx — a sitemap pointing crawlers at 404s is worse than a thin one.
+  // fetchActiveStationSlugs() stays for the station-pages PR to re-enable.
+  const stations: { slug: string; name: string }[] = [];
 
   const staticEntries = staticPages
     .map(p => buildUrlEntry(baseUrl, p.url, p.changefreq, p.priority))

@@ -409,6 +409,12 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                               </div>
                             </div>
                           )}
+
+                          {/* §14ג(ד)(4) disclosure BEFORE add-to-cart: custom-made goods
+                              are exempt from the distance-sale cancellation right. */}
+                          <p className="text-[9px] text-center tracking-wide text-amber-200/50">
+                            {tr('Custom engraved · final sale (defects excepted)', 'חריטה אישית · ללא החזרה (למעט פגם)')}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -530,8 +536,29 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                   )}
 
                   {renderTotals(true)}
+
+                  {/* Returns/cancellation disclosure BEFORE payment — required for
+                      distance sales (§14ג(ב)) and to enforce the custom-goods
+                      exemption. Full policy: docs/legal/shop-returns-cancellation-
+                      policy-2026-06-10.md */}
+                  <details className="mt-4 text-xs text-gray-500">
+                    <summary className="cursor-pointer select-none font-medium text-gray-600">
+                      {tr('Cancellation & returns', 'מדיניות ביטול והחזרות')}
+                    </summary>
+                    <ul className="mt-2 space-y-1 ps-4 list-disc">
+                      <li>{tr('Before dispatch — cancel from “My orders” for a full refund, no fee.',
+                              'לפני המשלוח — ביטול מ"ההזמנות שלי" בהחזר מלא, ללא דמי ביטול.')}</li>
+                      <li>{tr('After delivery — 14 days per the Consumer Protection Law; a cancellation fee of 5% or ₪100 (the lower) may apply on change of mind.',
+                              'לאחר המסירה — 14 יום בהתאם לחוק הגנת הצרכן; בביטול שאינו עקב פגם ייתכנו דמי ביטול של 5% או ₪100, הנמוך מביניהם.')}</li>
+                      <li>{tr('Custom-engraved items and perishable treats — final sale by law.',
+                              'פריטים בחריטה אישית וחטיפים פסידים — ללא זכות ביטול על פי חוק.')}</li>
+                      <li>{tr('Defective or wrong item — replacement or full refund, on us. Always.',
+                              'פריט פגום או שגוי — החלפה או החזר מלא, על חשבוננו. תמיד.')}</li>
+                    </ul>
+                  </details>
+
                   <button onClick={placeOrder} disabled={busy || !addressId || payTotalCents === null}
-                    className="w-full mt-6 rounded-xl px-4 py-3 bg-black text-white text-sm font-medium disabled:opacity-40">
+                    className="w-full mt-4 rounded-xl px-4 py-3 bg-black text-white text-sm font-medium disabled:opacity-40">
                     {busy
                       ? <Loader2 className="w-4 h-4 animate-spin inline" />
                       : tr(`Pay ${payTotalCents !== null ? shekel(payTotalCents) : ''} from wallet`,
