@@ -36,6 +36,7 @@ export interface PublicStation {
 
 export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls: string }> = {
   active: { en: 'Open', he: 'פעילה', cls: 'text-emerald-600' },
+  coming_soon: { en: 'Opening soon', he: 'נפתחת בקרוב', cls: 'text-amber-600' },
   maintenance: { en: 'In maintenance', he: 'בתחזוקה', cls: 'text-gray-500' },
   offline: { en: 'Temporarily unavailable', he: 'לא זמינה זמנית', cls: 'text-gray-400' },
 };
