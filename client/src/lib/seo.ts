@@ -16,9 +16,9 @@ export interface SEOConfig {
 
 // Default SEO configuration
 export const defaultSEO: SEOConfig = {
-  title: '⁦Pet Wash™⁩ - Premium Natural Pet Care | שטיפת חיות מחמד טבעית פרימיום',
-  description: 'Israel\'s leading premium natural pet washing service. 7-tier luxury loyalty program (Bronze→Royal, up to 50% discount), AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד טבעי פרימיום מוביל בישראל עם תוכנית נאמנות 7 רמות יוקרה.',
-  keywords: 'pet wash, dog wash, cat wash, natural pet care, Israel pet services, שטיפת כלבים, שטיפת חיות מחמד, שטיפה טבעית, כלבים ישראל',
+  title: '⁦Pet Wash™⁩ — Premium Self-Service Dog Wash | שטיפת כלבים בשירות עצמי',
+  description: 'Premium K9000 self-service dog wash stations in Israel, plus grooming, dog-walking and pet-sitting bookings. Pet-formulated products, loyalty rewards, Apple/Google Wallet. שטיפת כלבים בשירות עצמי בתחנות K9000 — וגם גרומינג, דוגווקר ופנסיון.',
+  keywords: 'self-service dog wash israel, pet wash, dog wash, K9000, Israel pet services, שטיפת כלבים בשירות עצמי, שטיפת כלבים, מקלחת לכלב, כלבים ישראל',
   ogImage: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
   ogType: 'website',
   locale: 'he_IL',
@@ -27,21 +27,21 @@ export const defaultSEO: SEOConfig = {
 // Page-specific SEO configurations
 export const pageSEO: Record<string, SEOConfig> = {
   home: {
-    title: '⁦Pet Wash™⁩ - Premium Natural Pet Care | שטיפת חיות מחמד טבעית',
-    description: 'Israel\'s #1 premium natural pet washing service with K9000 smart stations. Book online, earn loyalty rewards, get weather-based recommendations. שירות שטיפת חיות מחמד טבעי מוביל בישראל עם תחנות חכמות K9000.',
-    keywords: 'pet wash Israel, natural dog wash, K9000, smart pet care, שטיפת כלבים טבעית, תחנות שטיפה חכמות',
+    title: '⁦Pet Wash™⁩ — Premium Self-Service Dog Wash | שטיפת כלבים בשירות עצמי',
+    description: 'Premium self-service dog wash at K9000 stations — easy, safe, clean. Book online and earn loyalty rewards. שטיפת כלבים בשירות עצמי בתחנות K9000 — קל, בטוח ונקי. הזמנה אונליין וצבירת נקודות נאמנות.',
+    keywords: 'pet wash Israel, self-service dog wash, K9000, smart pet care, שטיפת כלבים בשירות עצמי, תחנות שטיפה חכמות',
     ogType: 'website',
   },
   pricing: {
     title: 'Pricing & Packages - ⁦Pet Wash™⁩ | מחירים וחבילות',
-    description: 'Transparent pricing for premium natural pet washing. 7-tier luxury loyalty program (Bronze to Royal) with up to 50% discounts. Gift cards available. מחירים שקופים לשטיפת חיות מחמד טבעית עם הנחות עד 50%.',
+    description: 'Transparent, all-inclusive pricing for premium pet washing — VAT included, no surprises. Loyalty tier discounts and gift cards available. מחירים שקופים כולל מע״מ, הנחות נאמנות ושוברי מתנה.',
     keywords: 'pet wash prices, dog wash cost, loyalty discounts, מחיר שטיפת כלבים, הנחות נאמנות',
     ogType: 'website',
   },
   about: {
     title: 'About Us - ⁦Pet Wash™⁩ | אודות',
-    description: 'Learn about Israel\'s leading premium natural pet care platform. Our mission: banking-grade security, natural products, AI-powered service. למד על פלטפורמת טיפול בחיות מחמד טבעית מובילה בישראל.',
-    keywords: 'about pet wash, natural pet care, Israel pet company, אודות שטיפת חיות מחמד',
+    description: 'Premium urban pet-care infrastructure: K9000 self-service wash stations and a vetted pet-care marketplace, built for modern apartment living. תשתית טיפול בחיות מחמד — תחנות שטיפה בשירות עצמי ומרקטפלייס לשירותי חיות מחמד.',
+    keywords: 'about pet wash, pet care infrastructure, Israel pet company, אודות שטיפת חיות מחמד',
     ogType: 'website',
   },
   contact: {
@@ -76,39 +76,39 @@ export const pageSEO: Record<string, SEOConfig> = {
     ogType: 'website',
   },
   k9000: {
-    title: '⁦K9000™⁩ IoT Pet Wash Stations - ⁦Pet Wash™⁩ | תחנות שטיפה חכמות',
-    description: 'Smart IoT pet washing stations with natural products. Self-service 24/7, AI-powered monitoring, contactless payment, real-time status. תחנות שטיפה חכמות עם מוצרים טבעיים, זמינות 24/7.',
-    keywords: 'K9000, IoT pet wash, smart pet station, self-service dog wash, תחנות שטיפה חכמות, כביסת כלבים עצמית',
+    title: '⁦K9000™⁩ Self-Service Dog Wash Stations - ⁦Pet Wash™⁩ | שטיפת כלבים בשירות עצמי',
+    description: 'Premium K9000 self-service dog wash stations — pet-formulated products, contactless payment, easy, safe and clean. שטיפת כלבים בשירות עצמי בתחנות K9000 — קל, בטוח ונקי, מוצרים המותאמים לחיות מחמד.',
+    keywords: 'K9000, self-service dog wash, smart pet station, שטיפת כלבים בשירות עצמי, תחנות שטיפה חכמות, מקלחת לכלב',
     ogType: 'product',
   },
   walkMyPet: {
-    title: '⁦Walk My Pet™⁩ - Professional Dog Walking Services | שירותי הליכה מקצועיים',
-    description: 'Book certified dog walkers in Israel. GPS tracking, live updates, insurance coverage, instant booking. Starting from ₪50/walk. הזמן מטיילי כלבים מוסמכים עם מעקב GPS.',
-    keywords: 'dog walking Israel, pet walker, GPS tracking, professional dog walker, מטיילי כלבים, שירות הליכה',
+    title: '⁦Walk My Pet™⁩ - Dog Walking Bookings | הזמנת דוגווקר',
+    description: 'Book vetted dog walkers in Israel with easy online booking and live walk updates. הזמינו דוגווקר בישראל — הזמנה אונליין פשוטה ועדכונים מהטיול.',
+    keywords: 'dog walking Israel, pet walker, dog walker booking, דוגווקר, מטיילי כלבים, שירות הליכה',
     ogType: 'website',
   },
   sitterSuite: {
-    title: '⁦The Sitter Suite™⁩ - Premium Pet Sitting Services | שירותי פנסיון איכותיים',
-    description: 'Trusted pet sitters for overnight care, daily visits, and vacation boarding. Background-checked, insured, 72-hour escrow protection. From ₪120/day. פנסיון איכותי עם שמירה 24/7.',
+    title: '⁦The Sitter Suite™⁩ - Pet Sitting Bookings | פנסיון ושמירה לחיות מחמד',
+    description: 'Book vetted pet sitters for overnight care, daily visits and boarding — with escrow-protected payments. הזמינו פנסיון ושמירה לחיות מחמד עם תשלום מאובטח בנאמנות.',
     keywords: 'pet sitting Israel, pet boarding, overnight pet care, dog sitter, פנסיון כלבים, שמירה על חיות מחמד',
     ogType: 'website',
   },
   petTrek: {
-    title: '⁦PetTrek™⁩ - Safe Pet Transportation Services | שירותי הסעות בטוחות',
-    description: 'Professional pet transport across Israel. Vet visits, airport transfers, inter-city travel. Climate-controlled vehicles, real-time tracking, certified drivers. הסעות מקצועיות עם מעקב בזמן אמת.',
+    title: '⁦PetTrek™⁩ - Pet Transportation | הסעות לחיות מחמד',
+    description: 'Pet transport bookings across Israel — vet visits, airport transfers and inter-city travel. הסעות לחיות מחמד בישראל — וטרינר, שדה תעופה ובין-עירוני.',
     keywords: 'pet transport Israel, dog taxi, pet shuttle, vet transport, הסעות כלבים, מונית לחיות מחמד',
     ogType: 'website',
   },
   plushLab: {
     title: '⁦The Plush Lab™⁩ - AI Pet Avatar Creator | יוצר דמויות דיגיטליות',
-    description: 'Create stunning AI-powered 3D avatars of your pet. Advanced landmark detection, multilingual TTS, custom animations. Perfect for social media and gifts. צור דמויות דיגיטליות 3D מהחיה שלך.',
+    description: 'Create AI-powered 3D avatars of your pet — landmark detection, multilingual voices, custom animations. צרו דמות דיגיטלית תלת-ממדית מהחיה שלכם.',
     keywords: 'pet avatar, AI pet photo, 3D pet model, digital pet, דמות דיגיטלית, אווטאר כלב',
     ogType: 'product',
   },
   groomingMarketplace: {
-    title: 'Grooming Marketplace - Premium Pet Grooming Services | שוק טיפוח מקצועי',
-    description: 'Book professional pet groomers in Israel. Full grooming, nail trimming, teeth cleaning, specialty cuts. Certified professionals, home service available. טיפוח מקצועי בבית או בסלון.',
-    keywords: 'pet grooming Israel, dog grooming, mobile grooming, pet salon, טיפוח כלבים, תספורת לכלבים',
+    title: 'Grooming Marketplace - Pet Grooming Bookings | הזמנת גרומינג לכלבים',
+    description: 'Book vetted pet groomers in Israel — full grooming, nail trimming, specialty cuts. Home service available from select providers. הזמינו גרומינג לכלבים — טיפוח מלא, גזיזת ציפורניים ותספורות.',
+    keywords: 'pet grooming Israel, dog grooming, mobile grooming, pet salon, גרומינג לכלבים, טיפוח כלבים, תספורת לכלבים',
     ogType: 'website',
   },
 };
@@ -181,7 +181,7 @@ export function useSEO(config?: Partial<SEOConfig>) {
       setMeta('og:image', seoConfig.ogImage, true);
       setMeta('og:image:width', '1200', true);
       setMeta('og:image:height', '630', true);
-      setMeta('og:image:alt', '⁦Pet Wash™⁩ - Premium Natural Pet Care', true);
+      setMeta('og:image:alt', '⁦Pet Wash™⁩ — premium self-service dog wash in Israel', true);
     }
     
     // Twitter Card meta tags
@@ -214,99 +214,13 @@ export function useSEO(config?: Partial<SEOConfig>) {
   }, [config]);
 }
 
-/**
- * Generate structured data (JSON-LD) for LocalBusiness
+/* Claim-bearing schema generators (LocalBusiness/Service/FAQ/Website) were
+ * DELETED 2026-06-10: they were imported nowhere, yet carried a placeholder
+ * phone number, invented opening hours/prices (₪45), "up to 50%" and
+ * "Israel's leading" claims — falsehood landmines waiting for a future
+ * import. Real LocalBusiness schema returns with the per-station pages PR,
+ * generated from live station data. Neutral utilities below are kept.
  */
-export function generateLocalBusinessSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    '@id': 'https://petwash.co.il/#organization',
-    name: '⁦Pet Wash™⁩',
-    alternateName: 'Pet Wash™ Israel',
-    description: 'Premium natural pet washing service in Israel with K9000 smart stations',
-    url: 'https://petwash.co.il',
-    logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
-    image: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
-    telephone: '+972-3-XXX-XXXX',
-    email: 'Support@PetWash.co.il',
-    address: {
-      '@type': 'PostalAddress',
-      addressCountry: 'IL',
-      addressLocality: 'Israel',
-    },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: 31.7683,
-      longitude: 35.2137,
-    },
-    openingHoursSpecification: [
-      {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sunday'],
-        opens: '08:00',
-        closes: '20:00',
-      },
-    ],
-    priceRange: '₪₪₪',
-    currenciesAccepted: 'ILS',
-    paymentAccepted: 'Credit Card, Debit Card, Apple Pay, Google Pay',
-    sameAs: [
-      'https://www.facebook.com/petwashltd',
-      'https://www.instagram.com/petwashltd',
-      'https://www.tiktok.com/@petwashltd',
-    ],
-  };
-}
-
-/**
- * Generate structured data for Service
- */
-export function generateServiceSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
-    serviceType: 'Pet Washing and Grooming',
-    provider: {
-      '@id': 'https://petwash.co.il/#organization',
-    },
-    areaServed: {
-      '@type': 'Country',
-      name: 'Israel',
-    },
-    hasOfferCatalog: {
-      '@type': 'OfferCatalog',
-      name: 'Pet Washing Services',
-      itemListElement: [
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: 'Single Pet Wash',
-            description: 'Premium natural pet washing service',
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: '3 Wash Package',
-            description: 'Package of 3 premium washes with loyalty discount',
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: '5 Wash Package',
-            description: 'Package of 5 premium washes with loyalty discount',
-          },
-        },
-      ],
-    },
-  };
-}
-
 /**
  * Inject structured data into page
  */
@@ -322,58 +236,6 @@ export function injectStructuredData(schema: object) {
   }
   
   script.textContent = JSON.stringify(schema);
-}
-
-/**
- * Generate FAQ structured data for Pet Wash
- */
-export function generateFAQSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'What makes ⁦Pet Wash™⁩ natural pet care different?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: '⁦Pet Wash™⁩ uses pet-formulated wash and conditioning products featuring Australian Tea Tree Oil, each with a published safety data sheet. The products are manufactured under Australian Government APVMA-approved Good Manufacturing Practice and are designed to be gentle on sensitive skin.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'How do the K9000 smart washing stations work?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: '⁦K9000™⁩ IoT pet wash stations are self-service 24/7 kiosks equipped with natural products, climate control, and AI-powered monitoring. Simply book via our app, choose your service level, make contactless payment, and enjoy real-time status updates. Stations automatically dispense natural shampoo and warm water at pet-safe temperatures.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'What is the ⁦Pet Wash™⁩ loyalty program?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Our 7-tier luxury loyalty program (Bronze→Silver→Gold→Platinum→Diamond→Elite→Royal) rewards you with points on every wash. Members earn exclusive benefits including up to 50% discounts at Royal tier, priority booking, free grooming add-ons, exclusive partner offers, and birthday bonuses. Join today and start earning rewards instantly.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'What are the pricing options at ⁦Pet Wash™⁩?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Pricing starts from ₪45 for a basic wash at K9000 stations, with premium full-service grooming packages available. Our transparent pricing includes no hidden fees. Loyalty members receive tiered discounts, and we offer package deals for 3, 5, and 10 washes. Gift cards and e-vouchers are available with instant digital delivery.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'How do I book a pet wash at ⁦Pet Wash™⁩?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Booking is easy through our mobile app or website. Select your preferred K9000 station or groomer, choose your service date and time, select your pet\'s details, and complete payment. Our AI-powered system provides real-time availability and weather-based recommendations. Cancel or reschedule up to 2 hours before your appointment with no penalty.',
-        },
-      },
-    ],
-  };
 }
 
 /**
@@ -399,32 +261,6 @@ export function generateBreadcrumbSchema(items: Array<{ name: string; url: strin
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: breadcrumbs,
-  };
-}
-
-/**
- * Generate Website schema with search box sitelinks
- */
-export function generateWebsiteSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    '@id': 'https://petwash.co.il/#website',
-    url: 'https://petwash.co.il',
-    name: '⁦Pet Wash™⁩',
-    description: 'Israel\'s leading premium natural pet washing service with AI-powered booking and smart K9000 stations.',
-    inLanguage: ['he', 'en', 'ar', 'ru', 'fr', 'es'],
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: 'https://petwash.co.il/search?q={search_term_string}',
-      },
-      'query-input': 'required name=search_term_string',
-    },
-    isPartOf: {
-      '@id': 'https://petwash.co.il/#organization',
-    },
   };
 }
 
