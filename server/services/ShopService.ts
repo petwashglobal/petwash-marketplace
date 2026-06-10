@@ -14,7 +14,7 @@ import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { IsraeliInvoiceGenerator } from './IsraeliInvoiceGenerator';
 import { getDeliveryOptions, getDeliveryLegalNote } from './shop/DeliveryRouter';
 import { addDeliveryDays } from './shop/israeliDeliveryCalendar';
-import { emailService } from '../email';
+import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { TwilioSMSService } from './TwilioSMSService';
 import { v4 as uuidv4 } from 'uuid';
 import { sql, eq, and, like, gte, lte, desc, asc, inArray } from 'drizzle-orm';
@@ -692,7 +692,7 @@ export class ShopService {
 
       // Email notification
       try {
-              await emailService.sendEmail({
+              await sendLuxuryEmail({
                         to: user.email,
                         subject: `הזמנה #${order.order_number} יצאה לדרך! 📦`,
                         html: `
@@ -705,7 +705,6 @@ export class ShopService {
                                                                                                           <p>Pet Wash™ | noreply@petwash.co.il</p>
                                                                                                                     </div>
                                                                                                                             `,
-                        category: 'transactional',
               });
       } catch (e: any) {
               logger.warn('[ShopService] dispatch email failed', { orderId: order.id, err: e.message });

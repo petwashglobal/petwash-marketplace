@@ -46,7 +46,7 @@ import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { walletService } from '../services/WalletService';
 import { EscrowService } from '../services/EscrowService';
-import { emailService } from '../email';
+import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { shopOrderConfirmation } from '../email/templates/shop-order-confirmation-2026';
 import { ShopService } from '../services/ShopService';
 import { apiLimiter, paymentLimiter, adminLimiter } from '../middleware/rateLimiter';
@@ -376,13 +376,12 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
                         language: body.language,
                         orderDate: new Date().toISOString(),
               });
-              await emailService.sendEmail({
+              await sendLuxuryEmail({
                         to: user.email,
                         subject: body.language === 'he'
                           ? `אישור הזמנה #${order.orderNumber} — Pet Wash™ Shop`
                                     : `Order Confirmation #${order.orderNumber} — Pet Wash™ Shop`,
                         html,
-                        category: 'transactional',
               });
       } catch (emailErr: any) {
       logger.warn('[Shop] Confirmation email failed (non-fatal)', { orderId: order.id, err: emailErr.message });
