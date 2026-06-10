@@ -118,7 +118,7 @@ const T: Record<string, Record<string, string>> = {
   "academy.label": { en: "Pet Wash Academy", he: "אקדמיית ⁦Pet Wash™⁩", ru: "Академия ⁦Pet Wash™⁩", fr: "Académie ⁦Pet Wash™⁩", es: "Academia ⁦Pet Wash™⁩", ar: "أكاديمية ⁦Pet Wash™⁩" },
   "academy.desc": { en: "Training, certification and education for pros", he: "הכשרה, הסמכה וחינוך למקצוענים", ru: "Обучение, сертификация и образование для профессионалов", fr: "Formation, certification et éducation pour professionnels", es: "Formación, certificación y educación para profesionales", ar: "تدريب وشهادات وتعليم للمحترفين" },
   "shop.label": { en: "Pet Wash Shop", he: "חנות ⁦Pet Wash™⁩", ru: "Магазин ⁦Pet Wash™⁩", fr: "Boutique ⁦Pet Wash™⁩", es: "Tienda ⁦Pet Wash™⁩", ar: "متجر ⁦Pet Wash™⁩" },
-  "shop.desc": { en: "Natural care products and accessories (coming soon)", he: "מוצרי טיפוח טבעיים ואביזרים (בקרוב)", ru: "Натуральные средства ухода и аксессуары (скоро)", fr: "Produits de soin naturels et accessoires (bientôt)", es: "Productos de cuidado natural y accesorios (próximamente)", ar: "منتجات عناية طبيعية وإكسسوارات (قريبًا)" },
+  "shop.desc": { en: "Personalised accessories and pet care — open to browse", he: "אביזרים בהזמנה אישית ומוצרי טיפוח — פתוח לעיון", ru: "Персонализированные аксессуары и уход — открыто для просмотра", fr: "Accessoires personnalisés et soins — ouvert à la découverte", es: "Accesorios personalizados y cuidado — abierto para explorar", ar: "إكسسوارات مخصصة ومنتجات عناية — متاح للتصفح" },
   "avatar.label": { en: "Avatar Studio", he: "סטודיו אווטאר", ru: "Студия аватаров", fr: "Studio Avatar", es: "Estudio Avatar", ar: "استوديو أفاتار" },
   "avatar.desc": { en: "AI pet avatar builder (coming soon)", he: "יוצר אווטאר בינה מלאכותית לחיות מחמד (בקרוב)", ru: "Создание аватаров питомцев с ИИ (скоро)", fr: "Créateur d'avatars IA pour animaux (bientôt)", es: "Creador de avatares IA para mascotas (próximamente)", ar: "صانع صور رمزية بالذكاء الاصطناعي (قريبًا)" },
   "frozen": { en: "Coming Soon", he: "בקרוב", ru: "Скоро", fr: "Bientôt", es: "Próximamente", ar: "قريبًا" },
@@ -182,7 +182,7 @@ const PLATFORM_ITEMS = [
 
 const PARTNER_ITEMS = [
   { id: "academy", labelKey: "academy.label", descKey: "academy.desc", href: "/academy", frozen: false },
-  { id: "shop", labelKey: "shop.label", descKey: "shop.desc", href: "/shop", frozen: true },
+  { id: "shop", labelKey: "shop.label", descKey: "shop.desc", href: "/shop", frozen: false },
   { id: "avatar", labelKey: "avatar.label", descKey: "avatar.desc", href: "#", frozen: true },
 ];
 

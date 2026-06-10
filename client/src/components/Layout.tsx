@@ -56,46 +56,34 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
 
   return (
     <div className="min-h-[100dvh] bg-white">
-      {/* Pre-launch soft-launch banner — shown until payments are live, dismissible.
-          Phase B2: suppressed on /egift to keep the luxury hero composition clean. */}
+      {/* Announcement line — restrained luxury (replaced the violet 🎉 soft-launch
+          banner, CEO 2026-06-11: shell looked dated). Shop is open to browse;
+          purchases unlock at commerce launch. Dismissible; hidden on /egift. */}
       {!paymentsEnabled && !bannerDismissed && !isEgiftRoute && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
-          className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white z-50 relative"
+          className="w-full bg-black text-white z-50 relative border-b border-amber-300/40"
         >
-          {/* Top row — announcement */}
-          <div className="flex items-center justify-center gap-3 py-2 px-4 text-sm font-medium">
-            <Rocket className="w-4 h-4 shrink-0" />
+          <div className="flex items-center justify-center gap-3 py-2 px-4 text-xs sm:text-sm tracking-wide">
+            <span className="text-amber-200">✦</span>
             <span>
               {isRTL
-                ? '🎉 PetWash™ בגרסת בטא — הצטרפות למועדון, ספקים ו-Paw Finder פעילים. תשלומים מקוונים יופעלו בקרוב!'
-                : '🎉 PetWash™ soft launch — memberships, providers & Paw Finder are live. Online payments coming soon!'}
+                ? 'החנות פתוחה לעיון — הרכישה אונליין תיפתח בקרוב'
+                : 'The Shop is open to browse — online purchases opening soon'}
             </span>
+            <Link
+              href="/shop"
+              className="underline underline-offset-4 decoration-amber-300/60 hover:decoration-amber-300 text-amber-100 shrink-0"
+            >
+              {isRTL ? 'לחנות' : 'Visit the Shop'}
+            </Link>
             <button
               onClick={dismissBanner}
               aria-label="Close"
-              className="ms-2 p-0.5 rounded hover:bg-white/20 transition-colors shrink-0"
+              className="ms-1 p-0.5 rounded hover:bg-white/15 transition-colors shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
-          </div>
-          {/* Bottom row — join CTAs */}
-          <div className="flex items-center justify-center gap-2 pb-2 px-4 flex-wrap">
-            <Link
-              href={becomeProviderHref()}
-              onClick={setProviderSignupIntent}
-              className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1 text-xs font-semibold text-white"
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              {isRTL ? 'הצטרף כספק 👷' : 'Join as Provider 👷'}
-            </Link>
-            <Link
-              href="/loyalty/join"
-              className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1 text-xs font-semibold text-white"
-            >
-              <Star className="w-3.5 h-3.5" />
-              {isRTL ? 'הצטרף למועדון הפסטיג׳ 🐾' : 'Join Prestige Club 🐾'}
-            </Link>
           </div>
         </div>
       )}
