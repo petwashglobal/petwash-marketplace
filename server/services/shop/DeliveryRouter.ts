@@ -17,6 +17,8 @@
  * docs/design/2026-05-26-shop-module-physical-goods.md §5.5 (ShippingProvider).
  */
 
+import { addDeliveryDays, nextDispatchDate, DELIVERY_LEGAL_NOTE } from './israeliDeliveryCalendar';
+
 export type CarrierId = 'israel_post' | 'wolt' | 'pickup';
 
 export interface DeliveryInput {
@@ -42,6 +44,10 @@ export interface DeliveryOption {
   vatCents: number;            // VAT portion (18/118 back-calc), invoice needs it
   etaMinDays: number;
   etaMaxDays: number;
+  /** Next valid dispatch day (skips Israeli weekend + public holidays). YYYY-MM-DD. */
+  estimatedDispatch: string;
+  /** Estimated arrival, counted in delivery business days (holiday/weekend-aware). */
+  estimatedArrival: string;
   label_he: string;
   label_en: string;
   /** Cheapest option for the order (UI can pre-select). */
@@ -121,6 +127,8 @@ export function getDeliveryOptions(
     vatCents: vatPortion(ipCents),
     etaMinDays: 3,
     etaMaxDays: 5,
+    estimatedDispatch: nextDispatchDate(),
+    estimatedArrival: addDeliveryDays(5),
     label_he: ipFree ? 'דואר ישראל — משלוח חינם (3–5 ימי עסקים)' : 'דואר ישראל — 3–5 ימי עסקים',
     label_en: ipFree ? 'Israel Post — free shipping (3–5 business days)' : 'Israel Post — 3–5 business days',
     liveQuote: false,
@@ -135,6 +143,8 @@ export function getDeliveryOptions(
       vatCents: vatPortion(WOLT_FLAT_CENTS),
       etaMinDays: 0,
       etaMaxDays: 0,
+      estimatedDispatch: nextDispatchDate(),
+      estimatedArrival: nextDispatchDate(), // same-day if today is a delivery day, else next
       label_he: 'Wolt — משלוח מהיר היום (תוספת תשלום)',
       label_en: 'Wolt — fast same-day delivery (premium)',
       liveQuote: false,
@@ -153,4 +163,9 @@ export function getDeliveryOptions(
   );
 
   return options;
+}
+
+/** Consumer-facing legal delivery note (Israel Consumer Protection Law + weekend/holiday basis). */
+export function getDeliveryLegalNote(): { he: string; en: string } {
+  return { he: DELIVERY_LEGAL_NOTE.he, en: DELIVERY_LEGAL_NOTE.en };
 }
