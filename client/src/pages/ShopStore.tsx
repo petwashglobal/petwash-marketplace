@@ -48,7 +48,13 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [cart, setCart] = useState<Cart | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [engraving, setEngraving] = useState<Record<number, string>>({});
+  // Per-product engraving details (smart bilingual): pet name (HE or EN) + owner + mobile.
+  type Engrave = { petName?: string; ownerName?: string; ownerMobile?: string };
+  const [engraving, setEngraving] = useState<Record<number, Engrave>>({});
+  const setEng = (id: number, field: keyof Engrave, val: string) =>
+    setEngraving(prev => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+  // Auto-detect script so the engraving renders RTL (Hebrew) or LTR (English) correctly.
+  const isHebrew = (s: string) => /[֐-׿]/.test(s);
 
   // A product is personalised (engravable) if tagged accordingly.
   const isEngravable = (p: Product) => !!p.tags?.some(t => t === 'engraving' || t === 'personalised');
@@ -72,23 +78,36 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
   async function addToCart(p: Product) {
     if (!user) { navigate('/signin?redirect=/shop'); return; }
-    // Engravable products require the custom text before they can be added.
-    const text = engraving[p.id]?.trim();
-    if (isEngravable(p) && !text) {
-      setErr(tr('Please type the name to engrave first.', 'נא להקליד את השם לחריטה תחילה.'));
+    const e = engraving[p.id] || {};
+    const petName = e.petName?.trim();
+    // Engravable products require the pet name before they can be added.
+    if (isEngravable(p) && !petName) {
+      setErr(tr('Please type the pet name to engrave first.', 'נא להקליד את שם החיה לחריטה תחילה.'));
+      return;
+    }
+    const mobile = e.ownerMobile?.trim();
+    if (mobile && !/^0\d{1,2}[-\s]?\d{7}$/.test(mobile)) {
+      setErr(tr('Please enter a valid Israeli mobile number.', 'נא להזין מספר נייד ישראלי תקין.'));
       return;
     }
     setBusy(true); setErr(null);
     try {
       const body: Record<string, unknown> = { productId: p.id, quantity: 1 };
-      if (isEngravable(p) && text) body.personalization = { engravingText: text };
+      if (isEngravable(p) && petName) {
+        body.personalization = {
+          petName,
+          petNameLang: isHebrew(petName) ? 'he' : 'en',
+          ...(e.ownerName?.trim() ? { ownerName: e.ownerName.trim() } : {}),
+          ...(mobile ? { ownerMobile: mobile } : {}),
+        };
+      }
       await fetch(getApiUrl('/api/shop/cart/items'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify(body),
       });
-      if (text) setEngraving(prev => ({ ...prev, [p.id]: '' }));
+      if (petName) setEngraving(prev => ({ ...prev, [p.id]: {} }));
       await refreshCart(); setCartOpen(true);
-    } catch (e) { logger.error('[ShopStore] add', e); }
+    } catch (err) { logger.error('[ShopStore] add', err); }
     setBusy(false);
   }
 
@@ -193,15 +212,43 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                         <span className="text-xs text-gray-400 line-through">{shekel(p.compare_at_cents)}</span>}
                     </div>
                     {isEngravable(p) && (
-                      <input
-                        type="text"
-                        value={engraving[p.id] || ''}
-                        onChange={e => setEngraving(prev => ({ ...prev, [p.id]: e.target.value.slice(0, 40) }))}
-                        placeholder={tr("Pet's name to engrave", 'שם החיה לחריטה')}
-                        maxLength={40}
-                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs mb-2"
-                        aria-label={tr('Engraving text', 'טקסט לחריטה')}
-                      />
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 mb-2 space-y-2">
+                        <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+                          <Sparkles className="w-3 h-3" /> {tr('Personalise — engraved', 'התאמה אישית — חריטה')}
+                        </div>
+                        <input
+                          type="text" dir="auto" maxLength={40}
+                          value={engraving[p.id]?.petName || ''}
+                          onChange={e => setEng(p.id, 'petName', e.target.value.slice(0, 40))}
+                          placeholder={tr("Pet's name (English or עברית)", 'שם החיה (עברית או English)')}
+                          className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs"
+                          aria-label={tr('Pet name to engrave', 'שם החיה לחריטה')}
+                        />
+                        <input
+                          type="text" dir="auto" maxLength={60}
+                          value={engraving[p.id]?.ownerName || ''}
+                          onChange={e => setEng(p.id, 'ownerName', e.target.value.slice(0, 60))}
+                          placeholder={tr('Owner name (optional)', 'שם הבעלים (רשות)')}
+                          className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs"
+                          aria-label={tr('Owner name', 'שם הבעלים')}
+                        />
+                        <input
+                          type="tel" inputMode="tel" maxLength={20}
+                          value={engraving[p.id]?.ownerMobile || ''}
+                          onChange={e => setEng(p.id, 'ownerMobile', e.target.value.slice(0, 20))}
+                          placeholder={tr('Mobile for the tag (optional)', 'נייד לתג (רשות)')}
+                          className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs"
+                          aria-label={tr('Owner mobile', 'נייד הבעלים')}
+                        />
+                        {engraving[p.id]?.petName?.trim() && (
+                          <div className="text-center pt-1">
+                            <span className="inline-block rounded-md border border-amber-300 bg-white px-3 py-1 text-sm font-semibold tracking-wide" dir="auto">
+                              🐾 {engraving[p.id]?.petName}
+                            </span>
+                            <p className="text-[9px] text-gray-400 mt-1">{tr('Engraving preview', 'תצוגת חריטה')}</p>
+                          </div>
+                        )}
+                      </div>
                     )}
                     <button onClick={() => addToCart(p)} disabled={busy || p.stock_quantity <= 0}
                       className="w-full rounded-xl px-3 py-2 bg-black text-white text-xs font-medium disabled:opacity-40">
