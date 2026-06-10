@@ -116,6 +116,7 @@ const Accessibility = lazy(() => import("@/pages/Accessibility"));
 const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
 const About = lazy(() => import("@/pages/About"));
 const TrustCompliance = lazy(() => import("@/pages/TrustCompliance"));
+const StationPage = lazy(() => import("@/pages/StationPage"));
 const Franchise = lazy(() => import("@/pages/Franchise"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const OurService = lazy(() => import("@/pages/OurService"));
@@ -2332,6 +2333,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/locations">{() => <Locations />}</Route>
+        <Route path="/stations/:slug">{(params) => <StationPage slug={params.slug} />}</Route>
         <Route path="/wallet/redeem">
           {() => (
             <RequireAuth>
