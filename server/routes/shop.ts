@@ -94,8 +94,10 @@ const AddToCartSchema = z.object({
         petName: z.string().trim().min(1).max(40),
         petNameLang: z.enum(['he', 'en']).optional(),
         ownerName: z.string().trim().max(60).optional(),
+        // International mobile (E.164-ish): +<country><number> e.g. +972…, +61…;
+        // local Israeli 05X also accepted. Spaces/hyphens allowed for readability.
         ownerMobile: z.string().trim()
-            .regex(/^0\d{1,2}[-\s]?\d{7}$/, 'Invalid Israeli mobile number')
+            .regex(/^\+?\d[\d\s-]{6,18}$/, 'Invalid mobile number')
             .optional(),
         notes: z.string().trim().max(140).optional(),
         // Back-compat alias from the first cut of the field.
