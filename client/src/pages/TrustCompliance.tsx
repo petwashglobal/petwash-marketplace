@@ -2,6 +2,7 @@ import { Layout } from '@/components/Layout';
 import { useEffect, useState, type ReactNode } from 'react';
 import { type Language } from '@/lib/i18n';
 import {
+import { useSEO, pageSEO } from '@/lib/seo';
   ShieldCheck,
   Cpu,
   BadgeCheck,
@@ -24,6 +25,7 @@ const Ltr = ({ children }: { children: ReactNode }) => (
 );
 
 export default function TrustCompliance({ language, onLanguageChange }: TrustComplianceProps) {
+  useSEO(pageSEO.trust);
   const [currentLanguage, setCurrentLanguage] = useState<Language>(language);
   const en = currentLanguage === 'en';
 

@@ -16,6 +16,7 @@ import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign, Clock } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhoneInput } from '@/components/PhoneInput';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface BuyGiftCardProps {
   language: Language;
@@ -23,6 +24,7 @@ interface BuyGiftCardProps {
 }
 
 export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardProps) {
+  useSEO(pageSEO.buyGiftCard);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);

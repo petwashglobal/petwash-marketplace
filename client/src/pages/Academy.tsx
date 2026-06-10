@@ -19,6 +19,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { Link } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface TrainerProfile {
   id: number;
@@ -61,6 +62,7 @@ const SPECIALTY_OPTIONS = [
 ];
 
 export default function Academy() {
+  useSEO(pageSEO.academy);
   const { t } = useLanguage();
   const { user } = useFirebaseAuth();
   const [searchQuery, setSearchQuery] = useState('');

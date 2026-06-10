@@ -2,6 +2,7 @@ import { Layout } from '@/components/Layout';
 import { useState, useEffect } from 'react';
 import { type Language } from '@/lib/i18n';
 import { 
+import { useSEO, pageSEO } from '@/lib/seo';
   Sparkles, 
   Award, 
   Shield, 
@@ -23,6 +24,7 @@ interface AboutProps {
 }
 
 export default function About({ language }: AboutProps) {
+  useSEO(pageSEO.about);
   const [currentLanguage, setCurrentLanguage] = useState<Language>(language);
 
   const handleLanguageChange = (newLanguage: Language) => {

@@ -12,6 +12,7 @@ import { useLocation } from 'wouter';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { PetWashVoucher2025 } from '@shared/petwashVoucher2025';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual' | 'owner' | 'security' | 'usage'> {
   // Database fields (snake_case)
@@ -43,6 +44,7 @@ interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual'
 }
 
 export default function Vouchers() {
+  useSEO(pageSEO.vouchers);
   const { user } = useFirebaseAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
