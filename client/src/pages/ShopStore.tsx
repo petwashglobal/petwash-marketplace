@@ -24,7 +24,7 @@ interface ShopStoreProps { language: Language; onLanguageChange?: (l: Language) 
 interface Product {
   id: number; sku: string; name_he: string; name_en: string | null;
   category: string; brand: string | null; price_cents: number; compare_at_cents: number | null;
-  stock_quantity: number; images: string[]; is_featured: boolean;
+  stock_quantity: number; images: string[]; is_featured: boolean; tags?: string[];
 }
 interface CartItem {
   id: number; product_id: number; quantity: number;
@@ -48,6 +48,10 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [cart, setCart] = useState<Cart | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [engraving, setEngraving] = useState<Record<number, string>>({});
+
+  // A product is personalised (engravable) if tagged accordingly.
+  const isEngravable = (p: Product) => !!p.tags?.some(t => t === 'engraving' || t === 'personalised');
 
   useEffect(() => { void loadProducts(); }, []);
   useEffect(() => { if (user) void refreshCart(); }, [user]);
@@ -68,12 +72,21 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
   async function addToCart(p: Product) {
     if (!user) { navigate('/signin?redirect=/shop'); return; }
-    setBusy(true);
+    // Engravable products require the custom text before they can be added.
+    const text = engraving[p.id]?.trim();
+    if (isEngravable(p) && !text) {
+      setErr(tr('Please type the name to engrave first.', 'נא להקליד את השם לחריטה תחילה.'));
+      return;
+    }
+    setBusy(true); setErr(null);
     try {
+      const body: Record<string, unknown> = { productId: p.id, quantity: 1 };
+      if (isEngravable(p) && text) body.personalization = { engravingText: text };
       await fetch(getApiUrl('/api/shop/cart/items'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ productId: p.id, quantity: 1 }),
+        body: JSON.stringify(body),
       });
+      if (text) setEngraving(prev => ({ ...prev, [p.id]: '' }));
       await refreshCart(); setCartOpen(true);
     } catch (e) { logger.error('[ShopStore] add', e); }
     setBusy(false);
@@ -179,6 +192,17 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                       {p.compare_at_cents && p.compare_at_cents > p.price_cents &&
                         <span className="text-xs text-gray-400 line-through">{shekel(p.compare_at_cents)}</span>}
                     </div>
+                    {isEngravable(p) && (
+                      <input
+                        type="text"
+                        value={engraving[p.id] || ''}
+                        onChange={e => setEngraving(prev => ({ ...prev, [p.id]: e.target.value.slice(0, 40) }))}
+                        placeholder={tr("Pet's name to engrave", 'שם החיה לחריטה')}
+                        maxLength={40}
+                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs mb-2"
+                        aria-label={tr('Engraving text', 'טקסט לחריטה')}
+                      />
+                    )}
                     <button onClick={() => addToCart(p)} disabled={busy || p.stock_quantity <= 0}
                       className="w-full rounded-xl px-3 py-2 bg-black text-white text-xs font-medium disabled:opacity-40">
                       {p.stock_quantity <= 0 ? tr('Sold out', 'אזל מהמלאי') : tr('Add to cart', 'הוסף לעגלה')}
