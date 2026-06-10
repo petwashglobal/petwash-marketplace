@@ -45,6 +45,10 @@ interface DeliveryEstimate {
 }
 
 // Exact when there are agorot (₪29.90 must not display as ₪30 — price-disclosure law).
+// Browse-only soft opening: catalog + cart are live, purchases unlock when
+// this build flag flips (server enforces the same gate on POST /checkout).
+const CHECKOUT_OPEN = import.meta.env.VITE_SHOP_CHECKOUT_ENABLED === 'true';
+
 const shekel = (cents: number) => {
   const c = cents || 0;
   return c % 100 === 0
@@ -300,6 +304,11 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
             <div>
               <div className="luxury-badge luxury-badge-gold"><Sparkles className="h-5 w-5" /><span>{tr('The Shop', 'החנות')}</span></div>
               <h1 className="luxury-heading-xl mt-6">{tr('Everything your pet loves', 'כל מה שחיית המחמד שלך אוהבת')}</h1>
+              {!CHECKOUT_OPEN && (
+                <p className="text-xs tracking-wide text-gray-500 mt-3">
+                  {tr('Preview collection · purchases opening soon', 'קולקציית תצוגה · הרכישה תיפתח בקרוב')}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {user && (
@@ -472,10 +481,22 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                     ))}
                   </div>
                   {renderTotals()}
-                  <button onClick={openCheckout} disabled={busy || payTotalCents === null}
-                    className="w-full mt-6 rounded-xl px-4 py-3 bg-black text-white text-sm font-medium disabled:opacity-40">
-                    {tr('Continue to checkout', 'המשך לתשלום')}
-                  </button>
+                  {CHECKOUT_OPEN ? (
+                    <button onClick={openCheckout} disabled={busy || payTotalCents === null}
+                      className="w-full mt-6 rounded-xl px-4 py-3 bg-black text-white text-sm font-medium disabled:opacity-40">
+                      {tr('Continue to checkout', 'המשך לתשלום')}
+                    </button>
+                  ) : (
+                    // Browse-only soft opening: server enforces the same block
+                    // (POST /checkout → 503 CHECKOUT_NOT_OPEN).
+                    <div className="mt-6 rounded-xl p-[1.5px] bg-gradient-to-br from-amber-300 via-yellow-100 to-amber-400">
+                      <div className="rounded-xl bg-white px-4 py-3 text-center">
+                        <span className="text-sm font-medium tracking-wide">
+                          ✨ {tr('Purchases opening soon', 'הרכישה תיפתח בקרוב')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>

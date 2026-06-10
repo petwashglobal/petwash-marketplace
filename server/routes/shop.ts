@@ -271,6 +271,15 @@ router.delete('/cart/items/:itemId', apiLimiter, requireAuth, async (req: Reques
  * send confirmation email → write CRM log → return order summary
  */
 router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: Response) => {
+    // Browse-only soft opening (CEO 2026-06-11): the catalog is public but no
+    // money moves until SHOP_CHECKOUT_ENABLED=true. Hard server-side block —
+    // the UI shows "purchases opening soon", this guard enforces it.
+    if (process.env.SHOP_CHECKOUT_ENABLED !== 'true') {
+        return res.status(503).json({
+            error: 'Purchases are opening soon',
+            code: 'CHECKOUT_NOT_OPEN',
+        });
+    }
     const uid = (req as any).user.uid;
     try {
           const body = CheckoutSchema.parse(req.body);
