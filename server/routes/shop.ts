@@ -87,11 +87,19 @@ const AddToCartSchema = z.object({
     productId: z.number().int().positive(),
     quantity: z.number().int().min(1).max(99),
     variantId: z.number().int().positive().optional(),
-    // Engraving / personalisation (e.g. pet name + phone on a collar or ID tag).
+    // Engraving / personalisation — smart bilingual (HE or EN) for the engraved
+    // collar / ID tag: pet name + owner name + owner mobile. petNameLang records
+    // which script the customer used so the engraving machine renders RTL/LTR right.
     personalization: z.object({
-        engravingText: z.string().trim().max(40).optional(),
-        engravingPhone: z.string().trim().max(30).optional(),
+        petName: z.string().trim().min(1).max(40),
+        petNameLang: z.enum(['he', 'en']).optional(),
+        ownerName: z.string().trim().max(60).optional(),
+        ownerMobile: z.string().trim()
+            .regex(/^0\d{1,2}[-\s]?\d{7}$/, 'Invalid Israeli mobile number')
+            .optional(),
         notes: z.string().trim().max(140).optional(),
+        // Back-compat alias from the first cut of the field.
+        engravingText: z.string().trim().max(40).optional(),
     }).strict().optional(),
 });
 

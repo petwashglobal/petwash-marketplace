@@ -12,7 +12,8 @@ import { db } from '../db';
 import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { IsraeliInvoiceGenerator } from './IsraeliInvoiceGenerator';
-import { getDeliveryOptions } from './shop/DeliveryRouter';
+import { getDeliveryOptions, getDeliveryLegalNote } from './shop/DeliveryRouter';
+import { addDeliveryDays } from './shop/israeliDeliveryCalendar';
 import { emailService } from '../email';
 import { TwilioSMSService } from './TwilioSMSService';
 import { v4 as uuidv4 } from 'uuid';
@@ -391,6 +392,7 @@ export class ShopService {
       return {
               // Carrier options are the source of truth going forward.
               options,
+              legalNote: getDeliveryLegalNote(),
               // Legacy shape kept for backward compatibility with existing callers.
               standard: {
                         cents: DELIVERY_RATES.STANDARD_CENTS,
@@ -432,15 +434,8 @@ export class ShopService {
   }
 
   private _addBusinessDays(n: number): string {
-        const d = new Date();
-        let count = 0;
-        while (count < n) {
-                d.setDate(d.getDate() + 1);
-                const day = d.getDay();
-                // Israel: Friday = 5, Saturday = 6 (weekend)
-          if (day !== 5 && day !== 6) count++;
-        }
-        return d.toISOString().split('T')[0];
+        // Holiday + weekend aware (Israeli calendar): skips Fri/Sat AND public holidays.
+        return addDeliveryDays(n);
   }
 
   // ─── Orders ───────────────────────────────────────────────────────────────
