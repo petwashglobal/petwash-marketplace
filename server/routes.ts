@@ -11260,6 +11260,12 @@ self.addEventListener('notificationclick', (event) => {
   const publicStationsRoutes = await import('./routes/public-stations');
   app.use('/api/public', publicStationsRoutes.default);
 
+  // PetWash Shop API — was never mounted (storefront #647 called /api/shop/*
+  // into a 404). Router self-guards: SHOP_ENABLED gate (503 when off) +
+  // SHOP_CHECKOUT_ENABLED hard-block on POST /checkout + per-route limiters.
+  const shopRoutes = await import('./routes/shop');
+  app.use('/api/shop', shopRoutes.default);
+
   // ========================================================================
   // 🔌 NEWLY CONNECTED ROUTES - All Missing Infrastructure Wired Up!
   // ========================================================================
