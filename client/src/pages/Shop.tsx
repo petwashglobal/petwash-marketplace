@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import {
+import { useSEO, pageSEO } from '@/lib/seo';
   Tag, Heart, Sparkles, ShoppingBag, Mail, ArrowRight, Gift,
   Award, CheckCircle2,
 } from 'lucide-react';
@@ -120,6 +121,7 @@ const CATEGORIES: LifeCategory[] = [
 ];
 
 export default function Shop() {
+  useSEO(pageSEO.shop);
   const [, setLocation] = useLocation();
   const [submittedCategory, setSubmittedCategory] = useState<string | null>(null);
   const [email, setEmail] = useState('');

@@ -12,6 +12,7 @@ import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { calculateTier, TIER_CONFIG } from '@/lib/loyalty';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface Pet {
   id: number;
@@ -51,6 +52,7 @@ interface WeatherForecast {
 }
 
 export default function PetCarePlanner({ language = 'en' }: { language?: string }) {
+  useSEO(pageSEO.petCarePlanner);
   const isHebrew = language === 'he';
   const { toast } = useToast();
   const [selectedCity, setSelectedCity] = useState('Tel Aviv');

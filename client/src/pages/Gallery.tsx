@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { t, type Language } from '@/lib/i18n';
 import { X, Play } from 'lucide-react';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 // Gallery images
 const galleryImages = [
@@ -79,6 +80,7 @@ interface GalleryProps {
 }
 
 export default function Gallery({ language, onLanguageChange }: GalleryProps) {
+  useSEO(pageSEO.gallery);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'branding' | 'station'>('all');
 

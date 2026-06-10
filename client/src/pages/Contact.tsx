@@ -14,12 +14,14 @@ import { useToast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/lib/apiConfig';
 import { GoogleFormEmbed } from '@/components/GoogleFormEmbed';
 import { PhoneInput } from '@/components/PhoneInput';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface ContactProps {
   language: Language;
 }
 
 export default function Contact({ language }: ContactProps) {
+  useSEO(pageSEO.contact);
   const { toast } = useToast();
   const [currentLanguage, setCurrentLanguage] = useState<Language>(language);
   const [submitting, setSubmitting] = useState(false);

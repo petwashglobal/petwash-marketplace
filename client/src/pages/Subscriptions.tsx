@@ -16,6 +16,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Check, Package, Sparkles, Crown, Heart } from "lucide-react";
 import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { useLocation } from "wouter";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const petProfileSchema = z.object({
   petName: z.string().min(1, "Pet name is required"),
@@ -48,6 +49,7 @@ interface SubscriptionBoxType {
 }
 
 export default function Subscriptions() {
+  useSEO(pageSEO.subscriptions);
   const [, navigate] = useLocation();
   const [selectedTier, setSelectedTier] = useState<SubscriptionBoxType | null>(null);
   const [showForm, setShowForm] = useState(false);

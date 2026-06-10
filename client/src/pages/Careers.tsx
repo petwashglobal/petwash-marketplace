@@ -39,6 +39,7 @@ import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-p
 import { GoogleFormEmbed } from '@/components/GoogleFormEmbed';
 import { PhoneInput } from '@/components/PhoneInput';
 import type { CareerPosition } from '@shared/schema';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const roleIcons: Record<string, any> = {
   walker: Heart,
@@ -84,6 +85,7 @@ const WORLD_COUNTRIES = [
 ];
 
 export default function Careers() {
+  useSEO(pageSEO.careers);
   const { t, i18n } = useTranslation();
   const [, navigate] = useLocation();
   const { toast } = useToast();

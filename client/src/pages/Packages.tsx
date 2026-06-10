@@ -12,6 +12,7 @@ import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
 import greenCardFront from '@assets/IMG_3091_1770832584882.png';
 import blackCardFront from '@assets/IMG_1998_1770750271081.png';
 import goldCardFront from '@assets/IMG_1996_1770750271081.png';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const WASH_PRICE = 55;
 
@@ -101,6 +102,7 @@ const WASH_COUNT_TO_PACKAGE_ID: Record<number, number> = {
 };
 
 export default function Packages() {
+  useSEO(pageSEO.packages);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language } = useLanguage();

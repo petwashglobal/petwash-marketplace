@@ -4,6 +4,7 @@ import { LoyaltyProgram } from '@/components/LoyaltyProgram';
 import { type Language, t } from '@/lib/i18n';
 import { useState } from 'react';
 import petwashStationPhoto from '@assets/petwash-station-real.png';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const MetallicIcon = ({ children, size = 28 }: { children: React.ReactNode; size?: number }) => (
   <div className="metallic-icon-wrapper">
@@ -105,6 +106,7 @@ interface OurServiceProps {
 }
 
 export default function OurService({ language, onLanguageChange }: OurServiceProps) {
+  useSEO(pageSEO.ourService);
   const [activeTab, setActiveTab] = useState('technology');
 
   const tabs = [
