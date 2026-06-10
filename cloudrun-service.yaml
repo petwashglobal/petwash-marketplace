@@ -198,6 +198,14 @@ spec:
         # PLACES_DISABLED and address autocomplete is dead on the live site.
         - name: GOOGLE_PLACES_LIVE
           value: 'true'
+        # ── Shop browse-only soft opening (CEO 2026-06-11) ────────────────────
+        # Catalog/cart public; POST /api/shop/checkout hard-blocked with 503
+        # CHECKOUT_NOT_OPEN until SHOP_CHECKOUT_ENABLED='true'. Flip together
+        # with VITE_SHOP_CHECKOUT_ENABLED in petwash-ci.yml at commerce launch.
+        - name: SHOP_ENABLED
+          value: 'true'
+        - name: SHOP_CHECKOUT_ENABLED
+          value: 'false'
         startupProbe:
           httpGet:
             path: /health

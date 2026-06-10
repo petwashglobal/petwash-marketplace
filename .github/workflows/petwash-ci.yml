@@ -947,6 +947,16 @@ jobs:
           # docs/GOOGLE_PLACES_AUTOCOMPLETE_AUDIT.md §1.
           VITE_GOOGLE_PLACES_LIVE: 'true'
 
+          # ── Shop browse-only soft opening (CEO 2026-06-11) ──
+          # Storefront is PUBLIC (catalog + cart + engraving preview), but
+          # purchases stay closed: the pay flow shows "purchases opening
+          # soon" and the server hard-blocks POST /api/shop/checkout until
+          # SHOP_CHECKOUT_ENABLED=true (cloudrun-service.yaml). Flip
+          # VITE_SHOP_CHECKOUT_ENABLED to 'true' + the server var together
+          # at commerce launch.
+          VITE_SHOP_LIVE_ENABLED: 'true'
+          VITE_SHOP_CHECKOUT_ENABLED: 'false'
+
           # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
           # These were defined ONLY in the legacy `.replit` file and never
           # made it into the GitHub Actions build env, so the production
@@ -1428,7 +1438,7 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true
+            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
             --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
