@@ -1,8 +1,8 @@
 import { Layout } from '@/components/Layout';
 import { useState, useEffect } from 'react';
 import { type Language } from '@/lib/i18n';
-import { 
 import { useSEO, pageSEO } from '@/lib/seo';
+import { 
   Sparkles, 
   Award, 
   Shield, 

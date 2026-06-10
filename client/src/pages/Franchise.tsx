@@ -26,8 +26,8 @@ import { useState, type ComponentType } from 'react';
 import { useLocation } from 'wouter';
 import { type Language } from '@/lib/i18n';
 import { Layout } from '@/components/Layout';
-import {
 import { useSEO, pageSEO } from '@/lib/seo';
+import {
   Crown, Building2, Wrench, Shield, MapPin, GraduationCap,
   Sparkles, CheckCircle2, Mail, FileText, ArrowRight, Phone,
 } from 'lucide-react';
