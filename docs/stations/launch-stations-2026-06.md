@@ -21,15 +21,17 @@ CEO description: "Pet Wash Israel's first outdoor smart dual wash hub."
 | qrCode | **NEEDED — QR printed on the unit** | ⚠️ |
 | ownershipType | `corporate_owned` (assumed — CEO confirm) | ⚠️ |
 | territoryId / countryId | FK rows must exist first (see below) | ⚠️ |
-| operatingHours | park station — CEO to provide (or omit; page hides hours when absent) | ⚠️ |
+| operatingHours | **Daily 05:30–23:00, all 7 days** (CEO 2026-06-11). JSON: every day `{"open":"05:30","close":"23:00"}` | ✅ |
 
-## Station 2 — western Kfar Saba (approx; CEO: ~2 weeks after Station 1)
+## Station 2 — Green Kfar Saba / כפר סבא הירוקה (approx; CEO: ~2 weeks after Station 1)
 
 | Field | Value | Status |
 |---|---|---|
 | stationCode | `PWS-IL-KFS-002` | proposed |
+| neighborhood | Green Kfar Saba (כפר סבא הירוקה) — CEO 2026-06-11 | ✅ |
 | latitude / longitude | `32.186193 / 34.897218` | from Maps short-link (resolved 2026-06-11) |
 | city | `כפר סבא` | from coordinates |
+| operatingHours | **24/7** (CEO 2026-06-11). JSON: every day `{"open":"00:00","close":"23:59"}` | ✅ |
 | address | **APPROXIMATE — do NOT publish until CEO confirms exact site** | ⚠️ |
 | everything else | as Station 1 | ⚠️ |
 
@@ -59,5 +61,5 @@ Once the Station 1 row exists with `coming_soon`:
 
 1. Postal code for Isaac Wald Park station.
 2. Hardware identityNumber + QR code value (printed on the unit).
-3. Operating hours (or confirm: park hours / always available).
+3. ~~Operating hours~~ ✅ answered 2026-06-11: Wald Park daily 05:30–23:00; Green Kfar Saba 24/7.
 4. Confirm ownershipType = corporate-owned (not franchise).
