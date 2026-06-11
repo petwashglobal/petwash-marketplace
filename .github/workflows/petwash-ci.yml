@@ -204,7 +204,12 @@ jobs:
           DATABASE_URL: postgresql://x:x@localhost/x
           SMOKE_TIMEOUT_MS: '90000'
           SMOKE_BOOT_THRESHOLD_MS: '60000'
-        run: npx tsx scripts/smoke-test-routes-load.ts
+        run: |
+          npx tsx scripts/smoke-test-routes-load.ts
+          # Boot-landmine sweep — imports every dynamically-loaded route module
+          # under the production resolver (the #669/#670 failure class) and
+          # reports ALL failures in one run, not one per deploy cycle.
+          npx tsx scripts/smoke-test-route-imports.ts
 
       - name: Upload smoke-test artifacts (always)
         if: always()
