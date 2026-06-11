@@ -41,6 +41,23 @@ export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls:
   offline: { en: 'Temporarily unavailable', he: 'לא זמינה זמנית', cls: 'text-gray-400' },
 };
 
+// Announced sites — REAL planned stations, honestly labelled "opening soon",
+// shown before any DB hardware row exists (CEO 2026-06-11: Kfar Saba must be
+// visible to everyone now). NOT fake operating stations — every field is true;
+// data mirrors docs/stations/launch-stations-2026-06.md. Remove an entry once
+// its live pet_wash_stations row exists (it'll then show in the live list).
+const ANNOUNCED_LOCATIONS: { city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string }[] = [
+  {
+    city: 'כפר סבא',
+    nameHe: 'פארק יצחק ולד, כפר סבא',
+    nameEn: 'Isaac Wald Park, Kfar Saba',
+    area: 'Isaac Wald Park',
+    lat: 32.179964, lng: 34.925016,
+    etaHe: 'נפתחת בקרוב — תחנת השטיפה החכמה הראשונה',
+    etaEn: 'Opening soon — our first smart wash hub',
+  },
+];
+
 export default function Locations() {
   useSEO(pageSEO.locations);
   const [, navigate] = useLocation();
@@ -114,7 +131,33 @@ export default function Locations() {
           </div>
         )}
 
-        {stations !== null && stations.length === 0 && (
+        {/* Announced sites — opening soon (real, honestly labelled). Always shown. */}
+        {ANNOUNCED_LOCATIONS.length > 0 && (
+          <div className="max-w-4xl mx-auto space-y-4 mb-8">
+            {ANNOUNCED_LOCATIONS.map((a) => (
+              <div key={a.nameEn} className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-amber-300 via-yellow-100 to-amber-400 luxury-shadow-lg">
+                <div className="rounded-2xl bg-white p-6 sm:p-8">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <span className="text-xs font-semibold tracking-wide text-amber-700">✦ OPENING SOON · נפתחת בקרוב</span>
+                      <h2 className="text-2xl font-bold luxury-gradient-text mt-1">{a.nameEn}</h2>
+                      <p className="text-lg luxury-text-body" dir="rtl">{a.nameHe}</p>
+                      <p className="luxury-text-body mt-1">{a.etaEn} · {a.etaHe}</p>
+                    </div>
+                    <Button
+                      className="luxury-btn-outline"
+                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`, '_blank')}
+                    >
+                      <MapPin className="w-5 h-5 mr-2" /> View on map · במפה
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {stations !== null && stations.length === 0 && ANNOUNCED_LOCATIONS.length === 0 && (
           <div className="max-w-xl mx-auto text-center luxury-glass-card p-10">
             <Waves className="w-10 h-10 mx-auto mb-4 text-gray-400" strokeWidth={1.5} />
             <p className="luxury-text-body text-lg">
