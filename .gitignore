@@ -4,8 +4,9 @@ node_modules
 # who reads dist/public/. Block them at .gitignore so future builds do not
 # regress. Vite's `sourcemap: 'hidden'` mode still EMITS .map files; this
 # rule prevents them from being added back to git.
-dist/**/*.map
-dist/server/**/*.map
+# Build output — produced fresh by CI (deploy + Firebase jobs both run
+# `npm run build` before consuming it); committed copies were pure churn.
+dist/
 .DS_Store
 server/public
 vite.config.ts.*
