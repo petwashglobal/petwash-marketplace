@@ -204,6 +204,17 @@ jobs:
           DATABASE_URL: postgresql://x:x@localhost/x
           SMOKE_TIMEOUT_MS: '90000'
           SMOKE_BOOT_THRESHOLD_MS: '60000'
+          # Stubs for modules with import-time "required in production" guards.
+          # The route-import sweep (#676) loads EVERY dynamically-imported
+          # module, so any such guard without a stub fails the gate — caught
+          # live on deploy e28f282 (VOUCHER_SALT). All values fake.
+          VOUCHER_SALT: smoke-dummy-voucher-salt
+          SESSION_SECRET: smoke-dummy-session-secret
+          UNSUBSCRIBE_HMAC_SECRET: smoke-dummy-unsubscribe-hmac
+          WEBAUTHN_COOKIE_SECRET: smoke-dummy-webauthn-cookie-secret
+          FINANCE_AUTHORIZED_EMAILS: smoke@petwash.invalid
+          SUPER_ADMIN_EMAILS: smoke@petwash.invalid
+          SUPER_ADMIN_UID: smoke-dummy-super-admin-uid
         run: |
           npx tsx scripts/smoke-test-routes-load.ts
           # Boot-landmine sweep — imports every dynamically-loaded route module
