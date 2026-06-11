@@ -17,7 +17,7 @@ import { type Language } from '@/lib/i18n';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { logger } from '@/lib/logger';
-import { ShoppingBag, Plus, Minus, X, Loader2, Sparkles, ArrowLeft, Package } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, X, Loader2, Sparkles, ArrowLeft, Package, Gem, Bone, Droplets, Shirt } from 'lucide-react';
 
 interface ShopStoreProps { language: Language; onLanguageChange?: (l: Language) => void; }
 
@@ -76,11 +76,14 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [addingAddress, setAddingAddress] = useState(false);
   const [addr, setAddr] = useState({ fullName: '', phone: '', street: '', city: '', zipCode: '' });
   const [estimate, setEstimate] = useState<DeliveryEstimate | null>(null);
-  // Per-product bespoke engraving: pet name (HE/EN), owner, international mobile.
-  type Engrave = { petName?: string; ownerName?: string; ownerMobile?: string };
+  // Per-product bespoke engraving: pet name (HE/EN), owner, mobile, + foil font.
+  type Engrave = { petName?: string; ownerName?: string; ownerMobile?: string; font?: 'serif' | 'sans' };
   const [engraving, setEngraving] = useState<Record<number, Engrave>>({});
   const setEng = (id: number, field: keyof Engrave, val: string) =>
     setEngraving(prev => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+  // Personalisation opens as a focused jewellery-grade modal (not a box on every
+  // card) — the product whose modal is open, or null.
+  const [personaliseFor, setPersonaliseFor] = useState<Product | null>(null);
   // Auto-detect script → engrave RTL (Hebrew) or LTR (English) correctly.
   const isHebrew = (s: string) => /[֐-׿]/.test(s);
   // International mobile: +<country><digits> (e.g. +972…, +6141…). Local 05X allowed.
@@ -128,6 +131,8 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
           petNameLang: isHebrew(petName) ? 'he' : 'en',
           ...(e.ownerName?.trim() ? { ownerName: e.ownerName.trim() } : {}),
           ...(mobile ? { ownerMobile: mobile } : {}),
+          // foil font rides in the allowed `notes` field (server schema is strict)
+          notes: `Foil font: ${e.font || 'serif'}`,
         };
       }
       await fetch(getApiUrl('/api/shop/cart/items'), {
@@ -135,6 +140,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
         body: JSON.stringify(body),
       });
       if (petName) setEngraving(prev => ({ ...prev, [p.id]: {} }));
+      setPersonaliseFor(null);
       await refreshCart(); setStep('cart'); setCartOpen(true);
     } catch (err) { logger.error('[ShopStore] add', err); }
     setBusy(false);
@@ -295,6 +301,38 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     );
   }
 
+  // Cohesive jewellery-grade product tile (until real product photography
+  // exists): deep obsidian gradient, fine gold hairline, a gold category icon,
+  // and a single precious-gem accent. One designed look beats mismatched stock.
+  const visualFor = (p: Product) => {
+    const cat = (p.category || '').toLowerCase();
+    const icon =
+      isEngravable(p) ? <Gem className="w-9 h-9" strokeWidth={1.25} />
+      : cat.includes('treat') || cat.includes('food') ? <Bone className="w-9 h-9" strokeWidth={1.25} />
+      : cat.includes('care') || cat.includes('wash') || cat.includes('shampoo') ? <Droplets className="w-9 h-9" strokeWidth={1.25} />
+      : cat.includes('apparel') || cat.includes('collar') || cat.includes('wear') ? <Shirt className="w-9 h-9" strokeWidth={1.25} />
+      : <Sparkles className="w-9 h-9" strokeWidth={1.25} />;
+    // gem accent colour rotates subtly by id so the grid reads like a tray of jewels
+    const gems = ['text-emerald-300/70', 'text-sky-300/70', 'text-rose-300/70', 'text-amber-200/80'];
+    const gem = gems[p.id % gems.length];
+    return (
+      <div className="relative w-full h-full bg-gradient-to-br from-neutral-900 via-neutral-950 to-black overflow-hidden">
+        {/* soft metallic sheen */}
+        <div className="absolute -inset-1 bg-gradient-to-tr from-transparent via-amber-200/[0.06] to-transparent" />
+        {/* gold hairline frame */}
+        <div className="absolute inset-2 rounded-xl border border-amber-300/25" />
+        {/* gem accent */}
+        <span className={`absolute top-3 end-3 text-xs ${gem}`}>◆</span>
+        {/* gold category icon */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-transparent bg-gradient-to-br from-amber-200 via-yellow-100 to-amber-400 bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+            {icon}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
       <div className="min-h-screen luxury-bg-mesh">
@@ -346,10 +384,10 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
               {shown.map(p => (
                 <div key={p.id} className="luxury-glass-card luxury-hover-lift overflow-hidden flex flex-col">
-                  <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="aspect-square overflow-hidden">
                     {p.images?.[0]
                       ? <img src={p.images[0]} alt={name(p)} className="w-full h-full object-cover" loading="lazy" />
-                      : <ShoppingBag className="w-10 h-10 text-gray-300" strokeWidth={1} />}
+                      : visualFor(p)}
                   </div>
                   <div className="p-4 flex flex-col flex-1">
                     {p.brand && <span className="text-[10px] uppercase tracking-wider text-gray-400">{p.brand}</span>}
@@ -359,78 +397,25 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                       {p.compare_at_cents && p.compare_at_cents > p.price_cents &&
                         <span className="text-xs text-gray-400 line-through">{shekel(p.compare_at_cents)}</span>}
                     </div>
-                    {isEngravable(p) && (
-                      // ── Bespoke engraving — high-jewellery panel (black/gold + emerald·rose·gold gems) ──
-                      <div className="relative rounded-2xl p-[1.5px] mb-3 bg-gradient-to-br from-amber-300 via-yellow-100 to-amber-400 shadow-[0_8px_30px_rgba(180,140,40,0.25)]">
-                        <div className="rounded-2xl bg-gradient-to-b from-neutral-900 via-neutral-950 to-black p-4 space-y-2.5">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="text-emerald-300 text-[10px]">◇</span>
-                            <span className="text-rose-300 text-[10px]">✦</span>
-                            <span className="text-[10px] font-serif uppercase tracking-[0.25em] bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent">
-                              {tr('Bespoke Engraving', 'חריטה יוקרתית בהזמנה')}
-                            </span>
-                            <span className="text-rose-300 text-[10px]">✦</span>
-                            <span className="text-emerald-300 text-[10px]">◇</span>
-                          </div>
-
-                          {/* Pet name — Hebrew or English, RTL/LTR auto */}
-                          <input
-                            type="text" dir="auto" maxLength={40}
-                            value={engraving[p.id]?.petName || ''}
-                            onChange={e => setEng(p.id, 'petName', e.target.value.slice(0, 40))}
-                            placeholder={tr("Pet's name · שם החיה", "שם החיה · Pet's name")}
-                            className="w-full rounded-lg bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-3 py-2 text-xs focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
-                            aria-label={tr('Pet name to engrave', 'שם החיה לחריטה')}
-                          />
-                          {/* Owner name */}
-                          <input
-                            type="text" dir="auto" maxLength={60}
-                            value={engraving[p.id]?.ownerName || ''}
-                            onChange={e => setEng(p.id, 'ownerName', e.target.value.slice(0, 60))}
-                            placeholder={tr('Owner name (optional)', 'שם הבעלים (רשות)')}
-                            className="w-full rounded-lg bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-3 py-2 text-xs focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
-                            aria-label={tr('Owner name', 'שם הבעלים')}
-                          />
-                          {/* International mobile — defaults to +972, accepts any country */}
-                          <input
-                            type="tel" inputMode="tel" dir="ltr" maxLength={20}
-                            value={engraving[p.id]?.ownerMobile || ''}
-                            onFocus={() => { if (!engraving[p.id]?.ownerMobile) setEng(p.id, 'ownerMobile', '+972 '); }}
-                            onChange={e => setEng(p.id, 'ownerMobile', e.target.value.slice(0, 20))}
-                            placeholder="+972 50 000 0000  ·  +61 4xx xxx"
-                            className="w-full rounded-lg bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-3 py-2 text-xs focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
-                            aria-label={tr('Owner mobile (international)', 'נייד הבעלים (בינלאומי)')}
-                          />
-
-                          {/* Live engraved nameplate preview — metallic gold on black */}
-                          {engraving[p.id]?.petName?.trim() && (
-                            <div className="mt-1 rounded-xl p-[1px] bg-gradient-to-r from-emerald-400 via-amber-200 to-rose-300">
-                              <div className="rounded-xl bg-black/90 px-4 py-3 text-center">
-                                <span
-                                  className="font-serif text-xl tracking-wide bg-gradient-to-r from-amber-200 via-yellow-50 to-amber-300 bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
-                                  dir="auto"
-                                >
-                                  {engraving[p.id]?.petName}
-                                </span>
-                                <p className="text-[8px] uppercase tracking-[0.3em] text-amber-200/40 mt-1">
-                                  {tr('Engraving preview  ◇  18k finish', 'תצוגת חריטה  ◇  גימור זהב')}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* §14ג(ד)(4) disclosure BEFORE add-to-cart: custom-made goods
-                              are exempt from the distance-sale cancellation right. */}
-                          <p className="text-[9px] text-center tracking-wide text-amber-200/50">
-                            {tr('Custom engraved · final sale (defects excepted)', 'חריטה אישית · ללא החזרה (למעט פגם)')}
-                          </p>
-                        </div>
-                      </div>
+                    {/* Engravable → one clean gold "Personalise" button opens the
+                        jewellery-grade modal (no cluttered box on the card). */}
+                    {isEngravable(p) ? (
+                      <button
+                        onClick={() => { if (!user) { navigate('/signin?redirect=/shop'); return; } setErr(null); setPersonaliseFor(p); }}
+                        disabled={p.stock_quantity <= 0}
+                        className="group w-full rounded-xl p-[1.5px] bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-400 disabled:opacity-40"
+                      >
+                        <span className="flex items-center justify-center gap-2 rounded-[10px] bg-neutral-950 px-3 py-2.5 text-xs font-medium tracking-wide text-amber-100 group-hover:bg-neutral-900 transition">
+                          <Gem className="w-3.5 h-3.5" />
+                          {p.stock_quantity <= 0 ? tr('Sold out', 'אזל מהמלאי') : tr('Personalise', 'התאמה אישית')}
+                        </span>
+                      </button>
+                    ) : (
+                      <button onClick={() => addToCart(p)} disabled={busy || p.stock_quantity <= 0}
+                        className="w-full rounded-xl px-3 py-2.5 bg-black text-white text-xs font-medium disabled:opacity-40 hover:bg-neutral-800 transition">
+                        {p.stock_quantity <= 0 ? tr('Sold out', 'אזל מהמלאי') : tr('Add to cart', 'הוסף לעגלה')}
+                      </button>
                     )}
-                    <button onClick={() => addToCart(p)} disabled={busy || p.stock_quantity <= 0}
-                      className="w-full rounded-xl px-3 py-2 bg-black text-white text-xs font-medium disabled:opacity-40">
-                      {p.stock_quantity <= 0 ? tr('Sold out', 'אזל מהמלאי') : tr('Add to cart', 'הוסף לעגלה')}
-                    </button>
                   </div>
                 </div>
               ))}
@@ -590,6 +575,111 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
             </div>
           </div>
         )}
+
+        {/* ── Bespoke personalisation — jewellery-grade modal (TDE-style flow) ── */}
+        {personaliseFor && (() => {
+          const p = personaliseFor;
+          const e = engraving[p.id] || {};
+          const petName = e.petName?.trim() || '';
+          const foil = e.font || 'serif';
+          const fontClass = foil === 'serif' ? 'font-serif' : 'font-sans';
+          return (
+            <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" onClick={() => setPersonaliseFor(null)}>
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <div
+                className="relative w-full sm:max-w-md max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-[1.5px] bg-gradient-to-br from-amber-300 via-yellow-100 to-amber-400 shadow-[0_20px_60px_rgba(180,140,40,0.35)]"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                onClick={ev => ev.stopPropagation()}
+              >
+                <div className="rounded-t-3xl sm:rounded-3xl bg-gradient-to-b from-neutral-900 via-neutral-950 to-black p-6 space-y-4">
+                  {/* header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-300/80 text-xs">◆</span>
+                      <span className="text-rose-300/80 text-xs">✦</span>
+                      <span className="text-[11px] font-serif uppercase tracking-[0.3em] bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent">
+                        {tr('Bespoke Engraving', 'חריטה יוקרתית')}
+                      </span>
+                    </div>
+                    <button onClick={() => setPersonaliseFor(null)} aria-label={tr('Close', 'סגור')} className="text-amber-100/60 hover:text-amber-100">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-100/50">{name(p)} · {shekel(p.price_cents)}</p>
+
+                  {/* live gold-foil nameplate preview */}
+                  <div className="rounded-2xl p-[1px] bg-gradient-to-r from-emerald-400/60 via-amber-200 to-rose-300/60">
+                    <div className="rounded-2xl bg-black px-5 py-7 text-center">
+                      <span
+                        dir="auto"
+                        className={`${fontClass} text-3xl tracking-wide bg-gradient-to-b from-amber-100 via-yellow-200 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]`}
+                      >
+                        {petName || tr('Your pet', 'שם החיה')}
+                      </span>
+                      <p className="text-[8px] uppercase tracking-[0.35em] text-amber-200/40 mt-3">
+                        {tr('18k gold foil · live preview', 'גימור זהב · תצוגה חיה')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* font (foil) choice — curated 2 only, like fine monogramming */}
+                  <div className="flex gap-2">
+                    {(['serif', 'sans'] as const).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setEng(p.id, 'font', f)}
+                        className={`flex-1 rounded-xl border px-3 py-2 text-sm transition ${foil === f ? 'border-amber-300 bg-amber-300/10 text-amber-100' : 'border-amber-300/25 text-amber-100/50 hover:border-amber-300/50'}`}
+                      >
+                        <span className={f === 'serif' ? 'font-serif' : 'font-sans'}>{tr(f === 'serif' ? 'Serif' : 'Modern', f === 'serif' ? 'קלאסי' : 'מודרני')}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* name + owner + mobile */}
+                  <input
+                    type="text" dir="auto" maxLength={40} autoFocus
+                    value={e.petName || ''}
+                    onChange={ev => setEng(p.id, 'petName', ev.target.value.slice(0, 40))}
+                    placeholder={tr("Pet's name · שם החיה", "שם החיה · Pet's name")}
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-sm focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
+                    aria-label={tr('Pet name to engrave', 'שם החיה לחריטה')}
+                  />
+                  <input
+                    type="text" dir="auto" maxLength={60}
+                    value={e.ownerName || ''}
+                    onChange={ev => setEng(p.id, 'ownerName', ev.target.value.slice(0, 60))}
+                    placeholder={tr('Owner name (optional)', 'שם הבעלים (רשות)')}
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-sm focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
+                    aria-label={tr('Owner name', 'שם הבעלים')}
+                  />
+                  <input
+                    type="tel" inputMode="tel" dir="ltr" maxLength={20}
+                    value={e.ownerMobile || ''}
+                    onFocus={() => { if (!e.ownerMobile) setEng(p.id, 'ownerMobile', '+972 '); }}
+                    onChange={ev => setEng(p.id, 'ownerMobile', ev.target.value.slice(0, 20))}
+                    placeholder="+972 50 000 0000  ·  +61 4xx xxx"
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-sm focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
+                    aria-label={tr('Owner mobile (international)', 'נייד הבעלים (בינלאומי)')}
+                  />
+
+                  <p className="text-[10px] text-center tracking-wide text-amber-200/50">
+                    {tr('Custom engraved · final sale (defects excepted)', 'חריטה אישית · ללא החזרה (למעט פגם)')}
+                  </p>
+
+                  <button
+                    onClick={() => addToCart(p)}
+                    disabled={busy || !petName}
+                    className="w-full rounded-xl p-[1.5px] bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-400 disabled:opacity-40"
+                  >
+                    <span className="flex items-center justify-center gap-2 rounded-[10px] bg-neutral-950 px-4 py-3 text-sm font-medium text-amber-100">
+                      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Gem className="w-4 h-4" /> {tr('Add to cart', 'הוסף לעגלה')}</>}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </Layout>
   );
