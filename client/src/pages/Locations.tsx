@@ -56,6 +56,17 @@ const ANNOUNCED_LOCATIONS: { city: string; nameHe: string; nameEn: string; area:
     etaHe: 'נפתחת בקרוב — תחנת השטיפה החכמה הראשונה',
     etaEn: 'Opening soon — our first smart wash hub',
   },
+  {
+    // Station 2 — exact street address still TBD (CEO), so we name the
+    // neighbourhood only (no fake precise address); the map pin is real.
+    city: 'כפר סבא',
+    nameHe: 'כפר סבא הירוקה',
+    nameEn: 'Green Kfar Saba',
+    area: 'Green Kfar Saba',
+    lat: 32.186193, lng: 34.897218,
+    etaHe: 'נפתחת בקרוב — פתוחה 24/7',
+    etaEn: 'Opening soon — open 24/7',
+  },
 ];
 
 export default function Locations() {
