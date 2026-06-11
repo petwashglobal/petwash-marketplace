@@ -426,6 +426,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # ── M-DEPLOY-2 companion: migrations are NOT auto-applied (see the
+      # apply-migrations job history above — twice-burned decision). But the
+      # shop-tables incident (2026-06-11) showed the manual step gets
+      # FORGOTTEN: migration #646 sat unapplied for 2 days and 500'd prod.
+      # This step makes forgetting impossible: any push that ADDS a
+      # migrations/*.sql file gets a loud annotation + step-summary + a
+      # comment on the merged PR with the exact dispatch command.
+      - name: Detect new migrations (manual-apply reminder)
+        if: github.event_name == 'push'
+        env:
+          COMMITS_JSON: ${{ toJson(github.event.commits) }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ADDED=$(echo "$COMMITS_JSON" | jq -r '.[].added[]?' | grep -E '^migrations/.*\.sql$' | sort -u || true)
+          if [ -z "$ADDED" ]; then
+            echo "No new migration files in this push."
+            exit 0
+          fi
+          echo "::warning title=NEW MIGRATIONS — NOT AUTO-APPLIED::${ADDED//$'\n'/, } — apply with: gh workflow run petwash-ci.yml -f run_migrations=true"
+          {
+            echo "## ⚠️ New SQL migrations merged — NOT auto-applied (M-DEPLOY-2)"
+            echo ""
+            echo '```'
+            echo "$ADDED"
+            echo '```'
+            echo ""
+            echo "Apply now: \`gh workflow run petwash-ci.yml -f run_migrations=true\` (or Actions → Run workflow → check run_migrations)."
+            echo "Until applied, routes reading these tables will 500."
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Best-effort comment on the merged PR (non-fatal if none found)
+          PR=$(gh pr list --state merged --search "${{ github.sha }}" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$PR" ] && [ "$PR" != "null" ]; then
+            gh pr comment "$PR" --body "⚠️ **This merge added SQL migrations that are NOT auto-applied** (M-DEPLOY-2): \`${ADDED//$'\n'/\`, \`}\`. Apply with: \`gh workflow run petwash-ci.yml -f run_migrations=true\` — until then, routes reading these tables will 500." || true
+          fi
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
