@@ -2135,6 +2135,17 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_WEBAUTHN_RP_ID: ${{ secrets.VITE_WEBAUTHN_RP_ID }}
 
+          # ⚠️ DUAL-BUILD HAZARD: this env block is a SECOND copy of the
+          # frontend build env (the first feeds the Cloud Run image, ~line
+          # 929). THIS build is what Firebase Hosting serves to users at
+          # petwash.co.il. Incident 2026-06-11: the shop flags were added
+          # only to the other block — users kept seeing the old waitlist
+          # while the Cloud Run bundle had the live shop. Until the two
+          # blocks are DRY'd into one, every VITE_* flag must be set in
+          # BOTH places.
+          VITE_SHOP_LIVE_ENABLED: 'true'
+          VITE_SHOP_CHECKOUT_ENABLED: 'false'
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
