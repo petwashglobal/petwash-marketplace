@@ -121,7 +121,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     [],
   );
   const flow = normalizeFlow(params.get('flow') || params.get('intent'));
-  const dest = destForFlow(flow);
+  // ?redirect=/shop — return the user where they came from (shop cart, booking…).
+  // Internal paths only: must start with a single '/' (blocks //evil.com and
+  // proto:// open-redirects).
+  const redirectParam = params.get('redirect');
+  const safeRedirect = redirectParam && /^\/(?!\/)/.test(redirectParam) ? redirectParam : null;
+  const dest = safeRedirect ?? destForFlow(flow);
 
   const { user } = useFirebaseAuth();
   useEffect(() => { if (user) navigate(dest); }, [user, dest, navigate]);
