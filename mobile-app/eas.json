@@ -32,9 +32,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "REPLACE_WITH_APPLE_ID@petwash.co.il",
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
+        "ascApiKeyId": "DZ68Q258JX",
+        "ascApiKeyIssuerId": "f8d92710-0d49-42f2-876b-d400bb6b3365",
+        "appleTeamId": "U22NC3Q5Z4"
       },
       "android": {
         "serviceAccountKeyPath": "./play-store-service-account.json",

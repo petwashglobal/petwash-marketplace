@@ -61,3 +61,9 @@ load-test-output.txt
 
 # PR-STARTUP-HARDEN-1 — smoke-test artifacts (regenerated per CI run; uploaded to GH artifacts instead)
 /smoke-test-output/
+
+# Apple/Play signing secrets — never commit. The ASC .p8 lives encrypted on
+# EAS servers (uploaded via `eas credentials`), never in the repo. (PetWash 2026-06-11)
+*.p8
+mobile-app/*.p8
+mobile-app/play-store-service-account.json
