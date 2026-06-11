@@ -13422,7 +13422,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/legal/compliance', requireAdmin, async (req: any, res) => {
     try {
       const { legalComplianceReviews, legalDocumentVersions } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { desc, eq } = await import('drizzle-orm');
 
       // Get latest reviews for each document type
@@ -13480,7 +13480,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/legal/reviews', requireAdmin, async (req: any, res) => {
     try {
       const { legalComplianceReviews } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { desc, eq } = await import('drizzle-orm');
 
       const { documentType, status } = req.query;
@@ -13508,7 +13508,7 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/admin/legal/reviews', requireAdmin, async (req: any, res) => {
     try {
       const { legalComplianceReviews, insertLegalComplianceReviewSchema } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
 
       const reviewData = insertLegalComplianceReviewSchema.parse(req.body);
       
@@ -13534,7 +13534,7 @@ self.addEventListener('notificationclick', (event) => {
   app.patch('/api/admin/legal/reviews/:id', requireAdmin, async (req: any, res) => {
     try {
       const { legalComplianceReviews } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { eq } = await import('drizzle-orm');
 
       const reviewId = parseInt(req.params.id);
@@ -13571,7 +13571,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/legal/versions', requireAdmin, async (req: any, res) => {
     try {
       const { legalDocumentVersions } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { desc, eq } = await import('drizzle-orm');
 
       const { documentType } = req.query;
@@ -13595,7 +13595,7 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/admin/legal/versions', requireAdmin, async (req: any, res) => {
     try {
       const { legalDocumentVersions, insertLegalDocumentVersionSchema } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
 
       const versionData = insertLegalDocumentVersionSchema.parse(req.body);
       
@@ -13618,7 +13618,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { documentType } = req.body;
       const { legalComplianceReviews } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { desc, eq } = await import('drizzle-orm');
 
       // Get latest review for this document type
@@ -13666,7 +13666,7 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/track/interaction', async (req, res) => {
     try {
       const { userInteractionLogs, insertUserInteractionLogSchema } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
 
       const interactionData = insertUserInteractionLogSchema.parse(req.body);
       
@@ -13741,7 +13741,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/interactions', requireAdmin, async (req: any, res) => {
     try {
       const { userInteractionLogs } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { desc, eq, and, gte, lte } = await import('drizzle-orm');
 
       const { 
@@ -13792,7 +13792,7 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/admin/interactions/analytics', requireAdmin, async (req: any, res) => {
     try {
       const { userInteractionLogs } = await import('@shared/schema');
-      const { db } = await import('../db');
+      const { db } = await import('./db');
       const { sql, desc, gte } = await import('drizzle-orm');
 
       const { days = 7 } = req.query;
