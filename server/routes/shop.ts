@@ -44,13 +44,22 @@ import { requireAuth } from '../customAuth';
 import { requireAdmin } from '../adminAuth';
 import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+// ⚠️ CRITICAL for commerce launch: walletService.deductFromWallet /
+// creditWallet below DO NOT EXIST on WalletService — fictional like the
+// escrow calls. Unreachable behind SHOP_CHECKOUT_ENABLED. Real wallet
+// integration is part of the commerce-launch design (CEO approval gate).
 import { walletService } from '../services/WalletService';
-import { EscrowService } from '../services/EscrowService';
+// DEFAULT export (singleton). ⚠️ CRITICAL for commerce launch: the three
+// EscrowService.hold/.cancel/.release calls below are FICTIONAL — the real
+// service exposes createEscrowPayment/releaseEscrowPayment/refundEscrowPayment
+// (booking-shaped). Unreachable today (SHOP_CHECKOUT_ENABLED hard-block), but
+// a real shop<->escrow integration MUST be designed before checkout opens.
+import EscrowService from '../services/EscrowService';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { shopOrderConfirmation } from '../email/templates/shop-order-confirmation-2026';
 import { ShopService } from '../services/ShopService';
 import { apiLimiter, paymentLimiter, adminLimiter } from '../middleware/rateLimiter';
-import { auditLog } from '../services/AuditLedgerService';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 const shopService = new ShopService();
@@ -388,7 +397,7 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
       }
 
       // 9. Audit log
-      await auditLog('shop.order.created', uid, { orderId: order.id, totalCents, itemCount: cart.items.length });
+      await logAuditEvent({ actorUserId: uid, actorRole: 'customer', actionType: 'shop.order.created', targetType: 'shop_order', targetId: String(order.id), metadata: { totalCents, itemCount: cart.items.length } });
 
       res.status(201).json({
               status: 'confirmed',
@@ -460,7 +469,7 @@ router.post('/orders/:id/cancel', apiLimiter, requireAuth, async (req: Request, 
       // Release escrow and refund wallet
       await EscrowService.cancel(uid, 'shop_order', orderId);
           await walletService.creditWallet(uid, result.refundCents, 'shop_refund', { orderId });
-          await auditLog('shop.order.cancelled', uid, { orderId, refundCents: result.refundCents });
+          await logAuditEvent({ actorUserId: uid, actorRole: 'customer', actionType: 'shop.order.cancelled', targetType: 'shop_order', targetId: String(orderId), metadata: { refundCents: result.refundCents } });
 
       res.json({ status: 'cancelled', refundCents: result.refundCents });
     } catch (err: any) {
@@ -596,7 +605,7 @@ router.patch('/admin/orders/:id/status', adminLimiter, requireAdmin, async (req:
                                                                           );
       }
 
-      await auditLog('shop.order.status_changed', adminUid, { orderId, newStatus, trackingNumber });
+      await logAuditEvent({ actorUserId: adminUid, actorRole: 'admin', actionType: 'shop.order.status_changed', targetType: 'shop_order', targetId: String(orderId), metadata: { newStatus, trackingNumber } });
 
       res.json({ success: true, status: newStatus, order });
     } catch (err: any) {

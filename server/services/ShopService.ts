@@ -15,7 +15,7 @@ import { IsraeliInvoiceGenerator } from './IsraeliInvoiceGenerator';
 import { getDeliveryOptions, getDeliveryLegalNote } from './shop/DeliveryRouter';
 import { addDeliveryDays } from './shop/israeliDeliveryCalendar';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
-import { TwilioSMSService } from './TwilioSMSService';
+import { twilioSMSService } from './TwilioSMSService';
 import { v4 as uuidv4 } from 'uuid';
 import { sql, eq, and, like, gte, lte, desc, asc, inArray } from 'drizzle-orm';
 import type {
@@ -52,7 +52,7 @@ const EXPRESS_CITIES = new Set([
 
 export class ShopService {
     private invoiceGenerator = new IsraeliInvoiceGenerator();
-    private smsService = new TwilioSMSService();
+    private smsService = twilioSMSService;
 
   // ─── Products ──────────────────────────────────────────────────────────────
 
