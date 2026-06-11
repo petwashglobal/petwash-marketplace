@@ -209,6 +209,10 @@ jobs:
           # module, so any such guard without a stub fails the gate — caught
           # live on deploy e28f282 (VOUCHER_SALT). All values fake.
           VOUCHER_SALT: smoke-dummy-voucher-salt
+          NAYAX_API_KEY: smoke-dummy-nayax-api-key
+          NAYAX_SECRET: smoke-dummy-nayax-secret
+          NAYAX_MERCHANT_ID: smoke-dummy-nayax-merchant
+          NAYAX_WEBHOOK_SECRET: smoke-dummy-nayax-webhook
           SESSION_SECRET: smoke-dummy-session-secret
           UNSUBSCRIBE_HMAC_SECRET: smoke-dummy-unsubscribe-hmac
           WEBAUTHN_COOKIE_SECRET: smoke-dummy-webauthn-cookie-secret
