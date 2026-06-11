@@ -209,6 +209,11 @@ export function Footer({ language }: FooterProps) {
             <div className="text-center md:text-right text-sm text-gray-600">
               <p className="font-semibold text-gray-900">&copy; 2026 <span className="brand-petwash">⁦Pet Wash™⁩</span> Ltd</p>
               <p className="text-xs mt-1">{t('footer.allRightsReserved', language)}</p>
+              {/* Visible build stamp — read this to know instantly if the page
+                  is the latest deploy or a stale cached tab. */}
+              <p className="text-[10px] text-gray-300 mt-1 font-mono" dir="ltr">
+                build {typeof __APP_BUILD_ID__ !== 'undefined' ? __APP_BUILD_ID__ : 'dev'}
+              </p>
               <p className="flex items-center justify-center md:justify-end gap-1 mt-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
                 <span className="text-xs text-green-600 font-medium">
