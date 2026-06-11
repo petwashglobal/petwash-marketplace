@@ -401,7 +401,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                         jewellery-grade modal (no cluttered box on the card). */}
                     {isEngravable(p) ? (
                       <button
-                        onClick={() => { if (!user) { navigate('/signin?redirect=/shop'); return; } setErr(null); setPersonaliseFor(p); }}
+                        onClick={() => { setErr(null); setPersonaliseFor(p); }}
                         disabled={p.stock_quantity <= 0}
                         className="group w-full rounded-xl p-[1.5px] bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-400 disabled:opacity-40"
                       >
