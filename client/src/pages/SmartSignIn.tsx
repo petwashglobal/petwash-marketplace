@@ -57,6 +57,16 @@ type Step =
 
 const SUPPORT_INTENT_DEFAULT = '/dashboard';
 
+/** ?redirect=/shop — send the user back where they came from after auth
+ *  (shop cart, booking flow…). Internal paths only: single leading '/'
+ *  (blocks //evil.com and protocol open-redirects). */
+function postAuthDest(): string {
+  const raw = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('redirect')
+    : null;
+  return raw && /^\/(?!\/)/.test(raw) ? raw : SUPPORT_INTENT_DEFAULT;
+}
+
 export default function SmartSignIn({ language, onLanguageChange }: SmartSignInProps) {
   const he = language === 'he';
   const [, navigate] = useLocation();
@@ -90,7 +100,7 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
     });
     // Returning user → straight to the app. New user → collect required details first.
     if (isNewUser) { setStep('newDetails'); setBusy(false); return; }
-    navigate(SUPPORT_INTENT_DEFAULT);
+    navigate(postAuthDest());
   }
 
   // ── Email: identifier-first. Try sign-in; "user not found" = it's a NEW account. ──
@@ -193,7 +203,7 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
   // After a NEW account is created → offer to save Face ID / passkey for one-glance returns.
   function goAfterNew() {
     if (isPasskeySupported()) { setStep('offerPasskey'); setBusy(false); }
-    else navigate(SUPPORT_INTENT_DEFAULT);
+    else navigate(postAuthDest());
   }
 
   async function savePasskey() {
@@ -204,7 +214,7 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
     } catch (e) {
       logger.warn('[SmartSignIn] passkey register failed (non-blocking)', { e });
     }
-    navigate(SUPPORT_INTENT_DEFAULT);
+    navigate(postAuthDest());
   }
 
   // ── Phone OTP: same proven endpoint chain as the existing screen. ──
@@ -413,7 +423,7 @@ export default function SmartSignIn({ language, onLanguageChange }: SmartSignInP
                 className="w-full rounded-xl px-4 py-3 bg-black text-white text-sm font-medium">
                 {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : tr(`Set up ${getBiometricMethodName()}`, `הגדר ${getBiometricMethodName()}`)}
               </button>
-              <button onClick={() => navigate(SUPPORT_INTENT_DEFAULT)} className="text-xs text-gray-500 underline">
+              <button onClick={() => navigate(postAuthDest())} className="text-xs text-gray-500 underline">
                 {tr('Maybe later', 'אולי מאוחר יותר')}
               </button>
             </div>
