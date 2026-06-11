@@ -54,3 +54,6 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('🟢 Route-import sweep PASSED');
+// Imported modules start intervals/cron timers as side effects — without an
+// explicit exit the process lives forever and the CI step hangs on SUCCESS.
+process.exit(0);
