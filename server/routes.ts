@@ -403,8 +403,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use(enhancedSecurityHeaders);
 
   // ── Gemini security intelligence advisor (CVE + advisory monitoring for all 3rd-party SDKs)
-  const { startSecurityAdvisor } = await import('./services/GeminiSecurityAdvisor');
-  startSecurityAdvisor();
+  // DISABLED by default 2026-06-12 to stop silent paid-AI spend after an
+  // unexpected Google bill (this runs a Gemini call on an interval). Re-enable
+  // intentionally with AI_CRONS_ENABLED=true.
+  if (process.env.AI_CRONS_ENABLED === 'true') {
+    const { startSecurityAdvisor } = await import('./services/GeminiSecurityAdvisor');
+    startSecurityAdvisor();
+  } else {
+    console.warn('[AI Crons] Gemini Security Advisor DISABLED (set AI_CRONS_ENABLED=true to re-enable) — no paid AI calls');
+  }
 
   // ── ThreatGuard intrusion-detection middleware (injection scan, scanner UA, brute-force tracking)
   // Must be mounted BEFORE rate limiters so every request is inspected
