@@ -84,7 +84,6 @@ const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePag
 const ServiceLandingPage = lazy(() => import("@/pages/ServiceLandingPage"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
-const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
 const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDashboard"));
 const ProviderTaskInbox = lazy(() => import("@/pages/ProviderTaskInbox"));
 const ProviderEarningsPage = lazy(() => import("@/pages/ProviderEarningsPage"));
@@ -276,10 +275,8 @@ const SitterSuite = lazy(() => import("@/pages/sitter-suite/BrowseSitters"));
 const SitterDetail = lazy(() => import("@/pages/sitter-suite/SitterDetail"));
 const SitterBookingFlow = lazy(() => import("@/pages/sitter-suite/BookingFlow"));
 const SitterOwnerDashboard = lazy(() => import("@/pages/sitter-suite/OwnerDashboard"));
-const SitterDashboard = lazy(() => import("@/pages/sitter-suite/SitterDashboard"));
 const SitterEditProfile = lazy(() => import("@/pages/sitter-suite/SitterEditProfile"));
 const OwnerDashboardPage = SitterOwnerDashboard; // Alias
-const SitterDashboardPage = SitterDashboard; // Alias
 
 // ⁦Pet Wash Academy™⁩ - Professional Trainer Marketplace
 const Academy = lazy(() => import("@/pages/Academy"));
@@ -298,7 +295,6 @@ const TrainerBookings = lazy(() => import("@/pages/academy/TrainerBookings"));
 // /apply-provider and /join-team.
 
 // Contractor Dashboard - 2026 Lifecycle Management
-const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 
 // Provider Matching Flow
 const ProviderMatchScreen = lazy(() => import("@/pages/ProviderMatchScreen"));
@@ -330,7 +326,6 @@ const Groomers = lazy(() => import("@/pages/Groomers"));
 const GroomerDetail = lazy(() => import("@/pages/groomers/GroomerDetail"));
 const GroomersBook = lazy(() => import("@/pages/GroomersBook"));
 const GroomersCustomerDashboard = lazy(() => import("@/pages/GroomersCustomerDashboard"));
-const GroomersProviderDashboard = lazy(() => import("@/pages/GroomersProviderDashboard"));
 
 // Shared Pet Services Foundation - Cross-Platform Community Services
 const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms"));
@@ -404,7 +399,6 @@ const Optimizer = lazy(() => import("@/pages/Optimizer"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
-const ProviderApplicationForm = lazy(() => import("@/pages/ProviderApplicationForm"));
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
 const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
@@ -472,10 +466,8 @@ const PetTrekTracking = lazy(() => import("@/pages/pettrek/TrackTrip")); // Alia
 const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard")); // Alias
 
 // Unified Provider Dashboard (Pet Wash™ style)
-const UnifiedProviderDashboard = lazy(() => import("@/pages/ProviderDashboard"));
 
 // Provider Operations Console 2026
-const ProviderConsole = lazy(() => import("@/pages/ProviderConsole"));
 
 // Provider OS — Full Operating System
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
@@ -635,7 +627,7 @@ function BecomeProviderRedirect() {
 
 /**
  * PR Phase A (2026-05-16): /apply-provider and /join-team are duplicate
- * legacy entry points that render the same ProviderApplicationForm.
+ * legacy entry points for becoming a provider.
  * Both redirect to the canonical /provider-onboarding. Routes remain
  * mounted for 90 days so inbound links (Google index, business cards,
  * social posts) keep working; canonical surface is the single source
