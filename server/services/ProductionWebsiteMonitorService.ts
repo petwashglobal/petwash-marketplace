@@ -354,11 +354,15 @@ Respond in a structured format. Be concise but thorough.`;
 // Export singleton instance
 export const productionMonitor = new ProductionWebsiteMonitorService();
 
-// Auto-start monitoring only in production (dev mode skips to avoid Vite warm-up crashes)
-if (process.env.NODE_ENV === 'production') {
+// Auto-start monitoring only in production (dev mode skips to avoid Vite warm-up crashes).
+// DISABLED by default 2026-06-12 (cost incident): this ran a paid Gemini analysis on a
+// 5-minute timer (~288 calls/day). Gated behind AI_CRONS_ENABLED like the other AI jobs.
+if (process.env.NODE_ENV === 'production' && process.env.AI_CRONS_ENABLED === 'true') {
   setTimeout(() => {
     productionMonitor.start();
   }, 5000);
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn('[ProductionMonitor] DISABLED (set AI_CRONS_ENABLED=true to re-enable) — no paid AI monitoring calls');
 }
 
 export default productionMonitor;
