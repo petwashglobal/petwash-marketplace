@@ -206,13 +206,19 @@ const isAdmin = (req: any, res: any, next: any) => {
   //      control.
   //   3. The env-driven SUPER_ADMIN_EMAILS allowlist is still honored
   //      and ALSO gated on email_verified.
+  //
+  // SECURITY 2026-06-12 (audit M1): the `|| endsWith('@petwash.co.il')`
+  // wildcard meant ANY verified company mailbox could read every pet's
+  // PII / medical notes on /admin/all. Removed — access is now the
+  // SUPER_ADMIN_EMAILS allowlist only (same source as the rest of the
+  // system). To grant a staffer access, add them to SUPER_ADMIN_EMAILS.
   if (!emailVerified || !adminEmail) {
     return res.status(403).json({ error: 'Admin access required (verified email)' });
   }
   const lowered = adminEmail.toLowerCase();
   const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
     .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-  const isAllowed = superAdminEmails.includes(lowered) || lowered.endsWith('@petwash.co.il');
+  const isAllowed = superAdminEmails.includes(lowered);
   if (isAllowed) {
     return next();
   }
