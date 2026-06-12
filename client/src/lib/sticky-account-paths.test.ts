@@ -74,8 +74,8 @@ describe('isStickyAccountPath', () => {
     expect(STICKY_ACCOUNT_PATHS).toContain('/join/trainer');
   });
 
-  // PR-FRES-4 — App.tsx:2244 /apply-provider and App.tsx:2253 /join-team
-  // both render <ProviderApplicationForm/>. They must be sticky so an
+  // PR-FRES-4 — /apply-provider and /join-team both redirect to the
+  // canonical /provider-onboarding. They must be sticky so an
   // Account-tab tap mid-form does not bounce returning users to /home.
   it('PR-FRES-4: canonical list contains /apply-provider and /join-team', () => {
     expect(STICKY_ACCOUNT_PATHS).toContain('/apply-provider');

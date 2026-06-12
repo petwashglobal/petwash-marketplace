@@ -29,8 +29,8 @@ export const STICKY_ACCOUNT_PATHS: readonly string[] = [
   '/join/walker',
   '/join/sitter',
   '/join/trainer',
-  // Issue #153 PR-FRES-4 — App.tsx:2244 /apply-provider and App.tsx:2253
-  // /join-team both render <ProviderApplicationForm/> behind <RequireAuth>.
+  // Issue #153 PR-FRES-4 — /apply-provider and /join-team both redirect to
+  // the canonical /provider-onboarding (RequireAuth provider funnel).
   // They were missing from STICKY_ACCOUNT_PATHS, so an Account-tab tap or
   // any other useAccountNavigation call mid-form would fire post-login and
   // overwrite the form with /home (returning customers) or /provider/pending
