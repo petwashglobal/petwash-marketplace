@@ -336,6 +336,12 @@ setTimeout(async () => {
     console.warn('[Places] ⚠️  GOOGLE_MAPS_API_KEY not set — Places autocomplete is DISABLED for all users');
     return;
   }
+  // Cost guard 2026-06-12: this boot-time validation makes a PAID Places call on
+  // every restart. Off by default; set PLACES_LIVE_HEALTHCHECK=true to re-enable.
+  if (process.env.PLACES_LIVE_HEALTHCHECK !== 'true') {
+    console.warn('[Places] boot key-check skipped (set PLACES_LIVE_HEALTHCHECK=true to re-enable) — no paid Places call');
+    return;
+  }
   try {
     const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
@@ -906,6 +912,16 @@ app.get('/api/google/places-health', async (req, res) => {
   if (!process.env.GOOGLE_MAPS_API_KEY) {
     checks.status = 'GOOGLE_KEY_MISSING';
     checks.reason = 'GOOGLE_MAPS_API_KEY env var not present in runtime';
+    return res.status(200).json(checks);
+  }
+
+  // Cost guard 2026-06-12: this PUBLIC, unauthenticated endpoint made a PAID
+  // Places call on every hit (trivially abusable → runaway bill). By default it
+  // now reports config status only. Set PLACES_LIVE_HEALTHCHECK=true to allow the
+  // live probe (and ideally protect/rotate the key in GCP first).
+  if (process.env.PLACES_LIVE_HEALTHCHECK !== 'true') {
+    checks.status = 'CONFIG_ONLY';
+    checks.reason = 'Live Places probe disabled (PLACES_LIVE_HEALTHCHECK!=true) — no paid call made';
     return res.status(200).json(checks);
   }
 
