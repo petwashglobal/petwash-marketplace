@@ -46,8 +46,9 @@ export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls:
 // visible to everyone now). NOT fake operating stations — every field is true;
 // data mirrors docs/stations/launch-stations-2026-06.md. Remove an entry once
 // its live pet_wash_stations row exists (it'll then show in the live list).
-const ANNOUNCED_LOCATIONS: { city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string }[] = [
+const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string }[] = [
   {
+    code: 'PWS-IL-KFS-001',
     city: 'כפר סבא',
     nameHe: 'פארק יצחק ולד, כפר סבא',
     nameEn: 'Isaac Wald Park, Kfar Saba',
@@ -59,6 +60,7 @@ const ANNOUNCED_LOCATIONS: { city: string; nameHe: string; nameEn: string; area:
   {
     // Station 2 — exact street address still TBD (CEO), so we name the
     // neighbourhood only (no fake precise address); the map pin is real.
+    code: 'PWS-IL-KFS-002',
     city: 'כפר סבא',
     nameHe: 'כפר סבא הירוקה',
     nameEn: 'Green Kfar Saba',
@@ -154,6 +156,7 @@ export default function Locations() {
                       <h2 className="text-2xl font-bold luxury-gradient-text mt-1">{a.nameEn}</h2>
                       <p className="text-lg luxury-text-body" dir="rtl">{a.nameHe}</p>
                       <p className="luxury-text-body mt-1">{a.etaEn} · {a.etaHe}</p>
+                      <p className="text-[10px] text-gray-400 mt-1 font-mono tracking-wide" dir="ltr">{a.code}</p>
                     </div>
                     <Button
                       className="luxury-btn-outline"
