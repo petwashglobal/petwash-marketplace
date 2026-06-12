@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { NativeDateSelect } from '@/components/ui/native-date-select';
+import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import { PhoneInput } from '@/components/PhoneInput';
@@ -76,6 +76,9 @@ const PLATFORMS = [
 ];
 
 const gold = '#85C4CE';
+
+// Full Hebrew month names for the iOS-style date wheel (member must be 18+).
+const MONTHS_HE_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
 export default function PrivilegeSignup({ language, onLanguageChange }: PrivilegeSignupProps) {
   const { toast } = useToast();
@@ -213,10 +216,14 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
           toast({ variant: 'destructive', title: t('privilege.required', language), description: t('privilege.sectionPersonal', language) });
           return false;
         }
+        // 18+ enforced with an exact age calc (year-cap alone would let a
+        // late-birthday 17-year-old through in the youngest selectable year).
         const dobDate = new Date(dob);
-        const minAge = new Date();
-        minAge.setFullYear(minAge.getFullYear() - 13);
-        if (dobDate > minAge) { toast({ variant: 'destructive', title: t('privilege.required', language), description: 'Must be at least 13 years old' }); return false; }
+        const today = new Date();
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const monthDiff = today.getMonth() - dobDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) age--;
+        if (age < 18) { toast({ variant: 'destructive', title: t('privilege.required', language), description: language === 'he' ? 'יש להיות בגיל 18 ומעלה' : 'You must be at least 18 years old' }); return false; }
         return true;
       case 2: return true;
       case 3:
@@ -748,7 +755,17 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                           <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
                         </div>
                         <div>
-                          <NativeDateSelect value={dob} onChange={setDob} label={`${t('privilege.dob', language)} *`} language={language} minYear={new Date().getFullYear() - 120} maxYear={new Date().getFullYear() - 13} />
+                          <AppleWheelDatePicker
+                            value={dob}
+                            onChange={setDob}
+                            label={`${t('privilege.dob', language)} *`}
+                            minYear={new Date().getFullYear() - 120}
+                            maxYear={new Date().getFullYear() - 18}
+                            monthNames={language === 'he' ? MONTHS_HE_FULL : undefined}
+                            dayLabel={language === 'he' ? 'יום' : 'Day'}
+                            monthLabel={language === 'he' ? 'חודש' : 'Month'}
+                            yearLabel={language === 'he' ? 'שנה' : 'Year'}
+                          />
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.gender', language)} <span className="text-red-500">*</span></Label>
@@ -814,7 +831,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                               <Label className="text-gray-500 text-sm">{t('privilege.petBreed', language)} ({t('privilege.optional', language)})</Label>
                               <Input value={pet.breed} onChange={(e) => updatePet(index, 'breed', e.target.value)} className="bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                             </div>
-                            <NativeDateSelect value={pet.dob} onChange={(val) => updatePet(index, 'dob', val)} label={`${t('privilege.petDob', language)} (${t('privilege.optional', language)})`} language={language} minYear={new Date().getFullYear() - 30} maxYear={new Date().getFullYear()} />
+                            <AppleWheelDatePicker value={pet.dob} onChange={(val) => updatePet(index, 'dob', val)} label={`${t('privilege.petDob', language)} (${t('privilege.optional', language)})`} minYear={new Date().getFullYear() - 30} maxYear={new Date().getFullYear()} monthNames={language === 'he' ? MONTHS_HE_FULL : undefined} dayLabel={language === 'he' ? 'יום' : 'Day'} monthLabel={language === 'he' ? 'חודש' : 'Month'} yearLabel={language === 'he' ? 'שנה' : 'Year'} />
                           </motion.div>
                         ))}
                         {pets.length < 5 && (
