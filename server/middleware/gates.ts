@@ -9,21 +9,17 @@ import { logSecurityEvent } from '../services/securityEventsService';
 // AFTER:  Read from SUPER_ADMIN_EMAILS (comma-separated). Falls back to legacy list
 //         ONLY in development so prod startup doesn't silently lock out all admins.
 //         To rotate: update the env var, redeploy — no code change needed.
+// SECURITY 2026-06-12 (audit L1): the dev-only hardcoded personal-email
+// fallback was removed. It granted nothing in production, but a hardcoded
+// admin-email list reads like a backdoor and ages badly (ex-staff, leaks).
+// Super-admins now come ONLY from SUPER_ADMIN_EMAILS in every environment.
+// Local dev: set SUPER_ADMIN_EMAILS in your .env (already standard here).
 const _rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS;
-const SUPER_ADMINS: string[] = _rawSuperAdminEmails
-  ? _rawSuperAdminEmails.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
-  : process.env.NODE_ENV === 'production'
-    ? []  // prod with no env var → no super-admin bypass (fail-safe)
-    : [   // dev fallback only
-        'nirhadad1@gmail.com',
-        'nir.h@petwash.co.il',
-        'ido.s@petwash.co.il',
-        'idoshakarzi110@gmail.com',
-        'idoshaka@gmail.com',
-      ];
+const SUPER_ADMINS: string[] = (_rawSuperAdminEmails || '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
-if (process.env.NODE_ENV === 'production' && !_rawSuperAdminEmails) {
-  console.warn('[gates] WARNING: SUPER_ADMIN_EMAILS not set in production — super-admin email bypass disabled');
+if (!_rawSuperAdminEmails) {
+  console.warn('[gates] WARNING: SUPER_ADMIN_EMAILS not set — super-admin email bypass disabled');
 }
 
 /**

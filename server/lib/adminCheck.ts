@@ -92,17 +92,12 @@ export async function requireAdminRole(req: any, res: Response, next: NextFuncti
   next();
 }
 
-/**
- * Grant admin custom claim to a user (server-side only).
- * Call this from an admin management endpoint, not from client code.
- */
-export async function grantAdminClaim(uid: string, role: 'admin' | 'super_admin' = 'admin'): Promise<void> {
-  const { adminAuth } = await import('./firebase-admin');
-  const userRecord = await adminAuth.getUser(uid);
-  const existing = (userRecord.customClaims || {}) as Record<string, any>;
-  await adminAuth.setCustomUserClaims(uid, { ...existing, role, admin: true });
-  logger.info('[AdminCheck] Admin claim granted', { uid, role });
-}
+// SECURITY 2026-06-12 (audit L3): grantAdminClaim() was removed — it had
+// zero callers anywhere in the codebase and existed only as a latent
+// privilege-escalation surface (it set { admin: true } custom claims).
+// Admin roles are provisioned via the env allowlist + approval records;
+// if a programmatic grant is ever needed, reintroduce it behind a guarded,
+// audited admin endpoint — not as a free-floating exported helper.
 
 /**
  * Revoke admin custom claim from a user.
