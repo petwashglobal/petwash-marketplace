@@ -8055,11 +8055,26 @@ export const providers = pgTable("providers", {
   kycReviewReason: text("kyc_review_reason"),
   kycManualReviewerId: varchar("kyc_manual_reviewer_id", { length: 128 }),
   kycDeletionCompletedAt: timestamp("kyc_deletion_completed_at"),
+  // ── Wolt-style code + Israeli tax identity (2026-06-12) ──────────────
+  // providerCode: OPERATIONAL only (support/UX, like Wolt's courier ID or
+  // our K9000 stationCode). NOT a legal identifier. Derived from the
+  // immutable serial id so it's stable + collision-free (see
+  // server/lib/providerCode.ts). Nullable until backfilled/assigned.
+  providerCode: varchar("provider_code", { length: 32 }),
+  // osekNumber: the LEGALLY load-bearing identifier — the provider's
+  // business-tax registration (Osek Patur/Murshe/Zair). Required before
+  // first PAYOUT (verify-before-pay), not at apply-light signup.
+  osekNumber: varchar("osek_number", { length: 20 }),
+  osekType: varchar("osek_type", { length: 12 }), // 'patur' | 'murshe' | 'zair'
+  bituachLeumiStatus: varchar("bituach_leumi_status", { length: 20 }), // self-employed National Insurance
+  bankAccount: jsonb("bank_account"), // { bank, branch, account } — payout target (UPay/SUMIT rail)
+  bankOwnershipConfirmed: boolean("bank_ownership_confirmed").default(false),
 }, (table) => ({
   userPlatformUnique: uniqueIndex("provider_user_platform_unique").on(table.userId, table.platformId),
   platformIdx: index("provider_platform_idx").on(table.platformId),
   userIdx: index("provider_user_idx").on(table.userId),
   verificationIdx: index("provider_verification_idx").on(table.verificationStatus),
+  providerCodeUnique: uniqueIndex("providers_provider_code_unique").on(table.providerCode),
 }));
 
 // ===== LOCATIONS TABLE =====
