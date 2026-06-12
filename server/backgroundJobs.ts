@@ -56,8 +56,15 @@ export class BackgroundJobProcessor {
     emailSpendGuard.setAlarmCallback(sendSecurityAlert);
     logger.info('[EmailSpendGuard] ✅ Alarm callback wired — alerts go to nir.h@petwash.co.il');
 
-    // Start Gemini Platform Security Monitor (every 15 min, Gemini 2.5 Flash)
-    geminiPlatformMonitor.start();
+    // Gemini Platform Security Monitor (every 15 min, Gemini 2.5 Flash).
+    // DISABLED by default 2026-06-12 to stop silent paid-AI spend after an
+    // unexpected Google bill. This timer made ~96 paid Gemini calls/day with
+    // zero users. Re-enable intentionally with AI_CRONS_ENABLED=true.
+    if (process.env.AI_CRONS_ENABLED === 'true') {
+      geminiPlatformMonitor.start();
+    } else {
+      logger.warn('[AI Crons] Gemini platform monitor DISABLED (set AI_CRONS_ENABLED=true to re-enable) — no paid AI calls');
+    }
 
     // Start auto-void cron for expired payment authorizations (every 5 minutes)
     startAutoVoidCron();
@@ -1867,6 +1874,13 @@ export class BackgroundJobProcessor {
    * Check security updates (npm, browsers, SSL, platform)
    */
   private static async checkSecurityUpdates(): Promise<void> {
+    // DISABLED by default 2026-06-12 — this calls the paid Gemini API.
+    // Gated off after an unexpected Google bill; re-enable with
+    // AI_CRONS_ENABLED=true. The cron stays scheduled but no-ops cheaply.
+    if (process.env.AI_CRONS_ENABLED !== 'true') {
+      logger.warn('[Security Updates] Gemini analysis DISABLED (set AI_CRONS_ENABLED=true to re-enable) — skipping paid AI call');
+      return;
+    }
     try {
       logger.info('[Security Updates] 🤖 Running Gemini AI-powered update analysis...');
       

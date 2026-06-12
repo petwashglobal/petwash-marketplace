@@ -1402,15 +1402,26 @@ if (isProduction) {
       console.log('[EmailSpendGuard] ✅ Active — hourly/daily budget alarms wired');
     }).catch(e => console.error('[EmailSpendGuard] Failed to initialize:', e));
 
-    // Gemini Platform Security Monitor — scans all platforms every 15 min
-    import('./services/GeminiPlatformSecurityMonitor').then(({ geminiPlatformMonitor }) => {
-      geminiPlatformMonitor.start();
-    }).catch(e => console.error('[PlatformMonitor] Failed to start:', e));
+    // Gemini Platform Security Monitor — scans all platforms every 15 min.
+    // DISABLED by default 2026-06-12 to stop silent paid-AI spend after an
+    // unexpected Google bill. Re-enable intentionally with AI_CRONS_ENABLED=true.
+    if (process.env.AI_CRONS_ENABLED === 'true') {
+      import('./services/GeminiPlatformSecurityMonitor').then(({ geminiPlatformMonitor }) => {
+        geminiPlatformMonitor.start();
+      }).catch(e => console.error('[PlatformMonitor] Failed to start:', e));
+    } else {
+      console.warn('[AI Crons] Gemini Platform Security Monitor DISABLED (set AI_CRONS_ENABLED=true to re-enable) — no paid AI calls');
+    }
 
-    // Gemini Spam Guard — AI spam detection + HQ reporting every 30 min
-    import('./services/GeminiSpamGuard').then(({ geminiSpamGuard }) => {
-      geminiSpamGuard.startScheduler();
-    }).catch(e => console.error('[SpamGuard] Failed to start scheduler:', e));
+    // Gemini Spam Guard — AI spam detection + HQ reporting every 30 min.
+    // DISABLED by default 2026-06-12 (paid AI spend). Re-enable with AI_CRONS_ENABLED=true.
+    if (process.env.AI_CRONS_ENABLED === 'true') {
+      import('./services/GeminiSpamGuard').then(({ geminiSpamGuard }) => {
+        geminiSpamGuard.startScheduler();
+      }).catch(e => console.error('[SpamGuard] Failed to start scheduler:', e));
+    } else {
+      console.warn('[AI Crons] Gemini Spam Guard DISABLED (set AI_CRONS_ENABLED=true to re-enable) — no paid AI calls');
+    }
     
     // 5c. Initialize Israeli CPI data - TRULY NON-BLOCKING (fire-and-forget)
     // CRITICAL: Do NOT await - these can be slow and should not delay serverReady
