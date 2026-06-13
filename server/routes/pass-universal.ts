@@ -171,10 +171,11 @@ async function lookupFirestorePrestigePass(passIdOrSerial: string, userId?: stri
     }
   }
 
-  // Founder pass was generated before the canonical SQL table existed. Keep it
-  // downloadable while production finishes migrating pass records.
-  if (passIdOrSerial === 'pass-founder-001c-f8f9e9fc') {
-    return {
+  // These early Apple Wallet passes were generated before the canonical SQL
+  // table existed. Keep them downloadable/updatable while production finishes
+  // migrating pass records.
+  const legacyPasses: Record<string, WalletPassRecord> = {
+    'pass-founder-001c-f8f9e9fc': {
       passId:             'pass-founder-001c-f8f9e9fc',
       userId:             'founder-001-nir-hadad',
       ownerName:          'Nir Hadad',
@@ -184,8 +185,21 @@ async function lookupFirestorePrestigePass(passIdOrSerial: string, userId?: stri
       validUntil:         null,
       status:             'ACTIVE',
       qrTokenVersion:     1,
-    };
-  }
+    },
+    'pass-ido-shakarzi-001': {
+      passId:             'pass-ido-shakarzi-001',
+      userId:             'staff-ido-shakarzi',
+      ownerName:          'Ido Shakarzi',
+      primaryPetName:     null,
+      tier:               'ROYAL',
+      availableCreditIls: '0.00',
+      validUntil:         null,
+      status:             'ACTIVE',
+      qrTokenVersion:     1,
+    },
+  };
+
+  if (legacyPasses[passIdOrSerial]) return legacyPasses[passIdOrSerial];
 
   return null;
 }
