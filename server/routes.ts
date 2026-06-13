@@ -5617,7 +5617,14 @@ self.addEventListener('notificationclick', (event) => {
     eligibleServices: z.array(z.enum(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax', 'all'])).min(1).default(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax'])
   });
 
-  app.post('/api/multi-service-gift', requireAuth, paymentLimiter, async (req, res) => {
+  // GUEST EXPRESS CHECKOUT: buying an e-gift for someone else must NOT require an
+  // account — a person sending "Happy Birthday 🎂" to their mum should just pay and
+  // go (the LVMH/Amazon gift model). The handler uses only the sender/recipient
+  // details from the form (senderEmail = purchaserEmail), never the logged-in user,
+  // so optFirebase (optional) replaces requireAuth: a guest passes through, and a
+  // signed-in buyer still gets their token attached for future order history.
+  // Payment itself remains the real gate (Nayax) + paymentLimiter throttles abuse.
+  app.post('/api/multi-service-gift', optFirebase, paymentLimiter, async (req, res) => {
     try {
       // SECURITY: Nayax payment must be confirmed before creating any gift card.
       // Until NAYAX_API_KEY is configured in env, gate this endpoint the same way
