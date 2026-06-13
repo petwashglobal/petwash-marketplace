@@ -5661,7 +5661,11 @@ router.post('/admin/wallet/payout-entries/mark-paid', async (req: Request, res: 
 //                  (period-scoped by created_at; no division_code on holds table)
 // providerPayable= SUM net_cents from provider_payout_entries WHERE status IN ('earned','held')
 //                  (period-scoped by created_at)
-// vatLiability   = FLOOR(collected * 0.18)   (consistent with franchise.ts / accounting.ts)
+// vatLiability   = ROUND(collected * 0.18/1.18)  — VAT EXTRACTED from the
+//                  VAT-INCLUSIVE collected total (Israel 18/118 standard).
+//                  Fixed 2026-06-13: was FLOOR(collected*0.18), which overstated
+//                  VAT (~18% of gross instead of ~15.25%) since `collected` is
+//                  the customer-paid (VAT-inclusive) amount. Confirm with the CPA.
 // margin         = collected - providerPayable - vatLiability
 // marginPct      = margin / collected * 100   (0 when collected = 0)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5785,7 +5789,7 @@ router.get('/admin/wallet/settlement-summary', async (req: Request, res: Respons
     const providerPayable = Number((payableRow?.rows ?? payableRow ?? [])[0]?.payable ?? 0);
 
     // ── 4. Derived metrics ────────────────────────────────────────────────────
-    const vatLiability   = Math.floor(collected * VAT_RATE);
+    const vatLiability   = Math.round(collected * VAT_RATE / (1 + VAT_RATE));
     const margin         = collected - providerPayable - vatLiability;
     const marginPct      = collected > 0 ? (margin / collected) * 100 : 0;
 
@@ -5821,7 +5825,7 @@ router.get('/admin/wallet/settlement-summary', async (req: Request, res: Respons
     const byDivision = divRows.map((row: any) => {
       const divCollected   = Number(row.collected ?? 0);
       const divPayable     = payDivMap.get(row.division_code) ?? 0;
-      const divVat         = Math.floor(divCollected * VAT_RATE);
+      const divVat         = Math.round(divCollected * VAT_RATE / (1 + VAT_RATE));
       const divMargin      = divCollected - divPayable - divVat;
       const divMarginPct   = divCollected > 0 ? (divMargin / divCollected) * 100 : 0;
       return {
@@ -5904,7 +5908,7 @@ router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: 
     `);
     const providerPayable = Number((payableRow?.rows ?? payableRow ?? [])[0]?.payable ?? 0);
 
-    const vatLiability = Math.floor(collected * VAT_RATE);
+    const vatLiability = Math.round(collected * VAT_RATE / (1 + VAT_RATE));
     const margin       = collected - providerPayable - vatLiability;
     const marginPct    = collected > 0 ? (margin / collected) * 100 : 0;
 
@@ -5956,7 +5960,7 @@ router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: 
     for (const row of divRows) {
       const divCollected  = Number(row.collected ?? 0);
       const divPayable    = payDivMap.get(row.division_code) ?? 0;
-      const divVat        = Math.floor(divCollected * VAT_RATE);
+      const divVat        = Math.round(divCollected * VAT_RATE / (1 + VAT_RATE));
       const divMargin     = divCollected - divPayable - divVat;
       const divMarginPct  = divCollected > 0 ? (divMargin / divCollected) * 100 : 0;
       lines.push(
@@ -7119,7 +7123,7 @@ async function buildDivisionSnapshots(dateIso: string): Promise<Record<string, a
     const collected = collMap.get(div) ?? 0;
     const payable   = payMap.get(div)  ?? 0;
     const holds     = holdMap.get(div) ?? 0;
-    const vatLiab   = Math.floor(collected * VAT_RATE);
+    const vatLiab   = Math.round(collected * VAT_RATE / (1 + VAT_RATE));
     const margin    = collected - payable - vatLiab;
     snapshots[div]  = {
       collectedCents:       collected,
@@ -7400,7 +7404,7 @@ router.get('/admin/wallet/finance-close/:date', async (req: Request, res: Respon
     // Scaffold live view for today
     const divisionSnapshots = await buildDivisionSnapshots(dateParam);
     const totalCollected = Object.values(divisionSnapshots).reduce((s: number, d: any) => s + (d.collectedCents ?? 0), 0);
-    const vatLiabilityCents = Math.floor(totalCollected * VAT_RATE);
+    const vatLiabilityCents = Math.round(totalCollected * VAT_RATE / (1 + VAT_RATE));
     const exceptionCount = Object.values(checklist).filter((c: any) => !c.ok).length;
 
     return res.json({
@@ -7478,7 +7482,7 @@ router.post('/admin/wallet/finance-close/:date/close', async (req: Request, res:
     // ── Build immutable snapshot ──────────────────────────────────────────
     const divisionSnapshots = await buildDivisionSnapshots(dateParam);
     const totalCollected    = Object.values(divisionSnapshots).reduce((s: number, d: any) => s + (d.collectedCents ?? 0), 0);
-    const vatLiabilityCents = Math.floor(totalCollected * VAT_RATE);
+    const vatLiabilityCents = Math.round(totalCollected * VAT_RATE / (1 + VAT_RATE));
     const exceptionCount    = 0; // all checks passed
 
     // ── Upsert close record ───────────────────────────────────────────────
@@ -7554,7 +7558,7 @@ router.get('/admin/wallet/finance-close/:date/export', async (req: Request, res:
     const divisionSnapshots = await buildDivisionSnapshots(dateParam);
     const totalCollectedCents = Object.values(divisionSnapshots)
       .reduce((s: number, d: any) => s + (d.collectedCents ?? 0), 0);
-    const vatCents = Math.floor(totalCollectedCents * VAT_RATE);
+    const vatCents = Math.round(totalCollectedCents * VAT_RATE / (1 + VAT_RATE));
 
     // ── 2. Payout Batches created on this date ────────────────────────────
     const batchRows: any = await db.execute(sql`
