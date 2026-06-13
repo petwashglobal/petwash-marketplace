@@ -10,8 +10,8 @@ import {
   campaignSchema,
   marketingAssetSchema,
 } from '@shared/firestore-schema';
-import { users, nayaxTransactions, eVouchers, customers } from '@shared/schema';
-import { count, sql, gte, eq, and, inArray } from 'drizzle-orm';
+import { users, nayaxTransactions, eVouchers, eVoucherRedemptions, customers } from '@shared/schema';
+import { count, sql, gte, eq, and, inArray, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
@@ -1627,6 +1627,67 @@ router.get('/wallet/legacy-balance-report', validateFirebaseToken, requireAdmin,
   } catch (error: any) {
     logger.error('[Admin] legacy-balance-report query failed', { error: error.message });
     return res.status(500).json({ error: 'Failed to query legacy balance report' });
+  }
+});
+
+/**
+ * GET /api/admin/vouchers — real e-gift voucher overview for the admin panel.
+ * Replaces the hardcoded mockVouchers/mockRedemptions that AdminVouchers.tsx
+ * showed. Reads e_vouchers + e_voucher_redemptions. Codes are NEVER exposed in
+ * full (only the last 4 are stored; we mask them) — admin sees "•••• 1234".
+ */
+router.get('/vouchers', validateFirebaseToken, requireAdmin, async (_req, res) => {
+  try {
+    const ACTIVE = ['ISSUED', 'CLAIMED', 'ACTIVE'];
+    const mapStatus = (s: string) => ACTIVE.includes(s) ? 'active' : s === 'REDEEMED' ? 'used' : 'expired';
+
+    const [tot] = await db.select({ c: count() }).from(eVouchers);
+    const [act] = await db.select({ c: count() }).from(eVouchers).where(inArray(eVouchers.status, ACTIVE));
+    const [red] = await db.select({ c: count() }).from(eVouchers).where(eq(eVouchers.status, 'REDEEMED'));
+    const [val] = await db.select({ s: sql<string>`COALESCE(SUM(${eVouchers.initialAmount}), 0)` }).from(eVouchers);
+
+    const rows = await db.select().from(eVouchers).orderBy(desc(eVouchers.createdAt)).limit(50);
+    const vouchers = rows.map((v: any) => ({
+      id: v.id,
+      code: `•••• ${v.codeLast4}`,
+      amount: Number(v.initialAmount ?? v.amount ?? 0),
+      status: mapStatus(v.status),
+      recipientEmail: v.recipientEmail || undefined,
+      createdAt: v.createdAt,
+      expiresAt: v.expiresAt || undefined,
+      usedAt: v.status === 'REDEEMED' ? (v.activatedAt || undefined) : undefined,
+    }));
+
+    const redRows = await db.select({
+      id: eVoucherRedemptions.id,
+      amount: eVoucherRedemptions.amount,
+      createdAt: eVoucherRedemptions.createdAt,
+      last4: eVouchers.codeLast4,
+      recipientEmail: eVouchers.recipientEmail,
+    }).from(eVoucherRedemptions)
+      .leftJoin(eVouchers, eq(eVoucherRedemptions.voucherId, eVouchers.id))
+      .orderBy(desc(eVoucherRedemptions.createdAt)).limit(20);
+    const recentRedemptions = redRows.map((r: any) => ({
+      id: r.id,
+      voucherCode: r.last4 ? `•••• ${r.last4}` : '—',
+      amount: Number(r.amount ?? 0),
+      redeemedBy: r.recipientEmail || '—',
+      redeemedAt: r.createdAt,
+    }));
+
+    res.json({
+      stats: {
+        total: Number(tot?.c || 0),
+        active: Number(act?.c || 0),
+        redeemed: Number(red?.c || 0),
+        totalValue: Number(val?.s || 0),
+      },
+      vouchers,
+      recentRedemptions,
+    });
+  } catch (err: any) {
+    logger.error('[Admin] vouchers list failed', { err: err?.message });
+    res.status(500).json({ error: 'Failed to load vouchers' });
   }
 });
 

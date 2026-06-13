@@ -91,75 +91,28 @@ export default function AdminVouchers() {
 
   // Load data on mount
   useEffect(() => {
-    loadStats();
-    loadVouchers();
-    loadRecentRedemptions();
+    loadAll();
   }, []);
 
-  const loadStats = async () => {
-    // Mock stats - replace with actual API call
-    setStats({
-      total: 247,
-      active: 189,
-      redeemed: 58,
-      totalValue: 24750
-    });
+  // Real data — one call to GET /api/admin/vouchers (stats + recent vouchers +
+  // recent redemptions, codes masked). Replaces the old hardcoded mock arrays;
+  // on failure we show empty, never fake.
+  const loadAll = async () => {
+    try {
+      const r = await fetch(getApiUrl('/api/admin/vouchers'), { credentials: 'include' });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.stats) setStats(d.stats);
+      setVouchers(d.vouchers || []);
+      setRecentRedemptions(d.recentRedemptions || []);
+    } catch { /* no fake fallback */ }
   };
 
-  const loadVouchers = async () => {
-    // Mock vouchers - replace with actual API call
-    const mockVouchers: Voucher[] = [
-      {
-        id: '1',
-        code: 'PETWASH-2025-GIFT-ABC123',
-        amount: 100,
-        status: 'active',
-        recipientEmail: 'customer@example.com',
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        code: 'PETWASH-2025-GIFT-DEF456',
-        amount: 250,
-        status: 'used',
-        recipientEmail: 'vip@example.com',
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        usedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        usedBy: 'John Doe'
-      },
-      {
-        id: '3',
-        code: 'PETWASH-2025-GIFT-GHI789',
-        amount: 500,
-        status: 'active',
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
-    setVouchers(mockVouchers);
-  };
-
-  const loadRecentRedemptions = async () => {
-    // Mock redemptions - replace with actual API call
-    const mockRedemptions: RecentRedemption[] = [
-      {
-        id: '1',
-        voucherCode: 'PETWASH-2025-GIFT-XYZ',
-        amount: 150,
-        redeemedBy: 'Sarah Cohen',
-        redeemedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        voucherCode: 'PETWASH-2025-GIFT-ABC',
-        amount: 200,
-        redeemedBy: 'David Levy',
-        redeemedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-      }
-    ];
-    setRecentRedemptions(mockRedemptions);
-  };
+  // Kept as thin wrappers so existing call sites (e.g. post-generate refresh)
+  // keep working; all three now pull from the single real endpoint via loadAll.
+  const loadStats = async () => { await loadAll(); };
+  const loadVouchers = async () => { await loadAll(); };
+  const loadRecentRedemptions = async () => { await loadAll(); };
 
   const handleGenerateTest = async () => {
     setIsGenerating(true);
