@@ -152,6 +152,7 @@ export default function GiftActivate() {
       setCreditedAmount(data.amountIls);
       setActivated(true);
       queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/activity'] });
     },
     onError: (err: any) => {
       toast({
