@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db';
+import { vatFromInclusive } from '@shared/money';
 import { 
   bookings,
   bookingPets,
@@ -415,7 +416,9 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
         const platformFeeCents = quote.platformFeeCents || 0;
         // T4: Use the stored taxCents from the quote record (DB column: tax_cents).
         // Do NOT recompute — the quote was already persisted with the canonical VAT value.
-        const vatCents = quote.taxCents || Math.round(platformFeeCents * 0.18);
+        // M2 fix: VAT is 18/118 of the (inclusive) commission, not a forward
+        // × 0.18. Routed through the 2026 Financial Guard for consistency.
+        const vatCents = quote.taxCents || vatFromInclusive(platformFeeCents);
 
         await tx.insert(escrowHoldings).values({
           escrowId,
