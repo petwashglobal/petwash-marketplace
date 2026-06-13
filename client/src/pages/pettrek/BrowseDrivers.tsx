@@ -233,7 +233,7 @@ export default function BrowseDrivers() {
         if (searchLat !== null) params.set('lat', String(searchLat));
         if (searchLng !== null) params.set('lng', String(searchLng));
         const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${params.toString()}`));
-        if (!response.ok) return { drivers: DEMO_DRIVERS };
+        if (!response.ok) return { drivers: [] };
         const result = await response.json();
         if (result.providers && result.providers.length > 0) {
           return { drivers: result.providers.map((p: any) => ({
@@ -258,14 +258,16 @@ export default function BrowseDrivers() {
             proximityLabel: p.proximityLabel ?? null,
           })) };
         }
-        return { drivers: DEMO_DRIVERS };
+        return { drivers: [] };
       } catch {
-        return { drivers: DEMO_DRIVERS };
+        return { drivers: [] };
       }
     },
   });
 
-  const allDrivers = (data?.drivers && data.drivers.length > 0) ? data.drivers : DEMO_DRIVERS;
+  // PR-FAKE (2026-06-13): was DEMO_DRIVERS — fabricated drivers with fake
+  // ratings/trip-counts/verified badges. Honest empty state instead.
+  const allDrivers = (data?.drivers && data.drivers.length > 0) ? data.drivers : [];
   const drivers = allDrivers.filter((d: Driver) => {
     if (filters.location) {
       const q = filters.location.toLowerCase();
