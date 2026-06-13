@@ -228,7 +228,12 @@ function seedDemoDeals() {
   logger.info(`[FlashDeals] Seeded ${DEALS_STORE.size} demo deals`);
 }
 
-seedDemoDeals();
+// PR-FAKE (2026-06-13): only seed demo deals OUTSIDE production. In prod the
+// flash-deals feature (when FLASH_DEALS_ENABLED) must serve REAL deals, never
+// fabricated "Salon du Chien / LAST SLOT" demo scarcity.
+if (process.env.NODE_ENV !== 'production') {
+  seedDemoDeals();
+}
 
 // ── GET /api/flash-deals — list active deals ──────────────────────────────────
 router.get('/', (req, res) => {
