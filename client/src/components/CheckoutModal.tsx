@@ -67,7 +67,10 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
       }
       
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      
+      // Refresh the wallet so new credits show immediately (no 5-min stale).
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/activity'] });
+
       toast({
         title: currentLanguage === 'en' ? "Purchase Successful!" : "רכישה הושלמה בהצלחה!",
         description: currentLanguage === 'en' 

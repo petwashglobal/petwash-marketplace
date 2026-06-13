@@ -645,7 +645,32 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   
   // Initialize FCM push notifications (auto-registers after login)
   useFCMNotifications(true);
-  
+
+  // WALLET/PROFILE FRESHNESS (2026-06-13): refetch live money/identity data when
+  // the tab regains focus (web) or the app RESUMES from background (Capacitor),
+  // so a user never sees a stale balance/profile after a purchase, a redeem, or
+  // backgrounding the app. Targeted to freshness-sensitive keys only.
+  useEffect(() => {
+    const LIVE_KEYS = [
+      '/api/credit-wallet/summary',
+      '/api/credit-wallet/activity',
+      '/api/auth/user',
+      '/api/user/profile',
+      '/api/loyalty/profile',
+      '/api/prestige-pass/me',
+    ];
+    const refreshLive = () => LIVE_KEYS.forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+    window.addEventListener('focus', refreshLive);
+    let removeCap: (() => void) | undefined;
+    import('@capacitor/app')
+      .then(({ App: CapApp }) =>
+        CapApp.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => { if (isActive) refreshLive(); })
+          .then((h: { remove: () => void }) => { removeCap = () => h.remove(); }),
+      )
+      .catch(() => { /* web (no Capacitor) — the focus listener covers it */ });
+    return () => { window.removeEventListener('focus', refreshLive); removeCap?.(); };
+  }, []);
+
   // Get personalized AI greeting on app launch 🎉
   usePersonalizedGreeting();
   
