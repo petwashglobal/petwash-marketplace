@@ -14,14 +14,6 @@ import {
   type Review
 } from "@/components/marketplace";
 
-const mockTrainerImages = [
-  "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1587764379873-97837921fd44?w=400&h=300&fit=crop",
-];
-
 const trainerServices: ServiceItem[] = [
   {
     id: "basic-training",
@@ -119,10 +111,11 @@ export default function TrainerDetail() {
 
   // Real reviews from the backend (contractor_reviews via GET /api/academy/trainers/:id).
   // No fake testimonials — empty list → ProviderProfilePage hides the reviews section.
-  const { data: trainerResponse } = useQuery<{ trainer?: any; reviews?: any[] }>({
+  const { data: trainerResponse, isLoading, isError } = useQuery<{ trainer?: any; reviews?: any[] }>({
     queryKey: [`/api/academy/trainers/${id}`],
     enabled: !!id,
   });
+  const t = trainerResponse?.trainer;
   const realReviews: Review[] = (trainerResponse?.reviews ?? []).map((r: any) => ({
     id: String(r.id ?? r.reviewId ?? ''),
     name: r.reviewerName || (isHebrew ? 'לקוח' : 'Customer'),
@@ -131,34 +124,68 @@ export default function TrainerDetail() {
     text: r.reviewText || '',
   }));
 
+  // Loading / not-found — no more rendering a hardcoded "Daniel Shapira" for
+  // every id. While loading show a spinner; if the trainer doesn't exist (404)
+  // show an honest not-found.
+  if (isLoading || (!trainerResponse && !isError)) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C5A55A]" />
+        </div>
+      </Layout>
+    );
+  }
+  if (isError || !t) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4">
+          <div className="text-6xl mb-6">🐾</div>
+          <h2 className="text-2xl font-light text-gray-900 mb-4">{isHebrew ? 'המאלף לא נמצא' : 'Trainer not found'}</h2>
+          <Button onClick={() => navigate('/academy')} className="bg-[#C5A55A] hover:bg-[#b8945a] text-white">
+            {isHebrew ? 'חזרה לאקדמיה' : 'Back to Academy'}
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Map the REAL trainer record (GET /api/academy/trainers/:id) → profile shape.
+  // Only real fields; no invented person, photos, rating or review counts.
+  const ratingNum = Number(t.averageRating ?? 0);
+  const years = t.yearsOfExperience ?? t.experienceYears ?? 0;
+  const fullName = (t.fullName || `${t.firstName || ''} ${t.lastName || ''}`).trim() || (isHebrew ? 'מאלף' : 'Trainer');
+  const title = t.isCertified ? (isHebrew ? 'מאלף כלבים מוסמך' : 'Certified Dog Trainer') : (isHebrew ? 'מאלף כלבים' : 'Dog Trainer');
+  const titleEn = t.isCertified ? 'Certified Dog Trainer' : 'Dog Trainer';
+  const loc = t.city || t.serviceArea || 'Israel';
+
   const trainerData: ProviderProfileData = {
-    id: id || "trainer-1",
-    name: "דניאל שפירא",
-    nameEn: "Daniel Shapira",
-    title: "מאלף כלבים מוסמך",
-    titleEn: "Certified Dog Trainer",
-    location: "תל אביב",
-    locationEn: "Tel Aviv",
-    rating: 4.9,
-    reviewCount: 156,
-    responseTime: "1 שעה",
-    responseTimeEn: "1 hour",
-    yearsExperience: 12,
-    images: mockTrainerImages,
-    bio: "מאלף כלבים מוסמך עם ניסיון של 12 שנה. מתמחה באילוף גורים, שינוי התנהגות ואילוף מתקדם. גישה חיובית ומבוססת מדע.",
-    bioEn: "Certified dog trainer with 12 years of experience. Specializing in puppy training, behavioral modification, and advanced obedience. Positive, science-based approach.",
+    id: id || String(t.id),
+    name: fullName,
+    nameEn: fullName,
+    title,
+    titleEn,
+    location: loc,
+    locationEn: loc,
+    rating: ratingNum,
+    reviewCount: t.totalReviews ?? realReviews.length,
+    responseTime: isHebrew ? 'תוך 24 שעות' : 'within 24h',
+    responseTimeEn: 'within 24h',
+    yearsExperience: years,
+    images: t.profilePhotoUrl ? [t.profilePhotoUrl] : [],
+    bio: t.bioHe || t.bio || '',
+    bioEn: t.bio || '',
     highlights: [
-      { icon: "shield", label: "מאלף מוסמך", labelEn: "Certified Trainer" },
-      { icon: "award", label: "12 שנות ניסיון", labelEn: "12 Years Experience" },
-      { icon: "star", label: "דירוג 4.9", labelEn: "4.9 Rating" },
-      { icon: "check", label: "156 הצלחות", labelEn: "156 Success Stories" },
+      ...(t.isCertified ? [{ icon: 'shield', label: 'מאלף מוסמך', labelEn: 'Certified Trainer' }] : []),
+      ...(years ? [{ icon: 'award', label: `${years} שנות ניסיון`, labelEn: `${years} Years Experience` }] : []),
+      ...(ratingNum > 0 ? [{ icon: 'star', label: `דירוג ${ratingNum.toFixed(1)}`, labelEn: `${ratingNum.toFixed(1)} Rating` }] : []),
+      ...(t.totalSessions ? [{ icon: 'check', label: `${t.totalSessions} אילופים`, labelEn: `${t.totalSessions} Sessions` }] : []),
     ],
-    languages: ["עברית", "English"],
-    isVerified: true,
-    isPremium: true,
+    languages: Array.isArray(t.languages) && t.languages.length ? t.languages : ['עברית', 'English'],
+    isVerified: t.verificationStatus === 'approved',
+    isPremium: !!t.isCertified,
     badges: [
-      { type: "certified", label: "מאלף מוסמך", labelEn: "Certified Trainer" },
-      { type: "premium", label: "Pet Academy™ Elite", labelEn: "Pet Academy™ Elite" },
+      ...(t.isCertified ? [{ type: 'certified' as const, label: 'מאלף מוסמך', labelEn: 'Certified Trainer' }] : []),
     ],
   };
 
