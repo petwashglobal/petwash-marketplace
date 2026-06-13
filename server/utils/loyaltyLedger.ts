@@ -193,46 +193,55 @@ export interface RedeemResult {
 export async function redeemLoyaltyCredit(opts: RedeemOptions): Promise<RedeemResult> {
   const { userId, amountCents, bookingId, orderTotalCents, fingerprint } = opts;
 
-  // ── Idempotency: if this fingerprint was already processed, return cached result ──
-  if (fingerprint) {
-    const existing = await db
-      .select({ amountIlsCents: loyaltyLedger.amountIlsCents, balanceAfterCents: loyaltyLedger.balanceAfterCents })
-      .from(loyaltyLedger)
-      .where(
-        sql`user_id = ${userId}
-          AND event_type = 'redeem'
-          AND note LIKE ${'%[fp:' + fingerprint + ']%'}`,
-      )
-      .limit(1);
+  // DOUBLE-DEBIT GUARD (audit H1, 2026-06-13): lock the user's balance row and
+  // do the idempotency check + balance read + debit ALL inside ONE transaction.
+  // Previously the idempotency SELECT, the balance read, and the debit were
+  // separate non-atomic statements with no unique constraint, so two concurrent
+  // redeems (double-tap / retry) both passed the check and both debited. The
+  // FOR UPDATE on the user row now serialises concurrent redeems for that user:
+  // the second waits, then sees the first's committed fingerprint and returns
+  // the cached result.
+  return await (db as any).transaction(async (tx: typeof db): Promise<RedeemResult> => {
+    // Acquire the row lock + read the authoritative balance under it.
+    const lockRes: any = await tx.execute(
+      sql`SELECT loyalty_balance_cents AS bal FROM users WHERE id = ${userId} FOR UPDATE`,
+    );
+    const currentBalance = Number((lockRes?.rows ?? lockRes ?? [])[0]?.bal ?? 0);
 
-    if (existing.length > 0) {
-      const row = existing[0];
-      logger.info('[Loyalty] Redeem already processed (idempotent)', { fingerprint, bookingId });
-      return {
-        applied: Math.abs(row.amountIlsCents),
-        newBalance: row.balanceAfterCents,
-      };
+    // Idempotency: if this fingerprint was already redeemed, return the cached result.
+    if (fingerprint) {
+      const existing = await tx
+        .select({ amountIlsCents: loyaltyLedger.amountIlsCents, balanceAfterCents: loyaltyLedger.balanceAfterCents })
+        .from(loyaltyLedger)
+        .where(
+          sql`user_id = ${userId}
+            AND event_type = 'redeem'
+            AND note LIKE ${'%[fp:' + fingerprint + ']%'}`,
+        )
+        .limit(1);
+      if (existing.length > 0) {
+        const row = existing[0];
+        logger.info('[Loyalty] Redeem already processed (idempotent)', { fingerprint, bookingId });
+        return { applied: Math.abs(row.amountIlsCents), newBalance: row.balanceAfterCents };
+      }
     }
-  }
 
-  const currentBalance = await getLoyaltyBalance(userId);
-  if (currentBalance < MIN_REDEEM_CENTS) {
-    return { applied: 0, newBalance: currentBalance, error: 'Insufficient loyalty balance' };
-  }
+    if (currentBalance < MIN_REDEEM_CENTS) {
+      return { applied: 0, newBalance: currentBalance, error: 'Insufficient loyalty balance' };
+    }
 
-  const maxRedeemable = Math.min(
-    currentBalance,
-    Math.floor(orderTotalCents * 0.5), // 50% cap
-  );
-  if (maxRedeemable < MIN_REDEEM_CENTS) {
-    return { applied: 0, newBalance: currentBalance, error: 'Below minimum redemption threshold' };
-  }
+    const maxRedeemable = Math.min(
+      currentBalance,
+      Math.floor(orderTotalCents * 0.5), // 50% cap
+    );
+    if (maxRedeemable < MIN_REDEEM_CENTS) {
+      return { applied: 0, newBalance: currentBalance, error: 'Below minimum redemption threshold' };
+    }
 
-  const applied = Math.min(amountCents, maxRedeemable);
-  const newBalance = currentBalance - applied;
-  const fpTag = fingerprint ? ` [fp:${fingerprint}]` : '';
+    const applied = Math.min(amountCents, maxRedeemable);
+    const newBalance = currentBalance - applied;
+    const fpTag = fingerprint ? ` [fp:${fingerprint}]` : '';
 
-  await db.transaction(async (tx) => {
     await tx.insert(loyaltyLedger).values({
       userId,
       eventType:         'redeem',
@@ -244,10 +253,10 @@ export async function redeemLoyaltyCredit(opts: RedeemOptions): Promise<RedeemRe
     await tx.update(users)
       .set({ loyaltyBalanceCents: newBalance })
       .where(eq(users.id, userId));
-  });
 
-  logger.info('[Loyalty] Credit redeemed', { userId, applied, newBalance, bookingId, fingerprint });
-  return { applied, newBalance };
+    logger.info('[Loyalty] Credit redeemed', { userId, applied, newBalance, bookingId, fingerprint });
+    return { applied, newBalance };
+  });
 }
 
 // ─── Expiry sweep (nightly cron) ──────────────────────────────────────────────
