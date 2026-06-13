@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -220,16 +221,50 @@ export default function LoyaltyDashboard() {
     document.documentElement.classList.contains('dark')
   );
 
-  const mockRewards = [
-    { id: 1, name: isHebrew ? 'שטיפה חינם' : 'Free Wash', points: 500, available: false },
-    { id: 2, name: isHebrew ? '10% הנחה' : '10% Discount', points: 200, available: true },
-    { id: 3, name: isHebrew ? 'שדרוג VIP' : 'VIP Upgrade', points: 1000, available: false },
-    { id: 4, name: isHebrew ? 'מוצר חינם' : 'Free Product', points: 300, available: true },
-  ];
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [redeemingId, setRedeemingId] = useState<number | null>(null);
 
   const { data: loyaltyProfile } = useQuery<any>({
     queryKey: ['/api/loyalty/profile'],
   });
+
+  // Real rewards catalog from GET /api/loyalty/rewards (rewardsMarketplace) —
+  // replaces the old hardcoded mockRewards with arbitrary points and a Redeem
+  // button that had no onClick (pure theater).
+  const { data: rewards } = useQuery<any[]>({
+    queryKey: ['/api/loyalty/rewards'],
+  });
+
+  const redeemReward = async (reward: any) => {
+    setRedeemingId(reward.id);
+    try {
+      const res = await apiRequest('POST', '/api/loyalty/rewards/redeem', { rewardId: reward.id });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Redeem failed');
+      toast({
+        title: isHebrew ? 'הפרס נפדה! 🎉' : 'Reward redeemed! 🎉',
+        description: data?.voucherCode
+          ? (isHebrew ? `קוד שובר: ${data.voucherCode}` : `Voucher code: ${data.voucherCode}`)
+          : reward.name,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/loyalty/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loyalty/rewards'] });
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'הפדיון נכשל' : 'Could not redeem',
+        description: /insufficient/i.test(msg)
+          ? (isHebrew ? 'אין מספיק נקודות' : 'Not enough points')
+          : /stock/i.test(msg)
+          ? (isHebrew ? 'הפרס אזל' : 'Out of stock')
+          : (isHebrew ? 'נסה שוב מאוחר יותר' : 'Please try again later'),
+      });
+    } finally {
+      setRedeemingId(null);
+    }
+  };
 
   const currentTier = loyaltyProfile?.tier ?? 'bronze';
   const currentPoints = loyaltyProfile?.points ?? 0;
@@ -444,11 +479,15 @@ export default function LoyaltyDashboard() {
             </div>
             
             <div className="luxury-grid-2">
-              {mockRewards.map((reward, index) => (
+              {(rewards && rewards.length > 0) ? rewards.map((reward: any, index: number) => {
+                const inStock = reward.stock === null || reward.stock === undefined || reward.stock > 0;
+                const affordable = currentPoints >= reward.pointsCost && inStock;
+                const busy = redeemingId === reward.id;
+                return (
                 <div
                   key={reward.id}
                   className={`luxury-glass-card luxury-hover-glow p-5 luxury-animate-scale-in ${
-                    reward.available
+                    affordable
                       ? 'border-green-400/50'
                       : 'opacity-60'
                   }`}
@@ -462,21 +501,30 @@ export default function LoyaltyDashboard() {
                       <div className="flex items-center gap-2">
                         <Star className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {reward.points.toLocaleString()} {isHebrew ? 'נקודות' : 'points'}
+                          {Number(reward.pointsCost).toLocaleString()} {isHebrew ? 'נקודות' : 'points'}
                         </span>
+                        {!inStock && (
+                          <span className="text-xs text-gray-400">· {isHebrew ? 'אזל' : 'out of stock'}</span>
+                        )}
                       </div>
                     </div>
                     <button
-                      disabled={!reward.available}
-                      className={reward.available 
-                        ? 'luxury-btn-primary text-sm px-4 py-2' 
+                      disabled={!affordable || busy}
+                      onClick={() => redeemReward(reward)}
+                      className={affordable && !busy
+                        ? 'luxury-btn-primary text-sm px-4 py-2'
                         : 'luxury-btn-secondary text-sm px-4 py-2 opacity-50 cursor-not-allowed'}
                     >
-                      {isHebrew ? 'פדה' : 'Redeem'}
+                      {busy ? '…' : (isHebrew ? 'פדה' : 'Redeem')}
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              }) : (
+                <p className="text-sm text-gray-500 col-span-2 text-center py-8">
+                  {isHebrew ? 'הפרסים יתווספו בקרוב.' : 'Rewards will appear here soon.'}
+                </p>
+              )}
             </div>
           </div>
 
