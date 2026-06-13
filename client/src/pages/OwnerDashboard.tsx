@@ -25,6 +25,20 @@ export default function OwnerDashboard() {
     enabled: !!user && activeTab === 'inbox',
   });
 
+  // Real loyalty profile (tier, points, washes) — replaces the old hardcoded
+  // mockLoyaltyData that showed every user the same fake 2,450 pts / ₪3,200.
+  const { data: loyalty } = useQuery<any>({
+    queryKey: ['/api/loyalty/profile'],
+    enabled: !!user,
+  });
+
+  // Real pets — replaces the hardcoded "Max" + "Luna" demo cards.
+  const { data: petsResp } = useQuery<{ pets: any[] }>({
+    queryKey: ['/api/pets'],
+    enabled: !!user && activeTab === 'pets',
+  });
+  const pets = petsResp?.pets || [];
+
   const handleLogout = async () => {
     await signOut();
     setLocation('/');
@@ -32,15 +46,22 @@ export default function OwnerDashboard() {
 
   const unreadCount = messages?.filter((m: any) => (m.unreadCount ?? 0) > 0).length || 0;
 
-  const mockLoyaltyData = {
-    points: 2450,
-    tier: 'Gold',
-    nextTier: 'Platinum',
-    pointsToNext: 550,
-    totalWashes: 24,
-    totalBookings: 18,
-    totalSpend: 3200
-  };
+  // Derive the dashboard figures from REAL data (loyalty profile + the user's
+  // own bookings). No invented numbers — a brand-new member correctly shows 0.
+  const TIERS = ['bronze', 'silver', 'gold', 'platinum'];
+  const rawTier = String(loyalty?.tier || 'bronze').toLowerCase();
+  const tierIdx = TIERS.indexOf(rawTier);
+  const tierLabel = rawTier.charAt(0).toUpperCase() + rawTier.slice(1);
+  const nextTierRaw = tierIdx >= 0 && tierIdx < TIERS.length - 1 ? TIERS[tierIdx + 1] : null;
+  const nextTierLabel = nextTierRaw ? nextTierRaw.charAt(0).toUpperCase() + nextTierRaw.slice(1) : null;
+  const points = loyalty?.points ?? 0;
+  const tierProgress = loyalty?.tierProgress ?? 0;
+  const tierThreshold = loyalty?.tierThreshold ?? 1000;
+  const pointsToNext = nextTierRaw ? Math.max(0, tierThreshold - tierProgress) : 0;
+  const progressPct = tierThreshold > 0 ? Math.min(100, Math.round((tierProgress / tierThreshold) * 100)) : 0;
+  const totalWashes = loyalty?.totalWashes ?? 0;
+  const totalBookings = bookings?.length ?? 0;
+  const totalSpend = Math.round(((bookings || []).reduce((s: number, b: any) => s + (b.totalChargeCents || 0), 0)) / 100);
 
   return (
     <div className={`min-h-screen luxury-bg-mesh ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
@@ -161,7 +182,7 @@ export default function OwnerDashboard() {
                 <PawPrint className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="luxury-heading-lg luxury-text-gradient">{mockLoyaltyData.totalWashes}</p>
+            <p className="luxury-heading-lg luxury-text-gradient">{totalWashes}</p>
             <p className="luxury-text-small">{isHebrew ? 'סך הכל שטיפות' : 'Total Washes'}</p>
           </div>
 
@@ -171,7 +192,7 @@ export default function OwnerDashboard() {
                 <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="luxury-heading-lg luxury-text-gradient">{mockLoyaltyData.totalBookings}</p>
+            <p className="luxury-heading-lg luxury-text-gradient">{totalBookings}</p>
             <p className="luxury-text-small">{isHebrew ? 'סך הכל הזמנות' : 'Total Bookings'}</p>
           </div>
 
@@ -181,7 +202,7 @@ export default function OwnerDashboard() {
                 <Wallet className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="luxury-heading-lg luxury-text-gradient">₪{mockLoyaltyData.totalSpend}</p>
+            <p className="luxury-heading-lg luxury-text-gradient">₪{totalSpend.toLocaleString()}</p>
             <p className="luxury-text-small">{isHebrew ? 'סך הכל הוצאות' : 'Total Spend'}</p>
           </div>
         </div>
@@ -199,27 +220,31 @@ export default function OwnerDashboard() {
             </div>
             <span className="luxury-badge-gold">
               <Star className="h-4 w-4 fill-current" />
-              {mockLoyaltyData.tier}
+              {tierLabel}
             </span>
           </div>
           
           <div className="mb-6">
-            <p className="luxury-heading-lg luxury-text-gradient text-center mb-2">{mockLoyaltyData.points.toLocaleString()}</p>
+            <p className="luxury-heading-lg luxury-text-gradient text-center mb-2">{points.toLocaleString()}</p>
             <p className="luxury-text-small text-center">{isHebrew ? 'נקודות זמינות' : 'Available Points'}</p>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between luxury-text-small">
-              <span>{isHebrew ? `עד ${mockLoyaltyData.nextTier}` : `To ${mockLoyaltyData.nextTier}`}</span>
-              <span>{mockLoyaltyData.pointsToNext} {isHebrew ? 'נקודות נותרו' : 'points to go'}</span>
+          {nextTierLabel ? (
+            <div className="space-y-2">
+              <div className="flex justify-between luxury-text-small">
+                <span>{isHebrew ? `עד ${nextTierLabel}` : `To ${nextTierLabel}`}</span>
+                <span>{pointsToNext.toLocaleString()} {isHebrew ? 'נקודות נותרו' : 'points to go'}</span>
+              </div>
+              <div className="h-3 bg-white dark:bg-white rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#000000] to-[#333333] rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="h-3 bg-white dark:bg-white rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[#000000] to-[#333333] rounded-full transition-all duration-500"
-                style={{ width: `${(mockLoyaltyData.points / (mockLoyaltyData.points + mockLoyaltyData.pointsToNext)) * 100}%` }}
-              ></div>
-            </div>
-          </div>
+          ) : (
+            <p className="luxury-text-small text-center">{isHebrew ? 'הגעת לדרגה הגבוהה ביותר ✨' : 'You’ve reached the top tier ✨'}</p>
+          )}
         </div>
 
         {activeTab === 'bookings' && (
@@ -293,31 +318,31 @@ export default function OwnerDashboard() {
               <h2 className="luxury-heading-md">
                 {isHebrew ? 'חיות המחמד שלי' : 'My Pets'}
               </h2>
-              <Button className="luxury-btn-primary" data-testid="button-add-pet">
-                {isHebrew ? '+ הוסף חיית מחמד' : '+ Add Pet'}
-              </Button>
+              <Link href="/pets">
+                <Button className="luxury-btn-primary" data-testid="button-add-pet">
+                  {isHebrew ? '+ הוסף חיית מחמד' : '+ Add Pet'}
+                </Button>
+              </Link>
             </div>
             
             <div className="luxury-grid-3">
-              <PetProfileCard 
-                name="Max"
-                type="Dog"
-                breed="Golden Retriever"
-                age="3 years"
-                isHebrew={isHebrew}
-              />
-              <PetProfileCard 
-                name="Luna"
-                type="Cat"
-                breed="Persian"
-                age="2 years"
-                isHebrew={isHebrew}
-              />
-              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-8 flex flex-col items-center justify-center text-center min-h-[300px] cursor-pointer">
-                <PawPrint className="h-12 w-12 text-gray-400 dark:text-gray-600 mb-4" />
-                <h3 className="luxury-heading-sm mb-2">{isHebrew ? 'הוסף חיית מחמד' : 'Add Pet'}</h3>
-                <p className="luxury-text-small">{isHebrew ? 'צור פרופיל חדש' : 'Create new profile'}</p>
-              </div>
+              {pets.map((pet: any) => (
+                <PetProfileCard
+                  key={pet.id}
+                  name={pet.name || (isHebrew ? 'חיית מחמד' : 'Pet')}
+                  type={pet.species || ''}
+                  breed={pet.breed || ''}
+                  age={pet.birthday ? petAge(pet.birthday, isHebrew) : ''}
+                  isHebrew={isHebrew}
+                />
+              ))}
+              <Link href="/pets">
+                <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-8 flex flex-col items-center justify-center text-center min-h-[300px] cursor-pointer">
+                  <PawPrint className="h-12 w-12 text-gray-400 dark:text-gray-600 mb-4" />
+                  <h3 className="luxury-heading-sm mb-2">{isHebrew ? 'הוסף חיית מחמד' : 'Add Pet'}</h3>
+                  <p className="luxury-text-small">{isHebrew ? 'צור פרופיל חדש' : 'Create new profile'}</p>
+                </div>
+              </Link>
             </div>
           </div>
         )}
@@ -407,39 +432,22 @@ export default function OwnerDashboard() {
               </Link>
             </div>
 
-            <div className="luxury-glass-card luxury-shadow-md p-6">
-              <h3 className="luxury-heading-sm mb-4 flex items-center gap-2">
-                <Heart className="h-6 w-6 text-pink-500 fill-pink-500" />
-                {isHebrew ? 'סיפורי הצלחה' : 'Success Stories'}
-              </h3>
-              <div className="space-y-4">
-                <div className="border-l-4 border-green-500 pl-4 py-2">
-                  <p className="luxury-text-body font-semibold">
-                    {isHebrew 
-                      ? '"נעלם במשך 3 ימים - נמצא בזכות ⁦Paw Finder™⁩!"' 
-                      : '"Lost for 3 days - Found thanks to ⁦Paw Finder™⁩!"'}
-                  </p>
-                  <p className="luxury-text-small">
-                    - {isHebrew ? 'שרה, תל אביב' : 'Sarah, Tel Aviv'}
-                  </p>
-                </div>
-                <div className="border-l-4 border-amber-500 pl-4 py-2">
-                  <p className="luxury-text-body font-semibold">
-                    {isHebrew 
-                      ? '"הקהילה עזרה למצוא את הכלב שלי תוך שעתיים"' 
-                      : '"Community helped find my dog in 2 hours"'}
-                  </p>
-                  <p className="luxury-text-small">
-                    - {isHebrew ? 'דוד, ירושלים' : 'David, Jerusalem'}
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>
     </div>
   );
+}
+
+// Human-readable age from a birthday (ISO string or Date). Returns '' when
+// the value is missing or unparseable — never guesses.
+function petAge(birthday: any, isHebrew: boolean): string {
+  const d = new Date(birthday);
+  if (isNaN(d.getTime())) return '';
+  const months = Math.max(0, Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+  if (months < 12) return isHebrew ? `${months} חודשים` : `${months} mo`;
+  const years = Math.floor(months / 12);
+  return isHebrew ? `${years} שנים` : `${years} ${years === 1 ? 'year' : 'years'}`;
 }
 
 function TabButton({ active, onClick, icon, label, badge }: any) {
@@ -466,6 +474,7 @@ function TabButton({ active, onClick, icon, label, badge }: any) {
 }
 
 function BookingCard({ booking, isHebrew }: any) {
+  const [, setLocation] = useLocation();
   const getStatusBadge = (status: string) => {
     if (status === 'confirmed') return 'luxury-badge-success';
     if (status === 'pending') return 'luxury-badge';
