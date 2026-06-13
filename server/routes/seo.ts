@@ -4,6 +4,66 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
+const IOS_PROVIDER_BUNDLE_ID = 'il.co.petwash.provider';
+const IOS_CUSTOMER_BUNDLE_ID = 'il.co.petwash.customer';
+
+function appleTeamIdentifier(): string {
+  return (
+    process.env.APPLE_TEAM_IDENTIFIER ||
+    process.env.APPLE_TEAM_ID ||
+    process.env.APPLE_WALLET_TEAM_ID ||
+    ''
+  ).trim();
+}
+
+function buildAppleAppSiteAssociation(teamId: string) {
+  return {
+    applinks: {
+      apps: [],
+      details: [
+        {
+          appID: `${teamId}.${IOS_PROVIDER_BUNDLE_ID}`,
+          paths: [
+            '/provider',
+            '/provider/*',
+            '/provider-dashboard',
+            '/provider-dashboard/*',
+          ],
+        },
+        {
+          appID: `${teamId}.${IOS_CUSTOMER_BUNDLE_ID}`,
+          paths: [
+            '/',
+            '/booking',
+            '/booking/*',
+            '/marketplace/*',
+            '/my-bookings',
+            '/my-bookings/*',
+            '/my-wallet',
+            '/my-wallet/*',
+            '/prestige-pass',
+            '/wallet',
+            '/locations',
+            '/locations/*',
+            '/packages',
+            '/packages/*',
+            '/vouchers',
+            '/vouchers/*',
+            '/shop',
+            '/shop/*',
+          ],
+        },
+      ],
+    },
+    webcredentials: {
+      apps: [
+        `${teamId}.${IOS_PROVIDER_BUNDLE_ID}`,
+        `${teamId}.${IOS_CUSTOMER_BUNDLE_ID}`,
+      ],
+    },
+  };
+}
+
 // ── Sitemap helpers ─────────────────────────────────────────────────────────
 
 const LANGUAGES = ['he', 'en', 'ar', 'ru', 'fr', 'es'];
@@ -153,6 +213,35 @@ Crawl-delay: 1
   res.send(robots);
   
   logger.info('Robots.txt served', { userAgent: req.headers['user-agent'] });
+});
+
+/**
+ * GET /.well-known/apple-app-site-association
+ * GET /apple-app-site-association
+ *
+ * Enables Universal Links for the approved Provider and Customer iOS apps.
+ * Apple requires JSON without a .json extension and follows either location.
+ */
+router.get(['/.well-known/apple-app-site-association', '/apple-app-site-association'], (req, res) => {
+  const teamId = appleTeamIdentifier();
+
+  if (!teamId) {
+    logger.error('[SEO] Cannot serve AASA: Apple Team ID env is missing');
+    return res.status(503).json({
+      applinks: { apps: [], details: [] },
+      error: 'APPLE_TEAM_IDENTIFIER or APPLE_WALLET_TEAM_ID not configured',
+    });
+  }
+
+  res.set({
+    'Content-Type': 'application/json',
+    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+  });
+  res.send(JSON.stringify(buildAppleAppSiteAssociation(teamId)));
+
+  logger.info('Apple App Site Association served', {
+    userAgent: req.headers['user-agent'],
+  });
 });
 
 /**
