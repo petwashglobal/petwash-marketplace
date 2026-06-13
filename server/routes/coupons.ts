@@ -148,26 +148,26 @@ router.post('/validate', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// SECURITY — DISABLED 2026-06-13 (audit C1: free-money discount abuse).
+// This public route accepted a client-supplied `discountAmountCents` (+ couponId,
+// amountBeforeCents) and `couponService.redeemAtomic` wrote it VERBATIM into
+// coupon_redemptions — with NO amount/scope/expiry/eligibility recompute (those
+// live in /validate, which this route never called). Any logged-in user could
+// POST {couponId, discountAmountCents: 9999999} and self-issue an arbitrary
+// discount. It has ZERO legitimate callers (verified: no client/mobile usage) —
+// real redemption goes through the server-recomputed, row-locked paths
+// (KioskCouponService.confirmToken / UnifiedPricingService.confirmReservation).
+// Disabled to remove the attack surface. Do NOT reintroduce a public redeem
+// route unless it RECOMPUTES the discount server-side from the locked coupon row
+// and re-asserts validity inside the transaction (never trust a client amount).
 router.post('/redeem', async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.firebaseUser?.uid;
-  if (!userId) return res.status(401).json({ error: 'AUTH_REQUIRED' });
-
-  const parsed = redeemSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'בקשה לא תקינה', details: parsed.error.flatten() });
-
-  try {
-    const result = await couponService.redeemAtomic({ ...parsed.data, userId });
-    if (result.alreadyRedeemed) {
-      return res.json({ success: true, idempotent: true, redemptionId: result.redemptionId });
-    }
-    return res.json({ success: true, redemptionId: result.redemptionId });
-  } catch (err: any) {
-    const code = err?.code ?? '';
-    if (code === 'CAMPAIGN_CAP_REACHED')  return res.status(409).json({ error: 'מכסת הקופון מוצתה', errorCode: code });
-    if (code === 'PER_USER_LIMIT_REACHED') return res.status(409).json({ error: 'כבר מימשת קופון זה', errorCode: code });
-    logger.error('[Coupons] redeemAtomic error', { err: err.message, userId });
-    return res.status(500).json({ error: 'שגיאה פנימית במימוש הקופון' });
-  }
+  logger.warn('[Coupons] Blocked call to disabled public /redeem route (audit C1)', {
+    userId: req.firebaseUser?.uid,
+  });
+  return res.status(410).json({
+    error: 'Coupon redemption happens at checkout (server-validated). This endpoint is disabled.',
+    errorCode: 'COUPON_REDEEM_DISABLED',
+  });
 });
 
 router.post('/restore/:id', async (req: AuthenticatedRequest, res: Response) => {
