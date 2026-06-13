@@ -1,4 +1,5 @@
 import { useParams, Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
@@ -101,35 +102,11 @@ const trainerAddOns: AddOn[] = [
   },
 ];
 
-const mockReviews: Review[] = [
-  {
-    id: "1",
-    authorName: "יוסי כהן",
-    authorImage: "https://randomuser.me/api/portraits/men/32.jpg",
-    rating: 5,
-    comment: "המאלף הכי מקצועי שפגשנו! הכלב שלנו השתנה לחלוטין תוך חודש אחד",
-    commentEn: "The most professional trainer we've met! Our dog completely transformed within one month",
-    date: "2025-01-15",
-  },
-  {
-    id: "2",
-    authorName: "מיכל לוי",
-    authorImage: "https://randomuser.me/api/portraits/women/44.jpg",
-    rating: 5,
-    comment: "סבלני, מקצועי ומבין כלבים. ממליצה בחום",
-    commentEn: "Patient, professional and understands dogs. Highly recommend",
-    date: "2025-01-10",
-  },
-  {
-    id: "3",
-    authorName: "David Chen",
-    authorImage: "https://randomuser.me/api/portraits/men/67.jpg",
-    rating: 5,
-    comment: "Amazing transformation for our reactive dog. Thank you!",
-    commentEn: "Amazing transformation for our reactive dog. Thank you!",
-    date: "2025-01-05",
-  },
-];
+// PR-FAKE (2026-06-13): removed the hardcoded mockReviews (fake testimonials
+// with randomuser.me avatars). Real reviews are now fetched from the backend
+// (GET /api/academy/trainers/:id → { reviews } from contractor_reviews) and
+// mapped to the Review shape below; when there are none, ProviderProfilePage
+// simply hides the reviews section (no fake content shown).
 
 export default function TrainerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -139,6 +116,20 @@ export default function TrainerDetail() {
   const [, navigate] = useLocation();
   
   const faqItems = getFAQsForPlatform('trainer');
+
+  // Real reviews from the backend (contractor_reviews via GET /api/academy/trainers/:id).
+  // No fake testimonials — empty list → ProviderProfilePage hides the reviews section.
+  const { data: trainerResponse } = useQuery<{ trainer?: any; reviews?: any[] }>({
+    queryKey: [`/api/academy/trainers/${id}`],
+    enabled: !!id,
+  });
+  const realReviews: Review[] = (trainerResponse?.reviews ?? []).map((r: any) => ({
+    id: String(r.id ?? r.reviewId ?? ''),
+    name: r.reviewerName || (isHebrew ? 'לקוח' : 'Customer'),
+    date: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+    rating: Number(r.overallRating ?? 0),
+    text: r.reviewText || '',
+  }));
 
   const trainerData: ProviderProfileData = {
     id: id || "trainer-1",
@@ -212,7 +203,7 @@ export default function TrainerDetail() {
           provider={trainerData}
           services={trainerServices}
           addOns={trainerAddOns}
-          reviews={mockReviews}
+          reviews={realReviews}
           faqItems={faqItems}
           platform="trainer"
           language={language}
