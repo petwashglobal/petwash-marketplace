@@ -368,7 +368,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
     completeFields: he ? 'אשר תנאים והזן פרטים כדי להמשיך.' : 'Accept the terms and enter your details to continue.',
-    bank: he ? 'אבטחה ברמת בנק' : 'Bank-level security',
+    bank: he ? 'מאובטח ומוצפן' : 'Secure & encrypted',
     enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
     safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
 

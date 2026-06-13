@@ -32,16 +32,16 @@ const SERVICE_MAP: Record<string, {
   'pet-sitting': {
     slug: 'pet_sitting', emoji: '🏠',
     labelHe: 'שמירה על חיות מחמד', labelEn: 'Pet Sitting',
-    descHe: 'ספקים מקצועיים ישמרו על חיית המחמד שלך בביתך – בעוד אתה נמצא בחו"ל או בעבודה. כל ספק מאומת ועבר קורס מקצועי.',
-    descEn: 'Professional pet sitters care for your pet in your own home — while you travel or work. Every sitter is verified and trained.',
+    descHe: 'ספקים מקצועיים ישמרו על חיית המחמד שלך בביתך – בעוד אתה נמצא בחו"ל או בעבודה. ספקים עוברים אימות זהות לפני שהם יכולים לקבל הזמנות.',
+    descEn: 'Professional pet sitters care for your pet in your own home — while you travel or work. Sitters complete identity verification before they can accept bookings.',
     faqHe: [
       { q: 'כמה עולה שמירה על חיית מחמד?', a: 'המחיר תלוי בסוג החיה, מספר הלילות וסוג השירות. מחיר ממוצע: ₪120–₪180 ללילה.' },
-      { q: 'האם הספקים מאומתים?', a: 'כן. כל הספקים עוברים אימות זהות, בדיקת רקע, וקורס טיפול בחיות מחמד.' },
+      { q: 'האם הספקים מאומתים?', a: 'ספקים עוברים אימות זהות לפני שהם יכולים לקבל הזמנות.' },
       { q: 'מה כולל השירות?', a: 'האכלה, הוצאה לטיולים, משחק, ועדכונים יומיים לבעלים.' },
     ],
     faqEn: [
       { q: 'How much does pet sitting cost?', a: 'Prices depend on pet type, nights, and service level. Avg: ₪120–₪180 per night.' },
-      { q: 'Are sitters background-checked?', a: 'Yes. All sitters go through ID verification, background checks, and a professional pet care course.' },
+      { q: 'Are sitters verified?', a: 'Sitters complete identity verification before they can accept bookings. Additional checks may apply depending on the service.' },
       { q: 'What is included?', a: 'Feeding, walks, playtime, and daily photo updates sent to you.' },
     ],
     cta: '/sitter-suite',
@@ -162,8 +162,8 @@ export default function ServiceLandingPage() {
   // Replaced with a §8-aligned description per the Provider & Host
   // Services Agreement (PR-LEGAL-A #246).
   const metaDesc = isRTL
-    ? `מצא את הספק הטוב ביותר ל${svc.labelHe}${cityInfo ? ` ב${cityInfo.he}` : ''}. כל הספקים מאומתים ומדורגים, ונדרשים להחזיק בביטוח לפי דין.`
-    : `Find the best ${svc.labelEn}${cityInfo ? ` in ${cityInfo.en}` : ''} in Israel. All providers verified and rated; providers are required to maintain their own insurance as required by law.`;
+    ? `מצא את הספק הטוב ביותר ל${svc.labelHe}${cityInfo ? ` ב${cityInfo.he}` : ''}. ספקים עוברים אימות לפני קבלת הזמנות, ונדרשים להחזיק בביטוח לפי דין.`
+    : `Find the best ${svc.labelEn}${cityInfo ? ` in ${cityInfo.en}` : ''} in Israel. Providers complete verification before accepting bookings; providers are required to maintain their own insurance as required by law.`;
 
   const faqs = isRTL ? svc.faqHe : svc.faqEn;
 
