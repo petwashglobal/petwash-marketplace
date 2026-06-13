@@ -80,6 +80,7 @@ import legalStampsRoutes from "./routes/legal-stamps";
 import userActivityRoutes from "./routes/user-activity";
 import sitterSuiteRoutes from "./routes/sitter-suite";
 import academyRoutes from "./routes/academy";
+import groomersRoutes from "./routes/groomers";
 import walkMyPetRoutes from "./routes/walk-my-pet";
 import walkSessionRoutes from "./routes/walk-session";
 import pettrekRoutes from "./routes/pettrek";
@@ -11025,6 +11026,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // ⁦Pet Wash Academy™⁩ - Professional trainer marketplace (2025 unified ecosystem)
   app.use('/api/academy', optionalFirebaseToken, apiLimiter, academyRoutes);
+  app.use('/api/groomers', optionalFirebaseToken, apiLimiter, groomersRoutes);
   
   // 🐙 Unified Platform Routes - Cross-platform services
   app.use('/api/unified', apiLimiter, unifiedPlatformRoutes);
