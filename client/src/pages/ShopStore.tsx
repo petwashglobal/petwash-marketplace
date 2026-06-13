@@ -282,7 +282,18 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   );
 
   const name = (p: { name_he: string; name_en: string | null }) => (he ? p.name_he : (p.name_en || p.name_he));
-  const categories = products ? ['all', ...Array.from(new Set(products.map(p => p.category)))] : ['all'];
+  // Fetchingware-style collection-led ordering: lead with Collars & Leads (the
+  // hero range), then Tags, Harnesses, Apparel, Toys; unknown categories follow.
+  // Keeps the data-driven category list but presents it in a curated brand order.
+  const COLLECTION_PRIORITY = ['collar', 'lead', 'leash', 'tag', 'harness', 'apparel', 'cloth', 'jumper', 'toy', 'groom', 'bowl', 'feed', 'bed', 'travel'];
+  const catRank = (c: string) => {
+    if (c === 'all') return -1;
+    const i = COLLECTION_PRIORITY.findIndex(p => c.toLowerCase().includes(p));
+    return i === -1 ? 999 : i;
+  };
+  const categories = products
+    ? ['all', ...Array.from(new Set(products.map(p => p.category)))].sort((a, b) => catRank(a) - catRank(b))
+    : ['all'];
   const shown = products ? (category === 'all' ? products : products.filter(p => p.category === category)) : [];
   const cartCount = cart?.items.reduce((n, i) => n + i.quantity, 0) || 0;
 
@@ -369,7 +380,16 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
           {categories.map(c => (
             <button key={c} onClick={() => setCategory(c)}
               className={`rounded-full px-4 py-2 text-xs font-medium border ${category === c ? 'bg-black text-white border-black' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-              {c === 'all' ? tr('All', 'הכל') : c}
+              {c === 'all' ? tr('All', 'הכל')
+                : /collar|lead|leash/i.test(c) ? tr('Collars & Leads', 'קולרים ורצועות')
+                : /tag/i.test(c) ? tr('ID Tags', 'תגי זיהוי')
+                : /harness/i.test(c) ? tr('Harnesses', 'רתמות')
+                : /apparel|cloth|jumper|coat/i.test(c) ? tr('Apparel', 'ביגוד')
+                : /toy/i.test(c) ? tr('Toys', 'צעצועים')
+                : /groom/i.test(c) ? tr('Grooming', 'טיפוח')
+                : /bowl|feed/i.test(c) ? tr('Bowls & Feeders', 'קערות והאכלה')
+                : /bed/i.test(c) ? tr('Beds', 'מיטות')
+                : c}
             </button>
           ))}
         </div>
