@@ -9,5 +9,7 @@ if [[ ! -f ".env" ]]; then
   exit 1
 fi
 
-node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/pass/generate-first-founder-pass.ts
+node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/pass/generate-first-founder-pass.ts --member=nir
+node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/pass/generate-first-founder-pass.ts --member=ido
 ls -lh first-founder-pass.pkpass
+ls -lh ido-shakarzi-pass.pkpass
