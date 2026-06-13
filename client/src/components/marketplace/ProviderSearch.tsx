@@ -1528,23 +1528,12 @@ export function ProviderSearch({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Shield className="h-4 w-4 text-green-500" />
-            <span>{isHebrew ? 'כל הספקים מאומתים' : 'All providers verified'}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Star className="h-4 w-4 text-amber-500" />
-            <span>{isHebrew ? 'דירוג 4.9+ ממוצע' : '4.9+ average rating'}</span>
-          </div>
-          {/* PR-LEGAL-B: previously 'Full insurance included' / 'ביטוח מלא
-              כלול'. Replaced with a neutral verified-provider label per §8
-              of the Provider & Host Services Agreement. */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Sparkles className={`h-4 w-4 ${t.iconColor}`} />
-            <span>{isHebrew ? 'ספק מאומת' : 'Verified provider'}</span>
-          </div>
-        </div>
+        {/* PR-B (2026-06-13): removed the trust-badge strip. It rendered
+            "All providers verified" + "4.9+ average rating" above a provider
+            list that is empty pre-launch — an unverifiable public claim
+            (Israeli consumer-protection exposure + evidence discipline).
+            No public stat without a verifiable source. Reinstate per-provider
+            verified badges (already on each card) once real providers exist. */}
       </div>
     </div>
   );
