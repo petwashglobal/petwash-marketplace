@@ -1,4 +1,4 @@
-import { Shield, Award, CheckCircle, Star, Users } from 'lucide-react';
+import { Shield, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 
 const GOLD = '#C5A55A';
@@ -23,15 +23,10 @@ const BADGES: TrustBadge[] = [
     color: '#1a7f4b',
     bg: '#f0fdf4',
   },
-  {
-    icon: <Award size={16} />,
-    labelHe: '1 מתוך 5 מאושר',
-    labelEn: '1 in 5 Accepted',
-    descHe: 'רק 20% מהמועמדים מתקבלים',
-    descEn: 'Only the top 20% of applicants are approved',
-    color: GOLD,
-    bg: `${GOLD}15`,
-  },
+  // PR-FAKE (2026-06-13): removed fabricated trust stats — "1 in 5 Accepted /
+  // top 20% approved", "Trained & Certified / professional course completed",
+  // and "10,000+ Bookings" were all invented (no such data exists pre-launch).
+  // Kept only the verification badges, which reflect the real KYC flow.
   {
     // PR-LEGAL-B: previously 'PetWash Guarantee' / 'Full coverage for
     // every confirmed booking'. Replaced with a neutral verification
@@ -43,24 +38,6 @@ const BADGES: TrustBadge[] = [
     descEn: 'Identity, documents and references checked',
     color: '#1e40af',
     bg: '#eff6ff',
-  },
-  {
-    icon: <Star size={16} />,
-    labelHe: 'ספק מיומן',
-    labelEn: 'Trained & Certified',
-    descHe: 'קורס מקצועי לטיפול בחיות',
-    descEn: 'Professional pet care course completed',
-    color: '#7c3aed',
-    bg: '#faf5ff',
-  },
-  {
-    icon: <Users size={16} />,
-    labelHe: '+10,000 הזמנות',
-    labelEn: '10,000+ Bookings',
-    descHe: 'לקוחות מרוצים בכל רחבי ישראל',
-    descEn: 'Happy pet owners across Israel',
-    color: '#0369a1',
-    bg: '#f0f9ff',
   },
 ];
 
