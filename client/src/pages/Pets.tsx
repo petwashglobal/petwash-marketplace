@@ -41,7 +41,7 @@ import { he, enUS } from 'date-fns/locale';
 
 const petFormSchema = z.object({
   name: z.string().min(1, 'Pet name is required'),
-  species: z.enum(['dog', 'cat', 'other']),
+  species: z.enum(['dog', 'cat', 'bird', 'rabbit', 'guinea_pig', 'hamster', 'reptile', 'fish', 'other']),
   breed: z.string().optional(),
   birthdate: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
@@ -65,7 +65,7 @@ type PetFormData = z.infer<typeof petFormSchema>;
 interface Pet {
   id: string;
   name: string;
-  species: 'dog' | 'cat' | 'other';
+  species: 'dog' | 'cat' | 'bird' | 'rabbit' | 'guinea_pig' | 'hamster' | 'reptile' | 'fish' | 'other';
   breed?: string;
   birthdate: string;
   weight?: number;
@@ -541,10 +541,10 @@ export default function Pets() {
 
   const getSpeciesLabel = (species: string) => {
     const labels = {
-      he: { dog: 'כלב', cat: 'חתול', other: 'אחר' },
-      en: { dog: 'Dog', cat: 'Cat', other: 'Other' },
+      he: { dog: 'כלב', cat: 'חתול', bird: 'ציפור', rabbit: 'ארנב', guinea_pig: 'שרקן', hamster: 'אוגר', reptile: 'זוחל', fish: 'דג', other: 'אחר' },
+      en: { dog: 'Dog', cat: 'Cat', bird: 'Bird', rabbit: 'Rabbit', guinea_pig: 'Guinea Pig', hamster: 'Hamster', reptile: 'Reptile', fish: 'Fish', other: 'Other' },
     };
-    return labels[language as 'he' | 'en'][species as keyof typeof labels.he];
+    return labels[language as 'he' | 'en'][species as keyof typeof labels.he] || species;
   };
 
   const getAge = (birthdate: string) => {
@@ -762,6 +762,12 @@ export default function Pets() {
                         <SelectContent>
                           <SelectItem value="dog">{getSpeciesLabel('dog')}</SelectItem>
                           <SelectItem value="cat">{getSpeciesLabel('cat')}</SelectItem>
+                          <SelectItem value="bird">{getSpeciesLabel('bird')}</SelectItem>
+                          <SelectItem value="rabbit">{getSpeciesLabel('rabbit')}</SelectItem>
+                          <SelectItem value="guinea_pig">{getSpeciesLabel('guinea_pig')}</SelectItem>
+                          <SelectItem value="hamster">{getSpeciesLabel('hamster')}</SelectItem>
+                          <SelectItem value="reptile">{getSpeciesLabel('reptile')}</SelectItem>
+                          <SelectItem value="fish">{getSpeciesLabel('fish')}</SelectItem>
                           <SelectItem value="other">{getSpeciesLabel('other')}</SelectItem>
                         </SelectContent>
                       </Select>

@@ -58,7 +58,7 @@ export const petProfileSchema = z.object({
   id: z.string(), // petId
   uid: z.string(), // Owner's Firebase UID
   name: z.string().min(1),
-  species: z.enum(["dog", "cat", "other"]).default("dog"),
+  species: z.enum(["dog", "cat", "bird", "rabbit", "guinea_pig", "hamster", "reptile", "fish", "other"]).default("dog"),
   breed: z.string().optional(),
   gender: z.enum(["male", "female", "unknown"]).optional(),
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Birthday must be in YYYY-MM-DD format" }).optional(), // YYYY-MM-DD
