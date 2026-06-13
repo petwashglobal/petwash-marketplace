@@ -1900,6 +1900,22 @@ jobs:
             OK)
               echo "✅ Places API: key valid (Google HTTP $GOOGLE_HTTP)"
               ;;
+            CONFIG_ONLY)
+              # Cost-lockdown (PR #697): the live Places probe is disabled by
+              # default (PLACES_LIVE_HEALTHCHECK!=true) so deploys never make a
+              # PAID Google call. This gate's stated job is to verify the KEY IS
+              # BOUND to the Cloud Run revision — which CONFIG_ONLY still answers
+              # via apiKeyConfigured / apiKeyLength. Pass on a verified binding;
+              # real Google reachability is re-verified by the live-URL health
+              # check on the promoted revision.
+              if [ "$KEY_CONFIGURED" = "true" ] && [ "$KEY_LEN" -ge 30 ]; then
+                echo "✅ Places API key BOUND (apiKeyConfigured=true, apiKeyLength=$KEY_LEN); live probe intentionally disabled for cost"
+              else
+                echo "❌ CONFIG_ONLY but key binding NOT verified (apiKeyConfigured=$KEY_CONFIGURED, apiKeyLength=$KEY_LEN)"
+                echo "   → The secret may not be bound to this revision. Verify GOOGLE_MAPS_API_KEY in Cloud Run config."
+                exit 1
+              fi
+              ;;
             GOOGLE_KEY_MISSING)
               echo "❌ GOOGLE_KEY_MISSING: GOOGLE_MAPS_API_KEY env var is absent in the Cloud Run container"
               echo "   → The secret exists in GCP Secret Manager but the Cloud Run revision did not receive it"
