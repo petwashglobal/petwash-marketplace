@@ -17,7 +17,7 @@ const analyticsTrackLimiter = rateLimit({
 
 const ALLOWED_EVENT_NAMES = /^[a-zA-Z0-9_]{1,100}$/;
 
-router.get('/analytics/funnel', requireAdmin, async (req: Request, res: Response) => {
+router.get('/funnel', requireAdmin, async (req: Request, res: Response) => {
   try {
     const metrics = await getAuthFunnelMetrics();
     if (!metrics) {
@@ -31,7 +31,7 @@ router.get('/analytics/funnel', requireAdmin, async (req: Request, res: Response
   }
 });
 
-router.post('/analytics/funnel/track', analyticsTrackLimiter, async (req: Request, res: Response) => {
+router.post('/funnel/track', analyticsTrackLimiter, async (req: Request, res: Response) => {
   try {
     const { step, method, errorCode, latencyMs, userId } = req.body;
     if (!step || typeof step !== 'string' || step.length > 100) {
@@ -46,7 +46,7 @@ router.post('/analytics/funnel/track', analyticsTrackLimiter, async (req: Reques
   }
 });
 
-router.post('/analytics/event', analyticsTrackLimiter, async (req: Request, res: Response) => {
+router.post('/event', analyticsTrackLimiter, async (req: Request, res: Response) => {
   try {
     const { eventName, params, userId } = req.body;
     if (!eventName || !ALLOWED_EVENT_NAMES.test(eventName)) {
@@ -69,7 +69,7 @@ router.post('/analytics/event', analyticsTrackLimiter, async (req: Request, res:
   }
 });
 
-router.get('/analytics/status', requireAdmin, (req: Request, res: Response) => {
+router.get('/status', requireAdmin, (req: Request, res: Response) => {
   const ga4Configured = !!(process.env.GA4_MEASUREMENT_ID && process.env.GA4_API_SECRET);
   const bigqueryConfigured = !!(process.env.BIGQUERY_PROJECT_ID && process.env.BIGQUERY_DATASET_ID);
   res.json({

@@ -93,7 +93,7 @@ export default function WalkMyPet() {
   };
   
   const { data: walkersFromApi, isLoading } = useQuery<WalkerProfile[]>({
-    queryKey: ['/api/walkers/search', selectedCity],
+    queryKey: ['/api/walk-my-pet/walkers/search', selectedCity],
   });
 
   const walkers = walkersFromApi || [];

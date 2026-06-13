@@ -68,7 +68,7 @@ export function EmergencyWalkBooking() {
 
   const emergencyBookingMutation = useMutation({
     mutationFn: async (data: EmergencyWalkRequest) => {
-      const response = await apiRequest<EmergencyWalkResponse>('/api/walks/emergency-request', {
+      const response = await apiRequest<EmergencyWalkResponse>('/api/walk-my-pet/walks/emergency-request', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -344,7 +344,7 @@ export function EmergencyWalkBooking() {
                 try {
                   // Step 1: Create slot hold (prevents double-booking)
                   const slotId = `SLOT-${bookingResult?.matchedWalker?.walkerId}-${Date.now()}`;
-                  const holdRes = await apiRequest('/api/walks/holds', {
+                  const holdRes = await apiRequest('/api/walk-my-pet/walks/holds', {
                     method: 'POST',
                     body: JSON.stringify({
                       slotId,
