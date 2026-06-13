@@ -404,10 +404,16 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
               {shown.map(p => (
                 <div key={p.id} className="luxury-glass-card luxury-hover-lift overflow-hidden flex flex-col">
-                  <div className="aspect-square overflow-hidden">
+                  <div className="relative aspect-square overflow-hidden">
                     {p.images?.[0]
                       ? <img src={p.images[0]} alt={name(p)} className="w-full h-full object-cover" loading="lazy" />
                       : visualFor(p)}
+                    {/* Fetchingware-style hero promise — only on truly engravable items (data-driven). */}
+                    {isEngravable(p) && (
+                      <span className="absolute top-2 start-2 z-10 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-neutral-950 shadow">
+                        {tr('Free engraving', 'חריטה חינם')}
+                      </span>
+                    )}
                   </div>
                   <div className="p-4 flex flex-col flex-1">
                     {p.brand && <span className="text-[10px] uppercase tracking-wider text-gray-400">{p.brand}</span>}
