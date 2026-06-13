@@ -125,11 +125,9 @@ const SERVICE_MAP: Record<string, {
   },
 };
 
-const REVIEWS = [
-  { name: 'Maya R.', nameHe: 'מאיה ר.', rating: 5, textEn: 'Incredible service! My dog was so happy and I got photo updates throughout the day.', textHe: 'שירות מדהים! הכלב שלי היה שמח ועדכונים כל הזמן.' },
-  { name: 'David K.', nameHe: 'דוד כ.', rating: 5, textEn: 'Professional, reliable and my pets love them. Would absolutely recommend.', textHe: 'מקצועי, אמין, וחיות המחמד שלי אוהבות אותם. ממליץ בחום.' },
-  { name: 'Noa S.', nameHe: 'נועה ש.', rating: 5, textEn: 'Finally a platform I can trust with my cats. Excellent sitters!', textHe: 'סוף סוף פלטפורמה שאני סומכת עליה עם החתולים שלי.' },
-];
+// PR-FAKE (2026-06-13): removed the hardcoded REVIEWS array — "Maya R. / David
+// K. / Noa S." 5★ testimonials were invented (no real reviews exist pre-launch).
+// Reinstate from a real reviews source when one exists.
 
 export default function ServiceLandingPage() {
   const { service, city } = useParams<{ service: string; city?: string }>();
@@ -217,34 +215,8 @@ export default function ServiceLandingPage() {
           <TrustBar variant="grid" />
         </div>
 
-        <div className="py-6 border-t border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
-            {isRTL ? 'מה אומרים הלקוחות' : 'What pet owners say'}
-          </h2>
-          <div className="space-y-3">
-            {REVIEWS.map((r, i) => (
-              <div key={i} className="p-4 bg-white rounded-2xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ background: GOLD }}
-                  >
-                    {(isRTL ? r.nameHe : r.name)[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{isRTL ? r.nameHe : r.name}</p>
-                    <div className="flex">
-                      {Array.from({ length: r.rating }).map((_, j) => (
-                        <Star key={j} size={12} fill={GOLD} style={{ color: GOLD }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-700">{isRTL ? r.textHe : r.textEn}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* PR-FAKE (2026-06-13): removed the "What pet owners say" testimonials
+            block — it rendered invented 5★ reviews. Reinstate when real reviews exist. */}
 
         <div className="py-6 border-t border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
