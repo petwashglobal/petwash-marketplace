@@ -58,6 +58,7 @@ export const petProfileSchema = z.object({
   id: z.string(), // petId
   uid: z.string(), // Owner's Firebase UID
   name: z.string().min(1),
+  photoUrl: z.string().optional(), // owner-uploaded pet photo (GCS URL) — powers the Luxury Pet Passport
   species: z.enum(["dog", "cat", "bird", "rabbit", "guinea_pig", "hamster", "reptile", "fish", "other"]).default("dog"),
   breed: z.string().optional(),
   gender: z.enum(["male", "female", "unknown"]).optional(),
