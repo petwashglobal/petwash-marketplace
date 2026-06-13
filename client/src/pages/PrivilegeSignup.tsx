@@ -456,26 +456,10 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
           </div>
         </section>
 
-        {/* LIVE STATS */}
-        <section className="bg-white py-14 border-t border-gray-100">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-8 text-center">
-              {[
-                { value: animatedStats.members.toLocaleString(), label: t('privilege.statsMembers', language), icon: <Users className="w-5 h-5" /> },
-                { value: animatedStats.providers.toLocaleString(), label: t('privilege.statsProviders', language), icon: <Briefcase className="w-5 h-5" /> },
-                { value: animatedStats.services.toLocaleString(), label: t('privilege.statsServices', language), icon: <Activity className="w-5 h-5" /> },
-                { value: '12', label: t('privilege.statsCountries', language), icon: <Globe className="w-5 h-5" /> },
-                { value: '4.9', label: t('privilege.statsRating', language), icon: <Star className="w-5 h-5" /> },
-              ].map((stat, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
-                  <div className="flex justify-center mb-3 text-gray-300">{stat.icon}</div>
-                  <div className="text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{stat.value}</div>
-                  <div className="text-xs uppercase tracking-wider text-gray-400 mt-1">{stat.label}</div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* PR-FAKE (2026-06-13): removed the LIVE STATS band — members/providers/
+            services counts were fabricated (animated to 10,247 / 342 / 87,500),
+            plus invented "12 countries" and "4.9" rating. Reinstate from real
+            aggregates once they exist. */}
 
         {/* TIMELINE - Activity feed */}
         <section className="py-16 bg-white">
@@ -501,36 +485,10 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 </div>
               </motion.div>
 
-              {/* Timeline card */}
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-white p-6 shadow-lg shadow-gray-100/80" style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>Timeline</h3>
-                <p className="text-xs text-gray-400 mb-5 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />{t('privilege.recentActivity', language)}</p>
-                <div className="space-y-0">
-                  {[
-                    { text: t('privilege.activity1', language), amount: '+200', time: '12:03', icon: <CreditCard className="w-4 h-4" /> },
-                    { text: t('privilege.activity2', language), amount: '-₪55', time: '1m ago', icon: <QrCode className="w-4 h-4" /> },
-                    { text: t('privilege.activity3', language), amount: '+300', time: '2m ago', icon: <Wallet className="w-4 h-4" /> },
-                    { text: t('privilege.activity4', language), amount: '+578', time: '5m ago', icon: <Gift className="w-4 h-4" /> },
-                    { text: t('privilege.activity5', language), amount: '+100', time: '8m ago', icon: <Star className="w-4 h-4" /> },
-                  ].map((item, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ opacity: i === activeActivityIndex ? 1 : 0.5 }}
-                      transition={{ duration: 0.4 }}
-                      className="flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 flex items-center justify-center bg-white text-gray-400" style={{ borderRadius: '2px' }}>{item.icon}</div>
-                        <div>
-                          <p className="text-sm text-gray-700">{item.text}</p>
-                          <p className="text-[11px] text-gray-400">{item.time}</p>
-                        </div>
-                      </div>
-                      <span className={`text-sm font-bold ${item.amount.startsWith('-') ? 'text-red-500' : 'text-green-600'}`}>{item.amount}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
+              {/* PR-FAKE (2026-06-13): removed the fake "live" activity timeline
+                  (Sarah M. earned Gold / 250 points redeemed / K9000 1,000 washes,
+                  with a green "live" pulse dot) — invented transactions shown as
+                  real-time. Reinstate from a real events feed when it exists. */}
             </div>
           </div>
         </section>
