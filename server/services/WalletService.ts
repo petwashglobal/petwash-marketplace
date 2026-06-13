@@ -263,8 +263,14 @@ class WalletService {
   }
 
   async confirmRedemption(sessionId: string, paymentConfirmed: boolean = false, idempotencyKey?: string): Promise<boolean> {
-    // Use raw SQL transaction with row-level locking to prevent race conditions
-    const result = await db.execute(sql`
+    // ATOMIC (2026-06-13, audit C1): the ENTIRE confirm runs inside ONE
+    // transaction so the FOR UPDATE locks on the redemption_session + wallet
+    // rows are HELD until commit. Previously each statement auto-committed and
+    // the locks released instantly, leaving a window where two concurrent
+    // confirms both read the same balance and both deducted (double-spend).
+    // Early `return` commits; any thrown error rolls the whole thing back.
+    return await (db as any).transaction(async (tx: typeof db) => {
+    const result = await tx.execute(sql`
       WITH session_check AS (
         SELECT * FROM redemption_sessions 
         WHERE session_id = ${sessionId}
@@ -291,7 +297,7 @@ class WalletService {
 
     // Check expiry
     if (new Date(session.expires_at) < new Date()) {
-      await db.update(redemptionSessions)
+      await tx.update(redemptionSessions)
         .set({ status: 'expired', updatedAt: new Date() })
         .where(eq(redemptionSessions.sessionId, sessionId));
       throw new Error('Session expired');
@@ -303,8 +309,8 @@ class WalletService {
     }
 
     // Get wallet with row lock for atomic balance updates
-    const walletResult = await db.execute(sql`
-      SELECT * FROM wallet_accounts 
+    const walletResult = await tx.execute(sql`
+      SELECT * FROM wallet_accounts
       WHERE wallet_id = ${session.wallet_id}
       FOR UPDATE
     `);
@@ -431,11 +437,11 @@ class WalletService {
 
     // Insert all transactions atomically
     if (transactions.length > 0) {
-      await db.insert(creditTransactions).values(transactions);
+      await tx.insert(creditTransactions).values(transactions);
     }
 
     // Update wallet balances atomically
-    await db.update(walletAccounts)
+    await tx.update(walletAccounts)
       .set({
         egiftBalanceCents: newEgiftBalance,
         washPackageCredits: newWashBalance,
@@ -447,9 +453,9 @@ class WalletService {
       .where(eq(walletAccounts.walletId, session.wallet_id));
 
     // Mark session as completed
-    await db.update(redemptionSessions)
-      .set({ 
-        status: 'completed', 
+    await tx.update(redemptionSessions)
+      .set({
+        status: 'completed',
         completedAt: now,
         updatedAt: now,
       })
@@ -467,6 +473,7 @@ class WalletService {
     });
 
     return true;
+    });
   }
 
   async refundRedemption(
