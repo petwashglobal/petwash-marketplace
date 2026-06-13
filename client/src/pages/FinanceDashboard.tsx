@@ -789,11 +789,11 @@ export default function FinanceDashboard() {
                                 className="btn-luxury-gold"
                                 onClick={async () => {
                                   try {
-                                    await apiRequest(`/api/finance/tax-returns/${taxReturn.id}/submit`, {
+                                    await apiRequest(`/api/enterprise/finance/tax-returns/${taxReturn.id}/submit`, {
                                       method: 'POST',
                                       body: JSON.stringify({ submittedBy: 'admin' }),
                                     });
-                                    await queryClient.invalidateQueries({ queryKey: ['/api/finance/tax-returns'] });
+                                    await queryClient.invalidateQueries({ queryKey: ['/api/enterprise/finance/tax-returns'] });
                                     toast({ title: 'Success', description: 'Tax return submitted to ITA' });
                                   } catch (error: any) {
                                     toast({ 

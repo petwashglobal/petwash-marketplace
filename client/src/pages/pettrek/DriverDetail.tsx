@@ -57,7 +57,7 @@ export default function DriverDetail() {
     driver: Driver;
     reviews: DriverReview[];
   }>({
-    queryKey: [`/api/pettrek/drivers/${id}`],
+    queryKey: [`/api/providers/drivers/${id}`],
   });
 
   const driver = driverData?.driver;
