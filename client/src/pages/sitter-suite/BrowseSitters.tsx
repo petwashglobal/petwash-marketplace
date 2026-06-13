@@ -296,7 +296,10 @@ export default function BrowseSitters() {
 
   const apiProviders = data?.providers || [];
   const hasSearched = !!searchParams?.location || (searchParams?.lat != null && searchParams?.lng != null);
-  const providers = hasSearched ? apiProviders : (apiProviders.length > 0 ? apiProviders : DEMO_SITTERS);
+  // PR-FAKE (2026-06-13): was `: DEMO_SITTERS` — fabricated sitters with stock
+  // faces + fake ratings/reviews shown whenever the real list is empty (i.e.
+  // pre-launch). Always use real providers; the page shows an honest empty state.
+  const providers = apiProviders;
 
   const handleSearch = (params: SearchParams) => {
     setSearchParams(params);

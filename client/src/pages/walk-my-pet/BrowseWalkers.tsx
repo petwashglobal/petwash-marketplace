@@ -224,13 +224,16 @@ export default function BrowseWalkers() {
         proximityLabel: p.proximityLabel ?? null,
         bio: p.bio || '',
         hourlyRate: p.pricing?.perHour ? parseFloat(p.pricing.perHour) : 50,
-        rating: p.rating || 4.5,
+        rating: p.rating ?? null,
         totalReviews: p.reviewCount || 0,
         yearsExperience: 0,
-        verified: true,
+        verified: p.verified ?? false,
         photoUrl: p.profilePhotoUrl || null,
       }))
-    : DEMO_WALKERS;
+    // PR-FAKE (2026-06-13): was DEMO_WALKERS — fabricated walkers with stock
+    // faces + fake 4.6-5.0 ratings shown whenever the real list is empty.
+    // Honest empty state instead; rating no longer floored to a fake 4.5.
+    : [];
 
   const handleSearch = (params: SearchParams) => {
     setSearchParams(params);

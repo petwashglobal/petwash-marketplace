@@ -1356,22 +1356,19 @@ export default function PawFinder({ language }: PawFinderProps) {
                     🚨 חיות אבודות — דרושה עזרה!
                   </h2>
                   <p className="text-sm text-slate-500 mt-0.5">
-                    שלוש חיות מחמד אלו נעלמו לאחרונה — כל מידע יכול לעזור להחזיר אותן הביתה
+                    דיווחים על חיות מחמד שאבדו לאחרונה — כל מידע יכול לעזור להחזיר אותן הביתה
                   </p>
                 </div>
                 <span className="hidden sm:flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-full px-3 py-1.5">
                   🆓 פרסום חינמי
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {DEMO_PETS.map(pet => (
-                  <FeaturedPetCard
-                    key={pet.post_key}
-                    post={pet}
-                    user={user}
-                    onContact={user ? () => setContactPost(pet) : undefined}
-                  />
-                ))}
+              {/* PR-FAKE (2026-06-13): removed DEMO_PETS — these were FABRICATED
+                  lost-pet listings (fake rewards + a contact button) rendered as
+                  if real. Showing invented missing pets is dangerous and a legal
+                  exposure. Honest empty state until real reports exist. */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+                אין כרגע דיווחים פעילים על חיות אבודות. אם איבדת חיית מחמד — פרסם דיווח חינם ונעזור להפיץ.
               </div>
             </div>
 

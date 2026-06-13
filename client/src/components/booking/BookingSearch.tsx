@@ -857,7 +857,7 @@ function ProviderCard({ provider, isHebrew }: { provider: Provider; isHebrew: bo
           <div className="text-right">
             <div className="flex items-center gap-1">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-bold">{provider.rating?.toFixed(1) || '5.0'}</span>
+              <span className="font-bold">{provider.rating ? provider.rating.toFixed(1) : '—'}</span>
             </div>
             <p className="text-xs text-gray-500">
               ({provider.totalReviews || 0} {isHebrew ? 'ביקורות' : 'reviews'})
