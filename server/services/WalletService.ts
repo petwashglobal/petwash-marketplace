@@ -655,6 +655,29 @@ class WalletService {
     // and the second UPDATE would silently overwrite the first (lost update).
     // SQL `+= amount` at the DB level is inherently serialised by the engine.
     const wallet = await this.getOrCreateWallet(userId);
+
+    // IDEMPOTENCY (2026-06-13, audit C3): if this exact credit was already
+    // recorded (same wallet + sourceType + sourceId), skip it — prevents
+    // double-credit on a retry (e.g. a gift activation re-attempted after a
+    // partial failure). Only applies when a stable sourceId is supplied.
+    if (sourceId) {
+      const [dupe] = await db
+        .select({ transactionId: creditTransactions.transactionId })
+        .from(creditTransactions)
+        .where(and(
+          eq(creditTransactions.walletId, wallet.walletId),
+          eq(creditTransactions.sourceType, sourceType),
+          eq(creditTransactions.sourceId, sourceId),
+        ))
+        .limit(1);
+      if (dupe) {
+        logger.warn('[Wallet] addCredits idempotent skip — credit already recorded for this source', {
+          walletId: wallet.walletId, sourceType, sourceId,
+        });
+        return;
+      }
+    }
+
     const transactionId = `TXN-${nanoid(12).toUpperCase()}`;
     const now = new Date();
     let isUnits = false;
@@ -682,36 +705,41 @@ class WalletService {
         break;
     }
 
-    const [updated] = await db.update(walletAccounts)
-      .set(updateExpr)
-      .where(eq(walletAccounts.walletId, wallet.walletId))
-      .returning();
-
-    // Derive balanceAfter from the RETURNING row (reflects the committed value)
+    // ATOMIC (2026-06-13, audit C3): the balance increment and the ledger row
+    // are written in ONE transaction, so a failure can't leave the balance
+    // changed with no ledger entry (or vice-versa).
     let balanceAfter = 0;
-    if (updated) {
-      switch (creditType) {
-        case 'egift':         balanceAfter = updated.egiftBalanceCents ?? 0; break;
-        case 'wash_package':  balanceAfter = updated.washPackageCredits ?? 0; break;
-        case 'loyalty_points':balanceAfter = updated.loyaltyPointsBalance ?? 0; break;
-        case 'promo_credit':  balanceAfter = updated.promoBalanceCents ?? 0; break;
-        case 'referral_credit':balanceAfter = updated.referralBalanceCents ?? 0; break;
-      }
-    }
+    await (db as any).transaction(async (tx: typeof db) => {
+      const [updated] = await tx.update(walletAccounts)
+        .set(updateExpr)
+        .where(eq(walletAccounts.walletId, wallet.walletId))
+        .returning();
 
-    await db.insert(creditTransactions).values({
-      transactionId,
-      walletId: wallet.walletId,
-      creditType,
-      transactionType: 'issue',
-      amountCents: isUnits ? undefined : amount,
-      amountUnits: isUnits ? amount : undefined,
-      balanceAfterCents: isUnits ? undefined : balanceAfter,
-      balanceAfterUnits: isUnits ? balanceAfter : undefined,
-      sourceType,
-      sourceId,
-      description: description || `${creditType} credit issued`,
-      initiatedBy: 'system',
+      // Derive balanceAfter from the RETURNING row (reflects the committed value)
+      if (updated) {
+        switch (creditType) {
+          case 'egift':         balanceAfter = updated.egiftBalanceCents ?? 0; break;
+          case 'wash_package':  balanceAfter = updated.washPackageCredits ?? 0; break;
+          case 'loyalty_points':balanceAfter = updated.loyaltyPointsBalance ?? 0; break;
+          case 'promo_credit':  balanceAfter = updated.promoBalanceCents ?? 0; break;
+          case 'referral_credit':balanceAfter = updated.referralBalanceCents ?? 0; break;
+        }
+      }
+
+      await tx.insert(creditTransactions).values({
+        transactionId,
+        walletId: wallet.walletId,
+        creditType,
+        transactionType: 'issue',
+        amountCents: isUnits ? undefined : amount,
+        amountUnits: isUnits ? amount : undefined,
+        balanceAfterCents: isUnits ? undefined : balanceAfter,
+        balanceAfterUnits: isUnits ? balanceAfter : undefined,
+        sourceType,
+        sourceId,
+        description: description || `${creditType} credit issued`,
+        initiatedBy: 'system',
+      });
     });
 
     logger.info('[Wallet] Credits added (atomic)', { 

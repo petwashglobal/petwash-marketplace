@@ -1119,15 +1119,30 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
     const amountIls  = parseFloat(updateResult[0].initialAmount);
     const amountCents = Math.round(amountIls * 100);
 
-    // Credit the recipient's wallet
-    await walletService.addCredits(
-      userId,
-      'egift',
-      amountCents,
-      'gift_activation',
-      voucherId,
-      `Gift card #${updateResult[0].id} activated`,
-    );
+    // Credit the recipient's wallet. If this fails AFTER the voucher was marked
+    // REDEEMED, the gift's value would vanish — so on failure we COMPENSATE by
+    // reverting the voucher to an activatable state, letting the user retry.
+    // addCredits is idempotent on (wallet, 'gift_activation', voucherId), so a
+    // retry can't double-credit. (audit C2)
+    try {
+      await walletService.addCredits(
+        userId,
+        'egift',
+        amountCents,
+        'gift_activation',
+        voucherId,
+        `Gift card #${updateResult[0].id} activated`,
+      );
+    } catch (creditErr: any) {
+      await db
+        .update(eVouchers)
+        .set({ status: 'ISSUED', activatedAt: null })
+        .where(eq(eVouchers.id, voucherId));
+      logger.error('[E-Gift] wallet credit FAILED after redeem — voucher reverted to ISSUED for safe retry (no value lost)', {
+        correlationId, voucherId, userId, error: creditErr?.message,
+      });
+      throw creditErr;
+    }
 
     logger.info('[E-Gift] Gift activated → wallet credited', {
       correlationId, voucherId, userId, amountIls,
