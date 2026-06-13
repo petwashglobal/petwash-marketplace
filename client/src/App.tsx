@@ -406,7 +406,6 @@ const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 
 // ⁦Pet Wash™⁩ 2025 Global Architecture - Octopus Model Routes
 const Hub = lazy(() => import("@/pages/Hub"));
-const Stations = lazy(() => import("@/pages/Stations"));
 const Shop = lazy(() => import("@/pages/Shop"));
 const ShopStore = lazy(() => import("@/pages/ShopStore"));
 const ShopOrders = lazy(() => import("@/pages/ShopOrders"));
@@ -1019,9 +1018,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/hub">
           {() => <Hub />}
         </Route>
-        <Route path="/stations">
-          {() => <Stations />}
-        </Route>
+        {/* /stations previously rendered a dead mock (empty hardcoded list — the
+            "all stations" button showed nothing). Redirect to /locations, the
+            real page that fetches GET /api/public/stations + shows Kfar Saba. */}
+        <Route path="/stations">{() => <Redirect to={`/locations${window.location.search}`} />}</Route>
         <Route path="/shop">
           {() => import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
             ? <ShopStore language={language} onLanguageChange={handleLanguageChange} />
