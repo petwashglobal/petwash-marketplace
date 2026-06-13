@@ -501,9 +501,15 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
     if (customer?.email) {
       const customerName = customer.displayName || customer.firstName || customer.email.split('@')[0];
       const customerPhone = (customer as any).phone || (customer as any).phoneNumber || undefined;
-      const vatCentsCalc = quote.vatCents
-        ? (quote.vatCents as number)
-        : Math.round((quote.totalCents || 0) - (quote.totalCents || 0) / 1.18);
+      // C5 fix (2026-06-13): disclosed-agent VAT is on the platform COMMISSION,
+      // not GMV. `quote` here is the quoteRequests DB row, which stores VAT in
+      // `taxCents` (there is NO vatCents column — see the schema note in /quote).
+      // The old code read quote.vatCents (always undefined on the DB row) and
+      // fell back to GMV VAT (total − total/1.18), so EVERY marketplace receipt
+      // overstated VAT and disagreed with the escrow ledger (which correctly uses
+      // taxCents at ~line 418). Use taxCents, with the same commission fallback.
+      const vatCentsCalc = (quote.taxCents as number)
+        ?? Math.round((quote.platformFeeCents || 0) * 0.18);
       EmailService.sendBookingConfirmation({
         email: customer.email,
         customerName,
