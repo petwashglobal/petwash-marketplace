@@ -109,11 +109,15 @@ const CSP_DIRECTIVES = [
   [
     "connect-src",
     "'self'",
-    // Firebase
+    // Firebase (incl. *.firebaseapp.com — the Auth handler domain. Missing it
+    // silently broke Google sign-in on Cloud Run-served HTML; fixed 2026-06-13.)
     "https://*.googleapis.com",
     "https://*.firebaseio.com",
     "https://*.firebase.com",
+    "https://*.firebaseapp.com",
     "wss://*.firebaseio.com",
+    "https://petwash.co.il",
+    "https://www.petwash.co.il",
     // Google Places / Maps
     "https://places.googleapis.com",
     "https://maps.googleapis.com",
@@ -139,12 +143,17 @@ const CSP_DIRECTIVES = [
     isDev ? "wss://localhost:*" : "",
   ].filter(Boolean).join(" "),
 
-  // Frames — only Google reCAPTCHA
+  // Frames — Google reCAPTCHA + Firebase/Google auth. Without
+  // accounts.google.com + *.firebaseapp.com the signInWithPopup / __/auth
+  // iframe is silently blocked by CSP → "click does nothing". Matches the
+  // working firebase.json hosting policy (fixed 2026-06-13).
   [
     "frame-src",
     "'self'",
     "https://www.google.com/recaptcha/",
     "https://recaptcha.google.com/",
+    "https://accounts.google.com",
+    "https://*.firebaseapp.com",
     replitHosts,
   ].filter(Boolean).join(" "),
 
