@@ -161,6 +161,10 @@ router.get('/products', async (req: Request, res: Response) => {
     try {
           const query = ProductQuerySchema.parse(req.query);
           const result = await shopService.listProducts(query);
+          // Public catalog → cacheable. Browser 60s, CDN/Cloud-Run edge 5min,
+          // serve-stale-while-revalidate 10min. A viral spike hits the cache,
+          // not the DB. Per-query-string key, so category filters stay correct.
+          res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
           res.json(result);
     } catch (err: any) {
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Invalid query', details: err.errors });
@@ -179,6 +183,7 @@ router.get('/products/:id', async (req: Request, res: Response) => {
           if (isNaN(id)) return res.status(400).json({ error: 'Invalid product ID' });
           const product = await shopService.getProduct(id);
           if (!product) return res.status(404).json({ error: 'Product not found' });
+          res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
           res.json(product);
     } catch (err: any) {
     logger.error('[Shop] getProduct error', { err: err.message });

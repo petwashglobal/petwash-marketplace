@@ -14,12 +14,16 @@ function getClientIP(req: Request): string {
 }
 
 // General API rate limiter - Environment-aware rate limiting
-// Development: 1000 req/15min (allows Vite hot reload and asset loading)
-// Production: 200 req/15min (balanced protection)
+// Development: effectively unlimited (Vite HMR + test traffic)
+// Production: 1000 req/15min (~66/min). The previous 200 (~13/min) throttled
+// LEGITIMATE users: a TanStack-Query SPA with window-focus + app-resume
+// refetches (LIVE_KEYS, PR #718) plus normal navigation easily exceeds 13/min.
+// 1000 is still a hard per-IP abuse ceiling; the sensitive flows (auth, OTP,
+// payment, KYC, upload, booking) keep their own much tighter limiters below.
 const isDevelopment = process.env.NODE_ENV !== 'production';
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isDevelopment ? 1_000_000 : 200, // Effectively unlimited in dev (Vite HMR + test traffic), moderate in prod
+  max: isDevelopment ? 1_000_000 : 1000, // Effectively unlimited in dev (Vite HMR + test traffic); 1000/15min in prod
   skip: () => isDevelopment, // Fully bypass in dev — Vite HMR generates too much traffic to rate-limit
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
