@@ -1,91 +1,98 @@
 {
+  "_provenance": {
+    "corrected": "2026-06-15",
+    "verified_against": [
+      "K9000 2.0 Twin Specs and Info v1.0 (Tru Blu Dog Wash, 2021)",
+      "DOT QR Smart Reader datasheet (Nayax)",
+      "EMC Compliance Test Report CE3310B (Compliance Engineering, Dec 2021)"
+    ],
+    "note": "Marketing overclaims removed. Engineering figures below are taken from the manufacturer spec sheet; anything not on a spec sheet is marked unverified or omitted."
+  },
+  "do_not_claim": [
+    "100% organic / certified organic (products are pet-formulated, NOT certified organic — see organic-claim-truthup)",
+    "vet-approved",
+    "hypoallergenic (unless a specific product carries that certification)",
+    "real-time IoT / sensor monitoring (we receive Nayax payment + device status, NOT pump/water sensor telemetry)",
+    "first self-service pet wash in the Middle East (unverified superlative)"
+  ],
   "k9000_machine": {
     "version": "2.0 Twin",
-    "manufacturer": "K9000 Australia",
-    "website": "https://www.k9000dogwash.com/",
-    "specs": {
-      "controller": {
-        "type": "V2 MDB controller",
-        "lighting": "LED lighting system",
-        "interface": "User-friendly touchscreen"
-      },
-      "pumps": {
-        "configuration": "4 pumps per side (8 total)",
-        "types": [
-          "Organic shampoo",
-          "Conditioner",
-          "Flea treatment",
-          "Disinfectant"
-        ],
-        "pressure": "Low water pressure for safety and efficiency"
-      },
-      "filtration": {
-        "system": "Triple filtration",
-        "purpose": "Clean water circulation and environmental protection"
-      },
-      "dryers": {
-        "speeds": 2,
-        "temperature": "Instant hot water heating",
-        "safety": "Temperature controlled for pet safety"
-      },
-      "payment": {
-        "system": "Nayax integration",
-        "methods": [
-          "QR code payments",
-          "Credit/debit cards",
-          "Contactless payments",
-          "Digital wallets"
-        ]
-      },
-      "products": {
-        "type": "100% organic",
-        "certification": "Eco-friendly and biodegradable",
-        "safety": "Pet-safe formulations",
-        "allergies": "Hypoallergenic options available"
-      }
+    "model": "K9000 2.0",
+    "manufacturer": "Tru Blu Dog Wash (Australia) — K9000® registered trademark",
+    "website": "https://www.k9000dogwash.com/models/k9000-v2-0-twin/",
+    "physical": {
+      "dimensions_mm": { "length": 3700, "height": 1850, "depth": 680 },
+      "weight_kg": 350,
+      "layout": "Twin = one cabinet, two fully independent wash bays (left + right)"
     },
-    "features": {
-      "environmental": {
-        "water_efficiency": "Low pressure reduces waste",
-        "products": "Biodegradable and eco-friendly",
-        "energy": "Solar-ready infrastructure",
-        "waste": "Proper drainage and filtration"
-      },
-      "convenience": {
-        "availability": "24/7 operation",
-        "accessibility": "Wheelchair accessible",
-        "language": "Multi-language interface",
-        "instructions": "Clear visual guides"
-      },
-      "safety": {
-        "temperature_control": "Safe water temperature",
-        "non_slip": "Non-slip floors",
-        "ventilation": "Proper air circulation",
-        "emergency": "Emergency stop buttons"
-      }
+    "electrical": {
+      "unit_power": "240V, 25A (max draw ~21A)",
+      "onboard_hot_water_power": "415V 3-phase, 40A (Stiebel Eltron DHB-E 27) — only if onboard hot water unit fitted",
+      "avg_power_per_wash_kwh": 0.76
     },
-    "capacity": {
-      "pet_sizes": [
-        "Small dogs (up to 10kg)",
-        "Medium dogs (10-25kg)",
-        "Large dogs (25-45kg)",
-        "Extra large dogs (45kg+)"
+    "water": {
+      "inlet_pressure": "min 40psi/275kPa, max 72psi/500kPa",
+      "max_operating_pressure": "50psi/350kPa (factory-set via regulator)",
+      "factory_set_wash_temp_c": 35,
+      "hot_water_inlet_c": "55-65",
+      "usage": "16-20 L/min with both bays running (~40-50 L per single dog wash)",
+      "filtration": "Primary stainless-steel mesh + secondary SPS bucket trap (R130SR-BT)",
+      "backflow": "High-hazard backflow prevention required (RPZ or registered air-gap)",
+      "waste": "2 x 50mm outlets; minor trade-waste application required locally"
+    },
+    "controller": {
+      "type": "Vending-style machine controller with timed wash cycle + LCD display",
+      "native_payment": "Coin + note acceptor (per EMC test configuration)",
+      "note": "The machine is NOT a networked computer with an open API. Remote capability is provided by the bolted-on Nayax payment layer over the MDB bus — see payment."
+    },
+    "dryers": { "speeds": 2, "heat": "instant hot-water heated air", "safety": "temperature-controlled for pet safety" },
+    "payment": {
+      "system": "Nayax cashless layer over MDB (Multi-Drop Bus)",
+      "devices": [
+        "Nayax VPOS Touch (card / contactless)",
+        "Nayax DOT QR Smart Reader (scans the PetWash app QR; supports MDB/JVMA, FUJI, Pulse; 1D/2D/QR/DataMatrix)"
       ],
-      "wash_duration": "Approximately 10-15 minutes",
-      "dry_duration": "5-10 minutes depending on coat"
+      "methods": ["PetWash app QR (45s HMAC-signed token)", "Credit/debit card", "Contactless / digital wallet", "Coin", "Note"],
+      "per_bay": "Each bay has its OWN Nayax card reader and OWN DOT QR reader — the two bays are independent.",
+      "control_reality": "We start a wash by authorising payment through Nayax, which sends an MDB vend signal; the K9000's local controller then runs the timed cycle. We do not directly drive pumps/dryers."
+    },
+    "products": {
+      "type": "Pet-formulated wash, conditioning and treatment products",
+      "functions": ["shampoo", "conditioner", "flea/treatment rinse", "disinfectant"],
+      "safety": "Formulated for use on pets",
+      "important": "Do NOT describe as 'organic', 'certified organic', or 'hypoallergenic' unless a specific product carries that certification."
     }
   },
-  "technology": {
-    "innovation": "Australian K9000 technology adapted for Middle East climate",
-    "unique": "First self-service pet wash network in Middle East",
-    "updates": "Regular software and hardware maintenance",
-    "monitoring": "Real-time IoT monitoring and alerts"
+  "features": {
+    "convenience": {
+      "availability": "24/7 self-service",
+      "accessibility": "Step-in tub; check site for wheelchair access (per-site)",
+      "language": "Multi-language app + on-machine guidance"
+    },
+    "safety": {
+      "temperature_control": "Wash temperature factory-set ~35C at the gun",
+      "non_slip": "Non-slip tub surface",
+      "emergency": "On-machine controls; the machine's local safety remains authoritative over any remote action"
+    }
+  },
+  "capacity": {
+    "pet_sizes": ["Small (up to 10kg)", "Medium (10-25kg)", "Large (25-45kg)", "Extra large (45kg+)"],
+    "wash_duration": "~10 minutes standard wash time (recommended price band set per site)",
+    "dry_duration": "5-10 minutes depending on coat"
+  },
+  "compliance": {
+    "emc": "PASSED EN IEC 61000-6-1:2019 immunity (ESD, radiated/conducted RF, fast-transient burst, surge, voltage dips, magnetic field)",
+    "report": "Compliance Engineering CE3310B, December 2021",
+    "use": "Supports CE/EMC evidence for import and operation. File in the compliance record."
+  },
+  "monitoring": {
+    "what_we_see": "Cashless transactions and device online/offline status via the Nayax platform (VPOS Touch + DOT QR over MDB).",
+    "what_we_do_not_see": "Pump pressure, water flow, water-low, or temperature sensors — the K9000 controller does not expose these. Sensor-level telemetry would require adding an external IoT module to the machine (a hardware project)."
   },
   "maintenance": {
-    "schedule": "Regular professional maintenance",
-    "cleaning": "Daily sanitization protocols",
-    "supplies": "Continuous organic product replenishment",
-    "quality": "Monitored water quality and pressure"
+    "schedule": "Regular professional maintenance + daily sanitisation",
+    "supplies": "Continuous wash-product replenishment",
+    "quality": "Water pressure regulated; filtration maintained"
   },
-  "ai_usage_note": "Provide these specs when customers ask about machine capabilities, safety, or eco-friendly features"
+  "ai_usage_note": "Use these verified specs when customers ask about machine capabilities, safety, payment, or compliance. NEVER reintroduce any claim in do_not_claim. If unsure whether a claim is verified, omit it."
 }
