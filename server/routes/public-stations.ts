@@ -47,7 +47,8 @@ router.get('/stations', apiLimiter, async (_req: Request, res: Response) => {
       .select(PUBLIC_FIELDS)
       .from(petWashStations)
       .where(ne(petWashStations.operationalStatus, 'decommissioned'))
-      .orderBy(petWashStations.city, petWashStations.stationCode);
+      .orderBy(petWashStations.city, petWashStations.stationCode)
+      .limit(1000); // bound the public read (cheap insurance even though the network is small)
     res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
     res.json({ stations });
   } catch (err: any) {
