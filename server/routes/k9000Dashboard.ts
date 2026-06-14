@@ -31,8 +31,27 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { NayaxSparkService } from '../services/NayaxSparkService';
+import { getBayHealth } from '../services/K9000RedemptionService';
+import { requireAdmin } from '../adminAuth';
 
 const router = express.Router();
+
+// GET /api/k9000/bay/:bayId/health — READ-ONLY ops visibility into a bay's full
+// health: live status + unresolved CRITICAL faults + heartbeat age. Admin-gated.
+// IMPORTANT: this does NOT affect live charging or redemption — it surfaces the
+// richer truth (the redemption gate today only reads the single `status` field).
+// It's the tested foundation for tightening that gate once fault auto-heal is
+// confirmed reliable in production.
+router.get('/bay/:bayId/health', requireAdmin, async (req, res) => {
+  try {
+    const health = await getBayHealth(req.params.bayId);
+    if (!health) return res.status(404).json({ error: 'Bay not found' });
+    return res.json(health);
+  } catch (err: any) {
+    logger.error('[K9000Dashboard] bay health error', { bayId: req.params.bayId, error: err?.message });
+    return res.status(500).json({ error: 'Failed to read bay health' });
+  }
+});
 
 // ==================== K9000 STATION REGISTRY ====================
 // Unique identification for each wash bay
