@@ -129,7 +129,8 @@ const SalesLeadForm = lazy(() => import("@/pages/forms/SalesLeadForm"));
 const CustomerOnboardingForm = lazy(() => import("@/pages/forms/CustomerOnboardingForm"));
 const RefundForm = lazy(() => import("@/pages/forms/RefundForm"));
 const ClubRegistrationForm = lazy(() => import("@/pages/forms/ClubRegistrationForm"));
-const ProviderRegistrationForm = lazy(() => import("@/pages/forms/ProviderRegistrationForm"));
+// ProviderRegistrationForm retired 2026-06-14 — /forms/provider now redirects to
+// the canonical /provider-onboarding (it was a dead-end form with no KYC/approval).
 const QuickBookingForm = lazy(() => import("@/pages/forms/QuickBookingForm"));
 const LegalAgreementForm = lazy(() => import("@/pages/forms/LegalAgreementForm"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
@@ -2442,7 +2443,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/forms/onboarding" component={CustomerOnboardingForm} />
         <Route path="/forms/refund" component={RefundForm} />
         <Route path="/forms/club" component={ClubRegistrationForm} />
-        <Route path="/forms/provider" component={ProviderRegistrationForm} />
+        {/* /forms/provider was a dead-end form (posted to a no-approval endpoint, no KYC).
+            Redirect to the canonical KYC onboarding so nobody submits into a black hole. */}
+        <Route path="/forms/provider" component={LegacyProviderRouteRedirect} />
         <Route path="/forms/booking" component={QuickBookingForm} />
         <Route path="/forms/legal" component={LegalAgreementForm} />
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
