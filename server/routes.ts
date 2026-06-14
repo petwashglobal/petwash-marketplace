@@ -3480,6 +3480,61 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // GET /api/auth/health - PUBLIC, secrets-free auth-readiness probe.
+  // WHY PUBLIC (2026-06-14): every login (Google/Apple/email/phone) ends by
+  // POSTing the Firebase ID token to /api/auth/session, which must (a) verify
+  // the token with checkRevoked and (b) MINT a Firebase session cookie via
+  // createSessionCookie(). Both REQUIRE a service-account credential that can
+  // SIGN. When that credential is absent or lacks signing IAM, every login
+  // fails with INVALID_TOKEN 401 — and the existing admin-only diagnostic is
+  // unreachable precisely because login is broken (Catch-22). This probe tests
+  // the exact signing capability via createCustomToken() for a throwaway uid
+  // (the token is generated and discarded — never returned, never used) and
+  // returns ONLY booleans + which env-var NAME is present. No secret value is
+  // ever exposed. canSignTokens=false ⇒ the credential is the root cause and
+  // an operator must set a service-account key or grant the Cloud Run runtime
+  // SA the "Service Account Token Creator" role.
+  app.get('/api/auth/health', authLimiter, async (req, res) => {
+    let canSignTokens = false;
+    let signError: string | undefined;
+    try {
+      const firebaseAdmin = (await import('./lib/firebase-admin')).default;
+      try {
+        // createCustomToken needs the SAME signing credential as
+        // createSessionCookie — if this succeeds, real login can mint a cookie.
+        await firebaseAdmin.auth().createCustomToken('__healthcheck_signing_probe__');
+        canSignTokens = true;
+      } catch (e: any) {
+        canSignTokens = false;
+        signError = e?.code || e?.message || 'sign_failed';
+      }
+      return res.json({
+        status: canSignTokens ? 'ok' : 'degraded',
+        sdkInitialized: !!firebaseAdmin.apps.length,
+        // Which credential source is configured (NAME ONLY — never the value).
+        credentialEnv: {
+          FIREBASE_SERVICE_ACCOUNT_KEY: !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+          FIREBASE_SERVICE_ACCOUNT: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+          GOOGLE_SERVICE_ACCOUNT_JSON: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+          GOOGLE_APPLICATION_CREDENTIALS: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
+        },
+        // THE answer: can the server mint session cookies? If false, EVERY
+        // login fails with INVALID_TOKEN until the credential is fixed.
+        canSignTokens,
+        signError,
+        loginShouldWork: canSignTokens && !!firebaseAdmin.apps.length,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        status: 'error',
+        sdkInitialized: false,
+        canSignTokens: false,
+        error: error?.message || 'firebase-admin import failed',
+      });
+    }
+  });
+
   // GET /api/auth/firebase-admin-test - Test Firebase Admin SDK capabilities (admin-only: exposes project internals)
   app.get('/api/auth/firebase-admin-test', requireAdmin, async (req, res) => {
     try {
