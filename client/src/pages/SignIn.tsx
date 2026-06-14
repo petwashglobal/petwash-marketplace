@@ -1197,6 +1197,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         traceId,
       });
       
+      // Provider-aware label so the error names the button the user actually
+      // tapped (the old default hardcoded "Google" — so an Apple failure read
+      // "Sign-in with Google failed", which looks like a broken/fake button).
+      const provLabel = provider === 'google' ? 'Google' : provider === 'apple' ? 'Apple' : provider === 'facebook' ? 'Facebook' : provider;
       const socialErrTitle: Record<string, string> = {
         en: 'Sign-in error', he: 'שגיאה בהתחברות', ar: 'خطأ في تسجيل الدخول',
         es: 'Error de inicio de sesión', fr: 'Erreur de connexion', ru: 'Ошибка входа',
@@ -1270,14 +1274,34 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           fr: 'Trop de tentatives. Veuillez attendre quelques minutes avant de réessayer.',
           ru: 'Слишком много попыток. Подождите несколько минут перед повторной попыткой.',
         },
+        // Provider not enabled / not configured in Firebase Console. This is the
+        // exact code Apple / Facebook throw when their OAuth provider hasn't been
+        // switched on yet. HONEST message (no silent dead-tap, names the provider,
+        // points to a working method) instead of the misleading "Google failed".
+        'auth/operation-not-allowed': {
+          en: `${provLabel} sign-in isn't switched on yet. Please use Google, email, or phone for now.`,
+          he: `התחברות ${provLabel} עדיין לא הופעלה. השתמשו בינתיים ב-Google, אימייל או נייד.`,
+          ar: `تسجيل الدخول عبر ${provLabel} غير مُفعّل بعد. استخدم Google أو البريد أو الهاتف حالياً.`,
+          es: `El inicio de sesión con ${provLabel} aún no está activado. Use Google, correo o teléfono por ahora.`,
+          fr: `La connexion ${provLabel} n'est pas encore activée. Utilisez Google, e-mail ou téléphone pour le moment.`,
+          ru: `Вход через ${provLabel} ещё не включён. Пока используйте Google, email или телефон.`,
+        },
+        'auth/configuration-not-found': {
+          en: `${provLabel} sign-in isn't configured yet. Please use Google, email, or phone for now.`,
+          he: `התחברות ${provLabel} עדיין לא הוגדרה. השתמשו בינתיים ב-Google, אימייל או נייד.`,
+          ar: `تسجيل الدخول عبر ${provLabel} غير مُهيأ بعد. استخدم Google أو البريد أو الهاتف حالياً.`,
+          es: `El inicio de sesión con ${provLabel} aún no está configurado. Use Google, correo o teléfono por ahora.`,
+          fr: `La connexion ${provLabel} n'est pas encore configurée. Utilisez Google, e-mail ou téléphone pour le moment.`,
+          ru: `Вход через ${provLabel} ещё не настроен. Пока используйте Google, email или телефон.`,
+        },
       };
       const defaultSocialErr: Record<string, string> = {
-        en: 'Sign-in with Google failed. Please try again.',
-        he: 'ההתחברות עם Google נכשלה. אנא נסו שוב.',
-        ar: 'فشل تسجيل الدخول عبر Google. يرجى المحاولة مرة أخرى.',
-        es: 'El inicio de sesión con Google falló. Inténtelo de nuevo.',
-        fr: 'La connexion avec Google a échoué. Veuillez réessayer.',
-        ru: 'Вход через Google не удался. Попробуйте снова.',
+        en: `Sign-in with ${provLabel} failed. Please try again.`,
+        he: `ההתחברות עם ${provLabel} נכשלה. אנא נסו שוב.`,
+        ar: `فشل تسجيل الدخول عبر ${provLabel}. يرجى المحاولة مرة أخرى.`,
+        es: `El inicio de sesión con ${provLabel} falló. Inténtelo de nuevo.`,
+        fr: `La connexion avec ${provLabel} a échoué. Veuillez réessayer.`,
+        ru: `Вход через ${provLabel} не удался. Попробуйте снова.`,
       };
 
       const errMsg = socialErrors[error.code]?.[language] || socialErrors[error.code]?.en || defaultSocialErr[language] || defaultSocialErr.en;
