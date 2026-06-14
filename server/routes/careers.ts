@@ -1122,47 +1122,10 @@ router.get('/admin/positions', async (req: Request, res: Response) => {
   }
 });
 
-// Create new job position
-router.post('/admin/positions', async (req: Request, res: Response) => {
-  try {
-    const validationResult = insertCareerPositionSchema.safeParse(req.body);
-    
-    if (!validationResult.success) {
-      return res.status(400).json({ 
-        error: 'Validation failed', 
-        details: validationResult.error.flatten() 
-      });
-    }
-    
-    const positionData = validationResult.data;
-    
-    // Generate unique position ID
-    const rolePrefix = (positionData.roleType || 'GEN').toUpperCase().substring(0, 3);
-    const counter = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const positionId = `POS-${rolePrefix}-${counter}`;
-    
-    // Generate slug
-    const slug = `${positionData.title.toLowerCase().replace(/\s+/g, '-')}-${positionData.location?.toLowerCase().replace(/\s+/g, '-') || 'israel'}`;
-    
-    const [newPosition] = await db
-      .insert(careerPositions)
-      .values({
-        ...positionData,
-        positionId,
-        slug,
-        publishedAt: positionData.isActive ? new Date() : null,
-      })
-      .returning();
-    
-    logger.info('[Jobs Admin] Position created', { positionId: newPosition.positionId });
-    
-    res.status(201).json(newPosition);
-    
-  } catch (error) {
-    logger.error('[Jobs Admin] Failed to create position', error);
-    res.status(500).json({ error: 'Failed to create position' });
-  }
-});
+// NOTE (2026-06-14): a duplicate POST '/admin/positions' was registered here
+// AND earlier (~line 926). Express serves the first match, so this second copy
+// was dead code. Removed to eliminate the shadowing conflict; the canonical
+// handler earlier in the file is unchanged.
 
 // Update job position
 router.patch('/admin/positions/:id', async (req: Request, res: Response) => {

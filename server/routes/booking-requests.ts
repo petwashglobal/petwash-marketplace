@@ -2976,25 +2976,9 @@ router.post('/rebook-triggers/:triggerId/:action', async (req, res) => {
   }
 });
 
-// ── T002: First booking conversion — completed booking count for current user ──
-router.get('/my-completed-count', async (req, res) => {
-  const userId = req.user?.uid || req.firebaseUser?.uid;
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const result = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(bookingRequests)
-      .where(
-        and(
-          eq(bookingRequests.ownerId, userId),
-          inArray(bookingRequests.status as any, ['completed', 'reviewed']),
-        ),
-      );
-    res.json({ count: result[0]?.count ?? 0 });
-  } catch (err: any) {
-    logger.warn('[BookingRequests] my-completed-count error', { error: err.message });
-    res.json({ count: 0 });
-  }
-});
+// NOTE (2026-06-14): a duplicate GET '/my-completed-count' was registered here
+// AND earlier in this file (~line 714). Express serves the first match, so this
+// second copy was dead code. Removed to eliminate the shadowing conflict; the
+// canonical handler earlier in the file is unchanged.
 
 export default router;
