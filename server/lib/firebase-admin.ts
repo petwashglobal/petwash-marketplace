@@ -9,8 +9,22 @@ const FIREBASE_STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${FIREBA
 let firebaseApp: admin.app.App;
 
 if (!admin.apps.length) {
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  
+  // ROOT-CAUSE FIX (2026-06-14): the admin Google sign-in failed with HTTP 401
+  // "INVALID_TOKEN". The token was valid — but PR-STARTUP-FIX-5 stopped syncing
+  // FIREBASE_SERVICE_ACCOUNT_KEY, leaving Firebase Admin on ambient ADC that
+  // CANNOT run verifyIdToken(idToken, /*checkRevoked*/ true) — which every
+  // privileged sign-in path uses (routes.ts session create, claims, websocket,
+  // franchise). So all owner/admin logins were rejected.
+  // The project's real service account IS mounted to Cloud Run as
+  // GOOGLE_APPLICATION_CREDENTIALS_JSON (= GOOGLE_SERVICE_ACCOUNT_JSON). Load it
+  // here. JSON.parse is try/caught below, so a malformed value safely falls
+  // through to ADC — startup can never crash on this.
+  const serviceAccountKey =
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
+    process.env.FIREBASE_SERVICE_ACCOUNT ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+
   if (serviceAccountKey) {
     try {
       const serviceAccount = JSON.parse(serviceAccountKey);
