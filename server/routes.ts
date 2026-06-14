@@ -138,7 +138,6 @@ import promotionsRoutes from "./routes/promotions";
 import flashDealsRoutes from "./routes/provider-flash-deals";
 import daycareCalculatorRoutes from "./routes/daycare-calculator";
 import complianceRoutes from "./routes/compliance";
-import spotifyRoutes from "./routes/spotify";
 import monitoringRoutes, { trackRequestMetrics } from "./routes/monitoring";
 import { registerStaffOnboardingRoutes } from "./routes/staff-onboarding";
 import controlPanelRegistryRoutes from "./routes/control-panel-registry";
@@ -10788,7 +10787,7 @@ self.addEventListener('notificationclick', (event) => {
   logger.info('[Routes] ✅ Credit Wallet routes registered (e-gift, wash packages, loyalty points)');
   
   // Spotify Integration (Profile, Now Playing)
-  app.use('/api/spotify', apiLimiter, spotifyRoutes);
+  // Spotify route removed 2026-06 (Replit connector cut) — handler deleted in #743.
   
   // Wallet Telemetry (AI-assisted success tracking with UA detection & beacons)
   const walletTelemetryRoutes = await import('./routes/wallet-telemetry');
