@@ -10,6 +10,7 @@ import { logger } from './lib/logger';
 import { replaceTemplates, validateTemplate, type TemplateContext } from './lib/template-engine';
 import { createMailService, isSendGridConfigured } from './lib/sendgrid';
 import { emailSpendGuard } from './services/EmailSpendGuard';
+import { logAuditEvent } from './middleware/auditLog';
 import { wrapEmailShell, buildLegalFooter, SENDERS, DESIGN, COMPANY_TAX_ID, LEGAL_NAME_HE, LEGAL_NAME_EN } from './email/brand-identity';
 import { generateBookingConfirmationPDF } from './email/pdf/booking-confirmation-pdf';
 import { PETWASH_LOGO_BASE64 } from './email/templates/logo-base64';
@@ -31,6 +32,9 @@ export class EmailService {
   // Israeli business hours compliance (8 AM - 8 PM Israel time)
   private static readonly ISRAELI_BUSINESS_START = 8; // 8 AM
   private static readonly ISRAELI_BUSINESS_END = 20;  // 8 PM
+
+  // One-shot guard so a production blackout writes ONE critical audit row, not one per send.
+  private static prodBlackoutReported = false;
   
   /**
    * Send a simple email (for system alerts and internal notifications)
@@ -43,10 +47,27 @@ export class EmailService {
     from?: string;
   }): Promise<boolean> {
     if (!isSendGridConfigured()) {
+      // In production a missing key is a real outage, not a dev convenience.
+      // Report it loudly (once) and return FALSE — a dropped email is a failure,
+      // never a silent "success". In dev, keep the no-op convenience.
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('[EmailService] 🔴 PRODUCTION EMAIL BLACKOUT — SendGrid not configured; send dropped (no email sent)', { subject: params.subject, to: params.to });
+        if (!EmailService.prodBlackoutReported) {
+          EmailService.prodBlackoutReported = true;
+          logAuditEvent({
+            actionType: 'EMAIL_DISABLED_IN_PRODUCTION',
+            targetType: 'email_system',
+            targetId: 'sendgrid',
+            severity: 'critical',
+            metadata: { firstDroppedSubject: params.subject, at: new Date().toISOString() },
+          }).catch(() => { /* helper swallows; double-guard */ });
+        }
+        return false;
+      }
       logger.info('SendGrid not configured - would send email:', params.subject);
       return true;
     }
-    
+
     try {
       const msg = {
         to: params.to,

@@ -28,6 +28,16 @@ if (SENDGRID_API_KEY && SENDGRID_API_KEY.startsWith('SG.')) {
   console.warn('[SendGrid] ❌ SENDGRID_API_KEY not configured - email functionality disabled');
 }
 
+// Loud production guard: a misconfigured key means the app boots fine but every
+// send silently no-ops (bookings, receipts, gift cards never arrive). Make that
+// impossible to miss at deploy time — this is the silent-blackout failure mode.
+if (!initialized && process.env.NODE_ENV === 'production') {
+  console.error(
+    '[SendGrid] 🔴🔴 CRITICAL: EMAIL DISABLED IN PRODUCTION — SENDGRID_API_KEY missing or malformed. ' +
+    'Customers will receive NO emails and sends will SILENTLY no-op. Fix SENDGRID_API_KEY immediately.'
+  );
+}
+
 export function getSendGridClient(): typeof sgMail {
   return sgMail;
 }
