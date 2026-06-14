@@ -469,6 +469,12 @@ export default function Hub() {
     },
   ];
 
+  // The quick-stats + recent-activity + loyalty panels below are HARDCODED demo
+  // placeholders ("1,250" points, "Tel Aviv Marina" wash, etc.) — not real
+  // per-user data. They were only hidden from logged-OUT visitors before, so a
+  // logged-IN user still saw fake numbers as if they were theirs. Hidden from
+  // everyone now (no fake data in prod) until wired to real per-user data.
+  const SHOW_DEMO_PANELS = false;
   const quickStats = [
     { labelKey: "activeBookings", value: "3", icon: Activity },
     { labelKey: "loyaltyPoints", value: "1,250", icon: Star },
@@ -535,7 +541,7 @@ export default function Hub() {
             violating platform skill §2 ("no fake data in production").
             Until these are wired to real per-user values, the entire panel
             is hidden for unauthenticated visitors. */}
-        {user && (
+        {SHOW_DEMO_PANELS && user && (
           <div className="luxury-glass-card luxury-shadow-lg p-8 mb-12 luxury-animate-slide-up luxury-delay-1">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {quickStats.map((stat) => {
@@ -617,7 +623,7 @@ export default function Hub() {
             visitors see neither — only authenticated users will see this
             section, and once the demo strings are replaced with live data,
             this gate can be relaxed if/when appropriate. */}
-        {user && (
+        {SHOW_DEMO_PANELS && user && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           <div className="luxury-animate-slide-up luxury-delay-3">
             <h3 className="luxury-heading-md mb-6">{tx('recentActivity', language)}</h3>
