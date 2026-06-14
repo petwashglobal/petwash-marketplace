@@ -16,7 +16,7 @@
  * Run locally before push:  npx tsx scripts/smoke-test-route-imports.ts
  * CI: part of gate-smoke-test-startup (petwash-ci.yml).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -31,6 +31,32 @@ if (unique.length === 0) {
   console.error('❌ No dynamic imports found in server/routes.ts — pattern drift? Update this script.');
   process.exit(1);
 }
+
+// ── STATIC-import landmine check (added 2026-06-14) ──────────────────────────
+// A deleted `./routes/spotify` left a STATIC `import x from "./routes/spotify"`
+// in routes.ts → the server could not boot → a prod deploy froze. The dynamic
+// sweep below never caught it (static imports aren't `await import(...)`). This
+// verifies every relative STATIC import in routes.ts resolves to a real file.
+function staticImportResolves(absNoExt: string): boolean {
+  return ['.ts', '.tsx', '.js', '.mjs', '.json'].some(ext => existsSync(absNoExt + ext))
+    || existsSync(resolve(absNoExt, 'index.ts'))
+    || existsSync(resolve(absNoExt, 'index.tsx'));
+}
+const staticMissing: string[] = [];
+for (const line of src.split('\n')) {
+  const t = line.trim();
+  if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue; // skip comments
+  const m = t.match(/^import\s+[^'"]*\s+from\s+['"](\.[^'"]+)['"]/);
+  if (!m) continue;
+  const abs = resolve(process.cwd(), 'server', m[1]);
+  if (!staticImportResolves(abs)) staticMissing.push(m[1]);
+}
+if (staticMissing.length) {
+  console.error(`\n❌ ${staticMissing.length} BROKEN STATIC IMPORT(S) in server/routes.ts — the server CANNOT boot:\n`);
+  for (const s of staticMissing) console.error(`   import … from "${s}"  → no file resolves`);
+  process.exit(1);
+}
+console.log(`✅ static imports in routes.ts all resolve`);
 
 console.log(`🧨 Boot-landmine sweep: importing ${unique.length} dynamically-loaded modules under the production resolver…\n`);
 
