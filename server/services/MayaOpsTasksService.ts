@@ -42,6 +42,7 @@
  */
 
 import { logger } from '../lib/logger';
+import { EmailService } from '../emailService';
 
 export interface OpsTaskInput {
   /** Short, action-oriented title (e.g. "Renew insurance — policy ABC123 expires Aug 15"). */
@@ -72,6 +73,35 @@ function getImpersonatedUser(): string | null {
   return process.env.OPS_TASKS_USER_EMAIL || null;
 }
 
+// ── Ops alerts via SendGrid — a channel WE control (no Google Workspace
+//    delegation needed). Every enqueued ops task ALSO emails the team, so alerts
+//    (suspicious invoice, provider approval, renewals…) arrive even when Google
+//    Tasks isn't configured. Recipients = OPS_ALERT_EMAILS (comma-separated).
+function opsAlertRecipients(): string[] {
+  return (process.env.OPS_ALERT_EMAILS || 'support@petwash.co.il')
+    .split(',').map(s => s.trim()).filter(Boolean);
+}
+function escapeHtml(s: string): string {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+async function sendOpsEmailAlert(input: OpsTaskInput): Promise<void> {
+  const recipients = opsAlertRecipients();
+  if (!recipients.length) return;
+  const due = input.due ? `<p style="margin:4px 0"><b>Due:</b> ${input.due.toISOString().slice(0, 10)}</p>` : '';
+  const html = `<div style="font-family:Inter,system-ui,-apple-system,sans-serif;max-width:520px">
+    <p style="font-size:12px;letter-spacing:.08em;color:#b8860b;font-weight:700;margin:0 0 6px">🐾 PETWASH OPS — ACTION NEEDED</p>
+    <p style="font-size:17px;font-weight:600;margin:0 0 8px">${escapeHtml(input.title)}</p>
+    ${input.notes ? `<p style="white-space:pre-wrap;color:#444;margin:0 0 8px">${escapeHtml(input.notes)}</p>` : ''}
+    ${due}
+    <p style="color:#999;font-size:11px;margin-top:14px">ref: ${escapeHtml(input.dedupKey)}</p>
+  </div>`;
+  await Promise.all(recipients.map(to =>
+    EmailService.send({ to, subject: `🐾 Ops: ${input.title.slice(0, 120)}`, html })
+      .catch(e => logger.warn('[MayaOpsTasks] ops email alert failed', { to, err: (e as Error)?.message })),
+  ));
+}
+
 /**
  * Enqueue an ops task for Maya. Idempotent on dedupKey — calling twice
  * with the same key returns alreadyExists:true instead of duplicating.
@@ -80,6 +110,10 @@ function getImpersonatedUser(): string | null {
  * should log + continue, NOT block their flow on this.
  */
 export async function enqueueOpsTask(input: OpsTaskInput): Promise<OpsTaskResult> {
+  // Email the ops team via SendGrid FIRST — works with no Google Workspace
+  // delegation, so alerts always reach the team. Google Tasks below is a bonus.
+  await sendOpsEmailAlert(input).catch(() => {});
+
   if (!isFeatureEnabled()) {
     logger.info('[MayaOpsTasks] enqueueOpsTask skipped — MAYA_OPS_TASKS_ENABLED is not "true"', {
       dedupKey: input.dedupKey, titlePrefix: input.title.substring(0, 60),
