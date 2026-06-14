@@ -16,7 +16,7 @@
 
 import crypto from "crypto";
 import { SignJWT, importPKCS8, importSPKI, jwtVerify } from "jose";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   unifiedVouchers,
@@ -224,8 +224,10 @@ function computeEntryHash(
   return crypto.createHash("sha256").update(canonical).digest("hex");
 }
 
-async function getLastLedgerEntry(voucherId: string): Promise<UnifiedVoucherLedgerEntry | null> {
-  const rows = await db
+// `conn` lets callers run this inside a transaction (so the read is covered by
+// the same FOR UPDATE lock); defaults to the pooled db for existing callers.
+async function getLastLedgerEntry(voucherId: string, conn: any = db): Promise<UnifiedVoucherLedgerEntry | null> {
+  const rows = await conn
     .select()
     .from(unifiedVoucherLedger)
     .where(eq(unifiedVoucherLedger.voucherId, voucherId))
@@ -250,8 +252,8 @@ async function appendLedgerEntry(params: {
   qrTokenJti?: string;
   qrTokenNonce?: string;
   notes?: string;
-}): Promise<UnifiedVoucherLedgerEntry> {
-  const lastEntry = await getLastLedgerEntry(params.voucherId);
+}, conn: any = db): Promise<UnifiedVoucherLedgerEntry> {
+  const lastEntry = await getLastLedgerEntry(params.voucherId, conn);
   const seqNo = lastEntry ? lastEntry.seqNo + 1 : 0;
   const prevEntryHash = lastEntry ? lastEntry.entryHash : null;
   const now = new Date().toISOString();
@@ -273,7 +275,7 @@ async function appendLedgerEntry(params: {
     hash: entryHash,
   });
 
-  const [entry] = await db
+  const [entry] = await conn
     .insert(unifiedVoucherLedger)
     .values({
       voucherId: params.voucherId,
@@ -310,8 +312,8 @@ interface LedgerBalance {
   washesRemaining: number | null; // null for PLATFORM_CREDIT
 }
 
-async function reconcileFromLedger(voucher: UnifiedVoucher): Promise<LedgerBalance> {
-  const entries = await db
+async function reconcileFromLedger(voucher: UnifiedVoucher, conn: any = db): Promise<LedgerBalance> {
+  const entries = await conn
     .select()
     .from(unifiedVoucherLedger)
     .where(eq(unifiedVoucherLedger.voucherId, voucher.id))
@@ -587,95 +589,120 @@ export async function redeemVoucher(params: RedeemParams): Promise<RedeemResult>
     }
   }
 
-  // ── 5. Reconcile balance from ledger (source of truth) ──
-  const ledgerBalance = await reconcileFromLedger(voucher);
-  const valueRemaining = ledgerBalance.valueRemaining;
-  const washesRemaining = ledgerBalance.washesRemaining;
-
-  // ── 6. Validate requested redemption amount ──
+  // ── 5–8. Reconcile, validate, and write — all inside ONE transaction with a
+  // row lock on the voucher (SELECT … FOR UPDATE) so two concurrent redeems
+  // cannot both read the same remaining balance and double-spend. A second
+  // redeem blocks at the lock until the first commits, then reconciles against
+  // the now-committed ledger. Mirrors confirmRedemption (PR #712).
+  // The wallet bridge (step 9) stays OUTSIDE the tx on purpose: addCredits is
+  // idempotent on (wallet, source, voucherId) and uses its own connection.
   let deltaValue = 0;
   let deltaWashes = 0;
-  let balanceValueAfter: number | null = valueRemaining;
-  let balanceWashesAfter: number | null = washesRemaining;
-
-  if (voucher.voucherType === "PLATFORM_CREDIT") {
-    if (!params.amountIls || params.amountIls <= 0) throw new Error("amountIls required and must be > 0");
-    if (valueRemaining === null) throw new Error("Ledger has no value balance for this voucher");
-    if (params.amountIls > valueRemaining + 0.001) {
-      throw new Error(
-        `Insufficient credit: requested ${params.amountIls} ILS, remaining ${valueRemaining.toFixed(2)} ILS`
-      );
-    }
-    deltaValue = Math.min(params.amountIls, valueRemaining);
-    balanceValueAfter = Math.max(0, valueRemaining - deltaValue);
-  } else if (voucher.voucherType === "WASH_PACKAGE") {
-    const washes = params.washes ?? 1;
-    if (washes <= 0) throw new Error("washes must be > 0");
-    if (washesRemaining === null) throw new Error("Ledger has no wash balance for this voucher");
-    if (washes > washesRemaining) {
-      throw new Error(
-        `Insufficient washes: requested ${washes}, remaining ${washesRemaining}`
-      );
-    }
-    deltaWashes = washes;
-    balanceWashesAfter = washesRemaining - deltaWashes;
-  }
-
-  // ── 7. Determine new status ──
+  let balanceValueAfter: number | null = null;
+  let balanceWashesAfter: number | null = null;
   let newStatus: VoucherStatus = "PARTIALLY_REDEEMED";
-  if (
-    (voucher.voucherType === "PLATFORM_CREDIT" && balanceValueAfter! <= 0.001) ||
-    (voucher.voucherType === "WASH_PACKAGE" && balanceWashesAfter! <= 0)
-  ) {
-    newStatus = "REDEEMED";
-  }
+  let ledgerSeqNo = 0;
 
-  // ── 8. Write to DB (voucher + ledger) in sequence ──
+  await (db as any).transaction(async (tx: typeof db) => {
+    // Lock the voucher row — a concurrent redeem blocks here until we commit.
+    await tx.execute(sql`SELECT id FROM unified_vouchers WHERE id = ${voucher.id} FOR UPDATE`);
 
-  // Mark QR jti as used BEFORE writing ledger (prevents race on concurrent calls)
-  if (qrJti) {
-    await db.insert(redeemedQrTokens).values({
-      jti: qrJti,
-      voucherId: voucher.id,
+    // Re-check status UNDER the lock (the checks above are fast-fail only).
+    const [locked] = await tx
+      .select()
+      .from(unifiedVouchers)
+      .where(eq(unifiedVouchers.id, voucher.id))
+      .limit(1);
+    if (!locked) throw new Error("Voucher not found");
+    if (locked.status === "CANCELLED") throw new Error("Voucher is cancelled");
+    if (locked.status === "REDEEMED") throw new Error("Voucher is fully redeemed");
+    if (locked.status === "EXPIRED") throw new Error("Voucher is expired");
+    if (locked.expiresAt && locked.expiresAt < new Date()) throw new Error("Voucher has expired");
+
+    // Reconcile balance from ledger (source of truth) under the lock.
+    const ledgerBalance = await reconcileFromLedger(locked, tx);
+    const valueRemaining = ledgerBalance.valueRemaining;
+    const washesRemaining = ledgerBalance.washesRemaining;
+    balanceValueAfter = valueRemaining;
+    balanceWashesAfter = washesRemaining;
+
+    // Validate requested redemption amount against the locked balance.
+    if (locked.voucherType === "PLATFORM_CREDIT") {
+      if (!params.amountIls || params.amountIls <= 0) throw new Error("amountIls required and must be > 0");
+      if (valueRemaining === null) throw new Error("Ledger has no value balance for this voucher");
+      if (params.amountIls > valueRemaining + 0.001) {
+        throw new Error(
+          `Insufficient credit: requested ${params.amountIls} ILS, remaining ${valueRemaining.toFixed(2)} ILS`
+        );
+      }
+      deltaValue = Math.min(params.amountIls, valueRemaining);
+      balanceValueAfter = Math.max(0, valueRemaining - deltaValue);
+    } else if (locked.voucherType === "WASH_PACKAGE") {
+      const washes = params.washes ?? 1;
+      if (washes <= 0) throw new Error("washes must be > 0");
+      if (washesRemaining === null) throw new Error("Ledger has no wash balance for this voucher");
+      if (washes > washesRemaining) {
+        throw new Error(`Insufficient washes: requested ${washes}, remaining ${washesRemaining}`);
+      }
+      deltaWashes = washes;
+      balanceWashesAfter = washesRemaining - deltaWashes;
+    }
+
+    // Determine new status.
+    newStatus = "PARTIALLY_REDEEMED";
+    if (
+      (locked.voucherType === "PLATFORM_CREDIT" && balanceValueAfter! <= 0.001) ||
+      (locked.voucherType === "WASH_PACKAGE" && balanceWashesAfter! <= 0)
+    ) {
+      newStatus = "REDEEMED";
+    }
+
+    // Mark QR jti as used (unique constraint + row lock both guard replay).
+    if (qrJti) {
+      await tx.insert(redeemedQrTokens).values({
+        jti: qrJti,
+        voucherId: locked.id,
+        channel: params.channel,
+        stationId: params.stationId ?? null,
+        actorUserId: params.actorUserId ?? null,
+        externalRef: params.externalRef ?? null,
+        tokenExp: qrTokenPayload?.exp ? new Date(qrTokenPayload.exp * 1000) : null,
+      });
+    }
+
+    // Append immutable ledger entry (atomic with the voucher cache update).
+    const ledgerEntry = await appendLedgerEntry({
+      voucherId: locked.id,
+      event: "REDEEM",
+      deltaValue,
+      deltaWashes,
+      balanceValueAfter: balanceValueAfter !== null ? balanceValueAfter : null,
+      balanceWashesAfter: balanceWashesAfter !== null ? balanceWashesAfter : null,
       channel: params.channel,
-      stationId: params.stationId ?? null,
       actorUserId: params.actorUserId ?? null,
+      actorRole: params.actorRole ?? "customer",
+      stationId: params.stationId ?? null,
+      locationLabel: params.locationLabel ?? null,
       externalRef: params.externalRef ?? null,
-      tokenExp: qrTokenPayload?.exp ? new Date(qrTokenPayload.exp * 1000) : null,
-    });
-  }
+      qrTokenJti: qrJti ?? null,
+      notes: params.notes ?? null,
+    }, tx);
+    ledgerSeqNo = ledgerEntry.seqNo;
 
-  // Append immutable ledger entry
-  const ledgerEntry = await appendLedgerEntry({
-    voucherId: voucher.id,
-    event: "REDEEM",
-    deltaValue,
-    deltaWashes,
-    balanceValueAfter: balanceValueAfter !== null ? balanceValueAfter : null,
-    balanceWashesAfter: balanceWashesAfter !== null ? balanceWashesAfter : null,
-    channel: params.channel,
-    actorUserId: params.actorUserId ?? null,
-    actorRole: params.actorRole ?? "customer",
-    stationId: params.stationId ?? null,
-    locationLabel: params.locationLabel ?? null,
-    externalRef: params.externalRef ?? null,
-    qrTokenJti: qrJti ?? null,
-    notes: params.notes ?? null,
+    // Update voucher cache fields.
+    await tx
+      .update(unifiedVouchers)
+      .set({
+        status: newStatus,
+        valueRemaining: balanceValueAfter !== null ? balanceValueAfter.toFixed(2) : null,
+        washesRemaining: balanceWashesAfter !== null ? balanceWashesAfter : null,
+        lastRedeemedAt: new Date(),
+        activatedAt: locked.activatedAt ?? new Date(),
+        fullyRedeemedAt: newStatus === "REDEEMED" ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(unifiedVouchers.id, locked.id));
   });
-
-  // Update voucher cache fields
-  await db
-    .update(unifiedVouchers)
-    .set({
-      status: newStatus,
-      valueRemaining: balanceValueAfter !== null ? balanceValueAfter.toFixed(2) : null,
-      washesRemaining: balanceWashesAfter !== null ? balanceWashesAfter : null,
-      lastRedeemedAt: new Date(),
-      activatedAt: voucher.activatedAt ?? new Date(),
-      fullyRedeemedAt: newStatus === "REDEEMED" ? new Date() : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(unifiedVouchers.id, voucher.id));
 
   // ── 9. Wallet bridge: credit egift balance for PLATFORM_CREDIT vouchers ──
   if (
@@ -733,7 +760,7 @@ export async function redeemVoucher(params: RedeemParams): Promise<RedeemResult>
     balanceValueAfter: balanceValueAfter ?? undefined,
     balanceWashesAfter: balanceWashesAfter ?? undefined,
     newStatus,
-    ledgerSeqNo: ledgerEntry.seqNo,
+    ledgerSeqNo,
     traceId,
   };
 }
