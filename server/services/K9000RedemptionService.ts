@@ -50,6 +50,7 @@ import {
   stationBays,
   baySessions,
   bayEvents,
+  bayFaults,
 } from '@shared/schema';
 import { eq, and, gt, gte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -240,6 +241,81 @@ export async function findBay(stationId: string, side: 'left' | 'right') {
     .where(and(eq(stationBays.stationId, stationId), eq(stationBays.side, side)))
     .limit(1);
   return bay ?? null;
+}
+
+/** Heartbeat older than this ⇒ the bay is treated as silently offline. Generous
+ *  (3 min) so a normal heartbeat gap never false-flags a working bay. */
+export const BAY_HEARTBEAT_STALE_SECONDS = 180;
+
+export interface BayHealth {
+  bayId: string;
+  side: string | null;
+  status: string;            // raw stationBays.status
+  isActive: boolean;
+  canWash: boolean;          // computed verdict (richer than the status field alone)
+  reasons: string[];         // why canWash is false, if it is
+  openCriticalFaults: Array<{ faultCode: string; severity: string; reportedAt: string | null }>;
+  heartbeatAgeSeconds: number | null;  // null = no heartbeat ever recorded (do NOT block on this)
+  heartbeatStale: boolean;
+}
+
+/**
+ * Compute the FULL health of a bay — the live `status` field PLUS two signals the
+ * existing redemption gate does not consider: unresolved CRITICAL faults
+ * (bay_faults.status='open') and heartbeat freshness (silently-offline machine).
+ *
+ * READ-ONLY / advisory. This intentionally does NOT change live charging or
+ * redemption behaviour — it is exposed for ops visibility and as the tested
+ * foundation for tightening the gate once fault auto-heal is confirmed reliable
+ * in production (gating on a stale 'open' fault would wrongly block a good bay).
+ *
+ * Conservatism by design:
+ *   - only severity 'critical' open faults count (warnings/errors never block);
+ *   - heartbeat staleness only counts when a heartbeat was EVER recorded
+ *     (lastHeartbeat null ⇒ heartbeatAgeSeconds null ⇒ never treated as offline).
+ */
+export async function getBayHealth(bayId: string): Promise<BayHealth | null> {
+  const [bay] = await db.select().from(stationBays).where(eq(stationBays.id, bayId)).limit(1);
+  if (!bay) return null;
+
+  const reasons: string[] = [];
+
+  const BLOCKED_BAY_STATUSES = ['busy', 'cleanup', 'fault', 'maintenance', 'offline'];
+  if (BLOCKED_BAY_STATUSES.includes(bay.status ?? '')) reasons.push(`status:${bay.status}`);
+  if (!bay.isActive) reasons.push('inactive');
+
+  const openFaults = await db
+    .select()
+    .from(bayFaults)
+    .where(and(eq(bayFaults.bayId, bayId), eq(bayFaults.status, 'open')));
+  const openCritical = openFaults.filter((f) => f.severity === 'critical');
+  if (openCritical.length) {
+    reasons.push(`open_critical_fault:${openCritical.map((f) => f.faultCode).join(',')}`);
+  }
+
+  let heartbeatAgeSeconds: number | null = null;
+  let heartbeatStale = false;
+  if (bay.lastHeartbeat) {
+    heartbeatAgeSeconds = Math.floor((Date.now() - new Date(bay.lastHeartbeat).getTime()) / 1000);
+    heartbeatStale = heartbeatAgeSeconds > BAY_HEARTBEAT_STALE_SECONDS;
+    if (heartbeatStale) reasons.push(`heartbeat_stale:${heartbeatAgeSeconds}s`);
+  }
+
+  return {
+    bayId: bay.id,
+    side: bay.side ?? null,
+    status: bay.status ?? 'unknown',
+    isActive: !!bay.isActive,
+    canWash: reasons.length === 0,
+    reasons,
+    openCriticalFaults: openCritical.map((f) => ({
+      faultCode: f.faultCode,
+      severity: f.severity,
+      reportedAt: f.reportedAt ? new Date(f.reportedAt).toISOString() : null,
+    })),
+    heartbeatAgeSeconds,
+    heartbeatStale,
+  };
 }
 
 /**
