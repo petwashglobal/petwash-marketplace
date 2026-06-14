@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getApiUrl } from "@/lib/apiConfig";
@@ -627,6 +628,16 @@ export default function Pets() {
                           </div>
                         </div>
                         <div className="flex gap-1">
+                          <Link href={`/pets/${pet.id}/passport`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={language === 'he' ? 'דרכון חיה' : 'Pet Passport'}
+                              data-testid={`button-passport-${pet.id}`}
+                            >
+                              <PawPrint className="h-4 w-4 text-amber-500" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="icon"
