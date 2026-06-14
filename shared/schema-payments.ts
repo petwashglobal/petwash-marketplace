@@ -261,6 +261,16 @@ export const pwTaxDocuments = pgTable("pw_tax_documents", {
   providerIdx:       index("idx_pw_tax_provider").on(t.providerId),
   documentTypeIdx:   index("idx_pw_tax_doc_type").on(t.documentType),
   statusIdx:         index("idx_pw_tax_status").on(t.status),
+  // ── ITA gapless-numbering backstop (2026-06-14) ───────────────────────────
+  // A tax-document number MUST be unique per (type, year). allocateTaxSequence
+  // Number() holds an advisory lock only around SELECT MAX()+1 and RELEASES it
+  // before the caller's INSERT runs — so two concurrent issues can read the
+  // same MAX and write the SAME number, which is illegal under Israeli tax law
+  // (duplicate/skipped invoice numbers). This DB constraint makes the second
+  // colliding INSERT fail loudly (caller errors + retries) instead of silently
+  // issuing two documents under one number. NULL sequence_number rows (drafts /
+  // failed issues) are distinct in Postgres, so this only binds real numbers.
+  seqUniqueIdx:      uniqueIndex("idx_pw_tax_seq_unique").on(t.documentType, t.sequenceYear, t.sequenceNumber),
 }));
 
 export const insertPwTaxDocumentSchema = createInsertSchema(pwTaxDocuments).omit({
