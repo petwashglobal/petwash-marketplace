@@ -454,16 +454,28 @@ router.post(
         return res.status(400).json({ error: 'Invalid JSON payload' });
       }
 
-      // ── [6] Signature verification ────────────────────────────────────────────
+      // ── [6] Signature verification — FAIL-CLOSED (2026-06-14) ─────────────────
+      // This webhook MARKS A BOOKING PAID. It must never trust an unsigned body.
+      // Previously, when NAYAX_WEBHOOK_SECRET was unset, isSignatureEnforced()
+      // returned false and the missing-signature check was SKIPPED — meaning any
+      // request that passed the IP allowlist could mark a booking paid for free.
+      // We now REJECT outright when the secret is not configured (no secret →
+      // cannot verify authenticity → cannot trust a "paid" event). Real Nayax
+      // traffic resumes the moment NAYAX_WEBHOOK_SECRET is set in the secret
+      // pipeline. (IP allowlist already ran above — this is defense in depth.)
       const signature = (req.headers['x-nayax-signature'] as string) || '';
-      const signatureEnforced = NayaxOnlinePaymentService.isSignatureEnforced();
 
-      if (signatureEnforced && !signature) {
+      if (!NayaxOnlinePaymentService.isSignatureEnforced()) {
+        logger.error('[NayaxPaymentWebhook] NAYAX_WEBHOOK_SECRET not configured — rejecting webhook (fail-closed). Set the secret to enable Nayax online payments.');
+        return res.status(503).json({ error: 'Webhook signature verification not configured' });
+      }
+
+      if (!signature) {
         logger.warn('[NayaxPaymentWebhook] Missing required signature header — request rejected');
         return res.status(401).json({ error: 'X-Nayax-Signature header is required' });
       }
 
-      if (signature && !NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
+      if (!NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
         logger.warn('[NayaxPaymentWebhook] Invalid signature — request rejected');
         return res.status(401).json({ error: 'Invalid signature' });
       }
