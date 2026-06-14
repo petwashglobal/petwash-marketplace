@@ -315,6 +315,19 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
 // Called from booking checkout when user selects "Pay with Prestige Pass".
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/redeem-online', redeemLimiter, async (req: Request, res: Response) => {
+  // ⛔ SECURITY (2026-06): DISABLED. This was an UNAUTHENTICATED duplicate of
+  // /api/prestige-pass/redeem-online — it trusted a client-supplied `userId`
+  // (so the "ownership" check was spoofable) AND a client-supplied `amountIls`,
+  // letting anyone debit ANY prestige pass by ANY amount, or under-charge their
+  // own. It had ZERO callers (the app uses the canonical, session-authenticated
+  // /api/prestige-pass/redeem-online). Returning 410 closes the hole safely.
+  return res.status(410).json({
+    ok: false,
+    error: 'ENDPOINT_DISABLED',
+    use: 'POST /api/prestige-pass/redeem-online',
+  });
+
+  /* eslint-disable no-unreachable */
   try {
     const parsed = redeemOnlineSchema.safeParse(req.body);
     if (!parsed.success) {
