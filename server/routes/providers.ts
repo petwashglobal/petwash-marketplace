@@ -55,7 +55,9 @@ router.get("/sitters", async (req, res) => {
       query = query.where("dailyRate", "<=", parseFloat(maxPrice as string));
     }
 
-    const snapshot = await query.get();
+    // Bound the read — public, viral-target endpoint. Cap at 100 so a large
+    // collection can't blow up latency/Firestore cost on a single request.
+    const snapshot = await query.limit(100).get();
     const sitters = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, SITTER_PUBLIC_FIELDS, doc.id));
 
     res.json({ sitters });
@@ -163,7 +165,7 @@ router.get("/walkers", async (req, res) => {
       query = query.where("hourlyRate", "<=", parseFloat(maxPrice as string));
     }
 
-    const snapshot = await query.get();
+    const snapshot = await query.limit(100).get(); // bound public read (viral-target)
     const walkers = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, WALKER_PUBLIC_FIELDS, doc.id));
 
     res.json({ walkers });
@@ -228,7 +230,7 @@ router.get("/drivers", async (req, res) => {
       query = query.where("currentlyAvailable", "==", true);
     }
 
-    const snapshot = await query.get();
+    const snapshot = await query.limit(100).get(); // bound public read (viral-target)
     const drivers = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, DRIVER_PUBLIC_FIELDS, doc.id));
 
     res.json({ drivers });
