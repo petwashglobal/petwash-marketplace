@@ -26,6 +26,7 @@ import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFr
 import { decideProviderKyc } from '../services/providerDecisionEngine';
 import { pool } from '../db';
 import { DocumentEncryption } from '../document-security-2025';
+import { buildSealedDeclarationAttestation } from '../lib/providerDeclarationAttestation';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import {
   buildAdminReviewAlertEmail,
@@ -733,6 +734,37 @@ router.post('/apply', upload.fields([
     // All applications start as 'pending' with biometric in 'pending' state.
     // Biometric face-match runs asynchronously after the response is sent so that
     // network/Vision-API latency never blocks or times out the submission request.
+    // ── Seal a tamper-evident e-signature of the declarations (2026-06-14) ──
+    // Captures the EXACT declaration text + version accepted, bound to identity,
+    // IP, device, and timestamp, hashed so any later edit is provable. Best-effort:
+    // a failure here must NOT block onboarding — the boolean record still stands.
+    let sealedDeclarationAttestation: any = null;
+    try {
+      const declAcceptedKeys = [
+        ...Object.keys(declarations).filter((k) => declarations[k] === true),
+        ...(selfDeclarationNoRelevantConvictions ? ['selfDeclarationNoRelevantConvictions'] : []),
+      ];
+      const declProviderTypes = (() => {
+        try {
+          return rawProviderTypes
+            ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes)
+            : [providerType];
+        } catch { return [providerType]; }
+      })();
+      sealedDeclarationAttestation = buildSealedDeclarationAttestation({
+        uid: authenticatedUser.uid,
+        email: authenticatedUser.email || '',
+        acceptedKeys: declAcceptedKeys,
+        providerTypes: declProviderTypes,
+        language: (req.body?.language as string) || 'en',
+        signedAt: selfDeclarationAt,
+        ip: selfDeclarationIp,
+        userAgent: (req.headers['user-agent'] as string | undefined)?.slice(0, 512) || 'unknown',
+      });
+    } catch (attErr: any) {
+      logger.warn('[Provider Onboarding] Declaration attestation seal failed (non-blocking)', { error: attErr?.message });
+    }
+
     const [application] = await db.insert(providerApplications).values({
       applicationId,
       userId: authenticatedUser.uid,
@@ -757,6 +789,8 @@ router.post('/apply', upload.fields([
       selfDeclarationNoRelevantConvictions,
       selfDeclarationAt,
       selfDeclarationIp,
+      declarationAttestation: sealedDeclarationAttestation,
+      declarationSignatureSha256: sealedDeclarationAttestation?.signatureSha256 || null,
       requiresEnhancedVerification,
       enhancedVerificationReasons,
       petFirstAidCertUrl: petFirstAidCertUrl || null,

@@ -5222,6 +5222,13 @@ export const providerApplications = pgTable("provider_applications", {
   selfDeclarationNoRelevantConvictions: boolean("self_declaration_no_relevant_convictions").notNull().default(false),
   selfDeclarationAt: timestamp("self_declaration_at"),
   selfDeclarationIp: varchar("self_declaration_ip", { length: 64 }),
+  // Tamper-evident e-signature of the declarations (2026-06-14). The sealed
+  // object holds the EXACT declaration text + version the provider accepted,
+  // bound to identity/IP/device/timestamp; declarationSignatureSha256 is the
+  // hash over the canonical payload (see server/lib/providerDeclarationAttestation.ts).
+  // Any later edit breaks the hash → provable in a regulator/court dispute.
+  declarationAttestation: jsonb("declaration_attestation"),
+  declarationSignatureSha256: varchar("declaration_signature_sha256", { length: 64 }),
   requiresEnhancedVerification: boolean("requires_enhanced_verification").notNull().default(false),
   enhancedVerificationReasons: text("enhanced_verification_reasons").array().notNull().default(sql`ARRAY[]::text[]`),
   
