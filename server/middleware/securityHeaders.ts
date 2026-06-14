@@ -23,10 +23,10 @@ import { Request, Response, NextFunction } from 'express';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Replit preview domains (only relevant in dev)
-const replitHosts = isDev
-  ? " *.replit.dev *.repl.co *.replit.app"
-  : "";
+// Replit removed 2026-06 (CEO cut all Replit ties) — no longer allow Replit
+// preview domains in the CSP, even in dev. Kept as a const so the CSP builders
+// below stay unchanged.
+const replitHosts = "";
 
 const CSP_DIRECTIVES = [
   // Documents
@@ -154,6 +154,7 @@ const CSP_DIRECTIVES = [
     "https://recaptcha.google.com/",
     "https://accounts.google.com",
     "https://*.firebaseapp.com",
+    "https://open.spotify.com",
     replitHosts,
   ].filter(Boolean).join(" "),
 

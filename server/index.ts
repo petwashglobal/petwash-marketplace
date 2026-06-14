@@ -499,9 +499,7 @@ const CORS_EXACT_ORIGINS: string[] = [
 ];
 const CORS_DEV_PATTERNS: RegExp[] = [
   /\.run\.app$/,
-  /\.replit\.dev$/,
-  /\.repl\.co$/,
-  /\.replit\.app$/,
+  // Replit preview domains removed 2026-06 — CEO cut all Replit ties.
 ];
 const PETWASH_SUBDOMAIN_RE = /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/;
 
