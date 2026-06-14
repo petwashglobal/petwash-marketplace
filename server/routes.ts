@@ -3480,7 +3480,12 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/auth/health - PUBLIC, secrets-free auth-readiness probe.
+  // GET /api/auth/signing-health - PUBLIC, secrets-free auth-readiness probe.
+  // NOTE: deliberately NOT /api/auth/health — that path is already taken by a
+  // liveness stub at ~line 1421 (`res.json({ ok: true })`) registered earlier,
+  // and Express serves the FIRST match, so a probe at /api/auth/health would be
+  // permanently shadowed (returns {ok:true}, never this diagnostic). Distinct
+  // path = guaranteed reachable.
   // WHY PUBLIC (2026-06-14): every login (Google/Apple/email/phone) ends by
   // POSTing the Firebase ID token to /api/auth/session, which must (a) verify
   // the token with checkRevoked and (b) MINT a Firebase session cookie via
@@ -3494,7 +3499,7 @@ self.addEventListener('notificationclick', (event) => {
   // ever exposed. canSignTokens=false ⇒ the credential is the root cause and
   // an operator must set a service-account key or grant the Cloud Run runtime
   // SA the "Service Account Token Creator" role.
-  app.get('/api/auth/health', authLimiter, async (req, res) => {
+  app.get('/api/auth/signing-health', authLimiter, async (req, res) => {
     let canSignTokens = false;
     let signError: string | undefined;
     try {
