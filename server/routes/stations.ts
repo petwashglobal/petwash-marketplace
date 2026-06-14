@@ -399,143 +399,16 @@ router.get('/:id/inventory', requireAdmin, async (req: Request, res: Response) =
   }
 });
 
-// POST /api/admin/stations/:id/inventory/set - Set inventory (admin only)
-router.post('/:id/inventory/set', requireAdmin, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { item, onHand } = req.body;
-    const adminUid = req.firebaseUser!.uid;
-    
-    // Validate item type
-    const validItems = ['shampoo', 'conditioner', 'disinfectant', 'fragrance'];
-    if (!validItems.includes(item)) {
-      return res.status(400).json({ error: 'Invalid item type' });
-    }
-    
-    // Validate onHand
-    if (typeof onHand !== 'number' || onHand < 0) {
-      return res.status(400).json({ error: 'onHand must be a non-negative number' });
-    }
-    
-    // Verify station exists
-    const stationDoc = await db.collection('stations').doc(id).get();
-    if (!stationDoc.exists) {
-      return res.status(404).json({ error: 'Station not found' });
-    }
-    
-    const now = new Date();
-    const inventoryRef = db.collection('station_inventory').doc(id);
-    
-    await inventoryRef.set({
-      stationId: id,
-      items: {
-        [item]: {
-          onHand,
-          uom: 'L',
-          updatedAt: now,
-        }
-      }
-    }, { merge: true });
-    
-    // Log event
-    const eventId = nanoid(20);
-    await db.collection('station_events').doc(eventId).set({
-      id: eventId,
-      stationId: id,
-      type: 'inventory_adjusted',
-      at: now,
-      by: adminUid,
-      data: { item, onHand, action: 'set' },
-    });
-    
-    logger.info('[Stations] Inventory set', { stationId: id, item, onHand });
-    
-    res.json({ success: true, message: 'Inventory updated successfully' });
-  } catch (error) {
-    logger.error('[Stations] Error setting inventory', error);
-    res.status(500).json({ error: 'Failed to set inventory' });
-  }
-});
-
-// POST /api/admin/stations/:id/inventory/adjust - Adjust inventory (delta)
-router.post('/:id/inventory/adjust', requireAdmin, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { item, delta, note } = req.body;
-    const adminUid = req.firebaseUser!.uid;
-    
-    // Validate item type
-    const validItems = ['shampoo', 'conditioner', 'disinfectant', 'fragrance'];
-    if (!validItems.includes(item)) {
-      return res.status(400).json({ error: 'Invalid item type' });
-    }
-    
-    // Validate delta
-    if (typeof delta !== 'number') {
-      return res.status(400).json({ error: 'delta must be a number' });
-    }
-    
-    // Fetch current inventory
-    const inventoryDoc = await db.collection('station_inventory').doc(id).get();
-    const currentOnHand = inventoryDoc.exists 
-      ? (inventoryDoc.data()?.items?.[item]?.onHand || 0)
-      : 0;
-    
-    const newOnHand = currentOnHand + delta;
-    
-    // Prevent negative inventory
-    if (newOnHand < 0) {
-      return res.status(400).json({ 
-        error: 'Adjustment would result in negative inventory',
-        currentOnHand,
-        requestedDelta: delta,
-        wouldBe: newOnHand,
-      });
-    }
-    
-    const now = new Date();
-    const inventoryRef = db.collection('station_inventory').doc(id);
-    
-    await inventoryRef.set({
-      stationId: id,
-      items: {
-        [item]: {
-          onHand: newOnHand,
-          uom: 'L',
-          updatedAt: now,
-        }
-      }
-    }, { merge: true });
-    
-    // Log event
-    const eventId = nanoid(20);
-    await db.collection('station_events').doc(eventId).set({
-      id: eventId,
-      stationId: id,
-      type: 'inventory_adjusted',
-      at: now,
-      by: adminUid,
-      data: { 
-        item, 
-        delta, 
-        previousOnHand: currentOnHand,
-        newOnHand,
-        note: note || null,
-      },
-    });
-    
-    logger.info('[Stations] Inventory adjusted', { stationId: id, item, delta, newOnHand });
-    
-    res.json({ 
-      success: true, 
-      message: 'Inventory adjusted successfully',
-      newOnHand,
-    });
-  } catch (error) {
-    logger.error('[Stations] Error adjusting inventory', error);
-    res.status(500).json({ error: 'Failed to adjust inventory' });
-  }
-});
+// NOTE (2026-06-15): the flat-model POST /:id/inventory/set and /adjust handlers
+// that lived here were REMOVED. They were the active (first-registered) handlers
+// but were BROKEN against the live client: they read { item, onHand/delta } and
+// wrote to the flat `station_inventory/:id` doc, while the admin UI
+// (MobileStationSheet / OpsTodayPage) sends { sku, qty/delta } and READS
+// inventory from the `stations/:id/inventory` subcollection (field `qty`, via
+// GET /api/admin/stations/:id). So every save returned 400 "Invalid item type"
+// AND would have written to a store the UI never reads. The correct SKU/
+// subcollection handlers (further below) are now the single source of truth for
+// these two routes — they match the client payload and the read path.
 
 // PUT /api/admin/stations/:id/inventory/:itemId - Update specific inventory item (subcollection)
 router.put('/:id/inventory/:itemId', requireAdmin, async (req: Request, res: Response) => {
