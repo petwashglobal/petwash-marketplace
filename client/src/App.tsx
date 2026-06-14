@@ -158,6 +158,7 @@ const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
 const Pets = lazy(() => import("@/pages/Pets"));
+const PetPassport = lazy(() => import("@/pages/PetPassport"));
 // PR-PET-4: pet onboarding luxury shell. Mounted only when
 // VITE_PET_ONBOARDING_SHELL_ENABLED='true'. Local-state only, no
 // backend persistence, no schema writes. See
@@ -1175,6 +1176,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Protected route - Pet Profiles */}
+        <Route path="/pets/:petId/passport">
+          {() => (
+            <RequireAuth>
+              <PetPassport />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/pets">
           {() => (
             <RequireAuth>
