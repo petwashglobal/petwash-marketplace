@@ -1,309 +1,50 @@
-import { Client } from '@hubspot/api-client';
-import { logger, generateCorrelationId } from './lib/logger';
+/**
+ * HubSpot CRM integration — DISABLED 2026-06 (Replit wire cut).
+ *
+ * The previous implementation fetched a HubSpot access token through Replit's
+ * connector proxy (REPLIT_CONNECTORS_HOSTNAME + X_REPLIT_TOKEN). That put Replit
+ * in the path of our CRM data, and it was already non-functional in production
+ * (Cloud Run has no Replit env → the connector call failed). Per CEO directive
+ * to remove any Replit ability over our systems, these are now no-ops: they
+ * touch nothing external and never contact Replit.
+ *
+ * Callers (privilege-loyalty, complete-registration, routes.ts signup) invoke
+ * these best-effort (try/catch, non-blocking), so no-ops are safe — CRM sync
+ * simply does nothing until a REAL, direct HubSpot integration (private-app
+ * token via HUBSPOT_ACCESS_TOKEN, no Replit) is built and wired here.
+ */
+import { logger } from './lib/logger';
 
-let connectionSettings: any;
-
-async function getAccessToken() {
-  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
-  }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  try {
-    const response = await fetch(
-      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=hubspot',
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HubSpot connection API returned ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    connectionSettings = data.items?.[0];
-
-    const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-    if (!connectionSettings || !accessToken) {
-      throw new Error('HubSpot not connected or access token missing');
-    }
-    return accessToken;
-  } catch (error) {
-    logger.error('Failed to get HubSpot access token', error, { hostname });
-    throw error;
+let warnedOnce = false;
+function noteDisabled() {
+  if (!warnedOnce) {
+    logger.info('[HubSpot] CRM sync disabled (Replit connector removed). No-op until a direct HubSpot token integration is added.');
+    warnedOnce = true;
   }
 }
 
-// WARNING: Never cache this client.
-// Access tokens expire, so a new client must be created each time.
-export async function getUncachableHubSpotClient() {
-  const accessToken = await getAccessToken();
-  return new Client({ accessToken });
+/** No-op: never returns a live client (Replit connector path removed). */
+export async function getUncachableHubSpotClient(): Promise<null> {
+  noteDisabled();
+  return null;
 }
 
-// Simple in-memory retry queue
-interface RetryTask {
-  id: string;
-  fn: () => Promise<any>;
-  attempts: number;
-  maxAttempts: number;
-  nextRetryAt: number;
-}
-
-const retryQueue: Map<string, RetryTask> = new Map();
-
-async function enqueueRetry(taskId: string, fn: () => Promise<any>, attempts = 0) {
-  const maxAttempts = 3;
-  const backoffMs = Math.min(1000 * Math.pow(2, attempts), 30000); // Exponential backoff, max 30s
-  
-  retryQueue.set(taskId, {
-    id: taskId,
-    fn,
-    attempts,
-    maxAttempts,
-    nextRetryAt: Date.now() + backoffMs
-  });
-  
-  logger.info(`HubSpot task ${taskId} queued for retry`, { backoffMs, attempt: attempts + 1, maxAttempts });
-}
-
-// Process retry queue periodically
-setInterval(async () => {
-  const now = Date.now();
-  for (const [taskId, task] of Array.from(retryQueue.entries())) {
-    if (task.nextRetryAt <= now) {
-      retryQueue.delete(taskId);
-      try {
-        await task.fn();
-        logger.info(`HubSpot task ${taskId} completed on retry`);
-      } catch (error: any) {
-        if ((error.statusCode === 429 || error.statusCode >= 500) && task.attempts < task.maxAttempts - 1) {
-          await enqueueRetry(taskId, task.fn, task.attempts + 1);
-        } else {
-          logger.error(`HubSpot task ${taskId} failed permanently`, error, { taskId });
-        }
-      }
-    }
-  }
-}, 5000); // Check every 5 seconds
-
-// Helper function to sync Firebase user to HubSpot contact with retry
-export async function syncUserToHubSpot(data: {
-  uid: string;
+/** No-op CRM contact sync. Safe to call; does nothing. */
+export async function syncUserToHubSpot(_data: {
   email: string;
   firstname?: string;
   lastname?: string;
   phone?: string;
-  lang?: string;
-  dob?: string;
-  country?: string;
-  loyaltyProgram?: boolean;
-  reminders?: boolean;
-  marketing?: boolean;
-  consent?: boolean;
-  consentTimestamp?: string;
-  petName?: string;
-  petBreed?: string;
-  petAge?: string;
-  petWeight?: string;
-}) {
-  const correlationId = `sync-${data.uid}-${Date.now()}`;
-  
-  const syncTask = async () => {
-    try {
-      const hubspotClient = await getUncachableHubSpotClient();
-      
-      const contactProperties: any = {
-        email: data.email,
-        lifecyclestage: 'subscriber'
-      };
-      
-      if (data.firstname) contactProperties.firstname = data.firstname;
-      if (data.lastname) contactProperties.lastname = data.lastname;
-      if (data.phone) contactProperties.phone = data.phone;
-      if (data.uid) contactProperties.company = `⁦Pet Wash™⁩`;
-      if (data.lang) contactProperties.hs_language = data.lang === 'he' ? 'he' : 'en';
-      if (data.dob) contactProperties.date_of_birth = data.dob;
-      if (data.country) contactProperties.country = data.country;
-
-      const customProperties: any = {};
-      if (data.uid) customProperties.petwash_uid = data.uid;
-      if (data.loyaltyProgram !== undefined) customProperties.petwash_loyalty = String(data.loyaltyProgram);
-      if (data.reminders !== undefined) customProperties.petwash_reminders = String(data.reminders);
-      if (data.marketing !== undefined) customProperties.petwash_marketing = String(data.marketing);
-      if (data.consent !== undefined) customProperties.petwash_consent = String(data.consent);
-      if (data.consentTimestamp) customProperties.consent_timestamp = data.consentTimestamp;
-      if (data.petName) customProperties.petwash_pet_name = data.petName;
-      if (data.petBreed) customProperties.petwash_pet_breed = data.petBreed;
-      if (data.petAge) customProperties.petwash_pet_age = data.petAge;
-      if (data.petWeight) customProperties.petwash_pet_weight = data.petWeight;
-
-      async function createOrUpdateContact(props: any) {
-        try {
-          const response = await hubspotClient.crm.contacts.basicApi.create({
-            properties: props,
-            associations: []
-          });
-          logger.info('HubSpot contact created', { correlationId, contactId: response.id });
-          return response;
-        } catch (createError: any) {
-          if (createError.code === 409 || createError.body?.category === 'CONFLICT') {
-            logger.info('Contact exists, updating', { correlationId });
-          
-          // Extract existing contact ID from error message
-          const errorBody = createError.body;
-          const existingIdMatch = errorBody?.message?.match(/Existing ID: (\d+)/);
-          
-          if (existingIdMatch) {
-            const existingId = existingIdMatch[1];
-            const response = await hubspotClient.crm.contacts.basicApi.update(
-              existingId,
-              { properties: props }
-            );
-            logger.info('HubSpot contact updated via error ID', { correlationId, contactId: response.id });
-            return response;
-          }
-          
-          const searchResponse = await hubspotClient.crm.contacts.searchApi.doSearch({
-            filterGroups: [{
-              filters: [{
-                propertyName: 'email',
-                operator: 'EQ' as any,
-                value: data.email
-              }]
-            }],
-            properties: ['email'],
-            limit: 1
-          });
-
-          if (searchResponse.results.length > 0) {
-            const response = await hubspotClient.crm.contacts.basicApi.update(
-              searchResponse.results[0].id,
-              { properties: props }
-            );
-            logger.info('HubSpot contact updated via search', { correlationId, contactId: response.id });
-            return response;
-          }
-        }
-        throw createError;
-        }
-      }
-
-      const allProperties = { ...contactProperties, ...customProperties };
-      try {
-        return await createOrUpdateContact(allProperties);
-      } catch (error: any) {
-        if (error.body?.category === 'VALIDATION_ERROR' && error.body?.message?.includes('PROPERTY_DOESNT_EXIST')) {
-          logger.warn('HubSpot custom properties not created yet, syncing standard fields only', { correlationId });
-          return await createOrUpdateContact(contactProperties);
-        }
-        throw error;
-      }
-    } catch (error: any) {
-      logger.error('HubSpot sync failed', error, { correlationId });
-      
-      if (error.statusCode === 429 || error.statusCode >= 500) {
-        throw error;
-      }
-      
-      throw error;
-    }
-  };
-
-  try {
-    return await syncTask();
-  } catch (error: any) {
-    if (error.statusCode === 429 || error.statusCode >= 500) {
-      await enqueueRetry(correlationId, syncTask, 0);
-      return { queued: true, correlationId };
-    }
-    throw error;
-  }
+  [key: string]: unknown;
+}): Promise<void> {
+  noteDisabled();
 }
 
-// Helper function to track custom events in HubSpot
+/** No-op CRM event tracking. Safe to call; does nothing. */
 export async function trackHubSpotEvent(
-  email: string, 
-  eventName: string, 
-  properties?: Record<string, any>
-) {
-  const correlationId = `event-${email}-${eventName}-${Date.now()}`;
-  
-  const trackTask = async () => {
-    try {
-      const hubspotClient = await getUncachableHubSpotClient();
-      
-      // Find contact by email
-      const searchResponse = await hubspotClient.crm.contacts.searchApi.doSearch({
-        filterGroups: [{
-          filters: [{
-            propertyName: 'email',
-            operator: 'EQ' as any,
-            value: email
-          }]
-        }],
-        properties: ['email'],
-        limit: 1
-      });
-
-      if (searchResponse.results.length === 0) {
-        logger.warn('HubSpot contact not found for email', { correlationId, email });
-        return null;
-      }
-
-      const contactId = searchResponse.results[0].id;
-
-      // Create engagement/note for the event
-      await hubspotClient.crm.objects.notes.basicApi.create({
-        properties: {
-          hs_note_body: `Event: ${eventName}\n${properties ? JSON.stringify(properties, null, 2) : ''}`,
-          hs_timestamp: new Date().toISOString()
-        },
-        associations: [{
-          to: { id: contactId },
-          types: [{
-            associationCategory: 'HUBSPOT_DEFINED' as any,
-            associationTypeId: 202 // Note to Contact association
-          }]
-        }]
-      });
-
-      logger.info('HubSpot event tracked', { correlationId, eventName, contactId });
-      return contactId;
-    } catch (error: any) {
-      logger.error('HubSpot event tracking failed', error, { correlationId });
-      
-      // Retry on rate limit or server errors
-      if (error.statusCode === 429 || error.statusCode >= 500) {
-        throw error;
-      }
-      
-      throw error;
-    }
-  };
-
-  try {
-    return await trackTask();
-  } catch (error: any) {
-    if (error.statusCode === 429 || error.statusCode >= 500) {
-      await enqueueRetry(correlationId, trackTask, 0);
-      return { queued: true, correlationId };
-    }
-    throw error;
-  }
+  _email: string,
+  _eventName: string,
+  _properties?: Record<string, unknown>,
+): Promise<void> {
+  noteDisabled();
 }
