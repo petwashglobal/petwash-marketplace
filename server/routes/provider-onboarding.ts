@@ -789,8 +789,6 @@ router.post('/apply', upload.fields([
       selfDeclarationNoRelevantConvictions,
       selfDeclarationAt,
       selfDeclarationIp,
-      declarationAttestation: sealedDeclarationAttestation,
-      declarationSignatureSha256: sealedDeclarationAttestation?.signatureSha256 || null,
       requiresEnhancedVerification,
       enhancedVerificationReasons,
       petFirstAidCertUrl: petFirstAidCertUrl || null,
@@ -806,6 +804,30 @@ router.post('/apply', upload.fields([
       internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, idNumber: idNumber || null, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
       status: 'pending',
     }).returning();
+
+    // ── Persist the sealed declaration e-signature (best-effort, AFTER insert) ──
+    // Deliberately NOT part of the INSERT above: the declaration_attestation /
+    // declaration_signature_sha256 columns are added via out-of-band drizzle-kit
+    // push, but deploys auto-run on merge — so the code can reach prod BEFORE the
+    // columns exist. Writing them inline would make the whole INSERT fail
+    // ("column does not exist") and break ALL provider submissions. As a separate
+    // try/catch'd UPDATE, a missing-column error is swallowed (onboarding already
+    // succeeded) and the write simply starts working once the columns are pushed.
+    if (sealedDeclarationAttestation && application?.id) {
+      try {
+        await db
+          .update(providerApplications)
+          .set({
+            declarationAttestation: sealedDeclarationAttestation,
+            declarationSignatureSha256: sealedDeclarationAttestation.signatureSha256,
+          })
+          .where(eq(providerApplications.id, application.id));
+      } catch (sealPersistErr: any) {
+        logger.warn('[Provider Onboarding] Declaration attestation persist skipped (columns not migrated yet?)', {
+          applicationId, error: sealPersistErr?.message,
+        });
+      }
+    }
 
     // Increment invite code usage only if a valid code was used
     if (code && inviteCode) {
