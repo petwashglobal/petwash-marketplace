@@ -98,12 +98,16 @@ const DEFAULTS: SystemConfigMap = {
   'matching.boost_new_providers': true,
   'ff.supplier_invoice_control.enabled': false,
   'ff.supplier_invoice_control.sumit_send.enabled': false,
-  // Maya reception/intake (Stage 1b) — default OFF
-  'ff.maya.enabled': false,
-  'ff.maya.provider_intake.enabled': false,
-  'ff.maya.booking_intake.enabled': false,
-  'ff.maya.tasks.enabled': false,
-  'ff.maya.escalations.enabled': false,
+  // Maya reception/intake (Stage 1b) — ENABLED 2026-06-14 (CEO directive: "we need
+  // all, shift to our control"). Maya is DRAFT-ONLY (creates provider/booking drafts,
+  // tasks, escalations — never writes wallet/payment/confirm) and every route sits
+  // behind the full admin security stack, so turning it on is safe. Operator can
+  // still disable any of these at runtime in /admin/system-config.
+  'ff.maya.enabled': true,
+  'ff.maya.provider_intake.enabled': true,
+  'ff.maya.booking_intake.enabled': true,
+  'ff.maya.tasks.enabled': true,
+  'ff.maya.escalations.enabled': true,
   // Maya Voice (Stage 3A) — inbound activated per CEO request 2026-05-25
   // (+16292059682 was hitting the 503 "busy" gate on every call).
   //
