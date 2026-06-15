@@ -204,36 +204,48 @@ export class SumitClient {
       };
     }
 
-    // Body shape: body-embedded Credentials per SDD.
-    // The "Items" array uses one line per invoice. Quantity 1, unit price
-    // = amount-before-vat (SUMIT applies VAT per item per its own rules).
+    // Body shape verified against the OfficeGuy/SUMIT swagger (the public
+    // ballasandballas/office_guy_api generated client, fetched 2026-06):
+    //   { Credentials, Details: { Customer, Type, ... }, Items, Payments, VATIncluded }
+    // — NOT a flat root with an integer DocumentType. `Details.Type` is a STRING
+    // enum: "Invoice" = חשבונית מס (tax invoice), "InvoiceAndReceipt" = חשבונית
+    // מס/קבלה (paid B2C), "Receipt" = קבלה, "CreditInvoice" = זיכוי, etc.
+    // Customer lives INSIDE Details. Keys are OfficeGuy PascalCase JSON.
+    // STILL verify exact key casing + the endpoint /api prefix in SANDBOX
+    // (SUMIT_SANDBOX=true) before any production send — see
+    // docs/finance/sumit-activation-checklist-2026-06-15.md.
     const body = {
       Credentials: {
         CompanyID: env.companyId,
         APIKey: env.apiKey,
       },
-      // 1 = TaxInvoice (חשבונית מס). VERIFY against swagger when
-      // available — could also be 2/3/n.
-      DocumentType: 1,
-      Customer: {
-        Name: input.customer.name,
-        SearchMode: 0,
-        ExternalIdentifier: input.customer.businessNumber || undefined,
-        EmailAddress: input.customer.email || undefined,
+      Details: {
+        // "Invoice" = חשבונית מס. For a document issued together with payment
+        // use "InvoiceAndReceipt"; for a refund use "CreditInvoice".
+        Type: 'Invoice',
+        Customer: {
+          Name: input.customer.name,
+          // company_number = the customer's registered VAT/company number.
+          CompanyNumber: input.customer.businessNumber || undefined,
+          EmailAddress: input.customer.email || undefined,
+          // external_identifier ties the SUMIT customer back to ours.
+          ExternalIdentifier: input.customer.businessNumber || undefined,
+        },
+        Description: input.description,
+        Currency: input.currency,
+        Language: 'he',
+        // Document-level idempotency hint (plus the Idempotency-Key header below).
+        ExternalIdentifier: input.idempotencyKey,
       },
       Items: [
         {
           Item: { Name: input.description },
           Quantity: 1,
+          // UnitPrice is in ILS, before VAT. VATIncluded:false → SUMIT adds VAT.
           UnitPrice: input.amountBeforeVat,
-          Currency: input.currency,
-          // VAT rules per SUMIT's per-item config; we leave them to compute.
         },
       ],
-      // Idempotency hint — exact field name unverified. Sending both
-      // common variants (ExternalIdentifier on the doc root, plus a
-      // header) for resilience until verified.
-      ExternalIdentifier: input.idempotencyKey,
+      VATIncluded: false,
     };
 
     const url = `${env.baseUrl}/accounting/documents/create/`;
