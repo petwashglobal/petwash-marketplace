@@ -13842,6 +13842,51 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // Gap 2: app-session writer. Records one row per app/web/kiosk session for
+  // funnel/engagement analytics — keyed by a PSEUDONYMOUS subject id (hashed,
+  // never PII), never the real uid. `start` inserts and returns the row id;
+  // `end` updates duration + screens viewed. Purely additive; never breaks the
+  // client (always 200), since analytics must not interrupt the user.
+  //   POST /api/track/session  { action:'start', surface, sessionId?, deviceId? }
+  //                            { action:'end', id, screensViewed? }
+  app.post('/api/track/session', async (req, res) => {
+    try {
+      const { appSessions } = await import('@shared/schema');
+      const { db } = await import('./db');
+      const { eq, sql } = await import('drizzle-orm');
+      const body = req.body || {};
+      const surface = ['app', 'web', 'station_kiosk'].includes(body.surface) ? body.surface : 'web';
+
+      if (body.action === 'end' && body.id) {
+        await db.update(appSessions)
+          .set({
+            endedAt: new Date(),
+            screensViewed: Number.isFinite(body.screensViewed) ? Math.trunc(body.screensViewed) : undefined,
+            durationS: sql`EXTRACT(EPOCH FROM (now() - ${appSessions.startedAt}))::int`,
+          })
+          .where(eq(appSessions.id, Number(body.id)));
+        return res.json({ success: true });
+      }
+
+      // default: start a session
+      const seed = String(body.sessionId || `${req.ip || 'noip'}|${req.headers['user-agent'] || 'noua'}`);
+      const subjectId = crypto.createHash('sha256').update(`apps:${seed}`).digest('hex').slice(0, 32);
+      const deviceId = body.deviceId
+        ? crypto.createHash('sha256').update(`dev:${String(body.deviceId)}`).digest('hex').slice(0, 32)
+        : null;
+      const [row] = await db.insert(appSessions).values({
+        subjectId,
+        surface,
+        deviceId,
+        startedAt: new Date(),
+      }).returning({ id: appSessions.id });
+      return res.json({ success: true, id: row?.id });
+    } catch (error: any) {
+      logger.error('Session tracking error', error);
+      res.json({ success: false }); // never break the client
+    }
+  });
+
   // Get user interaction logs (admin only)
   app.get('/api/admin/interactions', requireAdmin, async (req: any, res) => {
     try {
