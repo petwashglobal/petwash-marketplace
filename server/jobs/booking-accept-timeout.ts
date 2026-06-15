@@ -27,6 +27,7 @@ import { bookingRequests } from '@shared/schema';
 import { eq, and, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { applyTransition, type BookingStatus } from '@shared/lib/bookingStateMachine';
+import { releaseSlotLock } from '../lib/marketplaceSlotLock';
 // WalletService and notificationDispatcher are lazy-loaded inside
 // processStaleAcceptRequests so the pure helpers above (computeCutoff,
 // shouldAutoDecline, getAcceptTimeoutMs, getAcceptTimeoutPollMs) can
@@ -143,6 +144,12 @@ export async function processStaleAcceptRequests(): Promise<{
         .where(eq(bookingRequests.requestId, booking.requestId));
 
       declined += 1;
+
+      // Free the provider's EXCLUDE slot-lock so the auto-declined slot is
+      // re-bookable (otherwise the lock poisons the calendar forever).
+      // Idempotent, best-effort.
+      await releaseSlotLock(db, booking.requestId)
+        .catch((e: any) => logger.warn('[AcceptTimeout] slot-lock release failed', { requestId: booking.requestId, error: e?.message }));
 
       // Release wallet hold if one was placed when the request was created.
       if (booking.financeState === 'hold_active' && Number(booking.walletHoldCents) > 0) {

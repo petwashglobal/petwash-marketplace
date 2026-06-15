@@ -51,7 +51,7 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { applyTransition, type BookingActor, type BookingStatus } from '@shared/lib/bookingStateMachine';
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
-import { acquireSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
+import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -977,6 +977,10 @@ router.post('/:requestId/respond', async (req, res) => {
       await db.update(bookingRequests)
         .set(updateData)
         .where(eq(bookingRequests.requestId, requestId));
+      // Free the provider's calendar — a declined request must not keep its
+      // EXCLUDE slot-lock, or the slot is poisoned forever. Idempotent, best-effort.
+      await releaseSlotLock(db, requestId)
+        .catch((e: any) => logger.warn('[BookingRequests] slot-lock release failed (decline)', { requestId, error: e?.message }));
     }
 
     // ── Calendar sync moved to payment-confirmation truth ────────────────────
@@ -2390,6 +2394,10 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
 
+    // Free the provider's calendar slot on emergency cancel. Idempotent, best-effort.
+    await releaseSlotLock(db, requestId)
+      .catch((e: any) => logger.warn('[BookingRequests] slot-lock release failed (emergency-cancel)', { requestId, error: e?.message }));
+
     // Real Firestore escrow refund — customer always gets full refund on emergency cancel
     if (refundCents > 0) {
       setImmediate(async () => {
@@ -2613,6 +2621,11 @@ router.post('/:requestId/cancel', async (req, res) => {
         updatedAt: new Date(),
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
+
+    // Free the provider's calendar slot — a cancelled booking must release its
+    // EXCLUDE slot-lock so the time becomes re-bookable. Idempotent, best-effort.
+    await releaseSlotLock(db, requestId)
+      .catch((e: any) => logger.warn('[BookingRequests] slot-lock release failed (cancel)', { requestId, error: e?.message }));
 
     // ── Calendar sync on CANCEL (Phase B1) ───────────────────────────────────
     // Remove the Google Calendar event so a stale invite doesn't sit on
