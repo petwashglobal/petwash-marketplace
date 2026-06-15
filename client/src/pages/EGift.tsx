@@ -717,7 +717,7 @@ function EgiftJourneyPanel({ lang }: { lang: string }) {
               {isHebrew ? 'כל מתנה יודעת מה לעשות אחר כך' : 'Every gift knows what happens next'}
             </h2>
           </div>
-          <p className="text-xs md:text-sm text-ink-400 max-w-md leading-relaxed">
+          <p className="text-xs md:text-sm text-[#595959] max-w-md leading-relaxed">
             {isHebrew
               ? 'בנוי כדי למנוע בלבול, יתרות אבודות או ערבוב בין כסף אמיתי לקרדיט חינמי.'
               : 'Designed to prevent confusion, lost balances, or mixing real paid value with free credit.'}
@@ -726,12 +726,12 @@ function EgiftJourneyPanel({ lang }: { lang: string }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {items.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="bg-white p-4" style={{ border: '1px solid rgba(10,10,10,0.08)', borderRadius: '6px' }}>
-              <div className="w-10 h-10 flex items-center justify-center mb-3" style={{ borderRadius: '4px', background: '#0A0A0A' }}>
-                <Icon className="w-5 h-5" style={{ color: '#b0841c' }} />
+            <div key={title} className="bg-white p-4" style={{ border: '1px solid #ECE4D2', borderRadius: '6px' }}>
+              <div className="w-10 h-10 flex items-center justify-center mb-3" style={{ borderRadius: '4px', background: '#F7F4EE', border: '1px solid #E2D6B8' }}>
+                <Icon className="w-5 h-5" style={{ color: '#735511' }} />
               </div>
               <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
-              <p className="text-xs text-ink-400 leading-relaxed mt-2">{body}</p>
+              <p className="text-xs text-[#595959] leading-relaxed mt-2">{body}</p>
             </div>
           ))}
         </div>
