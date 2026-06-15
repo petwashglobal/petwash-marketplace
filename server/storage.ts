@@ -1559,7 +1559,12 @@ export class DatabaseStorage implements IStorage {
       return { success: false, error: 'UNAUTHORIZED' };
     }
     
-    if (voucher.status === 'USED' || voucher.status === 'CANCELLED' || voucher.status === 'EXPIRED') {
+    // 'REDEEMED' is the terminal state set when a gift card is activated to a
+    // wallet (gift-cards.ts activate-wallet). Without blocking it here, a voucher
+    // already converted to wallet credit could ALSO be spent at a station —
+    // a double-spend. Partial station redemptions never use 'REDEEMED' (they set
+    // 'USED' when the balance hits zero), so blocking it breaks no legit flow.
+    if (voucher.status === 'USED' || voucher.status === 'REDEEMED' || voucher.status === 'CANCELLED' || voucher.status === 'EXPIRED') {
       return { success: false, error: 'INVALID_STATUS' };
     }
     
