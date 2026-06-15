@@ -12,6 +12,7 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { getLoyaltyStatus, type LoyaltyUser } from './loyalty';
 import { bookingPolicyEngine, type CancellationResult } from './BookingPolicyEngine';
 import { countCalendarDays } from '../lib/calendar-days';
+import escrowService from './EscrowService';
 
 interface AvailabilityResult {
   available: boolean;
@@ -203,6 +204,70 @@ export class SitterAdvancedBookingEngine {
       currency,
       sitterPayout,
     };
+  }
+
+  /**
+   * Adapter for the sitter-suite routes, which call quotePrice({...}) with a
+   * params object (matching the BaseLuxuryBookingEngine interface) rather than
+   * calculatePrice()'s positional args. Previously these calls threw
+   * "quotePrice is not a function" — every sitter price quote crashed.
+   */
+  async quotePrice(params: {
+    providerId: string;
+    serviceType: string;
+    startDate: Date;
+    endDate: Date;
+    userId?: string;
+    ipAddress: string;
+    metadata?: any;
+  }): Promise<PricingBreakdown> {
+    return this.calculatePrice(
+      params.providerId,
+      params.serviceType,
+      params.startDate,
+      params.endDate,
+      params.ipAddress,
+      params.userId,
+    );
+  }
+
+  /**
+   * Confirm a sitter booking by moving the already-captured payment into escrow.
+   *
+   * The route (sitter-suite.ts) captures payment via Nayax FIRST, then calls this.
+   * Previously confirmBooking() did not exist → it threw, so the customer was
+   * CHARGED but the booking never confirmed and no escrow record existed (money
+   * limbo). This now holds the funds in the real escrowService (idempotent by
+   * bookingId) so they can be released to the provider on completion.
+   *
+   * FAIL CLOSED: if escrow can't be created we THROW, so the caller's try/catch
+   * does NOT mark the booking 'confirmed'. A confirmed booking with no escrow is
+   * a money leak — same posture as BaseLuxuryBookingEngine.
+   */
+  async confirmBooking(
+    bookingId: string,
+    pricing: { totalPrice: number; currency?: string;[k: string]: any },
+    customerId: string,
+    providerId: string,
+  ): Promise<{ success: true; escrowReferenceId: string }> {
+    const escrow = await escrowService.createEscrowPayment(
+      bookingId,
+      customerId,
+      providerId,
+      pricing.totalPrice,
+      undefined,
+      {
+        currency: pricing.currency || 'ILS',
+        engine: 'SitterAdvancedBookingEngine',
+        idempotencyKey: `sitter:${bookingId}`,
+      },
+    );
+    logger.info('[Sitter Escrow] Funds held in escrow on confirm', {
+      bookingId,
+      escrowReferenceId: escrow.id,
+      amount: pricing.totalPrice,
+    });
+    return { success: true, escrowReferenceId: escrow.id };
   }
 
   /**

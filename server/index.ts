@@ -612,6 +612,15 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
     // HMAC-verified webhooks are authenticated out-of-band; not CSRF-vulnerable.
     if (/^\/api\/webhooks\//.test(req.path)) return true;
+    // WebAuthn / passkey (Face ID, Touch ID) ceremonies are inherently CSRF-safe:
+    // every register/authenticate step requires a SERVER-ISSUED challenge (stored in
+    // a signed, HMAC'd cookie) AND the authenticator signs over the page origin, which
+    // verifyRegistration/AuthenticationResponse checks via expectedOrigin/expectedRPID.
+    // A cross-origin attacker can neither read the challenge nor produce a valid signed
+    // assertion. Without this skip the @simplewebauthn/browser client (which sends no
+    // X-CSRF-Token) gets EBADCSRFTOKEN on /register/options + /register/verify, so
+    // passkey ENROLLMENT silently fails — the reported "Face ID doesn't work" bug.
+    if (/^\/api\/webauthn\//.test(req.path)) return true;
     // Maya voice provider webhooks (Twilio, Vapi, Retell, etc.) are server-to-server
     // and authenticated by provider HMAC at the route level (e.g. X-Twilio-Signature
     // in TwilioVoiceProvider). Browsers never originate these requests, so there is
