@@ -15,6 +15,7 @@
  */
 
 import { logger } from '../lib/logger';
+import { logAuditEvent } from '../middleware/auditLog';
 
 export interface EmailSendRecord {
   ts: number;
@@ -127,6 +128,21 @@ class EmailSpendGuard {
   }
 
   private async fireAlarm(level: string, details: string, triggeredBy: string) {
+    // Non-email channel FIRST. A spend alarm — especially CIRCUIT OPEN — must be
+    // visible even when email itself is blocked or no alarm callback is set.
+    // Otherwise the only alert is an email we cannot send (circular blind spot).
+    const isCircuitOpen = level.includes('CIRCUIT OPEN');
+    logger.error(`[EmailSpendGuard] 🚨 ${level} — ${details}`, {
+      triggeredBy, hourly: this.hourly.count, daily: this.daily.count,
+    });
+    logAuditEvent({
+      actionType: 'EMAIL_SPEND_GUARD_ALARM',
+      targetType: 'email_system',
+      targetId: triggeredBy,
+      severity: isCircuitOpen ? 'critical' : 'warning',
+      metadata: { level, details, hourlyCount: this.hourly.count, dailyCount: this.daily.count },
+    }).catch(() => { /* helper swallows; double-guard */ });
+
     if (!this.alarmCallback) return;
     const recent = this.recentSends.slice(0, 10)
       .map(r => `<tr><td>${new Date(r.ts).toISOString()}</td><td>${r.service}</td><td>${r.recipientMasked}</td><td>${r.subject.slice(0, 60)}</td></tr>`)
