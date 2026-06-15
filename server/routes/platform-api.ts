@@ -155,6 +155,25 @@ router.post(
         });
       }
 
+      // ── Price-tampering guard ────────────────────────────────────────────────
+      // EnhancedBookingService prices this booking as Σ(item.quantity × item.unitPrice)
+      // straight from the request body — items[].unitPrice is the ONLY price source.
+      // Letting a regular customer supply items therefore lets them set their own
+      // total (including ₪0). This raw engine has no server-side rate card, so only
+      // admins / trusted platform integrations may pass priced items here; consumer
+      // bookings must go through the server-priced flows (/api/booking-requests,
+      // /api/marketplace-bookings). Until this engine is consolidated, block
+      // client-supplied pricing for non-admins.
+      if (parsed.data.items?.length && !isAdmin(req)) {
+        return res.status(403).json({
+          error: {
+            code: "CLIENT_PRICING_FORBIDDEN",
+            message: "Client-supplied item pricing is not permitted. Please use the standard booking flow.",
+            requestId: req.platformCtx?.requestId,
+          },
+        });
+      }
+
       const platform = req.platformCtx!.platform;
       const booking = await enhancedBookingService.createBooking(
         {
