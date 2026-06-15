@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { requireValidFileContent } from '../lib/fileMagicValidation';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import {
   kycOrchestrator,
@@ -24,6 +25,8 @@ import {
 
 const router = Router();
 
+const KYC_ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -31,8 +34,7 @@ const upload = multer({
     files: 3,
   },
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-    if (allowed.includes(file.mimetype)) {
+    if (KYC_ALLOWED_MIMES.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error('Only JPEG, PNG, WebP, and HEIC images are accepted'));
@@ -53,6 +55,7 @@ router.post(
     { name: 'idFront', maxCount: 1 },
     { name: 'idBack', maxCount: 1 },
   ]),
+  requireValidFileContent(KYC_ALLOWED_MIMES),
   async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.uid || (req as any).userId;
