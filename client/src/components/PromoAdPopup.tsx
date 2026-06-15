@@ -36,17 +36,13 @@ function isPublicSafePromoImage(src: string): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_PROMO: PromoAdConfig = {
-  id: 'petwash-platform-2026-image',
+  id: 'petwash-platform-2026-editorial',
   template: 'poster',
-  // Real Smart Hub hero image. PetTrek "Coming Soon" tag MUST be baked
-  // into this image (the popup itself does not overlay any text on top).
-  // File lives at: client/public/brand/petwash-smart-hub-2026.PNG
-  // (uppercase .PNG matches the asset committed to main; case matters
-  // on Linux/Cloud Run — do NOT change to .png unless the file is
-  // also renamed.)
-  // If the file is missing, PosterTemplate falls back to a clean branded
-  // card so the popup never breaks.
-  imageUrl: '/brand/petwash-smart-hub-2026.PNG',
+  // Editorial splash — no baked image. The previous glossy Smart-Hub PNG
+  // carried a tinted (non-white) background + dated bevelled icons that read
+  // off-brand against the pure-white luxury shell. PosterTemplate now renders a
+  // typographic maison splash (serif wordmark + restrained gold rule) — all
+  // type, no asset, so it's pure-white and crisp on every device.
   title: 'PetWash™',
   titleHe: 'PetWash™',
   subtitle: 'ONE WORLD. EVERY PET.',
@@ -476,57 +472,43 @@ interface PosterTemplateProps extends TemplateProps {
  * tinted edge sits cleanly on a brand-white field instead of a black
  * frame. Pixel-level audit of the asset is intentionally separate.
  */
-function PosterTemplate({ config, onClose: _onClose }: PosterTemplateProps) {
-  const [imgFailed, setImgFailed] = useState(false);
-
-  // Safety guard: block any image that looks like a backend/dev screenshot
-  const imageIsSafe = !!(config.imageUrl && isPublicSafePromoImage(config.imageUrl));
-  const showImage = config.imageUrl && imageIsSafe && !imgFailed;
-
-  if (!imageIsSafe && config.imageUrl) {
-    console.warn('[PromoAdPopup] Blocked unsafe image URL from public popup:', config.imageUrl);
-  }
-
-  if (showImage) {
-    return (
-      <div className="absolute inset-0 bg-white">
-        <img
-          src={config.imageUrl}
-          alt="Pet Wash™ Smart Hub"
-          // Issue #153 PR-WHITE-2 — luxury responsive layout.
-          //   • object-contain  → always fits the viewport without cropping
-          //                       the artwork's own white margin.
-          //   • bg-white shell  → pillarbox/letterbox space (when device
-          //                       aspect ratio ≠ artwork) reads as pure
-          //                       brand-white, never grey.
-          //   • select-none + draggable=false + tap-highlight transparent
-          //                     → premium mobile feel; no accidental
-          //                       text-select halo on iPhone Safari, no
-          //                       Android long-press image-save sheet.
-          // Looks correct on small iPhone (375), large Pro Max (430+),
-          // iPad portrait + landscape, Android phones, Galaxy tablets,
-          // Chrome and Safari — verified via the responsive class shape.
-          className="w-full h-full object-contain select-none pointer-events-none"
-          style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
-          draggable={false}
-          onError={() => setImgFailed(true)}
-        />
-      </div>
-    );
-  }
-
-  // Fallback: branded gradient card so the popup is never blank.
+function PosterTemplate({ title, subtitle }: PosterTemplateProps) {
+  // Editorial maison splash — pure white, serif wordmark, restrained gold
+  // hairline. No image asset, so the background is genuinely #FFFFFF on every
+  // device (the prior glossy PNG baked a tint + dated bevels). Type does the work.
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 via-indigo-700 to-sky-600 p-8 text-white text-center">
-      <img
-        src="/brand/petwash-logo-white-bg.png"
-        alt="Pet Wash™"
-        className="h-16 object-contain mb-6"
-        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-      />
-      <h2 className="text-2xl font-bold mb-2">ONE WORLD. EVERY PET.</h2>
-      <p className="text-lg opacity-80 mb-2">⁦Pet Wash™⁩</p>
-      <p className="text-sm opacity-60">www.PetWash.co.il</p>
+    <div className="absolute inset-0 bg-white flex flex-col items-center justify-center text-center px-8">
+      <div className="flex items-center gap-3 mb-7">
+        <span style={{ width: 38, height: 1, background: '#C9A96E' }} />
+        <span className="uppercase" style={{ fontSize: 11, letterSpacing: '0.42em', color: '#8B7340', fontWeight: 500 }}>Maison</span>
+        <span style={{ width: 38, height: 1, background: '#C9A96E' }} />
+      </div>
+
+      <h2 style={{
+        fontFamily: "'Playfair Display','Didot','Bodoni MT',Georgia,serif",
+        fontSize: 'clamp(2.4rem, 9vw, 4rem)',
+        color: '#1A1712',
+        letterSpacing: '-0.03em',
+        lineHeight: 1,
+        fontWeight: 400,
+        margin: 0,
+      }}>
+        {title}
+      </h2>
+
+      <div style={{ width: 56, height: 1, background: '#C9A96E', margin: '22px 0' }} />
+
+      <p className="uppercase" style={{
+        fontSize: 'clamp(10px, 3vw, 13px)',
+        letterSpacing: '0.34em',
+        color: '#3A352C',
+        fontWeight: 500,
+        margin: 0,
+        maxWidth: 320,
+        lineHeight: 1.8,
+      }}>
+        {subtitle}
+      </p>
     </div>
   );
 }
