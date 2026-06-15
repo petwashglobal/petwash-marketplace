@@ -27,6 +27,7 @@ import { decideProviderKyc } from '../services/providerDecisionEngine';
 import { pool } from '../db';
 import { DocumentEncryption } from '../document-security-2025';
 import { buildSealedDeclarationAttestation } from '../lib/providerDeclarationAttestation';
+import { requireValidFileContent } from '../lib/fileMagicValidation';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import {
   buildAdminReviewAlertEmail,
@@ -413,7 +414,7 @@ router.post('/apply', upload.fields([
   { name: 'businessLicense', maxCount: 1 },
   { name: 'petFirstAidCert', maxCount: 1 },
   { name: 'drivingLicenseFile', maxCount: 1 }
-]), async (req: Request, res: Response) => {
+]), requireValidFileContent(ALLOWED_MIME_TYPES), async (req: Request, res: Response) => {
   try {
     // SECURITY: Verify Firebase authentication
     const authHeader = req.headers.authorization;
@@ -2160,6 +2161,7 @@ router.post(
     { name: 'selfiePhoto', maxCount: 1 },
     { name: 'governmentId', maxCount: 1 },
   ]),
+  requireValidFileContent(ALLOWED_MIME_TYPES),
   async (req: Request, res: Response) => {
     const { token } = req.params;
     if (!token || token.length < 20) {
