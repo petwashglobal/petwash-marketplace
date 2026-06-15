@@ -1,29 +1,26 @@
 /**
  * WALK MY PET™ - Financial Fee Calculator
  * 
- * FLAT 15% COMMISSION MODEL (unified across all ⁦PetWash™⁩ platforms):
- * - Owner pays: Base Price + 15% Platform Fee + VAT on platform fee
- * - Walker receives: 85% of Base Price (after 15% commission)
- * - ⁦PetWash™⁩ keeps: 15% commission (industry standard)
- * 
- * Payment Flow (marketplace-style escrow):
- * 1. Owner pays base + 15% platform fee + VAT to PetWash via Nayax
- * 2. Nayax holds payment in 72-hour escrow
- * 3. After walk completion (GPS check-out verified), walker receives 85% payout
- * 4. PetWash keeps 15% platform commission
- * 
+ * FLAT 15% COMMISSION (disclosed-agent model, unified across ALL PetWash™
+ * paid services — same as Academy + TransactionEngine; CEO-confirmed 2026-06-15):
+ * - Owner pays: the provider's rate (base price). NO separate surcharge.
+ * - Walker receives: 85% of the base price.
+ * - PetWash™ keeps: 15% commission (taken out of the base, not added on top).
+ * - VAT (18%) is on PetWash's COMMISSION only, extracted from it (the commission
+ *   is VAT-inclusive); the customer's total IS the base price.
+ *
+ * HISTORY: the previous version charged the owner +15% AND deducted 15% from the
+ * walker = 30% real platform take while labelling it "15%". Corrected to a single
+ * 15% commission per the CEO's instruction ("15% on every paid service").
+ *
  * Commission Breakdown Example (₪100 base):
- * - Owner pays: ₪100 + ₪15 platform fee + ₪2.70 VAT = ₪117.70
- * - Walker gets: ₪100 - ₪15 (15% fee) = ₪85
- * - Platform keeps: ₪15 (15% total) + VAT collected
- * 
- * Commission Comparison (2026 Benchmarks):
- * - Industry standard: 15-20% platform commission
- * - ⁦Walk My Pet™⁩: 15% platform commission (industry standard) ✓
- * 
+ * - Owner pays: ₪100 (the walker's rate, nothing added).
+ * - Walker gets: ₪85 (₪100 − 15% commission).
+ * - PetWash keeps: ₪15 commission, of which ₪2.29 is VAT remitted (18/118) → ₪12.71 net.
+ *
  * Israeli Market Adaptations:
  * - Currency: ILS (Israeli Shekel)
- * - VAT: 18% on platform fee for Tax Authority compliance
+ * - VAT: 18% on the commission, extracted (disclosed-agent), per Tax Authority rules
  * - Payment: Nayax (preferred Israeli payment gateway)
  */
 
@@ -60,24 +57,31 @@ export interface WalkFeeCalculation {
  * 
  * @example
  * const fees = calculateWalkFees(10000); // ₪100 base walk price
- * // Owner pays: ₪100 + ₪15 (15% fee) + ₪2.70 VAT = ₪117.70
- * // Walker gets: ₪100 - ₪15 (15% fee) = ₪85
- * // Platform total: ₪15 (industry standard 15% commission)
+ * // Owner pays: ₪100 (the walker's rate — nothing added)
+ * // Walker gets: ₪85 (₪100 − 15% commission)
+ * // PetWash keeps: ₪15 commission (₪2.29 VAT remitted, ₪12.71 net)
  */
 export function calculateWalkFees(basePriceCents: number): WalkFeeCalculation {
-  const platformServiceFeeOwnerCents = Math.round(basePriceCents * 0.15);
-  
-  const walkerFeeCents = Math.round(basePriceCents * 0.15);
-  
+  // 15% commission, disclosed-agent (unified with Academy + TransactionEngine):
+  // the owner pays the rate; PetWash keeps 15% out of it; the walker gets 85%;
+  // VAT is on the commission, extracted (18/118), so the customer's total = base.
+  const platformCommissionTotalCents = Math.round(basePriceCents * 0.15);
+
+  // The 15% comes OUT of the provider's rate (NOT added on top of it).
+  const walkerFeeCents = platformCommissionTotalCents;
+
   const walkerPayoutCents = basePriceCents - walkerFeeCents;
-  
-  const platformCommissionTotalCents = platformServiceFeeOwnerCents;
-  
-  const totalChargeCents = basePriceCents + platformServiceFeeOwnerCents;
-  
-  const vatCents = Math.round(platformServiceFeeOwnerCents * 0.18);
-  
-  const totalChargeWithVATCents = totalChargeCents + vatCents;
+
+  // No separate owner surcharge — the owner pays exactly the rate.
+  const platformServiceFeeOwnerCents = 0;
+
+  const totalChargeCents = basePriceCents;
+
+  // VAT is on the commission only, extracted (the commission is VAT-inclusive).
+  const vatCents = Math.round(platformCommissionTotalCents * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE)));
+
+  // VAT lives inside the commission — it is NOT added on top of what the owner pays.
+  const totalChargeWithVATCents = totalChargeCents;
   
   // Convert to ILS for display (divide by 100: agorot → shekels)
   const basePrice = (basePriceCents / 100).toFixed(2);
@@ -159,20 +163,27 @@ export function validateWalkFeeCalculation(fees: WalkFeeCalculation): boolean {
     return false;
   }
   
-  const totalPlusVAT = fees.totalChargeCents + fees.vatCents;
-  if (totalPlusVAT !== fees.totalChargeWithVATCents) {
-    console.error('[Walk Fee Validation] Total + VAT ≠ Final Charge', {
+  // Disclosed-agent: VAT is extracted from the commission, NOT added on top —
+  // so the owner's final charge equals the base/total, and VAT ≤ commission.
+  if (fees.totalChargeWithVATCents !== fees.totalChargeCents) {
+    console.error('[Walk Fee Validation] Final Charge ≠ Total (VAT must be inside the commission, not added)', {
       total: fees.totalChargeCents,
-      vat: fees.vatCents,
-      sum: totalPlusVAT,
       finalCharge: fees.totalChargeWithVATCents,
     });
     return false;
   }
-  
+  if (fees.vatCents > fees.platformCommissionTotalCents) {
+    console.error('[Walk Fee Validation] VAT exceeds commission (must be extracted from it)', {
+      vat: fees.vatCents,
+      commission: fees.platformCommissionTotalCents,
+    });
+    return false;
+  }
+
+  // platformServiceFeeOwnerCents is intentionally 0 (no owner surcharge), so it
+  // is NOT in this positive-amount check.
   if (
     fees.basePriceCents <= 0 ||
-    fees.platformServiceFeeOwnerCents <= 0 ||
     fees.walkerFeeCents <= 0 ||
     fees.walkerPayoutCents <= 0 ||
     fees.platformCommissionTotalCents <= 0 ||
@@ -200,7 +211,7 @@ export function getWalkCommissionBreakdown(): {
 } {
   return {
     platformCommissionTotalRate: 0.15,
-    ownerFeeRate: 0.15,
+    ownerFeeRate: 0, // no owner surcharge — the 15% comes out of the provider's rate
     walkerFeeRate: 0.15,
     walkerPayoutRate: 0.85,
     vatRate: ISRAEL_VAT_RATE,
