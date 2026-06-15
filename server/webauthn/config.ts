@@ -321,39 +321,52 @@ export function isAttestationFormatAllowed(format: string): boolean {
 }
 
 /**
- * Validate Apple attestation
- * Placeholder for production implementation
+ * Validate Apple attestation.
+ *
+ * NOT IMPLEMENTED: full Apple WebAuthn attestation validation (chain to Apple's
+ * WebAuthn Root CA, nonce extension check, signature verification).
+ *
+ * Behaviour is deliberately honest:
+ *  - If the policy flag is OFF, attestation isn't required → return true.
+ *  - If the policy flag is ON, the caller is asking us to PROVE the device is
+ *    genuine Apple hardware. We can't yet, so we FAIL CLOSED rather than
+ *    silently returning true and pretending to enforce. This prevents a
+ *    "banking-level attestation" config that is actually a no-op.
+ *
+ * Note: the whole attestation block is additionally gated by
+ * webauthnConfig.enableAttestationValidation (env WEBAUTHN_VALIDATE_ATTESTATION),
+ * which is OFF by default — so default passkey registration is unaffected.
  */
 export function validateAppleAttestation(attestationObject: any): boolean {
   if (!ATTESTATION_POLICY.validateAppleAttestation) {
-    return true; // Validation disabled
+    return true; // Apple attestation trust-anchor validation intentionally not required
   }
-  
-  // TODO: Implement Apple attestation validation
-  // - Verify certificate chain
-  // - Check nonce
-  // - Validate signature
-  
-  logger.debug('[WebAuthn Config] Apple attestation validation not yet implemented');
-  return true; // Allow for now
+
+  logger.error(
+    '[WebAuthn Config] 🔴 Apple attestation validation is ENABLED but NOT IMPLEMENTED — failing closed. ' +
+    'Implement the Apple WebAuthn root-CA chain check, or set ATTESTATION_POLICY.validateAppleAttestation=false ' +
+    '(or unset WEBAUTHN_VALIDATE_ATTESTATION) until then.'
+  );
+  return false; // fail closed — never pretend to enforce
 }
 
 /**
- * Validate Android attestation
- * Placeholder for production implementation
+ * Validate Android attestation.
+ *
+ * NOT IMPLEMENTED: SafetyNet / key-attestation chain + integrity verification.
+ * Fails closed when enabled, for the same reason as Apple above.
  */
 export function validateAndroidAttestation(attestationObject: any): boolean {
   if (!ATTESTATION_POLICY.validateAndroidAttestation) {
-    return true; // Validation disabled
+    return true; // Android attestation trust-anchor validation intentionally not required
   }
-  
-  // TODO: Implement Android attestation validation
-  // - Verify SafetyNet or Key attestation
-  // - Check certificate chain
-  // - Validate integrity
-  
-  logger.debug('[WebAuthn Config] Android attestation validation not yet implemented');
-  return true; // Allow for now
+
+  logger.error(
+    '[WebAuthn Config] 🔴 Android attestation validation is ENABLED but NOT IMPLEMENTED — failing closed. ' +
+    'Implement the Android key/SafetyNet attestation check, or set ATTESTATION_POLICY.validateAndroidAttestation=false ' +
+    '(or unset WEBAUTHN_VALIDATE_ATTESTATION) until then.'
+  );
+  return false; // fail closed — never pretend to enforce
 }
 
 /**
