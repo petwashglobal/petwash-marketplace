@@ -15,7 +15,7 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { createHash } from 'crypto';
 import { eq, and, lt, desc } from 'drizzle-orm';
-import { users, customers, customerPets, washHistory, biometricConsents } from '@shared/schema';
+import { users, customers, customerPets, washHistory, biometricConsents, retentionPolicies } from '@shared/schema';
 import { accountDeletionRequests, accountDeletionAuditLog } from '@shared/schema-enterprise';
 
 const DAYS = 24 * 60 * 60 * 1000;
@@ -769,13 +769,89 @@ export class DataRetentionService {
   // RETENTION POLICY INFO
   // ========================================================================
 
-  getRetentionPolicies() {
+  /**
+   * Effective retention policy. Reads the first-class `retention_policies` table
+   * (the auditable, deploy-free source per the data architecture) and falls back
+   * to the hardcoded operational defaults only when the table is empty or
+   * unreadable. Previously this returned hardcoded constants and the DB table
+   * was dead — Gap 1 of the Data & Intelligence series.
+   */
+  async getRetentionPolicies() {
+    try {
+      const rows = await db.select().from(retentionPolicies);
+      if (rows.length > 0) {
+        return rows.map((r) => ({
+          category: r.dataClass,
+          label: r.dataClass,
+          retentionDays: r.retentionDays,
+          duration: `${r.retentionDays} days`,
+          method: r.anonymisationMethod,
+          law: r.legalBasis || 'unspecified',
+          notes: r.notes || undefined,
+          source: 'database' as const,
+        }));
+      }
+      logger.warn('[DataRetention] retention_policies table is empty — using hardcoded defaults');
+    } catch (error) {
+      logger.warn('[DataRetention] retention_policies table unreadable — using hardcoded defaults', { error });
+    }
     return Object.entries(RETENTION_POLICIES).map(([key, policy]) => ({
       category: key,
       label: policy.label,
+      retentionDays: policy.duration === Infinity ? null : policy.duration / DAYS,
       duration: policy.duration === Infinity ? 'Permanent' : `${policy.duration / DAYS} days`,
+      method: 'delete' as const,
       law: policy.law,
+      notes: 'hardcoded default (retention_policies table empty/unreadable)',
+      source: 'hardcoded' as const,
     }));
+  }
+
+  /**
+   * DRY-RUN preview of enforcing the `retention_policies` table. Reads each
+   * policy and reports what WOULD be affected — it DELETES NOTHING. This makes
+   * the table actionable + auditable without risking data loss, and honours the
+   * migration's own warning ("confirm every value with counsel before any purge
+   * job acts"). Turning these per-data-class policies into real deletions is a
+   * deliberate, counsel-reviewed follow-up — the destructive runRetentionPurge()
+   * above is unchanged and still governed by the operational hardcoded windows.
+   */
+  async previewRetentionEnforcement(): Promise<{
+    previewDate: string;
+    note: string;
+    policies: Array<{
+      dataClass: string;
+      retentionDays: number;
+      method: string;
+      legalBasis: string | null;
+      purgeTargetWired: boolean;
+      reviewRequired: boolean;
+    }>;
+  }> {
+    const rows = await db.select().from(retentionPolicies).catch((error) => {
+      logger.warn('[DataRetention] preview: retention_policies unreadable', { error });
+      return [] as (typeof retentionPolicies.$inferSelect)[];
+    });
+    const policies = rows.map((r) => ({
+      dataClass: r.dataClass,
+      retentionDays: r.retentionDays,
+      method: r.anonymisationMethod,
+      legalBasis: r.legalBasis,
+      // None of the seeded data classes has a wired destructive purge yet — by
+      // design. This flag stays false until a reviewed change maps each class to
+      // its store and enables deletion.
+      purgeTargetWired: false,
+      reviewRequired: true,
+    }));
+    logger.info('[DataRetention] retention enforcement PREVIEW (dry-run, nothing deleted)', {
+      policyCount: policies.length,
+      classes: policies.map((p) => `${p.dataClass}:${p.retentionDays}d:${p.method}`),
+    });
+    return {
+      previewDate: new Date().toISOString(),
+      note: 'DRY-RUN — nothing was deleted. Per-data-class enforcement is gated on counsel review.',
+      policies,
+    };
   }
 }
 
