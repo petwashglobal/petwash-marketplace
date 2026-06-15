@@ -582,15 +582,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   </button>
                 )}
 
-                <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
-                  <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
-                  <span className="sl-socLabel">{t.cwFb}</span>
-                </button>
+                {signupFlags.facebookSignin && (
+                  <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
+                    <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
+                    <span className="sl-socLabel">{t.cwFb}</span>
+                  </button>
+                )}
 
-                <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
-                  <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
-                  <span className="sl-socLabel">{t.cwIg}</span>
-                </button>
+                {signupFlags.instagramSignin && (
+                  <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
+                    <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
+                    <span className="sl-socLabel">{t.cwIg}</span>
+                  </button>
+                )}
               </div>
             </>
           )}
