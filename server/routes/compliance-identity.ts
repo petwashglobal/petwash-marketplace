@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
+import { requireValidFileContentDisk } from "../lib/fileMagicValidation";
 
 const router = Router();
 
@@ -54,6 +55,15 @@ const storage = multer.diskStorage({
   },
 });
 
+const IDENTITY_ALLOWED_MIMES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+];
+
 const uploadIdentityDocs = multer({
   storage,
   limits: {
@@ -61,16 +71,9 @@ const uploadIdentityDocs = multer({
     fileSize: 15 * 1024 * 1024, // 15 MB per file
   },
   fileFilter: (_req, file, cb) => {
-    // Accept images and PDFs only
-    const allowedMimes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/heic",
-      "image/heif",
-      "application/pdf",
-    ];
-    if (allowedMimes.includes(file.mimetype)) {
+    // Accept images and PDFs only (mimetype is a cheap first pass; the real gate
+    // is requireValidFileContentDisk, which sniffs the bytes after write).
+    if (IDENTITY_ALLOWED_MIMES.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("Only JPEG, PNG, HEIC, and PDF files are allowed"));
@@ -144,6 +147,7 @@ router.post(
   "/:id/identity-docs/upload",
   authMiddleware,
   uploadIdentityDocs.array("files", 10),
+  requireValidFileContentDisk(IDENTITY_ALLOWED_MIMES),
   async (req: any, res) => {
     try {
       const contractorId = req.params.id;

@@ -3,10 +3,14 @@
  * the security gate — the real bytes decide. See server/lib/fileMagicValidation.ts.
  */
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
   detectFileKind,
   validateFileContent,
   requireValidFileContent,
+  requireValidFileContentDisk,
 } from '../lib/fileMagicValidation';
 
 const IMAGES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
@@ -74,5 +78,45 @@ describe('requireValidFileContent middleware', () => {
     expect(r.status).toBe(400);
     expect(r.body.code).toBe('FILE_CONTENT_REJECTED');
     expect(r.body.field).toBe('idFront');
+  });
+});
+
+describe('requireValidFileContentDisk middleware (diskStorage)', () => {
+  function writeTmp(name: string, buf: Buffer): string {
+    const p = path.join(os.tmpdir(), `magic-test-${name}-${process.pid}`);
+    fs.writeFileSync(p, buf);
+    return p;
+  }
+  function run(files: any[]): Promise<{ status: number; body: any; passed: boolean }> {
+    return new Promise((resolve) => {
+      const req: any = { files };
+      const res: any = {
+        statusCode: 200,
+        status(c: number) { this.statusCode = c; return this; },
+        json(b: any) { resolve({ status: this.statusCode, body: b, passed: false }); return this; },
+      };
+      requireValidFileContentDisk(IMAGES_PDF)(req, res, () => resolve({ status: 200, body: null, passed: true }));
+    });
+  }
+
+  it('passes a real PDF written to disk', async () => {
+    const p = writeTmp('ok', pdf);
+    const r = await run([{ fieldname: 'files', mimetype: 'application/pdf', path: p }]);
+    expect(r.passed).toBe(true);
+    fs.rmSync(p, { force: true });
+  });
+
+  it('rejects AND deletes every file when one is a spoofed HTML doc', async () => {
+    const good = writeTmp('good', png);
+    const bad = writeTmp('bad', html);
+    const r = await run([
+      { fieldname: 'files', mimetype: 'image/png', path: good },
+      { fieldname: 'files', mimetype: 'image/png', path: bad },
+    ]);
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('FILE_CONTENT_REJECTED');
+    // both files cleaned up — nothing hostile left on disk
+    expect(fs.existsSync(good)).toBe(false);
+    expect(fs.existsSync(bad)).toBe(false);
   });
 });

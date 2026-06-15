@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 /**
  * Content-based (magic-number) file validation.
  *
@@ -157,6 +159,59 @@ export function requireValidFileContent(allowedMimes: string[]) {
       }
       return next();
     } catch (err: any) {
+      return res.status(400).json({
+        error: 'Invalid file',
+        code: 'FILE_CONTENT_CHECK_FAILED',
+        message: err?.message || 'Upload validation error',
+      });
+    }
+  };
+}
+
+/** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
+function readFileHead(filePath: string, n = 32): Buffer {
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(n);
+    const read = fs.readSync(fd, buf, 0, n, 0);
+    return buf.subarray(0, read);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/**
+ * Express middleware factory for multer **diskStorage** routes: the file is
+ * already on disk (no buffer), so we read its head from `file.path`, validate,
+ * and on failure DELETE the rejected file before responding (don't leave hostile
+ * content sitting on disk).
+ */
+export function requireValidFileContentDisk(allowedMimes: string[]) {
+  return function validateUploadedDiskFiles(req: any, res: any, next: any) {
+    const files = collectMulterFiles(req) as Array<{ fieldname?: string; mimetype?: string; path?: string }>;
+    const cleanupAll = () => {
+      for (const f of files) {
+        if (f?.path) { try { fs.unlinkSync(f.path); } catch { /* best effort */ } }
+      }
+    };
+    try {
+      for (const f of files) {
+        if (!f?.path) continue;
+        const head = readFileHead(f.path);
+        const check = validateFileContent(head, allowedMimes, f.mimetype);
+        if (!check.ok) {
+          cleanupAll(); // remove every file from this rejected request
+          return res.status(400).json({
+            error: 'Invalid file',
+            code: 'FILE_CONTENT_REJECTED',
+            field: f.fieldname,
+            message: check.reason || 'File content failed validation',
+          });
+        }
+      }
+      return next();
+    } catch (err: any) {
+      cleanupAll();
       return res.status(400).json({
         error: 'Invalid file',
         code: 'FILE_CONTENT_CHECK_FAILED',
