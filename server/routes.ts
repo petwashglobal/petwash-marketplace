@@ -11324,7 +11324,12 @@ self.addEventListener('notificationclick', (event) => {
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use('/api/esign', apiLimiter, esignRoutes);
   
-  // 🇮🇱 Israeli Government-Grade E-Signature (2025 Compliance - ES256, TSA, MFA)
+  // 🇮🇱 Israeli "Government-Grade" E-Signature (2025) — DISABLED at the router.
+  // Its JWS signing is cryptographically void (random throwaway HS256 secret,
+  // never the ES256 key) and its /verify lies ("compliant with Israeli law"
+  // on field-presence only). Unused by the app; the real signer is the
+  // provider-declaration sealed attestation. The router itself fails closed
+  // (501) unless ESIGN_ISRAELI_2025_ENABLED=true — see israeli-2025-esign.ts.
   app.use('/api/israeli-2025-esign', apiLimiter, israeli2025EsignRoutes);
   
   // Staff Onboarding & Fraud Prevention (industry-standard marketplace style)
