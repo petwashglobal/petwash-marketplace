@@ -635,14 +635,14 @@ function LuxuryGiftCard({
 
         <div className="px-3 sm:px-4 py-2.5 sm:py-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium text-[#b0841c]">
+            <span className="text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-semibold text-[#735511]">
               {tierLabel}
             </span>
           </div>
 
           <div className="flex items-baseline gap-1 mb-1">
             <span className="text-[11px] sm:text-xs text-[#6a5f42]">₪</span>
-            <span className="text-2xl sm:text-3xl lg:text-[2.2rem] font-light text-[#F0EBE0]"
+            <span className="text-2xl sm:text-3xl lg:text-[2.2rem] font-light text-[#1a1a1a]"
               style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
               {formattedValue}
             </span>
@@ -652,13 +652,13 @@ function LuxuryGiftCard({
           </p>
 
           <div className="border-t pt-2 mt-2" style={{ borderColor: '#E8E3D9' }}>
-            <div className="space-y-1 text-[#7a6e55]">
+            <div className="space-y-1 text-[#5a5040]">
               <div className="flex items-center gap-2">
-                <Check className="w-3 h-3 shrink-0 text-[#b0841c]" strokeWidth={1.5} />
+                <Check className="w-3 h-3 shrink-0 text-[#735511]" strokeWidth={1.5} />
                 <span className="text-[9px] sm:text-[10px]">{tx('allServices', lang)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-3 h-3 shrink-0 text-[#b0841c]" strokeWidth={1.5} />
+                <Check className="w-3 h-3 shrink-0 text-[#735511]" strokeWidth={1.5} />
                 <span className="text-[9px] sm:text-[10px]">{tx('valid12Months', lang)}</span>
               </div>
             </div>

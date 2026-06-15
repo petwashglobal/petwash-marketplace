@@ -60,8 +60,8 @@ export function GiftCards({ language }: GiftCardsProps) {
             <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
           </div>
 
-          <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-medium"
-            style={{ color: '#c9a96e' }}>
+          <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-semibold"
+            style={{ color: '#735511' }}>
             E-Gift Collection
           </p>
 
@@ -71,7 +71,7 @@ export function GiftCards({ language }: GiftCardsProps) {
           >
             {t('giftCards.title', language)}
           </h2>
-          <p className="text-sm sm:text-[15px] text-[#888] max-w-md mx-auto leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
+          <p className="text-sm sm:text-[15px] text-[#595959] max-w-md mx-auto leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
             {language === 'he' 
               ? 'המתנה המושלמת לאוהבי חיות מחמד' 
               : 'The perfect gift for pet lovers'}
@@ -118,7 +118,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                   <div className="px-3 sm:px-5 py-3 sm:py-5">
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
-                        isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
+                        isElite || isPremium ? 'text-[#735511]' : 'text-[#595959]'
                       }`}>
                         {tierLabel}
                       </span>
@@ -126,13 +126,13 @@ export function GiftCards({ language }: GiftCardsProps) {
 
                     <div className="mb-2 sm:mb-3">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
+                        <span className="text-[11px] sm:text-xs text-[#595959]">₪</span>
                         <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
                           style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
                           {formatValue(voucher.value)}
                         </span>
                       </div>
-                      <p className="text-[10px] sm:text-[11px] mt-1.5 text-[#aaa]">
+                      <p className="text-[10px] sm:text-[11px] mt-1.5 text-[#595959]">
                         {language === 'he' ? voucher.labelHe : voucher.label} · E-Gift
                       </p>
                     </div>
@@ -153,7 +153,7 @@ export function GiftCards({ language }: GiftCardsProps) {
         <div className="mt-8 sm:mt-10 flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             <Lock className="w-3 h-3 text-[#c9a96e]" strokeWidth={1.5} />
-            <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#999] font-medium">
+            <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#595959] font-medium">
               {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
             </span>
           </div>
