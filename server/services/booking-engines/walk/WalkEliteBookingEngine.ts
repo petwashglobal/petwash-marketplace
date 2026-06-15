@@ -140,7 +140,12 @@ class WalkPricingStrategy implements PricingStrategy {
 
   private calculateDurationHours(startDate: Date, endDate: Date): number {
     const diffMs = endDate.getTime() - startDate.getTime();
-    return Math.ceil(diffMs / (1000 * 60 * 60)); // Hours
+    // Pro-rate by actual elapsed time — do NOT round up to whole hours.
+    // Rounding up overcharged the customer (a 30-minute walk billed a full hour,
+    // a 90-minute walk billed two) and diverged from walkFeeCalculator, which
+    // prices per minute. Fractional hours are fine: the base engine rounds the
+    // final money to agorot.
+    return diffMs / (1000 * 60 * 60); // Hours (fractional)
   }
 
   private calculateSurgePricing(startDate: Date, subtotal: number): number {
