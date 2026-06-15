@@ -140,16 +140,20 @@ export class BookingPolicyEngineService {
     let refundPercent = 0;
     let cancellationFee = 0;
 
-    // Apply rules based on time until booking
+    // Apply rules based on time until booking.
+    // NOTE: nullish-coalescing (??) NOT logical-OR (||). An explicitly configured
+    // refund_percent of 0 (a "no refund" tier) must stay 0 — `0 || 100` would
+    // silently turn it into a 100% refund (money loss / cancellation-fee bypass).
+    // Same reasoning for an explicit fee of 0.
     if (hoursUntilBooking >= 24 && rules["24_hours_before"]) {
-      refundPercent = rules["24_hours_before"].refund_percent || 100;
-      cancellationFee = rules["24_hours_before"].fee || 0;
+      refundPercent = rules["24_hours_before"].refund_percent ?? 100;
+      cancellationFee = rules["24_hours_before"].fee ?? 0;
     } else if (hoursUntilBooking >= 12 && rules["12_hours_before"]) {
-      refundPercent = rules["12_hours_before"].refund_percent || 50;
-      cancellationFee = rules["12_hours_before"].fee || 10;
+      refundPercent = rules["12_hours_before"].refund_percent ?? 50;
+      cancellationFee = rules["12_hours_before"].fee ?? 10;
     } else if (rules["less_than_12"]) {
-      refundPercent = rules["less_than_12"].refund_percent || 0;
-      cancellationFee = rules["less_than_12"].fee || 20;
+      refundPercent = rules["less_than_12"].refund_percent ?? 0;
+      cancellationFee = rules["less_than_12"].fee ?? 20;
     }
 
     const refundAmount = (bookingAmount * refundPercent) / 100;
