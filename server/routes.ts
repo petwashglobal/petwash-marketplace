@@ -17,6 +17,7 @@ import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminSumitRoutes from "./routes/admin-sumit";
+import adminUpayRoutes from "./routes/admin-upay";
 import sumitWebhookRoutes from "./routes/sumit-webhook";
 import providerMyInvoicesRoutes from "./routes/provider-my-invoices";
 import accountantRoutes from "./routes/accountant";
@@ -9949,6 +9950,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
   app.use('/api/admin/sumit', adminSumitRoutes);
+  // UPay online-clearing health/inspector (super-admin) — key-presence + reachability.
+  app.use('/api/admin/upay', adminUpayRoutes);
   // SUMIT webhook receiver — public route (HMAC-verified at the handler).
   // Mounted at /api/sumit so the full path is POST /api/sumit/webhook.
   // No-op until SUMIT_WEBHOOK_SECRET is provisioned (returns 401 without it).
