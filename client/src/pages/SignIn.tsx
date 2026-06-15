@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, linkWithCredential, signInWithPopup, signInWithRedirect, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
 import type { OAuthCredential } from "firebase/auth";
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
+import { signupFlags } from "@/lib/authSignupFlags";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
 import { seedSignupIntentCookie } from "@/lib/seedIntent";
@@ -2380,6 +2381,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   </>
                 )}
               </Button>
+              {signupFlags.appleSignin && (
               <Button
                 onClick={() => { handleSelectIntent('customer'); handleSocialLogin('apple'); }}
                 disabled={!!socialLoading}
@@ -2398,6 +2400,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   </>
                 )}
               </Button>
+              )}
             </motion.div>
           )}
 
@@ -2469,6 +2472,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               )}
             </Button>
 
+            {signupFlags.appleSignin && (
             <Button
               onClick={() => handleSocialLogin('apple')}
               disabled={!!socialLoading}
@@ -2487,7 +2491,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 </>
               )}
             </Button>
+            )}
 
+            {signupFlags.facebookSignin && (
             <Button
               onClick={() => handleSocialLogin('facebook')}
               disabled={!!socialLoading}
@@ -2504,8 +2510,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 </>
               )}
             </Button>
+            )}
 
+            {(signupFlags.tiktokSignin || signupFlags.instagramSignin) && (
             <div className="flex gap-2">
+              {signupFlags.tiktokSignin && (
               <Button
                 type="button"
                 onClick={() => handleExternalOAuth('tiktok')}
@@ -2517,6 +2526,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 {socialLoading === 'tiktok' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SiTiktok className="w-3.5 h-3.5" />}
                 <span>TikTok</span>
               </Button>
+              )}
+              {signupFlags.instagramSignin && (
               <Button
                 type="button"
                 onClick={() => handleExternalOAuth('instagram')}
@@ -2528,7 +2539,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 {socialLoading === 'instagram' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SiInstagram className="w-3.5 h-3.5" />}
                 <span>Instagram</span>
               </Button>
+              )}
             </div>
+            )}
 
             {passkeyAvailable && (
               <Button
