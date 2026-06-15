@@ -282,9 +282,41 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
     const quoteAge = Date.now() - new Date(quote.createdAt!).getTime();
     const QUOTE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
     if (quoteAge > QUOTE_EXPIRY_MS) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Quote expired. Please request a new quote.' 
+      return res.status(400).json({
+        success: false,
+        error: 'Quote expired. Please request a new quote.'
+      });
+    }
+
+    // ── Quote ownership ───────────────────────────────────────────────────────
+    // A quote may only be redeemed by the customer it was priced for (or an
+    // anonymous quote). Without this, any authenticated user who learns a quoteId
+    // could check out against someone else's (possibly cheaper) quote.
+    if (quote.customerId && quote.customerId !== 'anonymous' && quote.customerId !== userId) {
+      logger.warn('[MarketplaceBookings] Quote ownership mismatch at checkout', {
+        quoteId, quoteCustomer: quote.customerId, userId,
+      });
+      return res.status(403).json({
+        success: false,
+        error: 'This quote belongs to a different account. Please request your own quote.',
+      });
+    }
+
+    // ── Pet-count integrity ───────────────────────────────────────────────────
+    // The charge + escrow gross use quote.totalCents, which was priced for
+    // quote.petCount. The booking row is created from petIds (request body). If
+    // they disagree, the customer could pay for 1 pet and book many — and the
+    // escrow gross, booking total, and receipt would diverge. Require an exact
+    // match so the money charged always equals the pets booked.
+    const submittedPetCount = Array.isArray(petIds) ? petIds.length : 0;
+    if (submittedPetCount !== (quote.petCount ?? 1)) {
+      logger.warn('[MarketplaceBookings] petIds count != quoted petCount at checkout', {
+        quoteId, submittedPetCount, quotedPetCount: quote.petCount, userId,
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'The pets selected do not match your quote. Please re-quote with the correct pets.',
+        code: 'PET_COUNT_MISMATCH',
       });
     }
 
