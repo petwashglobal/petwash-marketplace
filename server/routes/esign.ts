@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { docuSealService } from '../services/DocuSealService';
 import { requireAuth } from '../customAuth';
 import { db } from '../db';
@@ -186,10 +187,39 @@ router.get('/sessions', requireAuth, async (req, res) => {
 });
 
 /**
- * Webhook endpoint for DocuSeal events — no auth required (called by DocuSeal)
+ * Webhook endpoint for DocuSeal events.
+ * AUTHENTICATED via a shared secret: without it, anyone could POST a fake
+ * `submission.completed` to mark a document "signed" and trigger downstream
+ * flows (handleEsignComplete). DocuSeal can't sign with our keys, so the
+ * operator configures DOCUSEAL_WEBHOOK_SECRET and sends it on the webhook —
+ * either as the `x-docuseal-secret` header or a `?secret=` query param (append
+ * it to the webhook URL; that works on every DocuSeal version).
  */
 router.post('/webhook', async (req, res) => {
   try {
+    const expectedSecret = process.env.DOCUSEAL_WEBHOOK_SECRET;
+    const providedSecret =
+      (req.headers['x-docuseal-secret'] as string | undefined) ||
+      (typeof req.query.secret === 'string' ? req.query.secret : '') ||
+      '';
+
+    if (!expectedSecret) {
+      // Fail CLOSED in production: an unauthenticated webhook that flips signing
+      // state is a forgery vector. In dev, allow with a loud warning.
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('[E-Sign Webhook] 🔴 DOCUSEAL_WEBHOOK_SECRET not set — rejecting webhook (fail-closed). Configure the secret + send it on the DocuSeal webhook.');
+        return res.status(503).json({ error: 'Webhook not configured' });
+      }
+      logger.warn('[E-Sign Webhook] DOCUSEAL_WEBHOOK_SECRET unset (dev only) — skipping signature check');
+    } else {
+      const a = Buffer.from(providedSecret);
+      const b = Buffer.from(expectedSecret);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        logger.warn('[E-Sign Webhook] rejected — missing/invalid secret');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+    }
+
     const event = req.body;
 
     logger.info('[E-Sign Webhook] Received event:', {
