@@ -475,9 +475,12 @@ export abstract class BaseLuxuryBookingEngine {
         error: error.message,
         bookingId,
       });
-      const fallbackId = `ESCROW-${Date.now()}-${bookingId.slice(0, 8)}`;
-      logger.warn('[Escrow] Using fallback escrow reference', { fallbackId });
-      return { success: true, escrowReferenceId: fallbackId };
+      // FAIL CLOSED. The previous code fabricated a fake escrow reference and
+      // returned success:true here — which made confirmBooking believe the
+      // funds were held and CONFIRM the booking with NO money in escrow. Return
+      // success:false so the caller marks the booking 'failed' (it already
+      // handles `if (!escrowResult.success)`), instead of confirming for free.
+      return { success: false };
     }
   }
 }
