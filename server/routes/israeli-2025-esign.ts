@@ -13,6 +13,43 @@ const OTP_TTL_SECONDS = 300; // 5 minutes
 const router = Router();
 
 /**
+ * 🔴 FAIL-CLOSED: this "government-grade 2025" signer is NOT production-ready and
+ * is disabled by default. Three confirmed defects make every signature it issues
+ * cryptographically void AND make its verify endpoint lie:
+ *
+ *  1. generateJWS() ignores the ES256 keypair entirely — it mints a RANDOM
+ *     throwaway HS256 secret, signs with it, and discards the secret. The
+ *     resulting JWS can never be verified by anyone, including us.
+ *  2. The "ES256 keypair" is generated in-memory per process and never
+ *     persisted/exported — gone on every restart.
+ *  3. verifySignature() performs NO cryptographic check; it only tests that the
+ *     metadata fields exist, yet GET /verify returns "valid and compliant with
+ *     Israeli Electronic Transactions Law." That is a false legal claim.
+ *
+ * Nothing in the app calls this route — the real, working signature is the
+ * tamper-evident provider-declaration sealed attestation
+ * (server/lib/providerDeclarationAttestation.ts), used in provider onboarding.
+ *
+ * Keep it OFF until the crypto is rebuilt (persisted ES256 key + real ES256 JWS
+ * + genuine JWS verification + a real RFC-3161 TSA). To work on it, set
+ * ESIGN_ISRAELI_2025_ENABLED=true in a non-production environment.
+ */
+router.use((req, res, next) => {
+  if (process.env.ESIGN_ISRAELI_2025_ENABLED === 'true') {
+    return next();
+  }
+  logger.warn('[Israeli2025-ESign] 🔴 disabled (not production-ready) — request rejected', {
+    path: req.path,
+  });
+  return res.status(501).json({
+    error: 'Signature service not available',
+    code: 'ESIGN_ISRAELI_2025_DISABLED',
+    message:
+      'The Israeli-2025 e-signature endpoint is disabled pending a cryptographic rebuild. Use the provider-declaration signature flow.',
+  });
+});
+
+/**
  * 🇮🇱 ISRAELI GOVERNMENT-GRADE E-SIGNATURE API (2025 COMPLIANCE)
  * 
  * Full compliance with Israeli Electronic Transactions Law 2001
