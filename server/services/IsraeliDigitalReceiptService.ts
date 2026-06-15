@@ -360,6 +360,48 @@ export class IsraeliDigitalReceiptService {
         logger.warn('[Digital Receipt] Google Sheets backup failed', { receiptNumber });
       }
 
+      // Issue the legal SUMIT tax-invoice-receipt (חשבונית מס/קבלה). This is a
+      // SAFE no-op until the operator sets SUMIT creds (SUMIT_ENABLED + keys) and
+      // connects the Tax Authority — sumitClient.createCustomerReceipt() returns
+      // {wired:false} without any HTTP call. It must NEVER throw here: a SUMIT
+      // hiccup cannot be allowed to fail a receipt for an already-completed
+      // payment. Idempotency key = our sequential receiptNumber, so a retry can't
+      // mint a duplicate tax document. Document id is logged for now (persisting
+      // it on digitalReceipts needs a schema column — follow-up migration).
+      try {
+        const { sumitClient } = await import('./SumitClient');
+        if (sumitClient.isWired()) {
+          const sumitResult = await sumitClient.createCustomerReceipt({
+            idempotencyKey: receiptNumber,
+            customer: {
+              name: params.customerName || params.customerEmail,
+              email: params.customerEmail,
+              phone: params.customerPhone,
+            },
+            description: params.serviceDescriptionHe || params.serviceDescription,
+            amountBeforeVat: vatBreakdown.subtotalBeforeVAT,
+            vatAmount: vatBreakdown.vatAmount,
+            totalAmount: params.totalAmount,
+            currency: 'ILS',
+            context: { platform: params.platform, bookingId: params.bookingId, receiptNumber },
+          });
+          if (sumitResult.sumitDocumentId) {
+            logger.info('[Digital Receipt] SUMIT document issued', {
+              receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, platform: params.platform,
+            });
+          } else {
+            logger.warn('[Digital Receipt] SUMIT issue did not return a document id', {
+              receiptNumber, reason: sumitResult.reason,
+            });
+          }
+        }
+      } catch (sumitError: any) {
+        // Never fail the receipt because of SUMIT. Loudly log for reconciliation.
+        logger.error('[Digital Receipt] 🔴 SUMIT dispatch failed (receipt still valid locally)', {
+          receiptNumber, bookingId: params.bookingId, error: sumitError?.message,
+        });
+      }
+
       return {
         success: true,
         receiptNumber,

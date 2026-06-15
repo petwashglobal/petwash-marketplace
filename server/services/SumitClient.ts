@@ -322,6 +322,134 @@ export class SumitClient {
   }
 
   /**
+   * Issue a B2C customer tax-invoice-receipt (חשבונית מס/קבלה) for a paid
+   * consumer transaction — a wash, a booking, a wallet top-up, an eGift, etc.
+   *
+   * Differs from createDocument() (which is the B2B *supplier* invoice path):
+   *  - Type is 'InvoiceAndReceipt' (חשבונית מס/קבלה) because the customer has
+   *    already paid, so the document is invoice + receipt in one.
+   *  - The customer is an individual: no business/VAT number required.
+   *  - A Payments line is included (the money is already in).
+   *
+   * Safety contract (the callers rely on this):
+   *  - When not wired (no creds), returns {wired:false} WITHOUT any HTTP call.
+   *    It must NEVER throw — a receipt failure must not roll back a real payment.
+   *  - Idempotent: ExternalIdentifier + Idempotency-Key = the caller's stable key
+   *    (our sequential receipt number), so a retry can't mint a second tax doc.
+   *
+   * BODY SHAPE: same unverified-until-sandbox caveat as createDocument() — the
+   * OfficeGuy/SUMIT field casing + the Payments shape must be confirmed against
+   * a real SUMIT_SANDBOX=true call before any production send. See
+   * docs/finance/sumit-activation-checklist-2026-06-15.md.
+   */
+  async createCustomerReceipt(input: {
+    idempotencyKey: string;
+    customer: { name: string; email?: string; phone?: string; taxId?: string };
+    description: string;
+    amountBeforeVat: number;
+    vatAmount: number;
+    totalAmount: number;
+    currency: 'ILS';
+    /** caller context for the audit log (platform, bookingId) */
+    context?: Record<string, unknown>;
+  }): Promise<SumitDocumentResult> {
+    const env = readEnv();
+    if (!isWired()) {
+      logger.info('[SumitClient] createCustomerReceipt called while not wired (no-op)', {
+        idempotencyKey: input.idempotencyKey,
+        totalAmount: input.totalAmount,
+        ...input.context,
+      });
+      return {
+        wired: false,
+        idempotencyKey: input.idempotencyKey,
+        reason: 'SumitClient not wired — set SUMIT_ENABLED=true plus all credentials',
+      };
+    }
+
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Details: {
+        // חשבונית מס/קבלה — invoice + receipt for an already-paid B2C sale.
+        Type: 'InvoiceAndReceipt',
+        Customer: {
+          Name: input.customer.name,
+          EmailAddress: input.customer.email || undefined,
+          Phone: input.customer.phone || undefined,
+          // Most consumers have no company number; send only if we have one.
+          CompanyNumber: input.customer.taxId || undefined,
+          ExternalIdentifier: input.idempotencyKey,
+        },
+        Description: input.description,
+        Currency: input.currency,
+        Language: 'he',
+        ExternalIdentifier: input.idempotencyKey,
+      },
+      Items: [
+        {
+          Item: { Name: input.description },
+          Quantity: 1,
+          // UnitPrice before VAT; VATIncluded:false → SUMIT adds the 18%.
+          UnitPrice: input.amountBeforeVat,
+        },
+      ],
+      // The sale is already paid — record the payment so the doc is a receipt too.
+      Payments: [{ Amount: input.totalAmount }],
+      VATIncluded: false,
+    };
+
+    const url = `${env.baseUrl}/accounting/documents/create/`;
+    const startMs = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Idempotency-Key': input.idempotencyKey,
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      const msg = (networkErr as Error).message;
+      logger.error('[SumitClient] createCustomerReceipt network error', {
+        idempotencyKey: input.idempotencyKey, url, err: msg, ...input.context,
+      });
+      return { wired: false, idempotencyKey: input.idempotencyKey, reason: `Network error: ${msg}` };
+    }
+
+    let parsedBody: unknown = null;
+    try { parsedBody = await res.json(); } catch { /* SUMIT may return non-JSON on errors */ }
+
+    if (!res.ok) {
+      logger.warn('[SumitClient] createCustomerReceipt non-2xx', {
+        idempotencyKey: input.idempotencyKey, status: res.status, sandbox: env.sandbox,
+        elapsedMs: Date.now() - startMs, ...input.context,
+      });
+      return {
+        wired: true,
+        idempotencyKey: input.idempotencyKey,
+        reason: `SUMIT returned ${res.status}`,
+        rawResponse: parsedBody,
+      };
+    }
+
+    const sumitDocumentId = extractDocumentId(parsedBody);
+    logger.info('[SumitClient] customer receipt created', {
+      idempotencyKey: input.idempotencyKey, sumitDocumentId, sandbox: env.sandbox,
+      elapsedMs: Date.now() - startMs, ...input.context,
+    });
+    return { wired: true, idempotencyKey: input.idempotencyKey, sumitDocumentId, rawResponse: parsedBody };
+  }
+
+  /** Public accessor so callers can branch without firing a no-op call. */
+  isWired(): boolean {
+    return isWired();
+  }
+
+  /**
    * HMAC-verify an inbound SUMIT webhook payload. Returns false when
    * SUMIT_WEBHOOK_SECRET is unset so the receiver can short-circuit and
    * 401 the request. Constant-time compare to defeat timing attacks.
