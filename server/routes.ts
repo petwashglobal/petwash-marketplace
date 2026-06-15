@@ -13755,10 +13755,20 @@ self.addEventListener('notificationclick', (event) => {
       const { db } = await import('./db');
 
       const interactionData = insertUserInteractionLogSchema.parse(req.body);
-      
+
       // Add user agent and IP address
       interactionData.userAgent = req.headers['user-agent'];
       interactionData.ipAddress = req.ip || req.connection.remoteAddress;
+
+      // Gap 7: pseudonymous tracking id (hashed, NEVER the real uid — decouples
+      // analytics from the identity vault) + consent level (client-supplied, else
+      // the most conservative 'none'). Both columns were previously never set.
+      const _seed = String(
+        (req.body && req.body.sessionId) ||
+        `${req.ip || 'noip'}|${req.headers['user-agent'] || 'noua'}`
+      );
+      interactionData.pseudonymousUserId = crypto.createHash('sha256').update(`uil:${_seed}`).digest('hex').slice(0, 32);
+      interactionData.consentLevel = (typeof req.body?.consentLevel === 'string' ? req.body.consentLevel : 'none');
 
       // Don't log sensitive data (passwords, credit cards)
       if (interactionData.inputValue && (
@@ -13793,24 +13803,33 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // Map frontend events to database schema
-      const interactionRecords = events.map((event: any) => ({
-        sessionId: event.sessionId,
-        userId: req.session?.firebaseUid || null,
-        interactionType: event.eventType, // 'click', 'input', 'focus', 'blur', 'change', 'navigation', 'scroll'
-        elementType: event.elementType,
-        elementId: event.elementId || null,
-        elementPath: event.elementTestId || null, // Map test ID to path field
-        elementText: event.elementText || null,
-        inputValue: event.inputValue || null,
-        page: event.url,
-        timestamp: new Date(event.timestamp),
-        userAgent: event.userAgent || req.headers['user-agent'] || null,
-        ipAddress: req.ip || req.connection.remoteAddress || null,
-        metadata: {
-          screenResolution: event.screenResolution,
-          language: event.language,
-        },
-      }));
+      const interactionRecords = events.map((event: any) => {
+        // Gap 7: pseudonymous (hashed) id + consent level on every event. The id
+        // is derived from the session token (or ip+ua fallback), never the real
+        // uid — analytics can run without touching the identity vault. consentLevel
+        // is client-supplied; default to the conservative 'none'.
+        const seed = String(event.sessionId || `${req.ip || 'noip'}|${req.headers['user-agent'] || 'noua'}`);
+        return {
+          sessionId: event.sessionId,
+          userId: req.session?.firebaseUid || null,
+          pseudonymousUserId: crypto.createHash('sha256').update(`uil:${seed}`).digest('hex').slice(0, 32),
+          consentLevel: typeof event.consentLevel === 'string' ? event.consentLevel : 'none',
+          interactionType: event.eventType, // 'click', 'input', 'focus', 'blur', 'change', 'navigation', 'scroll'
+          elementType: event.elementType,
+          elementId: event.elementId || null,
+          elementPath: event.elementTestId || null, // Map test ID to path field
+          elementText: event.elementText || null,
+          inputValue: event.inputValue || null,
+          page: event.url,
+          timestamp: new Date(event.timestamp),
+          userAgent: event.userAgent || req.headers['user-agent'] || null,
+          ipAddress: req.ip || req.connection.remoteAddress || null,
+          metadata: {
+            screenResolution: event.screenResolution,
+            language: event.language,
+          },
+        };
+      });
 
       // Batch insert all interactions
       await db.insert(userInteractionLogs).values(interactionRecords);
