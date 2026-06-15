@@ -991,8 +991,13 @@ router.post('/:requestId/respond', async (req, res) => {
     // ── Wallet lifecycle on provider response ──────────────────────────────────
     // ACCEPT → debitFromWalletHold (pending → realized debit, commercially locked)
     // DECLINE → releaseWalletHold (pending → available restored)
+    // NOTE: holdCents is hoisted to THIS scope (not block-scoped inside the if)
+    // because the customer-notification body further down references it to render
+    // the "₪X charged/released" line. Previously it was declared inside the if,
+    // so the notification block threw ReferenceError (swallowed by its try/catch),
+    // silently dropping the booking_accepted/declined notification.
+    const holdCents = Number((booking as any).walletHoldCents) || 0;
     if ((booking as any).financeState === 'hold_active' && (booking as any).walletHoldCents > 0) {
-      const holdCents    = Number((booking as any).walletHoldCents) || 0;
       const divisionCode = getDivisionCode(booking.serviceType);
       setImmediate(async () => {
         try {
@@ -1027,12 +1032,14 @@ router.post('/:requestId/respond', async (req, res) => {
       });
     }
 
-    // Notify customer via superAppNotifications (in-app bell)
+    // Resolve provider display name for personalised copy. Hoisted ABOVE the
+    // notification try so it is in scope for ALL customer-messaging blocks below
+    // (in-app notification, acceptance email/SMS, and the decline-rebook nudge).
+    // It was previously declared inside the notification try → ReferenceError in
+    // those later blocks (swallowed by their own try/catch), silently dropping
+    // acceptance emails and the decline recovery nudge.
+    let providerName = 'הספק';
     try {
-      const isAccept = data.action === 'accept';
-
-      // Resolve provider display name for personalised copy
-      let providerName = 'הספק';
       if (booking.providerId) {
         const [providerUser] = await db
           .select({ firstName: users.firstName, lastName: users.lastName })
@@ -1043,6 +1050,13 @@ router.post('/:requestId/respond', async (req, res) => {
           providerName = [providerUser.firstName, providerUser.lastName].filter(Boolean).join(' ') || 'הספק';
         }
       }
+    } catch (e: any) {
+      logger.warn('[BookingRequests] provider name lookup failed (respond)', { requestId, error: e?.message });
+    }
+
+    // Notify customer via superAppNotifications (in-app bell)
+    try {
+      const isAccept = data.action === 'accept';
 
       await db.insert(superAppNotifications).values({
         userId: booking.ownerId,
