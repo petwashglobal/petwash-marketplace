@@ -10458,7 +10458,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/provider-review', apiLimiter, requireAdminMfa, requireRole('admin', 'management', 'staff'), requireStaffApproved, requireMfaEnrolled, adminProviderReviewRoutes);
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts (Admin only)
-  app.use('/api/ai-verification', validateFirebaseToken, apiLimiter, aiPayoutVerificationRoutes);
+  // P0 gates: token + role + staff-approved + MFA — same chain as the sibling
+  // /api/provider-command-center and /api/provider-review admin mounts. Without
+  // these, any authenticated customer could reach payout-verification routes.
+  app.use('/api/ai-verification', validateFirebaseToken, apiLimiter, requireAdminMfa, requireRole('admin', 'management'), requireStaffApproved, requireMfaEnrolled, aiPayoutVerificationRoutes);
   app.use('/api/israeli-compliance', validateFirebaseToken, apiLimiter, israeliCompliance2025Routes);
   
   // Transaction OTP Verification - SMS/Email OTP for high-value transactions
