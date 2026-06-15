@@ -207,39 +207,47 @@ router.post('/', async (req, res) => {
         });
       }
 
-      // 3. Stale quote check — quote older than 10 minutes must be repriced
-      const STALE_THRESHOLD_MS = 10 * 60 * 1000;
-      if (fq.quotedAt) {
-        const quoteAgeMs = Date.now() - new Date(fq.quotedAt).getTime();
-        if (quoteAgeMs > STALE_THRESHOLD_MS) {
-          // Reprice to see if the total changed
-          const freshQuote = await calculateQuote({
-            providerId: data.providerId,
-            serviceType: data.serviceType,
-            bookingWindow: { startAt: startDate.toISOString(), endAt: endDate.toISOString() },
-            pets: data.petDetails ?? [],
-            addons: data.selectedAddons ?? [],
-            promoCode: data.promoCode ?? null,
-            userId,
-          });
-          if (freshQuote.success && freshQuote.totals.totalCents !== fq.totals.totalCents) {
-            return res.status(409).json({
-              error: 'Your quote has expired and the price has changed. Please review the updated quote before confirming.',
-              code: 'QUOTE_STALE_PRICE_CHANGED',
-              freshQuote,
-            });
-          }
-          // Price unchanged — accept stale quote with a warning logged
-          logger.warn('[BookingRequest] Stale quote accepted (price unchanged)', {
-            requestId: 'pending', quoteAgeMs, providerId: data.providerId,
-          });
-        }
+      // 3. ALWAYS recompute the quote server-side — NEVER trust client totals.
+      // `finalQuote` is `z.any()` in the schema, so fq.totals is fully attacker-
+      // controlled; the old code only repriced when the quote was >10min stale and
+      // otherwise charged fq.totals.totalCents verbatim (a client could POST
+      // totalCents:1 with a fresh quotedAt and book a multi-day multi-pet sit for
+      // ₪0.01). We now re-run the pricing engine with the SERVER's own inputs and
+      // use ITS numbers. The client total is a display value only: if it diverges
+      // from the authoritative server total by more than a rounding agora we refuse
+      // and surface the real price (blocks forgery AND honest stale quotes, and
+      // never silently charges a surprise price — Consumer Protection §17a).
+      const freshQuote = await calculateQuote({
+        providerId: data.providerId,
+        serviceType: data.serviceType,
+        bookingWindow: { startAt: startDate.toISOString(), endAt: endDate.toISOString() },
+        pets: data.petDetails ?? [],
+        addons: data.selectedAddons ?? [],
+        promoCode: data.promoCode ?? null,
+        userId,
+      });
+      if (!freshQuote.success || typeof freshQuote.totals?.totalCents !== 'number') {
+        return res.status(400).json({
+          error: 'We could not price this booking right now. Please try again.',
+          code: 'QUOTE_RECOMPUTE_FAILED',
+        });
       }
-
-      // Use engine quote — no client-side arithmetic
-      subtotalCents = fq.totals.subtotalCents;
-      serviceFeeCents = 0; // already included in quote totals
-      totalCents = fq.totals.totalCents;
+      if (Math.abs(freshQuote.totals.totalCents - fq.totals.totalCents) > 1) {
+        logger.warn('[BookingRequest] client quote total rejected — diverges from server recompute', {
+          providerId: data.providerId,
+          clientTotalCents: fq.totals.totalCents,
+          serverTotalCents: freshQuote.totals.totalCents,
+        });
+        return res.status(409).json({
+          error: 'The price has changed since your quote. Please review the updated price before confirming.',
+          code: 'QUOTE_PRICE_CHANGED',
+          freshQuote,
+        });
+      }
+      // Authoritative SERVER totals — never the client's.
+      subtotalCents = freshQuote.totals.subtotalCents;
+      serviceFeeCents = 0; // already included in engine totals
+      totalCents = freshQuote.totals.totalCents;
     } else {
       // Legacy fallback: fetch provider rate and calculate
       if (data.providerType === 'sitter' && data.providerProfileId) {
