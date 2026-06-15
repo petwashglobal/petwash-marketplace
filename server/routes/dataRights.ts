@@ -13,18 +13,20 @@
 import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
 import { db as firestore } from '../lib/firebase-admin';
-import { 
-  users, 
-  customers, 
+import {
+  users,
+  customers,
   customerPets,
-  washHistory, 
+  washHistory,
   nayaxTransactions,
   eVouchers,
   eVoucherRedemptions,
-  hrDocuments
+  hrDocuments,
+  dataRectificationRequests
 } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth } from '../customAuth';
+import { requireAdmin } from '../adminAuth';
 import { logger } from '../lib/logger';
 import { EmailService } from '../emailService';
 import { AuditLedgerService } from '../services/AuditLedgerService';
@@ -33,6 +35,16 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
+
+/**
+ * Pseudonymous subject reference for the rectification audit log. The table is
+ * data-minimized by design (it records WHICH field + who/when/status, never the
+ * values, never a name). We hash the uid so the row groups a user's requests
+ * together without storing a reversible identifier.
+ */
+function subjectRefFor(uid: string): string {
+  return crypto.createHash('sha256').update(`rectification:${uid}`).digest('hex').slice(0, 32);
+}
 
 // ========================================================================
 // RATE LIMITING - GDPR Compliance (5 requests per hour per IP)
@@ -354,10 +366,32 @@ router.patch('/correct', requireAuth, async (req: Request, res: Response) => {
       userAgent: req.get('user-agent'),
     });
 
-    logger.info('[Data Rights] Data correction applied', { 
-      userId, 
-      field, 
-      auditHash 
+    // Gap 6: record the rectification in data_rectification_requests for the
+    // Amendment-13 / GDPR Art.16 request register + admin oversight. This
+    // endpoint applies the change immediately, so the request is self-service
+    // COMPLETED. Data-minimized: pseudonymous subject ref, field name only — the
+    // user-supplied `reason` is NOT stored (it may contain PII; the column is
+    // non-PII by design). Wrapped so the audit register can never fail the
+    // correction the user already received.
+    try {
+      await db.insert(dataRectificationRequests).values({
+        subjectRef: subjectRefFor(userId),
+        fieldName: field,
+        status: 'completed',
+        reviewedBy: 'self_service',
+        appliedAt: new Date(),
+        note: 'self-service correction via /api/data-rights/correct',
+      });
+    } catch (regErr: any) {
+      logger.error('[Data Rights] failed to record rectification request (correction still applied)', {
+        userId, field, error: regErr?.message,
+      });
+    }
+
+    logger.info('[Data Rights] Data correction applied', {
+      userId,
+      field,
+      auditHash
     });
 
     res.json({
@@ -778,6 +812,61 @@ router.get('/health', (req: Request, res: Response) => {
       gracePeriod: '30 days',
     },
   });
+});
+
+// ========================================================================
+// Gap 6 — Admin oversight of the rectification register (Amendment 13 / GDPR Art.16)
+// Read-only list + status update. Data-minimized rows only (no PII).
+// ========================================================================
+
+// GET /api/data-rights/admin/rectifications?status=&limit=
+router.get('/admin/rectifications', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const limit = Math.min(parseInt(String(req.query.limit || '200'), 10) || 200, 500);
+    const rows = await db
+      .select()
+      .from(dataRectificationRequests)
+      .where(status ? eq(dataRectificationRequests.status, status) : undefined)
+      .orderBy(desc(dataRectificationRequests.requestedAt))
+      .limit(limit);
+    res.json({ success: true, count: rows.length, requests: rows });
+  } catch (error: any) {
+    logger.error('[Data Rights] admin rectification list failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to load rectification requests' });
+  }
+});
+
+// PATCH /api/data-rights/admin/rectifications/:id  { status, note? }
+router.patch('/admin/rectifications/:id', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+    const ALLOWED = ['received', 'in_progress', 'completed', 'rejected'];
+    const { status, note } = req.body || {};
+    if (!ALLOWED.includes(status)) {
+      return res.status(400).json({ error: `status must be one of ${ALLOWED.join(', ')}` });
+    }
+    const reviewer = (req as any).user?.email || (req as any).user?.uid || 'admin';
+    const patch: any = { status, reviewedBy: reviewer };
+    if (status === 'completed') patch.appliedAt = new Date();
+    if (typeof note === 'string' && note.trim()) patch.note = note.trim().slice(0, 500);
+    const [updated] = await db
+      .update(dataRectificationRequests)
+      .set(patch)
+      .where(eq(dataRectificationRequests.id, id))
+      .returning();
+    if (!updated) {
+      return res.status(404).json({ error: 'Rectification request not found' });
+    }
+    logger.info('[Data Rights] rectification status updated', { id, status, reviewer });
+    res.json({ success: true, request: updated });
+  } catch (error: any) {
+    logger.error('[Data Rights] admin rectification update failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to update rectification request' });
+  }
 });
 
 export default router;
