@@ -1331,6 +1331,12 @@ jobs:
             "SUMIT_API_KEY=SUMIT_API_KEY:latest"
             "SUMIT_COMPANY_ID=SUMIT_COMPANY_ID:latest"
             "SUMIT_WEBHOOK_SECRET=SUMIT_WEBHOOK_SECRET:latest"
+            # UPay (upay.co.il) online clearing API key. Stored in GCP Secret
+            # Manager; mapped here so Cloud Run gets it at runtime. The integration
+            # code fails closed when this is unset, so mapping it is safe even
+            # before the UPay client ships. Same overwrite hazard as SUMIT above —
+            # keep it mapped so it persists across deploys.
+            "UPAY_API_KEY=UPAY_API_KEY:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
