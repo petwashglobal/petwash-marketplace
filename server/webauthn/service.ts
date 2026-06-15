@@ -663,13 +663,21 @@ export async function verifyDiscoverableAuthentication(
     }
     
     clearChallengeFromCookie(res);
-    
-    const collectionPath = isAdmin ? 'employees' : 'users';
-    await updateDeviceOnAuth(uid, credentialId, collectionPath, {
-      counter: verification.authenticationInfo.newCounter,
+
+    // updateDeviceOnAuth's signature is (uid, isAdmin, credId, newCounter,
+    // ipAddress, userAgent) — positional. The discoverable path was calling it
+    // with the wrong shape (credentialId in the isAdmin slot, a collectionPath
+    // string in the credId slot, and an OBJECT in the newCounter slot), so every
+    // Face-ID / discoverable-credential login threw and failed. Mirror the
+    // correct non-discoverable call at the bottom of verifyAuthentication.
+    await updateDeviceOnAuth(
+      uid,
+      isAdmin,
+      credentialId,
+      verification.authenticationInfo.newCounter,
       ipAddress,
       userAgent,
-    });
+    );
     
     await logAuthEvent({
       eventType: 'authentication_success',
