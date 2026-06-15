@@ -14,6 +14,7 @@ import {
   insertTrainerSchema,
   insertTrainerBookingSchema,
   providerApprovalQueue,
+  PETWASH_COMMISSION_RATE,
   type Trainer,
   type TrainerBooking,
 } from '@shared/schema';
@@ -220,7 +221,11 @@ router.post('/bookings', requireAuth, async (req, res) => {
     // Calculate pricing
     const durationHours = validatedData.sessionDuration / 60;
     const totalAmount = parseFloat(trainer.hourlyRate) * durationHours;
-    const platformFee = totalAmount * (parseFloat(trainer.commissionRate) / 100);
+    // Uniform 15% platform commission across ALL PetWash paid services (same
+    // PETWASH_COMMISSION_RATE constant as PetSitter/Walk; CEO-confirmed 2026-06-15).
+    // Previously this used per-trainer trainer.commissionRate, which (a) could
+    // diverge from 15% and (b) produced NaN pricing when a trainer had no rate set.
+    const platformFee = totalAmount * PETWASH_COMMISSION_RATE;
     const trainerPayout = totalAmount - platformFee;
     
     // Wallet hold (Academy = 100% cap)
