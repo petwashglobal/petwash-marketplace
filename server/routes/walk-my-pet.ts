@@ -1243,7 +1243,16 @@ router.post('/walks/:bookingId/gps', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Walk not in progress' });
     }
 
-    if (booking.walkerId !== callerId) {
+    // walkBookings.walkerId stores the walker PROFILE id (WALKER-…), NOT the
+    // Firebase uid — resolve the profile to its userId before comparing, or the
+    // real walker is always 403'd and can never stream GPS / complete the walk.
+    // (Mirrors the /confirm handler's lookup.)
+    const [walkerRow] = await db
+      .select({ userId: walkerProfiles.userId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, booking.walkerId))
+      .limit(1);
+    if (!walkerRow || walkerRow.userId !== callerId) {
       return res.status(403).json({ error: 'Forbidden: you are not the walker for this booking' });
     }
 
@@ -1349,7 +1358,16 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Walk not in progress' });
     }
 
-    if (booking.walkerId !== callerId) {
+    // walkBookings.walkerId stores the walker PROFILE id (WALKER-…), NOT the
+    // Firebase uid — resolve the profile to its userId before comparing, or the
+    // real walker is always 403'd and can never stream GPS / complete the walk.
+    // (Mirrors the /confirm handler's lookup.)
+    const [walkerRow] = await db
+      .select({ userId: walkerProfiles.userId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, booking.walkerId))
+      .limit(1);
+    if (!walkerRow || walkerRow.userId !== callerId) {
       return res.status(403).json({ error: 'Forbidden: you are not the walker for this booking' });
     }
 
