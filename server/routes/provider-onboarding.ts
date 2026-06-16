@@ -2079,6 +2079,41 @@ router.get('/my/status', async (req: Request, res: Response) => {
   }
 });
 
+// POST /withdraw — applicant withdraws their OWN application. The client's
+// "Withdraw application" button posted here but the route did not exist (404).
+// Allowed only from a non-terminal state; ownership enforced by user_id.
+router.post('/withdraw', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const token = authHeader.split(' ')[1];
+    const decodedToken = await auth.verifyIdToken(token, true);
+
+    const appRow = await pool.query(
+      `SELECT id, status FROM provider_applications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [decodedToken.uid]
+    );
+    if (!appRow.rows.length) return res.status(404).json({ error: 'No application found' });
+
+    const app = appRow.rows[0];
+    const TERMINAL = ['approved', 'rejected', 'withdrawn'];
+    if (TERMINAL.includes(app.status)) {
+      return res.status(409).json({ error: `Application is ${app.status} and cannot be withdrawn` });
+    }
+
+    await pool.query(
+      `UPDATE provider_applications SET status = 'withdrawn', updated_at = NOW() WHERE id = $1 AND user_id = $2`,
+      [app.id, decodedToken.uid]
+    );
+
+    logger.info('[ProviderOnboarding] Application withdrawn by applicant', { applicationId: app.id, uid: decodedToken.uid });
+    res.json({ success: true, status: 'withdrawn' });
+  } catch (err: any) {
+    logger.error('[ProviderOnboarding] Withdraw error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /my/messages — applicant reads their communication thread (provider-visible only)
 router.get('/my/messages', async (req: Request, res: Response) => {
   try {
