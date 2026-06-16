@@ -19,6 +19,25 @@ export const EGIFT_ALLOWED_DENOMINATIONS = [100, 250, 500, 1000] as const;
 export type EgiftDenomination = (typeof EGIFT_ALLOWED_DENOMINATIONS)[number];
 
 /**
+ * Israeli Payment Services exemption cap (תקנות שירותי תשלום (פטור), 2022,
+ * extended to 2027-06-06): a closed-loop, non-reloadable, paid-in-full voucher
+ * is exempt from a payment-services LICENCE only up to ₪1,500. Above this,
+ * PetWash would need a licence — so NO denomination may exceed this cap.
+ */
+export const EGIFT_EXEMPTION_CAP_ILS = 1500;
+
+// Lock-in: if a future change adds a denomination over the exemption cap, this
+// throws at module load -> fails the build/tests, so the licence exemption can
+// never be silently broken.
+for (const d of EGIFT_ALLOWED_DENOMINATIONS) {
+  if (d > EGIFT_EXEMPTION_CAP_ILS) {
+    throw new Error(
+      `E-gift denomination ₪${d} exceeds the ₪${EGIFT_EXEMPTION_CAP_ILS} payment-services exemption cap — that would require a payment licence.`,
+    );
+  }
+}
+
+/**
  * Validate that a value (number or numeric string) is one of the allowed
  * e-gift denominations. Returns the canonical number on success, or null
  * on failure (caller decides how to surface the error).

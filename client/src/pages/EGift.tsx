@@ -509,12 +509,12 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Monto personalizado',
   },
   enterAmount: {
-    en: 'Enter amount (₪50-₪5,000)',
-    he: 'הזינו סכום (₪50-₪5,000)',
-    ar: 'أدخل المبلغ (₪50-₪5,000)',
-    ru: 'Введите сумму (₪50-₪5,000)',
-    fr: 'Entrez le montant (₪50-₪5,000)',
-    es: 'Ingrese monto (₪50-₪5,000)',
+    en: 'Enter amount (₪50-₪1,500)',
+    he: 'הזינו סכום (₪50-₪1,500)',
+    ar: 'أدخل المبلغ (₪50-₪1,500)',
+    ru: 'Введите сумму (₪50-₪1,500)',
+    fr: 'Entrez le montant (₪50-₪1,500)',
+    es: 'Ingrese monto (₪50-₪1,500)',
   },
   occasionSelected: {
     en: 'Card occasion set!',
@@ -840,7 +840,8 @@ export default function EGift() {
     const num = val.replace(/[^0-9]/g, '');
     setCustomAmount(num);
     const parsed = parseInt(num);
-    if (parsed >= 50 && parsed <= 5000) {
+    // ₪1,500 = payment-services exemption cap (server enforces it too).
+    if (parsed >= 50 && parsed <= 1500) {
       setSelectedOption({ value: parsed, tier: parsed >= 750 ? 'ELITE' : parsed >= 400 ? 'PREMIUM' : parsed >= 200 ? 'PLUS' : 'CLASSIC' });
     } else {
       setSelectedOption(null);
@@ -1644,8 +1645,8 @@ export default function EGift() {
                   enterKeyHint="done"
                   data-testid="input-custom-amount"
                 />
-                {customAmount && (parseInt(customAmount) < 50 || parseInt(customAmount) > 5000) && (
-                  <p className="text-[10px] text-amber-600 mt-1 text-center">₪50 - ₪5,000</p>
+                {customAmount && (parseInt(customAmount) < 50 || parseInt(customAmount) > 1500) && (
+                  <p className="text-[10px] text-amber-600 mt-1 text-center">₪50 - ₪1,500</p>
                 )}
               </div>
             )}
