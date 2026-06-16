@@ -1,0 +1,70 @@
+/**
+ * PetWash™ Brand Design Tokens — the single source of truth.
+ *
+ * THE LOOK (locked with the CEO, 2026-06-16): pure WHITE ground · BLACK text ·
+ * BRIGHT METALLIC GOLD accents only. Never cream/ivory/off-white, never brown,
+ * never muted/antique gold, and gold is NEVER body text (it's jewelry, not paint).
+ *
+ * Change the gold ONCE here → the whole app updates. That is the point.
+ */
+:root {
+  /* Ground + ink */
+  --pw-white: #FFFFFF;        /* the only background — pure, gallery-bright */
+  --pw-ink: #111111;          /* headings + primary text — full black */
+  --pw-ink-soft: #333333;     /* secondary text — still high-contrast, NOT faded */
+  --pw-hairline: #ECECEC;     /* thin borders on white */
+  --pw-hairline-gold: #E7D9A6;/* gold-tinted border for featured cards */
+
+  /* THE GOLD — bright metallic (reference: Royal-Tier card). Tweak only here. */
+  --pw-gold: #D4AF37;         /* the one true gold */
+  --pw-gold-deep: #B8860B;    /* gradient start / pressed */
+  --pw-gold-light: #F2D778;   /* gradient highlight (sheen) */
+  --pw-gold-grad: linear-gradient(135deg, var(--pw-gold-deep) 0%, var(--pw-gold) 45%, var(--pw-gold-light) 100%);
+  --pw-gold-ink: #3A2D00;     /* text ON a gold fill (dark, readable) */
+
+  /* Status (only place non-gold color is allowed) */
+  --pw-success: #0B6B36;
+  --pw-success-bg: #E7F5EC;
+
+  /* Shape + rhythm */
+  --pw-radius: 12px;
+  --pw-radius-sm: 8px;
+  --pw-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Luxury utility classes — apply the system, no dead area, mobile-first ── */
+
+/* Metallic-gold FILL (icon chips, badges, accent bars). Text on it = --pw-gold-ink. */
+.pw-gold-fill { background: var(--pw-gold-grad); color: var(--pw-gold-ink); }
+
+/* Metallic-gold TEXT/ICON via clip (for crowns, +, decorative glyphs only). */
+.pw-gold-text {
+  background: linear-gradient(135deg, #9A7B1E, var(--pw-gold));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* White card on white ground — the standard surface. */
+.pw-card {
+  background: var(--pw-white);
+  border: 1px solid var(--pw-hairline);
+  border-radius: var(--pw-radius);
+  box-shadow: var(--pw-shadow);
+}
+.pw-card--gold { border-color: var(--pw-hairline-gold); }
+
+/* Icon chip — icon fills its frame edge-to-edge (100% usage, no silly empty pill). */
+.pw-icon-chip {
+  width: 44px; height: 44px; border-radius: var(--pw-radius-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.pw-icon-chip > * { font-size: 24px; line-height: 1; }  /* fill the chip */
+
+/* Gold hairline divider. */
+.pw-rule { height: 1px; background: var(--pw-gold); border: 0; opacity: .9; }
+
+/* Eyebrow label — black, spaced, the editorial section mark. */
+.pw-eyebrow {
+  font-size: 10px; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--pw-ink); font-weight: 600;
+}
