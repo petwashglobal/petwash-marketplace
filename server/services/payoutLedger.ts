@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { contractorEarnings, sitterBookings, walkBookings, pettrekTrips } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { feeConfigService } from './FeeConfigurationService';
@@ -67,6 +67,30 @@ export async function createEarningRecord(params: CreateEarningParams) {
       tripDistanceKm,
       tollCharges,
     } = params;
+
+    // IDEMPOTENCY GUARD — never create a second earning for the same booking+role.
+    // contractor_earnings.booking_id has no DB unique constraint, so a Nayax
+    // webhook replay, an admin retry, or a double "complete" would otherwise
+    // insert a second earning row and pay the provider TWICE. Return the
+    // existing record instead (matches the escrow idempotency pattern).
+    const existing = await db
+      .select()
+      .from(contractorEarnings)
+      .where(
+        and(
+          eq(contractorEarnings.bookingId, bookingId),
+          eq(contractorEarnings.contractorType, contractorType),
+        ),
+      )
+      .limit(1);
+    if (existing.length > 0) {
+      logger.warn('[PayoutLedger] Earning already exists for booking — returning existing (no double-pay)', {
+        bookingId,
+        contractorType,
+        earningId: existing[0].earningId,
+      });
+      return existing[0];
+    }
 
     // Calculate platform fee
     const platformFee = (baseAmount * platformFeePercent) / 100;
