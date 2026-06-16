@@ -467,7 +467,26 @@ export default function MyAccount() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const isHebrew = language === 'he';
-  
+
+  // Add-to-Apple-Wallet straight from the account dashboard (CEO: put the
+  // download on the dashboard). Same endpoint the /wallet-download page uses.
+  const addToAppleWalletMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/generate-wallet-links', {});
+      const data = await resp.json();
+      if (!data.ok || !data.appleWalletUrl) {
+        throw new Error(data.error || (isHebrew ? 'הכרטיס עדיין לא מוכן — נסה שוב בעוד דקה.' : 'Pass not ready yet — try again in a minute.'));
+      }
+      return data.appleWalletUrl as string;
+    },
+    onSuccess: (url) => window.location.assign(url),
+    onError: (err: any) => toast({
+      title: isHebrew ? 'Wallet עדיין לא מוכן' : 'Wallet not ready yet',
+      description: err?.message || (isHebrew ? 'נסה שוב בעוד דקה.' : 'Try again in a minute.'),
+      variant: 'destructive',
+    }),
+  });
+
   const [activeTab, setActiveTab] = useState('profile');
   const [inboxFilter, setInboxFilter] = useState<'all'|'receipt'|'promo'|'voucher'|'system'>('all');
   const [inboxExpanded, setInboxExpanded] = useState<Record<string, boolean>>({});
@@ -1453,6 +1472,20 @@ export default function MyAccount() {
               </div>
             )}
           </div>
+
+          {/* ── Add to Apple Wallet — prominent, on the dashboard ── */}
+          <button
+            onClick={() => addToAppleWalletMutation.mutate()}
+            disabled={addToAppleWalletMutation.isPending}
+            className="w-full flex items-center justify-center gap-2 bg-black text-white rounded-2xl py-4 font-semibold text-base"
+            style={{ cursor: addToAppleWalletMutation.isPending ? 'wait' : 'pointer' }}
+            aria-label={isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet'}
+          >
+            <Wallet className="w-5 h-5" aria-hidden="true" />
+            {addToAppleWalletMutation.isPending
+              ? (isHebrew ? 'מכין את הכרטיס…' : 'Preparing your pass…')
+              : (isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
+          </button>
 
           {/* ── Wallet Balance Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
