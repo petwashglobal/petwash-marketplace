@@ -35,7 +35,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
 import { Bell } from "lucide-react";
 import { useFirebaseAuth } from "../auth/AuthProvider";
-import { useAccountNavigation } from "../hooks/useAccountNavigation";
+import { useAccountNavigation, getLiveFirebaseUser } from "../hooks/useAccountNavigation";
 import { useWhoami } from "../auth/useWhoami";
 import { accountButtonView, accountLabel } from "../lib/accountButton";
 import { isStickyAccountPath } from "../lib/sticky-account-paths";
@@ -286,6 +286,19 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         const route = await resolveAccountRoute();
         handleNavigate(route);
         return;
+      }
+      // LIVE-AUTH GUARD — the React `user` (and therefore accountView) can be
+      // stale-null on iPhone Safari while the SDK still holds a persisted
+      // session, which previously sent a LOGGED-IN user to /signup. If the
+      // accountView decided "guest", double-check the live Firebase session
+      // before trusting it; a genuine guest (no live user) still gets the
+      // proper signup/checkout route with its returnTo.
+      if (accountView.state === 'guest' || accountView.state === 'guest_checkout') {
+        const liveUser = await getLiveFirebaseUser();
+        if (liveUser) {
+          handleNavigate(await resolveAccountRoute());
+          return;
+        }
       }
       if (accountView.to) {
         handleNavigate(accountView.to);
