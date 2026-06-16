@@ -27,7 +27,7 @@
   
   --luxury-platinum: #e8e6f0;
   --luxury-silver: #c0bdd0;
-  --luxury-gold-accent: #d4af37;
+  --luxury-gold-accent: #12936A;
   --luxury-rose-accent: #b76e79;
   
   --luxury-gradient-noir: linear-gradient(135deg, #0a0a0f 0%, #15151d 50%, #1a1825 100%);
@@ -172,7 +172,7 @@
 }
 
 .luxury-tier-gold {
-  background: linear-gradient(135deg, #B8860B 0%, #FFD700 25%, #DAA520 50%, #FFD700 75%, #B8860B 100%);
+  background: linear-gradient(135deg, #0C5B3F 0%, #FFD700 25%, #DAA520 50%, #FFD700 75%, #0C5B3F 100%);
 }
 
 .luxury-tier-platinum {
@@ -245,14 +245,14 @@
 }
 
 .luxury-dark-text-gradient {
-  background: linear-gradient(135deg, #1A1A1A 0%, #D4AF37 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #12936A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .luxury-dark-text-gold {
-  background: linear-gradient(135deg, #d4af37 0%, #f0d860 50%, #d4af37 100%);
+  background: linear-gradient(135deg, #12936A 0%, #f0d860 50%, #12936A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -263,7 +263,7 @@
    =========================== */
 
 .luxury-dark-btn-primary {
-  background: linear-gradient(135deg, #c9a96e 0%, #d4af37 100%);
+  background: linear-gradient(135deg, #12936A 0%, #12936A 100%);
   color: #ffffff;
   padding: 14px 32px;
   border-radius: 14px;
@@ -286,7 +286,7 @@
 }
 
 .luxury-dark-btn-gold {
-  background: linear-gradient(135deg, #c9a96e 0%, #d4af37 100%);
+  background: linear-gradient(135deg, #12936A 0%, #12936A 100%);
   color: #ffffff;
   padding: 14px 32px;
   border-radius: 14px;
@@ -321,7 +321,7 @@
 
 .luxury-dark-btn-ghost:hover {
   background: #FFFFFF;
-  border-color: #D4AF37;
+  border-color: #12936A;
 }
 
 /* ===========================
@@ -346,7 +346,7 @@
 
 .luxury-dark-badge-gold {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(240, 216, 96, 0.1) 100%);
-  color: #B8941F;
+  color: #0C5B3F;
   border-color: rgba(212, 175, 55, 0.35);
 }
 
@@ -528,10 +528,10 @@
 }
 
 .luxury-dark-scroll::-webkit-scrollbar-thumb {
-  background: #D4AF37;
+  background: #12936A;
   border-radius: 3px;
 }
 
 .luxury-dark-scroll::-webkit-scrollbar-thumb:hover {
-  background: #B8941F;
+  background: #0C5B3F;
 }

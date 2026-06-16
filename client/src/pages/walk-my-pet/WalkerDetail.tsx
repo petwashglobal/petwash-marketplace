@@ -134,7 +134,7 @@ export default function WalkerDetail() {
             <Button
               size="sm"
               onClick={() => navigate(`/booking/new/dog_walking/${walker.userId}`)}
-              className="bg-[#C5A55A] hover:bg-[#b8945a] text-white shrink-0 text-xs px-4"
+              className="bg-[#C5A55A] hover:bg-[#0C5B3F] text-white shrink-0 text-xs px-4"
             >
               {isHebrew ? "הזמן ←" : "Book →"}
             </Button>

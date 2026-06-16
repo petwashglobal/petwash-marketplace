@@ -221,7 +221,7 @@ export default function PersonalInbox() {
       <Layout>
         <div className="bg-white min-h-screen flex items-center justify-center px-4">
           <div className="text-center bg-white border border-gray-200 shadow-sm p-10 rounded-2xl max-w-md w-full">
-            <Lock className="w-14 h-14 mx-auto mb-6 text-[#C9A96E]" />
+            <Lock className="w-14 h-14 mx-auto mb-6 text-[#12936A]" />
             <h2 className="text-gray-900 font-bold text-2xl mb-3">{isHebrew ? 'נדרשת כניסה' : 'Sign In Required'}</h2>
             <p className="text-gray-600">{isHebrew ? 'התחבר כדי לגשת לתיבת הדואר הפרטית שלך' : 'Sign in to access your private inbox'}</p>
           </div>
@@ -239,7 +239,7 @@ export default function PersonalInbox() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
-                  <Mail className="w-6 h-6 text-[#C9A96E]" />
+                  <Mail className="w-6 h-6 text-[#12936A]" />
                 </div>
                 <div>
                   <h1 className="text-gray-900 font-bold text-2xl sm:text-3xl">
@@ -262,7 +262,7 @@ export default function PersonalInbox() {
               )}
               <Dialog open={isComposing} onOpenChange={setIsComposing}>
                 <DialogTrigger asChild>
-                  <Button className="bg-[#C9A96E] hover:bg-[#b8935a] text-white px-5 py-3 flex items-center gap-2 rounded-xl" data-testid="button-compose-message">
+                  <Button className="bg-[#12936A] hover:bg-[#0C5B3F] text-white px-5 py-3 flex items-center gap-2 rounded-xl" data-testid="button-compose-message">
                     <Plus className="w-4 h-4" />
                     {isHebrew ? 'הודעה חדשה' : 'Compose'}
                   </Button>
@@ -270,7 +270,7 @@ export default function PersonalInbox() {
                 <DialogContent className="max-w-2xl bg-white border border-gray-200 rounded-2xl">
                   <DialogHeader>
                     <DialogTitle className="text-gray-900 font-semibold text-xl flex items-center gap-2">
-                      <Send className="w-5 h-5 text-[#C9A96E]" />
+                      <Send className="w-5 h-5 text-[#12936A]" />
                       {isHebrew ? 'הודעה מאובטחת חדשה' : 'New Secure Message'}
                     </DialogTitle>
                     <DialogDescription className="text-gray-600">
@@ -329,7 +329,7 @@ export default function PersonalInbox() {
                       <Button type="button" className="bg-white text-gray-700 hover:bg-white px-5 py-3 border border-gray-200 rounded-xl" onClick={() => setIsComposing(false)}>
                         {isHebrew ? 'ביטול' : 'Cancel'}
                       </Button>
-                      <Button type="submit" disabled={sendMessageMutation.isPending} className="bg-[#C9A96E] hover:bg-[#b8935a] text-white px-5 py-3 flex items-center gap-2 rounded-xl">
+                      <Button type="submit" disabled={sendMessageMutation.isPending} className="bg-[#12936A] hover:bg-[#0C5B3F] text-white px-5 py-3 flex items-center gap-2 rounded-xl">
                         {sendMessageMutation.isPending ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'שולח...' : 'Sending...'}</>
                         ) : (
@@ -362,7 +362,7 @@ export default function PersonalInbox() {
                     className={cn(
                       'px-4 py-2.5 rounded-xl text-sm font-medium transition-all',
                       filter === f
-                        ? 'bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-white shadow-sm'
+                        ? 'bg-gradient-to-r from-[#12936A] to-[#12936A] text-white shadow-sm'
                         : 'bg-white text-gray-600 hover:bg-white hover:text-gray-900'
                     )}
                   >
@@ -379,11 +379,11 @@ export default function PersonalInbox() {
 
             <div className="lg:col-span-2">
               <div className="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
-                <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C9A96E]/40 to-transparent" />
+                <div className="h-0.5 bg-gradient-to-r from-transparent via-[#12936A]/40 to-transparent" />
                 <ScrollArea className="h-[calc(100vh-320px)] sm:h-[700px]">
                   {isLoading ? (
                     <div className="flex items-center justify-center p-16">
-                      <Loader2 className="w-8 h-8 animate-spin text-[#C9A96E]" />
+                      <Loader2 className="w-8 h-8 animate-spin text-[#12936A]" />
                     </div>
                   ) : filteredMessages.length === 0 ? (
                     <div className="text-center p-16">
@@ -413,13 +413,13 @@ export default function PersonalInbox() {
                               isSelected
                                 ? 'bg-amber-50 border border-amber-200'
                                 : 'hover:bg-white border border-transparent',
-                              isUnread && 'border-l-2 border-l-[#C9A96E]'
+                              isUnread && 'border-l-2 border-l-[#12936A]'
                             )}
                             data-testid={`message-item-${msg.id}`}
                           >
                             <div className="flex items-start justify-between mb-1.5">
                               <div className="flex items-center gap-2 min-w-0">
-                                {isUnread && <div className="w-2 h-2 rounded-full bg-[#C9A96E] flex-shrink-0" />}
+                                {isUnread && <div className="w-2 h-2 rounded-full bg-[#12936A] flex-shrink-0" />}
                                 <span className={cn('text-sm truncate', isUnread ? 'text-gray-900 font-semibold' : 'text-gray-600')}>
                                   {isMyMessage(msg) ? `${isHebrew ? 'אל' : 'To'}: ${msg.recipientName}` : msg.senderName}
                                 </span>
@@ -430,7 +430,7 @@ export default function PersonalInbox() {
                                     {isHebrew ? pc.label.he : pc.label.en}
                                   </span>
                                 )}
-                                {msg.isStarred && <Star className="w-3.5 h-3.5 fill-[#C9A96E] text-[#C9A96E]" />}
+                                {msg.isStarred && <Star className="w-3.5 h-3.5 fill-[#12936A] text-[#12936A]" />}
                               </div>
                             </div>
                             <p className={cn('text-sm mb-1 line-clamp-1', isUnread ? 'text-gray-900 font-medium' : 'text-gray-600')}>
@@ -462,7 +462,7 @@ export default function PersonalInbox() {
             <div className="lg:col-span-3">
               {selectedMessage ? (
                 <div className="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
-                  <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C9A96E]/40 to-transparent" />
+                  <div className="h-0.5 bg-gradient-to-r from-transparent via-[#12936A]/40 to-transparent" />
 
                   <div className="p-6 border-b border-gray-100">
                     <div className="flex items-start justify-between mb-4">
@@ -494,7 +494,7 @@ export default function PersonalInbox() {
                           onClick={() => toggleStarMutation.mutate(selectedMessage.id)}
                           className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white transition-colors bg-transparent border-0 shadow-none"
                         >
-                          <Star className={cn('w-4 h-4', selectedMessage.isStarred ? 'fill-[#C9A96E] text-[#C9A96E]' : 'text-gray-400')} />
+                          <Star className={cn('w-4 h-4', selectedMessage.isStarred ? 'fill-[#12936A] text-[#12936A]' : 'text-gray-400')} />
                         </Button>
                         <Button
                           onClick={() => deleteMessageMutation.mutate(selectedMessage.id)}
@@ -512,7 +512,7 @@ export default function PersonalInbox() {
                     </div>
 
                     <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
-                      <p className="text-gray-500 text-[10px] uppercase tracking-widest text-[#C9A96E] mb-3 flex items-center gap-1.5">
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest text-[#12936A] mb-3 flex items-center gap-1.5">
                         <Shield className="w-3.5 h-3.5" />
                         {isHebrew ? 'מידע אבטחה וביקורת' : 'Security & Audit Information'}
                       </p>
@@ -566,7 +566,7 @@ export default function PersonalInbox() {
             </div>
             <div className="w-px h-4 bg-white" />
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A96E]" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#12936A]" />
               <span>SHA-256</span>
             </div>
           </div>

@@ -312,7 +312,7 @@ export default function Inbox() {
                   <div className="flex items-center gap-4 mb-4">
                     <Avatar className="h-14 w-14 border-2 border-[#E8E3D9]">
                       <AvatarImage src={pet.photoUrl} alt={pet.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-[rgba(212,175,55,0.3)] to-[rgba(212,175,55,0.1)] text-[#d4af37]">
+                      <AvatarFallback className="bg-gradient-to-br from-[rgba(212,175,55,0.3)] to-[rgba(212,175,55,0.1)] text-[#12936A]">
                         <Dog className="h-7 w-7" />
                       </AvatarFallback>
                     </Avatar>
@@ -416,11 +416,11 @@ export default function Inbox() {
         
         {!selectedMessage ? (
           <div className="luxury-dark-card luxury-animate-slide-up luxury-delay-1 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-[#d4af37] via-[#e8e6f0] to-[#d4af37]" />
+            <div className="h-1 bg-gradient-to-r from-[#12936A] via-[#e8e6f0] to-[#12936A]" />
             <div className="p-6 sm:p-7 border-b border-[#E8E3D9]">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[rgba(212,175,55,0.25)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
-                  <Mail className="w-6 h-6 text-[#d4af37]" />
+                  <Mail className="w-6 h-6 text-[#12936A]" />
                 </div>
                 <div className="flex-1">
                   <h2 className="luxury-dark-heading-md">{t('inbox.title')}</h2>
@@ -452,7 +452,7 @@ export default function Inbox() {
                 <ScrollArea className="h-[500px] luxury-dark-scroll">
                   {isLoading ? (
                     <div className="flex items-center justify-center h-96">
-                      <Loader2 className="w-10 h-10 animate-spin text-[#d4af37]" />
+                      <Loader2 className="w-10 h-10 animate-spin text-[#12936A]" />
                     </div>
                   ) : filteredMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-96">
@@ -468,12 +468,12 @@ export default function Inbox() {
                           data-testid={`message-item-${message.id}`}
                           className={cn(
                             'luxury-credit-item w-full transition-all duration-300 hover:scale-[1.01]',
-                            !message.isRead && 'border-l-2 border-l-[#d4af37] bg-[rgba(212,175,55,0.03)]',
+                            !message.isRead && 'border-l-2 border-l-[#12936A] bg-[rgba(212,175,55,0.03)]',
                             dir === 'rtl' ? 'text-right' : 'text-left'
                           )}
                         >
                           <div className="flex items-start gap-4">
-                            <div className={cn('flex-shrink-0 mt-0.5', !message.isRead ? 'text-[#d4af37]' : 'text-[#8A8078]')}>
+                            <div className={cn('flex-shrink-0 mt-0.5', !message.isRead ? 'text-[#12936A]' : 'text-[#8A8078]')}>
                               {message.isRead ? <MailOpen className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -508,7 +508,7 @@ export default function Inbox() {
           </div>
         ) : (
           <div className="luxury-dark-card luxury-animate-scale-in overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-[#d4af37] via-[#e8e6f0] to-[#d4af37]" />
+            <div className="h-1 bg-gradient-to-r from-[#12936A] via-[#e8e6f0] to-[#12936A]" />
             <div className="p-6 sm:p-7 border-b border-[#E8E3D9]">
               <div className="flex items-center gap-4">
                 <Button

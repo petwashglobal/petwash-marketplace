@@ -84,7 +84,7 @@ const DIVISION_CONFIG: Record<string, { iconEn: string; labelEn: string; labelHe
   walkers:       { iconEn: '🐕',  labelEn: 'Walk My Pet',       labelHe: 'מטייל כלבים',         color: '#0ea5e9' },
   academy:       { iconEn: '🎓',  labelEn: 'Academy',           labelHe: 'אקדמיה',              color: '#f59e0b' },
   pettrek:       { iconEn: '🚐',  labelEn: 'PetTrek Transport', labelHe: 'PetTrek הסעות',       color: '#06b6d4' },
-  general:       { iconEn: '💳',  labelEn: 'General',           labelHe: 'כללי',                color: '#D4AF37' },
+  general:       { iconEn: '💳',  labelEn: 'General',           labelHe: 'כללי',                color: '#12936A' },
 };
 
 // ─── CountdownRing ────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ function BalanceRow({ icon, label, value, color }: { icon: React.ReactNode; labe
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom:'1px solid rgba(212,175,55,0.08)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-        <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(212,175,55,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color: color || '#D4AF37' }}>
+        <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(212,175,55,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color: color || '#12936A' }}>
           {icon}
         </div>
         <span style={{ fontSize:'0.88rem', color:'#3A3228', fontWeight:500 }}>{label}</span>
@@ -130,7 +130,7 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
   return (
     <div style={{ background: '#FFFFFF' }}>
       {/* Gold top bar */}
-      <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
+      <div style={{ height: '2px', background: 'linear-gradient(90deg,#12936A,#f0d060,#12936A,#12936A)' }} />
 
       {/* Hero header — logo + privilege label + name as ONE UNIT */}
       <div style={{ padding: '16px 20px 20px', textAlign: 'center', background: '#FFFFFF' }}>
@@ -168,7 +168,7 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
 
         {/* Tier badge */}
         <div style={{ display:'flex', justifyContent:'center', marginTop:'6px' }}>
-          <div style={{ background:'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)', padding:'4px 20px', borderRadius:'100px' }}>
+          <div style={{ background:'linear-gradient(90deg,#12936A,#f0d060,#12936A,#12936A)', padding:'4px 20px', borderRadius:'100px' }}>
             <span style={{ color:'#fff', fontWeight:700, fontSize:'0.68rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>
               {he ? pass.tierDisplay.he : pass.tierDisplay.en}
             </span>
@@ -258,7 +258,7 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
       descHe: 'תשלום הסעות ביתרת Privilege',
     },
     {
-      icon: <Star size={20} color="#D4AF37" />,
+      icon: <Star size={20} color="#12936A" />,
       bg: 'rgba(212,175,55,0.08)',
       titleEn: 'Birthday Bonus',
       titleHe: 'בונוס יום הולדת',
@@ -300,7 +300,7 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
 
       <div style={{ marginTop:'12px', padding:'10px 14px', background:'rgba(197,165,90,0.06)', borderRadius:'12px', border:'1px solid rgba(197,165,90,0.2)' }}>
         <p style={{ margin:0, fontSize:'0.7rem', color:'#7A7068', lineHeight:1.5 }}>
-          <strong style={{ color:'#B8941F' }}>PetWash Privilege </strong>
+          <strong style={{ color:'#0C5B3F' }}>PetWash Privilege </strong>
           {he
             ? '— כרטיס אחד לכל השירותים. יתרה אחת. פלטפורמה אחת.'
             : '— one card across all services. One shared balance. One ecosystem.'}
@@ -350,7 +350,7 @@ function DivisionActivitySection({ he }: { he: boolean }) {
           </h2>
         </div>
         {divData?.lifetimeRedeemedCents != null && divData.lifetimeRedeemedCents > 0 && (
-          <div style={{ fontSize:'0.72rem', color:'#B8941F', fontWeight:600 }}>
+          <div style={{ fontSize:'0.72rem', color:'#0C5B3F', fontWeight:600 }}>
             {he ? `סה"כ: ${fmt(divData.lifetimeRedeemedCents)}` : `Total: ${fmt(divData.lifetimeRedeemedCents)}`}
           </div>
         )}
@@ -390,9 +390,9 @@ function DivisionActivitySection({ he }: { he: boolean }) {
               flexShrink: 0,
               padding:'6px 14px',
               borderRadius:'100px',
-              border: activeTab === t.key ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.2)',
+              border: activeTab === t.key ? '2px solid #12936A' : '2px solid rgba(212,175,55,0.2)',
               background: activeTab === t.key ? 'rgba(212,175,55,0.08)' : '#FFFFFF',
-              color: activeTab === t.key ? '#B8941F' : '#7A7068',
+              color: activeTab === t.key ? '#0C5B3F' : '#7A7068',
               fontWeight: activeTab === t.key ? 700 : 500,
               fontSize:'0.78rem',
               cursor:'pointer',
@@ -479,7 +479,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
         <div style={{ color:'rgba(255,255,255,0.55)', fontSize:'0.68rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:'6px' }}>
           {he ? 'יתרה כוללת זמינה' : 'Total Available Balance'}
         </div>
-        <div style={{ color:'#D4AF37', fontSize:'2.4rem', fontWeight:800, letterSpacing:'-0.03em', lineHeight:1 }}>
+        <div style={{ color:'#12936A', fontSize:'2.4rem', fontWeight:800, letterSpacing:'-0.03em', lineHeight:1 }}>
           {fmt(totalLiquid)}
         </div>
 
@@ -509,7 +509,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
       {/* Bucket breakdown */}
       <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.2)', borderRadius:'16px', padding:'4px 16px' }}>
         <BalanceRow icon={<Wallet size={16} />}    label={he ? 'ארנק מזומן' : 'Cash Wallet'}      value={fmt(balances.cashWalletCents)}        color="#1A1A1A" />
-        <BalanceRow icon={<Gift size={16} />}       label={he ? 'eGift' : 'eGift Balance'}          value={fmt(balances.egiftBalanceCents)}       color="#D4AF37" />
+        <BalanceRow icon={<Gift size={16} />}       label={he ? 'eGift' : 'eGift Balance'}          value={fmt(balances.egiftBalanceCents)}       color="#12936A" />
         <BalanceRow icon={<Zap size={16} />}        label={he ? 'קרדיט מבצע' : 'Promo Credit'}      value={fmt(balances.promoBalanceCents)}       color="#f59e0b" />
         {balances.referralBalanceCents > 0 && (
           <BalanceRow icon={<CheckCircle size={16} />} label={he ? 'קרדיט הפניה' : 'Referral Credit'} value={fmt(balances.referralBalanceCents)} color="#06b6d4" />
@@ -542,7 +542,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
       {/* Deduction order */}
       <div style={{ marginTop:'10px', padding:'10px 14px', background:'rgba(197,165,90,0.05)', borderRadius:'10px', border:'1px solid rgba(197,165,90,0.15)' }}>
         <p style={{ margin:0, fontSize:'0.7rem', color:'#7A7068', lineHeight:1.5 }}>
-          <strong style={{ color:'#B8941F' }}>{he ? 'סדר מימוש: ' : 'Redemption order: '}</strong>
+          <strong style={{ color:'#0C5B3F' }}>{he ? 'סדר מימוש: ' : 'Redemption order: '}</strong>
           {he ? 'קרדיט מבצע → eGift → חבילה → ארנק → כרטיס' : 'Promo → eGift → Package → Wallet → Card'}
         </p>
       </div>
@@ -589,9 +589,9 @@ function DigitalCardSection({
           {(['left', 'any', 'right'] as const).map((b) => (
             <button key={b} onClick={() => setSelectedBay(b)} style={{
               padding:'8px 18px', borderRadius:'100px',
-              border: selectedBay === b ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.2)',
+              border: selectedBay === b ? '2px solid #12936A' : '2px solid rgba(212,175,55,0.2)',
               background: selectedBay === b ? 'rgba(212,175,55,0.08)' : '#FFFFFF',
-              color: selectedBay === b ? '#B8941F' : '#7A7068',
+              color: selectedBay === b ? '#0C5B3F' : '#7A7068',
               fontWeight: selectedBay === b ? 700 : 500,
               fontSize:'0.82rem', cursor:'pointer',
             }}>
@@ -625,7 +625,7 @@ function DigitalCardSection({
               <p style={{ margin:0, fontSize:'0.6rem', color:'#9E9E9E', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' }}>
                 {he ? 'קוד חבר' : 'Member Code'}
               </p>
-              <p style={{ margin:'2px 0 0', fontSize:'0.9rem', fontWeight:700, color:'#B8941F', fontFamily:'monospace', letterSpacing:'0.15em' }}>
+              <p style={{ margin:'2px 0 0', fontSize:'0.9rem', fontWeight:700, color:'#0C5B3F', fontFamily:'monospace', letterSpacing:'0.15em' }}>
                 {pass.serialNumber}
               </p>
             </div>
@@ -641,7 +641,7 @@ function DigitalCardSection({
                 {he ? 'לחץ להפעלת קוד QR' : 'Tap to activate QR'}
               </p>
             </div>
-            <Button onClick={generateQr} disabled={isGenerating} style={{ background:'linear-gradient(135deg,#c9a96e,#d4af37)', color:'#fff', border:'none', fontWeight:700, padding:'12px 32px', borderRadius:'12px', fontSize:'0.9rem' }}>
+            <Button onClick={generateQr} disabled={isGenerating} style={{ background:'linear-gradient(135deg,#12936A,#12936A)', color:'#fff', border:'none', fontWeight:700, padding:'12px 32px', borderRadius:'12px', fontSize:'0.9rem' }}>
               {isGenerating ? (he ? 'מייצר...' : 'Generating…') : (he ? 'הפעל קוד QR' : 'Generate QR Code')}
             </Button>
           </div>
@@ -651,7 +651,7 @@ function DigitalCardSection({
       {/* K9000 readiness panel */}
       <div style={{ background:'#FFFFFF', border:`1.5px solid ${canWash ? 'rgba(34,197,94,0.3)' : 'rgba(212,175,55,0.2)'}`, borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
-          <Droplets size={18} color={canWash ? '#22c55e' : '#D4AF37'} />
+          <Droplets size={18} color={canWash ? '#22c55e' : '#12936A'} />
           <div>
             <div style={{ fontWeight:700, fontSize:'0.88rem', color:'#1A1A1A' }}>
               {he ? 'מוכנות K9000' : 'K9000 Readiness'}
@@ -683,16 +683,16 @@ function DigitalCardSection({
               </span>
             </div>
             <button onClick={() => setShowTopUpDialog(true)} style={{ display:'flex', alignItems:'center', gap:'10px', background:'rgba(212,175,55,0.08)', border:'1.5px solid rgba(212,175,55,0.3)', borderRadius:'12px', padding:'12px 14px', cursor:'pointer', textAlign:'left' }}>
-              <ArrowUpCircle size={18} color="#D4AF37" style={{ flexShrink:0 }} />
+              <ArrowUpCircle size={18} color="#12936A" style={{ flexShrink:0 }} />
               <div>
-                <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#B8941F' }}>
+                <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#0C5B3F' }}>
                   {he ? `טען ${fmt(shortfall)} ויותר` : `Top up ${fmt(shortfall)}+`}
                 </div>
                 <div style={{ fontSize:'0.68rem', color:'#9E9E9E' }}>
                   {he ? 'הוסף כסף ל-PetWash Wallet' : 'Add credit to your PetWash Wallet'}
                 </div>
               </div>
-              <ChevronRight size={16} color="#D4AF37" style={{ marginLeft:'auto' }} />
+              <ChevronRight size={16} color="#12936A" style={{ marginLeft:'auto' }} />
             </button>
             <button onClick={() => toast({ title: he ? 'תשלום בטרמינל Nayax' : 'Pay at Nayax Terminal', description: he ? 'הניח כרטיס אשראי, Apple Pay או Google Pay על קורא הכרטיסים שבמכונה.' : "Tap your card, Apple Pay, or Google Pay on the machine's card reader." })} style={{ display:'flex', alignItems:'center', gap:'10px', background:'#FFFFFF', border:'1.5px solid rgba(0,0,0,0.1)', borderRadius:'12px', padding:'12px 14px', cursor:'pointer', textAlign:'left' }}>
               <Monitor size={18} color="#1A1A1A" style={{ flexShrink:0 }} />
@@ -738,7 +738,7 @@ function DigitalCardSection({
                     : <div style={{ fontSize:'0.65rem', color:'#dc2626', fontWeight:600, marginTop:'2px' }}>{he ? '✗ יש לטעון' : '✗ Top up needed'}</div>
                 }
               </div>
-              <button onClick={() => navigate(svc.path)} style={{ flexShrink:0, padding:'8px 14px', borderRadius:'100px', border:`1.5px solid ${canBook ? 'rgba(34,197,94,0.4)' : partial ? 'rgba(245,158,11,0.4)' : 'rgba(212,175,55,0.3)'}`, background: canBook ? 'rgba(34,197,94,0.08)' : partial ? 'rgba(245,158,11,0.06)' : 'rgba(212,175,55,0.05)', color: canBook ? '#16a34a' : partial ? '#d97706' : '#B8941F', fontSize:'0.75rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+              <button onClick={() => navigate(svc.path)} style={{ flexShrink:0, padding:'8px 14px', borderRadius:'100px', border:`1.5px solid ${canBook ? 'rgba(34,197,94,0.4)' : partial ? 'rgba(245,158,11,0.4)' : 'rgba(212,175,55,0.3)'}`, background: canBook ? 'rgba(34,197,94,0.08)' : partial ? 'rgba(245,158,11,0.06)' : 'rgba(212,175,55,0.05)', color: canBook ? '#16a34a' : partial ? '#d97706' : '#0C5B3F', fontSize:'0.75rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
                 {canBook ? (he ? 'הזמן' : 'Book') : partial ? (he ? 'הזמן →' : 'Book →') : (he ? 'טעינה' : 'Top Up')}
               </button>
             </div>
@@ -760,7 +760,7 @@ function DigitalCardSection({
               {he ? 'מוצג על הכרטיס ולצוות' : 'Shown on card · visible to staff at scan'}
             </div>
           </div>
-          <span style={{ color:'#D4AF37', fontSize:'0.75rem' }}>{petEditOpen ? '▲' : '▼'}</span>
+          <span style={{ color:'#12936A', fontSize:'0.75rem' }}>{petEditOpen ? '▲' : '▼'}</span>
         </div>
         {petEditOpen && (
           <div style={{ marginTop:'14px', display:'flex', flexDirection:'column', gap:'10px' }}>
@@ -777,7 +777,7 @@ function DigitalCardSection({
             ))}
             <div style={{ display:'flex', gap:'6px' }}>
               {(['dog','cat','rabbit','bird','other'] as const).map(t => (
-                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(212,175,55,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #D4AF37' : 'none', color: petForm.petType === t ? '#B8941F' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
+                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(212,175,55,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #12936A' : 'none', color: petForm.petType === t ? '#0C5B3F' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
                   {t === 'dog' ? '🐶' : t === 'cat' ? '🐱' : t === 'rabbit' ? '🐰' : t === 'bird' ? '🐦' : '🐾'} {t}
                 </button>
               ))}
@@ -793,7 +793,7 @@ function DigitalCardSection({
                   toast({ title: he ? '🐾 נשמר!' : '🐾 Saved!', description: he ? `${petForm.petName} נוסף לכרטיס` : `${petForm.petName} added to your card` });
                 }
               } finally { setSavingPet(false); }
-            }} style={{ padding:'11px', borderRadius:'10px', border:'none', background: petForm.petName?.trim() ? '#D4AF37' : 'rgba(212,175,55,0.3)', color:'#FFFFFF', fontWeight:700, fontSize:'0.88rem', cursor: savingPet ? 'wait' : 'pointer' }}>
+            }} style={{ padding:'11px', borderRadius:'10px', border:'none', background: petForm.petName?.trim() ? '#12936A' : 'rgba(212,175,55,0.3)', color:'#FFFFFF', fontWeight:700, fontSize:'0.88rem', cursor: savingPet ? 'wait' : 'pointer' }}>
               {savingPet ? (he ? 'שומר…' : 'Saving…') : (he ? 'שמור פרופיל חיית מחמד' : 'Save pet profile')}
             </button>
           </div>
@@ -820,7 +820,7 @@ function DigitalCardSection({
             <span>🔵</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet')}
           </button>
           <button onClick={() => resendEmailMutation.mutate()} disabled={resendEmailMutation.isPending}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.3)', color:'#B8941F', padding:'12px', borderRadius:'12px', cursor:'pointer', fontWeight:600, fontSize:'0.85rem' }}>
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.3)', color:'#0C5B3F', padding:'12px', borderRadius:'12px', cursor:'pointer', fontWeight:600, fontSize:'0.85rem' }}>
             <Clock size={15} />
             {resendEmailMutation.isPending ? (he ? 'שולח...' : 'Sending…') : (he ? 'שלח למייל (עם כפתורי Wallet)' : 'Send to email (with Wallet buttons)')}
           </button>
@@ -895,7 +895,7 @@ function PrestigeKioskPass({
         position: 'relative',
       }}>
         {/* Gold shimmer top */}
-        <div style={{ height: '3px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#f0d060,#c9a96e)' }} />
+        <div style={{ height: '3px', background: 'linear-gradient(90deg,#12936A,#f0d060,#12936A,#f0d060,#12936A)' }} />
 
         {/* Close button */}
         <button onClick={onClose} style={{
@@ -923,7 +923,7 @@ function PrestigeKioskPass({
           </div>
 
           {/* Prestige label */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'linear-gradient(90deg,#c9a96e,#d4af37,#c9a96e)', borderRadius: '100px', padding: '3px 14px', marginBottom: '14px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'linear-gradient(90deg,#12936A,#12936A,#12936A)', borderRadius: '100px', padding: '3px 14px', marginBottom: '14px' }}>
             <span style={{ color: '#fff', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
               {tierLabel}
             </span>
@@ -969,9 +969,9 @@ function PrestigeKioskPass({
                 {(['left', 'any', 'right'] as const).map((b) => (
                   <button key={b} onClick={() => { setSelectedBay(b); generateQr(); }} style={{
                     padding: '5px 14px', borderRadius: '100px', cursor: 'pointer',
-                    border: selectedBay === b ? '1.5px solid #D4AF37' : '1.5px solid rgba(212,175,55,0.15)',
+                    border: selectedBay === b ? '1.5px solid #12936A' : '1.5px solid rgba(212,175,55,0.15)',
                     background: selectedBay === b ? 'rgba(212,175,55,0.08)' : 'transparent',
-                    color: selectedBay === b ? '#B8941F' : '#BFAC8A',
+                    color: selectedBay === b ? '#0C5B3F' : '#BFAC8A',
                     fontSize: '0.68rem', fontWeight: selectedBay === b ? 700 : 400,
                   }}>
                     {b === 'left' ? (he ? 'שמאל' : 'L') : b === 'right' ? (he ? 'ימין' : 'R') : (he ? 'כל תא' : 'Any')}
@@ -996,7 +996,7 @@ function PrestigeKioskPass({
                   {he ? 'לחץ להפעלת קוד QR' : 'Tap to activate QR'}
                 </p>
               </div>
-              <Button onClick={generateQr} disabled={isGenerating} style={{ background: 'linear-gradient(135deg,#c9a96e,#d4af37)', color: '#fff', border: 'none', fontWeight: 700, padding: '12px 36px', borderRadius: '12px', fontSize: '0.9rem' }}>
+              <Button onClick={generateQr} disabled={isGenerating} style={{ background: 'linear-gradient(135deg,#12936A,#12936A)', color: '#fff', border: 'none', fontWeight: 700, padding: '12px 36px', borderRadius: '12px', fontSize: '0.9rem' }}>
                 {isGenerating ? (he ? 'מייצר...' : 'Generating…') : (he ? 'הפעל QR' : 'Activate QR')}
               </Button>
             </div>
@@ -1031,9 +1031,9 @@ function PrestigeKioskPass({
           {(['left', 'any', 'right'] as const).map((b) => (
             <button key={b} onClick={() => { setSelectedBay(b); generateQr(); }} style={{
               flex: 1, padding: '7px 4px', borderRadius: '100px',
-              border: selectedBay === b ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.18)',
+              border: selectedBay === b ? '2px solid #12936A' : '2px solid rgba(212,175,55,0.18)',
               background: selectedBay === b ? 'rgba(212,175,55,0.1)' : '#FFFFFF',
-              color: selectedBay === b ? '#B8941F' : '#9E9E9E',
+              color: selectedBay === b ? '#0C5B3F' : '#9E9E9E',
               fontWeight: selectedBay === b ? 700 : 500,
               fontSize: '0.72rem', cursor: 'pointer',
             }}>
@@ -1050,7 +1050,7 @@ function PrestigeKioskPass({
         </div>
 
         {/* Gold shimmer bottom */}
-        <div style={{ height: '3px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#f0d060,#c9a96e)' }} />
+        <div style={{ height: '3px', background: 'linear-gradient(90deg,#12936A,#f0d060,#12936A,#f0d060,#12936A)' }} />
       </div>
     </div>
   );
@@ -1197,7 +1197,7 @@ export default function PrestigePassWallet() {
       <Layout>
         <div style={{ minHeight:'80vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#FFFFFF' }}>
           <div style={{ textAlign:'center' }}>
-            <div style={{ width:'56px', height:'56px', borderRadius:'50%', border:'3px solid rgba(212,175,55,0.2)', borderTopColor:'#D4AF37', animation:'spin 1s linear infinite', margin:'0 auto 16px' }} />
+            <div style={{ width:'56px', height:'56px', borderRadius:'50%', border:'3px solid rgba(212,175,55,0.2)', borderTopColor:'#12936A', animation:'spin 1s linear infinite', margin:'0 auto 16px' }} />
             <p style={{ color:'#9E9E9E', fontSize:'0.9rem' }}>{he ? 'טוען את הכרטיס...' : 'Loading your pass…'}</p>
           </div>
         </div>
@@ -1219,7 +1219,7 @@ export default function PrestigePassWallet() {
             <p style={{ color:'#9E9E9E', fontSize:'0.85rem', marginBottom:'20px' }}>
               {is401 ? (he ? 'יש להתחבר כדי לגשת ל-PetWash Privilege.' : 'Please sign in to access PetWash Privilege.') : (he ? 'אנא נסה שוב.' : 'Please try again.')}
             </p>
-            <a href="/signin" style={{ display:'inline-block', background:'linear-gradient(135deg,#C5A55A,#D4AF37)', color:'#fff', fontWeight:600, padding:'10px 28px', borderRadius:'8px', textDecoration:'none', fontSize:'0.95rem' }}>
+            <a href="/signin" style={{ display:'inline-block', background:'linear-gradient(135deg,#C5A55A,#12936A)', color:'#fff', fontWeight:600, padding:'10px 28px', borderRadius:'8px', textDecoration:'none', fontSize:'0.95rem' }}>
               {he ? 'כניסה לחשבון' : 'Sign In'}
             </a>
           </div>
@@ -1262,7 +1262,7 @@ export default function PrestigePassWallet() {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 100,
-          background: 'linear-gradient(135deg,#c9a96e 0%,#d4af37 50%,#c9a96e 100%)',
+          background: 'linear-gradient(135deg,#12936A 0%,#12936A 50%,#12936A 100%)',
           color: '#FFFFFF',
           border: 'none',
           borderRadius: '100px',
@@ -1380,7 +1380,7 @@ export default function PrestigePassWallet() {
                   <div style={{
                     height: '100%',
                     width: `${Math.min(100, Math.round((loyaltyProfile.tierProgress / loyaltyProfile.tierThreshold) * 100))}%`,
-                    background: 'linear-gradient(90deg, #c9a96e, #f0d060, #d4af37)',
+                    background: 'linear-gradient(90deg, #12936A, #f0d060, #12936A)',
                     borderRadius: '100px',
                     transition: 'width 0.8s ease',
                   }} />
@@ -1434,12 +1434,12 @@ export default function PrestigePassWallet() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}>
           {/* Gold top strip */}
-          <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
+          <div style={{ height: '2px', background: 'linear-gradient(90deg,#12936A,#f0d060,#12936A,#12936A)' }} />
 
           <div style={{ padding: '20px' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <Crown size={14} color="#D4AF37" />
+              <Crown size={14} color="#12936A" />
               <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(212,175,55,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
                 {he ? 'שירות קונסיירז׳ יוקרתי' : 'Prestige Concierge'}
               </span>
@@ -1492,7 +1492,7 @@ export default function PrestigePassWallet() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Phone size={14} color="#D4AF37" />
+                    <Phone size={14} color="#12936A" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFFFFF' }}>{he ? 'שיחת קונסיירז׳' : 'Concierge Call'}</div>

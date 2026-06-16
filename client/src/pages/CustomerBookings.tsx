@@ -408,7 +408,7 @@ function ProviderAvatar({ name, size = 44 }: { name: string; size?: number }) {
   return (
     <div
       className="flex items-center justify-center rounded-2xl font-bold text-white flex-shrink-0"
-      style={{ width: size, height: size, background: `linear-gradient(135deg,${GOLD},#d4af37)`, fontSize: size * 0.34 }}
+      style={{ width: size, height: size, background: `linear-gradient(135deg,${GOLD},#12936A)`, fontSize: size * 0.34 }}
     >
       {initials || '?'}
     </div>
@@ -464,7 +464,7 @@ function EmptyState({ tab, isRTL }: { tab: TabId; isRTL: boolean }) {
       <Link href={c.cta_href}>
         <button
           className="mt-6 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ background: `linear-gradient(135deg,${GOLD},#d4af37)` }}
+          style={{ background: `linear-gradient(135deg,${GOLD},#12936A)` }}
         >
           {isRTL ? c.cta_he : c.cta_en}
         </button>

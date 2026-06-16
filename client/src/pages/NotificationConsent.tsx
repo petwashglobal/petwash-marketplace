@@ -111,7 +111,7 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
             {/* Inner gold circle */}
             <div
               className="w-40 h-40 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: '#D4AF37' }}
+              style={{ backgroundColor: '#12936A' }}
             >
               <Bell className="w-20 h-20 text-white" strokeWidth={1.5} />
             </div>
@@ -141,7 +141,7 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
             <li key={i} className="flex items-center gap-3">
               <div
                 className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
-                style={{ backgroundColor: '#D4AF37' }}
+                style={{ backgroundColor: '#12936A' }}
               >
                 <svg viewBox="0 0 10 8" fill="none" className="w-3.5 h-3.5">
                   <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -168,7 +168,7 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
           disabled={enabling || loading || done}
           data-testid="button-enable-notifications"
           className="w-full h-14 rounded-2xl font-bold text-base tracking-wide text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-          style={{ backgroundColor: '#D4AF37' }}
+          style={{ backgroundColor: '#12936A' }}
         >
           {enabling || loading ? (
             <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
@@ -191,7 +191,7 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
           onClick={handleNotNow}
           data-testid="button-not-now-notifications"
           className="w-full text-center text-sm font-bold underline min-h-[44px] flex items-center justify-center transition-opacity hover:opacity-70 tracking-wide"
-          style={{ color: '#D4AF37' }}
+          style={{ color: '#12936A' }}
         >
           {t.notNow}
         </button>

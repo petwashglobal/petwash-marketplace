@@ -13,14 +13,14 @@ const platformStyles = [
   {
     gradient: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 30%, #3a3a3a 50%, #2d2d2d 70%, #1a1a1a 100%)',
     shimmer: 'linear-gradient(135deg, rgba(201,169,110,0.15) 0%, rgba(201,169,110,0.05) 50%, rgba(201,169,110,0.15) 100%)',
-    iconBg: 'linear-gradient(135deg, #c9a96e, #e8d5a8)',
+    iconBg: 'linear-gradient(135deg, #12936A, #e8d5a8)',
     iconColor: '#1a1a1a',
     textColor: '#FFFFFF',
     taglineColor: 'rgba(201,169,110,0.9)',
     descColor: 'rgba(255,255,255,0.65)',
     borderColor: 'rgba(201,169,110,0.3)',
     borderHover: 'rgba(201,169,110,0.6)',
-    ctaColor: '#c9a96e',
+    ctaColor: '#12936A',
     dividerColor: 'rgba(201,169,110,0.2)',
   },
   {

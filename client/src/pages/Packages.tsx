@@ -171,10 +171,10 @@ export default function Packages() {
         <div className="max-w-md w-full text-center">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
-              <CheckCircle className="w-10 h-10 text-[#c9a96e]" strokeWidth={1.2} />
+              <CheckCircle className="w-10 h-10 text-[#12936A]" strokeWidth={1.2} />
             </div>
           </div>
-          <p className="text-[10px] tracking-[0.35em] uppercase text-[#c9a96e] font-medium mb-4">
+          <p className="text-[10px] tracking-[0.35em] uppercase text-[#12936A] font-medium mb-4">
             {isHe ? 'רכישה הושלמה' : 'Purchase Complete'}
           </p>
           <h2 className="text-3xl font-light text-[#1a1a1a] mb-3"
@@ -230,7 +230,7 @@ export default function Packages() {
             <div className="order-2 lg:order-1">
               <div className="border border-[#eee] p-5 sm:p-7" style={{ borderRadius: '2px' }}>
                 <div className="mb-6">
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-2">{tierLabel}</p>
+                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#12936A] font-medium mb-2">{tierLabel}</p>
                   <h2 className="text-2xl sm:text-3xl font-light text-[#1a1a1a]"
                     style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}>
                     {isHe ? selectedPackage.nameHe : selectedPackage.name}
@@ -252,7 +252,7 @@ export default function Packages() {
                     )}
                   </div>
                   {selectedPackage.discount > 0 && (
-                    <p className="text-[11px] text-[#c9a96e] font-medium mt-1.5 tracking-wide">
+                    <p className="text-[11px] text-[#12936A] font-medium mt-1.5 tracking-wide">
                       {isHe ? `חסכת ₪${originalPrice - price} (${selectedPackage.discount}% הנחה)` : `You save ₪${originalPrice - price} (${selectedPackage.discount}% off)`}
                     </p>
                   )}
@@ -265,7 +265,7 @@ export default function Packages() {
                   <ul className="space-y-2.5">
                     {selectedPackage.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2.5 text-[#555] text-[13px]">
-                        <Check className="w-3.5 h-3.5 text-[#c9a96e] flex-shrink-0" strokeWidth={1.5} />
+                        <Check className="w-3.5 h-3.5 text-[#12936A] flex-shrink-0" strokeWidth={1.5} />
                         {isHe ? feature.he : feature.en}
                       </li>
                     ))}
@@ -294,7 +294,7 @@ export default function Packages() {
             <div className="order-1 lg:order-2">
               <div className="w-full mx-auto lg:sticky lg:top-8">
                 <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-3 text-center">
+                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#12936A] font-medium mb-3 text-center">
                     {tierLabel} · ⁦Pet Wash™⁩
                   </p>
                   <img 
@@ -329,13 +329,13 @@ export default function Packages() {
       <div className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
         <div className="text-center mb-14 sm:mb-20">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
-            <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
-            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#12936A]" />
+            <Leaf className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#12936A]" />
           </div>
 
           <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-medium"
-            style={{ color: '#c9a96e' }}>
+            style={{ color: '#12936A' }}>
             {isHe ? 'חבילות רחיצה פרימיום' : 'Premium Wash Packages'}
           </p>
 
@@ -372,7 +372,7 @@ export default function Packages() {
                       borderRadius: '6px',
                       border: selected 
                         ? '2.5px solid #1a1a1a'
-                        : isPopular ? '1.5px solid #c9a96e' : '1px solid #eee',
+                        : isPopular ? '1.5px solid #12936A' : '1px solid #eee',
                     }}
                   >
                     {selected && (
@@ -385,7 +385,7 @@ export default function Packages() {
 
                     {isPopular && (
                       <div className="absolute top-3 start-3 z-10">
-                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#12936A] text-white font-medium" style={{ borderRadius: '2px' }}>
                           {isHe ? 'מומלץ' : 'Best'}
                         </span>
                       </div>
@@ -406,7 +406,7 @@ export default function Packages() {
                     <div className="px-3 sm:px-5 py-3 sm:py-5">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
-                          isElite || isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
+                          isElite || isPopular ? 'text-[#12936A]' : 'text-[#999]'
                         }`}>
                           {tierLabel}
                         </span>
@@ -435,7 +435,7 @@ export default function Packages() {
                           </p>
                         )}
                         {pkg.discount > 0 && (
-                          <p className="text-[10px] sm:text-[11px] text-[#c9a96e] mt-0.5 font-medium">
+                          <p className="text-[10px] sm:text-[11px] text-[#12936A] mt-0.5 font-medium">
                             {isHe ? `${pkg.discount}% הנחה` : `Save ${pkg.discount}%`}
                           </p>
                         )}
@@ -444,7 +444,7 @@ export default function Packages() {
                       <div className="border-t border-[#eee] pt-3 space-y-1.5 text-[#888]">
                         {pkg.features.slice(0, 3).map((feature, i) => (
                           <div key={i} className="flex items-center gap-2">
-                            <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                            <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                             <span className="text-[10px] sm:text-[11px]">
                               {isHe ? feature.he : feature.en}
                             </span>
@@ -475,14 +475,14 @@ export default function Packages() {
           <div className="mt-14 sm:mt-20">
             <div className="flex items-center justify-center gap-4 mb-10">
               <div className="flex-1 max-w-[80px] h-px bg-gradient-to-r from-transparent to-[#ddd]" />
-              <ShieldCheck className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+              <ShieldCheck className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
               <div className="flex-1 max-w-[80px] h-px bg-gradient-to-l from-transparent to-[#ddd]" />
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10 max-w-xl mx-auto">
               <div className="text-center">
                 <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
-                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                  <Check className="w-3.5 h-3.5 text-[#12936A]" strokeWidth={1.5} />
                 </div>
                 <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
                   {isHe ? 'טבעי' : 'Natural'}
@@ -490,7 +490,7 @@ export default function Packages() {
               </div>
               <div className="text-center">
                 <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
-                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                  <Check className="w-3.5 h-3.5 text-[#12936A]" strokeWidth={1.5} />
                 </div>
                 <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
                   {isHe ? '24/7 שירות עצמי' : '24/7 Self-Service'}
@@ -498,7 +498,7 @@ export default function Packages() {
               </div>
               <div className="text-center">
                 <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
-                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                  <Check className="w-3.5 h-3.5 text-[#12936A]" strokeWidth={1.5} />
                 </div>
                 <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
                   {isHe ? 'כל הסניפים' : 'All Locations'}
@@ -506,7 +506,7 @@ export default function Packages() {
               </div>
               <div className="text-center">
                 <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                  <Sparkles className="w-3.5 h-3.5 text-[#12936A]" strokeWidth={1.5} />
                 </div>
                 <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
                   {isHe ? 'ניתן להעברה' : 'Transferable'}
