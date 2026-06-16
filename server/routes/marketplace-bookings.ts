@@ -22,6 +22,7 @@ import {
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { haversineKm } from '../utils/providerSearch';
 import { requireIdempotency, requireStrictIdempotency } from '../middleware/idempotency';
 import bookingLifecycleService from '../services/BookingLifecycleService';
 import { EmailService } from '../emailService';
@@ -318,6 +319,52 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
         error: 'The pets selected do not match your quote. Please re-quote with the correct pets.',
         code: 'PET_COUNT_MISMATCH',
       });
+    }
+
+    // ── Proximity guard at booking (FAIL OPEN) ────────────────────────────────
+    // Search filters providers by distance, but nothing re-validated it at
+    // checkout — a customer could book a provider now outside their service
+    // radius (stale results / provider moved). Re-check with the SAME haversine
+    // the search uses. FAIL OPEN: if either side lacks coordinates we SKIP (never
+    // block a legitimate booking on missing geocoding); we only reject when BOTH
+    // coords exist AND distance exceeds the provider's service radius (+ buffer).
+    try {
+      const [custRow] = await db.select({ lat: users.latitude, lng: users.longitude })
+        .from(users).where(eq(users.id, userId)).limit(1);
+      const [provRow] = await db.select({ lat: users.latitude, lng: users.longitude })
+        .from(users).where(eq(users.id, quote.providerId)).limit(1);
+      const cLat = custRow?.lat != null ? Number(custRow.lat) : NaN;
+      const cLng = custRow?.lng != null ? Number(custRow.lng) : NaN;
+      const pLat = provRow?.lat != null ? Number(provRow.lat) : NaN;
+      const pLng = provRow?.lng != null ? Number(provRow.lng) : NaN;
+      if (![cLat, cLng, pLat, pLng].some(Number.isNaN)) {
+        // Walkers travel to the pet and declare a service radius — use it.
+        // Other services have no per-provider radius column, so use a generous
+        // default; the guard then only catches clearly-too-far bookings.
+        let radiusKm = 15;
+        const svc = String(quote.serviceType || '').toLowerCase();
+        if (svc.includes('walk')) {
+          const [wp] = await db.select({ r: walkerProfiles.serviceRadiusKm })
+            .from(walkerProfiles).where(eq(walkerProfiles.userId, quote.providerId)).limit(1);
+          if (wp?.r != null) radiusKm = wp.r;
+        }
+        const distanceKm = haversineKm(cLat, cLng, pLat, pLng);
+        const BUFFER = 1.2; // 20% grace for geocoding imprecision
+        if (distanceKm > radiusKm * BUFFER) {
+          logger.warn('[MarketplaceBookings] proximity reject at checkout', {
+            quoteId, distanceKm: Math.round(distanceKm), radiusKm, providerId: quote.providerId,
+          });
+          return res.status(422).json({
+            success: false,
+            code: 'OUT_OF_SERVICE_AREA',
+            error: `This provider serves up to ${radiusKm} km, but the booking address is about ${Math.round(distanceKm)} km away. Please choose a closer provider.`,
+          });
+        }
+      } else {
+        logger.info('[MarketplaceBookings] proximity check skipped — missing coords (fail open)', { quoteId });
+      }
+    } catch (proxErr: any) {
+      logger.warn('[MarketplaceBookings] proximity check error — fail open', { quoteId, error: proxErr?.message });
     }
 
     // ── Verify slot lock — query availability_slots (the lock-aware table) ─────
