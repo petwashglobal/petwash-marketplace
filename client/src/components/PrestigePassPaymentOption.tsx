@@ -67,12 +67,12 @@ interface Props {
 const fmt = (cents: number) => `₪${(cents / 100).toFixed(0)}`;
 
 const TIER_LABEL: Record<string, { label: string; color: string }> = {
-  black:    { label: 'PetWash Privilege Black',    color: '#D4AF37' },
-  elite:    { label: 'PetWash Privilege Black',    color: '#D4AF37' },
-  diamond:  { label: 'PetWash Privilege Black',    color: '#D4AF37' },
-  vip:      { label: 'PetWash Privilege Black',    color: '#D4AF37' },
+  black:    { label: 'PetWash Privilege Black',    color: '#12936A' },
+  elite:    { label: 'PetWash Privilege Black',    color: '#12936A' },
+  diamond:  { label: 'PetWash Privilege Black',    color: '#12936A' },
+  vip:      { label: 'PetWash Privilege Black',    color: '#12936A' },
   platinum: { label: 'PetWash Privilege Platinum', color: '#B8BCC8' },
-  gold:     { label: 'PetWash Privilege Gold',     color: '#D4AF37' },
+  gold:     { label: 'PetWash Privilege Gold',     color: '#12936A' },
   silver:   { label: 'PetWash Privilege Silver',   color: '#9CA3AF' },
   bronze:   { label: 'PetWash Privilege Pearl',    color: '#CD7F32' },
   new:      { label: 'PetWash Privilege Pearl',    color: '#CD7F32' },
@@ -147,7 +147,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center justify-center h-10 w-10 rounded-full" style={{ background: 'rgba(212,175,55,0.15)' }}>
-              <CheckCircle className="h-5 w-5" style={{ color: '#D4AF37' }} />
+              <CheckCircle className="h-5 w-5" style={{ color: '#12936A' }} />
             </div>
             <div>
               <div className="font-semibold text-white text-sm">PetWash Privilege — תשלום בוצע</div>
@@ -159,22 +159,22 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             {txnResult.deductionBreakdown.promo > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <span>קרדיטים פרומו</span>
-                <span style={{ color: '#D4AF37' }}>-{fmt(txnResult.deductionBreakdown.promo)}</span>
+                <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.promo)}</span>
               </div>
             )}
             {txnResult.deductionBreakdown.gift > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <span>כרטיס מתנה</span>
-                <span style={{ color: '#D4AF37' }}>-{fmt(txnResult.deductionBreakdown.gift)}</span>
+                <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.gift)}</span>
               </div>
             )}
             {txnResult.deductionBreakdown.wallet > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <span>ארנק מזומן</span>
-                <span style={{ color: '#D4AF37' }}>-{fmt(txnResult.deductionBreakdown.wallet)}</span>
+                <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.wallet)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2" style={{ borderColor: 'rgba(212,175,55,0.2)', color: '#D4AF37' }}>
+            <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2" style={{ borderColor: 'rgba(212,175,55,0.2)', color: '#12936A' }}>
               <span>סה"כ שולם</span>
               <span>{fmt(txnResult.deductionBreakdown.totalCovered)}</span>
             </div>
@@ -206,7 +206,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
           className="flex items-center justify-center h-10 w-10 rounded-full flex-shrink-0"
           style={{ background: 'rgba(212,175,55,0.12)' }}
         >
-          <Wallet className="h-5 w-5" style={{ color: '#D4AF37' }} />
+          <Wallet className="h-5 w-5" style={{ color: '#12936A' }} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -248,27 +248,27 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             {balances.promo > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 <span className="flex items-center gap-1.5">
-                  <Star className="h-3 w-3" style={{ color: '#D4AF37' }} />
+                  <Star className="h-3 w-3" style={{ color: '#12936A' }} />
                   קרדיטים פרומו
                 </span>
-                <span style={{ color: '#D4AF37' }}>{fmt(balances.promo)}</span>
+                <span style={{ color: '#12936A' }}>{fmt(balances.promo)}</span>
               </div>
             )}
             {balances.gift > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 <span>כרטיס מתנה (eGift)</span>
-                <span style={{ color: '#D4AF37' }}>{fmt(balances.gift)}</span>
+                <span style={{ color: '#12936A' }}>{fmt(balances.gift)}</span>
               </div>
             )}
             {balances.wallet > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 <span>ארנק מזומן</span>
-                <span style={{ color: '#D4AF37' }}>{fmt(balances.wallet)}</span>
+                <span style={{ color: '#12936A' }}>{fmt(balances.wallet)}</span>
               </div>
             )}
             <div
               className="flex justify-between text-sm font-semibold border-t pt-2"
-              style={{ borderColor: 'rgba(212,175,55,0.2)', color: '#D4AF37' }}
+              style={{ borderColor: 'rgba(212,175,55,0.2)', color: '#12936A' }}
             >
               <span>סה"כ זמין</span>
               <span>{fmt(totalAvailableCents)}</span>
@@ -299,7 +299,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
           <Button
             className="w-full h-11 text-sm font-semibold rounded-xl transition-all"
             style={{
-              background:    'linear-gradient(90deg, #B8941F 0%, #D4AF37 50%, #F0D060 100%)',
+              background:    'linear-gradient(90deg, #0C5B3F 0%, #12936A 50%, #F0D060 100%)',
               color:         '#0a0a0a',
               border:        'none',
               boxShadow:     '0 4px 16px rgba(212,175,55,0.3)',

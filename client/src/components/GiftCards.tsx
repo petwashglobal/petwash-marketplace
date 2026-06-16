@@ -55,9 +55,9 @@ export function GiftCards({ language }: GiftCardsProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-6 sm:mb-10">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
-            <Gift className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
-            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#12936A]" />
+            <Gift className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#12936A]" />
           </div>
 
           <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-semibold"
@@ -95,12 +95,12 @@ export function GiftCards({ language }: GiftCardsProps) {
                 <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
                   style={{
                     borderRadius: '6px',
-                    border: isPremium ? '1.5px solid #c9a96e' : isElite ? '1.5px solid #c9a96e' : '1px solid #eee',
+                    border: isPremium ? '1.5px solid #12936A' : isElite ? '1.5px solid #12936A' : '1px solid #eee',
                   }}
                 >
                   {isElite && (
                     <div className="absolute top-3 end-3 z-10">
-                      <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+                      <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#12936A] text-white font-medium" style={{ borderRadius: '2px' }}>
                         {bestValueText[language] || bestValueText.en}
                       </span>
                     </div>
@@ -152,7 +152,7 @@ export function GiftCards({ language }: GiftCardsProps) {
 
         <div className="mt-8 sm:mt-10 flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
-            <Lock className="w-3 h-3 text-[#c9a96e]" strokeWidth={1.5} />
+            <Lock className="w-3 h-3 text-[#12936A]" strokeWidth={1.5} />
             <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#595959] font-medium">
               {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
             </span>
@@ -166,7 +166,7 @@ export function GiftCards({ language }: GiftCardsProps) {
         <div className="mt-8 sm:mt-12">
           <div className="flex items-center justify-center gap-4 mb-12">
             <div className="flex-1 max-w-[80px] h-px bg-gradient-to-r from-transparent to-[#ddd]" />
-            <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+            <Leaf className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
             <div className="flex-1 max-w-[80px] h-px bg-gradient-to-l from-transparent to-[#ddd]" />
           </div>
 

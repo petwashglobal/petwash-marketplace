@@ -2,10 +2,13 @@
  * PetWash™ Brand Design Tokens — the single source of truth.
  *
  * THE LOOK (locked with the CEO, 2026-06-16): pure WHITE ground · BLACK text ·
- * BRIGHT METALLIC GOLD accents only. Never cream/ivory/off-white, never brown,
- * never muted/antique gold, and gold is NEVER body text (it's jewelry, not paint).
+ * HOT METALLIC EMERALD-GREEN accents only. Gold was removed 2026-06-16 (read too
+ * cheap/yellow). Never cream/ivory/off-white, never a dark card, never body-text
+ * accents. The accent is jewelry, not paint.
  *
- * Change the gold ONCE here → the whole app updates. That is the point.
+ * The token names below are still `--pw-gold*` (legacy, kept to avoid a repo-wide
+ * rename) but they now hold the EMERALD values. Change the accent ONCE here → the
+ * whole app updates. That is the point.
  */
 :root {
   /* Ground + ink */
@@ -13,16 +16,16 @@
   --pw-ink: #111111;          /* headings + primary text — full black */
   --pw-ink-soft: #333333;     /* secondary text — still high-contrast, NOT faded */
   --pw-hairline: #ECECEC;     /* thin borders on white */
-  --pw-hairline-gold: #E7D9A6;/* gold-tinted border for featured cards */
+  --pw-hairline-gold: #CDE9DD;/* emerald-tinted border for featured cards */
 
-  /* THE GOLD — bright metallic (reference: Royal-Tier card). Tweak only here. */
-  --pw-gold: #D4AF37;         /* the one true gold */
-  --pw-gold-deep: #B8860B;    /* gradient start / pressed */
-  --pw-gold-light: #F2D778;   /* gradient highlight (sheen) */
+  /* THE ACCENT — hot metallic emerald green. Tweak only here. */
+  --pw-gold: #12936A;         /* the one true accent (emerald core) */
+  --pw-gold-deep: #0C5B3F;    /* gradient start / pressed */
+  --pw-gold-light: #36C98F;   /* gradient highlight (sheen) */
   --pw-gold-grad: linear-gradient(135deg, var(--pw-gold-deep) 0%, var(--pw-gold) 45%, var(--pw-gold-light) 100%);
-  --pw-gold-ink: #3A2D00;     /* text ON a gold fill (dark, readable) */
+  --pw-gold-ink: #FFFFFF;     /* text ON a green fill (white, readable) */
 
-  /* Status (only place non-gold color is allowed) */
+  /* Status (only place a different color is allowed) */
   --pw-success: #0B6B36;
   --pw-success-bg: #E7F5EC;
 
@@ -34,12 +37,12 @@
 
 /* ── Luxury utility classes — apply the system, no dead area, mobile-first ── */
 
-/* Metallic-gold FILL (icon chips, badges, accent bars). Text on it = --pw-gold-ink. */
+/* Metallic-emerald FILL (icon chips, badges, accent bars). Text on it = --pw-gold-ink (white). */
 .pw-gold-fill { background: var(--pw-gold-grad); color: var(--pw-gold-ink); }
 
-/* Metallic-gold TEXT/ICON via clip (for crowns, +, decorative glyphs only). */
+/* Metallic-emerald TEXT/ICON via clip (for crowns, +, decorative glyphs only). */
 .pw-gold-text {
-  background: linear-gradient(135deg, #9A7B1E, var(--pw-gold));
+  background: linear-gradient(135deg, #0C5B3F, var(--pw-gold));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
 }

@@ -274,11 +274,11 @@ body {
 .gold-shimmer-text {
   background: linear-gradient(
     90deg,
-    #D4AF37 0%,
+    #12936A 0%,
     #e8d5a3 25%,
-    #D4AF37 50%,
+    #12936A 50%,
     #a08050 75%,
-    #D4AF37 100%
+    #12936A 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -291,7 +291,7 @@ body {
 .gold-shimmer-btn {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #D4AF37 0%, #d4b87a 50%, #D4AF37 100%);
+  background: linear-gradient(135deg, #12936A 0%, #36C98F 50%, #12936A 100%);
   transition: all 0.4s ease;
 }
 
@@ -387,7 +387,7 @@ body {
   left: 50%;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  background: linear-gradient(90deg, transparent, #12936A, transparent);
   transition: all 0.4s ease;
   transform: translateX(-50%);
 }
@@ -577,17 +577,17 @@ h1, h2, h3, h4, h5, h6,
   --color-muted: #666666;
   
   /* LUXURY GOLD PALETTE - True Cartier 18k Yellow Gold */
-  --cartier-gold: #D4AF37;           /* Primary: true 18k yellow gold */
+  --cartier-gold: #12936A;           /* Primary: true 18k yellow gold */
   --cartier-gold-light: #F0D060;     /* Bright gold reflection / highlight */
-  --cartier-gold-dark: #B8941F;      /* Deep gold shadow */
+  --cartier-gold-dark: #0C5B3F;      /* Deep gold shadow */
   --cartier-gold-highlight: #F5E68A; /* Shimmer / specular */
   --cartier-gold-shadow: #8B6914;    /* Darkest gold shadow */
-  --gold-metallic: #D4AF37;          /* Metallic gold */
-  --color-gold: #D4AF37;             /* Primary gold reference */
-  --color-gold-2: #B8941F;           /* Secondary / deep gold */
+  --gold-metallic: #12936A;          /* Metallic gold */
+  --color-gold: #12936A;             /* Primary gold reference */
+  --color-gold-2: #0C5B3F;           /* Secondary / deep gold */
   
   /* LUXURY GOLD GRADIENTS - True 18k Yellow Gold */
-  --gradient-gold: linear-gradient(145deg, #F5E68A 0%, #F0D060 20%, #D4AF37 50%, #B8941F 75%, #8B6914 100%);
+  --gradient-gold: linear-gradient(145deg, #F5E68A 0%, #F0D060 20%, #12936A 50%, #0C5B3F 75%, #8B6914 100%);
   --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(244,224,96,0.5) 50%, transparent 100%);
   --gradient-black: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
   
@@ -601,10 +601,10 @@ h1, h2, h3, h4, h5, h6,
   /* ===== 2025 LUXURY GOLD GRADIENTS - Fashion House Style ===== */
   
   /* METALLIC GOLD VARIANTS */
-  --gradient-metallic-gold: linear-gradient(135deg, #F5E68A 0%, #F0D060 20%, #D4AF37 50%, #B8941F 75%, #8B6914 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #F0D060 0%, #D4AF37 50%, #B8941F 100%);
-  --gradient-gold-royal: linear-gradient(to right, #F5E68A 0%, #D4AF37 50%, #8B6914 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E68A, #D4AF37 50%, #B8941F);
+  --gradient-metallic-gold: linear-gradient(135deg, #F5E68A 0%, #F0D060 20%, #12936A 50%, #0C5B3F 75%, #8B6914 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #F0D060 0%, #12936A 50%, #0C5B3F 100%);
+  --gradient-gold-royal: linear-gradient(to right, #F5E68A 0%, #12936A 50%, #8B6914 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E68A, #12936A 50%, #0C5B3F);
   
   /* Diamond & Crystal Effects - Keep white/light */
   --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 20%, #F0F0F0 40%, #E8E8E8 60%, #F0F0F0 80%, #FFFFFF 100%);
@@ -628,7 +628,7 @@ h1, h2, h3, h4, h5, h6,
   
   /* Premium Button Gradients - LUXURY GOLD + BLACK */
   --gradient-luxury-primary: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-  --gradient-luxury-gold-button: linear-gradient(135deg, #F0D060 0%, #D4AF37 50%, #B8941F 100%);
+  --gradient-luxury-gold-button: linear-gradient(135deg, #F0D060 0%, #12936A 50%, #0C5B3F 100%);
   --gradient-luxury-rose-button: linear-gradient(135deg, #e8c4b8 0%, #d4a394 50%, #c9967a 100%);
   --gradient-luxury-platinum-button: linear-gradient(135deg, #E5E4E2 0%, #D8D8D8 50%, #E5E4E2 100%);
   
@@ -2162,7 +2162,7 @@ html[lang="en"] *,
   font-weight: 600;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #1A1A1A 0%, #D4AF37 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #12936A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

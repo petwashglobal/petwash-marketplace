@@ -256,7 +256,7 @@ function styles() {
     .sh-back{ background:none; border:0; color:#64748b; font-weight:600; padding:8px 0; cursor:pointer; margin-bottom:24px }
 
     .sh-hero{ padding:24px 0 48px }
-    .sh-eyebrow{ display:inline-block; font-size:12.5px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:#9d6f23; padding:8px 14px; border:1px solid #e7d4a0; border-radius:999px; background:linear-gradient(180deg,#fffdf6,#fdf5dc); margin-bottom:18px }
+    .sh-eyebrow{ display:inline-block; font-size:12.5px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:#9d6f23; padding:8px 14px; border:1px solid #36C98F; border-radius:999px; background:linear-gradient(180deg,#fffdf6,#fdf5dc); margin-bottom:18px }
     .sh-h1{ font-family:"Playfair Display",Georgia,serif; font-size:clamp(34px,5vw,64px); line-height:1.04; letter-spacing:-.025em; margin:0 0 18px; color:#0b1220; font-weight:600 }
     .sh-gold{ background:linear-gradient(120deg,#d8ad55,#9d6f23 60%,#6e4a1a); -webkit-background-clip:text; background-clip:text; color:transparent }
     .sh-intro{ font-size:clamp(15px,1.3vw,17px); line-height:1.65; color:#475569; max-width:720px; margin:0 }

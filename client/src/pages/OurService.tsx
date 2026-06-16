@@ -12,10 +12,10 @@ const MetallicIcon = ({ children, size = 28 }: { children: React.ReactNode; size
       <defs>
         <linearGradient id="metalGold" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#f5e6b8" />
-          <stop offset="25%" stopColor="#d4af37" />
+          <stop offset="25%" stopColor="#12936A" />
           <stop offset="50%" stopColor="#f5e6b8" />
-          <stop offset="75%" stopColor="#c9a96e" />
-          <stop offset="100%" stopColor="#d4af37" />
+          <stop offset="75%" stopColor="#12936A" />
+          <stop offset="100%" stopColor="#12936A" />
         </linearGradient>
         <linearGradient id="metalShine" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
@@ -189,11 +189,11 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                 overflow: 'hidden',
               }}>
                 {/* gold shimmer line at top */}
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg, transparent, #d4af37, #f0d060, #d4af37, transparent)' }} />
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg, transparent, #12936A, #f0d060, #12936A, transparent)' }} />
 
                 {/* model badge */}
                 <div style={{ display:'flex', justifyContent:'center', marginBottom:'1rem' }}>
-                  <span style={{ background:'linear-gradient(135deg,#c9a96e,#d4af37)', color:'#fff', fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', padding:'0.35rem 1.1rem', borderRadius:'100px' }}>
+                  <span style={{ background:'linear-gradient(135deg,#12936A,#12936A)', color:'#fff', fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', padding:'0.35rem 1.1rem', borderRadius:'100px' }}>
                     K9000 · {language === 'he' ? 'מתוצרת אוסטרליה' : 'Australian-Made'}
                   </span>
                 </div>
@@ -242,8 +242,8 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                       {t('ourService.tempControlDesc', language)}
                     </p>
                     <div style={{ marginTop:'0.6rem', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#B8941F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>20°C – 45°C</span>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#B8941F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>20°C – 45°C</span>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
                         {language === 'he' ? 'בקרה אוטומטית' : 'Auto-Regulated'}
                       </span>
                     </div>
@@ -275,10 +275,10 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                       {t('ourService.pressureDesc', language)}
                     </p>
                     <div style={{ marginTop:'0.6rem', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#B8941F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
                         {language === 'he' ? 'לחץ מתכוונן' : 'Variable Pressure'}
                       </span>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#B8941F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
                         {language === 'he' ? 'עדין לחיות' : 'Pet-Safe'}
                       </span>
                     </div>

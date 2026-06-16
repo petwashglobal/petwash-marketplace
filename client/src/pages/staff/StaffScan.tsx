@@ -110,10 +110,10 @@ export default function StaffScan() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '480px', margin: '0 auto' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(212,175,55,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Scan size={22} color="#D4AF37" />
+              <Scan size={22} color="#12936A" />
             </div>
             <div>
-              <div style={{ color: '#D4AF37', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>Staff POS</div>
+              <div style={{ color: '#12936A', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>Staff POS</div>
               <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem' }}>PetWash™ Prestige Card Scanner</div>
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function StaffScan() {
                 disabled={loading || !input}
                 style={{
                   padding: '12px 18px', borderRadius: '10px', border: 'none',
-                  background: '#D4AF37', color: '#FFFFFF', fontWeight: 700,
+                  background: '#12936A', color: '#FFFFFF', fontWeight: 700,
                   fontSize: '0.85rem', cursor: loading ? 'wait' : 'pointer',
                   opacity: !input ? 0.5 : 1,
                   display: 'flex', alignItems: 'center', gap: '6px',
@@ -199,7 +199,7 @@ export default function StaffScan() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
                   <div style={{
                     width: '52px', height: '52px', borderRadius: '14px', flexShrink: 0,
-                    background: 'linear-gradient(135deg, #D4AF37, #C6A35B)',
+                    background: 'linear-gradient(135deg, #12936A, #C6A35B)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '22px',
                   }}>
