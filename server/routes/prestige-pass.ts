@@ -226,15 +226,15 @@ const TIER_VARIANT: Record<string, 'black' | 'gold' | 'platinum'> = {
 
 // Prestige tier display names
 const TIER_DISPLAY: Record<string, { en: string; he: string }> = {
-  vip:      { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  elite:    { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  diamond:  { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  black:    { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  platinum: { en: 'Prestige Platinum', he: 'פרסטיז' + ' פלטינום' },
-  gold:     { en: 'Prestige Gold',     he: 'פרסטיז' + ' זהב' },
-  silver:   { en: 'Prestige Silver',   he: 'פרסטיז' + ' כסף' },
-  bronze:   { en: 'Prestige Pearl',    he: 'פרסטיז' + ' פנינה' },
-  new:      { en: 'Prestige Pearl',    he: 'פרסטיז' + ' פנינה' },
+  vip:      { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
+  elite:    { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
+  diamond:  { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
+  black:    { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
+  platinum: { en: 'Prestige Platinum', he: 'Prestige + ' פלטינום' },
+  gold:     { en: 'Prestige Gold',     he: 'Prestige + ' זהב' },
+  silver:   { en: 'Prestige Silver',   he: 'Prestige + ' כסף' },
+  bronze:   { en: 'Prestige Pearl',    he: 'Prestige + ' פנינה' },
+  new:      { en: 'Prestige Pearl',    he: 'Prestige + ' פנינה' },
 };
 
 // ─────────────────────────────────────────────────────────
@@ -1117,7 +1117,7 @@ function buildPrestigeWalletEmail(opts: {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>הפאס הפרסטיז שלך מוכן — PetWash</title>
+<title>הפאס ה-Prestige שלך מוכן — PetWash</title>
 </head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;color:#f0f0f0;">
 
@@ -1135,7 +1135,7 @@ function buildPrestigeWalletEmail(opts: {
         <tr>
           <td>
             <div style="font-size:11px;letter-spacing:4px;color:#D4AF37;text-transform:uppercase;margin-bottom:6px;">PetWash™</div>
-            <div style="font-size:22px;font-weight:700;color:#ffffff;">הפאס הפרסטיז שלך מוכן</div>
+            <div style="font-size:22px;font-weight:700;color:#ffffff;">הפאס ה-Prestige שלך מוכן</div>
           </td>
           <td align="left" style="padding-right:16px;">
             <div style="background:linear-gradient(135deg,#D4AF37,#F0D060);color:#0a0a0a;font-size:11px;font-weight:800;letter-spacing:2px;padding:6px 14px;border-radius:20px;white-space:nowrap;">
@@ -1350,7 +1350,7 @@ router.post('/activate', async (req: Request, res: Response) => {
 
       const sent = await EmailService.send({
         to:      recipientEmail,
-        subject: `הפאס הפרסטיז שלך מוכן — ${tierDisplay} 🐾`,
+        subject: `הפאס ה-Prestige שלך מוכן — ${tierDisplay} 🐾`,
         html,
       });
 
@@ -1592,7 +1592,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
 
     const sent = await EmailService.send({
       to:      email,
-      subject: `הפאס הפרסטיז שלך — ${tierDisplay} 🐾`,
+      subject: `הפאס ה-Prestige שלך — ${tierDisplay} 🐾`,
       html,
     });
 
@@ -1725,16 +1725,16 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
     });
 
     const subjectMap: Record<string, string> = {
-      black: '⬛ כרטיס הפרסטיז השחור שלך מוכן — PetWash™',
-      diamond: '💎 כרטיס הפרסטיז יהלום שלך מוכן — PetWash™',
-      royal: '👑 כרטיס הפרסטיז רויאל שלך מוכן — PetWash™',
-      emerald: '💚 כרטיס הפרסטיז אמרלד שלך מוכן — PetWash™',
-      platinum: '💠 כרטיס הפרסטיז פלטינום שלך מוכן — PetWash™',
-      gold: '🥇 כרטיס הפרסטיז זהב שלך מוכן — PetWash™',
-      silver: '🥈 כרטיס הפרסטיז כסף שלך מוכן — PetWash™',
-      pearl: '🪨 כרטיס הפרסטיז פנינה שלך מוכן — PetWash™',
+      black: '⬛ כרטיס ה-Prestige השחור שלך מוכן — PetWash™',
+      diamond: '💎 כרטיס ה-Prestige יהלום שלך מוכן — PetWash™',
+      royal: '👑 כרטיס ה-Prestige רויאל שלך מוכן — PetWash™',
+      emerald: '💚 כרטיס ה-Prestige אמרלד שלך מוכן — PetWash™',
+      platinum: '💠 כרטיס ה-Prestige פלטינום שלך מוכן — PetWash™',
+      gold: '🥇 כרטיס ה-Prestige זהב שלך מוכן — PetWash™',
+      silver: '🥈 כרטיס ה-Prestige כסף שלך מוכן — PetWash™',
+      pearl: '🪨 כרטיס ה-Prestige פנינה שלך מוכן — PetWash™',
     };
-    const subject = subjectMap[d.tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
+    const subject = subjectMap[d.tier] ?? '🐾 הכרטיס ה-Prestige שלך — PetWash™';
 
     let sent = await EmailService.send({ to: d.email, subject, html });
     let channel = 'sendgrid';
@@ -2447,16 +2447,16 @@ router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
     });
 
     const tierSubjects: Record<string, string> = {
-      black:    '⬛ כרטיס הפרסטיז השחור שלך מוכן — PetWash™',
-      diamond:  '💎 כרטיס הפרסטיז יהלום שלך מוכן — PetWash™',
-      royal:    '👑 כרטיס הפרסטיז רויאל שלך מוכן — PetWash™',
-      emerald:  '💚 כרטיס הפרסטיז אמרלד שלך מוכן — PetWash™',
-      platinum: '💠 כרטיס הפרסטיז פלטינום שלך מוכן — PetWash™',
-      gold:     '🥇 כרטיס הפרסטיז זהב שלך מוכן — PetWash™',
-      silver:   '🥈 כרטיס הפרסטיז כסף שלך מוכן — PetWash™',
-      pearl:    '🪨 כרטיס הפרסטיז פנינה שלך מוכן — PetWash™',
+      black:    '⬛ כרטיס ה-Prestige השחור שלך מוכן — PetWash™',
+      diamond:  '💎 כרטיס ה-Prestige יהלום שלך מוכן — PetWash™',
+      royal:    '👑 כרטיס ה-Prestige רויאל שלך מוכן — PetWash™',
+      emerald:  '💚 כרטיס ה-Prestige אמרלד שלך מוכן — PetWash™',
+      platinum: '💠 כרטיס ה-Prestige פלטינום שלך מוכן — PetWash™',
+      gold:     '🥇 כרטיס ה-Prestige זהב שלך מוכן — PetWash™',
+      silver:   '🥈 כרטיס ה-Prestige כסף שלך מוכן — PetWash™',
+      pearl:    '🪨 כרטיס ה-Prestige פנינה שלך מוכן — PetWash™',
     };
-    const subject = tierSubjects[tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
+    const subject = tierSubjects[tier] ?? '🐾 הכרטיס ה-Prestige שלך — PetWash™';
 
     let sent = await EmailService.send({ to: DEDICATED_EMAIL, subject, html });
     let channel = 'sendgrid';

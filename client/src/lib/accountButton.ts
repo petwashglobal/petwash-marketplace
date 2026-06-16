@@ -105,7 +105,7 @@ export function accountButtonView(whoami: WhoamiResponse | null, ctx: AccountCtx
     return { state: 'provider_approved', to: '/provider/dashboard', labelEn: 'Provider Dashboard', labelHe: 'דשבורד ספק' };
   }
   if (whoami?.prestigeStatus === 'active' || claims?.loyaltyMember === true || claims?.program === 'prestige') {
-    return { state: 'prestige', to: '/prestige/dashboard', labelEn: 'Prestige', labelHe: 'פרסטיז׳' };
+    return { state: 'prestige', to: '/prestige/dashboard', labelEn: 'Prestige', labelHe: 'Prestige׳' };
   }
   return { state: 'customer', to: '/account', labelEn: 'My Profile', labelHe: 'הפרופיל שלי' };
 }

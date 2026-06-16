@@ -121,7 +121,7 @@ const SEASONAL_THEMES: Record<SeasonalTheme, ThemeConfig> = {
 };
 
 const TIER_BY_VALUE: Record<string, { min: number; name: string; nameHe: string; icon: string }> = {
-  ELITE: { min: 750, name: 'Maison Prestige', nameHe: "מזון פרסטיז'", icon: '♛' },
+  ELITE: { min: 750, name: 'Maison Prestige', nameHe: "מזון Prestige", icon: '♛' },
   PREMIUM: { min: 400, name: 'Grand Collection', nameHe: 'גרנד קולקשן', icon: '✦' },
   PLUS: { min: 200, name: 'Signature', nameHe: 'סיגנטשר', icon: '❖' },
   CLASSIC: { min: 0, name: 'Collection', nameHe: 'קולקשן', icon: '✧' },

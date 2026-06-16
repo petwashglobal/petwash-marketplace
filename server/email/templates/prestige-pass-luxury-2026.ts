@@ -37,49 +37,49 @@ const TIER_CONFIG: Record<string, {
   bandColor: string;
 }> = {
   pearl: {
-    label: 'Prestige Pearl', labelHe: 'פרסטיז פנינה',
+    label: 'Prestige Pearl', labelHe: 'Prestige פנינה',
     cardBg: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d4a 40%, #1a1a2e 100%)',
     chipColor: '#c8b8e8', accentHex: '#c8b8e8', accentRgb: '200,184,232',
     bandColor: '#8870a8',
   },
   silver: {
-    label: 'Prestige Silver', labelHe: 'פרסטיז כסף',
+    label: 'Prestige Silver', labelHe: 'Prestige כסף',
     cardBg: 'linear-gradient(135deg, #1c1c1c 0%, #3a3a3a 40%, #1c1c1c 100%)',
     chipColor: '#c0c8d4', accentHex: '#c0c8d4', accentRgb: '192,200,212',
     bandColor: '#6a7280',
   },
   gold: {
-    label: 'Prestige Gold', labelHe: 'פרסטיז זהב',
+    label: 'Prestige Gold', labelHe: 'Prestige זהב',
     cardBg: 'linear-gradient(135deg, #1a1200 0%, #2a1f00 40%, #1a1200 100%)',
     chipColor: '#D4AF37', accentHex: '#D4AF37', accentRgb: '212,175,55',
     bandColor: '#B8941F',
   },
   platinum: {
-    label: 'Prestige Platinum', labelHe: 'פרסטיז פלטינום',
+    label: 'Prestige Platinum', labelHe: 'Prestige פלטינום',
     cardBg: 'linear-gradient(135deg, #0f0f1a 0%, #1a2030 40%, #0f0f1a 100%)',
     chipColor: '#d8dcf0', accentHex: '#d8dcf0', accentRgb: '216,220,240',
     bandColor: '#8890b0',
   },
   diamond: {
-    label: 'Prestige Diamond', labelHe: 'פרסטיז יהלום',
+    label: 'Prestige Diamond', labelHe: 'Prestige יהלום',
     cardBg: 'linear-gradient(135deg, #050d1a 0%, #0a1830 45%, #050d1a 100%)',
     chipColor: '#64a0ff', accentHex: '#64a0ff', accentRgb: '100,160,255',
     bandColor: '#2255cc',
   },
   emerald: {
-    label: 'Prestige Emerald', labelHe: 'פרסטיז אמרלד',
+    label: 'Prestige Emerald', labelHe: 'Prestige אמרלד',
     cardBg: 'linear-gradient(135deg, #000f08 0%, #001a10 45%, #000f08 100%)',
     chipColor: '#00c864', accentHex: '#00c864', accentRgb: '0,200,100',
     bandColor: '#007040',
   },
   royal: {
-    label: 'Prestige Royal', labelHe: 'פרסטיז רויאל',
+    label: 'Prestige Royal', labelHe: 'Prestige רויאל',
     cardBg: 'linear-gradient(135deg, #0a0006 0%, #1a0012 45%, #0a0006 100%)',
     chipColor: '#dc50b4', accentHex: '#dc50b4', accentRgb: '220,80,180',
     bandColor: '#880060',
   },
   black: {
-    label: 'Prestige Black', labelHe: 'פרסטיז שחור',
+    label: 'Prestige Black', labelHe: 'Prestige שחור',
     cardBg: 'linear-gradient(135deg, #000000 0%, #0d0d0d 30%, #1a1100 60%, #0d0d0d 80%, #000000 100%)',
     chipColor: '#D4AF37', accentHex: '#D4AF37', accentRgb: '212,175,55',
     bandColor: '#8a6f00',
@@ -206,7 +206,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>${isHe ? 'כרטיס הפרסטיז שלך — PetWash™' : 'Your Prestige Pass — PetWash™'}</title>
+<title>${isHe ? 'כרטיס ה-Prestige שלך — PetWash™' : 'Your Prestige Pass — PetWash™'}</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
@@ -240,7 +240,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
         <tr>
           <td>
             <div style="font-size:9px;letter-spacing:6px;color:#C6A35B;text-transform:uppercase;font-weight:700;margin-bottom:4px;">P&nbsp;E&nbsp;T&nbsp;W&nbsp;A&nbsp;S&nbsp;H&nbsp;™</div>
-            <div style="font-size:10px;letter-spacing:3px;color:#aaaaaa;text-transform:uppercase;">${isHe ? 'כרטיס חבר פרסטיז' : 'PRESTIGE MEMBERSHIP'}</div>
+            <div style="font-size:10px;letter-spacing:3px;color:#aaaaaa;text-transform:uppercase;">${isHe ? 'כרטיס חבר Prestige : 'PRESTIGE MEMBERSHIP'}</div>
           </td>
           <td align="${isHe ? 'left' : 'right'}">
             <div style="display:inline-block;background:linear-gradient(135deg,#000000 0%,#1a1100 60%,#0d0d0d 100%);
@@ -267,7 +267,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
       </p>
       <p style="margin:0;font-size:14px;color:#555555;line-height:1.7;">
         ${isHe
-          ? 'הכרטיס הפרסטיז שלך מוכן לשימוש מלא. שמור/י אותו ב‑Apple Wallet או ב‑Google Wallet — גישה מיידית בכל תחנת K9000.'
+          ? 'הכרטיס ה-Prestige שלך מוכן לשימוש מלא. שמור/י אותו ב‑Apple Wallet או ב‑Google Wallet — גישה מיידית בכל תחנת K9000.'
           : 'Your Prestige Pass is ready for full use. Save it to Apple Wallet or Google Wallet — instant access at every K9000 station.'
         }
       </p>

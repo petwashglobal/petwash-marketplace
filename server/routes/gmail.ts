@@ -193,7 +193,7 @@ router.get('/status', async (_req, res) => {
     return res.status(200).json({
       success: true,
       connected: false,
-      message: 'Gmail not connected. Connect via Replit integrations panel.',
+      message: 'Gmail not connected. Connect via the integrations panel.',
     });
   }
 });
