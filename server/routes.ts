@@ -19,6 +19,7 @@ import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminSumitRoutes from "./routes/admin-sumit";
 import providerInsuranceRoutes from "./routes/provider-insurance";
 import adminUpayRoutes from "./routes/admin-upay";
+import { EGIFT_EXEMPTION_CAP_ILS } from "./lib/egift-denominations";
 import sumitWebhookRoutes from "./routes/sumit-webhook";
 import providerMyInvoicesRoutes from "./routes/provider-my-invoices";
 import accountantRoutes from "./routes/accountant";
@@ -5666,7 +5667,10 @@ self.addEventListener('notificationclick', (event) => {
 
   // Multi-Service Gift Card Creation (Express Checkout for all platforms)
   const multiServiceGiftSchema = z.object({
-    value: z.number().min(1).max(10000),
+    // ₪1,500 = Payment Services closed-loop exemption cap (no payment licence).
+    // Was max(10000) — that let a guest buy a voucher over the exemption ceiling
+    // and break PetWash's licence-free status.
+    value: z.number().min(1).max(EGIFT_EXEMPTION_CAP_ILS),
     currency: z.string().default('ILS'),
     recipientName: z.string().min(1).max(100),
     recipientEmail: z.string().email(),
