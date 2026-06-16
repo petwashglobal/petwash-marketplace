@@ -1018,7 +1018,7 @@ export default function Loyalty() {
         <section className="py-16 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
-              <div className="relative w-20 h-20 mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #1a1208 0%, #2a1e0a 40%, #1a1208 100%)', borderRadius: '50%', boxShadow: '0 0 0 1px rgba(212,175,55,0.35), 0 8px 32px rgba(201,169,110,0.25)' }}>
+              <div className="relative w-20 h-20 mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #1a1208 0%, #2a1e0a 40%, #1a1208 100%)', borderRadius: '50%', boxShadow: '0 0 0 1px rgba(18,147,106,0.35), 0 8px 32px rgba(201,169,110,0.25)' }}>
                 <Crown className="w-9 h-9" style={{ color: '#12936A' }} />
                 <Sparkles className="absolute top-1 right-1 w-3.5 h-3.5" style={{ color: '#12936A', opacity: 0.8 }} />
               </div>

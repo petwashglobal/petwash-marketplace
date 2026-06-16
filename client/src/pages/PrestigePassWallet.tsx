@@ -110,9 +110,9 @@ function CountdownRing({ secondsLeft, total }: { secondsLeft: number; total: num
 // ─── BalanceRow ───────────────────────────────────────────────────────────────
 function BalanceRow({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color?: string }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom:'1px solid rgba(212,175,55,0.08)' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom:'1px solid rgba(18,147,106,0.08)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-        <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(212,175,55,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color: color || '#12936A' }}>
+        <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(18,147,106,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color: color || '#12936A' }}>
           {icon}
         </div>
         <span style={{ fontSize:'0.88rem', color:'#3A3228', fontWeight:500 }}>{label}</span>
@@ -189,7 +189,7 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
       </div>
 
       {/* Member ID row */}
-      <div style={{ padding:'0 20px 24px', display:'flex', justifyContent:'space-between', borderBottom:'1px solid rgba(212,175,55,0.12)' }}>
+      <div style={{ padding:'0 20px 24px', display:'flex', justifyContent:'space-between', borderBottom:'1px solid rgba(18,147,106,0.12)' }}>
         <div>
           <div style={{ fontSize:'0.6rem', fontWeight:600, color:'#9E9E9E', letterSpacing:'0.1em', textTransform:'uppercase' }}>
             {he ? 'מספר חבר' : 'Member ID'}
@@ -259,7 +259,7 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
     },
     {
       icon: <Star size={20} color="#12936A" />,
-      bg: 'rgba(212,175,55,0.08)',
+      bg: 'rgba(18,147,106,0.08)',
       titleEn: 'Birthday Bonus',
       titleHe: 'בונוס יום הולדת',
       descEn: 'Free service credit on your pet\'s birthday',
@@ -280,7 +280,7 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
         {benefits.map((b, i) => (
           <div key={i} style={{
             background: '#FFFFFF',
-            border: '1.5px solid rgba(212,175,55,0.15)',
+            border: '1.5px solid rgba(18,147,106,0.15)',
             borderRadius: '14px',
             padding: '14px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
@@ -390,8 +390,8 @@ function DivisionActivitySection({ he }: { he: boolean }) {
               flexShrink: 0,
               padding:'6px 14px',
               borderRadius:'100px',
-              border: activeTab === t.key ? '2px solid #12936A' : '2px solid rgba(212,175,55,0.2)',
-              background: activeTab === t.key ? 'rgba(212,175,55,0.08)' : '#FFFFFF',
+              border: activeTab === t.key ? '2px solid #12936A' : '2px solid rgba(18,147,106,0.2)',
+              background: activeTab === t.key ? 'rgba(18,147,106,0.08)' : '#FFFFFF',
               color: activeTab === t.key ? '#0C5B3F' : '#7A7068',
               fontWeight: activeTab === t.key ? 700 : 500,
               fontSize:'0.78rem',
@@ -404,14 +404,14 @@ function DivisionActivitySection({ he }: { he: boolean }) {
       </div>
 
       {/* Entries */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.15)', borderRadius:'16px', overflow:'hidden' }}>
+      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.15)', borderRadius:'16px', overflow:'hidden' }}>
         {isLoading ? (
           <div style={{ padding:'24px', textAlign:'center', color:'#9E9E9E', fontSize:'0.85rem' }}>
             {he ? 'טוען...' : 'Loading…'}
           </div>
         ) : entries.length === 0 ? (
           <div style={{ padding:'24px', textAlign:'center' }}>
-            <Activity size={32} color="rgba(212,175,55,0.3)" style={{ margin:'0 auto 8px' }} />
+            <Activity size={32} color="rgba(18,147,106,0.3)" style={{ margin:'0 auto 8px' }} />
             <p style={{ color:'#9E9E9E', fontSize:'0.85rem', margin:0 }}>
               {he ? 'עדיין אין עסקאות בקטגוריה זו' : 'No transactions in this division yet'}
             </p>
@@ -423,7 +423,7 @@ function DivisionActivitySection({ he }: { he: boolean }) {
             return (
               <div key={entry.entryId} style={{
                 display:'flex', alignItems:'center', gap:'12px', padding:'12px 16px',
-                borderBottom: isLast ? 'none' : '1px solid rgba(212,175,55,0.08)',
+                borderBottom: isLast ? 'none' : '1px solid rgba(18,147,106,0.08)',
               }}>
                 <div style={{
                   width:'34px', height:'34px', borderRadius:'10px', flexShrink:0,
@@ -507,7 +507,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
       </div>
 
       {/* Bucket breakdown */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.2)', borderRadius:'16px', padding:'4px 16px' }}>
+      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.2)', borderRadius:'16px', padding:'4px 16px' }}>
         <BalanceRow icon={<Wallet size={16} />}    label={he ? 'ארנק מזומן' : 'Cash Wallet'}      value={fmt(balances.cashWalletCents)}        color="#1A1A1A" />
         <BalanceRow icon={<Gift size={16} />}       label={he ? 'eGift' : 'eGift Balance'}          value={fmt(balances.egiftBalanceCents)}       color="#12936A" />
         <BalanceRow icon={<Zap size={16} />}        label={he ? 'קרדיט מבצע' : 'Promo Credit'}      value={fmt(balances.promoBalanceCents)}       color="#f59e0b" />
@@ -589,8 +589,8 @@ function DigitalCardSection({
           {(['left', 'any', 'right'] as const).map((b) => (
             <button key={b} onClick={() => setSelectedBay(b)} style={{
               padding:'8px 18px', borderRadius:'100px',
-              border: selectedBay === b ? '2px solid #12936A' : '2px solid rgba(212,175,55,0.2)',
-              background: selectedBay === b ? 'rgba(212,175,55,0.08)' : '#FFFFFF',
+              border: selectedBay === b ? '2px solid #12936A' : '2px solid rgba(18,147,106,0.2)',
+              background: selectedBay === b ? 'rgba(18,147,106,0.08)' : '#FFFFFF',
               color: selectedBay === b ? '#0C5B3F' : '#7A7068',
               fontWeight: selectedBay === b ? 700 : 500,
               fontSize:'0.82rem', cursor:'pointer',
@@ -602,7 +602,7 @@ function DigitalCardSection({
       </div>
 
       {/* QR Section */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.2)', borderRadius:'20px', padding:'20px', marginBottom:'16px', boxShadow:'0 4px 20px rgba(0,0,0,0.04)' }}>
+      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.2)', borderRadius:'20px', padding:'20px', marginBottom:'16px', boxShadow:'0 4px 20px rgba(0,0,0,0.04)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
           <div>
             <h3 style={{ fontSize:'0.9rem', fontWeight:700, color:'#1A1A1A', margin:0 }}>
@@ -617,11 +617,11 @@ function DigitalCardSection({
 
         {qrToken ? (
           <div className="prestige-qr-wrap" style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'12px' }}>
-            <div style={{ background:'#FFFFFF', padding:'16px', borderRadius:'16px', border:'1.5px solid rgba(212,175,55,0.15)', boxShadow:'0 2px 16px rgba(0,0,0,0.06)' }}>
+            <div style={{ background:'#FFFFFF', padding:'16px', borderRadius:'16px', border:'1.5px solid rgba(18,147,106,0.15)', boxShadow:'0 2px 16px rgba(0,0,0,0.06)' }}>
               <QRCodeSVG value={qrToken.token} size={200} level="H"
                 imageSettings={{ src: prestigeLogoDiamond, height:32, width:32, excavate:true }} />
             </div>
-            <div style={{ background:'#FFFFFF', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'10px', padding:'8px 20px', textAlign:'center' }}>
+            <div style={{ background:'#FFFFFF', border:'1px solid rgba(18,147,106,0.2)', borderRadius:'10px', padding:'8px 20px', textAlign:'center' }}>
               <p style={{ margin:0, fontSize:'0.6rem', color:'#9E9E9E', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' }}>
                 {he ? 'קוד חבר' : 'Member Code'}
               </p>
@@ -635,9 +635,9 @@ function DigitalCardSection({
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'16px', padding:'20px 0' }}>
-            <div style={{ width:'180px', height:'180px', borderRadius:'12px', background:'rgba(212,175,55,0.04)', border:'2px dashed rgba(212,175,55,0.2)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px' }}>
-              <QrCodeIcon size={40} color="rgba(212,175,55,0.35)" />
-              <p style={{ margin:0, color:'rgba(212,175,55,0.5)', fontSize:'0.75rem', textAlign:'center' }}>
+            <div style={{ width:'180px', height:'180px', borderRadius:'12px', background:'rgba(18,147,106,0.04)', border:'2px dashed rgba(18,147,106,0.2)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+              <QrCodeIcon size={40} color="rgba(18,147,106,0.35)" />
+              <p style={{ margin:0, color:'rgba(18,147,106,0.5)', fontSize:'0.75rem', textAlign:'center' }}>
                 {he ? 'לחץ להפעלת קוד QR' : 'Tap to activate QR'}
               </p>
             </div>
@@ -649,7 +649,7 @@ function DigitalCardSection({
       </div>
 
       {/* K9000 readiness panel */}
-      <div style={{ background:'#FFFFFF', border:`1.5px solid ${canWash ? 'rgba(34,197,94,0.3)' : 'rgba(212,175,55,0.2)'}`, borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
+      <div style={{ background:'#FFFFFF', border:`1.5px solid ${canWash ? 'rgba(34,197,94,0.3)' : 'rgba(18,147,106,0.2)'}`, borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
           <Droplets size={18} color={canWash ? '#22c55e' : '#12936A'} />
           <div>
@@ -682,7 +682,7 @@ function DigitalCardSection({
                 {he ? `חסרים ${fmt(shortfall)} להפעלה` : `${fmt(shortfall)} short to activate via pass`}
               </span>
             </div>
-            <button onClick={() => setShowTopUpDialog(true)} style={{ display:'flex', alignItems:'center', gap:'10px', background:'rgba(212,175,55,0.08)', border:'1.5px solid rgba(212,175,55,0.3)', borderRadius:'12px', padding:'12px 14px', cursor:'pointer', textAlign:'left' }}>
+            <button onClick={() => setShowTopUpDialog(true)} style={{ display:'flex', alignItems:'center', gap:'10px', background:'rgba(18,147,106,0.08)', border:'1.5px solid rgba(18,147,106,0.3)', borderRadius:'12px', padding:'12px 14px', cursor:'pointer', textAlign:'left' }}>
               <ArrowUpCircle size={18} color="#12936A" style={{ flexShrink:0 }} />
               <div>
                 <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#0C5B3F' }}>
@@ -711,7 +711,7 @@ function DigitalCardSection({
       </div>
 
       {/* Book Online services */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.2)', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
+      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.2)', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
         <h3 style={{ fontSize:'0.78rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 12px' }}>
           {he ? 'הזמן שירות עם PetWash Privilege' : 'Book with PetWash Privilege'}
         </h3>
@@ -724,7 +724,7 @@ function DigitalCardSection({
           const partial  = totalLiquid > 0 && !canBook;
           const sfILS    = ((Math.max(0, svc.from - totalLiquid)) / 100).toFixed(0);
           return (
-            <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 0', borderBottom:'1px solid rgba(212,175,55,0.08)' }}>
+            <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 0', borderBottom:'1px solid rgba(18,147,106,0.08)' }}>
               <div style={{ width:'34px', height:'34px', borderRadius:'9px', background:`${svc.color}14`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:svc.color }}>
                 {svc.icon}
               </div>
@@ -738,7 +738,7 @@ function DigitalCardSection({
                     : <div style={{ fontSize:'0.65rem', color:'#dc2626', fontWeight:600, marginTop:'2px' }}>{he ? '✗ יש לטעון' : '✗ Top up needed'}</div>
                 }
               </div>
-              <button onClick={() => navigate(svc.path)} style={{ flexShrink:0, padding:'8px 14px', borderRadius:'100px', border:`1.5px solid ${canBook ? 'rgba(34,197,94,0.4)' : partial ? 'rgba(245,158,11,0.4)' : 'rgba(212,175,55,0.3)'}`, background: canBook ? 'rgba(34,197,94,0.08)' : partial ? 'rgba(245,158,11,0.06)' : 'rgba(212,175,55,0.05)', color: canBook ? '#16a34a' : partial ? '#d97706' : '#0C5B3F', fontSize:'0.75rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+              <button onClick={() => navigate(svc.path)} style={{ flexShrink:0, padding:'8px 14px', borderRadius:'100px', border:`1.5px solid ${canBook ? 'rgba(34,197,94,0.4)' : partial ? 'rgba(245,158,11,0.4)' : 'rgba(18,147,106,0.3)'}`, background: canBook ? 'rgba(34,197,94,0.08)' : partial ? 'rgba(245,158,11,0.06)' : 'rgba(18,147,106,0.05)', color: canBook ? '#16a34a' : partial ? '#d97706' : '#0C5B3F', fontSize:'0.75rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
                 {canBook ? (he ? 'הזמן' : 'Book') : partial ? (he ? 'הזמן →' : 'Book →') : (he ? 'טעינה' : 'Top Up')}
               </button>
             </div>
@@ -747,7 +747,7 @@ function DigitalCardSection({
       </div>
 
       {/* Pet Profile */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.15)', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
+      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.15)', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
         <div onClick={() => setPetEditOpen((o: boolean) => !o)} style={{ display:'flex', alignItems:'center', gap:'10px', cursor:'pointer' }}>
           <span style={{ fontSize:'18px' }}>{walletData?.pet?.petName ? '🐾' : '➕'}</span>
           <div style={{ flex:1 }}>
@@ -772,12 +772,12 @@ function DigitalCardSection({
               <div key={key}>
                 <label style={{ display:'block', fontSize:'0.68rem', fontWeight:600, color:'#9E9E9E', marginBottom:'4px', letterSpacing:'0.05em', textTransform:'uppercase' }}>{label}</label>
                 <input value={(petForm as any)[key]} onChange={e => setPetForm((f: any) => ({ ...f, [key]: e.target.value }))} placeholder={placeholder}
-                  style={{ width:'100%', padding:'10px 12px', borderRadius:'10px', border:'1.5px solid rgba(212,175,55,0.25)', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', color:'#1A1A1A' }} />
+                  style={{ width:'100%', padding:'10px 12px', borderRadius:'10px', border:'1.5px solid rgba(18,147,106,0.25)', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', color:'#1A1A1A' }} />
               </div>
             ))}
             <div style={{ display:'flex', gap:'6px' }}>
               {(['dog','cat','rabbit','bird','other'] as const).map(t => (
-                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(212,175,55,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #12936A' : 'none', color: petForm.petType === t ? '#0C5B3F' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
+                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(18,147,106,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #12936A' : 'none', color: petForm.petType === t ? '#0C5B3F' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
                   {t === 'dog' ? '🐶' : t === 'cat' ? '🐱' : t === 'rabbit' ? '🐰' : t === 'bird' ? '🐦' : '🐾'} {t}
                 </button>
               ))}
@@ -793,7 +793,7 @@ function DigitalCardSection({
                   toast({ title: he ? '🐾 נשמר!' : '🐾 Saved!', description: he ? `${petForm.petName} נוסף לכרטיס` : `${petForm.petName} added to your card` });
                 }
               } finally { setSavingPet(false); }
-            }} style={{ padding:'11px', borderRadius:'10px', border:'none', background: petForm.petName?.trim() ? '#12936A' : 'rgba(212,175,55,0.3)', color:'#FFFFFF', fontWeight:700, fontSize:'0.88rem', cursor: savingPet ? 'wait' : 'pointer' }}>
+            }} style={{ padding:'11px', borderRadius:'10px', border:'none', background: petForm.petName?.trim() ? '#12936A' : 'rgba(18,147,106,0.3)', color:'#FFFFFF', fontWeight:700, fontSize:'0.88rem', cursor: savingPet ? 'wait' : 'pointer' }}>
               {savingPet ? (he ? 'שומר…' : 'Saving…') : (he ? 'שמור פרופיל חיית מחמד' : 'Save pet profile')}
             </button>
           </div>
@@ -801,7 +801,7 @@ function DigitalCardSection({
       </div>
 
       {/* Apple / Google Wallet */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.2)', borderRadius:'16px', padding:'20px', marginBottom:'16px' }}>
+      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.2)', borderRadius:'16px', padding:'20px', marginBottom:'16px' }}>
         <h3 style={{ fontSize:'0.78rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 12px' }}>
           {he ? 'הוסף לארנק הנייד' : 'Add to Mobile Wallet'}
         </h3>
@@ -820,7 +820,7 @@ function DigitalCardSection({
             <span>🔵</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet')}
           </button>
           <button onClick={() => resendEmailMutation.mutate()} disabled={resendEmailMutation.isPending}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#FFFFFF', border:'1.5px solid rgba(212,175,55,0.3)', color:'#0C5B3F', padding:'12px', borderRadius:'12px', cursor:'pointer', fontWeight:600, fontSize:'0.85rem' }}>
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#FFFFFF', border:'1.5px solid rgba(18,147,106,0.3)', color:'#0C5B3F', padding:'12px', borderRadius:'12px', cursor:'pointer', fontWeight:600, fontSize:'0.85rem' }}>
             <Clock size={15} />
             {resendEmailMutation.isPending ? (he ? 'שולח...' : 'Sending…') : (he ? 'שלח למייל (עם כפתורי Wallet)' : 'Send to email (with Wallet buttons)')}
           </button>
@@ -875,9 +875,9 @@ function PrestigeKioskPass({
         @keyframes kioskFadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
         @keyframes kioskQrIn { from { opacity:0; transform:translateY(6px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
         @keyframes qrGlow {
-          0%,100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); }
-          40%      { box-shadow: 0 0 22px 6px rgba(212,175,55,0.28); }
-          60%      { box-shadow: 0 0 28px 10px rgba(212,175,55,0.18); }
+          0%,100% { box-shadow: 0 0 0 0 rgba(18,147,106,0); }
+          40%      { box-shadow: 0 0 22px 6px rgba(18,147,106,0.28); }
+          60%      { box-shadow: 0 0 28px 10px rgba(18,147,106,0.18); }
         }
         @keyframes cardShimmer {
           0%   { background-position: -400px 0; }
@@ -891,7 +891,7 @@ function PrestigeKioskPass({
         background: '#FFFFFF',
         borderRadius: '24px',
         overflow: 'hidden',
-        boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.3)',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(18,147,106,0.3)',
         position: 'relative',
       }}>
         {/* Gold shimmer top */}
@@ -939,7 +939,7 @@ function PrestigeKioskPass({
         </div>
 
         {/* Divider */}
-        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)', margin: '0 20px' }} />
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(18,147,106,0.3), transparent)', margin: '0 20px' }} />
 
         {/* QR Code — the centrepiece */}
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', animation: 'kioskQrIn 0.3s ease' }}>
@@ -952,7 +952,7 @@ function PrestigeKioskPass({
                 </div>
                 <div style={{
                   background: '#FFFFFF', padding: '16px', borderRadius: '20px',
-                  border: '1.5px solid rgba(212,175,55,0.2)',
+                  border: '1.5px solid rgba(18,147,106,0.2)',
                   animation: 'qrGlow 2.8s ease-in-out infinite',
                 }}>
                   <QRCodeSVG
@@ -969,8 +969,8 @@ function PrestigeKioskPass({
                 {(['left', 'any', 'right'] as const).map((b) => (
                   <button key={b} onClick={() => { setSelectedBay(b); generateQr(); }} style={{
                     padding: '5px 14px', borderRadius: '100px', cursor: 'pointer',
-                    border: selectedBay === b ? '1.5px solid #12936A' : '1.5px solid rgba(212,175,55,0.15)',
-                    background: selectedBay === b ? 'rgba(212,175,55,0.08)' : 'transparent',
+                    border: selectedBay === b ? '1.5px solid #12936A' : '1.5px solid rgba(18,147,106,0.15)',
+                    background: selectedBay === b ? 'rgba(18,147,106,0.08)' : 'transparent',
                     color: selectedBay === b ? '#0C5B3F' : '#BFAC8A',
                     fontSize: '0.68rem', fontWeight: selectedBay === b ? 700 : 400,
                   }}>
@@ -990,9 +990,9 @@ function PrestigeKioskPass({
             </>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '20px 0' }}>
-              <div style={{ width: '200px', height: '200px', borderRadius: '16px', background: 'rgba(212,175,55,0.04)', border: '2px dashed rgba(212,175,55,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                <QrCodeIcon size={44} color="rgba(212,175,55,0.35)" />
-                <p style={{ margin: 0, color: 'rgba(212,175,55,0.55)', fontSize: '0.75rem', textAlign: 'center' }}>
+              <div style={{ width: '200px', height: '200px', borderRadius: '16px', background: 'rgba(18,147,106,0.04)', border: '2px dashed rgba(18,147,106,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <QrCodeIcon size={44} color="rgba(18,147,106,0.35)" />
+                <p style={{ margin: 0, color: 'rgba(18,147,106,0.55)', fontSize: '0.75rem', textAlign: 'center' }}>
                   {he ? 'לחץ להפעלת קוד QR' : 'Tap to activate QR'}
                 </p>
               </div>
@@ -1004,7 +1004,7 @@ function PrestigeKioskPass({
         </div>
 
         {/* Divider */}
-        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent)', margin: '0 20px' }} />
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(18,147,106,0.2), transparent)', margin: '0 20px' }} />
 
         {/* Footer — membership number + points */}
         <div style={{ padding: '14px 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1031,8 +1031,8 @@ function PrestigeKioskPass({
           {(['left', 'any', 'right'] as const).map((b) => (
             <button key={b} onClick={() => { setSelectedBay(b); generateQr(); }} style={{
               flex: 1, padding: '7px 4px', borderRadius: '100px',
-              border: selectedBay === b ? '2px solid #12936A' : '2px solid rgba(212,175,55,0.18)',
-              background: selectedBay === b ? 'rgba(212,175,55,0.1)' : '#FFFFFF',
+              border: selectedBay === b ? '2px solid #12936A' : '2px solid rgba(18,147,106,0.18)',
+              background: selectedBay === b ? 'rgba(18,147,106,0.1)' : '#FFFFFF',
               color: selectedBay === b ? '#0C5B3F' : '#9E9E9E',
               fontWeight: selectedBay === b ? 700 : 500,
               fontSize: '0.72rem', cursor: 'pointer',
@@ -1043,7 +1043,7 @@ function PrestigeKioskPass({
         </div>
 
         {/* Valid footer */}
-        <div style={{ background: 'rgba(212,175,55,0.04)', padding: '8px 20px 14px', textAlign: 'center', borderTop: '1px solid rgba(212,175,55,0.1)' }}>
+        <div style={{ background: 'rgba(18,147,106,0.04)', padding: '8px 20px 14px', textAlign: 'center', borderTop: '1px solid rgba(18,147,106,0.1)' }}>
           <div style={{ fontSize: '0.56rem', color: '#BFAC8A', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {he ? 'תקף בתחנות K9000 ברחבי העולם' : 'Valid at K9000 Dog Wash Kiosks Worldwide'}
           </div>
@@ -1197,7 +1197,7 @@ export default function PrestigePassWallet() {
       <Layout>
         <div style={{ minHeight:'80vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#FFFFFF' }}>
           <div style={{ textAlign:'center' }}>
-            <div style={{ width:'56px', height:'56px', borderRadius:'50%', border:'3px solid rgba(212,175,55,0.2)', borderTopColor:'#12936A', animation:'spin 1s linear infinite', margin:'0 auto 16px' }} />
+            <div style={{ width:'56px', height:'56px', borderRadius:'50%', border:'3px solid rgba(18,147,106,0.2)', borderTopColor:'#12936A', animation:'spin 1s linear infinite', margin:'0 auto 16px' }} />
             <p style={{ color:'#9E9E9E', fontSize:'0.9rem' }}>{he ? 'טוען את הכרטיס...' : 'Loading your pass…'}</p>
           </div>
         </div>
@@ -1234,7 +1234,7 @@ export default function PrestigePassWallet() {
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         .prestige-qr-wrap { animation: fadeIn 0.3s ease; }
-        @keyframes passButtonPulse { 0%,100% { box-shadow:0 4px 20px rgba(212,175,55,0.35); } 50% { box-shadow:0 4px 32px rgba(212,175,55,0.6); } }
+        @keyframes passButtonPulse { 0%,100% { box-shadow:0 4px 20px rgba(18,147,106,0.35); } 50% { box-shadow:0 4px 32px rgba(18,147,106,0.6); } }
       `}</style>
 
       {/* ── Kiosk Pass Overlay ── */}
@@ -1305,15 +1305,15 @@ export default function PrestigePassWallet() {
 
         {/* ── EMOTIONAL LAYER ── Streak, Progress, Tier path ── */}
         {loyaltyProfile && (
-          <div style={{ background: '#FFFFFF', padding: '0 20px 24px', borderBottom: '1px solid rgba(212,175,55,0.10)' }}>
+          <div style={{ background: '#FFFFFF', padding: '0 20px 24px', borderBottom: '1px solid rgba(18,147,106,0.10)' }}>
 
             {/* Streak + wash count row */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
               {/* Streak pill */}
               {loyaltyProfile.currentStreak > 0 && (
                 <div style={{
-                  flex: 1, background: 'linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02))',
-                  border: '1px solid rgba(212,175,55,0.18)', borderRadius: '14px',
+                  flex: 1, background: 'linear-gradient(135deg, rgba(18,147,106,0.06), rgba(18,147,106,0.02))',
+                  border: '1px solid rgba(18,147,106,0.18)', borderRadius: '14px',
                   padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
                   <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🔥</span>
@@ -1330,8 +1330,8 @@ export default function PrestigePassWallet() {
 
               {/* Total washes pill */}
               <div style={{
-                flex: 1, background: 'linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02))',
-                border: '1px solid rgba(212,175,55,0.18)', borderRadius: '14px',
+                flex: 1, background: 'linear-gradient(135deg, rgba(18,147,106,0.06), rgba(18,147,106,0.02))',
+                border: '1px solid rgba(18,147,106,0.18)', borderRadius: '14px',
                 padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
               }}>
                 <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🐾</span>
@@ -1348,8 +1348,8 @@ export default function PrestigePassWallet() {
               {/* Next milestone pill */}
               {loyaltyProfile.tierThreshold > loyaltyProfile.tierProgress && (
                 <div style={{
-                  flex: 1, background: 'linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02))',
-                  border: '1px solid rgba(212,175,55,0.18)', borderRadius: '14px',
+                  flex: 1, background: 'linear-gradient(135deg, rgba(18,147,106,0.06), rgba(18,147,106,0.02))',
+                  border: '1px solid rgba(18,147,106,0.18)', borderRadius: '14px',
                   padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
                   <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>✨</span>
@@ -1376,7 +1376,7 @@ export default function PrestigePassWallet() {
                     {loyaltyProfile.tierProgress.toLocaleString()} / {loyaltyProfile.tierThreshold.toLocaleString()}
                   </span>
                 </div>
-                <div style={{ height: '5px', background: 'rgba(212,175,55,0.12)', borderRadius: '100px', overflow: 'hidden' }}>
+                <div style={{ height: '5px', background: 'rgba(18,147,106,0.12)', borderRadius: '100px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${Math.min(100, Math.round((loyaltyProfile.tierProgress / loyaltyProfile.tierThreshold) * 100))}%`,
@@ -1430,7 +1430,7 @@ export default function PrestigePassWallet() {
           background: 'linear-gradient(160deg, #1A1614 0%, #221E1A 100%)',
           borderRadius: '20px',
           overflow: 'hidden',
-          border: '1px solid rgba(212,175,55,0.2)',
+          border: '1px solid rgba(18,147,106,0.2)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}>
           {/* Gold top strip */}
@@ -1440,7 +1440,7 @@ export default function PrestigePassWallet() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <Crown size={14} color="#12936A" />
-              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(212,175,55,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(18,147,106,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
                 {he ? 'שירות קונסיירז׳ יוקרתי' : 'Prestige Concierge'}
               </span>
             </div>
@@ -1477,7 +1477,7 @@ export default function PrestigePassWallet() {
                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{he ? 'מענה מיידי' : 'Instant reply'}</div>
                   </div>
                 </div>
-                <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
+                <ChevronRight size={14} color="rgba(18,147,106,0.5)" />
               </a>
 
               {/* Concierge Call */}
@@ -1491,7 +1491,7 @@ export default function PrestigePassWallet() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(18,147,106,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Phone size={14} color="#12936A" />
                   </div>
                   <div>
@@ -1499,7 +1499,7 @@ export default function PrestigePassWallet() {
                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{he ? 'קו ישיר לצוות שלנו' : 'Direct line to our team'}</div>
                   </div>
                 </div>
-                <ChevronRight size={14} color="rgba(212,175,55,0.5)" />
+                <ChevronRight size={14} color="rgba(18,147,106,0.5)" />
               </a>
             </div>
           </div>

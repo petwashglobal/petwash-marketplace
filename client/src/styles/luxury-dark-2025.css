@@ -35,7 +35,7 @@
   --luxury-gradient-platinum: linear-gradient(135deg, #e8e6f0 0%, #c0bdd0 50%, #e8e6f0 100%);
   
   --luxury-glow-platinum: 0 0 40px rgba(232, 230, 240, 0.15);
-  --luxury-glow-gold: 0 0 30px rgba(212, 175, 55, 0.2);
+  --luxury-glow-gold: 0 0 30px rgba(18, 147, 106, 0.2);
   --luxury-glow-rose: 0 0 30px rgba(183, 110, 121, 0.15);
   
   --luxury-glass-dark: rgba(15, 15, 21, 0.85);
@@ -84,14 +84,14 @@
   height: 1px;
   background: linear-gradient(90deg, 
     transparent 0%,
-    rgba(212, 175, 55, 0.15) 50%,
+    rgba(18, 147, 106, 0.15) 50%,
     transparent 100%
   );
 }
 
 .luxury-dark-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(212, 175, 55, 0.3);
+  border-color: rgba(18, 147, 106, 0.3);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 
@@ -131,7 +131,7 @@
   background: linear-gradient(90deg, 
     transparent 0%,
     rgba(232, 230, 240, 0.15) 25%,
-    rgba(212, 175, 55, 0.3) 50%,
+    rgba(18, 147, 106, 0.3) 50%,
     rgba(232, 230, 240, 0.15) 75%,
     transparent 100%
   );
@@ -271,7 +271,7 @@
   font-size: 15px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 4px 16px rgba(18, 147, 106, 0.25);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -281,7 +281,7 @@
 
 .luxury-dark-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.35);
+  box-shadow: 0 8px 24px rgba(18, 147, 106, 0.35);
   opacity: 0.92;
 }
 
@@ -294,7 +294,7 @@
   font-size: 15px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 4px 16px rgba(18, 147, 106, 0.25);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Inter', sans-serif;
   letter-spacing: 0.02em;
@@ -302,7 +302,7 @@
 
 .luxury-dark-btn-gold:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.35);
+  box-shadow: 0 8px 24px rgba(18, 147, 106, 0.35);
   opacity: 0.92;
 }
 
@@ -345,9 +345,9 @@
 }
 
 .luxury-dark-badge-gold {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(240, 216, 96, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(18, 147, 106, 0.15) 0%, rgba(240, 216, 96, 0.1) 100%);
   color: #0C5B3F;
-  border-color: rgba(212, 175, 55, 0.35);
+  border-color: rgba(18, 147, 106, 0.35);
 }
 
 .luxury-dark-badge-success {
@@ -370,7 +370,7 @@
 
 .luxury-credit-item:hover {
   background: #FFFFFF;
-  border-color: rgba(212, 175, 55, 0.3);
+  border-color: rgba(18, 147, 106, 0.3);
   transform: translateY(-2px);
 }
 
@@ -450,7 +450,7 @@
   background: linear-gradient(90deg,
     transparent 0%,
     #E8E3D9 20%,
-    rgba(212, 175, 55, 0.2) 50%,
+    rgba(18, 147, 106, 0.2) 50%,
     #E8E3D9 80%,
     transparent 100%
   );
@@ -474,10 +474,10 @@
 
 @keyframes luxury-pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 20px rgba(18, 147, 106, 0.1);
   }
   50% {
-    box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
+    box-shadow: 0 0 40px rgba(18, 147, 106, 0.2);
   }
 }
 

@@ -312,7 +312,7 @@ export default function Inbox() {
                   <div className="flex items-center gap-4 mb-4">
                     <Avatar className="h-14 w-14 border-2 border-[#E8E3D9]">
                       <AvatarImage src={pet.photoUrl} alt={pet.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-[rgba(212,175,55,0.3)] to-[rgba(212,175,55,0.1)] text-[#12936A]">
+                      <AvatarFallback className="bg-gradient-to-br from-[rgba(18,147,106,0.3)] to-[rgba(18,147,106,0.1)] text-[#12936A]">
                         <Dog className="h-7 w-7" />
                       </AvatarFallback>
                     </Avatar>
@@ -419,7 +419,7 @@ export default function Inbox() {
             <div className="h-1 bg-gradient-to-r from-[#12936A] via-[#e8e6f0] to-[#12936A]" />
             <div className="p-6 sm:p-7 border-b border-[#E8E3D9]">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[rgba(212,175,55,0.25)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[rgba(18,147,106,0.25)] to-[rgba(18,147,106,0.1)] flex items-center justify-center">
                   <Mail className="w-6 h-6 text-[#12936A]" />
                 </div>
                 <div className="flex-1">
@@ -468,7 +468,7 @@ export default function Inbox() {
                           data-testid={`message-item-${message.id}`}
                           className={cn(
                             'luxury-credit-item w-full transition-all duration-300 hover:scale-[1.01]',
-                            !message.isRead && 'border-l-2 border-l-[#12936A] bg-[rgba(212,175,55,0.03)]',
+                            !message.isRead && 'border-l-2 border-l-[#12936A] bg-[rgba(18,147,106,0.03)]',
                             dir === 'rtl' ? 'text-right' : 'text-left'
                           )}
                         >

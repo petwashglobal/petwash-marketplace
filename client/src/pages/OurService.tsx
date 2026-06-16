@@ -180,7 +180,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
               {/* ── K9000 Hero: SVG Illustration ── */}
               <div style={{
                 background: '#ffffff',
-                border: '2px solid rgba(212,175,55,0.25)',
+                border: '2px solid rgba(18,147,106,0.25)',
                 borderRadius: '1.5rem',
                 padding: '2rem 1.5rem 1.5rem',
                 marginBottom: '1rem',
@@ -220,7 +220,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                 {/* Card 1: Temperature */}
                 <div style={{
                   background:'#ffffff',
-                  border:'1px solid rgba(212,175,55,0.2)',
+                  border:'1px solid rgba(18,147,106,0.2)',
                   borderRadius:'1.25rem',
                   padding:'1.25rem 1.25rem 1.25rem 1rem',
                   display:'flex',
@@ -230,8 +230,8 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   position:'relative',
                   overflow:'hidden',
                 }}>
-                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'linear-gradient(90deg, transparent, rgba(212,175,55,0.35), transparent)' }} />
-                  <div style={{ flexShrink:0, width:'52px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(145deg, rgba(212,175,55,0.12), rgba(212,175,55,0.05))', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'14px' }}>
+                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'linear-gradient(90deg, transparent, rgba(18,147,106,0.35), transparent)' }} />
+                  <div style={{ flexShrink:0, width:'52px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(145deg, rgba(18,147,106,0.12), rgba(18,147,106,0.05))', border:'1px solid rgba(18,147,106,0.25)', borderRadius:'14px' }}>
                     <ThermometerIcon />
                   </div>
                   <div style={{ flex:1 }}>
@@ -242,8 +242,8 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                       {t('ourService.tempControlDesc', language)}
                     </p>
                     <div style={{ marginTop:'0.6rem', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>20°C – 45°C</span>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(18,147,106,0.1)', border:'1px solid rgba(18,147,106,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>20°C – 45°C</span>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(18,147,106,0.1)', border:'1px solid rgba(18,147,106,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
                         {language === 'he' ? 'בקרה אוטומטית' : 'Auto-Regulated'}
                       </span>
                     </div>
@@ -253,7 +253,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                 {/* Card 2: Pressure */}
                 <div style={{
                   background:'#ffffff',
-                  border:'1px solid rgba(212,175,55,0.2)',
+                  border:'1px solid rgba(18,147,106,0.2)',
                   borderRadius:'1.25rem',
                   padding:'1.25rem 1.25rem 1.25rem 1rem',
                   display:'flex',
@@ -263,8 +263,8 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   position:'relative',
                   overflow:'hidden',
                 }}>
-                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'linear-gradient(90deg, transparent, rgba(212,175,55,0.35), transparent)' }} />
-                  <div style={{ flexShrink:0, width:'52px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(145deg, rgba(212,175,55,0.12), rgba(212,175,55,0.05))', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'14px' }}>
+                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'linear-gradient(90deg, transparent, rgba(18,147,106,0.35), transparent)' }} />
+                  <div style={{ flexShrink:0, width:'52px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(145deg, rgba(18,147,106,0.12), rgba(18,147,106,0.05))', border:'1px solid rgba(18,147,106,0.25)', borderRadius:'14px' }}>
                     <DropletIcon />
                   </div>
                   <div style={{ flex:1 }}>
@@ -275,10 +275,10 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                       {t('ourService.pressureDesc', language)}
                     </p>
                     <div style={{ marginTop:'0.6rem', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(18,147,106,0.1)', border:'1px solid rgba(18,147,106,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
                         {language === 'he' ? 'לחץ מתכוונן' : 'Variable Pressure'}
                       </span>
-                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#0C5B3F', background:'rgba(18,147,106,0.1)', border:'1px solid rgba(18,147,106,0.2)', borderRadius:'100px', padding:'0.2rem 0.6rem' }}>
                         {language === 'he' ? 'עדין לחיות' : 'Pet-Safe'}
                       </span>
                     </div>
@@ -288,7 +288,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                 {/* Card 3: Sanitization */}
                 <div style={{
                   background:'#ffffff',
-                  border:'1px solid rgba(212,175,55,0.2)',
+                  border:'1px solid rgba(18,147,106,0.2)',
                   borderRadius:'1.25rem',
                   padding:'1.25rem 1.25rem 1.25rem 1rem',
                   display:'flex',
@@ -298,8 +298,8 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   position:'relative',
                   overflow:'hidden',
                 }}>
-                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'linear-gradient(90deg, transparent, rgba(212,175,55,0.35), transparent)' }} />
-                  <div style={{ flexShrink:0, width:'52px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(145deg, rgba(212,175,55,0.12), rgba(212,175,55,0.05))', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'14px' }}>
+                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'linear-gradient(90deg, transparent, rgba(18,147,106,0.35), transparent)' }} />
+                  <div style={{ flexShrink:0, width:'52px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(145deg, rgba(18,147,106,0.12), rgba(18,147,106,0.05))', border:'1px solid rgba(18,147,106,0.25)', borderRadius:'14px' }}>
                     <ShieldCheckIcon />
                   </div>
                   <div style={{ flex:1 }}>

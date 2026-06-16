@@ -146,12 +146,12 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       >
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center h-10 w-10 rounded-full" style={{ background: 'rgba(212,175,55,0.15)' }}>
+            <div className="flex items-center justify-center h-10 w-10 rounded-full" style={{ background: 'rgba(18,147,106,0.15)' }}>
               <CheckCircle className="h-5 w-5" style={{ color: '#12936A' }} />
             </div>
             <div>
               <div className="font-semibold text-white text-sm">PetWash Privilege — תשלום בוצע</div>
-              <div className="text-xs" style={{ color: 'rgba(212,175,55,0.8)' }}>#{txnResult.txnId}</div>
+              <div className="text-xs" style={{ color: 'rgba(18,147,106,0.8)' }}>#{txnResult.txnId}</div>
             </div>
           </div>
 
@@ -174,7 +174,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
                 <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.wallet)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2" style={{ borderColor: 'rgba(212,175,55,0.2)', color: '#12936A' }}>
+            <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2" style={{ borderColor: 'rgba(18,147,106,0.2)', color: '#12936A' }}>
               <span>סה"כ שולם</span>
               <span>{fmt(txnResult.deductionBreakdown.totalCovered)}</span>
             </div>
@@ -195,8 +195,8 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       className="rounded-2xl border overflow-hidden cursor-pointer transition-all duration-200"
       style={{
         background:   'linear-gradient(135deg, #0a0a0a 0%, #1c1a0f 100%)',
-        borderColor:  expanded ? 'rgba(212,175,55,0.5)' : 'rgba(212,175,55,0.25)',
-        boxShadow:    expanded ? '0 4px 24px rgba(212,175,55,0.12)' : 'none',
+        borderColor:  expanded ? 'rgba(18,147,106,0.5)' : 'rgba(18,147,106,0.25)',
+        boxShadow:    expanded ? '0 4px 24px rgba(18,147,106,0.12)' : 'none',
       }}
       onClick={() => !redeemed && setExpanded(!expanded)}
     >
@@ -204,7 +204,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       <div className="flex items-center gap-3 p-4">
         <div
           className="flex items-center justify-center h-10 w-10 rounded-full flex-shrink-0"
-          style={{ background: 'rgba(212,175,55,0.12)' }}
+          style={{ background: 'rgba(18,147,106,0.12)' }}
         >
           <Wallet className="h-5 w-5" style={{ color: '#12936A' }} />
         </div>
@@ -214,9 +214,9 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             <span className="text-sm font-semibold text-white">Pay with PetWash Privilege</span>
             <Badge
               style={{
-                background:   'rgba(212,175,55,0.15)',
+                background:   'rgba(18,147,106,0.15)',
                 color:        tierInfo.color,
-                borderColor:  'rgba(212,175,55,0.3)',
+                borderColor:  'rgba(18,147,106,0.3)',
                 fontSize:     '10px',
                 padding:      '1px 6px',
               }}
@@ -225,13 +225,13 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
               {tierInfo.label}
             </Badge>
           </div>
-          <div className="text-xs mt-0.5" style={{ color: 'rgba(212,175,55,0.7)' }}>
+          <div className="text-xs mt-0.5" style={{ color: 'rgba(18,147,106,0.7)' }}>
             יתרה זמינה: {fmt(totalAvailableCents)}
             {balances.washes > 0 && ` · ${balances.washes} שטיפות`}
           </div>
         </div>
 
-        <div style={{ color: 'rgba(212,175,55,0.6)' }}>
+        <div style={{ color: 'rgba(18,147,106,0.6)' }}>
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
@@ -240,7 +240,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       {expanded && (
         <div
           className="border-t px-4 pb-4 pt-3 space-y-3"
-          style={{ borderColor: 'rgba(212,175,55,0.15)' }}
+          style={{ borderColor: 'rgba(18,147,106,0.15)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Balance breakdown */}
@@ -268,7 +268,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             )}
             <div
               className="flex justify-between text-sm font-semibold border-t pt-2"
-              style={{ borderColor: 'rgba(212,175,55,0.2)', color: '#12936A' }}
+              style={{ borderColor: 'rgba(18,147,106,0.2)', color: '#12936A' }}
             >
               <span>סה"כ זמין</span>
               <span>{fmt(totalAvailableCents)}</span>
@@ -279,12 +279,12 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
           <div
             className="rounded-xl p-3 text-xs leading-relaxed"
             style={{
-              background: canCover ? 'rgba(212,175,55,0.08)' : 'rgba(239,68,68,0.08)',
-              borderColor: canCover ? 'rgba(212,175,55,0.2)' : 'rgba(239,68,68,0.2)',
+              background: canCover ? 'rgba(18,147,106,0.08)' : 'rgba(239,68,68,0.08)',
+              borderColor: canCover ? 'rgba(18,147,106,0.2)' : 'rgba(239,68,68,0.2)',
             }}
           >
             {canCover ? (
-              <span style={{ color: 'rgba(212,175,55,0.9)' }}>
+              <span style={{ color: 'rgba(18,147,106,0.9)' }}>
                 ✓ יתרתך מכסה את כל סכום ההזמנה ({fmt(amountGross)})
               </span>
             ) : (
@@ -302,7 +302,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
               background:    'linear-gradient(90deg, #0C5B3F 0%, #12936A 50%, #F0D060 100%)',
               color:         '#0a0a0a',
               border:        'none',
-              boxShadow:     '0 4px 16px rgba(212,175,55,0.3)',
+              boxShadow:     '0 4px 16px rgba(18,147,106,0.3)',
               opacity:       redeemMutation.isPending ? 0.7 : 1,
             }}
             onClick={() => redeemMutation.mutate()}
