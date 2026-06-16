@@ -240,7 +240,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
         <tr>
           <td>
             <div style="font-size:9px;letter-spacing:6px;color:#C6A35B;text-transform:uppercase;font-weight:700;margin-bottom:4px;">P&nbsp;E&nbsp;T&nbsp;W&nbsp;A&nbsp;S&nbsp;H&nbsp;™</div>
-            <div style="font-size:10px;letter-spacing:3px;color:#aaaaaa;text-transform:uppercase;">${isHe ? 'כרטיס חבר Prestige : 'PRESTIGE MEMBERSHIP'}</div>
+            <div style="font-size:10px;letter-spacing:3px;color:#aaaaaa;text-transform:uppercase;">${isHe ? 'כרטיס חבר Prestige' : 'PRESTIGE MEMBERSHIP'}</div>
           </td>
           <td align="${isHe ? 'left' : 'right'}">
             <div style="display:inline-block;background:linear-gradient(135deg,#000000 0%,#1a1100 60%,#0d0d0d 100%);
