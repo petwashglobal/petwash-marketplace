@@ -337,7 +337,7 @@ router.get('/:token', async (req: Request, res: Response) => {
 <body>
 <div class="card">
   <div class="brand">P E T W A S H ™</div>
-  <h1>${isHe ? 'הפאס הפרסטיז שלך' : 'Your Prestige Pass'}</h1>
+  <h1>${isHe ? 'הפאס ה-Prestige שלך' : 'Your Prestige Pass'}</h1>
   <p>${pass.ownerName}${pass.primaryPetName ? ' · ' + pass.primaryPetName + ' 🐾' : ''}</p>
   ${appleConfigured
     ? `<a class="btn apple" href="${appleUrl}">${isHe ? 'הוסף ל‑Apple Wallet' : 'Add to Apple Wallet'}</a>`

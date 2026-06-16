@@ -213,7 +213,7 @@ router.post('/join', async (req: Request, res: Response) => {
 
       emailSent = await EmailService.send({
         to: email,
-        subject: `הפאס הפרסטיז שלך מוכן — ${tierDisplay} 🐾`,
+        subject: `הפאס ה-Prestige שלך מוכן — ${tierDisplay} 🐾`,
         html,
       });
 

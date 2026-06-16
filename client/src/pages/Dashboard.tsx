@@ -649,7 +649,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: '#111111', letterSpacing: '0.02em' }}>
-                      {he ? 'כרטיס פרסטיז' : 'Prestige Pass'}
+                      {he ? 'כרטיס Prestige : 'Prestige Pass'}
                     </p>
                     <p className="text-[10px]" style={{ color: '#12936A', letterSpacing: '0.06em' }}>
                       {he ? 'ארנק • QR • מועדון נאמנות' : 'Wallet · QR code · Loyalty club'}
