@@ -4121,7 +4121,10 @@ export type PetAvatar = typeof petAvatars.$inferSelect;
 export const sitterProfiles = pgTable("sitter_profiles", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(), // Firebase UID
-  
+  // Instant-book (migration 0050) — off until trust-cleared + opted in
+  instantBookEnabled: boolean("instant_book_enabled").notNull().default(false),
+  instantBookMinTrust: integer("instant_book_min_trust"),
+
   // Basic Information
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
@@ -4720,7 +4723,10 @@ export const walkerProfiles = pgTable("walker_profiles", {
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 7 }), // Real-time location
   currentLongitude: decimal("current_longitude", { precision: 10, scale: 7 }),
   serviceRadiusKm: integer("service_radius_km").default(5), // How far they'll travel
-  
+  // Instant-book (migration 0050) — off until trust-cleared + opted in
+  instantBookEnabled: boolean("instant_book_enabled").notNull().default(false),
+  instantBookMinTrust: integer("instant_book_min_trust"),
+
   // Verification & Trust
   verificationStatus: varchar("verification_status").default("pending"), // pending | verified | rejected | suspended
   kycCompleted: boolean("kyc_completed").default(false),
@@ -12678,6 +12684,106 @@ export const dataRectificationRequests = pgTable("data_rectification_requests", 
 export type DataRectificationRequest = typeof dataRectificationRequests.$inferSelect;
 export const insertDataRectificationRequestSchema = createInsertSchema(dataRectificationRequests).omit({ id: true, createdAt: true });
 export type InsertDataRectificationRequest = z.infer<typeof insertDataRectificationRequestSchema>;
+
+// ── Trust, instant-book, meet & greet, AI trust score, live safety (migration 0050) ──
+// Additive trust/innovation layer benchmarked vs Rover (background-check every
+// sitter) + Mad Paws (ID/police check), plus 2026 trust-first innovations.
+
+// Provider background / police / enhanced checks (Rover + Mad Paws parity).
+export const providerBackgroundChecks = pgTable("provider_background_checks", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  checkType: text("check_type").notNull().default("identity"), // identity|police|enhanced|reference|right_to_work
+  status: text("status").notNull().default("pending"), // pending|in_progress|clear|flagged|expired|rejected
+  vendor: text("vendor"),
+  vendorRef: text("vendor_ref"),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [index("idx_bgcheck_provider").on(t.providerId, t.status)]);
+export type ProviderBackgroundCheck = typeof providerBackgroundChecks.$inferSelect;
+
+// Meet & greet — a real scheduled object (was only a status string).
+export const meetGreets = pgTable("meet_greets", {
+  id: serial("id").primaryKey(),
+  bookingRequestId: text("booking_request_id"),
+  ownerId: text("owner_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  mode: text("mode").notNull().default("in_person"), // in_person|video
+  scheduledAt: timestamp("scheduled_at"),
+  status: text("status").notNull().default("proposed"), // proposed|confirmed|completed|declined|no_show
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [index("idx_meetgreet_provider").on(t.providerId, t.status)]);
+export type MeetGreet = typeof meetGreets.$inferSelect;
+
+// AI composite trust score (0..100) — gates instant-book + ranks search.
+export const providerTrustScores = pgTable("provider_trust_scores", {
+  providerId: text("provider_id").primaryKey(),
+  score: integer("score").notNull().default(0),
+  tier: text("tier").notNull().default("new"), // new|bronze|silver|gold|platinum
+  idVerified: boolean("id_verified").notNull().default(false),
+  backgroundClear: boolean("background_clear").notNull().default(false),
+  reviewAvg: numeric("review_avg", { precision: 3, scale: 2 }),
+  reviewCount: integer("review_count").notNull().default(0),
+  completionRate: numeric("completion_rate", { precision: 4, scale: 3 }),
+  responseMinutes: integer("response_minutes"),
+  cancellationRate: numeric("cancellation_rate", { precision: 4, scale: 3 }),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [index("idx_trust_score").on(t.score)]);
+export type ProviderTrustScore = typeof providerTrustScores.$inferSelect;
+
+// Live service-safety session — check-in/out + GPS/photo proof + SOS.
+export const serviceSafetySessions = pgTable("service_safety_sessions", {
+  id: serial("id").primaryKey(),
+  bookingId: text("booking_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  ownerId: text("owner_id"),
+  platform: text("platform"),
+  status: text("status").notNull().default("scheduled"), // scheduled|checked_in|in_progress|checked_out|completed|incident
+  checkedInAt: timestamp("checked_in_at"),
+  checkInLat: numeric("check_in_lat", { precision: 10, scale: 7 }),
+  checkInLng: numeric("check_in_lng", { precision: 10, scale: 7 }),
+  checkedOutAt: timestamp("checked_out_at"),
+  checkOutLat: numeric("check_out_lat", { precision: 10, scale: 7 }),
+  checkOutLng: numeric("check_out_lng", { precision: 10, scale: 7 }),
+  photoUrls: jsonb("photo_urls").notNull().default(sql`'[]'::jsonb`),
+  sosTriggered: boolean("sos_triggered").notNull().default(false),
+  sosAt: timestamp("sos_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [index("idx_safety_booking").on(t.bookingId)]);
+export type ServiceSafetySession = typeof serviceSafetySessions.$inferSelect;
+
+// Provider insurance + health-declaration document register (migration 0051).
+// Proves which legal docs are on file + current per provider (provider is primary
+// risk-bearer; platform secondary — Rover/Mad Paws model). Metadata + private file
+// ref + sealed declaration hash only — never the document contents or PII.
+export const providerInsuranceDocuments = pgTable("provider_insurance_documents", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  docType: text("doc_type").notNull(), // liability_insurance|professional_indemnity|health_declaration|bituach_leumi|liability_acknowledgment|police_check_cert|other
+  status: text("status").notNull().default("pending"), // pending|active|expired|rejected
+  insurer: text("insurer"),
+  policyNumber: text("policy_number"),
+  fileRef: text("file_ref"),               // private GCS object path; never the file
+  declarationHash: text("declaration_hash"), // SHA-256 of sealed declaration (no PII)
+  issuedAt: timestamp("issued_at"),
+  expiresAt: timestamp("expires_at"),
+  verifiedBy: text("verified_by"),
+  verifiedAt: timestamp("verified_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("idx_provins_provider").on(t.providerId, t.docType, t.status),
+  index("idx_provins_expiry").on(t.expiresAt),
+]);
+export type ProviderInsuranceDocument = typeof providerInsuranceDocuments.$inferSelect;
 
 export const onboardingCases = pgTable("onboarding_cases", {
   id: serial("id").primaryKey(),
