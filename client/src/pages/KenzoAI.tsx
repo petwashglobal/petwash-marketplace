@@ -160,7 +160,7 @@ export default function KenzoAI() {
           <Link href="/">
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all hover:opacity-80"
-              style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.3)' }}
+              style={{ background: 'rgba(201,169,110,0.15)', color: '#12936A', border: '1px solid rgba(201,169,110,0.3)' }}
             >
               <ArrowLeft className="w-4 h-4" />
               <span>{labels.back}</span>
@@ -168,8 +168,8 @@ export default function KenzoAI() {
           </Link>
           <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-8 opacity-90" />
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4" style={{ color: '#C9A96E' }} />
-            <Sparkles className="w-4 h-4" style={{ color: '#C9A96E' }} />
+            <Globe className="w-4 h-4" style={{ color: '#12936A' }} />
+            <Sparkles className="w-4 h-4" style={{ color: '#12936A' }} />
           </div>
         </div>
 
@@ -182,7 +182,7 @@ export default function KenzoAI() {
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
               style={{
                 background: language === lang.code ? 'rgba(201,169,110,0.25)' : '#FFFFFF',
-                color: language === lang.code ? '#C9A96E' : '#6A6A6A',
+                color: language === lang.code ? '#12936A' : '#6A6A6A',
                 border: language === lang.code ? '1px solid rgba(201,169,110,0.5)' : '1px solid #E8E3D9',
               }}
             >
@@ -199,7 +199,7 @@ export default function KenzoAI() {
             emotion={emotion}
             size="md"
           />
-          <h1 className="text-xl font-bold mt-2" style={{ color: '#C9A96E' }}>{labels.title}</h1>
+          <h1 className="text-xl font-bold mt-2" style={{ color: '#12936A' }}>{labels.title}</h1>
           <p className="text-xs" style={{ color: '#7A7068' }}>{labels.subtitle}</p>
         </div>
 
@@ -234,7 +234,7 @@ export default function KenzoAI() {
                   borderRadius: msg.role === 'user'
                     ? (isRTL ? '20px 20px 20px 4px' : '20px 20px 4px 20px')
                     : (isRTL ? '20px 20px 4px 20px' : '20px 20px 20px 4px'),
-                  color: msg.role === 'user' ? '#C9A96E' : '#1A1A1A',
+                  color: msg.role === 'user' ? '#12936A' : '#1A1A1A',
                 }}
               >
                 {msg.text}
@@ -256,9 +256,9 @@ export default function KenzoAI() {
               >
                 <span className="text-xs opacity-50">{labels.thinking}</span>
                 <span className="flex gap-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: '#C9A96E', animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: '#C9A96E', animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: '#C9A96E', animationDelay: '300ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: '#12936A', animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: '#12936A', animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: '#12936A', animationDelay: '300ms' }} />
                 </span>
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function KenzoAI() {
                 className="px-3 py-1.5 rounded-full text-xs transition-all hover:scale-105"
                 style={{
                   background: 'rgba(201,169,110,0.1)',
-                  color: '#C9A96E',
+                  color: '#12936A',
                   border: '1px solid rgba(201,169,110,0.25)',
                 }}
               >
@@ -317,7 +317,7 @@ export default function KenzoAI() {
             style={{
               background: input.trim() ? 'rgba(201,169,110,0.3)' : '#FFFFFF',
               border: '1px solid rgba(201,169,110,0.4)',
-              color: '#C9A96E',
+              color: '#12936A',
             }}
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}

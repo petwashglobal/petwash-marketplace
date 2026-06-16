@@ -32,9 +32,34 @@
  *  - Unauthenticated             → '/signin'
  */
 
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useFirebaseAuth, type UserRole } from '@/auth/AuthProvider';
+import { auth } from '@/lib/firebase';
 import { isStickyAccountPath } from '@/lib/sticky-account-paths';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
+
+/**
+ * Resolve the LIVE Firebase user. The React `user`/`loading`/`claims` values are
+ * captured stale inside async callbacks, and on iPhone Safari the React state can
+ * still read `null` while the SDK already holds a persisted session in IndexedDB
+ * (ITP delays the whoami round-trip, not the SDK restore). So we consult
+ * `auth.currentUser` directly and, only if it's empty, give the SDK a brief,
+ * bounded window to surface a restored session before concluding "not logged in".
+ */
+export function getLiveFirebaseUser(timeoutMs = 1500): Promise<User | null> {
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (u: User | null) => {
+      if (settled) return;
+      settled = true;
+      try { unsub(); } catch { /* noop */ }
+      resolve(u);
+    };
+    const unsub = onAuthStateChanged(auth, (u) => finish(u));
+    setTimeout(() => finish(auth.currentUser), timeoutMs);
+  });
+}
 
 // Keep aligned with `shared/adminRoles.ts` ADMIN_ROLES — ceo/hr/finance/ops
 // must route to the admin dashboard, not /my-account. See P0 audit Bug 1.
@@ -123,23 +148,25 @@ export function useAccountNavigation() {
       }
     }
 
-    // 1. Settle period for auth — bounded so the click never feels frozen.
-    const settleStart = Date.now();
-    // We can't await the React state, so probe directly via the auth context.
-    // useFirebaseAuth is stable across the closure; capture latest via fresh refs.
-    while ((loading) && Date.now() - settleStart < 1500) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, 100));
+    // 1. LIVE Firebase user — NOT the stale React `user`/`loading` closure.
+    //    On iPhone Safari the React state reads null while the SDK still has a
+    //    persisted session; the old code returned '/signin' for a logged-in user.
+    const fbUser = await getLiveFirebaseUser(1500);
+    if (!fbUser) return '/signin';
+
+    // 2. Claims-based fast path — read FRESH claims from the live token, since
+    //    the React `claims` snapshot can also be stale on iOS.
+    let role = claims?.role as UserRole | undefined;
+    try {
+      const tokenResult = await fbUser.getIdTokenResult();
+      role = (tokenResult.claims.role as UserRole | undefined) ?? role;
+    } catch {
+      // Token refresh best-effort; fall back to the context claims above.
     }
-
-    if (!loading && !user) return '/signin';
-
-    // 2. Claims-based fast path
-    const role = claims?.role as UserRole | undefined;
     const fromRole = routeFromRole(role);
     if (fromRole) return fromRole;
 
-    if (adminEmailMatch(user?.email)) return '/admin/dashboard';
+    if (adminEmailMatch(fbUser.email)) return '/admin/dashboard';
 
     // 3. Server fallback — authoritative, role-resolves from DB.
     //    PR-FRES-B: routed through postLoginCoordinator so a tap on the
@@ -149,7 +176,7 @@ export function useAccountNavigation() {
     try {
       let token: string | undefined;
       try {
-        token = user ? await (user as any).getIdToken?.() : undefined;
+        token = await fbUser.getIdToken();
       } catch {
         // Bearer-token attachment is best-effort. Session cookie still works.
       }
@@ -161,8 +188,8 @@ export function useAccountNavigation() {
       // Network error — fall through to safe default
     }
 
-    // 4. Universal safe default. Never '#', never empty.
-    return user ? '/home' : '/signin';
+    // 4. Universal safe default — we KNOW the user is authed here, so never '/signin'.
+    return '/home';
   };
 
   return { getAccountRoute, resolveAccountRoute, loading, user };

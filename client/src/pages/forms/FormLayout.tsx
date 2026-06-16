@@ -112,7 +112,7 @@ export function SubmitButton({ loading, label = 'Submit' }: { loading: boolean; 
     <button
       type="submit"
       disabled={loading}
-      className="w-full bg-gradient-to-r from-[#C6A35B] to-[#E7C978] hover:from-[#D4AF37] hover:to-[#C6A35B] text-black font-bold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
+      className="w-full bg-gradient-to-r from-[#C6A35B] to-[#E7C978] hover:from-[#12936A] hover:to-[#C6A35B] text-black font-bold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
       {loading ? 'Submitting...' : label}

@@ -44,12 +44,12 @@ export function ActivationBanner() {
   return (
     <div className="w-full bg-[#1a1a1a] text-white px-4 py-2.5 flex items-center justify-between text-xs font-light tracking-wide">
       <div className="flex items-center gap-2.5">
-        <AlertTriangle className="w-3.5 h-3.5 text-[#c9a96e] flex-shrink-0" />
+        <AlertTriangle className="w-3.5 h-3.5 text-[#12936A] flex-shrink-0" />
         <span>{label}</span>
       </div>
       <button
         onClick={() => setLocation("/activate-account")}
-        className="flex items-center gap-1 text-[#c9a96e] hover:text-white transition-colors font-medium tracking-[1px] uppercase text-[10px] flex-shrink-0 ml-4"
+        className="flex items-center gap-1 text-[#12936A] hover:text-white transition-colors font-medium tracking-[1px] uppercase text-[10px] flex-shrink-0 ml-4"
       >
         Activate <ArrowRight className="w-3 h-3" />
       </button>

@@ -142,7 +142,7 @@ export default function TrainerDetail() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4">
           <div className="text-6xl mb-6">🐾</div>
           <h2 className="text-2xl font-light text-gray-900 mb-4">{isHebrew ? 'המאלף לא נמצא' : 'Trainer not found'}</h2>
-          <Button onClick={() => navigate('/academy')} className="bg-[#C5A55A] hover:bg-[#b8945a] text-white">
+          <Button onClick={() => navigate('/academy')} className="bg-[#C5A55A] hover:bg-[#0C5B3F] text-white">
             {isHebrew ? 'חזרה לאקדמיה' : 'Back to Academy'}
           </Button>
         </div>
@@ -206,7 +206,7 @@ export default function TrainerDetail() {
               <Button
                 size="sm"
                 onClick={() => navigate(`/booking/new/training/${id}`)}
-                className="bg-[#C5A55A] hover:bg-[#b8945a] text-white shrink-0 text-xs px-4"
+                className="bg-[#C5A55A] hover:bg-[#0C5B3F] text-white shrink-0 text-xs px-4"
               >
                 {isHebrew ? "הזמן ←" : "Book →"}
               </Button>

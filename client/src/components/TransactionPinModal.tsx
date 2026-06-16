@@ -130,13 +130,13 @@ export default function TransactionPinModal({
           className="relative overflow-hidden rounded-2xl"
           style={{
             background: "linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(212,175,55,0.2)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(18,147,106,0.2)",
           }}
         >
           {/* Top gold accent bar */}
           <div style={{
             height: 2,
-            background: "linear-gradient(90deg, transparent, #F0D060 20%, #D4AF37 50%, #F0D060 80%, transparent)",
+            background: "linear-gradient(90deg, transparent, #F0D060 20%, #12936A 50%, #F0D060 80%, transparent)",
           }} />
 
           {/* Header */}
@@ -148,13 +148,13 @@ export default function TransactionPinModal({
                   <linearGradient id="pinDiaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%"   stopColor="#F5E68A" />
                     <stop offset="22%"  stopColor="#F0D060" />
-                    <stop offset="50%"  stopColor="#D4AF37" />
-                    <stop offset="78%"  stopColor="#B8941F" />
+                    <stop offset="50%"  stopColor="#12936A" />
+                    <stop offset="78%"  stopColor="#0C5B3F" />
                     <stop offset="100%" stopColor="#8B6914" />
                   </linearGradient>
                   <linearGradient id="pinDiaFacet" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%"   stopColor="#F5E68A" stopOpacity="0.55" />
-                    <stop offset="100%" stopColor="#B8941F" stopOpacity="0.08" />
+                    <stop offset="100%" stopColor="#0C5B3F" stopOpacity="0.08" />
                   </linearGradient>
                   <filter id="pinGlow" x="-20%" y="-20%" width="140%" height="140%">
                     <feGaussianBlur stdDeviation="2.5" result="blur" />
@@ -175,8 +175,8 @@ export default function TransactionPinModal({
                 <line x1="32" y1="5"  x2="32" y2="59" stroke="#8B6914" strokeWidth="0.5" opacity="0.5" />
                 <line x1="7"  y1="29" x2="57" y2="29" stroke="#8B6914" strokeWidth="0.5" opacity="0.5" />
                 {/* Side facet lines */}
-                <line x1="32" y1="5"  x2="7"  y2="29" stroke="rgba(212,175,55,0.25)" strokeWidth="0.4" />
-                <line x1="32" y1="5"  x2="57" y2="29" stroke="rgba(212,175,55,0.25)" strokeWidth="0.4" />
+                <line x1="32" y1="5"  x2="7"  y2="29" stroke="rgba(18,147,106,0.25)" strokeWidth="0.4" />
+                <line x1="32" y1="5"  x2="57" y2="29" stroke="rgba(18,147,106,0.25)" strokeWidth="0.4" />
               </svg>
             </div>
 
@@ -185,7 +185,7 @@ export default function TransactionPinModal({
               fontFamily: "'Cormorant Garamond', serif",
               fontSize: 10.5,
               letterSpacing: "0.28em",
-              background: "linear-gradient(90deg, #F0D060, #D4AF37, #F0D060)",
+              background: "linear-gradient(90deg, #F0D060, #12936A, #F0D060)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               textTransform: "uppercase",
@@ -219,7 +219,7 @@ export default function TransactionPinModal({
           {/* Divider */}
           <div className="mx-8 mb-6" style={{
             height: 1,
-            background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.35), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(18,147,106,0.35), transparent)",
           }} />
 
           {/* PIN dots */}
@@ -231,12 +231,12 @@ export default function TransactionPinModal({
                   width: 13,
                   height: 13,
                   borderRadius: "50%",
-                  border: filled ? "none" : "1.5px solid rgba(212,175,55,0.38)",
+                  border: filled ? "none" : "1.5px solid rgba(18,147,106,0.38)",
                   background: filled
-                    ? "linear-gradient(135deg, #F0D060 0%, #D4AF37 50%, #B8941F 100%)"
+                    ? "linear-gradient(135deg, #F0D060 0%, #12936A 50%, #0C5B3F 100%)"
                     : "transparent",
                   boxShadow: filled
-                    ? "0 0 12px rgba(212,175,55,0.65), 0 0 4px rgba(212,175,55,0.4)"
+                    ? "0 0 12px rgba(18,147,106,0.65), 0 0 4px rgba(18,147,106,0.4)"
                     : "none",
                   transition: "all 0.15s cubic-bezier(0.34,1.56,0.64,1)",
                   transform: filled ? "scale(1.1)" : "scale(1)",
@@ -251,7 +251,7 @@ export default function TransactionPinModal({
               <span style={{
                 fontSize: 11.5,
                 letterSpacing: "0.12em",
-                background: "linear-gradient(90deg, #F0D060, #D4AF37)",
+                background: "linear-gradient(90deg, #F0D060, #12936A)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 fontFamily: "'Cormorant Garamond', serif",
@@ -280,10 +280,10 @@ export default function TransactionPinModal({
                     height: 56,
                     borderRadius: 11,
                     border: isPressed
-                      ? "1.5px solid #D4AF37"
-                      : "1.5px solid rgba(212,175,55,0.14)",
+                      ? "1.5px solid #12936A"
+                      : "1.5px solid rgba(18,147,106,0.14)",
                     background: isPressed
-                      ? "rgba(212,175,55,0.12)"
+                      ? "rgba(18,147,106,0.12)"
                       : "rgba(255,255,255,0.035)",
                     color: isDelete ? "rgba(238,242,255,0.38)" : "#EEF2FF",
                     fontSize: isDelete ? 19 : 22,
@@ -292,7 +292,7 @@ export default function TransactionPinModal({
                     letterSpacing: "0.04em",
                     cursor: loading ? "not-allowed" : "pointer",
                     boxShadow: isPressed
-                      ? "0 0 18px rgba(212,175,55,0.28), inset 0 1px 0 rgba(212,175,55,0.18)"
+                      ? "0 0 18px rgba(18,147,106,0.28), inset 0 1px 0 rgba(18,147,106,0.18)"
                       : "none",
                     transition: "all 0.1s ease",
                     transform: isPressed ? "scale(0.94)" : "scale(1)",
@@ -319,7 +319,7 @@ export default function TransactionPinModal({
                 cursor: "pointer",
                 fontSize: 12,
                 letterSpacing: "0.1em",
-                backgroundImage: "linear-gradient(90deg, #F0D060, #D4AF37, #F0D060)",
+                backgroundImage: "linear-gradient(90deg, #F0D060, #12936A, #F0D060)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 fontFamily: "'Cormorant Garamond', serif",
@@ -334,7 +334,7 @@ export default function TransactionPinModal({
           {/* Bottom gold accent bar */}
           <div style={{
             height: 2,
-            background: "linear-gradient(90deg, transparent, #F0D060 20%, #D4AF37 50%, #F0D060 80%, transparent)",
+            background: "linear-gradient(90deg, transparent, #F0D060 20%, #12936A 50%, #F0D060 80%, transparent)",
           }} />
         </div>
 

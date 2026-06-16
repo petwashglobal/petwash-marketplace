@@ -1376,7 +1376,7 @@ function ConfirmStep({
         <Button
           onClick={onSubmit}
           disabled={isSubmitting || quoteLoading || !quote}
-          className="w-full bg-[#C5A55A] hover:bg-[#b8945a] text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-[#C5A55A]/20"
+          className="w-full bg-[#C5A55A] hover:bg-[#0C5B3F] text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-[#C5A55A]/20"
         >
           {isSubmitting ? (
             <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
@@ -1836,7 +1836,7 @@ export default function MultiPetBookingWizard() {
           <Button
             onClick={goNext}
             disabled={!canGoNext()}
-            className="flex-1 bg-[#C5A55A] hover:bg-[#b8945a] text-white font-semibold"
+            className="flex-1 bg-[#C5A55A] hover:bg-[#0C5B3F] text-white font-semibold"
           >
             המשך
             <ChevronLeft className="w-4 h-4 mr-1" />

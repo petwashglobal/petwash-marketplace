@@ -1465,7 +1465,7 @@ export default function MyAccount() {
             ].map((item, idx) => (
               <div key={idx} className="pw-stat-card">
                 <div className="pw-stat-card-icon-wrap pw-stat-card-icon-wrap-gold">
-                  <span className="text-xl">{item.emoji}</span>
+                  <item.icon className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <p className="pw-stat-value">{item.value}</p>
                 <p className="pw-stat-label">{item.label}</p>
@@ -1485,7 +1485,7 @@ export default function MyAccount() {
             ].map((item, idx) => (
               <a key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
                 <div className="pw-action-btn-icon-ring">
-                  <span className="text-lg">{item.emoji}</span>
+                  <item.icon className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <span className="pw-action-btn-label">{item.label}</span>
               </a>

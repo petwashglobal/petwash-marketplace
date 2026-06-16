@@ -398,7 +398,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 <span className="text-[9px] font-light tracking-[4px] uppercase block mb-3"
                   style={{
                     fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-                    background: 'linear-gradient(90deg,#C6A664,#D4AF37,#C6A664)',
+                    background: 'linear-gradient(90deg,#C6A664,#12936A,#C6A664)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
@@ -447,7 +447,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 onClick={() => user ? handleAuthNavigate() : setLocation('/signup')}
                 className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
                 style={{
-                  background: 'linear-gradient(135deg,#C6A664 0%,#D4AF37 50%,#C6A664 100%)',
+                  background: 'linear-gradient(135deg,#C6A664 0%,#12936A 50%,#C6A664 100%)',
                   backgroundSize: '200% 200%',
                   fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
                   letterSpacing: '0.2em',

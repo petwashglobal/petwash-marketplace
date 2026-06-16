@@ -26,9 +26,9 @@ function EmvChip() {
       <defs>
         <linearGradient id="chipGrad" x1="0" y1="0" x2="44" y2="34" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#e8c76a" />
-          <stop offset="35%" stopColor="#c9a33a" />
-          <stop offset="65%" stopColor="#b8901a" />
-          <stop offset="100%" stopColor="#d4af37" />
+          <stop offset="35%" stopColor="#12936A" />
+          <stop offset="65%" stopColor="#0C5B3F" />
+          <stop offset="100%" stopColor="#12936A" />
         </linearGradient>
         <linearGradient id="chipCenter" x1="14" y1="11" x2="30" y2="23" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#e8c76a" />
@@ -143,7 +143,7 @@ export function PremiumMemberCard({ ownerName, balanceCents, cardDisplay, cardId
       {/* 3D edge */}
       <div style={{
         position: 'absolute', bottom: '-4px', left: '4px', right: '8px', height: '8px',
-        background: 'linear-gradient(90deg, #b8941f, #d4af37, #e7c978, #d4af37)',
+        background: 'linear-gradient(90deg, #0C5B3F, #12936A, #e7c978, #12936A)',
         borderRadius: '0 0 14px 14px', zIndex: -1, opacity: 0.7,
       }} />
     </div>

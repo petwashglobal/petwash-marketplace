@@ -310,12 +310,12 @@ function tx(key: string, lang: string): string {
 }
 
 // Deep gold readable on white: #8A6A1B ≈ 5.2:1 contrast (WCAG AA pass),
-// vs the old #B8941F (2.9:1, failed AA / Israeli accessibility law).
+// vs the old #0C5B3F (2.9:1, failed AA / Israeli accessibility law).
 // Still unmistakably gold — same tone already used for the membership badge.
 const goldText = { color: '#8A6A1B' };
-const cardBorder = '1px solid rgba(212, 175, 55, 0.2)';
-const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(212, 175, 55, 0.08)';
-const divider = '1px solid rgba(212, 175, 55, 0.12)';
+const cardBorder = '1px solid rgba(18, 147, 106, 0.2)';
+const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(18, 147, 106, 0.08)';
+const divider = '1px solid rgba(18, 147, 106, 0.12)';
 
 function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
@@ -488,9 +488,9 @@ export default function Dashboard() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
                 className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full border"
-                style={{ borderColor: '#C9A84C33', backgroundColor: '#FDFAF3' }}
+                style={{ borderColor: '#12936A33', backgroundColor: '#FDFAF3' }}
               >
-                <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#C9A84C' }} />
+                <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#12936A' }} />
                 <span
                   className="text-[11px] tracking-[0.15em] font-medium"
                   style={{ color: '#8A6A1B', fontFamily: "'Playfair Display', serif", letterSpacing: '0.1em' }}
@@ -516,7 +516,7 @@ export default function Dashboard() {
             }}
           >
             {/* gold-foil crown line */}
-            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #C9A84C 20%, #F1DA83 50%, #C9A84C 80%, transparent)' }} />
+            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #12936A 20%, #F1DA83 50%, #12936A 80%, transparent)' }} />
             {/* faint gold corner glow */}
             <div
               className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full"
@@ -622,12 +622,12 @@ export default function Dashboard() {
             className="w-full rounded-2xl overflow-hidden mb-4"
             style={{
               background: 'linear-gradient(135deg, #fffdf7 0%, #fdf8ee 50%, #fffcf5 100%)',
-              border: '1px solid rgba(212,175,55,0.45)',
-              boxShadow: '0 4px 20px rgba(212,175,55,0.12), 0 1px 4px rgba(0,0,0,0.06)',
+              border: '1px solid rgba(18,147,106,0.45)',
+              boxShadow: '0 4px 20px rgba(18,147,106,0.12), 0 1px 4px rgba(0,0,0,0.06)',
             }}
           >
             {/* Gold shimmer top bar */}
-            <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
+            <div style={{ height: '2px', background: 'linear-gradient(90deg,#12936A,#f0d060,#12936A,#12936A)' }} />
 
             {/* Tap-to-open row */}
             <button
@@ -639,7 +639,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <div style={{
                     width: '28px', height: '20px', borderRadius: '3px',
-                    background: '#c9a96e', flexShrink: 0,
+                    background: '#12936A', flexShrink: 0,
                     display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr 1fr',
                     gap: '2px', padding: '3px',
                   }}>
@@ -651,23 +651,23 @@ export default function Dashboard() {
                     <p className="text-sm font-semibold" style={{ color: '#111111', letterSpacing: '0.02em' }}>
                       {he ? 'כרטיס פרסטיז' : 'Prestige Pass'}
                     </p>
-                    <p className="text-[10px]" style={{ color: '#c9a96e', letterSpacing: '0.06em' }}>
+                    <p className="text-[10px]" style={{ color: '#12936A', letterSpacing: '0.06em' }}>
                       {he ? 'ארנק • QR • מועדון נאמנות' : 'Wallet · QR code · Loyalty club'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                    style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
+                    style={{ background: 'rgba(18,147,106,0.15)', color: '#12936A', border: '1px solid rgba(18,147,106,0.3)' }}>
                     {he ? 'פתח' : 'Open'}
                   </span>
-                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#D4AF37' }} />
+                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#12936A' }} />
                 </div>
               </div>
             </button>
 
             {/* Divider */}
-            <div style={{ height: '1px', background: 'rgba(212,175,55,0.12)', marginInline: '16px' }} />
+            <div style={{ height: '1px', background: 'rgba(18,147,106,0.12)', marginInline: '16px' }} />
 
             {/* Add to Mobile Wallet buttons */}
             <div className="px-4 py-3 flex gap-2">
@@ -720,8 +720,8 @@ export default function Dashboard() {
                 className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold"
                 style={{
                   background: 'transparent',
-                  color: '#D4AF37',
-                  border: '1px solid rgba(212,175,55,0.4)',
+                  color: '#12936A',
+                  border: '1px solid rgba(18,147,106,0.4)',
                   cursor: sendWalletEmailMutation.isPending ? 'wait' : 'pointer',
                   opacity: sendWalletEmailMutation.isPending ? 0.6 : 1,
                   flexShrink: 0,
@@ -904,7 +904,7 @@ export default function Dashboard() {
                         {pet.photoUrl ? (
                           <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
                         ) : (
-                          <PawPrint className="w-8 h-8" style={{ color: '#c9a96e' }} />
+                          <PawPrint className="w-8 h-8" style={{ color: '#12936A' }} />
                         )}
                       </div>
                       <div className="px-2 py-2 text-center">
@@ -919,8 +919,8 @@ export default function Dashboard() {
                     className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center justify-center"
                     style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90, height: 120 }}
                   >
-                    <ArrowRight className="w-5 h-5 mb-1" style={{ color: '#c9a96e' }} />
-                    <p className="text-[9px] tracking-wide" style={{ color: '#c9a96e' }}>
+                    <ArrowRight className="w-5 h-5 mb-1" style={{ color: '#12936A' }} />
+                    <p className="text-[9px] tracking-wide" style={{ color: '#12936A' }}>
                       {language === 'he' ? 'הוסף' : 'Add'}
                     </p>
                   </div>
@@ -947,7 +947,7 @@ export default function Dashboard() {
                     className="px-5 py-3.5 flex items-center gap-3"
                     style={{ background: '#FFFFFF', borderBottom: idx < activityData.upcomingBookings.length - 1 ? '1px solid rgba(229,231,235,1)' : 'none' }}
                   >
-                    <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
+                    <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#12936A' }} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: '#111111' }}>{booking.platform}</p>
                       <p className="text-[10px]" style={{ color: '#666666' }}>
@@ -957,7 +957,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     {booking.amountCents > 0 && (
-                      <p className="text-sm font-light" style={{ color: '#c9a96e' }}>
+                      <p className="text-sm font-light" style={{ color: '#12936A' }}>
                         ₪{(booking.amountCents / 100).toFixed(0)}
                       </p>
                     )}
@@ -981,7 +981,7 @@ export default function Dashboard() {
                   style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow }}
                 >
                   <div className="px-5 py-4 flex items-center gap-3">
-                    <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
+                    <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#12936A' }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: '#111111' }}>
                         {language === 'he' ? 'כספת מסמכים משפטיים' : 'Legal Document Vault'}
@@ -1031,7 +1031,7 @@ export default function Dashboard() {
                       {item.label}
                       {item.badge && item.badge > 0 ? (
                         <span className="ml-2 px-2 py-0.5 text-[9px] tracking-wider uppercase font-semibold rounded-full text-white"
-                          style={{ background: 'linear-gradient(135deg, #C9A94E, #A8893A)' }}>
+                          style={{ background: 'linear-gradient(135deg, #12936A, #A8893A)' }}>
                           {item.badge}
                         </span>
                       ) : null}

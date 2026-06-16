@@ -15,7 +15,7 @@
  * 2. ESPRESSO NOIR (Authenticated Dashboards)
  *    - Background: #0a0a0a to #121212 matte black layers
  *    - Text: #ffffff, rgba(255,255,255,0.85) secondary
- *    - Accent: rgba(212, 175, 55) gold for CTAs/highlights
+ *    - Accent: rgba(18, 147, 106) gold for CTAs/highlights
  *    - Borders: rgba(255,255,255,0.1) subtle
  *    - Logo: White/inverted version
  *
@@ -58,9 +58,9 @@
 
 .luxury-bg-primary {
   background: linear-gradient(135deg, 
-    #B8941F 0%, 
+    #0C5B3F 0%, 
     #C6A35B 50%,
-    #D4AF37 100%
+    #12936A 100%
   ) !important;
 }
 
@@ -86,7 +86,7 @@
    =========================== */
 
 .luxury-icon-gold {
-  background: linear-gradient(135deg, #B8941F 0%, #D4AF37 100%);
+  background: linear-gradient(135deg, #0C5B3F 0%, #12936A 100%);
 }
 
 .luxury-icon-gold-soft {
@@ -94,11 +94,11 @@
 }
 
 .luxury-icon-gold-bright {
-  background: linear-gradient(135deg, #D4AF37 0%, #E7C978 100%);
+  background: linear-gradient(135deg, #12936A 0%, #E7C978 100%);
 }
 
 .luxury-gradient-gold {
-  background: linear-gradient(135deg, #B8941F 0%, #C6A35B 50%, #D4AF37 100%);
+  background: linear-gradient(135deg, #0C5B3F 0%, #C6A35B 50%, #12936A 100%);
 }
 
 .luxury-gradient-gold-soft {
@@ -106,7 +106,7 @@
 }
 
 .luxury-gradient-gold-dark {
-  background: linear-gradient(135deg, #B8941F 0%, #C6A35B 100%);
+  background: linear-gradient(135deg, #0C5B3F 0%, #C6A35B 100%);
 }
 
 /* ===========================
@@ -170,7 +170,7 @@
    =========================== */
 
 .luxury-btn-primary {
-  background: linear-gradient(135deg, #B8941F 0%, #C6A35B 50%, #D4AF37 100%);
+  background: linear-gradient(135deg, #0C5B3F 0%, #C6A35B 50%, #12936A 100%);
   color: white;
   padding: 12px 32px;
   border-radius: 12px;
@@ -353,7 +353,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 }
 
 .luxury-gradient-text {
-  background: linear-gradient(135deg, #B8941F 0%, #D4AF37 100%);
+  background: linear-gradient(135deg, #0C5B3F 0%, #12936A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -762,7 +762,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 /* ============================================
    LUXURY DARK THEME SYSTEM 2026
    Ultra-premium dark UI for admin/settings pages
-   Brand: #0A0A0F background, #C9A96E gold accents
+   Brand: #0A0A0F background, #12936A gold accents
    ============================================ */
 
 .luxury-dark-card {
@@ -798,7 +798,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 }
 
 .luxury-dark-btn-gold {
-  background: linear-gradient(135deg, #C9A96E, #d4af37);
+  background: linear-gradient(135deg, #12936A, #12936A);
   color: #0A0A0F;
   font-weight: 600;
   border-radius: 0.75rem;
@@ -807,7 +807,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
   cursor: pointer;
 }
 .luxury-dark-btn-gold:hover {
-  background: linear-gradient(135deg, #d4af37, #e5c04b);
+  background: linear-gradient(135deg, #12936A, #e5c04b);
   transform: translateY(-1px);
   box-shadow: 0 4px 20px rgba(201, 169, 110, 0.3);
 }

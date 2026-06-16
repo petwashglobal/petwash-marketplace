@@ -180,7 +180,7 @@ export function CreditWalletCard({
     return (
       <div className="luxury-wallet-hero p-8 flex items-center justify-center min-h-[280px]">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[#d4af37] mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-[#12936A] mx-auto mb-4" />
           <p className="luxury-dark-text-small">Loading wallet...</p>
         </div>
       </div>
@@ -202,8 +202,8 @@ export function CreditWalletCard({
         <div className="p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgba(212,175,55,0.2)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
-                <Wallet className="w-6 h-6 text-[#d4af37]" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgba(18,147,106,0.2)] to-[rgba(18,147,106,0.1)] flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-[#12936A]" />
               </div>
               <div>
                 <p className="luxury-dark-text-small mb-1">Available Credits</p>
@@ -230,8 +230,8 @@ export function CreditWalletCard({
         <div className="p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[rgba(212,175,55,0.25)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-[#d4af37]" />
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[rgba(18,147,106,0.25)] to-[rgba(18,147,106,0.1)] flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-[#12936A]" />
               </div>
               <div>
                 <h3 className="luxury-dark-heading-sm text-lg">⁦Pet Wash™⁩ Wallet</h3>
