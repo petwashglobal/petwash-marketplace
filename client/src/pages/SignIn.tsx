@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, linkWithCredential, signInWithPopup, signInWithRedirect, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
 import type { OAuthCredential } from "firebase/auth";
-import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
+import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo, isNativeApplePlatform, signInWithAppleNative } from "@/lib/iosAuthHandler";
 import { signupFlags } from "@/lib/authSignupFlags";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -1014,25 +1014,36 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       let userCredential: import('firebase/auth').UserCredential | null = null;
 
+      // Native Sign in with Apple (App Store rule 4.8) — only inside the Capacitor
+      // iOS app. Uses the native Apple sheet → Firebase credential, producing the
+      // same UserCredential as the popup so the rest of this flow is identical.
+      // On web (Safari etc.) this is skipped and the OAuth popup/redirect runs.
+      if (provider === 'apple' && isNativeApplePlatform()) {
+        logger.info('[Auth] Native Sign in with Apple (Capacitor iOS)');
+        userCredential = await signInWithAppleNative(auth);
+      }
+
       // Single canonical strategy resolver: iPhone → redirect, everything else → popup.
       // IMPORTANT: signInWithRedirect / signInWithPopup must be the immediate next call
       // after getAuthStrategy() — no awaits in between or Safari blocks the popup.
-      const authStrategy = getAuthStrategy();
-      if (authStrategy === 'redirect') {
-        logger.info(`[Auth] iPhone detected — using redirect for ${provider}`);
-        setRedirectMarker(provider);
-        // PR-FRES-2: Seed signup_intent into HttpOnly cookie BEFORE the OAuth
-        // redirect so iPhone Safari ITP cannot wipe localStorage during the
-        // roundtrip and drop returning customers onto /home instead of
-        // /provider-onboarding. Server fallback path: post-login.ts:325.
-        await seedSignupIntentCookie();
-        await signInWithRedirect(auth, authProvider);
-        setSocialLoading(null);
-        return;
-      }
+      if (!userCredential) {
+        const authStrategy = getAuthStrategy();
+        if (authStrategy === 'redirect') {
+          logger.info(`[Auth] iPhone detected — using redirect for ${provider}`);
+          setRedirectMarker(provider);
+          // PR-FRES-2: Seed signup_intent into HttpOnly cookie BEFORE the OAuth
+          // redirect so iPhone Safari ITP cannot wipe localStorage during the
+          // roundtrip and drop returning customers onto /home instead of
+          // /provider-onboarding. Server fallback path: post-login.ts:325.
+          await seedSignupIntentCookie();
+          await signInWithRedirect(auth, authProvider);
+          setSocialLoading(null);
+          return;
+        }
 
-      logger.info(`[Auth] Using popup auth for ${provider} (strategy=popup, webview=${isGenericWebview})`);
-      userCredential = await signInWithPopup(auth, authProvider);
+        logger.info(`[Auth] Using popup auth for ${provider} (strategy=popup, webview=${isGenericWebview})`);
+        userCredential = await signInWithPopup(auth, authProvider);
+      }
 
       const additionalInfo = getAdditionalUserInfo(userCredential);
       const isNewUser = additionalInfo?.isNewUser || false;

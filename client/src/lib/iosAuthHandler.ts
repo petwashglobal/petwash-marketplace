@@ -7,9 +7,10 @@
  * Based on Fortune 500 best practices for cross-platform auth
  */
 
-import { 
+import {
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   GoogleAuthProvider,
   FacebookAuthProvider,
   OAuthProvider,
@@ -17,6 +18,7 @@ import {
   type UserCredential,
   type AuthProvider
 } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * Detects if the current browser is iOS Safari or iPad Safari
@@ -137,11 +139,70 @@ export function createGoogleProvider(): GoogleAuthProvider {
  */
 export function createAppleProvider(): OAuthProvider {
   const provider = new OAuthProvider('apple.com');
-  
+
   provider.addScope('email');
   provider.addScope('name');
-  
+
   return provider;
+}
+
+/**
+ * True only inside the native Capacitor iOS app (not Safari/web). Native
+ * "Sign in with Apple" is required by App Store rule 4.8 when other social
+ * sign-ins are offered; on web we keep the OAuth popup/redirect flow.
+ */
+export function isNativeApplePlatform(): boolean {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+  } catch {
+    return false;
+  }
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Native Sign in with Apple for the Capacitor iOS app, exchanged into Firebase.
+ * Apple is sent SHA-256(nonce); Firebase is given the RAW nonce so it can verify
+ * the identity token. Returns the same UserCredential shape as signInWithPopup,
+ * so the caller's post-auth flow (session exchange, loyalty, consent) is identical.
+ *
+ * The native sheet comes from @capacitor-community/apple-sign-in (loaded lazily so
+ * web builds never pull it). Requires the "Sign in with Apple" capability added to
+ * the iOS target in Xcode + an Apple Service ID — operator/Xcode steps.
+ */
+export async function signInWithAppleNative(auth: Auth): Promise<UserCredential> {
+  // Bundler-ignored + variable specifier: the web build never tries to resolve
+  // this (it isn't a web dependency); it resolves only inside the native iOS app
+  // where `npm install @capacitor-community/apple-sign-in` + cap sync put it.
+  const pluginName = '@capacitor-community/apple-sign-in';
+  const mod: any = await import(/* @vite-ignore */ pluginName);
+  const SignInWithApple = mod.SignInWithApple;
+  if (!SignInWithApple) {
+    throw new Error('Apple sign-in plugin not available (native build only)');
+  }
+  const rawNonce =
+    typeof (crypto as any).randomUUID === 'function'
+      ? (crypto as any).randomUUID()
+      : `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  const hashedNonce = await sha256Hex(rawNonce);
+
+  const result: any = await SignInWithApple.authorize({
+    requestedScopes: ['email', 'name'] as any,
+    nonce: hashedNonce,
+  } as any);
+
+  const idToken: string | undefined = result?.response?.identityToken;
+  if (!idToken) {
+    throw new Error('Apple sign-in returned no identity token');
+  }
+  const provider = new OAuthProvider('apple.com');
+  const credential = provider.credential({ idToken, rawNonce });
+  return signInWithCredential(auth, credential);
 }
 
 /**
