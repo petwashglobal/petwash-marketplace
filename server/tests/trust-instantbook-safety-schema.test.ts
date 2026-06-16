@@ -54,3 +54,22 @@ describe('Drizzle defs match migration', () => {
     expect(count).toBe(2);
   });
 });
+
+describe('migration 0051 — provider insurance/health-declaration register', () => {
+  const mig51 = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'migrations', '0051_provider_insurance_docs.sql'),
+    'utf8',
+  );
+  it('creates provider_insurance_documents additively (IF NOT EXISTS, no DROP forward)', () => {
+    expect(mig51).toMatch(/CREATE TABLE IF NOT EXISTS provider_insurance_documents/);
+    expect(mig51.split('ROLLBACK')[0]).not.toMatch(/DROP TABLE/);
+  });
+  it('stores only metadata + private file ref + declaration hash (no document body)', () => {
+    expect(mig51).toMatch(/file_ref/);
+    expect(mig51).toMatch(/declaration_hash/);
+    expect(mig51).toMatch(/expires_at/); // drives the "cover lapsed" gate
+  });
+  it('Drizzle def matches', () => {
+    expect(schema).toMatch(/providerInsuranceDocuments = pgTable\("provider_insurance_documents"/);
+  });
+});

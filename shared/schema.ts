@@ -12759,6 +12759,32 @@ export const serviceSafetySessions = pgTable("service_safety_sessions", {
 }, (t) => [index("idx_safety_booking").on(t.bookingId)]);
 export type ServiceSafetySession = typeof serviceSafetySessions.$inferSelect;
 
+// Provider insurance + health-declaration document register (migration 0051).
+// Proves which legal docs are on file + current per provider (provider is primary
+// risk-bearer; platform secondary — Rover/Mad Paws model). Metadata + private file
+// ref + sealed declaration hash only — never the document contents or PII.
+export const providerInsuranceDocuments = pgTable("provider_insurance_documents", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  docType: text("doc_type").notNull(), // liability_insurance|professional_indemnity|health_declaration|bituach_leumi|liability_acknowledgment|police_check_cert|other
+  status: text("status").notNull().default("pending"), // pending|active|expired|rejected
+  insurer: text("insurer"),
+  policyNumber: text("policy_number"),
+  fileRef: text("file_ref"),               // private GCS object path; never the file
+  declarationHash: text("declaration_hash"), // SHA-256 of sealed declaration (no PII)
+  issuedAt: timestamp("issued_at"),
+  expiresAt: timestamp("expires_at"),
+  verifiedBy: text("verified_by"),
+  verifiedAt: timestamp("verified_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("idx_provins_provider").on(t.providerId, t.docType, t.status),
+  index("idx_provins_expiry").on(t.expiresAt),
+]);
+export type ProviderInsuranceDocument = typeof providerInsuranceDocuments.$inferSelect;
+
 export const onboardingCases = pgTable("onboarding_cases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
