@@ -614,12 +614,12 @@
 }
 
 .pw-mega-title {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #000000;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.22em;
+  color: #735511;
+  margin-bottom: 0.6rem;
 }
 
 .pw-mega-link {
@@ -630,17 +630,17 @@
   padding: 0.5rem;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
-  color: #000000;
+  color: #1A1712;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
 .pw-mega-link:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #000000;
+  background: rgba(201, 169, 110, 0.12);
+  color: #1A1712;
 }
 
 .pw-mega-link-frozen {
@@ -1011,12 +1011,12 @@
 }
 
 .pw-mobile-section-title {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #000000;
-  margin-bottom: 0.75rem;
+  letter-spacing: 0.22em;
+  color: #735511;
+  margin-bottom: 0.85rem;
 }
 
 .pw-mobile-group {
@@ -1024,9 +1024,10 @@
 }
 
 .pw-mobile-group-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #000000;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #1A1712;
   margin-bottom: 0.5rem;
 }
 
@@ -1044,17 +1045,17 @@
   padding: 0.75rem;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
-  color: #000000;
+  color: #1A1712;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .pw-mobile-link:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #000000;
+  background: rgba(201, 169, 110, 0.12);
+  color: #1A1712;
 }
 
 /* ===========================
