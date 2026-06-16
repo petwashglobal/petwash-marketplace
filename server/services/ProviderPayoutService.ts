@@ -20,6 +20,7 @@ import { AIPayoutVerificationService } from "./AIPayoutVerificationService";
 import { FinancialDocumentService } from "./FinancialDocumentService";
 import { TreasuryConfigService } from "./TreasuryConfigService";
 import { dispatchNotifications, buildPayoutIssuedSms } from "./PetWashNotificationEngine";
+import { isProviderInsuranceCleared } from "../routes/provider-insurance";
 
 export class ProviderPayoutService {
   
@@ -138,6 +139,23 @@ export class ProviderPayoutService {
         return {
           success: false,
           error: 'Provider not found',
+        };
+      }
+
+      // INSURANCE CLEARANCE GATE — provider is the primary risk-bearer; block the
+      // bank transfer unless they hold ACTIVE liability cover + a declaration.
+      // Funds stay in escrow (status unchanged) until docs clear.
+      // NOTE: insurance docs are keyed by the provider's Firebase UID. On this
+      // rail payout.providerId is the NUMERIC providers.id, so we use the
+      // resolved provider.userId (the UID) — not payout.providerId.
+      if (!(await isProviderInsuranceCleared(provider.userId))) {
+        logger.warn('[ProviderPayout] BLOCKED — provider not insurance-cleared', {
+          payoutId,
+          providerUid: provider.userId,
+        });
+        return {
+          success: false,
+          error: 'PAYOUT_BLOCKED_INSURANCE: provider not insurance-cleared (active liability cover + declaration required)',
         };
       }
 
