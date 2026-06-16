@@ -71,6 +71,7 @@ const APPROVED_LUXURY_CSS = [
   'luxury-system-2025.css', // Centralized luxury design system - architect approved
   'luxury-dark-2025.css', // Ultra-luxury dark theme 2025 - architect approved
   'my-account-luxury.css', // MyAccount noir/gold luxury styles - architect approved
+  'petwash-brand-tokens.css', // Brand design tokens (white/black/gold) - CEO-locked 2026-06-16
 ];
 
 async function scanDirectory(dir: string, results: string[] = [], depth = 0): Promise<string[]> {
